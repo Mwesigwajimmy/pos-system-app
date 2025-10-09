@@ -1,0 +1,4 @@
+sku,product_name,variant_name,price,cost_price,stock
+COKE-500,Coca-Cola,500ml,2000,1200,100
+PEPSI-500,Pepsi,500ml,2000,1150,80
+SOAP-GEO-STD,Geisha Soap,Standard,1500,900,120
