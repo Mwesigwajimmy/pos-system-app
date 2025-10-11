@@ -9,7 +9,7 @@ import {
     ShieldCheck, Settings, Landmark, Home, FileText, Tags, Undo2, LucideIcon,
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
-    UserCheck, Smartphone, Zap, SlidersHorizontal
+    UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBusinessType } from '@/hooks/useBusinessType';
@@ -25,7 +25,6 @@ const navSections: NavItem[] = [
     { type: 'link', href: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
     { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager'] },
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier'] },
-
     { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], industries: ['Retail / Wholesale', 'Restaurant / Cafe'] },
     {
         type: 'accordion', title: 'Distribution', icon: Truck, roles: ['admin', 'manager'], industries: ['Retail / Wholesale'],
@@ -52,16 +51,20 @@ const navSections: NavItem[] = [
         ]
     },
     {
-        type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier'], industries: ['Telecom Services'],
+        type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant'],
         subItems: [
             { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager'] },
             { href: '/telecom/operator', label: 'Operator Center', icon: Zap, roles: ['admin', 'manager'] },
-            // ==================== NEW PAGE ADDED HERE ====================
             { href: '/telecom/agents', label: 'Agent Management', icon: UserCog, roles: ['admin', 'manager'] },
-            // =============================================================
+            { href: '/telecom/products', label: 'Product Management', icon: Boxes, roles: ['admin', 'manager'] },
+            { href: '/telecom/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] },
+            { href: '/telecom/live-sheet', label: 'Live Data Grid', icon: Zap, roles: ['admin', 'manager'] },
+            { href: '/telecom/reconciliation', label: 'Reconciliation Center', icon: ClipboardCheck, roles: ['admin', 'manager', 'accountant'] },
             { href: '/telecom/financials', label: 'Financial Controls', icon: Banknote, roles: ['admin', 'manager'] },
-            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] },
             { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager'] },
+            { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant'] },
+            { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier'] },
+            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] },
         ]
     },
      {
@@ -116,11 +119,8 @@ export default function Sidebar() {
 
     const getPosLabel = (industry: string | null) => {
         switch (industry) {
-            case 'Restaurant / Cafe':
-                return 'Services Desk';
-            case 'Retail / Wholesale':
-            default:
-                return 'Point of Sale';
+            case 'Restaurant / Cafe': return 'Services Desk';
+            case 'Retail / Wholesale': default: return 'Point of Sale';
         }
     };
 
@@ -146,10 +146,8 @@ export default function Sidebar() {
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navItems) {
-            if (section.type === 'accordion' && section.subItems) {
-                if (section.subItems.some(sub => pathname.startsWith(sub.href) && sub.href !== '/')) {
-                    return section.title;
-                }
+            if (section.type === 'accordion' && section.subItems?.some(sub => pathname.startsWith(sub.href) && sub.href !== '/')) {
+                return section.title;
             }
         }
         return undefined;
@@ -180,17 +178,11 @@ export default function Sidebar() {
                                             <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
                                         </AccordionTrigger>
                                         <AccordionContent className="pl-6 pt-1 space-y-1">
-                                            {item.subItems.filter(sub =>
-                                                !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole)
-                                            ).map(subItem => {
-                                                const isSubItemActive = pathname.startsWith(subItem.href) && pathname !== item.title;
+                                            {item.subItems.filter(sub => !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole))
+                                            .map(subItem => {
+                                                const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
                                                 return (
-                                                    <Link
-                                                        key={subItem.href}
-                                                        href={subItem.href}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}
-                                                    >
+                                                    <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
                                                         <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
                                                     </Link>
                                                 );

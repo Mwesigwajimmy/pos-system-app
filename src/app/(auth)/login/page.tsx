@@ -4,21 +4,24 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // 1. IMPORT THE NEW HOOK
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+// --- 1. IMPORT THE ICONS ---
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // --- 2. ADD STATE FOR PASSWORD VISIBILITY ---
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   const router = useRouter();
   const supabase = createClient();
-  
-  // 2. USE THE HOOK TO GET THE CURRENT NETWORK STATUS
   const isOnline = useOnlineStatus();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -26,15 +29,12 @@ export default function Login() {
     setError(null);
     setIsLoading(true);
 
-    // --- 3. THE CRUCIAL OFFLINE CHECK ---
-    // Before attempting to contact Supabase, check if the browser is online.
     if (!isOnline) {
       setError("You are currently offline. Please connect to the internet to log in.");
       setIsLoading(false);
-      return; // Stop the function here
+      return;
     }
 
-    // This is your original Supabase login logic. It only runs if the app is online.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -43,6 +43,11 @@ export default function Login() {
       router.refresh();
     }
     setIsLoading(false);
+  };
+  
+  // --- 3. CREATE A TOGGLE FUNCTION ---
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible((prevState) => !prevState);
   };
 
   return (
@@ -57,10 +62,32 @@ export default function Login() {
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
+
+          {/* --- 4. IMPLEMENT THE NEW PASSWORD INPUT WITH TOGGLE BUTTON --- */}
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="relative">
+                <Input 
+                    id="password" 
+                    type={isPasswordVisible ? 'text' : 'password'} 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    required 
+                    className="pr-10" // Make space for the icon
+                />
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" 
+                    onClick={togglePasswordVisibility}
+                >
+                    {isPasswordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span className="sr-only">{isPasswordVisible ? "Hide password" : "Show password"}</span>
+                </Button>
+            </div>
           </div>
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Signing In...' : 'Sign In'}

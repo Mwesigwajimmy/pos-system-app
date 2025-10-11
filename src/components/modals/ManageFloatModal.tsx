@@ -1,3 +1,4 @@
+// src/components/modals/ManageFloatModal.tsx
 'use client';
 
 import React from 'react';
@@ -8,22 +9,23 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 
 import { createClient } from '@/lib/supabase/client';
-import { manageFloatSchema, Agent } from '@/lib/schemas'; // Import the simplified schema
+// --- Import your central schemas ---
+import { manageFloatSchema } from '@/lib/schemas';
+import type { Agent } from '@/lib/schemas';
 
-// UI Components
+// --- UI Components ---
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Loader2, PlusCircle, MinusCircle } from 'lucide-react';
 
-// Define a specific type for the data our Supabase RPC function expects
+// Define the shape of data for the mutation
 type FloatMutationVariables = {
   amount: number;
   notes: string;
 };
 
-// Define the props for the component
 interface ManageFloatModalProps {
   agent: Agent;
   isOpen: boolean;
@@ -34,80 +36,61 @@ export function ManageFloatModal({ agent, isOpen, onClose }: ManageFloatModalPro
   const supabase = createClient();
   const queryClient = useQueryClient();
 
-  // THE CRITICAL FIX:
-  // With the simplified schema (no transform), `z.infer` now correctly resolves
-  // to { amount: string, notes: string }, matching the form's state.
   const form = useForm<z.infer<typeof manageFloatSchema>>({
     resolver: zodResolver(manageFloatSchema),
-    defaultValues: {
-      amount: "", // Use empty string for better placeholder behavior
-      notes: "",
-    },
+    defaultValues: { amount: "", notes: "" },
   });
 
   const handleSuccess = (message: string) => {
     toast.success(message);
     queryClient.invalidateQueries({ queryKey: ['allTelecomAgents'] });
-    form.reset({ amount: "", notes: "" });
+    form.reset();
     onClose();
   };
 
+  // --- Your excellent two-mutation design ---
   const { mutate: issueFloat, isPending: isIssuing } = useMutation({
-    // The mutation function now expects our manually transformed data type
     mutationFn: async (values: FloatMutationVariables) => {
       const { error } = await supabase.rpc('issue_telecom_agent_float', {
-        p_agent_user_id: agent.user_id,
-        p_amount: values.amount,
-        p_notes: values.notes,
+        p_agent_user_id: agent.user_id, p_amount: values.amount, p_notes: values.notes,
       });
       if (error) throw error;
     },
     onSuccess: () => handleSuccess("Float added successfully."),
-    onError: (error) => toast.error(`Error: ${error.message}`),
+    onError: (error: Error) => toast.error(`Error: ${error.message}`),
   });
   
   const { mutate: deductFloat, isPending: isDeducting } = useMutation({
     mutationFn: async (values: FloatMutationVariables) => {
       const { error } = await supabase.rpc('deduct_telecom_agent_float', {
-        p_agent_user_id: agent.user_id,
-        p_amount: values.amount,
-        p_notes: values.notes,
+        p_agent_user_id: agent.user_id, p_amount: values.amount, p_notes: values.notes,
       });
       if (error) throw error;
     },
     onSuccess: () => handleSuccess("Float deducted successfully."),
-    onError: (error) => toast.error(`Error: ${error.message}`),
+    onError: (error: Error) => toast.error(`Error: ${error.message}`),
   });
 
-  // This is our submission handler. It receives the validated form data (where amount is a string),
-  // transforms the `amount` to a number, and then calls the appropriate mutation.
-  const processSubmit = (mutationCallback: (vars: FloatMutationVariables) => void) => (
-    data: z.infer<typeof manageFloatSchema>
-  ) => {
-    const transformedData = {
-      amount: parseFloat(data.amount),
-      notes: data.notes,
+  // --- Your excellent submission handler ---
+  const processSubmit = (mutationCallback: (vars: FloatMutationVariables) => void) => 
+    (data: z.infer<typeof manageFloatSchema>) => {
+      const transformedData = {
+        amount: parseFloat(data.amount),
+        notes: data.notes || '', // Ensure notes is always a string
+      };
+      mutationCallback(transformedData);
     };
-    mutationCallback(transformedData);
-  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        form.reset({ amount: "", notes: "" });
-        onClose();
-      }
-    }}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Manage Float for {agent.full_name}</DialogTitle></DialogHeader>
-        <p>Current Balance: <span className="font-bold">UGX {agent.current_float_balance.toLocaleString()}</span></p>
+        <DialogHeader>
+            <DialogTitle>Manage Float for {agent.full_name}</DialogTitle>
+            <p className="text-sm text-muted-foreground pt-1">Current Balance: <span className="font-bold">UGX {agent.current_float_balance.toLocaleString()}</span></p>
+        </DialogHeader>
         <Form {...form}>
-          {/* We remove the <form> tag here and rely on the onClick handlers */}
           <div className="space-y-4">
-            <FormField
-              name="amount"
-              control={form.control}
-              render={({ field }) => (
+            <FormField name="amount" control={form.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
@@ -115,12 +98,8 @@ export function ManageFloatModal({ agent, isOpen, onClose }: ManageFloatModalPro
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
-            <FormField
-              name="notes"
-              control={form.control}
-              render={({ field }) => (
+            )}/>
+            <FormField name="notes" control={form.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes / Reason</FormLabel>
                   <FormControl>
@@ -128,24 +107,13 @@ export function ManageFloatModal({ agent, isOpen, onClose }: ManageFloatModalPro
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
+            )}/>
             <DialogFooter className="grid grid-cols-2 gap-2 pt-4">
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={isDeducting || isIssuing || !form.formState.isValid}
-                onClick={form.handleSubmit(processSubmit(deductFloat))}
-              >
+              <Button type="button" variant="destructive" disabled={isDeducting || isIssuing || !form.formState.isValid} onClick={form.handleSubmit(processSubmit(deductFloat))}>
                 {isDeducting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <MinusCircle className="mr-2 h-4 w-4"/> Deduct
               </Button>
-              <Button
-                type="button"
-                variant="default"
-                disabled={isIssuing || isDeducting || !form.formState.isValid}
-                onClick={form.handleSubmit(processSubmit(issueFloat))}
-              >
+              <Button type="button" variant="default" disabled={isIssuing || isDeducting || !form.formState.isValid} onClick={form.handleSubmit(processSubmit(issueFloat))}>
                 {isIssuing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <PlusCircle className="mr-2 h-4 w-4"/> Add
               </Button>
