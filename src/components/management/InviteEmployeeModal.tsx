@@ -48,19 +48,17 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
     // This mutation now calls our new, secure API route.
     const { mutate: inviteEmployee, isPending } = useMutation({
         mutationFn: async () => {
-            if (!profile?.business_id) {
-                throw new Error("Cannot send invite: Your business ID could not be found.");
-            }
+            // We no longer need the profile here, as the backend can handle everything.
 
-            // Call the API endpoint we created inside the management folder.
+            // Call the API endpoint we created.
             const response = await fetch('/management/api/invite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    // THE FIX IS HERE: We now send all three required pieces of data.
                     email: email,
                     fullName: fullName,
                     role: role,
-                    businessId: profile.business_id,
                 }),
             });
 
@@ -71,9 +69,10 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
             }
         },
         onSuccess: () => {
-            toast.success(`Invitation successfully sent to ${fullName}!`);
+            // The success message is now more generic and accurate.
+            toast.success(`Role assigned or invitation sent to ${fullName}!`);
+            queryClient.invalidateQueries({ queryKey: ['agentManagementData'] }); // This will refresh both lists on the agent page
             queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
-            queryClient.invalidateQueries({ queryKey: ['allTelecomAgents'] });
             onClose();
             // Reset form
             setFullName('');
@@ -81,7 +80,8 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
             setPhoneNumber('');
         },
         onError: (error) => {
-            toast.error(`Failed to Send Invitation`, { description: error.message });
+            // The error message is now more generic and accurate.
+            toast.error(`Failed to Process Request`, { description: error.message });
         },
     });
 
