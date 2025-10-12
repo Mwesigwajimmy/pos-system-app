@@ -48,14 +48,11 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
     // This mutation now calls our new, secure API route.
     const { mutate: inviteEmployee, isPending } = useMutation({
         mutationFn: async () => {
-            // We no longer need the profile here, as the backend can handle everything.
-
-            // Call the API endpoint we created.
+            // This now calls our single, intelligent API endpoint.
             const response = await fetch('/management/api/invite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    // THE FIX IS HERE: We now send all three required pieces of data.
                     email: email,
                     fullName: fullName,
                     role: role,
@@ -63,24 +60,20 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
             });
 
             const result = await response.json();
-
             if (!response.ok) {
-                throw new Error(result.error || 'An unknown error occurred on the server.');
+                throw new Error(result.error || 'An unknown server error occurred.');
             }
+            // We use the success message from the API itself.
+            return result.message;
         },
-        onSuccess: () => {
-            // The success message is now more generic and accurate.
-            toast.success(`Role assigned or invitation sent to ${fullName}!`);
-            queryClient.invalidateQueries({ queryKey: ['agentManagementData'] }); // This will refresh both lists on the agent page
+        onSuccess: (message) => {
+            toast.success(message);
+            queryClient.invalidateQueries({ queryKey: ['agentManagementData'] });
             queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
             onClose();
-            // Reset form
-            setFullName('');
-            setEmail('');
-            setPhoneNumber('');
+            setFullName(''); setEmail(''); setPhoneNumber('');
         },
         onError: (error) => {
-            // The error message is now more generic and accurate.
             toast.error(`Failed to Process Request`, { description: error.message });
         },
     });
