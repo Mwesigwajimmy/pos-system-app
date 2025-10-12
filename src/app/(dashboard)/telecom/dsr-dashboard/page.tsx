@@ -21,7 +21,7 @@ import { UploadReceiptCard } from '@/components/dsr/UploadReceiptCard';
 // --- DATA TYPES ---
 interface DsrShift { id: number; opening_float_balance: number; opening_cash_balance: number; location_name: string; }
 interface Service { id: number; service_name: string; }
-interface Location { id: number; name: string; }
+interface Location { id: string; name: string; }
 interface Transaction { id: number; created_at: string; transaction_type: string; amount: number; notes: string | null; customer_phone: string | null; service_id: number | null; }
 interface ShiftBalances { current_float: number; current_cash: number; }
 

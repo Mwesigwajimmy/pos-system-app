@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface Location { id: number; name: string; }
+// --- CHANGE 1: The location ID is now a string (for the UUID) ---
+interface Location { id: string; name: string; }
 
 interface StartShiftCardProps {
     locations: Location[];
@@ -23,7 +24,9 @@ export function StartShiftCard({ locations, isLoadingLocations }: StartShiftCard
     const [selectedLocation, setSelectedLocation] = React.useState<string | null>(null);
 
     const { mutate: startShift, isPending: isStartingShift } = useMutation({
-        mutationFn: async (locationId: number) => {
+        // The mutation function now correctly expects a string (UUID)
+        mutationFn: async (locationId: string) => {
+            // We pass the locationId directly to the RPC call
             const { error } = await supabase.rpc('start_dsr_shift', { p_location_id: locationId });
             if (error) throw error;
         },
@@ -39,7 +42,8 @@ export function StartShiftCard({ locations, isLoadingLocations }: StartShiftCard
             toast.error("Please select a location to start your shift.");
             return;
         }
-        startShift(Number(selectedLocation));
+        // --- CHANGE 2: We no longer need to convert the ID to a number ---
+        startShift(selectedLocation);
     };
 
     return (
@@ -55,7 +59,8 @@ export function StartShiftCard({ locations, isLoadingLocations }: StartShiftCard
                             <SelectValue placeholder={isLoadingLocations ? "Loading locations..." : "Select your work location..."} />
                         </SelectTrigger>
                         <SelectContent>
-                            {locations?.map(loc => <SelectItem key={loc.id} value={String(loc.id)}>{loc.name}</SelectItem>)}
+                            {/* The value is now correctly treated as a string (UUID) */}
+                            {locations?.map(loc => <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button onClick={handleStartShift} disabled={isStartingShift || !selectedLocation} className="w-full">

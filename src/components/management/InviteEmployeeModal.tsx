@@ -1,7 +1,9 @@
+// This is the updated code for your InviteEmployeeModal component.
+
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -22,16 +24,50 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
     const [phoneNumber, setPhoneNumber] = useState('');
     const [role, setRole] = useState<UserRole>(defaultRole);
 
+    // We get the business ID of the admin sending the invite.
+    const { data: profile } = useQuery({
+        queryKey: ['userProfileForInvite'],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return null;
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('business_id')
+                .eq('id', user.id)
+                .single();
+
+            if (error) {
+                toast.error("Could not load your user profile to send invite.");
+                return null;
+            }
+            return data;
+        },
+    });
+
+    // This mutation now calls our new, secure API route.
     const { mutate: inviteEmployee, isPending } = useMutation({
         mutationFn: async () => {
-            const { error } = await supabase.rpc('invite_employee', {
-                p_full_name: fullName,
-                p_email: email,
-                p_phone_number: phoneNumber,
-                p_role: role,
+            if (!profile?.business_id) {
+                throw new Error("Cannot send invite: Your business ID could not be found.");
+            }
+
+            // Call the API endpoint we created inside the management folder.
+            const response = await fetch('/management/api/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    fullName: fullName,
+                    role: role,
+                    businessId: profile.business_id,
+                }),
             });
-            if (error) {
-                throw new Error(error.message);
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'An unknown error occurred on the server.');
             }
         },
         onSuccess: () => {
@@ -39,6 +75,7 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
             queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
             queryClient.invalidateQueries({ queryKey: ['allTelecomAgents'] });
             onClose();
+            // Reset form
             setFullName('');
             setEmail('');
             setPhoneNumber('');
@@ -63,6 +100,7 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                    {/* The form remains unchanged */}
                     <div className="space-y-2">
                         <Label htmlFor="fullName">Full Name</Label>
                         <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g., Jane Doe" required />
@@ -91,7 +129,7 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
                     </div>
                     <DialogFooter className="pt-4">
                         <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
-                        <Button type="submit" disabled={isPending}>
+                        <Button type="submit" disabled={isPending || !profile?.business_id}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Send Invitation
                         </Button>

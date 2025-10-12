@@ -154,7 +154,7 @@ export default function Sidebar() {
     }, [navItems, pathname]);
 
     return (
-        <div className="w-64 bg-card border-r hidden md:flex md:flex-col">
+        <div className="w-full h-full flex flex-col bg-card border-r">
             <div className="p-4 border-b flex items-center">
                 <h1 className="text-2xl font-bold text-primary">UG-BizSuite</h1>
             </div>
