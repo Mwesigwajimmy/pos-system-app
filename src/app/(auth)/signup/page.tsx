@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import toast from 'react-hot-toast';
-// --- 1. IMPORT THE ICONS & LOADER ---
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function Signup() {
@@ -20,12 +19,14 @@ export default function Signup() {
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // --- 2. ADD STATE FOR PASSWORD VISIBILITY ---
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   
   const router = useRouter();
   const supabase = createClient();
 
+  // ==================================================================
+  // --- THIS IS THE FINAL AND ONLY CHANGE NEEDED ---
+  // ==================================================================
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessType) {
@@ -35,7 +36,7 @@ export default function Signup() {
     setIsLoading(true);
     const toastId = toast.loading('Creating your account and business...');
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -47,35 +48,29 @@ export default function Signup() {
       },
     });
 
-    if (signUpError) {
-        toast.error(signUpError.message, { id: toastId });
+    // If there was an error during signup (e.g., user already exists)
+    if (error) {
+        toast.error(error.message, { id: toastId });
         setIsLoading(false);
         return;
     }
 
-    if (signUpData.user) {
-        toast.loading('Signing you in...', { id: toastId });
-
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (signInError) {
-            toast.error(`Account created, but auto-login failed: ${signInError.message}. Please log in manually.`, { id: toastId, duration: 6000 });
-            router.push('/login');
-        } else {
-            toast.success('Welcome to UG-BizSuite!', { id: toastId });
-            router.refresh();
-        }
+    // If signup was successful, a session is automatically created for the user.
+    // We do NOT need to sign in again. We just need to refresh the page state.
+    // If you have email verification enabled, the user is created but they cannot log in
+    // until they verify. The toast message handles this.
+    if (data.session) {
+      // User has a session, they are effectively logged in.
+      // Refreshing the page will trigger the middleware to route them correctly.
+      toast.success('Welcome to UG-BizSuite!', { id: toastId });
+      router.refresh();
     } else {
-        toast.success('Success! Please check your email to verify your account.', { id: toastId, duration: 6000 });
+      // This happens if you require email verification. The user object exists but no session.
+      toast.success('Success! Please check your email to verify your account.', { id: toastId, duration: 6000 });
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
   
-  // --- 3. CREATE A TOGGLE FUNCTION ---
   const togglePasswordVisibility = () => {
     setIsPasswordVisible((prevState) => !prevState);
   };
@@ -107,7 +102,6 @@ export default function Signup() {
             </div>
             <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
             
-            {/* --- 4. IMPLEMENT THE NEW PASSWORD INPUT WITH TOGGLE BUTTON --- */}
             <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -118,7 +112,7 @@ export default function Signup() {
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
                         required 
-                        className="pr-10" // Make space for the icon
+                        className="pr-10"
                     />
                     <Button 
                         type="button" 

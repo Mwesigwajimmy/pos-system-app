@@ -1,5 +1,6 @@
 // src/middleware.ts
 // V-REVOLUTION: THE DEFINITIVE, LOOP-FREE SECURITY & ROUTING ENGINE
+// This is your original file, with the necessary fixes integrated directly.
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
@@ -63,8 +64,11 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
     const { pathname } = request.nextUrl;
-    const publicPaths = ['/login', '/signup'];
+    
+    // FIX: Add the root path '/' to the public paths to handle it explicitly.
+    const publicPaths = ['/', '/login', '/signup'];
 
+    // This section for unauthenticated users is correct. No changes needed.
     if (!user) {
         if (!publicPaths.includes(pathname) && !pathname.startsWith('/auth')) {
             return NextResponse.redirect(new URL('/login', request.url));
@@ -72,6 +76,7 @@ export async function middleware(request: NextRequest) {
         return response;
     }
 
+    // This profile fetch is also correct.
     const { data: profile, error } = await supabase
         .from('profiles')
         .select(`
@@ -80,11 +85,15 @@ export async function middleware(request: NextRequest) {
         `)
         .eq('id', user.id)
         .single();
-        
-    if (error || !profile || !profile.business) {
+    
+    // FIX: This is the primary change. We split the error handling into two steps.
+    // STEP 1: Handle a critical error where the user's profile is missing in the database.
+    // This is a data integrity problem, and the only safe action is to sign out.
+    if (error || !profile) {
         await supabase.auth.signOut();
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('error', 'profile_not_found');
+        loginUrl.searchParams.set('message', 'Critical error: User profile not found.');
         return NextResponse.redirect(loginUrl);
     }
     
@@ -92,23 +101,29 @@ export async function middleware(request: NextRequest) {
         ? profile.business[0] 
         : profile.business;
 
+    // STEP 2: Handle the case where the user profile exists, but their business setup is not complete.
+    // Instead of logging them out, we redirect them to the setup page. This stops the loop.
     if (!businessDetails) {
-        await supabase.auth.signOut();
-        const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('error', 'business_details_invalid');
-        return NextResponse.redirect(loginUrl);
+        // If they aren't already on the welcome page, send them there.
+        if (pathname !== '/welcome') {
+            return NextResponse.redirect(new URL('/welcome', request.url));
+        }
+        // If they are on the welcome page, allow the request.
+        return response;
     }
-    
+
     const userRole = profile.role;
     const businessType = businessDetails.business_type || '';
     const setupComplete = businessDetails.setup_complete;
     
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
+    // This logic is correct: if a logged-in user visits a public page, redirect them to their dashboard.
     if (publicPaths.includes(pathname)) {
         return NextResponse.redirect(new URL(defaultDashboard, request.url));
     }
 
+    // This logic for handling setup completion is also correct.
     if (!setupComplete && pathname !== '/welcome') {
         return NextResponse.redirect(new URL('/welcome', request.url));
     }
@@ -116,28 +131,20 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(defaultDashboard, request.url));
     }
 
-    // ================================================================================= //
-    // THE DEFINITIVE FIX IS HERE:
-    // We now use a single, powerful check. It finds the "base path" the user is on
-    // (e.g., '/pos' or '/sacco/members') and checks if their role has permission.
-    // This removes the flawed logic and resolves the infinite loop permanently.
-    // ================================================================================= //
+    // This role-based access control logic is correct and remains unchanged.
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathname.startsWith(path));
 
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // If the user does not have the required role for the path they are trying to access,
-        // we securely redirect them to their correct default dashboard.
         return NextResponse.redirect(new URL(defaultDashboard, request.url));
     }
     
-    // By removing the old `isSpecializedModule` check, we eliminate the redirect loop.
-    // The role-based permission check above is now the single source of truth for security.
     return response;
 }
 
 export const config = {
   matcher: [
-    '/', // Run on the root path
+    // This matcher is fine. It correctly applies the middleware to all relevant paths.
+    '/',
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
