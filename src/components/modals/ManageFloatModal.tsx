@@ -51,12 +51,16 @@ export function ManageFloatModal({ agent, isOpen, onClose }: ManageFloatModalPro
   // --- Your excellent two-mutation design ---
   const { mutate: issueFloat, isPending: isIssuing } = useMutation({
     mutationFn: async (values: FloatMutationVariables) => {
-      const { error } = await supabase.rpc('issue_telecom_agent_float', {
-        p_agent_user_id: agent.user_id, p_amount: values.amount, p_notes: values.notes,
+      // We are now calling the new, powerful function.
+      const { error } = await supabase.rpc('issue_agent_float_and_start_shift', {
+        // It only needs the agent's ID and the amount.
+        p_agent_user_id: agent.user_id,
+        p_float_amount: values.amount,
       });
       if (error) throw error;
     },
-    onSuccess: () => handleSuccess("Float added successfully."),
+    // We update the success message to be more descriptive.
+    onSuccess: () => handleSuccess("Float issued and shift started successfully!"),
     onError: (error: Error) => toast.error(`Error: ${error.message}`),
   });
   
