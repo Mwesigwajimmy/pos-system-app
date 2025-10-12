@@ -66,7 +66,7 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     
     // FIX: Add the root path '/' to the public paths to handle it explicitly.
-    const publicPaths = ['/', '/login', '/signup'];
+    const publicPaths = ['/', '/login', '/signup', '/accept-invite'];
 
     // This section for unauthenticated users is correct. No changes needed.
     if (!user) {
