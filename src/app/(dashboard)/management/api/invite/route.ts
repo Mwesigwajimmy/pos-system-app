@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You must be logged in to assign roles.' }, { status: 401 });
     }
 
-    // THIS IS THE KEY: Securely fetch the admin's business ID from the profiles table.
+    // Securely fetch the admin's business ID from the profiles table.
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('business_id')
@@ -34,7 +34,6 @@ export async function POST(request: Request) {
       .single();
 
     if (profileError || !profile?.business_id) {
-      // This is the error you were seeing, now correctly handled on the server.
       return NextResponse.json({ error: 'You are not associated with a business and cannot assign roles.' }, { status: 403 });
     }
 
@@ -45,7 +44,8 @@ export async function POST(request: Request) {
       { cookies: { get: (name) => cookieStore.get(name)?.value } }
     );
 
-    // Call our new, correct function, passing in the admin's business ID.
+    // THE FINAL FIX IS HERE:
+    // Ensure the RPC call includes ALL FOUR parameters that the database function expects.
     const { error: rpcError } = await supabaseAdmin.rpc('assign_role_to_existing_user', {
       p_admin_business_id: profile.business_id,
       p_email: email,
