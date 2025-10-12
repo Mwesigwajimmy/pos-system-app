@@ -1,36 +1,60 @@
-// File: app/api/invite/route.ts (or your custom path)
+// This is the final, definitive, and correct version of your API route.
 
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // We now get fullName from the request body as well.
     const { email, fullName, role } = await request.json();
-
     if (!email || !fullName || !role) {
       return NextResponse.json({ error: 'Email, full name, and role are required' }, { status: 400 });
     }
 
-    // We no longer invite the user. We now call our new, smart function
-    // to either assign a role to an existing user or invite a new one.
-    const { error } = await supabaseAdmin.rpc('assign_role_to_existing_user', {
+    const cookieStore = cookies();
+    
+    // Create a server client that knows who the logged-in user (the admin) is.
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    );
+
+    // Get the currently logged-in user's data.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'You must be logged in to assign roles.' }, { status: 401 });
+    }
+
+    // THIS IS THE KEY: Securely fetch the admin's business ID from the profiles table.
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('business_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile?.business_id) {
+      // This is the error you were seeing, now correctly handled on the server.
+      return NextResponse.json({ error: 'You are not associated with a business and cannot assign roles.' }, { status: 403 });
+    }
+
+    // Now, create the MASTER ADMIN client to perform the action.
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    );
+
+    // Call our new, correct function, passing in the admin's business ID.
+    const { error: rpcError } = await supabaseAdmin.rpc('assign_role_to_existing_user', {
+      p_admin_business_id: profile.business_id,
       p_email: email,
       p_full_name: fullName,
       p_role: role,
     });
 
-    if (error) {
-      // If there's an error from the RPC, we return it.
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (rpcError) throw rpcError;
 
-    // If successful, we return a success message.
     return NextResponse.json({ message: 'Role assigned or invitation sent successfully!' });
 
   } catch (e: any) {
