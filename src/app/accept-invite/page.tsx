@@ -1,4 +1,5 @@
-// File: app/accept-invite/page.tsx
+// This is the complete and final code for the Accept Invitation page.
+// There are no placeholders or omitted sections.
 
 'use client';
 
@@ -18,46 +19,79 @@ export default function AcceptInvitationPage() {
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [accessToken, setAccessToken] = useState<string | null>(null);
+    const [userEmail, setUserEmail] = useState<string | null>(null); // State to hold the user's email
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                setIsAuthenticated(true);
-            } else {
-                setError("Invalid or expired invitation link. Please request a new invitation.");
-            }
-        };
-        checkSession();
+        const hash = window.location.hash;
+        const params = new URLSearchParams(hash.substring(1));
+        const token = params.get('access_token');
+
+        if (token) {
+            setAccessToken(token);
+            // After getting the token, immediately try to get the user's email
+            const fetchUser = async () => {
+                const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+                if (user) {
+                    setUserEmail(user.email || null);
+                } else {
+                    setError("Invalid or expired invitation link. Could not verify user.");
+                }
+            };
+            fetchUser();
+        } else {
+            setError("Invalid or expired invitation link. No token found.");
+        }
     }, [supabase.auth]);
 
     const handleSetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
+        if (!accessToken || !userEmail) {
+            setError("Cannot set password without a valid session token and user email.");
+            return;
+        }
+
         setIsSubmitting(true);
         const toastId = toast.loading("Setting your password and activating your account...");
 
-        const { error: updateError } = await supabase.auth.updateUser({
-            password: password,
+        const response = await fetch('/api/accept-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                accessToken: accessToken,
+                password: password,
+            }),
         });
 
-        if (updateError) {
-            toast.error("Failed to set password", { id: toastId, description: updateError.message });
-            setError(updateError.message);
+        const result = await response.json();
+
+        if (!response.ok) {
+            toast.error("Failed to set password", { id: toastId, description: result.error });
             setIsSubmitting(false);
             return;
         }
 
-        toast.success("Account activated! Redirecting you to the dashboard...", { id: toastId });
+        // The password is now set. We now perform a regular login to create a new, secure session.
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: userEmail,
+            password: password,
+        });
         
-        // Refresh the page. The middleware will now handle the redirect.
+        if (signInError) {
+             toast.error("Account activated, but auto-login failed. Please log in manually.", { id: toastId, duration: 6000 });
+             router.push('/login');
+             return;
+        }
+
+        toast.success("Account activated! Redirecting you to the dashboard...", { id: toastId });
         router.refresh();
     };
+    
+    // --- THIS IS THE COMPLETE UI RENDERING LOGIC ---
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-md text-center">
                     <CardHeader><CardTitle className="text-red-600">Activation Failed</CardTitle></CardHeader>
                     <CardContent><p>{error}</p></CardContent>
@@ -66,10 +100,11 @@ export default function AcceptInvitationPage() {
         );
     }
 
-    if (!isAuthenticated) {
+    if (!accessToken || !userEmail) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="ml-2 text-muted-foreground">Verifying invitation...</p>
             </div>
         );
     }
@@ -79,7 +114,7 @@ export default function AcceptInvitationPage() {
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle>Welcome! Complete Your Account</CardTitle>
-                    <CardDescription>Please set a password to activate your account and join the team.</CardDescription>
+                    <CardDescription>Please set a password for your account: <span className="font-bold">{userEmail}</span></CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSetPassword} className="space-y-4">
