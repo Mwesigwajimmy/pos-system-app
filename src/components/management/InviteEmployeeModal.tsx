@@ -50,7 +50,7 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
         mutationFn: async () => {
             // This now calls our single, intelligent API endpoint.
             // --- FIX IS HERE: Changed the path to match Next.js API route ---
-            const response = await fetch('/dashboard/management/api/invite', {
+            const response = await fetch('/management/api/invite', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
