@@ -15,7 +15,7 @@ import { ModeToggle } from '@/components/ui/mode-toggle';
 import { cn } from "@/lib/utils";
 import {
     Check, ShoppingCart, Box, Users, Landmark, Store, Utensils,
-    Handshake, Star, ArrowRight, Phone, Building2, Signal, // Added Signal icon
+    Handshake, Star, ArrowRight, Phone, Building2, Signal,
     Linkedin, Twitter, Facebook, Menu, X, Rocket,
     Clock, Quote, WifiOff, TrendingDown, MessageSquare, LifeBuoy,
     ReceiptText, Leaf, LucideIcon, Home, BrainCircuit,
@@ -200,15 +200,8 @@ const HomePage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground">
-            <Head>
-                <title>{`${siteConfig.name} - The Global Operating System for Ambitious Enterprise`}</title>
-                <meta name="description" content={siteConfig.description} />
-                <meta property="og:title" content={siteConfig.name} />
-                <meta property="og:description" content={siteConfig.description} />
-                <meta property="og:image" content={siteConfig.ogImage} />
-                <meta property="og:url" content={siteConfig.url} />
-                <meta name="twitter:card" content="summary_large_image" />
-            </Head>
+            {/* The <Head> component from next/head is not needed in the App Router.
+                Metadata should be handled in layout.tsx as you have already done. */}
 
             <MegaMenuHeader />
 

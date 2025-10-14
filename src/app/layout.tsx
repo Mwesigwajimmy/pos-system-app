@@ -12,39 +12,53 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: "UG-BizSuite | The Operating System for Ugandan Ambition",
-  description: "The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for Ugandan businesses to thrive—even offline. Get started for free.",
-  manifest: '/manifest.json',
-  keywords: ['Uganda', 'business software', 'POS', 'Inventory Management', 'Accounting Software', 'CRM', 'Ugandan businesses', 'offline POS', 'mobile money integration'],
-  authors: [{ name: 'UG-BizSuite' }],
-  creator: 'UG-BizSuite Team',
+  title: "BBU1 | The Global Operating System for Ambitious Enterprise", // Updated Title
+  description: "Unify your POS, Inventory, Cloud Accounting, Telecoms, and AI-driven insights into one powerful, scalable platform for Africa, Uganda, and the world.", // Updated Description
+  manifest: '/site.webmanifest', // Use the new manifest file
+  keywords: ['Uganda', 'Africa', 'business software', 'POS', 'Inventory Management', 'Accounting Software', 'Telecom', 'Airtel', 'MTN', 'offline POS', 'mobile money integration'],
+  authors: [{ name: 'BBU1' }],
+  creator: 'BBU1 Team',
   openGraph: {
-    title: 'UG-BizSuite | The Operating System for Ugandan Ambition',
-    description: 'The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for Ugandan businesses to thrive—even offline.',
-    url: 'https://www.ugbizsuite.com',
-    siteName: 'UG-BizSuite',
+    title: 'BBU1 | The Global Operating System for Ambitious Enterprise',
+    description: 'The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for businesses to thrive—even offline.',
+    url: 'https://www.bbu1.com', // Your URL
+    siteName: 'BBU1',
     images: [
       {
         url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&h=630&fit=crop&crop=entropy',
         width: 1200,
         height: 630,
-        alt: 'UG-BizSuite Dashboard showing business growth',
+        alt: 'BBU1 Dashboard showing business growth',
       },
     ],
-    locale: 'en_UG',
+    locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UG-BizSuite | The Operating System for Ugandan Ambition',
-    description: 'The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for Ugandan businesses to thrive—even offline.',
-    creator: '@ugbizsuite',
+    title: 'BBU1 | The Global Operating System for Ambitious Enterprise',
+    description: 'The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for businesses to thrive—even offline.',
+    creator: '@bbu1', // Your Twitter handle
     images: ['https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&h=630&fit=crop&crop=entropy'],
   },
+  // THIS IS THE UPDATED ICONS SECTION
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
+    icon: [
+        { url: '/favicon.ico', sizes: 'any' },
+        { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+        { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
     apple: '/apple-touch-icon.png',
+    other: [
+        {
+          rel: 'android-chrome-192x192',
+          url: '/android-chrome-192x192.png'
+        },
+        {
+          rel: 'android-chrome-512x512',
+          url: '/android-chrome-512x512.png'
+        }
+    ]
   },
 };
 
