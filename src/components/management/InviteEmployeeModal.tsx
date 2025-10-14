@@ -49,7 +49,8 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
     const { mutate: inviteEmployee, isPending } = useMutation({
         mutationFn: async () => {
             // This now calls our single, intelligent API endpoint.
-            const response = await fetch('/management/api/invite', {
+            // --- FIX IS HERE: Changed the path to match Next.js API route ---
+            const response = await fetch('/dashboard/management/api/invite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -68,8 +69,9 @@ export function InviteEmployeeModal({ isOpen, onClose, defaultRole }: { isOpen: 
         },
         onSuccess: (message) => {
             toast.success(message);
+            // Invalidate queries to refresh lists that might show the new employee
             queryClient.invalidateQueries({ queryKey: ['agentManagementData'] });
-            queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
+            queryClient.invalidateQueries({ queryKey: ['allEmployees'] }); // Assuming this is used elsewhere
             onClose();
             setFullName(''); setEmail(''); setPhoneNumber('');
         },
