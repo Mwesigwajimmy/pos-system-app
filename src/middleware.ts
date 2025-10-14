@@ -70,10 +70,15 @@ export async function middleware(request: NextRequest) {
 
     // This section for unauthenticated users is correct. No changes needed.
     if (!user) {
-        if (!publicPaths.includes(pathname) && !pathname.startsWith('/auth')) {
-            return NextResponse.redirect(new URL('/login', request.url));
+        // RULE: If an unauthenticated user is trying to access a public page,
+        // let them pass without any redirects.
+        if (publicPaths.includes(pathname)) {
+            return response;
         }
-        return response;
+
+        // RULE: If they are trying to access any OTHER page,
+        // redirect them to the login page.
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // This profile fetch is also correct.
