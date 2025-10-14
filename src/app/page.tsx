@@ -15,7 +15,7 @@ import { ModeToggle } from '@/components/ui/mode-toggle';
 import { cn } from "@/lib/utils";
 import {
     Check, ShoppingCart, Box, Users, Landmark, Store, Utensils,
-    Handshake, Star, ArrowRight, Phone, Building2,
+    Handshake, Star, ArrowRight, Phone, Building2, Signal, // Added Signal icon
     Linkedin, Twitter, Facebook, Menu, X, Rocket,
     Clock, Quote, WifiOff, TrendingDown, MessageSquare, LifeBuoy,
     ReceiptText, Leaf, LucideIcon, Home, BrainCircuit,
@@ -31,13 +31,13 @@ interface FaqItem { q: string; a: ReactNode; }
 
 // --- REVOLUTIONARY SITE CONFIGURATION: ALIGNED WITH YOUR ENTIRE SYSTEM ---
 const siteConfig = {
-    name: "UG-BizSuite",
-    description: "The Enterprise-Grade Operating System for Global Ambition, Forged in Africa. Unify your POS, Inventory, Cloud Accounting, SACCO, Rentals, and AI-driven insights into one powerful, scalable platform.",
-    url: "https://ugbizsuite.com",
+    name: "BBU1",
+    description: "The Global Operating System for Ambitious Enterprise. Unify your POS, Inventory, Cloud Accounting, Telecoms, and AI-driven insights into one powerful, scalable platform for Africa, Uganda, and the world.",
+    url: "https://www.bbu1.com/",
     ogImage: "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1740&q=80",
     inventorCredit: "Invented by Mwesigwa Jimmy and brought to life by a great team.",
     contactInfo: {
-        whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello UG-BizSuite, I'm interested in a demo for my enterprise.")}`,
+        whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
     navigation: {
@@ -58,33 +58,33 @@ const siteConfig = {
     featureItems: [
         { icon: ShoppingCart, title: "Unified Commerce (POS)", description: "An intuitive, offline-first POS for retail & hospitality. Process sales, manage returns, track shifts, and connect hardware seamlessly." },
         { icon: Box, title: "Enterprise Inventory", description: "Control stock with variants, composite recipes, purchase orders, stock adjustments, and multi-location transfers." },
-        { icon: ReceiptText, title: "Automated Cloud Accounting", description: "From a full Chart of Accounts to real-time financial reports, expense tracking, and automated VAT for URA compliance." },
+        { icon: ReceiptText, title: "Automated Cloud Accounting", description: "Full double-entry bookkeeping with live sheets for team collaboration, real-time financial reports, expense tracking, and automated VAT for URA compliance." },
         { icon: Landmark, title: "SACCO & Lending Suite", description: "A complete toolkit for member accounts, share capital, savings products, loan applications, and group collections." },
         { icon: Home, title: "Property & Rentals", description: "Oversee properties and units, manage lease agreements, and automate the generation and tracking of rental invoices." },
         { icon: Truck, title: "Distribution & Logistics", description: "Define sales routes, manage vehicle loading, and automate route settlements for your entire distribution fleet." },
-        { icon: ShieldCheck, title: "Security & Audit", description: "Maintain a complete, immutable audit log of all system activities and control employee access with granular permissions." },
+        { icon: ShieldCheck, title: "Security & Audit", description: "Maintain a complete audit log and control workflows with granular permissions for every employee, ensuring data integrity across your entire business." },
         { icon: KeyRound, title: "API & Integrations", description: "Build custom workflows and connect to third-party systems with a robust, secure API, ready for enterprise integration." },
     ],
     industrySolutions: [
+        { icon: Signal, name: "Telecom & Distribution", description: "Manage airtime distribution, agent networks, and commissions for major carriers like MTN and Airtel with full, real-time transparency." },
         { icon: Store, name: "Retail & E-commerce", description: "Barcode scanning, multi-location stock, and robust sales reporting." },
         { icon: Utensils, name: "Restaurant & Hospitality", description: "Kitchen Display System (KDS) integration, service booking, and ingredient tracking." },
         { icon: Landmark, name: "SACCOs & Microfinance", description: "Streamline member management, loan processing, and regulatory reporting at scale." },
         { icon: Home, name: "Real Estate & Rentals", description: "Automate invoicing, track lease agreements, and manage large property portfolios." },
         { icon: Handshake, name: "Professional Services", description: "Manage appointments, client data, and create professional service invoices." },
-        { icon: Building2, name: "Wholesale & Distribution", description: "Handle bulk pricing, purchase orders, and complex B2B customer accounts." },
     ],
     testimonials: [
        { name: 'Sarah Namubiru', company: 'CEO, Sarah\'s Boutique Chain', quote: '"The AI Copilot is a game-changer. It identified a hidden profitable customer segment, allowing us to pivot our marketing and boost sales by 30%. This is true data-driven strategy."', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286de2?auto=format&fit=crop&w=200&h=200&q=80' },
-       { name: 'David Kaggwa', company: 'Director, Boda Boda SACCO Ltd.', quote: '"Managing thousands of members was a manual nightmare. UG-BizSuite automated everything from contributions to loan processing. Our reporting is now instant and accurate. It is our most essential enterprise tool."', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80' },
-       { name: 'Aisha Mutesi', company: 'Property Manager, K Estates', quote: '"We manage over 150 rental units. Tracking payments was chaotic. With UG-BizSuite, invoicing is automated and I have a real-time view of arrears. It has saved us countless hours and improved cash flow."', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80' }
+       { name: 'David Kaggwa', company: 'Director, Boda Boda SACCO Ltd.', quote: '"Managing thousands of members was a manual nightmare. BBU1 automated everything from contributions to loan processing. Our reporting is now instant and accurate. It is our most essential enterprise tool."', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80' },
+       { name: 'Aisha Mutesi', company: 'Property Manager, K Estates', quote: '"We manage over 150 rental units. Tracking payments was chaotic. With BBU1, invoicing is automated and I have a real-time view of arrears. It has saved us countless hours and improved cash flow."', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80' }
     ],
     faqItems: [
        { q: 'How does the AI Copilot deliver enterprise-level insights?', a: 'The AI Copilot securely analyzes your company-wide transactional data to identify complex patterns. It presents findings as simple, actionable insights like "Consider bundling Product A and B for enterprise clients" or "Cash flow projected to be low in 3 weeks based on recurring expense trends."' },
-       { q: 'Is this a multi-tenant system? How is our enterprise data secured?', a: 'Yes. UG-BizSuite is a fully multi-tenant platform built on a secure, scalable architecture. Your business data is completely isolated using PostgreSQL\'s Row-Level Security and is inaccessible to any other tenant. We use bank-level, end-to-end encryption to protect your information.' },
+       { q: 'Is this a multi-tenant system? How is our enterprise data secured?', a: 'Yes. BBU1 is a fully multi-tenant platform built on a secure, scalable architecture. Your business data is completely isolated using PostgreSQL\'s Row-Level Security and is inaccessible to any other tenant. We use bank-level, end-to-end encryption to protect your information.' },
        { q: 'Can the system be customized for our specific industry needs?', a: 'Absolutely. While our industry modules are powerful out-of-the-box, our platform is built for flexibility. For enterprise clients, we offer customization services and API access to tailor the system to your unique operational workflows.' },
        { q: 'What kind of support and SLA do you offer for enterprise clients?', a: 'We provide dedicated onboarding and training for all new clients. Enterprise plans include a dedicated account manager, priority support via WhatsApp or phone, and a Service Level Agreement (SLA) guaranteeing uptime and response times to ensure business continuity.' },
     ],
-    termsOfService: ( <div className="space-y-4 text-sm"><p>Welcome to UG-BizSuite. These Terms govern your use of our Service. By using our Service, you agree to these terms...</p>{/* (Your full legal text) */}</div> ),
+    termsOfService: ( <div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms govern your use of our Service. By using our Service, you agree to these terms...</p>{/* (Your full legal text) */}</div> ),
     privacyPolicy: ( <div className="space-y-4 text-sm"><p>We collect Personal, Transactional, and Usage Data to provide and improve our Service. Your data is secured with bank-level encryption and is never sold...</p>{/* (Your full legal text) */}</div> ),
 };
 // -- Note: Unsplash images are royalty-free. In a production app, use your own licensed or branded images.
@@ -149,8 +149,6 @@ const LandingFooter = () => (
 );
 
 // --- REVOLUTIONARY UPGRADE 1: GLOBE BACKGROUND ---
-// Create a file named 'globe-texture.png' in your /public directory. 
-// A good texture is a simple world map silhouette.
 const GlobeBackground = () => (
     <div className="absolute top-0 left-0 w-full h-full -z-10 overflow-hidden bg-background">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
@@ -159,7 +157,7 @@ const GlobeBackground = () => (
             animate={{ backgroundPosition: ["0% 50%", "100% 50%"] }}
             transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
             className="absolute w-[200%] h-[200%] sm:w-[150%] sm:h-[150%] lg:w-full lg:h-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{ backgroundImage: 'url(/globe-texture.png)', backgroundSize: 'cover' }}
+            style={{ backgroundImage: 'url(/globe-texture.png)', backgroundSize: 'cover', opacity: 0.5 }}
         />
     </div>
 );
@@ -202,9 +200,23 @@ const HomePage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground">
-            <Head><title>{`${siteConfig.name} - ${siteConfig.description}`}</title>{/* Other meta tags */}</Head>
+            <Head>
+                <title>{`${siteConfig.name} - The Global Operating System for Ambitious Enterprise`}</title>
+                <meta name="description" content={siteConfig.description} />
+                <meta property="og:title" content={siteConfig.name} />
+                <meta property="og:description" content={siteConfig.description} />
+                <meta property="og:image" content={siteConfig.ogImage} />
+                <meta property="og:url" content={siteConfig.url} />
+                <meta name="twitter:card" content="summary_large_image" />
+            </Head>
+
             <MegaMenuHeader />
+
             <main className="flex-grow z-10">
+
+                {/* ==================================================================== */}
+                {/* ============               FIRST PAGE CONTENT               ============ */}
+                {/* ==================================================================== */}
 
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden">
                     <GlobeBackground />
@@ -216,7 +228,7 @@ const HomePage = () => {
                                 </span>
                             </motion.div>
                             <motion.h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl mt-6" variants={textVariants}>
-                                The Operating System for Global <br />Ambition, Forged in Africa
+                                The Global OS for Ambitious<br /> Enterprise, Forged in Africa
                             </motion.h1>
                             <motion.p className="mt-6 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto" variants={textVariants}>
                                 {siteConfig.description}
@@ -230,16 +242,33 @@ const HomePage = () => {
                     </div>
                 </section>
                 
-                <AnimatedSection id="global-reach" className="bg-background/80 backdrop-blur-sm"><SectionWaveDivider position="top" /><div className="text-center"><h2 className="text-3xl font-bold tracking-tight sm:text-5xl">Trusted by Enterprises, Built for Growth</h2><p className="mt-6 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">UG-BizSuite is the proven, scalable platform for businesses with local roots and global aspirations.</p><motion.div variants={staggerContainer} className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto"><motion.div variants={itemVariants}><h3 className="text-4xl font-bold text-primary"><StatCounter end={50000} suffix="+" /></h3><p className="text-muted-foreground mt-2">Active Users Across All Tenants</p></motion.div><motion.div variants={itemVariants}><h3 className="text-4xl font-bold text-primary"><StatCounter end={25} prefix="UGX " suffix="B+" /></h3><p className="text-muted-foreground mt-2">Transactions Processed Securely</p></motion.div><motion.div variants={itemVariants}><h3 className="text-4xl font-bold text-primary"><StatCounter end={99.9} suffix="%"/></h3><p className="text-muted-foreground mt-2">Guaranteed Uptime SLA</p></motion.div></motion.div></div><SectionWaveDivider position="bottom" /></AnimatedSection>
+                <AnimatedSection id="global-reach" className="bg-background/80 backdrop-blur-sm">
+                    <SectionWaveDivider position="top" />
+                    <div className="text-center">
+                        <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">A Global Standard in Enterprise Management</h2>
+                        <p className="mt-6 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">BBU1 is the proven, scalable platform for businesses with local roots and global aspirations.</p>
+                        <motion.div variants={staggerContainer} className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                            <motion.div variants={itemVariants}><h3 className="text-4xl font-bold text-primary"><StatCounter end={50000} suffix="+" /></h3><p className="text-muted-foreground mt-2">Active Users Worldwide</p></motion.div>
+                            <motion.div variants={itemVariants}><h3 className="text-4xl font-bold text-primary"><StatCounter end={25} prefix="UGX " suffix="B+" /></h3><p className="text-muted-foreground mt-2">Transactions Processed Securely</p></motion.div>
+                            <motion.div variants={itemVariants}><h3 className="text-4xl font-bold text-primary"><StatCounter end={99.9} suffix="%"/></h3><p className="text-muted-foreground mt-2">Guaranteed Uptime SLA</p></motion.div>
+                        </motion.div>
+                    </div>
+                    <SectionWaveDivider position="bottom" />
+                </AnimatedSection>
+
+
+                {/* ==================================================================== */}
+                {/* ============              SECOND PAGE (SCROLL)              ============ */}
+                {/* ==================================================================== */}
 
                 <AnimatedSection id="why-us">
                     <div className="px-4">
                         <div className="text-center mb-16 max-w-3xl mx-auto">
-                            <h2 className="text-3xl font-bold tracking-tight">The Unfair Advantage for African Business</h2>
-                            <p className="text-muted-foreground mt-2">We understand the unique challenges of the African market. Our features give you a decisive competitive edge.</p>
+                            <h2 className="text-3xl font-bold tracking-tight">Built for Dynamic Markets, Anywhere</h2>
+                            <p className="text-muted-foreground mt-2">We understand the unique challenges of demanding markets. Our features give you a decisive competitive edge.</p>
                         </div>
                         <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <motion.div variants={itemVariants}><Card className="text-center h-full p-8 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50 backdrop-blur-md"><WifiOff className="h-12 w-12 text-primary mx-auto mb-4" /><h3 className="text-xl font-bold">Flawless Offline Mode</h3><p className="text-muted-foreground mt-2">Umeme off? No problem. Our POS continues to operate at full speed and syncs automatically the moment you're back online. Never lose a sale.</p></Card></motion.div>
+                            <motion.div variants={itemVariants}><Card className="text-center h-full p-8 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50 backdrop-blur-md"><WifiOff className="h-12 w-12 text-primary mx-auto mb-4" /><h3 className="text-xl font-bold">Flawless Offline Mode</h3><p className="text-muted-foreground mt-2">Power outage? No problem. Our POS operates at full speed and syncs automatically the moment you're back online. Never lose a sale.</p></Card></motion.div>
                             <motion.div variants={itemVariants}><Card className="text-center h-full p-8 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50 backdrop-blur-md"><Phone className="h-12 w-12 text-primary mx-auto mb-4" /><h3 className="text-xl font-bold">Deep Mobile Money Integration</h3><p className="text-muted-foreground mt-2">Accept payments seamlessly from MTN and Airtel. We simplify reconciliation, reduce errors, and accelerate cash flow for you and your customers.</p></Card></motion.div>
                             <motion.div variants={itemVariants}><Card className="text-center h-full p-8 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50 backdrop-blur-md"><TrendingDown className="h-12 w-12 text-primary mx-auto mb-4" /><h3 className="text-xl font-bold">Affordable, Localized Pricing</h3><p className="text-muted-foreground mt-2">No dollar-based pricing that fluctuates with exchange rates. Our simple, shilling-based plans have no hidden fees, designed for the Ugandan economy.</p></Card></motion.div>
                         </motion.div>
@@ -253,36 +282,28 @@ const HomePage = () => {
                          <p className="mt-6 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">Every module is purpose-built and deeply integrated to provide a seamless, enterprise-grade experience that eliminates data silos.</p>
                     </div>
                     <motion.div className="mt-16 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" variants={staggerContainer}>
-                        <motion.div className="col-span-1 md:col-span-2 lg:col-span-2" variants={featureCardVariants}>
-                            <Card className="h-full text-left hover:shadow-lg transition-all p-6 flex flex-col justify-between bg-primary/5">
-                                <CardHeader className="p-0"><div className="bg-primary/10 p-3 rounded-md w-fit mb-4"><BrainCircuit className="h-6 w-6 text-primary" /></div><CardTitle>AI Co-Pilot</CardTitle></CardHeader>
-                                <CardContent className="p-0 mt-2"><p className="text-muted-foreground text-sm">Your built-in data analyst for strategic decisions, forecasting, and risk alerts.</p></CardContent>
-                                <Button asChild variant="link" className="p-0 h-auto mt-4 justify-start"><Link href="#ai-copilot">Learn More <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-                            </Card>
-                        </motion.div>
-                        <motion.div className="col-span-1 md:col-span-1 lg:col-span-2" variants={featureCardVariants}>
-                            <Card className="h-full text-left hover:shadow-lg transition-all p-6 flex flex-col justify-between bg-primary/5">
-                                <CardHeader className="p-0"><div className="bg-primary/10 p-3 rounded-md w-fit mb-4"><ShoppingCart className="h-6 w-6 text-primary" /></div><CardTitle>Unified Commerce (POS)</CardTitle></CardHeader>
-                                <CardContent className="p-0 mt-2"><p className="text-muted-foreground text-sm">An intuitive, offline-first POS for retail & hospitality with hardware integration.</p></CardContent>
-                                 <Button asChild variant="link" className="p-0 h-auto mt-4 justify-start"><Link href="#why-us">Learn More <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-                            </Card>
-                        </motion.div>
-                        {(siteConfig.featureItems.slice(2)).map((feature) => (
-                            <motion.div key={feature.title} className="col-span-1" variants={featureCardVariants}>
-                                <Card className="h-full text-left hover:shadow-lg hover:-translate-y-1 transition-all"><CardHeader><div className="bg-primary/10 p-3 rounded-md w-fit mb-4"><feature.icon className="h-6 w-6 text-primary" /></div><CardTitle className="text-base">{feature.title}</CardTitle></CardHeader><CardContent><p className="text-muted-foreground text-xs">{feature.description}</p></CardContent></Card>
+                        {siteConfig.featureItems.map((feature) => (
+                            <motion.div key={feature.title} className="col-span-1 md:col-span-1" variants={featureCardVariants}>
+                                <Card className="h-full text-left hover:shadow-lg hover:-translate-y-1 transition-all">
+                                    <CardHeader>
+                                        <div className="bg-primary/10 p-3 rounded-md w-fit mb-4"><feature.icon className="h-6 w-6 text-primary" /></div>
+                                        <CardTitle className="text-base">{feature.title}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent><p className="text-muted-foreground text-sm">{feature.description}</p></CardContent>
+                                </Card>
                             </motion.div>
                         ))}
                     </motion.div>
                     <SectionWaveDivider position="bottom" />
                 </AnimatedSection>
 
-                <AnimatedSection id="ai-copilot"><div className="grid lg:grid-cols-2 gap-12 items-center"><motion.div variants={itemVariants}><span className="text-primary font-semibold">UG-BIZSUITE COPILOT</span><h2 className="text-3xl font-bold tracking-tight sm:text-5xl mt-2">From Data to Decisions, Instantly.</h2><p className="mt-6 text-lg leading-8 text-muted-foreground">Our revolutionary AI Copilot is your built-in business analyst. It silently processes enterprise-wide data to deliver actionable intelligence that drives strategy.</p><ul className="mt-8 space-y-4"><li className="flex items-start gap-3"><Check className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" /><div><strong className="font-semibold">Identify Growth Opportunities:</strong> Discover your most profitable product lines, top-performing staff, and hidden upselling chances.</div></li><li className="flex items-start gap-3"><Check className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" /><div><strong className="font-semibold">Predictive Forecasting:</strong> Get AI-powered sales and cash flow forecasts to make smarter inventory and budget decisions.</div></li><li className="flex items-start gap-3"><Check className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" /><div><strong className="font-semibold">Risk & Compliance Alerts:</strong> The AI flags unusual transactions and potential compliance issues, helping you stay secure and audit-ready.</div></li></ul></motion.div><motion.div variants={itemVariants} className="mt-10 lg:mt-0"><div className="relative w-full aspect-video rounded-lg shadow-2xl overflow-hidden"><AnimatePresence><motion.div key={currentSlide} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.8, ease: "easeInOut" }} className="absolute inset-0"><Image src={aiSlideshowImages[currentSlide].src} alt={aiSlideshowImages[currentSlide].alt} layout="fill" objectFit="cover" className="rounded-lg"/></motion.div></AnimatePresence></div></motion.div></div></AnimatedSection>
+                <AnimatedSection id="ai-copilot"><div className="grid lg:grid-cols-2 gap-12 items-center"><motion.div variants={itemVariants}><span className="text-primary font-semibold">BBU1 COPILOT</span><h2 className="text-3xl font-bold tracking-tight sm:text-5xl mt-2">From Data to Decisions, Instantly.</h2><p className="mt-6 text-lg leading-8 text-muted-foreground">Our revolutionary AI Copilot is your built-in business analyst. It silently processes enterprise-wide data to deliver actionable intelligence that drives strategy.</p><ul className="mt-8 space-y-4"><li className="flex items-start gap-3"><Check className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" /><div><strong className="font-semibold">Identify Growth Opportunities:</strong> Discover your most profitable product lines, top-performing staff, and hidden upselling chances.</div></li><li className="flex items-start gap-3"><Check className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" /><div><strong className="font-semibold">Predictive Forecasting:</strong> Get AI-powered sales and cash flow forecasts to make smarter inventory and budget decisions.</div></li><li className="flex items-start gap-3"><Check className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" /><div><strong className="font-semibold">Risk & Compliance Alerts:</strong> The AI flags unusual transactions and potential compliance issues, helping you stay secure and audit-ready.</div></li></ul></motion.div><motion.div variants={itemVariants} className="mt-10 lg:mt-0"><div className="relative w-full aspect-video rounded-lg shadow-2xl overflow-hidden"><AnimatePresence><motion.div key={currentSlide} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.8, ease: "easeInOut" }} className="absolute inset-0"><Image src={aiSlideshowImages[currentSlide].src} alt={aiSlideshowImages[currentSlide].alt} layout="fill" objectFit="cover" className="rounded-lg"/></motion.div></AnimatePresence></div></motion.div></div></AnimatedSection>
                 
                 <AnimatedSection id="solutions" className="bg-background/80 backdrop-blur-sm"><SectionWaveDivider position="top" /><div className="text-center"><h2 className="text-3xl font-bold tracking-tight sm:text-5xl">Tailored for Your Industry's Demands</h2><p className="mt-6 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">{siteConfig.name} is engineered for flexibility, providing specialized, enterprise-ready toolkits for your unique business.</p><motion.div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" variants={staggerContainer}>{siteConfig.industrySolutions.map(s => (<motion.div key={s.name} variants={itemVariants}><Card className="h-full text-center hover:bg-muted/50 transition-colors hover:shadow-xl hover:-translate-y-1.5"><CardHeader className="items-center"><div className="bg-primary/10 p-4 rounded-full mb-4"><s.icon className="h-8 w-8 text-primary" /></div><CardTitle>{s.name}</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">{s.description}</p></CardContent></Card></motion.div>))}</motion.div></div><SectionWaveDivider position="bottom" /></AnimatedSection>
                 
                 <AnimatedSection id="get-started"><div className="text-center"><h2 className="text-3xl font-bold tracking-tight sm:text-5xl">A Solution That Scales With You</h2><p className="mt-6 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">From startup to enterprise, we provide a tailored solution that matches your exact needs, ensuring you have the right tools to grow without paying for features you don't use.</p><motion.div variants={itemVariants} className="max-w-3xl mx-auto bg-background/80 backdrop-blur-sm border-2 border-primary/20 rounded-xl p-6 text-center my-12"><div className="flex items-center justify-center gap-2 text-primary font-bold"><Clock className="h-5 w-5" /><span>Limited Time Launch Offer</span></div><p className="mt-2 text-lg">Sign up now and get <span className="font-bold">20% OFF</span> your first 3 months on any custom plan!</p><div className="mt-4"><CountdownTimer /></div></motion.div><motion.div variants={itemVariants} className="mt-10"><Button asChild size="lg" className="scale-110"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Get a Free Enterprise Quote<ArrowRight className="ml-2 h-5 w-5" /></a></Button><p className="text-muted-foreground text-sm mt-4">Speak with our experts to build your perfect plan.</p></motion.div></div></AnimatedSection>
                 
-                <AnimatedSection id="testimonials" className="bg-background/80 backdrop-blur-sm"><SectionWaveDivider position="top" /><div className="px-4"><div className="text-center mb-16"><h2 className="text-3xl font-bold tracking-tight">The Engine Behind Africa's Leading Businesses</h2><p className="text-muted-foreground mt-2 max-w-2xl mx-auto">Real stories from enterprises thriving with {siteConfig.name}.</p></div><motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-3 gap-8">{siteConfig.testimonials.map((t) => (<motion.div key={t.name} variants={itemVariants}><Card className="h-full flex flex-col p-6"><CardHeader className="p-0 flex-row items-center gap-4"><Image src={t.avatar} alt={`Avatar of ${t.name}`} width={56} height={56} className="h-14 w-14 rounded-full object-cover" /><div className="flex-1"><CardTitle className="text-base">{t.name}</CardTitle><CardDescription>{t.company}</CardDescription></div></CardHeader><CardContent className="p-0 flex-grow pt-4"><div className="flex items-center gap-0.5 mb-4">{[...Array(5)].map((_, i) => <Star key={i} className="h-5 w-5 text-yellow-400 fill-yellow-400" />)}</div><Quote className="h-8 w-8 text-primary/30 mb-4" /><p className="text-muted-foreground italic">"{t.quote}"</p></CardContent></Card></motion.div>))}</motion.div></div><SectionWaveDivider position="bottom" /></AnimatedSection>
+                <AnimatedSection id="testimonials" className="bg-background/80 backdrop-blur-sm"><SectionWaveDivider position="top" /><div className="px-4"><div className="text-center mb-16"><h2 className="text-3xl font-bold tracking-tight">The Engine Behind Leading Businesses Worldwide</h2><p className="text-muted-foreground mt-2 max-w-2xl mx-auto">Real stories from enterprises thriving with {siteConfig.name}.</p></div><motion.div variants={staggerContainer} className="grid grid-cols-1 lg:grid-cols-3 gap-8">{siteConfig.testimonials.map((t) => (<motion.div key={t.name} variants={itemVariants}><Card className="h-full flex flex-col p-6"><CardHeader className="p-0 flex-row items-center gap-4"><Image src={t.avatar} alt={`Avatar of ${t.name}`} width={56} height={56} className="h-14 w-14 rounded-full object-cover" /><div className="flex-1"><CardTitle className="text-base">{t.name}</CardTitle><CardDescription>{t.company}</CardDescription></div></CardHeader><CardContent className="p-0 flex-grow pt-4"><div className="flex items-center gap-0.5 mb-4">{[...Array(5)].map((_, i) => <Star key={i} className="h-5 w-5 text-yellow-400 fill-yellow-400" />)}</div><Quote className="h-8 w-8 text-primary/30 mb-4" /><p className="text-muted-foreground italic">"{t.quote}"</p></CardContent></Card></motion.div>))}</motion.div></div><SectionWaveDivider position="bottom" /></AnimatedSection>
                 
                 <AnimatedSection id="faq"><div className="max-w-4xl mx-auto"><h2 className="text-3xl font-bold tracking-tight sm:text-5xl text-center">Your Questions, Answered</h2><Accordion type="single" collapsible className="w-full mt-12">{siteConfig.faqItems.map(i => (<AccordionItem key={i.q} value={i.q}><AccordionTrigger className="text-lg text-left hover:no-underline">{i.q}</AccordionTrigger><AccordionContent className="text-base text-muted-foreground pb-4">{i.a}</AccordionContent></AccordionItem>))}</Accordion></div></AnimatedSection>
 
