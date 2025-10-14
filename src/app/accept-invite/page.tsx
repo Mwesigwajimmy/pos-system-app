@@ -1,5 +1,5 @@
-// This is the complete and final code for the Accept Invitation page.
-// There are no placeholders or omitted sections.
+// This is the complete and final code for your frontend "Accept Invitation" page.
+// It uses the standard Supabase method that solves the "invalid credentials" bug.
 
 'use client';
 
@@ -19,75 +19,72 @@ export default function AcceptInvitationPage() {
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [accessToken, setAccessToken] = useState<string | null>(null);
-    const [userEmail, setUserEmail] = useState<string | null>(null); // State to hold the user's email
+    const [userEmail, setUserEmail] = useState<string | null>(null);
 
+    // This useEffect hook handles the #access_token from the URL.
+    // The Supabase client automatically uses it to create a temporary session.
     useEffect(() => {
-        const hash = window.location.hash;
-        const params = new URLSearchParams(hash.substring(1));
-        const token = params.get('access_token');
-
-        if (token) {
-            setAccessToken(token);
-            // After getting the token, immediately try to get the user's email
-            const fetchUser = async () => {
-                const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-                if (user) {
-                    setUserEmail(user.email || null);
-                } else {
-                    setError("Invalid or expired invitation link. Could not verify user.");
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                // When the temporary session is ready, get the user's email to display it.
+                if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
+                    const user = (await supabase.auth.getUser()).data.user;
+                    setUserEmail(user?.email || null);
                 }
-            };
-            fetchUser();
-        } else {
-            setError("Invalid or expired invitation link. No token found.");
-        }
+            }
+        );
+        
+        // A fallback check in case the listener is slow
+        const checkInitialUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserEmail(user.email || null);
+            } else if (!window.location.hash.includes('access_token')) {
+                setError("Invalid or expired invitation link. No token found.");
+            }
+        };
+
+        checkInitialUser();
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
     }, [supabase.auth]);
+
 
     const handleSetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!accessToken || !userEmail) {
-            setError("Cannot set password without a valid session token and user email.");
+        if (password.length < 6) {
+            toast.error("Password must be at least 6 characters long.");
             return;
         }
 
         setIsSubmitting(true);
         const toastId = toast.loading("Setting your password and activating your account...");
 
-        const response = await fetch('/api/accept-invite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                accessToken: accessToken,
-                password: password,
-            }),
+        // --- THE FINAL FIX IS HERE ---
+        // We use supabase.auth.updateUser directly on the client.
+        // This uses the temporary session from the invite link to securely update the password
+        // and fully authenticate the user in one step. This is the correct method.
+        const { error: updateError } = await supabase.auth.updateUser({
+            password: password,
         });
 
-        const result = await response.json();
+        setIsSubmitting(false);
 
-        if (!response.ok) {
-            toast.error("Failed to set password", { id: toastId, description: result.error });
-            setIsSubmitting(false);
+        if (updateError) {
+            toast.error("Failed to activate account", { id: toastId, description: updateError.message });
+            setError(updateError.message);
             return;
         }
 
-        // The password is now set. We now perform a regular login to create a new, secure session.
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: userEmail,
-            password: password,
-        });
-        
-        if (signInError) {
-             toast.error("Account activated, but auto-login failed. Please log in manually.", { id: toastId, duration: 6000 });
-             router.push('/login');
-             return;
-        }
-
+        // The user is now successfully logged in with a valid, permanent session.
         toast.success("Account activated! Redirecting you to the dashboard...", { id: toastId });
-        router.refresh();
+        
+        // router.refresh() is important to tell Next.js the user is now logged in.
+        router.refresh(); 
     };
     
-    // --- THIS IS THE COMPLETE UI RENDERING LOGIC ---
 
     if (error) {
         return (
@@ -100,7 +97,7 @@ export default function AcceptInvitationPage() {
         );
     }
 
-    if (!accessToken || !userEmail) {
+    if (!userEmail) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -123,7 +120,6 @@ export default function AcceptInvitationPage() {
                             <Input
                                 id="password"
                                 type="password"
-                                minLength={6}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
@@ -138,4 +134,4 @@ export default function AcceptInvitationPage() {
             </Card>
         </div>
     );
-} 
+}
