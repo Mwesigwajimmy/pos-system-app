@@ -1,5 +1,5 @@
 // This is the final, definitive, and correct version of your API route.
-// It uses the correct Supabase function and will work.
+// It uses the correct Supabase function and is now robust against server crashes.
 
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   // --- ADDED DEBUG LOG ---
-  console.log("API: /dashboard/management/api/invite - POST handler invoked.");
+  console.log("API: /management/api/invite - POST handler invoked.");
 
   try {
     const { email, fullName, role } = await request.json();
@@ -74,12 +74,19 @@ export async function POST(request: Request) {
     
     // 1. Check if a user with this email already exists.
     console.log("API: Checking for existing user via listUsers.");
-    const { data: { users }, error: userListError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    // --- THIS IS THE CORRECTED, ROBUST CODE ---
+    const { data: listUsersData, error: userListError } = await supabaseAdmin.auth.admin.listUsers();
 
     if (userListError) {
-      console.error("API: Error listing users:", userListError);
-      throw userListError; // If there's an actual error fetching the list, throw it.
+      console.error("API: Error from listUsers:", userListError);
+      throw userListError; // If there's an error, throw it to be caught below.
     }
+    
+    // Now that we know there's no error, we can safely get the users array.
+    const users = listUsersData.users;
+    // --- END OF CORRECTION ---
+
     console.log(`API: Fetched ${users.length} users from Supabase Auth.`);
 
     // Find if a user with the given email exists in the fetched list
