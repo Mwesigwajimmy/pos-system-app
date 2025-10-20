@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Okwekebejja Okutwalira Awamu",
+    "PointOfSale": "Ekifo Awatundirwa",
+    "Inventory": "Ebiketo by'Ebintu",
+    "PurchaseOrders": "Ebiragiro by'Okugula",
+    "Management": "Obuddukanya",
+    "Settings": "Entegeka Enzitoowavu",
+    "Currencies": "Sente"
+  },
+  "Purchases": {
+    "CreateNewPO": "Kola Olukusa Olupya Olw'okugula",
+    "Supplier": "Omuwi w'empahala",
+    "Notes": "Ebiwandiiko",
+    "Currency": "Sente",
+    "AppliedExchangeRate": "Omuwendo gw'Okuwanyisa Ogukozeseddwa",
+    "OrderItems": "Ebintu ku Lugendo",
+    "AddProduct": "Gattako Ekintu",
+    "Total": "Omuwendo Gwonna"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Obuddukanya bwa Sente Eziwera",
+    "CurrencyDescription": "Ddukanya omuwendo gw'okuwanyisa gwa sente zonna bizinensi yo z'ekozesa.",
+    "AddExchangeRate": "Gattako Omuwendo gw'Okuwanyisa",
+    "Rate": "Omuwendo",
+    "EffectiveDate": "Olunaku Lw'olutandika Okukola"
+  }
+}

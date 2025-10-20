@@ -1,58 +1,168 @@
 "use client"
-import { ColumnDef } from "@tanstack/react-table"
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-export type ProductRow = {
-  id: number
-  name: string
-  category_name: string | null
-  total_stock: number
-  variants_count: number
+import { ColumnDef } from "@tanstack/react-table"
+import { MoreHorizontal, Edit, Trash2, AlertCircle, Layers, Package, Tag, ClipboardList, Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { ProductRow } from "@/types/dashboard";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Recommended for better UI
+
+// Advanced TanStack Table meta for enterprise actions
+declare module '@tanstack/react-table' {
+  interface TableMeta<TData> {
+    onEdit: (product: TData) => void;
+    onDelete: (product: TData) => void;
+    onAudit: (product: TData) => void;
+    onAdjust: (product: TData) => void;
+    userRole?: string;
+    businessEntityId?: string;
+  }
 }
+
+// Helper for low-stock/expiry indicators
+const getStockStatus = (product: ProductRow) => {
+  if (product.total_stock < 5) return { warning: true, message: "Low Stock: Only " + product.total_stock + " units left." };
+  // Add more advanced logic if expiry, lot, etc.
+  return { warning: false, message: "" };
+};
 
 export const columns: ColumnDef<ProductRow>[] = [
   {
     accessorKey: "name",
-    header: "Product Name",
+    header: ({ column }) => (
+      <div className="flex items-center gap-2">
+        <Package className="h-4 w-4 text-primary" /> Product Name
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="font-semibold">{row.original.name}</div>
+    ),
+    enableSorting: true,
+    enableGlobalFilter: true,
   },
   {
     accessorKey: "category_name",
-    header: "Category",
-    cell: ({ row }) => row.original.category_name || "N/A",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <Tag className="h-4 w-4 text-muted-foreground" /> Category
+      </div>
+    ),
+    cell: ({ row }) => (
+      row.original.category_name ? (
+        <span className="px-2 py-1 rounded bg-muted">{row.original.category_name}</span>
+      ) : <span className="italic text-muted-foreground">Uncategorized</span>
+    ),
+    enableSorting: true,
+    enableGlobalFilter: true,
   },
   {
     accessorKey: "total_stock",
-    header: "Total Stock",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <ClipboardList className="h-4 w-4 text-yellow-700" /> Stock
+      </div>
+    ),
+    cell: ({ row }) => {
+      const status = getStockStatus(row.original);
+      return (
+        <div className="flex items-center gap-2">
+          <span>{row.original.total_stock}</span>
+          {/* 
+            FIX: Wrap the icon in a span (or a Tooltip component) 
+            and apply the title attribute to the wrapper.
+          */}
+          {status.warning && (
+            <span title={status.message}>
+              <AlertCircle className="h-4 w-4 text-destructive" />
+            </span>
+          )}
+        </div>
+      );
+    },
+    enableSorting: true,
+    enableGlobalFilter: false,
   },
   {
     accessorKey: "variants_count",
-    header: "Variants",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <Layers className="h-4 w-4 text-blue-600" /> Variants
+      </div>
+    ),
+    cell: ({ row }) => (
+      <span className="font-mono">{row.original.variants_count}</span>
+    ),
+    enableSorting: true,
+    enableGlobalFilter: false,
+  },
+  {
+    id: "entity",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <Building2 className="h-4 w-4 text-green-700" /> Branch/Entity
+      </div>
+    ),
+    cell: ({ row }) => (
+      <span className="text-xs text-muted-foreground">{row.original.business_entity_name || "Main"}</span>
+    ),
+    enableSorting: true,
+    enableGlobalFilter: true,
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const product = row.original
+    header: "",
+    cell: ({ row, table }) => {
+      const product = row.original;
+      const isManager = table.options.meta?.userRole === "manager" || table.options.meta?.userRole === "admin";
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(String(product.id))}>
-              Copy Product ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View/Edit Product</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">Delete Product</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
+        <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open menu">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => table.options.meta?.onEdit(product)}
+                disabled={!isManager}
+              >
+                <Edit className="mr-2 h-4 w-4" /> Edit Product
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => table.options.meta?.onAdjust(product)}
+                disabled={!isManager}
+              >
+                <ClipboardList className="mr-2 h-4 w-4" /> Stock Adjustment
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => table.options.meta?.onDelete(product)}
+                disabled={!isManager}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Product
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => table.options.meta?.onAudit(product)}
+              >
+                <AlertCircle className="mr-2 h-4 w-4" /> View Audit Log
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
     },
+    enableSorting: false,
+    enableGlobalFilter: false,
   },
-]
+];

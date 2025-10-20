@@ -1,12 +1,14 @@
+// src/lib/utils.ts
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import React from "react" // Import React to use its types for refs
+import * as XLSX from 'xlsx'; // Import the excel library
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// === NEWLY ADDED UTILITY ===
 /**
  * Merges multiple refs into a single ref callback.
  * This is useful when you need to assign a ref from a parent component
@@ -27,4 +29,23 @@ export function mergeRefs<T = any>(
       }
     });
   };
+}
+
+// === ADDED EXPORT FUNCTIONALITY ===
+/**
+ * Exports an array of objects to an Excel file.
+ * @param data The array of data to export.
+ * @param fileName The name of the file to be downloaded (without extension).
+ */
+export function exportToExcel<T>(data: T[], fileName: string): void {
+  try {
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+    // Triggers the download of the file
+    XLSX.writeFile(workbook, `${fileName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  } catch (error) {
+    console.error("Failed to export data to Excel:", error);
+    alert("An error occurred while trying to export the data.");
+  }
 }

@@ -2,8 +2,27 @@
 // V-REVOLUTION: THE DEFINITIVE, LOOP-FREE SECURITY & ROUTING ENGINE
 // This is your original file, with the necessary fixes integrated directly.
 
+import { match } from '@formatjs/intl-localematcher';
+import Negotiator from 'negotiator';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+
+// --- CONFIGURATION (Unchanged) ---
+
+// 1. Your complete list of supported languages
+const locales = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
+const defaultLocale = 'en';
+
+// 2. Your function to detect the user's preferred language
+function getLocale(request: NextRequest): string {
+    const negotiatorHeaders: Record<string, string> = {};
+    request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
+
+    const languages = new Negotiator({ headers: negotiatorHeaders }).languages();
+    
+    // Find the best match between the user's browser languages and your supported languages
+    return match(languages, locales, defaultLocale);
+}
 
 const rolePermissions: Record<string, string[]> = {
     '/inventory': ['admin', 'manager'],
@@ -37,19 +56,44 @@ const defaultDashboards: Record<string, string> = {
     'default': '/dashboard',
 };
 
+// --- MIDDLEWARE FUNCTION (With targeted edits) ---
 export async function middleware(request: NextRequest) {
-    let response = NextResponse.next({ request: { headers: request.headers } });
+    const { pathname } = request.nextUrl;
 
+    // --- START: next-intl Integration ---
+    const pathnameIsMissingLocale = locales.every(
+        (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+    );
+
+    // 1. REDIRECT IF LOCALE IS MISSING
+    if (pathnameIsMissingLocale) {
+        const locale = getLocale(request);
+        // Correctly handle the root path by adding a slash if needed
+        const newPath = pathname === '/' ? '' : pathname;
+        return NextResponse.redirect(new URL(`/${locale}${newPath}`, request.url));
+    }
+    
+    // 2. GET LOCALE AND PREPARE HEADERS/RESPONSE FOR THE REST OF THE MIDDLEWARE
+    const localeInPath = pathname.split('/')[1];
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-next-intl-locale', localeInPath);
+    let response = NextResponse.next({ request: { headers: requestHeaders } });
+    
+    // 3. CREATE A LOCALE-FREE PATH FOR YOUR SECURITY LOGIC
+    const pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
+    // --- END: next-intl Integration ---
+
+
+    // --- YOUR EXISTING SUPABASE & AUTH LOGIC (Now using 'response' and 'pathWithoutLocale') ---
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                get: (name: string) => {
-                    return request.cookies.get(name)?.value;
-                },
+                get: (name: string) => request.cookies.get(name)?.value,
                 set: (name: string, value: string, options: CookieOptions) => {
                     request.cookies.set({ name, value, ...options });
+                    // Re-create response with updated headers after cookie operations
                     response = NextResponse.next({ request: { headers: request.headers } });
                     response.cookies.set({ name, value, ...options });
                 },
@@ -63,57 +107,39 @@ export async function middleware(request: NextRequest) {
     );
 
     const { data: { user } } = await supabase.auth.getUser();
-    const { pathname } = request.nextUrl;
     
-    // FIX: Add the root path '/' to the public paths to handle it explicitly.
     const publicPaths = ['/', '/login', '/signup', '/accept-invite', '/auth/callback'];
 
-    // This section for unauthenticated users is correct. No changes needed.
     if (!user) {
-        // RULE: If an unauthenticated user is trying to access a public page,
-        // let them pass without any redirects.
-        if (publicPaths.includes(pathname)) {
+        if (publicPaths.includes(pathWithoutLocale)) { // MODIFIED: Use pathWithoutLocale
             return response;
         }
-
-        // RULE: If they are trying to access any OTHER page,
-        // redirect them to the login page.
-        return NextResponse.redirect(new URL('/login', request.url));
+        // MODIFIED: Prepend locale to redirect URL
+        return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // This profile fetch is also correct.
     const { data: profile, error } = await supabase
         .from('profiles')
-        .select(`
-            role,
-            business:businesses ( business_type, setup_complete )
-        `)
+        .select(`role, business:businesses ( business_type, setup_complete )`)
         .eq('id', user.id)
         .single();
     
-    // FIX: This is the primary change. We split the error handling into two steps.
-    // STEP 1: Handle a critical error where the user's profile is missing in the database.
-    // This is a data integrity problem, and the only safe action is to sign out.
     if (error || !profile) {
         await supabase.auth.signOut();
-        const loginUrl = new URL('/login', request.url);
+        // MODIFIED: Prepend locale to redirect URL
+        const loginUrl = new URL(`/${localeInPath}/login`, request.url);
         loginUrl.searchParams.set('error', 'profile_not_found');
         loginUrl.searchParams.set('message', 'Critical error: User profile not found.');
         return NextResponse.redirect(loginUrl);
     }
     
-    const businessDetails = Array.isArray(profile.business) 
-        ? profile.business[0] 
-        : profile.business;
+    const businessDetails = Array.isArray(profile.business) ? profile.business[0] : profile.business;
 
-    // STEP 2: Handle the case where the user profile exists, but their business setup is not complete.
-    // Instead of logging them out, we redirect them to the setup page. This stops the loop.
     if (!businessDetails) {
-        // If they aren't already on the welcome page, send them there.
-        if (pathname !== '/welcome') {
-            return NextResponse.redirect(new URL('/welcome', request.url));
+        if (pathWithoutLocale !== '/welcome') { // MODIFIED: Use pathWithoutLocale
+            // MODIFIED: Prepend locale to redirect URL
+            return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
         }
-        // If they are on the welcome page, allow the request.
         return response;
     }
 
@@ -123,33 +149,35 @@ export async function middleware(request: NextRequest) {
     
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
-    // This logic is correct: if a logged-in user visits a public page, redirect them to their dashboard.
-    if (publicPaths.includes(pathname)) {
-        return NextResponse.redirect(new URL(defaultDashboard, request.url));
+    if (publicPaths.includes(pathWithoutLocale)) { // MODIFIED: Use pathWithoutLocale
+        // MODIFIED: Prepend locale to redirect URL
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // This logic for handling setup completion is also correct.
-    if (!setupComplete && pathname !== '/welcome') {
-        return NextResponse.redirect(new URL('/welcome', request.url));
+    if (!setupComplete && pathWithoutLocale !== '/welcome') { // MODIFIED: Use pathWithoutLocale
+        // MODIFIED: Prepend locale to redirect URL
+        return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
-    if (setupComplete && pathname === '/welcome') {
-        return NextResponse.redirect(new URL(defaultDashboard, request.url));
+    if (setupComplete && pathWithoutLocale === '/welcome') { // MODIFIED: Use pathWithoutLocale
+        // MODIFIED: Prepend locale to redirect URL
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // This role-based access control logic is correct and remains unchanged.
-    const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathname.startsWith(path));
+    // MODIFIED: Use pathWithoutLocale
+    const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
 
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        return NextResponse.redirect(new URL(defaultDashboard, request.url));
+        // MODIFIED: Prepend locale to redirect URL
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
     return response;
 }
 
+// --- YOUR MATCHER (Unchanged) ---
 export const config = {
+  // This matcher ensures the middleware runs on all paths except for specific assets and API routes.
   matcher: [
-    // This matcher is fine. It correctly applies the middleware to all relevant paths.
-    '/',
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };

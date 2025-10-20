@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Visão Geral",
+    "PointOfSale": "Ponto de Venda",
+    "Inventory": "Estoque",
+    "PurchaseOrders": "Pedidos de Compra",
+    "Management": "Gerenciamento",
+    "Settings": "Configurações Gerais",
+    "Currencies": "Moedas"
+  },
+  "Purchases": {
+    "CreateNewPO": "Criar Novo Pedido de Compra",
+    "Supplier": "Fornecedor",
+    "Notes": "Notas",
+    "Currency": "Moeda",
+    "AppliedExchangeRate": "Taxa de Câmbio Aplicada",
+    "OrderItems": "Itens do Pedido",
+    "AddProduct": "Adicionar Produto",
+    "Total": "Total"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Gerenciamento de Múltiplas Moedas",
+    "CurrencyDescription": "Gerencie as taxas de câmbio para todas as moedas com as quais sua empresa opera.",
+    "AddExchangeRate": "Adicionar Taxa de Câmbio",
+    "Rate": "Taxa",
+    "EffectiveDate": "Data Efetiva"
+  }
+}

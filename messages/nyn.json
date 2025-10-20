@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Okushwijuma kw'ebikorwa",
+    "PointOfSale": "Aho batundira",
+    "Inventory": "Eby'amagaziini",
+    "PurchaseOrders": "Ebiragiro by'okugura",
+    "Management": "Oburagatsi",
+    "Settings": "Entegeka z'omutaano",
+    "Currencies": "Esente"
+  },
+  "Purchases": {
+    "CreateNewPO": "Kora ekiragiro ky'okugura kisya",
+    "Supplier": "Omuhwezi",
+    "Notes": "Eby'okujuriza",
+    "Currency": "Esente",
+    "AppliedExchangeRate": "Omuwendo gw'esente ogukozesirwe",
+    "OrderItems": "Ebiri kurugyendo rw'okugura",
+    "AddProduct": "Taho ekicuruuzibwa",
+    "Total": "Omubuganjagari"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Oburagatsi bw'esente nyingi",
+    "CurrencyDescription": "Ragatsa omuwendo gw'esente z'amahanga goona agu bizinesi yaawe erikukozesa.",
+    "AddExchangeRate": "Taho omuwendo gw'esente",
+    "Rate": "Omuwendo",
+    "EffectiveDate": "Ebiro by'okutandika"
+  }
+}

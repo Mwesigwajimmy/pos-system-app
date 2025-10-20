@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Overzicht",
+    "PointOfSale": "Verkooppunt",
+    "Inventory": "Inventaris",
+    "PurchaseOrders": "Inkooporders",
+    "Management": "Beheer",
+    "Settings": "Algemene Instellingen",
+    "Currencies": "Valuta's"
+  },
+  "Purchases": {
+    "CreateNewPO": "Nieuwe Inkooporder Maken",
+    "Supplier": "Leverancier",
+    "Notes": "Notities",
+    "Currency": "Valuta",
+    "AppliedExchangeRate": "Toegepaste Wisselkoers",
+    "OrderItems": "Orderartikelen",
+    "AddProduct": "Product Toevoegen",
+    "Total": "Totaal"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Multi-valuta Beheer",
+    "CurrencyDescription": "Beheer de wisselkoersen voor alle valuta's waarmee uw bedrijf werkt.",
+    "AddExchangeRate": "Wisselkoers Toevoegen",
+    "Rate": "Koers",
+    "EffectiveDate": "Ingangsdatum"
+  }
+}

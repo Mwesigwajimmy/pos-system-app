@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Oversikt",
+    "PointOfSale": "Salgspunkt",
+    "Inventory": "Varebeholdning",
+    "PurchaseOrders": "Innkjøpsordrer",
+    "Management": "Administrasjon",
+    "Settings": "Generelle Innstillinger",
+    "Currencies": "Valutaer"
+  },
+  "Purchases": {
+    "CreateNewPO": "Opprett Ny Innkjøpsordre",
+    "Supplier": "Leverandør",
+    "Notes": "Notater",
+    "Currency": "Valuta",
+    "AppliedExchangeRate": "Anvendt Vekslingskurs",
+    "OrderItems": "Ordrelinjer",
+    "AddProduct": "Legg til Produkt",
+    "Total": "Totalt"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Fler-valuta Administrasjon",
+    "CurrencyDescription": "Administrer vekslingskurser for alle valutaer som din bedrift opererer med.",
+    "AddExchangeRate": "Legg til Vekslingskurs",
+    "Rate": "Kurs",
+    "EffectiveDate": "Ikrafttredelsesdato"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Overview",
+    "PointOfSale": "Point of Sale",
+    "Inventory": "Inventory",
+    "PurchaseOrders": "Purchase Orders",
+    "Management": "Management",
+    "Settings": "General Settings",
+    "Currencies": "Currencies"
+  },
+  "Purchases": {
+    "CreateNewPO": "Create New Purchase Order",
+    "Supplier": "Supplier",
+    "Notes": "Notes",
+    "Currency": "Currency",
+    "AppliedExchangeRate": "Applied Exchange Rate",
+    "OrderItems": "Order Items",
+    "AddProduct": "Add Product",
+    "Total": "Total"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Multi-Currency Management",
+    "CurrencyDescription": "Manage exchange rates for all currencies your business operates with.",
+    "AddExchangeRate": "Add Exchange Rate",
+    "Rate": "Rate",
+    "EffectiveDate": "Effective Date"
+  }
+}

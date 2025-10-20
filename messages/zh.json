@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "概览",
+    "PointOfSale": "销售点 (POS)",
+    "Inventory": "库存",
+    "PurchaseOrders": "采购订单",
+    "Management": "管理",
+    "Settings": "通用设置",
+    "Currencies": "货币"
+  },
+  "Purchases": {
+    "CreateNewPO": "创建新采购订单",
+    "Supplier": "供应商",
+    "Notes": "备注",
+    "Currency": "货币",
+    "AppliedExchangeRate": "应用汇率",
+    "OrderItems": "订单项目",
+    "AddProduct": "添加产品",
+    "Total": "总计"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "多货币管理",
+    "CurrencyDescription": "管理您的企业运营所使用的所有货币的汇率。",
+    "AddExchangeRate": "添加汇率",
+    "Rate": "汇率",
+    "EffectiveDate": "生效日期"
+  }
+}

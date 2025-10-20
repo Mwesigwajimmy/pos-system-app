@@ -1,13 +1,14 @@
+// src/app/(dashboard)/accountant/page.tsx
 'use client';
+
 import { useMutation } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// This function will download all data as a single JSON file.
-// In a real enterprise app, you might use a library to convert this to an Excel workbook with multiple sheets.
+// This function calls the powerful backend RPC to get all data.
 async function fetchAllDataForExport() {
     const supabase = createClient();
     const { data, error } = await supabase.rpc('get_accountant_export_data');
@@ -19,14 +20,19 @@ export default function AccountantPage() {
     const mutation = useMutation({
         mutationFn: fetchAllDataForExport,
         onSuccess: (data) => {
+            // This logic converts the JSON data into a downloadable file.
             const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
             const link = document.createElement("a");
             link.href = jsonString;
             link.download = `ug-biz-suite_export_${new Date().toISOString().split('T')[0]}.json`;
+
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
+            
             toast.success("Full data export successful!");
         },
-        onError: (error: any) => toast.error(`Export failed: ${error.message}`),
+        onError: (error: Error) => toast.error(`Export failed: ${error.message}`),
     });
 
     return (
@@ -36,14 +42,14 @@ export default function AccountantPage() {
                 <CardHeader>
                     <CardTitle>Full Data Export</CardTitle>
                     <CardDescription>
-                        Download a complete history of all sales, expenses, and financial transactions.
-                        This is the one-stop shop for auditing and accounting purposes.
+                        Download a complete, machine-readable history of all sales, expenses, and financial transactions.
+                        This is the primary tool for auditing, migrating, or providing data to external accounting systems.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-                        <Download className="mr-2 h-4 w-4" />
-                        {mutation.isPending ? "Exporting All Data..." : "Export Complete Ledger (JSON)"}
+                        {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        {mutation.isPending ? "Compiling All Data..." : "Export Complete General Ledger (JSON)"}
                     </Button>
                 </CardContent>
             </Card>

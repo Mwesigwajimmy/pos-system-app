@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Aperçu",
+    "PointOfSale": "Point de Vente",
+    "Inventory": "Inventaire",
+    "PurchaseOrders": "Bons de Commande",
+    "Management": "Gestion",
+    "Settings": "Paramètres Généraux",
+    "Currencies": "Devises"
+  },
+  "Purchases": {
+    "CreateNewPO": "Créer un Nouveau Bon de Commande",
+    "Supplier": "Fournisseur",
+    "Notes": "Remarques",
+    "Currency": "Devise",
+    "AppliedExchangeRate": "Taux de Change Appliqué",
+    "OrderItems": "Articles de la Commande",
+    "AddProduct": "Ajouter un Produit",
+    "Total": "Total"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Gestion Multi-Devises",
+    "CurrencyDescription": "Gérez les taux de change pour toutes les devises avec lesquelles votre entreprise opère.",
+    "AddExchangeRate": "Ajouter un Taux de Change",
+    "Rate": "Taux",
+    "EffectiveDate": "Date d'Effet"
+  }
+}

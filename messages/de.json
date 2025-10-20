@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Übersicht",
+    "PointOfSale": "Verkaufsstelle (POS)",
+    "Inventory": "Inventar",
+    "PurchaseOrders": "Bestellungen",
+    "Management": "Verwaltung",
+    "Settings": "Allgemeine Einstellungen",
+    "Currencies": "Währungen"
+  },
+  "Purchases": {
+    "CreateNewPO": "Neue Bestellung Erstellen",
+    "Supplier": "Lieferant",
+    "Notes": "Notizen",
+    "Currency": "Währung",
+    "AppliedExchangeRate": "Angewandter Wechselkurs",
+    "OrderItems": "Bestellpositionen",
+    "AddProduct": "Produkt Hinzufügen",
+    "Total": "Gesamt"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Multi-Währungs-Management",
+    "CurrencyDescription": "Verwalten Sie die Wechselkurse für alle Währungen, mit denen Ihr Unternehmen arbeitet.",
+    "AddExchangeRate": "Wechselkurs Hinzufügen",
+    "Rate": "Kurs",
+    "EffectiveDate": "Gültigkeitsdatum"
+  }
+}

@@ -9,7 +9,7 @@ import {
     ShieldCheck, Settings, Landmark, Home, FileText, Tags, Undo2, LucideIcon,
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
-    UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet
+    UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, UploadCloud, Plug
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBusinessType } from '@/hooks/useBusinessType';
@@ -41,7 +41,9 @@ const navSections: NavItem[] = [
     {
         type: 'accordion', title: 'Rentals', icon: Home, roles: ['admin', 'manager'], industries: ['Rentals / Real Estate'],
         subItems: [
-            { href: '/rentals/properties', label: 'Properties & Units', icon: Building2 }, { href: '/rentals/leases', label: 'Leases', icon: FileText }, { href: '/rentals/invoices', label: 'Rental Invoices', icon: Receipt },
+            { href: '/rentals/properties', label: 'Properties & Units', icon: Building2 },
+            { href: '/rentals/leases', label: 'Leases', icon: FileText },
+            { href: '/rentals/invoices', label: 'Rental Invoices', icon: Receipt },
         ]
     },
     {
@@ -51,14 +53,12 @@ const navSections: NavItem[] = [
         ]
     },
     {
-        type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant'],
+        type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant'], industries: ['Telecom Services'],
         subItems: [
             { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager'] },
             { href: '/telecom/operator', label: 'Operator Center', icon: Zap, roles: ['admin', 'manager'] },
             { href: '/telecom/agents', label: 'Agent Management', icon: UserCog, roles: ['admin', 'manager'] },
             { href: '/telecom/products', label: 'Product Management', icon: Boxes, roles: ['admin', 'manager'] },
-            { href: '/telecom/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] },
-            { href: '/telecom/live-sheet', label: 'Live Data Grid', icon: Zap, roles: ['admin', 'manager'] },
             { href: '/telecom/reconciliation', label: 'Reconciliation Center', icon: ClipboardCheck, roles: ['admin', 'manager', 'accountant'] },
             { href: '/telecom/financials', label: 'Financial Controls', icon: Banknote, roles: ['admin', 'manager'] },
             { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager'] },
@@ -84,17 +84,24 @@ const navSections: NavItem[] = [
         type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager'],
         industries: ['Retail / Wholesale', 'Restaurant / Cafe'],
         subItems: [
-            { href: '/inventory', label: 'Products', icon: Boxes }, { href: '/inventory/categories', label: 'Categories', icon: Tags }, { href: '/inventory/composites', label: 'Composite Products', icon: BookOpen }, { href: '/purchases', label: 'Purchase Orders', icon: Truck }, { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck }, { href: '/inventory/transfers', label: 'Stock Transfers', icon: ArrowRightLeft },
+            { href: '/inventory', label: 'Products & Stock', icon: Boxes }, { href: '/inventory/categories', label: 'Categories', icon: Tags }, { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen }, { href: '/purchases', label: 'Purchase Orders', icon: Truck }, { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck }, { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
         ]
     },
     {
-        type: 'accordion', title: 'Finance', icon: Briefcase, roles: ['admin', 'manager', 'accountant'],
+        type: 'link',
+        href: '/ledger',
+        label: 'General Ledger',
+        icon: BookOpen,
+        roles: ['admin', 'manager', 'accountant']
+    },
+    {
+        type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor'],
         subItems: [
-            { href: '/expenses', label: 'Expenses', icon: Receipt }, { href: '/finance/tax-management', label: 'Tax Management', icon: Percent }, { href: '/accounting/chart-of-accounts', label: 'Chart of Accounts', icon: BookOpen }, { href: '/accounting/reports', label: 'Financial Reports', icon: Banknote },
+            { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] },
         ]
     },
     {
-        type: 'accordion', title: 'Management', icon: UsersRound, roles: ['admin', 'manager', 'auditor'],
+        type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor'],
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin'] },
             { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
@@ -105,8 +112,14 @@ const navSections: NavItem[] = [
             { href: '/audit', label: 'Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor'] },
             { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
+            { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin'] },
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin'] },
-            { href: '/management/api', label: 'API & Integrations', icon: KeyRound, roles: ['admin'] },
+            // --- NEW LINK ADDED HERE ---
+            { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
+            // --- END OF ADDITION ---
+            { href: '/settings/migration', label: 'Data Migration', icon: UploadCloud, roles: ['admin'] },
+            { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin'] },
+            { href: '/management/api', label: 'API Keys', icon: KeyRound, roles: ['admin'] },
         ]
     },
 ];

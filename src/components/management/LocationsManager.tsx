@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -85,7 +85,7 @@ const unassignStaff = async ({ employeeId }: { employeeId: string }) => {
     if (error) throw new Error(error.message);
 };
 
-// Sub-components
+// Sub-component: Location Add/Edit Form
 const LocationForm = ({ initialData, onSubmit, isLoading }: { initialData?: LocationMutationData; onSubmit: (data: LocationMutationData) => void; isLoading: boolean; }) => {
     const [name, setName] = useState(initialData?.name || '');
     const [address, setAddress] = useState(initialData?.address || '');
@@ -112,6 +112,7 @@ const LocationForm = ({ initialData, onSubmit, isLoading }: { initialData?: Loca
     );
 };
 
+// Sub-component: Staff Management Dialog
 const ManageStaffDialog = ({ location }: { location: Location }) => {
     const queryClient = useQueryClient();
     const staffQueryKey = ['locationStaff', location.id];
@@ -125,7 +126,7 @@ const ManageStaffDialog = ({ location }: { location: Location }) => {
             toast.success(successMessage);
             queryClient.invalidateQueries({ queryKey: staffQueryKey });
             queryClient.invalidateQueries({ queryKey: unassignedQueryKey });
-            queryClient.invalidateQueries({ queryKey: ['locations'] }); // To update staff count
+            queryClient.invalidateQueries({ queryKey: ['locations'] });
         },
         onError: (error: Error) => toast.error(error.message),
     });
@@ -144,7 +145,7 @@ const ManageStaffDialog = ({ location }: { location: Location }) => {
                             {mutation.isPending && mutation.variables?.employeeId === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (isAssigning ? "Assign" : "Unassign")}
                         </Button>
                     </div>
-                )) : <p className="text-sm text-muted-foreground p-2">No staff found.</p>}
+                )) : <p className="text-sm text-muted-foreground p-2 text-center">No staff found.</p>}
             </Card>
         </div>
     );
@@ -161,7 +162,7 @@ const ManageStaffDialog = ({ location }: { location: Location }) => {
     );
 };
 
-// Main Component
+// --- Main Component ---
 export default function LocationsManager() {
     const queryClient = useQueryClient();
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -194,7 +195,7 @@ export default function LocationsManager() {
     const updateMutation = createMutationHandler(updateLocation, 'Location updated successfully.');
     const deleteMutation = createMutationHandler(deleteLocation, 'Location deleted successfully.');
 
-    const columns: ColumnDef<Location>[] = [
+    const columns: ColumnDef<Location>[] = useMemo(() => [
         { accessorKey: 'name', header: ({ column }) => <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>Name<ArrowUpDown className="ml-2 h-4 w-4" /></Button> },
         { accessorKey: 'address', header: 'Address' },
         { accessorKey: 'staff_count', header: 'Assigned Staff', cell: ({ row }) => <Badge variant="secondary">{row.original.staff_count}</Badge> },
@@ -217,7 +218,7 @@ export default function LocationsManager() {
                 </DropdownMenu>
             </div>
         )},
-    ];
+    ], []);
 
     const table = useReactTable({ data: locations ?? [], columns, state: { sorting }, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel() });
 

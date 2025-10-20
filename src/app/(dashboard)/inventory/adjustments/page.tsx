@@ -1,4 +1,6 @@
-import CreateAdjustmentForm from "@/components/inventory/CreateAdjustmentForm";
+// ./src/app/(dashboard)/inventory/adjustments/page.tsx
+
+import BulkStockAdjustmentForm from "@/components/inventory/BulkStockAdjustmentForm";
 
 export default function NewAdjustmentPage() {
   return (
@@ -11,7 +13,7 @@ export default function NewAdjustmentPage() {
             </p>
         </div>
       </div>
-      <CreateAdjustmentForm />
+      <BulkStockAdjustmentForm />
     </div>
   );
 }

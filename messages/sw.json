@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Muhtasari",
+    "PointOfSale": "Sehemu ya Mauzo",
+    "Inventory": "Hesabu ya Bidhaa",
+    "PurchaseOrders": "Maagizo ya Ununuzi",
+    "Management": "Usimamizi",
+    "Settings": "Mipangilio Mikuu",
+    "Currencies": "Sarafu"
+  },
+  "Purchases": {
+    "CreateNewPO": "Tengeneza Agizo Jipya la Ununuzi",
+    "Supplier": "Mtoa huduma",
+    "Notes": "Vidokezo",
+    "Currency": "Sarafu",
+    "AppliedExchangeRate": "Kiwango cha Ubadilishaji Kilichotumika",
+    "OrderItems": "Vipengee vya Agizo",
+    "AddProduct": "Ongeza Bidhaa",
+    "Total": "Jumla"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Usimamizi wa Sarafu Nyingi",
+    "CurrencyDescription": "Simamia viwango vya ubadilishaji kwa sarafu zote ambazo biashara yako inafanya kazi nazo.",
+    "AddExchangeRate": "Ongeza Kiwango cha Ubadilishaji",
+    "Rate": "Kiwango",
+    "EffectiveDate": "Tarehe ya Kuanza"
+  }
+}

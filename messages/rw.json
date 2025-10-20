@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Incamake",
+    "PointOfSale": "Aho Kugurishiriza",
+    "Inventory": "Ibarura ry'ibicuruzwa",
+    "PurchaseOrders": "Amabwiriza yo Kugura",
+    "Management": "Imiyoborere",
+    "Settings": "Igenamiterere Rusange",
+    "Currencies": "Amadevise"
+  },
+  "Purchases": {
+    "CreateNewPO": "Kora Itegeko Rishya ryo Kugura",
+    "Supplier": "Umutanga isoko",
+    "Notes": "Inyandiko",
+    "Currency": "Ifaranga",
+    "AppliedExchangeRate": "Igipimo cy'Ivunjisha Cyakoreshejwe",
+    "OrderItems": "Ibikoresho byategetswe",
+    "AddProduct": "Ongeraho Igicuruzwa",
+    "Total": "Igiteranyo"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Imiyoborere y'Amadevise Menshi",
+    "CurrencyDescription": "Genena ibipimo by'ivunjisha ku madevise yose ubucuruzi bwawe bukoresha.",
+    "AddExchangeRate": "Ongeraho Igipimo cy'Ivunjisha",
+    "Rate": "Igipimo",
+    "EffectiveDate": "Itariki y'Itangira"
+  }
+}

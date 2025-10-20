@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Package, AlertTriangle } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Hammer } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,36 +15,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
+import { Badge } from '@/components/ui/badge';
 
-// --- TYPES (Matching the SQL functions) ---
+// --- ENHANCED TYPES ---
 interface Component {
   component_variant_id: number;
   component_name: string;
   quantity: number;
+  available_stock?: number;
 }
-
 interface CompositeProduct {
   id: number;
   name: string;
   sku: string;
   total_components: number;
+  current_stock: number;
 }
-
-interface CompositeProductDetails extends Omit<CompositeProduct, 'total_components'> {
-    components: Component[];
+interface CompositeProductDetails extends Omit<CompositeProduct, 'total_components' | 'current_stock'> {
+  components: Component[];
 }
-
 interface StandardVariantOption {
+  value: number;
+  label: string;
+}
+interface LocationOption {
     value: number;
     label: string;
 }
 
-// --- API FUNCTIONS (Calling the RPCs) ---
+
+// --- API FUNCTIONS ---
 const supabase = createClient();
 
 async function fetchComposites(): Promise<CompositeProduct[]> {
-    const { data, error } = await supabase.rpc('get_composite_products');
+    const { data, error } = await supabase.rpc('get_composite_products_with_stock');
     if (error) throw new Error(error.message);
     return data || [];
 }
@@ -59,6 +65,12 @@ async function fetchCompositeDetails(id: number): Promise<CompositeProductDetail
     const { data, error } = await supabase.rpc('get_composite_details', { p_variant_id: id });
     if (error) throw new Error(error.message);
     return data;
+}
+
+async function fetchLocations(): Promise<LocationOption[]> {
+    const { data, error } = await supabase.from('locations').select('id, name');
+    if (error) throw new Error(error.message);
+    return data.map(l => ({ value: l.id, label: l.name })) || [];
 }
 
 async function upsertComposite(compositeData: { id: number | null, name: string, sku: string, components: { component_variant_id: number, quantity: number }[] }) {
@@ -76,6 +88,10 @@ async function deleteComposite(id: number) {
     if (error) throw error;
 }
 
+async function processAssembly(payload: { p_composite_variant_id: number, p_quantity_to_assemble: number, p_source_location_id: number }) {
+    const { error } = await supabase.rpc('process_assembly', payload);
+    if (error) throw error;
+}
 
 // --- FORM COMPONENT ---
 function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { initialData: Partial<CompositeProductDetails> | null; onSave: (data: any) => void; onCancel: () => void; isSaving: boolean; }) {
@@ -147,12 +163,122 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     );
 }
 
+// --- NEW: AssemblyDialog Component ---
+function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClose: () => void; }) {
+    const queryClient = useQueryClient();
+    const [quantity, setQuantity] = useState(1);
+    const [sourceLocationId, setSourceLocationId] = useState<string | null>(null);
+    
+    const { data: recipe, isLoading: isLoadingRecipe } = useQuery({
+        queryKey: ['compositeDetailsWithStock', product.id, sourceLocationId],
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_composite_details_with_stock', {
+                p_variant_id: product.id,
+                p_location_id: sourceLocationId ? parseInt(sourceLocationId) : null
+            });
+            if (error) throw error;
+            return data as CompositeProductDetails;
+        },
+        enabled: !!sourceLocationId
+    });
+    
+    const { data: locations } = useQuery({ queryKey: ['locations'], queryFn: fetchLocations });
+    
+    const assemblyMutation = useMutation({
+        mutationFn: processAssembly,
+        onSuccess: () => {
+            toast.success(`${quantity}x "${product.name}" assembled successfully!`);
+            queryClient.invalidateQueries({ queryKey: ['composites'] });
+            onClose();
+        },
+        onError: (err: Error) => toast.error(`Assembly failed: ${err.message}`)
+    });
+    
+    const canAssemble = recipe && recipe.components.every(c => (c.available_stock || 0) >= c.quantity * quantity);
+
+    const handleSubmit = () => {
+        if (!sourceLocationId) return toast.error("Please select a source location.");
+        if (quantity <= 0) return toast.error("Quantity must be greater than zero.");
+        assemblyMutation.mutate({
+            p_composite_variant_id: product.id,
+            p_quantity_to_assemble: quantity,
+            p_source_location_id: parseInt(sourceLocationId)
+        });
+    };
+
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Assemble: {product.name}</DialogTitle>
+                    <DialogDescription>Create new units of this composite product by consuming its components.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label>Quantity to Assemble</Label>
+                            <Input type="number" value={quantity} onChange={e => setQuantity(Math.max(1, parseInt(e.target.value)))} />
+                        </div>
+                        <div>
+                            <Label>Source Location (for components)</Label>
+                            <Select onValueChange={setSourceLocationId}>
+                                <SelectTrigger><SelectValue placeholder="Select warehouse..." /></SelectTrigger>
+                                <SelectContent>
+                                    {locations?.map(l => <SelectItem key={l.value} value={l.value.toString()}>{l.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    {isLoadingRecipe && sourceLocationId && <div className="text-center p-4"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></div>}
+                    {recipe && (
+                        <Card>
+                            <CardHeader><CardTitle className="text-base">Required Components</CardTitle></CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Component</TableHead>
+                                            <TableHead>Required</TableHead>
+                                            <TableHead>Available</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {recipe.components.map(c => {
+                                            const required = c.quantity * quantity;
+                                            const available = c.available_stock || 0;
+                                            const hasEnough = available >= required;
+                                            return (
+                                                <TableRow key={c.component_variant_id} className={!hasEnough ? 'bg-destructive/10' : ''}>
+                                                    <TableCell>{c.component_name}</TableCell>
+                                                    <TableCell>{required}</TableCell>
+                                                    <TableCell className={!hasEnough ? 'font-bold text-destructive' : ''}>{available}</TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={!canAssemble || assemblyMutation.isPending || !sourceLocationId}>
+                        {assemblyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        Confirm Assembly
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 // --- MAIN PAGE COMPONENT ---
 export default function CompositesPage() {
     const queryClient = useQueryClient();
     const [isFormOpen, setFormOpen] = useState(false);
     const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [isAssemblyDialogOpen, setAssemblyDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<CompositeProduct | null>(null);
 
     const { data: composites, isLoading, isError, error } = useQuery({ queryKey: ['composites'], queryFn: fetchComposites });
@@ -165,76 +291,127 @@ export default function CompositesPage() {
 
     const upsertMutation = useMutation({
         mutationFn: upsertComposite,
-        onSuccess: () => { toast.success("Composite product saved successfully!"); queryClient.invalidateQueries({ queryKey: ['composites'] }); setFormOpen(false); },
+        onSuccess: () => {
+            toast.success("Composite product saved successfully!");
+            queryClient.invalidateQueries({ queryKey: ['composites'] });
+            setFormOpen(false);
+        },
         onError: (err: Error) => toast.error(`Failed to save: ${err.message}`),
     });
 
     const deleteMutation = useMutation({
         mutationFn: deleteComposite,
-        onSuccess: () => { toast.success("Composite product deleted."); queryClient.invalidateQueries({ queryKey: ['composites'] }); setDeleteConfirmOpen(false); },
+        onSuccess: () => {
+            toast.success("Composite product deleted.");
+            queryClient.invalidateQueries({ queryKey: ['composites'] });
+            setDeleteConfirmOpen(false);
+        },
         onError: (err: Error) => toast.error(`Failed to delete: ${err.message}`),
     });
-
+    
     const handleAddNew = () => { setSelectedProduct(null); setFormOpen(true); };
     const handleEdit = (product: CompositeProduct) => { setSelectedProduct(product); setFormOpen(true); };
     const handleDelete = (product: CompositeProduct) => { setSelectedProduct(product); setDeleteConfirmOpen(true); };
+    const handleAssemble = (product: CompositeProduct) => { setSelectedProduct(product); setAssemblyDialogOpen(true); };
 
     return (
         <>
             <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Composite Products</h1>
-                        <p className="text-muted-foreground">Manage products made up of other inventory items.</p>
+                        <h1 className="text-2xl font-bold tracking-tight">Manufacturing & Assembly</h1>
+                        <p className="text-muted-foreground">Define recipes and assemble finished goods from components.</p>
                     </div>
-                    <Button onClick={handleAddNew}><PlusCircle className="mr-2 h-4 w-4" /> Add New</Button>
+                    <Button onClick={handleAddNew}><PlusCircle className="mr-2 h-4 w-4" /> New Recipe</Button>
                 </div>
 
-                <Card><CardContent className="mt-6">
-                    {isLoading ? <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div> :
-                     isError ? <div className="text-destructive text-center p-4">Error loading products: {error.message}</div> :
-                    <Table>
-                        <TableHeader><TableRow><TableHead>Product Name</TableHead><TableHead>SKU</TableHead><TableHead>No. of Components</TableHead><TableHead className="w-[50px]"></TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {composites?.length === 0 ? <TableRow><TableCell colSpan={4} className="h-24 text-center">No composite products found. Create one to get started.</TableCell></TableRow> :
-                            composites?.map(product => (
-                                <TableRow key={product.id}>
-                                    <TableCell className="font-medium">{product.name}</TableCell>
-                                    <TableCell>{product.sku}</TableCell>
-                                    <TableCell>{product.total_components}</TableCell>
-                                    <TableCell>
-                                        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleEdit(product)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    }
-                </CardContent></Card>
+                <Card>
+                    <CardHeader><CardTitle>Composite Product Recipes</CardTitle></CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        ) : isError ? (
+                            <div className="text-destructive text-center p-4">Error loading products: {error.message}</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Product Name</TableHead>
+                                        <TableHead>SKU</TableHead>
+                                        <TableHead>Components</TableHead>
+                                        <TableHead>Stock on Hand</TableHead>
+                                        <TableHead className="w-[50px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {composites?.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-24 text-center">
+                                                No composite products found. Create a recipe to get started.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        composites?.map(product => (
+                                            <TableRow key={product.id}>
+                                                <TableCell className="font-medium">{product.name}</TableCell>
+                                                <TableCell>{product.sku}</TableCell>
+                                                <TableCell><Badge variant="secondary">{product.total_components}</Badge></TableCell>
+                                                <TableCell className="font-bold">{product.current_stock}</TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleAssemble(product)}><Hammer className="mr-2 h-4 w-4"/>Assemble Product</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleEdit(product)}><Edit className="mr-2 h-4 w-4"/>Edit Recipe</DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product)}><Trash2 className="mr-2 h-4 w-4"/>Delete Recipe</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
             
             <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
                 <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader><DialogTitle>{selectedProduct ? 'Edit Composite Product' : 'Create New Composite Product'}</DialogTitle></DialogHeader>
-                    {isLoadingDetails ? <div className="py-10 text-center">Loading Details...</div> :
-                    <CompositeProductForm 
-                        initialData={selectedProduct ? (editingProductDetails || null) : null}
-                        onSave={(data) => upsertMutation.mutate(data)} 
-                        onCancel={() => setFormOpen(false)}
-                        isSaving={upsertMutation.isPending}
-                    />}
+                    <DialogHeader>
+                        <DialogTitle>{selectedProduct ? 'Edit Composite Product Recipe' : 'Create New Composite Recipe'}</DialogTitle>
+                        <DialogDescription>A recipe defines the components required to create one unit of this product.</DialogDescription>
+                    </DialogHeader>
+                    {isLoadingDetails ? (
+                        <div className="py-10 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+                    ) : (
+                        <CompositeProductForm 
+                            initialData={selectedProduct ? (editingProductDetails || null) : null}
+                            onSave={(data) => upsertMutation.mutate(data)} 
+                            onCancel={() => setFormOpen(false)}
+                            isSaving={upsertMutation.isPending}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 
+            {isAssemblyDialogOpen && selectedProduct && (
+                <AssemblyDialog product={selectedProduct} onClose={() => setAssemblyDialogOpen(false)} />
+            )}
+
             <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
                 <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the composite product "{selectedProduct?.name}". This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently delete the recipe for "{selectedProduct?.name}". This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => deleteMutation.mutate(selectedProduct!.id)}>

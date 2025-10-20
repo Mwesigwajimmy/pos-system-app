@@ -1,0 +1,28 @@
+{
+  "Sidebar": {
+    "Overview": "Обзор",
+    "PointOfSale": "Кассовый терминал (POS)",
+    "Inventory": "Складской учёт",
+    "PurchaseOrders": "Заказы на закупку",
+    "Management": "Управление",
+    "Settings": "Общие настройки",
+    "Currencies": "Валюты"
+  },
+  "Purchases": {
+    "CreateNewPO": "Создать новый заказ на закупку",
+    "Supplier": "Поставщик",
+    "Notes": "Примечания",
+    "Currency": "Валюта",
+    "AppliedExchangeRate": "Примененный обменный курс",
+    "OrderItems": "Позиции заказа",
+    "AddProduct": "Добавить товар",
+    "Total": "Итого"
+  },
+  "Settings": {
+    "MultiCurrencyManagement": "Управление мультивалютностью",
+    "CurrencyDescription": "Управляйте обменными курсами для всех валют, с которыми работает ваш бизнес.",
+    "AddExchangeRate": "Добавить обменный курс",
+    "Rate": "Курс",
+    "EffectiveDate": "Дата вступления в силу"
+  }
+}

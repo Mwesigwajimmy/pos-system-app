@@ -11,7 +11,11 @@ import { Loader2, Upload } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
-export function BankStatementUploadComponent() {
+interface BankStatementUploadComponentProps {
+  onSuccess?: () => void;
+}
+
+export function BankStatementUploadComponent({ onSuccess }: BankStatementUploadComponentProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
@@ -55,14 +59,8 @@ export function BankStatementUploadComponent() {
     onSuccess: () => {
       toast.success('Statement uploaded successfully!');
       setFile(null);
-      
-      // =========================================================================================
-      // THE DEFINITIVE FIX IS HERE:
-      // This is the real, professional implementation. It tells TanStack Query to
-      // immediately re-fetch any data related to 'uploadedStatements'. This will make
-      // any list of uploaded files on the page refresh instantly with the new data.
-      // =========================================================================================
       queryClient.invalidateQueries({ queryKey: ['uploadedStatements'] });
+      if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
       toast.error(`Upload failed: ${error.message}`);
