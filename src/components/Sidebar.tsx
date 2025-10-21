@@ -169,7 +169,7 @@ export default function Sidebar() {
     return (
         <div className="w-full h-full flex flex-col bg-card border-r">
             <div className="p-4 border-b flex items-center">
-                <h1 className="text-2xl font-bold text-primary">UG-BizSuite</h1>
+                <h1 className="text-2xl font-bold text-primary">BBU1</h1>
             </div>
             <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
                 {isLoading ? <div className="p-3 text-sm text-muted-foreground animate-pulse">Loading navigation...</div> : (
