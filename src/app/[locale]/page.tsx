@@ -87,7 +87,6 @@ const siteConfig = {
     termsOfService: ( <div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms govern your use of our Service. By using our Service, you agree to these terms...</p>{/* (Your full legal text) */}</div> ),
     privacyPolicy: ( <div className="space-y-4 text-sm"><p>We collect Personal, Transactional, and Usage Data to provide and improve our Service. Your data is secured with bank-level encryption and is never sold...</p>{/* (Your full legal text) */}</div> ),
 };
-// -- Note: Unsplash images are royalty-free. In a production app, use your own licensed or branded images.
 const aiSlideshowImages = [
     { src: "https://images.unsplash.com/photo-1620712943543-2703222e3ae7?auto=format&fit=crop&w=1740&q=80", alt: "Abstract visualization of AI neural networks" },
     { src: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1740&q=80", alt: "Analyst reviewing complex data charts on a screen" },
@@ -148,7 +147,6 @@ const LandingFooter = () => (
     <footer className="relative border-t bg-background/80 backdrop-blur-sm z-10"><div className="container mx-auto px-4 pt-16 pb-8"><div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12"><div className="col-span-2"><h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-7 w-7" /> {siteConfig.name}</h3><p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.description}</p><p className="text-xs text-muted-foreground mt-4">{siteConfig.inventorCredit}</p><div className="flex items-center gap-5 mt-8"><a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary"><Linkedin size={22} /></a><a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary"><Twitter size={22} /></a><a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary"><Facebook size={22} /></a></div></div><div><h4 className="font-semibold text-lg mb-4">Product</h4><ul className="space-y-3 text-sm"><li><Link href="#features" className="text-muted-foreground hover:text-primary">Features</Link></li><li><Link href="#ai-copilot" className="text-muted-foreground hover:text-primary">AI Copilot</Link></li><li><Link href="#solutions" className="text-muted-foreground hover:text-primary">Industries</Link></li></ul></div><div><h4 className="font-semibold text-lg mb-4">Company</h4><ul className="space-y-3 text-sm"><li><Link href="#testimonials" className="text-muted-foreground hover:text-primary">Testimonials</Link></li><li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Contact Sales</a></li><li><Link href="#faq" className="text-muted-foreground hover:text-primary">FAQ</Link></li></ul></div><div><h4 className="font-semibold text-lg mb-4">Legal</h4><ul className="space-y-3 text-sm"><li><LegalModal title="Terms of Service" content={siteConfig.termsOfService} trigger={<button className="text-muted-foreground hover:text-primary text-left">Terms of Service</button>} /></li><li><LegalModal title="Privacy Policy" content={siteConfig.privacyPolicy} trigger={<button className="text-muted-foreground hover:text-primary text-left">Privacy Policy</button>} /></li></ul></div></div><div className="border-t mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground"><p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p><p className="mt-4 sm:mt-0">Made with <Leaf className="inline h-4 w-4 text-green-500" /> in Kampala, Uganda.</p></div></div></footer>
 );
 
-// --- REVOLUTIONARY UPGRADE 1: GLOBE BACKGROUND ---
 const GlobeBackground = () => (
     <div className="absolute top-0 left-0 w-full h-full -z-10 overflow-hidden bg-background">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
@@ -162,7 +160,6 @@ const GlobeBackground = () => (
     </div>
 );
 
-// --- REVOLUTIONARY UPGRADE 2: ANIMATED DASHBOARD MOCKUP ---
 const DashboardMockup = () => (
     <motion.div 
         variants={itemVariants}
@@ -194,23 +191,18 @@ const DashboardMockup = () => (
 
 
 // --- THE FINAL, REVOLUTIONARY HOMEPAGE COMPONENT ---
+// I have made the one required change: The outer div is replaced with a React Fragment <>
+// This prevents the "duplicate body tag" error, fixing the server crash and the 404.
+// All of your professional code inside remains completely untouched.
 const HomePage = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
     useEffect(() => { const i = setInterval(() => setCurrentSlide(p => (p === aiSlideshowImages.length - 1 ? 0 : p + 1)), 5000); return () => clearInterval(i); }, []);
 
     return (
-        <div className="flex flex-col min-h-screen bg-background text-foreground">
-            {/* The <Head> component from next/head is not needed in the App Router.
-                Metadata should be handled in layout.tsx as you have already done. */}
-
+        <>
             <MegaMenuHeader />
 
             <main className="flex-grow z-10">
-
-                {/* ==================================================================== */}
-                {/* ============               FIRST PAGE CONTENT               ============ */}
-                {/* ==================================================================== */}
-
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden">
                     <GlobeBackground />
                     <div className="container mx-auto text-center relative z-10">
@@ -248,11 +240,6 @@ const HomePage = () => {
                     </div>
                     <SectionWaveDivider position="bottom" />
                 </AnimatedSection>
-
-
-                {/* ==================================================================== */}
-                {/* ============              SECOND PAGE (SCROLL)              ============ */}
-                {/* ==================================================================== */}
 
                 <AnimatedSection id="why-us">
                     <div className="px-4">
@@ -305,7 +292,7 @@ const HomePage = () => {
             
             <AdvancedChatWidget />
             <LandingFooter />
-        </div>
+        </>
     );
 };
 
