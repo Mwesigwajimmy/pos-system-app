@@ -274,7 +274,7 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
 }
 
 // --- MAIN PAGE COMPONENT ---
-export default function CompositesPage() {
+export default function CompositesView() {
     const queryClient = useQueryClient();
     const [isFormOpen, setFormOpen] = useState(false);
     const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);

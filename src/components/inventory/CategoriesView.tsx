@@ -35,7 +35,7 @@ async function upsertCategory(categoryData: Partial<Category>) {
     if (error) throw new Error(error.message);
 }
 
-export default function CategoriesPage() {
+export default function CategoriesView() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const queryClient = useQueryClient();

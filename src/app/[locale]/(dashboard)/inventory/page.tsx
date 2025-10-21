@@ -6,8 +6,9 @@ import { Boxes, Tags, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InventoryDataTable from "@/components/inventory/InventoryDataTable";
-import CategoriesPage from "@/app/(dashboard)/inventory/categories/page";
-import CompositesPage from "@/app/(dashboard)/inventory/composites/page";
+// --- CORRECTION IS HERE ---
+import CategoriesView from '@/components/inventory/CategoriesView';
+import CompositesView from '@/components/inventory/CompositesView';
 import { columns } from "@/components/inventory/columns";
 
 /**
@@ -78,14 +79,16 @@ export default async function InventoryPage() {
           />
         </TabsContent>
 
+        {/* --- CORRECTION IS HERE --- */}
         {/* Tab panel for managing Categories */}
         <TabsContent value="categories" className="mt-6">
-          <CategoriesPage />
+          <CategoriesView />
         </TabsContent>
 
+        {/* --- CORRECTION IS HERE --- */}
         {/* Tab panel for managing Composite Products */}
         <TabsContent value="composites" className="mt-6">
-          <CompositesPage />
+          <CompositesView />
         </TabsContent>
       </Tabs>
     </div>
