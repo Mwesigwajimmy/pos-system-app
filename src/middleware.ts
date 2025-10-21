@@ -58,6 +58,12 @@ const defaultDashboards: Record<string, string> = {
 
 // --- MIDDLEWARE FUNCTION (With targeted edits) ---
 export async function middleware(request: NextRequest) {
+    // --- THIS IS THE ONLY ADDED CODE TO PREVENT REDIRECT LOOPS ---
+    if (request.headers.get('x-middleware-rewrite')) {
+        return NextResponse.next();
+    }
+    // --- END OF CORRECTION ---
+
     const { pathname } = request.nextUrl;
 
     // --- START: next-intl Integration ---
