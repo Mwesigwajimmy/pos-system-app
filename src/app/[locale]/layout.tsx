@@ -1,6 +1,7 @@
-// src/app/layout.tsx
+// src/app/[locale]/layout.tsx
+'use client';
 
-import type { Metadata, Viewport } from 'next';
+import { usePathname } from 'next/navigation';
 import { Inter as FontSans } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -8,99 +9,108 @@ import Providers from "@/components/Providers";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from '@/components/theme-provider';
 
-// --- next-intl Imports ---
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
+// --- Your Professional Dashboard UI Code (Now safely integrated here) ---
+import React, { useState, useEffect, memo } from 'react';
+import { Menu, X } from 'lucide-react';
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
+import { SyncProvider } from "@/components/core/SyncProvider";
+import BrandingProvider from '@/components/core/BrandingProvider';
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
 
-// Your existing metadata and viewport are perfect, no changes needed there.
-export const metadata: Metadata = {
-  title: "BBU1 | The Global Operating System for Ambitious Enterprise",
-  description: "Unify your POS, Inventory, Cloud Accounting, Telecoms, and AI-driven insights into one powerful, scalable platform for Africa, Uganda, and the world.",
-  manifest: '/site.webmanifest',
-  keywords: ['Uganda', 'Africa', 'business software', 'POS', 'Inventory Management', 'Accounting Software', 'Telecom', 'Airtel', 'MTN', 'offline POS', 'mobile money integration'],
-  authors: [{ name: 'BBU1' }],
-  creator: 'BBU1 Team',
-  openGraph: {
-    title: 'BBU1 | The Global Operating System for Ambitious Enterprise',
-    description: 'The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for businesses to thrive—even offline.',
-    url: 'https://www.bbu1.com',
-    siteName: 'BBU1',
-    images: [{
-      url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&h=630&fit=crop&crop=entropy',
-      width: 1200,
-      height: 630,
-      alt: 'BBU1 Dashboard showing business growth',
-    }],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'BBU1 | The Global Operating System for Ambitious Enterprise',
-    description: 'The all-in-one platform for Sales, Inventory, Accounting, and CRM, built for businesses to thrive—even offline.',
-    creator: '@bbu1',
-    images: ['https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&h=630&fit=crop&crop=entropy'],
-  },
-  icons: {
-    icon: [
-        { url: '/favicon.ico', sizes: 'any' },
-        { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-        { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: '/apple-touch-icon.png',
-    other: [
-        { rel: 'android-chrome-192x192', url: '/android-chrome-192x192.png' },
-        { rel: 'android-chrome-512x512', url: '/android-chrome-512x512.png' }
-    ]
-  },
+// Custom Hook and Mobile Sidebar (from your original dashboard layout)
+const useMobileSidebar = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  useEffect(() => {
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+  }, [pathname]);
+  return { isSidebarOpen, setIsSidebarOpen };
 };
 
-export const viewport: Viewport = {
-  themeColor: '#10B981',
-};
+const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 bg-black/60" aria-hidden="true" onClick={onClose}></div>
+      <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
+        <div className="absolute top-0 right-0 -mr-12 pt-2">
+          <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" onClick={onClose}>
+            <span className="sr-only">Close sidebar</span>
+            <X className="h-6 w-6 text-white" aria-hidden="true" />
+          </button>
+        </div>
+        <Sidebar />
+      </div>
+    </div>
+  );
+});
+MobileSidebar.displayName = 'MobileSidebar';
 
 
-// The RootLayout function is what needs to be corrected.
-export default async function RootLayout({
+// --- The Final, Correct Root Layout ---
+export default function RootLayout({
   children,
-  params: {locale} // `locale` is passed from the URL by Next.js
+  params: { locale }
 }: {
   children: React.ReactNode;
-  params: {locale: string};
+  params: { locale: string };
 }) {
-  // This is the crucial step: Fetch the messages for the current locale.
-  const messages = await getMessages();
+  const pathname = usePathname();
+  const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
+
+  // Logic to determine which layout to apply
+  const pathSegments = pathname.split('/');
+  const mainSegment = pathSegments[2] || '';
+
+  const isDashboardPage = !['', 'login', 'signup', 'accept-invite', 'kds'].includes(mainSegment);
+  const isAuthPage = ['login', 'signup'].includes(mainSegment);
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body
-        className={cn(
-          'min-h-screen bg-background font-sans antialiased',
-          fontSans.variable
-        )}
-      >
-        {/*
-          The NextIntlClientProvider MUST wrap everything, including other providers,
-          so that all components can access the language messages.
-        */}
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Providers>
-              {children}
-            </Providers>
+      <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <Providers>
+            {isDashboardPage ? (
+              // --- RENDER YOUR PROFESSIONAL DASHBOARD UI ---
+              <BrandingProvider>
+                <SyncProvider>
+                  <div className="flex h-screen bg-background">
+                    <div className="hidden md:flex md:flex-shrink-0"><Sidebar /></div>
+                    <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <header className="relative z-10 flex-shrink-0 flex h-16 bg-card border-b border-border">
+                        <button type="button" className="px-4 border-r border-border text-muted-foreground focus:outline-none md:hidden" onClick={() => setIsSidebarOpen(true)}>
+                          <span className="sr-only">Open sidebar</span>
+                          <Menu className="h-6 w-6" aria-hidden="true" />
+                        </button>
+                        <Header />
+                      </header>
+                      <main className="flex-1 relative overflow-y-auto focus:outline-none p-4 sm:p-6 lg:p-8">
+                        {children}
+                      </main>
+                    </div>
+                  </div>
+                </SyncProvider>
+              </BrandingProvider>
+            ) : isAuthPage ? (
+              // --- RENDER YOUR PROFESSIONAL AUTH UI ---
+              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                {children}
+              </div>
+            ) : (
+              // --- RENDER OTHER PAGES (LIKE YOUR LANDING PAGE) DIRECTLY ---
+              <>{children}</>
+            )}
             <Toaster position="bottom-right" />
-          </ThemeProvider>
-        </NextIntlClientProvider>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );
