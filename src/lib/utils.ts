@@ -49,3 +49,22 @@ export function exportToExcel<T>(data: T[], fileName: string): void {
     alert("An error occurred while trying to export the data.");
   }
 }
+
+// --- NEW REVOLUTIONARY CURRENCY FORMATTER ---
+// This function makes your UI globally compatible.
+export function formatCurrency(
+  amount: number | string,
+  currencyCode: string,
+  locale?: string
+) {
+  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  // The Intl.NumberFormat object is a powerful native browser API
+  // for language-sensitive number formatting.
+  return new Intl.NumberFormat(locale || 'en-US', {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numericAmount);
+}

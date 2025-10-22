@@ -125,6 +125,9 @@ const navSections: NavItem[] = [
         type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor'],
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin'] },
+            // --- PAYROLL LINK ADDED HERE ---
+            { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager'] },
+            // --- END OF ADDITION ---
             { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager'] },
             { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'] },
