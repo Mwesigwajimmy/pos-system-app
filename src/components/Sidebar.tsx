@@ -134,6 +134,7 @@ const navSections: NavItem[] = [
             { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'] },
             { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
+            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin'] },
             { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin'] },
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin'] },
             { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
