@@ -9,7 +9,9 @@ import {
     ShieldCheck, Settings, Landmark, Home, FileText, Tags, Undo2, LucideIcon,
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
-    UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, UploadCloud, Plug
+    UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, UploadCloud, Plug,
+    // --- NEW ICONS ADDED FOR MISSING LINKS ---
+    Scale, Wallet, FileWarning
 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBusinessType } from '@/hooks/useBusinessType';
@@ -77,7 +79,12 @@ const navSections: NavItem[] = [
         type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager'],
         industries: ['Retail / Wholesale', 'Restaurant / Cafe', 'Telecom Services'],
         subItems: [
-            { href: '/customers', label: 'Customers', icon: Users }, { href: '/returns', label: 'Returns', icon: Undo2 }, { href: '/reports', label: 'Sales Reports', icon: BarChart3 }, { href: '/reports/sales-history', label: 'Sales History', icon: History },
+            { href: '/customers', label: 'Customers', icon: Users },
+            { href: '/returns', label: 'Returns', icon: Undo2 },
+            { href: '/reports', label: 'Sales Reports', icon: BarChart3 },
+            { href: '/reports/sales-history', label: 'Sales History', icon: History },
+             // --- NEW LINK ADDED HERE for DSR ---
+            { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
         ]
     },
     {
@@ -85,6 +92,14 @@ const navSections: NavItem[] = [
         industries: ['Retail / Wholesale', 'Restaurant / Cafe'],
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, { href: '/inventory/categories', label: 'Categories', icon: Tags }, { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen }, { href: '/purchases', label: 'Purchase Orders', icon: Truck }, { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck }, { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
+        ]
+    },
+    // --- NEW "FINANCE" SECTION ADDED HERE ---
+    {
+        type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'],
+        subItems: [
+            { href: '/finance', label: 'Financial Reports', icon: BarChart3, roles: ['admin', 'manager', 'accountant'] },
+            { href: '/expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'manager', 'accountant', 'cashier'] },
         ]
     },
     {
@@ -110,13 +125,13 @@ const navSections: NavItem[] = [
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/management/timecards', label: 'Timecards', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/audit', label: 'Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor'] },
+            // --- NEW LINK ADDED HERE for Compliance ---
+            { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'] },
             { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
             { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin'] },
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin'] },
-            // --- NEW LINK ADDED HERE ---
             { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
-            // --- END OF ADDITION ---
             { href: '/settings/migration', label: 'Data Migration', icon: UploadCloud, roles: ['admin'] },
             { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin'] },
             { href: '/management/api', label: 'API Keys', icon: KeyRound, roles: ['admin'] },
