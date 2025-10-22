@@ -10,9 +10,9 @@ import {
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
     UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, UploadCloud, Plug,
-    // --- NEW ICONS ADDED FOR MISSING LINKS ---
     Scale, Wallet, FileWarning
 } from 'lucide-react';
+// These hooks now pull data instantly from your new unified context
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBusinessType } from '@/hooks/useBusinessType';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -83,7 +83,6 @@ const navSections: NavItem[] = [
             { href: '/returns', label: 'Returns', icon: Undo2 },
             { href: '/reports', label: 'Sales Reports', icon: BarChart3 },
             { href: '/reports/sales-history', label: 'Sales History', icon: History },
-             // --- NEW LINK ADDED HERE for DSR ---
             { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
         ]
     },
@@ -94,7 +93,6 @@ const navSections: NavItem[] = [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, { href: '/inventory/categories', label: 'Categories', icon: Tags }, { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen }, { href: '/purchases', label: 'Purchase Orders', icon: Truck }, { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck }, { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
         ]
     },
-    // --- NEW "FINANCE" SECTION ADDED HERE ---
     {
         type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'],
         subItems: [
@@ -115,6 +113,14 @@ const navSections: NavItem[] = [
             { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] },
         ]
     },
+    // --- NEW REVOLUTIONARY "BUSINESS HUB" SECTION ADDED HERE ---
+    {
+        type: 'accordion', title: 'Business Hub', icon: Briefcase, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'],
+        subItems: [
+            { href: '/library', label: 'Document Library', icon: FileSpreadsheet, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'] },
+        ]
+    },
+    // --- END OF ADDITION ---
     {
         type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor'],
         subItems: [
@@ -125,7 +131,6 @@ const navSections: NavItem[] = [
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/management/timecards', label: 'Timecards', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/audit', label: 'Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor'] },
-            // --- NEW LINK ADDED HERE for Compliance ---
             { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'] },
             { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },

@@ -1,5 +1,7 @@
-// src/app/[locale]/layout.tsx
 'use client';
+
+// Removed: import { BusinessProvider } from '@/hooks/useBusinessContext';
+// The new useBusinessContext hook is just a data fetching hook, not a provider component.
 
 import { usePathname } from 'next/navigation';
 import { Inter as FontSans } from 'next/font/google';
@@ -77,6 +79,7 @@ export default function RootLayout({
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Providers>
+            {/* The BusinessProvider component is no longer needed here if useBusinessContext is just a hook */}
             {isDashboardPage ? (
               // --- RENDER YOUR PROFESSIONAL DASHBOARD UI ---
               <BrandingProvider>

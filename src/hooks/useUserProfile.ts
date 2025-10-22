@@ -7,6 +7,7 @@ export interface UserProfile {
   business_id: string;
   role: string;
   full_name: string;
+  business_type?: string;
 }
 
 async function fetchUserProfile(): Promise<UserProfile> {
