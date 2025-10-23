@@ -113,6 +113,7 @@ const PasswordInput = memo(({ control }: { control: any }) => {
 });
 PasswordInput.displayName = 'PasswordInput';
 
+// --- THE UPGRADED AND COMPLETE BUSINESS TYPE SELECT ---
 const BusinessTypeSelect = memo(({ control }: { control: any }) => (
     <FormField
         control={control}
@@ -125,12 +126,17 @@ const BusinessTypeSelect = memo(({ control }: { control: any }) => (
                         <SelectTrigger><SelectValue placeholder="Select your industry..." /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        <SelectItem value="Retail">Retail / Wholesale</SelectItem>
-                        <SelectItem value="Hospitality">Restaurant / Cafe</SelectItem>
-                        <SelectItem value="Lending">Lending / Microfinance</SelectItem>
-                        <SelectItem value="Rentals">Rentals / Real Estate</SelectItem>
-                        <SelectItem value="SACCO">SACCO / Co-operative</SelectItem>
+                        <SelectItem value="Retail / Wholesale">Retail / Wholesale</SelectItem>
+                        <SelectItem value="Restaurant / Cafe">Restaurant / Cafe</SelectItem>
+                        <SelectItem value="Contractor">Contractor (General, Remodeling)</SelectItem>
+                        <SelectItem value="Field Service">Field Service (Trades, HVAC, Plumbing)</SelectItem>
+                        <SelectItem value="Distribution">Distribution</SelectItem>
+                        <SelectItem value="Lending / Microfinance">Lending / Microfinance</SelectItem>
+                        <SelectItem value="Rentals / Real Estate">Rentals / Real Estate</SelectItem>
+                        <SelectItem value="SACCO / Co-operative">SACCO / Co-operative</SelectItem>
                         <SelectItem value="Telecom Services">Telecom Services</SelectItem>
+                        <SelectItem value="Professional Services">Professional Services (Accounting, Legal)</SelectItem>
+                        <SelectItem value="Nonprofit">Nonprofit</SelectItem>
                     </SelectContent>
                 </Select>
                 <FormMessage />
