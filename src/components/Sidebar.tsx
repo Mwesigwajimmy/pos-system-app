@@ -45,7 +45,7 @@ interface NavAccordion {
 }
 type NavItem = NavLink | NavAccordion;
 
-// The complete, unified navigation structure with 'module' slugs assigned to each section.
+// The complete, unified, and merged navigation structure.
 const navSections: NavItem[] = [
     // --- Core Links (Always available if role permits) ---
     { type: 'link', href: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
@@ -56,20 +56,25 @@ const navSections: NavItem[] = [
     { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], module: 'sales' },
 
     {
-        type: 'accordion', title: 'Contractor Tools', icon: Construction, roles: ['admin', 'manager'], module: 'contractor',
+        type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager'], module: 'sales',
         subItems: [
-            { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard },
-            { href: '/contractor/jobs', label: 'Job Management', icon: Briefcase },
-            { href: '/contractor/estimates', label: 'Estimates & Bids', icon: FileText },
-            { href: '/contractor/change-orders', label: 'Change Orders', icon: Undo2 },
+            { href: '/customers', label: 'Customers', icon: Users },
+            { href: '/returns', label: 'Returns', icon: Undo2 },
+            { href: '/reports', label: 'Sales Reports', icon: BarChart3 },
+            { href: '/reports/sales-history', label: 'Sales History', icon: History },
+            { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
+            { href: '/sales/pricing-rules', label: 'Advanced Pricing', icon: Percent, roles: ['admin'] },
         ]
     },
     {
-        type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager'], module: 'field-service',
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager'], module: 'inventory',
         subItems: [
-            { href: '/field-service/schedule', label: 'Dispatch & Schedule', icon: CalendarDays },
-            { href: '/field-service/work-orders', label: 'Work Orders', icon: ClipboardList },
-            { href: '/field-service/equipment', label: 'Equipment', icon: Truck },
+            { href: '/inventory', label: 'Products & Stock', icon: Boxes },
+            { href: '/inventory/categories', label: 'Categories', icon: Tags },
+            { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen },
+            { href: '/purchases', label: 'Purchase Orders', icon: Truck },
+            { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck },
+            { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
         ]
     },
     {
@@ -97,6 +102,31 @@ const navSections: NavItem[] = [
             { href: '/ecommerce/products', label: 'Online Products', icon: Boxes },
         ]
     },
+    {
+        type: 'accordion', title: 'Contractor Tools', icon: Construction, roles: ['admin', 'manager'], module: 'contractor',
+        subItems: [
+            { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard },
+            { href: '/contractor/jobs', label: 'Job Management', icon: Briefcase },
+            { href: '/contractor/estimates', label: 'Estimates & Bids', icon: FileText },
+            { href: '/contractor/change-orders', label: 'Change Orders', icon: Undo2 },
+        ]
+    },
+    {
+        type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager'], module: 'field-service',
+        subItems: [
+            { href: '/field-service/schedule', label: 'Dispatch & Schedule', icon: CalendarDays },
+            { href: '/field-service/work-orders', label: 'Work Orders', icon: ClipboardList },
+            { href: '/field-service/equipment', label: 'Equipment', icon: Truck },
+        ]
+    },
+    {
+        type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'], module: 'finance',
+        subItems: [
+            { href: '/finance', label: 'Financial Reports', icon: BarChart3, roles: ['admin', 'manager', 'accountant'] },
+            { href: '/expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'manager', 'accountant', 'cashier'] },
+        ]
+    },
+    { type: 'link', href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant'], module: 'finance' },
     {
         type: 'accordion', title: 'Distribution', icon: Truck, roles: ['admin', 'manager'], module: 'distribution',
         subItems: [
@@ -145,30 +175,6 @@ const navSections: NavItem[] = [
         ]
     },
     {
-        type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager'], module: 'sales',
-        subItems: [
-            { href: '/customers', label: 'Customers', icon: Users },
-            { href: '/returns', label: 'Returns', icon: Undo2 },
-            { href: '/reports', label: 'Sales Reports', icon: BarChart3 },
-            { href: '/reports/sales-history', label: 'Sales History', icon: History },
-            { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
-        ]
-    },
-    {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager'], module: 'inventory',
-        subItems: [
-            { href: '/inventory', label: 'Products & Stock', icon: Boxes }, { href: '/inventory/categories', label: 'Categories', icon: Tags }, { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen }, { href: '/purchases', label: 'Purchase Orders', icon: Truck }, { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck }, { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
-        ]
-    },
-    {
-        type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'], module: 'finance',
-        subItems: [
-            { href: '/finance', label: 'Financial Reports', icon: BarChart3, roles: ['admin', 'manager', 'accountant'] },
-            { href: '/expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'manager', 'accountant', 'cashier'] },
-        ]
-    },
-    { type: 'link', href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant'], module: 'finance' },
-    {
         type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor'], module: 'collaboration',
         subItems: [
             { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] },
@@ -200,6 +206,7 @@ const navSections: NavItem[] = [
             { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
             { href: '/settings/migration', label: 'Data Migration', icon: UploadCloud, roles: ['admin'] },
             { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin'] },
+            { href: '/settings/integrations', label: 'API Integrations', icon: Plug, roles: ['admin'] },
             { href: '/management/api', label: 'API Keys', icon: KeyRound, roles: ['admin'] },
         ]
     },
@@ -266,7 +273,6 @@ export default function Sidebar() {
                                             {item.subItems
                                                 .filter(sub => !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole))
                                                 .map(subItem => {
-                                                    // --- THIS IS THE FIXED LINE ---
                                                     const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
                                                     return (
                                                         <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>

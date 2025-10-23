@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -21,10 +21,11 @@ import { createPortal } from 'react-dom';
 import { GripVertical, User, Landmark } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { updateDealStage } from '@/lib/crm/actions/leads';
+import { updateDealStage, convertDealToWorkOrder } from '@/lib/crm/actions/leads';
 
-// --- TYPES (DEFINED AND EXPORTED HERE) ---
+// --- TYPES ---
 export interface Stage {
     id: string;
     name: string;
@@ -44,7 +45,7 @@ interface DealCardProps { deal: Deal; }
 interface ColumnProps { stage: Stage; deals: Deal[]; }
 
 
-// --- SUB-COMPONENTS ---
+// --- UPGRADED DealCard SUB-COMPONENT ---
 
 function DealCard({ deal }: DealCardProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -57,6 +58,24 @@ function DealCard({ deal }: DealCardProps) {
         opacity: isDragging ? 0.5 : 1,
     };
     const formattedValue = deal.value ? new Intl.NumberFormat('en-US', { style: 'currency', currency: deal.currency_code || 'USD' }).format(deal.value) : 'No value';
+
+    const [isConverting, startTransition] = useTransition();
+    const { toast } = useToast();
+
+    const handleConvert = () => {
+        if (!deal.customers) {
+            toast({ title: "Action Required", description: "Please assign a customer to this deal before converting.", variant: "destructive" });
+            return;
+        }
+        startTransition(async () => {
+            const result = await convertDealToWorkOrder(deal.id);
+            if (result.success) {
+                toast({ title: "Success!", description: result.message });
+            } else {
+                toast({ title: "Error", description: result.message, variant: "destructive" });
+            }
+        });
+    };
 
     return (
         <Card ref={setNodeRef} style={style} {...attributes} className="mb-3 bg-card touch-none">
@@ -82,10 +101,18 @@ function DealCard({ deal }: DealCardProps) {
                         <GripVertical className="h-5 w-5 text-muted-foreground" />
                     </div>
                 </div>
+                <div className="mt-3 pt-2 border-t">
+                    {/* --- THIS IS THE FIXED LINE --- */}
+                    <Button size="sm" variant="outline" className="w-full" onClick={handleConvert} disabled={isConverting}>
+                        {isConverting ? "Converting..." : "Convert to Work Order"}
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     );
 }
+
+// --- UNCHANGED PipelineColumn SUB-COMPONENT ---
 
 function PipelineColumn({ stage, deals }: ColumnProps) {
     const { setNodeRef } = useSortable({
@@ -117,7 +144,7 @@ function PipelineColumn({ stage, deals }: ColumnProps) {
 }
 
 
-// --- MAIN SALES PIPELINE BOARD COMPONENT ---
+// --- UNCHANGED MAIN COMPONENT ---
 
 export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: Stage[] }) {
     const { toast } = useToast();

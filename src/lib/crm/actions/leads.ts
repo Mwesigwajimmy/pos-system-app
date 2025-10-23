@@ -13,7 +13,6 @@ const CreateDealSchema = z.object({
   stage_id: z.string().uuid({ message: "A valid stage must be selected." }),
   owner_id: z.string().uuid({ message: "Invalid owner ID." }),
   contact_name: z.string().optional().nullable(),
-  // customer_id: z.string().uuid().optional(), // For linking to existing customers
 });
 
 export interface FormState {
@@ -45,8 +44,7 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
         stage_id: validatedFields.data.stage_id,
         owner_id: validatedFields.data.owner_id,
         contact_name: validatedFields.data.contact_name,
-        // For now, hardcode currency. In future, this could come from tenant settings.
-        currency_code: 'USD',
+        currency_code: 'USD', // Hardcoded for now, can be a tenant setting later
     });
 
     if (error) {
@@ -78,8 +76,6 @@ const UpdateDealStageSchema = z.object({
 /**
  * Updates the stage of a single deal.
  * Called from the Sales Pipeline Kanban board after a drag-and-drop action.
- * @param dealId - The UUID of the deal to update.
- * @param newStageId - The UUID of the new stage for the deal.
  */
 export async function updateDealStage(dealId: string, newStageId: string): Promise<{ success: boolean; message: string }> {
     const validation = UpdateDealStageSchema.safeParse({ dealId, newStageId });
@@ -103,4 +99,67 @@ export async function updateDealStage(dealId: string, newStageId: string): Promi
     revalidatePath('/crm/leads');
 
     return { success: true, message: "Deal stage updated." };
+}
+
+// --- NEW SMART ACTION: CONVERT DEAL TO WORK ORDER ---
+
+/**
+ * Converts a CRM deal into a Field Service Work Order, linking the two modules.
+ * @param dealId The UUID of the deal to convert.
+ */
+export async function convertDealToWorkOrder(dealId: string): Promise<{ success: boolean; message: string }> {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+
+    // 1. Fetch the deal to get its details
+    const { data: deal, error: fetchError } = await supabase
+        .from('deals')
+        .select('id, title, customer_id')
+        .eq('id', dealId)
+        .single();
+
+    if (fetchError || !deal) {
+        console.error("Deal conversion failed: Could not find original deal.", fetchError);
+        return { success: false, message: "Could not find the original deal." };
+    }
+    if (!deal.customer_id) {
+        return { success: false, message: "Deal must be associated with a customer before converting." };
+    }
+    
+    // 2. Generate a new, unique Work Order UID
+    // In a high-concurrency environment, a database sequence or a more robust UID generator would be better.
+    const { data: lastWO, error: uidError } = await supabase
+        .from('work_orders')
+        .select('work_order_uid')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (uidError) {
+        console.error("Deal conversion failed: Could not generate new WO UID.", uidError);
+        return { success: false, message: "Database Error: " + uidError.message };
+    }
+    const newUID = lastWO && lastWO.length > 0 ? `WO-${parseInt(lastWO[0].work_order_uid.split('-')[1]) + 1}` : 'WO-1001';
+
+    // 3. Insert the new Work Order, linking it to the source deal
+    const { error: insertError } = await supabase.from('work_orders').insert({
+        work_order_uid: newUID,
+        summary: deal.title,
+        customer_id: deal.customer_id,
+        source_deal_id: deal.id,
+        status: 'SCHEDULED', // Default to 'SCHEDULED' so it appears on the dispatch board
+        priority: 'MEDIUM',
+        scheduled_date: new Date().toISOString(), // Default to today, dispatcher can move it
+    });
+
+    if (insertError) {
+        console.error("Deal conversion failed: Could not insert new work order.", insertError);
+        return { success: false, message: "Database Error: " + insertError.message };
+    }
+
+    // 4. Revalidate all relevant paths to update the UI across different modules
+    revalidatePath('/crm/leads');
+    revalidatePath('/field-service/schedule');
+    revalidatePath('/field-service/work-orders');
+
+    return { success: true, message: `Successfully converted to Work Order ${newUID}.` };
 }

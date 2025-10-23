@@ -4,13 +4,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ConnectIntegrationModal } from '@/components/settings/ConnectIntegrationModal';
 import { CheckCircle } from 'lucide-react';
 
-// Export type for use in the modal
+// The final, returned type
 export interface Integration {
     id: string;
     name: string;
     category: string;
     logo_url: string | null;
     is_connected: boolean;
+}
+
+// Type for the tenant integration link table
+interface TenantIntegration {
+    integration_id: string;
+    is_enabled: boolean;
+}
+
+// NEW: Type for the raw data from the 'integrations' table
+interface RawIntegration {
+    id: string;
+    [key: string]: any; // Allows all other properties from the '*' select
 }
 
 async function getIntegrations(supabase: any): Promise<Integration[]> {
@@ -22,10 +34,13 @@ async function getIntegrations(supabase: any): Promise<Integration[]> {
     const { data: tenantIntegrations, error: tenantError } = await supabase.from('tenant_integrations').select('integration_id, is_enabled');
     if (tenantError) { console.error("Error fetching tenant integrations", tenantError); }
 
-    const connectedIds = new Set(tenantIntegrations?.filter(ti => ti.is_enabled).map(ti => ti.integration_id));
+    const connectedIds = new Set(
+        tenantIntegrations?.filter((ti: TenantIntegration) => ti.is_enabled).map((ti: TenantIntegration) => ti.integration_id)
+    );
 
     // 3. Join them together to create a final list
-    return allIntegrations.map(integration => ({
+    // --- THIS IS THE SECOND FIX ---
+    return allIntegrations.map((integration: RawIntegration) => ({
         ...integration,
         is_connected: connectedIds.has(integration.id),
     }));
