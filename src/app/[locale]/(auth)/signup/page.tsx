@@ -38,7 +38,7 @@ const useSignup = () => {
         setIsLoading(true);
         const toastId = toast.loading('Creating your account...');
         
-        // Corrected Method: Call the transactional database function with prefixed parameters.
+        // Corrected Method: Call the transactional database function.
         const { data, error } = await supabase.rpc('handle_new_signup', {
             p_email: values.email,
             p_password: values.password,
@@ -64,7 +64,7 @@ const useSignup = () => {
             setIsLoading(false);
         } else {
             toast.success('Welcome! Your business is ready.', { id: toastId });
-            router.refresh();
+            router.refresh(); // Refresh the page to redirect to the dashboard
         }
     };
     return { form, isLoading, onSubmit: form.handleSubmit(handleSignup) };
