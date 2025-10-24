@@ -1,3 +1,5 @@
+// src/components/Sidebar.tsx
+
 'use client';
 
 import Link from 'next/link';
@@ -13,48 +15,49 @@ import {
     Scale, Wallet, FileWarning, Construction, Wrench
 } from 'lucide-react';
 
-// Core hooks for fetching user and module data
+// Core hooks
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenantModules } from '@/hooks/useTenantModules';
+import { useTenant } from '@/hooks/useTenant'; // This import should now work
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from '@/lib/utils';
 
-// Unified type definitions for all navigation items
+// --- Type Definitions ---
 interface NavLink {
     type: 'link';
     href: string;
     label: string;
     icon: LucideIcon;
     roles: string[];
-    module?: string; // Optional: Link to a specific module slug
+    module?: string;
 }
 interface SubItem {
-    href: string;
+    href:string;
     label: string;
     icon: LucideIcon;
     roles?: string[];
+    businessTypes?: string[]; // For granular filtering
 }
 interface NavAccordion {
     type: 'accordion';
     title: string;
     icon: LucideIcon;
     roles: string[];
-    module: string; // Required: Every accordion must belong to a module slug
+    module: string;
     subItems: SubItem[];
 }
 type NavItem = NavLink | NavAccordion;
 
-// The complete, unified, and merged navigation structure.
+// --- Final Navigation Structure with Business Logic Applied ---
 const navSections: NavItem[] = [
-    // --- Core Links (Always available if role permits) ---
+    // Core Links (always available based on role)
     { type: 'link', href: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
     { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager'] },
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier'] },
 
-    // --- Module-Based Links & Accordions ---
+    // Module-Based Items
     { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], module: 'sales' },
-
     {
         type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager'], module: 'sales',
         subItems: [
@@ -63,7 +66,7 @@ const navSections: NavItem[] = [
             { href: '/reports', label: 'Sales Reports', icon: BarChart3 },
             { href: '/reports/sales-history', label: 'Sales History', icon: History },
             { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
-            { href: '/sales/pricing-rules', label: 'Advanced Pricing', icon: Percent, roles: ['admin'] },
+            { href: '/sales/pricing-rules', label: 'Advanced Pricing', icon: Percent, roles: ['admin'], businessTypes: ['retail', 'ecommerce', 'distribution'] },
         ]
     },
     {
@@ -71,7 +74,7 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
             { href: '/inventory/categories', label: 'Categories', icon: Tags },
-            { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen },
+            { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen, businessTypes: ['retail', 'ecommerce', 'distribution'] },
             { href: '/purchases', label: 'Purchase Orders', icon: Truck },
             { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck },
             { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
@@ -79,112 +82,60 @@ const navSections: NavItem[] = [
     },
     {
         type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager'], module: 'hcm',
-        subItems: [
-            { href: '/hr/leave', label: 'Leave Management', icon: CalendarDays },
-            { href: '/hr/recruitment', label: 'Recruitment', icon: UserCheck },
-            { href: '/hr/performance', label: 'Performance', icon: Activity },
-            { href: '/hr/onboarding', label: 'Onboarding', icon: ClipboardCheck },
-        ]
+        subItems: [ { href: '/hr/leave', label: 'Leave Management', icon: CalendarDays }, { href: '/hr/recruitment', label: 'Recruitment', icon: UserCheck }, { href: '/hr/performance', label: 'Performance', icon: Activity }, { href: '/hr/onboarding', label: 'Onboarding', icon: ClipboardCheck }, ]
     },
     {
         type: 'accordion', title: 'CRM', icon: Handshake, roles: ['admin', 'manager'], module: 'crm',
-        subItems: [
-            { href: '/crm/leads', label: 'Sales Pipeline', icon: BarChart3 },
-            { href: '/crm/support', label: 'Support Tickets', icon: Users },
-            { href: '/crm/marketing', label: 'Marketing', icon: Sparkles },
-        ]
+        subItems: [ { href: '/crm/leads', label: 'Sales Pipeline', icon: BarChart3 }, { href: '/crm/support', label: 'Support Tickets', icon: Users }, { href: '/crm/marketing', label: 'Marketing', icon: Sparkles }, ]
     },
     {
         type: 'accordion', title: 'eCommerce', icon: ShoppingCart, roles: ['admin', 'manager'], module: 'ecommerce',
-        subItems: [
-            { href: '/ecommerce', label: 'Dashboard', icon: LayoutDashboard },
-            { href: '/ecommerce/orders', label: 'Online Orders', icon: ClipboardCheck },
-            { href: '/ecommerce/products', label: 'Online Products', icon: Boxes },
-        ]
+        subItems: [ { href: '/ecommerce', label: 'Dashboard', icon: LayoutDashboard }, { href: '/ecommerce/orders', label: 'Online Orders', icon: ClipboardCheck }, { href: '/ecommerce/products', label: 'Online Products', icon: Boxes }, ]
     },
     {
         type: 'accordion', title: 'Contractor Tools', icon: Construction, roles: ['admin', 'manager'], module: 'contractor',
-        subItems: [
-            { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard },
-            { href: '/contractor/jobs', label: 'Job Management', icon: Briefcase },
-            { href: '/contractor/estimates', label: 'Estimates & Bids', icon: FileText },
-            { href: '/contractor/change-orders', label: 'Change Orders', icon: Undo2 },
-        ]
+        subItems: [ { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard }, { href: '/contractor/jobs', label: 'Job Management', icon: Briefcase }, { href: '/contractor/estimates', label: 'Estimates & Bids', icon: FileText }, { href: '/contractor/change-orders', label: 'Change Orders', icon: Undo2 }, ]
     },
     {
         type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager'], module: 'field-service',
-        subItems: [
-            { href: '/field-service/schedule', label: 'Dispatch & Schedule', icon: CalendarDays },
-            { href: '/field-service/work-orders', label: 'Work Orders', icon: ClipboardList },
-            { href: '/field-service/equipment', label: 'Equipment', icon: Truck },
-        ]
+        subItems: [ { href: '/field-service/schedule', label: 'Dispatch & Schedule', icon: CalendarDays }, { href: '/field-service/work-orders', label: 'Work Orders', icon: ClipboardList }, { href: '/field-service/equipment', label: 'Equipment', icon: Truck }, ]
     },
     {
         type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'], module: 'finance',
-        subItems: [
-            { href: '/finance', label: 'Financial Reports', icon: BarChart3, roles: ['admin', 'manager', 'accountant'] },
-            { href: '/expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'manager', 'accountant', 'cashier'] },
-        ]
+        subItems: [ { href: '/finance', label: 'Financial Reports', icon: BarChart3, roles: ['admin', 'manager', 'accountant'] }, { href: '/expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'manager', 'accountant', 'cashier'] }, ]
     },
     { type: 'link', href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant'], module: 'finance' },
     {
         type: 'accordion', title: 'Distribution', icon: Truck, roles: ['admin', 'manager'], module: 'distribution',
-        subItems: [
-            { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard }, { href: '/distribution/routes', label: 'Routes & Vehicles', icon: Route }, { href: '/distribution/settlement', label: 'Route Settlements', icon: ClipboardCheck },
-        ]
+        subItems: [ { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard }, { href: '/distribution/routes', label: 'Routes & Vehicles', icon: Route }, { href: '/distribution/settlement', label: 'Route Settlements', icon: ClipboardCheck }, ]
     },
     {
         type: 'accordion', title: 'SACCO & Co-ops', icon: Handshake, roles: ['admin', 'manager'], module: 'sacco',
-        subItems: [
-            { href: '/sacco', label: 'Dashboard', icon: LayoutDashboard }, { href: '/sacco/reports', label: 'Reports', icon: BarChart3 }, { href: '/sacco/members', label: 'Member Accounts', icon: Users }, { href: '/sacco/groups', label: 'Group Management', icon: UserCog }, { href: '/sacco/collections', label: 'Group Collections', icon: ClipboardList }, { href: '/sacco/loans', label: 'Loan Applications', icon: FileText }, { href: '/sacco/savings-products', label: 'Savings Products', icon: PiggyBank }, { href: '/sacco/products', label: 'Loan Products', icon: Boxes }, { href: '/sacco/finance', label: 'Financial Ledger', icon: BookOpen }, { href: '/sacco/admin', label: 'Administration', icon: ShieldCheck, roles: ['admin'] },
-        ]
+        subItems: [ { href: '/sacco', label: 'Dashboard', icon: LayoutDashboard }, { href: '/sacco/reports', label: 'Reports', icon: BarChart3 }, { href: '/sacco/members', label: 'Member Accounts', icon: Users }, { href: '/sacco/groups', label: 'Group Management', icon: UserCog }, { href: '/sacco/collections', label: 'Group Collections', icon: ClipboardList }, { href: '/sacco/loans', label: 'Loan Applications', icon: FileText }, { href: '/sacco/savings-products', label: 'Savings Products', icon: PiggyBank }, { href: '/sacco/products', label: 'Loan Products', icon: Boxes }, { href: '/sacco/finance', label: 'Financial Ledger', icon: BookOpen }, { href: '/sacco/admin', label: 'Administration', icon: ShieldCheck, roles: ['admin'] }, ]
     },
     {
         type: 'accordion', title: 'Rentals', icon: Home, roles: ['admin', 'manager'], module: 'rentals',
-        subItems: [
-            { href: '/rentals/properties', label: 'Properties & Units', icon: Building2 },
-            { href: '/rentals/leases', label: 'Leases', icon: FileText },
-            { href: '/rentals/invoices', label: 'Rental Invoices', icon: Receipt },
-        ]
+        subItems: [ { href: '/rentals/properties', label: 'Properties & Units', icon: Building2 }, { href: '/rentals/leases', label: 'Leases', icon: FileText }, { href: '/rentals/invoices', label: 'Rental Invoices', icon: Receipt }, ]
     },
     {
         type: 'accordion', title: 'Lending & Microfinance', icon: Landmark, roles: ['admin', 'manager'], module: 'lending',
-        subItems: [
-            { href: '/lending/applications', label: 'Loan Applications', icon: FileText }, { href: '/lending/borrowers', label: 'Borrower Accounts', icon: Users }, { href: '/lending/officers', label: 'Loan Officers', icon: UserCheck }, { href: '/lending/products', label: 'Loan Products', icon: Boxes },
-        ]
+        subItems: [ { href: '/lending/applications', label: 'Loan Applications', icon: FileText }, { href: '/lending/borrowers', label: 'Borrower Accounts', icon: Users }, { href: '/lending/officers', label: 'Loan Officers', icon: UserCheck }, { href: '/lending/products', label: 'Loan Products', icon: Boxes }, ]
     },
     {
         type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant'], module: 'telecom',
-        subItems: [
-            { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager'] },
-            { href: '/telecom/operator', label: 'Operator Center', icon: Zap, roles: ['admin', 'manager'] },
-            { href: '/telecom/agents', label: 'Agent Management', icon: UserCog, roles: ['admin', 'manager'] },
-            { href: '/telecom/products', label: 'Product Management', icon: Boxes, roles: ['admin', 'manager'] },
-            { href: '/telecom/reconciliation', label: 'Reconciliation Center', icon: ClipboardCheck, roles: ['admin', 'manager', 'accountant'] },
-            { href: '/telecom/financials', label: 'Financial Controls', icon: Banknote, roles: ['admin', 'manager'] },
-            { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager'] },
-            { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant'] },
-            { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier'] },
-            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] },
-        ]
+        subItems: [ { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager'] }, { href: '/telecom/operator', label: 'Operator Center', icon: Zap, roles: ['admin', 'manager'] }, { href: '/telecom/agents', label: 'Agent Management', icon: UserCog, roles: ['admin', 'manager'] }, { href: '/telecom/products', label: 'Product Management', icon: Boxes, roles: ['admin', 'manager'] }, { href: '/telecom/reconciliation', label: 'Reconciliation Center', icon: ClipboardCheck, roles: ['admin', 'manager', 'accountant'] }, { href: '/telecom/financials', label: 'Financial Controls', icon: Banknote, roles: ['admin', 'manager'] }, { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager'] }, { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant'] }, { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier'] }, { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] }, ]
     },
     {
         type: 'accordion', title: 'Booking', icon: CalendarDays, roles: ['admin', 'manager'], module: 'booking',
-        subItems: [
-            { href: '/booking', label: 'Calendar', icon: CalendarDays }, { href: '/booking/services', label: 'Manage Services', icon: ClipboardPlus },
-        ]
+        subItems: [ { href: '/booking', label: 'Calendar', icon: CalendarDays }, { href: '/booking/services', label: 'Manage Services', icon: ClipboardPlus }, ]
     },
     {
         type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor'], module: 'collaboration',
-        subItems: [
-            { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] },
-        ]
+        subItems: [ { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] }, ]
     },
     {
         type: 'accordion', title: 'Business Hub', icon: Briefcase, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'], module: 'business-hub',
-        subItems: [
-            { href: '/library', label: 'Document Library', icon: FileSpreadsheet, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'] },
-        ]
+        subItems: [ { href: '/library', label: 'Document Library', icon: FileSpreadsheet, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'] }, ]
     },
     {
         type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor'], module: 'management',
@@ -193,14 +144,14 @@ const navSections: NavItem[] = [
             { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager'] },
             { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager'] },
-            { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'] },
+            { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'], businessTypes: ['retail', 'ecommerce', 'distribution'] },
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/management/timecards', label: 'Timecards', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/audit', label: 'Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor'] },
-            { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'] },
+            { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'], businessTypes: ['sacco', 'lending', 'telecom', 'finance'] },
             { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
-            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin'] },
+            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin'], businessTypes: ['retail', 'ecommerce'] },
             { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin'] },
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin'] },
             { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
@@ -216,20 +167,20 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { role, isLoading: isLoadingRole } = useUserRole();
     const { data: enabledModules, isLoading: isLoadingModules } = useTenantModules();
-    const isLoading = isLoadingRole || isLoadingModules;
+    const { data: tenant, isLoading: isLoadingTenant } = useTenant();
+
+    const isLoading = isLoadingRole || isLoadingModules || isLoadingTenant;
 
     const navItems = useMemo(() => {
-        if (isLoading) return [];
+        if (isLoading || !enabledModules) return [];
         const userRole = role?.toLowerCase() || '';
 
         return navSections.filter(item => {
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
-
             if (item.module) {
-                return enabledModules?.includes(item.module);
+                return enabledModules.includes(item.module);
             }
-            
             return true;
         });
     }, [isLoading, role, enabledModules]);
@@ -264,6 +215,8 @@ export default function Sidebar() {
                             }
                             if (item.type === 'accordion') {
                                 const userRole = role?.toLowerCase() || '';
+                                const businessType = tenant?.business_type || '';
+
                                 return (
                                     <AccordionItem key={item.module} value={item.module} className="border-none">
                                         <AccordionTrigger className={cn("px-3 py-2 text-sm font-medium rounded-md hover:bg-accent hover:no-underline", activeAccordionValue === item.module && "text-primary font-bold")}>
@@ -271,7 +224,11 @@ export default function Sidebar() {
                                         </AccordionTrigger>
                                         <AccordionContent className="pl-6 pt-1 space-y-1">
                                             {item.subItems
-                                                .filter(sub => !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole))
+                                                .filter(sub => {
+                                                    const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
+                                                    const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
+                                                    return hasRolePermission && hasBusinessTypePermission;
+                                                })
                                                 .map(subItem => {
                                                     const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
                                                     return (
