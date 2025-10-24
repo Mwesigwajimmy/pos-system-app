@@ -38,13 +38,19 @@ const useSignup = () => {
         setIsLoading(true);
         const toastId = toast.loading('Creating your account...');
         
-        // This now calls your new, integrated backend function
-        const { data, error } = await supabase.rpc('handle_new_signup', {
-            p_email: values.email,
-            p_password: values.password,
-            p_full_name: values.fullName,
-            p_business_name: values.businessName,
-            p_business_type: values.businessType
+        // This is the standard, secure, and correct way to sign up a user.
+        // We pass the extra form data in the `options.data` object.
+        // The backend trigger will automatically pick this data up.
+        const { data, error } = await supabase.auth.signUp({
+            email: values.email,
+            password: values.password,
+            options: {
+                data: {
+                    fullName: values.fullName,
+                    businessName: values.businessName,
+                    businessType: values.businessType,
+                }
+            }
         });
 
         if (error) {
@@ -53,20 +59,11 @@ const useSignup = () => {
             return;
         }
 
-        // Manually sign in the user, which is the correct "Login Logic"
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: values.email,
-            password: values.password,
-        });
-
-        if (signInError) {
-            toast.error(signInError.message, { id: toastId });
-            setIsLoading(false);
-        } else {
-            toast.success('Welcome! Your business is ready.', { id: toastId });
-            router.refresh(); // Refresh to redirect to dashboard
-        }
+        // The trigger handles everything else. Now we just refresh.
+        toast.success('Welcome! Your business is ready.', { id: toastId });
+        router.refresh();
     };
+    
     return { form, isLoading, onSubmit: form.handleSubmit(handleSignup) };
 };
 
