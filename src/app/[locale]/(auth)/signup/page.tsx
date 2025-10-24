@@ -32,6 +32,12 @@ type SignupFormInput = z.infer<typeof signupSchema>;
 /**
  * Custom Hook: useSignup
  * Encapsulates all logic for the signup process.
+ * 
+ * -- VERSION 2.0 --
+ * This version now calls the 'handle_new_signup' database function,
+ * which transactionally creates the user, tenant, employee, and module links
+ * in a single, atomic operation. This prevents the race condition and
+ * guarantees a fully configured account on creation.
  */
 const useSignup = () => {
     const router = useRouter();
@@ -50,21 +56,18 @@ const useSignup = () => {
         },
     });
 
-    // The submission handler, now accepts validated form data directly.
+    // The submission handler, now calls the transactional database function.
     const handleSignup = async (values: SignupFormInput) => {
         setIsLoading(true);
         const toastId = toast.loading('Creating your account...');
 
-        const { data, error } = await supabase.auth.signUp({
+        // NEW, ROBUST METHOD: Call the 'handle_new_signup' database function.
+        const { data, error } = await supabase.rpc('handle_new_signup', {
             email: values.email,
             password: values.password,
-            options: {
-                data: {
-                    full_name: values.fullName,
-                    business_name: values.businessName,
-                    business_type: values.businessType,
-                },
-            },
+            full_name: values.fullName,
+            business_name: values.businessName,
+            business_type: values.businessType
         });
 
         if (error) {
@@ -73,12 +76,19 @@ const useSignup = () => {
             return;
         }
 
-        if (data.session) {
-            toast.success('Welcome! Your business is ready.', { id: toastId });
-            router.refresh(); // Refresh to trigger redirect/state change
-        } else {
-            toast.success('Success! Please check your email to verify your account.', { id: toastId, duration: 6000 });
+        // The RPC function was successful. Now, manually sign in the user
+        // as the RPC call does not create a session automatically.
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: values.email,
+            password: values.password,
+        });
+
+        if (signInError) {
+            toast.error(signInError.message, { id: toastId });
             setIsLoading(false);
+        } else {
+            toast.success('Welcome! Your business is ready.', { id: toastId });
+            router.refresh(); // This will now correctly redirect to the dashboard with a full sidebar
         }
     };
 
