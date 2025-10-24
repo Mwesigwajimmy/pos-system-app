@@ -38,7 +38,7 @@ const useSignup = () => {
         setIsLoading(true);
         const toastId = toast.loading('Creating your account...');
         
-        // Corrected Method: Call the transactional database function.
+        // This now calls your new, integrated backend function
         const { data, error } = await supabase.rpc('handle_new_signup', {
             p_email: values.email,
             p_password: values.password,
@@ -53,7 +53,7 @@ const useSignup = () => {
             return;
         }
 
-        // Manually sign in the user as the RPC call doesn't create a session.
+        // Manually sign in the user, which is the correct "Login Logic"
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: values.email,
             password: values.password,
@@ -64,7 +64,7 @@ const useSignup = () => {
             setIsLoading(false);
         } else {
             toast.success('Welcome! Your business is ready.', { id: toastId });
-            router.refresh(); // Refresh the page to redirect to the dashboard
+            router.refresh(); // Refresh to redirect to dashboard
         }
     };
     return { form, isLoading, onSubmit: form.handleSubmit(handleSignup) };
