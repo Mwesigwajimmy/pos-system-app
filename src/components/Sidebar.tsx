@@ -1,5 +1,3 @@
-// src/components/Sidebar.tsx
-
 'use client';
 
 import Link from 'next/link';
@@ -18,7 +16,7 @@ import {
 // Core hooks
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenantModules } from '@/hooks/useTenantModules';
-import { useTenant } from '@/hooks/useTenant'; // This import should now work
+import { useTenant } from '@/hooks/useTenant';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from '@/lib/utils';
@@ -37,7 +35,7 @@ interface SubItem {
     label: string;
     icon: LucideIcon;
     roles?: string[];
-    businessTypes?: string[]; // For granular filtering
+    businessTypes?: string[];
 }
 interface NavAccordion {
     type: 'accordion';
@@ -49,7 +47,8 @@ interface NavAccordion {
 }
 type NavItem = NavLink | NavAccordion;
 
-// --- Final Navigation Structure with Business Logic Applied ---
+// --- FINAL Navigation Structure with Corrected Business Types ---
+// The `businessTypes` arrays now EXACTLY MATCH your database and sign-up form values.
 const navSections: NavItem[] = [
     // Core Links (always available based on role)
     { type: 'link', href: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
@@ -66,7 +65,7 @@ const navSections: NavItem[] = [
             { href: '/reports', label: 'Sales Reports', icon: BarChart3 },
             { href: '/reports/sales-history', label: 'Sales History', icon: History },
             { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
-            { href: '/sales/pricing-rules', label: 'Advanced Pricing', icon: Percent, roles: ['admin'], businessTypes: ['retail', 'ecommerce', 'distribution'] },
+            { href: '/sales/pricing-rules', label: 'Advanced Pricing', icon: Percent, roles: ['admin'], businessTypes: ['Retail / Wholesale', 'Distribution'] },
         ]
     },
     {
@@ -74,7 +73,7 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
             { href: '/inventory/categories', label: 'Categories', icon: Tags },
-            { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen, businessTypes: ['retail', 'ecommerce', 'distribution'] },
+            { href: '/inventory/composites', label: 'Manufacturing', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution'] },
             { href: '/purchases', label: 'Purchase Orders', icon: Truck },
             { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck },
             { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
@@ -144,14 +143,14 @@ const navSections: NavItem[] = [
             { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager'] },
             { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager'] },
-            { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'], businessTypes: ['retail', 'ecommerce', 'distribution'] },
+            { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'], businessTypes: ['Retail / Wholesale', 'Distribution'] },
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/management/timecards', label: 'Timecards', icon: ClipboardCheck, roles: ['admin', 'manager'] },
             { href: '/audit', label: 'Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor'] },
-            { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'], businessTypes: ['sacco', 'lending', 'telecom', 'finance'] },
+            { href: '/compliance', label: 'Compliance', icon: FileWarning, roles: ['admin', 'manager', 'auditor'], businessTypes: ['SACCO / Co-operative', 'Lending / Microfinance', 'Telecom Services'] },
             { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
-            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin'], businessTypes: ['retail', 'ecommerce'] },
+            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin'], businessTypes: ['Retail / Wholesale'] },
             { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin'] },
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin'] },
             { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
@@ -172,27 +171,30 @@ export default function Sidebar() {
     const isLoading = isLoadingRole || isLoadingModules || isLoadingTenant;
 
     const navItems = useMemo(() => {
-        if (isLoading || !enabledModules) return [];
-        const userRole = role?.toLowerCase() || '';
+        if (isLoading || !role || !enabledModules) return [];
+        const userRole = role.toLowerCase();
 
         return navSections.filter(item => {
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
+
             if (item.module) {
                 return enabledModules.includes(item.module);
             }
+
             return true;
         });
     }, [isLoading, role, enabledModules]);
 
     const activeAccordionValue = useMemo(() => {
-        for (const section of navItems) {
+        for (const section of navSections) {
             if (section.type === 'accordion' && section.subItems?.some(sub => pathname.startsWith(sub.href) && sub.href !== '/')) {
                 return section.module;
             }
         }
         return undefined;
-    }, [navItems, pathname]);
+    }, [pathname]);
+
 
     return (
         <div className="w-full h-full flex flex-col bg-card border-r">
@@ -217,26 +219,33 @@ export default function Sidebar() {
                                 const userRole = role?.toLowerCase() || '';
                                 const businessType = tenant?.business_type || '';
 
+                                // First, filter the sub-items based on role and business type
+                                const filteredSubItems = item.subItems.filter(sub => {
+                                    const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
+                                    const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
+                                    return hasRolePermission && hasBusinessTypePermission;
+                                });
+
+                                // **THE FIX**: Only render the accordion if there are any visible sub-items after filtering
+                                if (filteredSubItems.length === 0) {
+                                    return null; // Don't render anything for this accordion
+                                }
+
                                 return (
                                     <AccordionItem key={item.module} value={item.module} className="border-none">
                                         <AccordionTrigger className={cn("px-3 py-2 text-sm font-medium rounded-md hover:bg-accent hover:no-underline", activeAccordionValue === item.module && "text-primary font-bold")}>
                                             <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
                                         </AccordionTrigger>
                                         <AccordionContent className="pl-6 pt-1 space-y-1">
-                                            {item.subItems
-                                                .filter(sub => {
-                                                    const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-                                                    const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
-                                                    return hasRolePermission && hasBusinessTypePermission;
-                                                })
-                                                .map(subItem => {
-                                                    const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
-                                                    return (
-                                                        <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
-                                                            <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
-                                                        </Link>
-                                                    );
-                                                })}
+                                            {/* Map over the already filtered list */}
+                                            {filteredSubItems.map(subItem => {
+                                                const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
+                                                return (
+                                                    <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
+                                                        <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
+                                                    </Link>
+                                                );
+                                            })}
                                         </AccordionContent>
                                     </AccordionItem>
                                 );
