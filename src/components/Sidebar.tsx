@@ -10,7 +10,7 @@ import {
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
     UserCheck, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, UploadCloud, Plug,
-    Scale, Wallet, FileWarning, Construction, Wrench
+    Scale, Wallet, FileWarning, Construction, Wrench, FolderKanban, Library
 } from 'lucide-react';
 
 // Core hooks
@@ -47,8 +47,7 @@ interface NavAccordion {
 }
 type NavItem = NavLink | NavAccordion;
 
-// --- FINAL Navigation Structure with Corrected Business Types ---
-// The `businessTypes` arrays now EXACTLY MATCH your database and sign-up form values.
+
 const navSections: NavItem[] = [
     // Core Links (always available based on role)
     { type: 'link', href: '/', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
@@ -79,6 +78,23 @@ const navSections: NavItem[] = [
             { href: '/inventory/transfers/new', label: 'Stock Transfers', icon: ArrowRightLeft },
         ]
     },
+    
+    // =============================================================================
+    //      ===> NEWLY ADDED PROFESSIONAL SERVICES MODULE <===
+    // =============================================================================
+    {
+        type: 'accordion', title: 'Professional Services', icon: Briefcase, roles: ['admin', 'manager'], module: 'professional-services',
+        subItems: [
+            { href: '/professional-services', label: 'Dashboard', icon: LayoutDashboard },
+            { href: '/professional-services/clients', label: 'Client Hub', icon: Users },
+            { href: '/professional-services/projects', label: 'Case / Project Mgmt', icon: FolderKanban },
+            { href: '/professional-services/billing', label: 'Time & Billing', icon: Receipt },
+            { href: '/professional-services/documents', label: 'Document Management', icon: Library },
+            { href: '/professional-services/trust-accounting', label: 'Trust Accounting', icon: Landmark, businessTypes: ['Professional Services (Accounting, Legal)'] }, // Specific to legal/accounting
+        ]
+    },
+    // =============================================================================
+
     {
         type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager'], module: 'hcm',
         subItems: [ { href: '/hr/leave', label: 'Leave Management', icon: CalendarDays }, { href: '/hr/recruitment', label: 'Recruitment', icon: UserCheck }, { href: '/hr/performance', label: 'Performance', icon: Activity }, { href: '/hr/onboarding', label: 'Onboarding', icon: ClipboardCheck }, ]
@@ -218,17 +234,14 @@ export default function Sidebar() {
                             if (item.type === 'accordion') {
                                 const userRole = role?.toLowerCase() || '';
                                 const businessType = tenant?.business_type || '';
-
-                                // First, filter the sub-items based on role and business type
                                 const filteredSubItems = item.subItems.filter(sub => {
                                     const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
                                     const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
                                     return hasRolePermission && hasBusinessTypePermission;
                                 });
 
-                                // **THE FIX**: Only render the accordion if there are any visible sub-items after filtering
                                 if (filteredSubItems.length === 0) {
-                                    return null; // Don't render anything for this accordion
+                                    return null;
                                 }
 
                                 return (
@@ -237,7 +250,6 @@ export default function Sidebar() {
                                             <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
                                         </AccordionTrigger>
                                         <AccordionContent className="pl-6 pt-1 space-y-1">
-                                            {/* Map over the already filtered list */}
                                             {filteredSubItems.map(subItem => {
                                                 const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
                                                 return (
