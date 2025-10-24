@@ -90,7 +90,6 @@ const PasswordInput = memo(({ control }: { control: any }) => {
 });
 PasswordInput.displayName = 'PasswordInput';
 
-// --- YOUR ENHANCED, SCROLLABLE BUSINESS TYPE SELECT ---
 const BusinessTypeSelect = memo(({ control }: { control: any }) => (
     <FormField control={control} name="businessType" render={({ field }) => (
         <FormItem>
