@@ -134,7 +134,8 @@ export default function MissionControlPage() {
   // Filter out the last message if it's streaming, to avoid double-rendering it as a final message
   const renderedMessages = isChatLoading && messages.length > 0 ? messages.slice(0, -1) : messages;
   
-  const canSend = !isChatLoading && input.trim() && businessId;
+  // === CRITICAL FIX: Add a check for 'input' before calling .trim() ===
+  const canSend = !isChatLoading && input && input.trim() && businessId;
   const isDisabled = isChatLoading || !businessId;
 
 
