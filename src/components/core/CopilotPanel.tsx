@@ -1,4 +1,3 @@
-// src/components/core/CopilotPanel.tsx
 'use client';
 
 import React, { useMemo, useEffect, useRef } from 'react';
@@ -12,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 import { useCopilot, type CoreMessage } from '@/context/CopilotContext'; 
+import { useUserProfile } from '@/hooks/useUserProfile'; // ADDED: Ensure this import is present
 
 // FIX: Define a type that intersects CoreMessage with a guaranteed 'id' property.
 // This tells TypeScript that although CoreMessage is a union, at this point, 
@@ -126,16 +126,12 @@ export default function CopilotPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // All state and logic now comes from the global hook.
-  // FIX: Removed 'businessId' from destructuring since it is not returned by useCopilot() 
-  // in the provided context file. This resolves the TypeScript error.
   const { messages, input, handleInputChange, handleSubmit, isLoading, data } = useCopilot();
   
-  // FIX: Since businessId is needed later, we must manually retrieve it here 
-  // or define it as a placeholder. For now, we will use a placeholder (assuming the context is not the source).
-  // In a real app, you would use useUserProfile() here instead:
-  // const { data: userProfile } = useUserProfile();
-  // const businessId = userProfile?.business_id || '';
-  const businessId = ''; // Placeholder to make the rest of the code compile/work
+  // FIX 1: Get actual businessId from hook to enable the form
+  const { data: userProfile } = useUserProfile();
+  const businessId = (userProfile as any)?.business_id || ''; 
+  // END FIX 1
 
   // FIX: This useEffect now only handles router navigation/downloads
   useEffect(() => {
