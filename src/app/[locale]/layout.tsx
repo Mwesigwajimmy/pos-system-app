@@ -1,8 +1,6 @@
 // src/app/[locale]/layout.tsx
 
 // --- THE FIX: Force this layout to use the Node.js runtime ---
-// This prevents Next.js from automatically opting into the Edge Runtime due to the AI SDK,
-// which ensures compatibility with the Supabase server client.
 export const runtime = 'nodejs';
 
 import { ReactNode } from 'react';
@@ -16,31 +14,25 @@ import { ThemeProvider } from '@/components/theme-provider';
 import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
-import { GlobalCopilotProvider, useCopilot } from '@/components/core/GlobalCopilot';
-import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js'; // Import the Session type for safety
+
+// --- NEW IMPORT: Dynamic Import to prevent server bundling ---
+import dynamic from 'next/dynamic';
+// CRITICAL FIX: Dynamically import GlobalCopilotProvider with ssr: false
+const DynamicGlobalCopilotProvider = dynamic(() => import('@/components/core/GlobalCopilot').then(mod => mod.GlobalCopilotProvider), {
+  ssr: false, // This ensures that the problematic imports within the provider are never processed on the server
+});
+// -----------------------------------------------------------
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
 
-const CopilotToggleButton = () => {
-    'use client';
-    const { togglePanel, isOpen } = useCopilot();
-    return (
-        <Button 
-            onClick={togglePanel}
-            variant="default"
-            size="icon"
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95 animate-in fade-in zoom-in-95"
-            aria-label={isOpen ? "Close AI Co-Pilot" : "Open AI Co-Pilot"}
-        >
-            <Sparkles className="h-6 w-6" />
-        </Button>
-    );
-}
+// The CopilotToggleButton is now NOT included here, and will instead be a child component
+// of the DynamicGlobalCopilotProvider (likely the one defined in your app/[locale]/page.tsx)
+// or rendered separately. We leave the layout clean.
+
 
 /**
  * This is the root layout for the entire application.
@@ -56,24 +48,18 @@ export default async function RootLayout({
 }) {
   let session: Session | null = null;
 
-  // --- FIX: ADDED TRY/CATCH BLOCK FOR SAFE SERVER-SIDE DATA FETCHING ---
-  // This prevents the entire application from crashing if Supabase connection fails.
   try {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
     const { data } = await supabase.auth.getSession();
     session = data.session;
   } catch (error) {
-    // This will print the detailed error message in your Vercel server logs
-    // so you can see exactly what went wrong (e.g., "Invalid API key").
     console.error('Error fetching Supabase session in root layout:', error);
-    // The page will now continue to render with a null session instead of crashing.
   }
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
-        {/* The session (or null if it failed) is safely passed to the provider */}
         <SupabaseProvider session={session}>
           <TanstackProvider>
             <ThemeProvider
@@ -82,13 +68,15 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              <GlobalCopilotProvider>
+              {/* --- CRITICAL: Use the Dynamically Imported Provider --- */}
+              <DynamicGlobalCopilotProvider>
                 <SidebarProvider>
                   {children}
-                  <CopilotToggleButton />
+                  {/* Note: CopilotToggleButton must now be rendered as a child of this provider, 
+                      for example, within app/[locale]/page.tsx if it's meant to be global. */}
                   <Toaster richColors position="bottom-right" />
                 </SidebarProvider>
-              </GlobalCopilotProvider>
+              </DynamicGlobalCopilotProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
