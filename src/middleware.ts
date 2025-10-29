@@ -4,7 +4,8 @@
 
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+// import { createMiddlewareClient } from '@supabase/ssr'; // <-- REMOVED: This is not exported in your version
+import { createServerClient, type CookieOptions } from '@supabase/ssr'; // <-- CHANGED: Revert to createServerClient, keep CookieOptions
 import { NextResponse, type NextRequest } from 'next/server';
 
 // --- CONFIGURATION (Unchanged) ---
@@ -59,6 +60,8 @@ const defaultDashboards: Record<string, string> = {
 // --- MIDDLEWARE FUNCTION (With targeted edits) ---
 export async function middleware(request: NextRequest) {
     // --- THIS IS THE ONLY ADDED CODE TO PREVENT REDIRECT LOOPS ---
+    // If a rewrite has already occurred (e.g., by next-intl for locale-less paths),
+    // prevent re-running the main logic to avoid infinite redirects.
     if (request.headers.get('x-middleware-rewrite')) {
         return NextResponse.next();
     }
@@ -71,26 +74,32 @@ export async function middleware(request: NextRequest) {
         (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
     );
 
+    let localeInPath: string;
+    let pathWithoutLocale: string;
+    let response: NextResponse; // Declare response here, will be modified by Supabase
+
     // 1. REDIRECT IF LOCALE IS MISSING
     if (pathnameIsMissingLocale) {
-        const locale = getLocale(request);
-        // Correctly handle the root path by adding a slash if needed
-        const newPath = pathname === '/' ? '' : pathname;
-        return NextResponse.redirect(new URL(`/${locale}${newPath}`, request.url));
+        localeInPath = getLocale(request); // Determine locale based on request headers
+        const newPath = pathname === '/' ? '' : pathname; // Handle root path correctly
+        const redirectUrl = new URL(`/${localeInPath}${newPath}`, request.url);
+        
+        response = NextResponse.redirect(redirectUrl); // Initialize response for redirect
+    } else {
+        // If locale is present, extract it and prepare headers for subsequent requests.
+        localeInPath = pathname.split('/')[1];
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-next-intl-locale', localeInPath);
+        
+        response = NextResponse.next({ request: { headers: requestHeaders } }); // Initialize basic "next" response
     }
     
-    // 2. GET LOCALE AND PREPARE HEADERS/RESPONSE FOR THE REST OF THE MIDDLEWARE
-    const localeInPath = pathname.split('/')[1];
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-next-intl-locale', localeInPath);
-    let response = NextResponse.next({ request: { headers: requestHeaders } });
-    
-    // 3. CREATE A LOCALE-FREE PATH FOR YOUR SECURITY LOGIC
-    const pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
+    // Determine the path without the locale for internal logic (auth, permissions).
+    pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
     // --- END: next-intl Integration ---
 
-
-    // --- YOUR EXISTING SUPABASE & AUTH LOGIC (Now using 'response' and 'pathWithoutLocale') ---
+    // --- SUPABASE & AUTH LOGIC ---
+    // CHANGED: Revert to createServerClient but with Edge-compatible cookie handlers
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -98,89 +107,105 @@ export async function middleware(request: NextRequest) {
             cookies: {
                 get: (name: string) => request.cookies.get(name)?.value,
                 set: (name: string, value: string, options: CookieOptions) => {
+                    // Update the request cookie (for subsequent reads in this middleware run)
                     request.cookies.set({ name, value, ...options });
-                    // Re-create response with updated headers after cookie operations
-                    response = NextResponse.next({ request: { headers: request.headers } });
+                    // Update the response cookie (to be sent back to the client)
                     response.cookies.set({ name, value, ...options });
                 },
                 remove: (name: string, options: CookieOptions) => {
+                    // Update the request cookie
                     request.cookies.set({ name, value: '', ...options });
-                    response = NextResponse.next({ request: { headers: request.headers } });
+                    // Update the response cookie
                     response.cookies.set({ name, value: '', ...options });
                 },
             },
         }
     );
+    
+    // Ensure the Supabase session is loaded and cookies are correctly synced with the response.
+    // This step is crucial for authentication state to be available and persisted.
+    // This call will use the cookie handlers defined above to read/set cookies on 'request' and 'response'.
+    await supabase.auth.getSession();
 
     const { data: { user } } = await supabase.auth.getUser();
     
+    // Define public paths that don't require authentication
     const publicPaths = ['/', '/login', '/signup', '/accept-invite', '/auth/callback'];
 
+    // If no user is logged in:
     if (!user) {
-        if (publicPaths.includes(pathWithoutLocale)) { // MODIFIED: Use pathWithoutLocale
-            return response;
+        // If the current path is a public path, allow access.
+        if (publicPaths.includes(pathWithoutLocale)) {
+            return response; // Return the response with potential cookies set by Supabase client
         }
-        // MODIFIED: Prepend locale to redirect URL
+        // Otherwise, redirect to the login page, preserving the locale.
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
+    // If a user is logged in, fetch their profile to check roles and business setup.
     const { data: profile, error } = await supabase
         .from('profiles')
         .select(`role, business:businesses ( business_type, setup_complete )`)
         .eq('id', user.id)
         .single();
     
+    // Handle cases where profile data is missing or an error occurred during fetch.
     if (error || !profile) {
-        await supabase.auth.signOut();
-        // MODIFIED: Prepend locale to redirect URL
+        await supabase.auth.signOut(); // Log out the user due to critical profile error.
+        // Redirect to login with error messages, preserving the locale.
         const loginUrl = new URL(`/${localeInPath}/login`, request.url);
         loginUrl.searchParams.set('error', 'profile_not_found');
         loginUrl.searchParams.set('message', 'Critical error: User profile not found.');
         return NextResponse.redirect(loginUrl);
     }
     
+    // Extract business details, handling potential array return.
     const businessDetails = Array.isArray(profile.business) ? profile.business[0] : profile.business;
 
+    // If business details are missing, redirect to the welcome/setup page.
     if (!businessDetails) {
-        if (pathWithoutLocale !== '/welcome') { // MODIFIED: Use pathWithoutLocale
-            // MODIFIED: Prepend locale to redirect URL
+        if (pathWithoutLocale !== '/welcome') {
             return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
         }
-        return response;
+        return response; // Allow access to /welcome
     }
 
+    // Extract user role, business type, and setup status.
     const userRole = profile.role;
     const businessType = businessDetails.business_type || '';
     const setupComplete = businessDetails.setup_complete;
     
+    // Determine the appropriate default dashboard based on role or business type.
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
-    if (publicPaths.includes(pathWithoutLocale)) { // MODIFIED: Use pathWithoutLocale
-        // MODIFIED: Prepend locale to redirect URL
+    // If user is logged in and trying to access a public path:
+    if (publicPaths.includes(pathWithoutLocale)) {
+        // Redirect them to their default dashboard, preserving the locale.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    if (!setupComplete && pathWithoutLocale !== '/welcome') { // MODIFIED: Use pathWithoutLocale
-        // MODIFIED: Prepend locale to redirect URL
+    // If setup is not complete and user is not on the welcome page, redirect to welcome.
+    if (!setupComplete && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
-    if (setupComplete && pathWithoutLocale === '/welcome') { // MODIFIED: Use pathWithoutLocale
-        // MODIFIED: Prepend locale to redirect URL
+    // If setup is complete and user is still on the welcome page, redirect to their default dashboard.
+    if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // MODIFIED: Use pathWithoutLocale
+    // Check path permissions based on user role.
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
 
+    // If the path requires specific roles and the user doesn't have them, redirect to their default dashboard.
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // MODIFIED: Prepend locale to redirect URL
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
-    return response;
+    // If all checks pass, allow the request to proceed with the modified response (containing updated cookies).
+    return response; 
 }
 
-// --- YOUR MATCHER (Unchanged) ---
+// --- MATCHER (Unchanged) ---
 export const config = {
   // This matcher ensures the middleware runs on all paths except for specific assets and API routes.
   matcher: [
