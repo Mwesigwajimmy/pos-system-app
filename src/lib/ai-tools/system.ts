@@ -39,8 +39,23 @@ export class DatabaseSchemaScannerTool extends Tool<typeof DatabaseSchemaScanner
     schema = DatabaseSchemaScannerSchema;
 
     protected async _execute(input: z.infer<typeof DatabaseSchemaScannerSchema>, runManager: RunManager) {
+        // --- START: MODIFICATION ---
+        // 1. Extract the businessId from the context passed by the AI Kernel.
+        const businessId = runManager.config.configurable?.businessId;
+
+        // 2. Add a security check to ensure the context is present.
+        if (!businessId) {
+            return "Error: Business context is missing. Cannot scan database schema.";
+        }
+        
         const supabase = createClient(cookies());
-        const { data, error } = await supabase.rpc('get_schema_details'); // Assume you create this RPC
+
+        // 3. Pass the businessId as a parameter to your Supabase RPC function.
+        const { data, error } = await supabase.rpc('get_schema_details', { 
+            p_business_id: businessId 
+        });
+        // --- END: MODIFICATION ---
+
         if (error) return `Failed to scan database schema: ${error.message}`;
         const knowledge = `Database schema ingested. Tables found: ${JSON.stringify(data)}`;
         // This result should then be embedded and stored in a vector DB
