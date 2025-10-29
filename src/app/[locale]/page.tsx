@@ -360,6 +360,8 @@ const AdvancedChatWidget = () => {
     }, []);
 
     // --- FIX 2: Cast the entire result of useChat to 'any' to bypass strict type checking
+    // NOTE: The chat endpoint defaults to /api/chat. This is why the useChat hook works
+    // without explicitly setting an API path, assuming you move the handler to /api/chat/route.ts
     const chat: any = useChat({} as any);
 
     // MANUAL INITIAL MESSAGE POPULATION (Required since initialMessages property is rejected by the compiler)
@@ -370,7 +372,6 @@ const AdvancedChatWidget = () => {
                 { id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any
             ]);
         }
-        // NOTE: The chat endpoint defaults to /api/chat. Your server file may need to be renamed to /api/chat/route.ts
     }, [chat.messages.length, chat.setMessages]); // Added dependencies to useEffect
 
     const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {

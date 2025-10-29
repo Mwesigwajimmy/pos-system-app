@@ -1,3 +1,5 @@
+// app/api/chat/route.ts
+
 import { NextRequest } from 'next/server';
 import { CoreMessage as VercelChatMessage, TextPart } from 'ai';
 
