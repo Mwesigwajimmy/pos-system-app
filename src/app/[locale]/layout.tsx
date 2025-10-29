@@ -2,8 +2,8 @@
 
 import { ReactNode } from 'react';
 import { Inter as FontSans } from 'next/font/google';
-import { cookies } from 'next/headers'; // Import cookies
-import { createClient } from '@/lib/supabase/server'; // Import your server client
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
@@ -14,6 +14,7 @@ import { SidebarProvider } from '@/context/SidebarContext';
 import { GlobalCopilotProvider, useCopilot } from '@/components/core/GlobalCopilot';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
+import type { Session } from '@supabase/supabase-js'; // Import the Session type for safety
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -41,7 +42,6 @@ const CopilotToggleButton = () => {
  * It establishes all foundational providers, including the AI Kernel's
  * connection to the frontend via the GlobalCopilotProvider.
  */
-// 1. Make the RootLayout an async function
 export default async function RootLayout({
   children,
   params: { locale },
@@ -49,15 +49,26 @@ export default async function RootLayout({
   children: ReactNode;
   params: { locale: string };
 }) {
-  // 2. Fetch the session on the server
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-  const { data: { session } } = await supabase.auth.getSession();
+  let session: Session | null = null;
+
+  // --- FIX: ADDED TRY/CATCH BLOCK FOR SAFE SERVER-SIDE DATA FETCHING ---
+  // This prevents the entire application from crashing if Supabase connection fails.
+  try {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
+  } catch (error) {
+    // This will print the detailed error message in your Vercel server logs
+    // so you can see exactly what went wrong (e.g., "Invalid API key").
+    console.error('Error fetching Supabase session in root layout:', error);
+    // The page will now continue to render with a null session instead of crashing.
+  }
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
-        {/* 3. Pass the fetched session to the provider */}
+        {/* The session (or null if it failed) is safely passed to the provider */}
         <SupabaseProvider session={session}>
           <TanstackProvider>
             <ThemeProvider
