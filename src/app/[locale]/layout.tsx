@@ -1,5 +1,10 @@
 // src/app/[locale]/layout.tsx
 
+// --- THE FIX: Force this layout to use the Node.js runtime ---
+// This prevents Next.js from automatically opting into the Edge Runtime due to the AI SDK,
+// which ensures compatibility with the Supabase server client.
+export const runtime = 'nodejs';
+
 import { ReactNode } from 'react';
 import { Inter as FontSans } from 'next/font/google';
 import { cookies } from 'next/headers';
