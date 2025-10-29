@@ -9,12 +9,8 @@ import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
-// --- ADDED FIX: Import CoreMessage from the source package ---
-import { type CoreMessage } from 'ai';
-
-// --- THE REVOLUTION: Import the AI's Global Provider and its access hook ---
-// FIX: Removed 'type CoreMessage' from this local import to solve the build error
-import { GlobalCopilotProvider, useCopilot } from '@/components/core/GlobalCopilot'; 
+// --- FIX: Import only the hook, not the provider which is already in the root layout ---
+import { useCopilot } from '@/components/core/GlobalCopilot'; 
 
 // --- Mobile Sidebar Logic (Preserved from your original layout) ---
 const useMobileSidebar = () => {
@@ -52,7 +48,6 @@ MobileSidebar.displayName = 'MobileSidebar';
 // --- The Omnipresent AI Toggle Button ---
 // This client component lives inside the provider to access its state.
 const CopilotToggleButton = () => {
-    // NOTE: The CoreMessage type is now correctly resolved in the context provider
     const { togglePanel, isOpen } = useCopilot();
     return (
         <Button 
@@ -103,13 +98,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <BrandingProvider>
       <SyncProvider>
-        {/* THE REVOLUTION: The GlobalCopilotProvider now wraps your entire application layout. */}
-        {/* This makes Aura's brain and abilities available to every single component. */}
-        <GlobalCopilotProvider>
-          <AppLayout>
-            {children}
-          </AppLayout>
-        </GlobalCopilotProvider>
+        {/* THE FIX: The conflicting GlobalCopilotProvider has been removed. */}
+        {/* AppLayout and its children can now correctly access the single provider from the root layout. */}
+        <AppLayout>
+          {children}
+        </AppLayout>
       </SyncProvider>
     </BrandingProvider>
   );
