@@ -49,7 +49,10 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
     setMessages,
     data
   }: any = useChat({
-    api: '/api/copilot',
+    // --- THIS IS THE ONLY CHANGE ---
+    // Point to your single, correct API route that you moved to 'src/app/api/chat'
+    api: '/api/chat', // CORRECTED FROM '/api/copilot'
+    // -----------------------------
     body: { businessId },
     // FIX: Explicitly type the 'err' parameter as 'Error' to resolve the 'implicitly has an any type' error.
     onError: (err: Error) => toast.error(`Aura Core Error: ${err.message}`),
