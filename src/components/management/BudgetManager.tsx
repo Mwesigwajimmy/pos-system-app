@@ -1,157 +1,184 @@
-// src/components/management/BudgetManager.tsx
-// FINAL, CORRECTED VERSION
-
 'use client';
 
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PlusCircle, Loader2 } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
-import { toast } from 'sonner';
+import { CreateBudgetModal } from './CreateBudgetModal';
+import { formatCurrency } from '@/lib/utils';
+import { Sparkles, Loader2 } from 'lucide-react';
+import { useCopilot } from '@/context/CopilotContext';
+import { Account } from '@/components/ledger/CreateJournalEntryModal';
 
-const formatCurrency = (value: number | null | undefined) => `UGX ${new Intl.NumberFormat('en-US').format(value || 0)}`;
+interface BudgetData {
+  account_id: string;
+  account_name: string;
+  account_type: 'Revenue' | 'Expense';
+  budgeted_amount: number;
+  actual_amount: number;
+}
 
-async function getBudgetsWithStatus() {
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc('get_all_budgets_with_status');
+interface Budget {
+  id: string;
+  name: string;
+  year: number;
+}
+
+const supabase = createClient();
+
+async function fetchBudgets(): Promise<Budget[]> {
+    const { data, error } = await supabase.from('budgets').select('id, name, year').order('year', { ascending: false });
     if (error) throw new Error(error.message);
-    return data;
+    return data || [];
 }
 
-async function createBudget(newBudget: { name: string, total_amount: number, start_date: string, end_date: string }) {
-    const supabase = createClient();
-    const { error } = await supabase.from('budgets').insert({
-        name: newBudget.name,
-        total_amount: newBudget.total_amount,
-        period_start_date: newBudget.start_date,
-        period_end_date: newBudget.end_date,
-    });
-    if (error) throw error;
+async function fetchBudgetVsActuals(budgetId: string): Promise<BudgetData[]> {
+    if (!budgetId) return [];
+    const { data, error } = await supabase.rpc('get_budget_vs_actuals', { p_budget_id: budgetId });
+    if (error) throw new Error(error.message);
+    return data || [];
 }
 
-const BudgetCard = ({ budget }: { budget: any }) => {
-    const percentage = budget.total_amount > 0 ? (budget.amount_spent / budget.total_amount) * 100 : 0;
+const VarianceCell = ({ variance, accountType }: { variance: number, accountType: string }) => {
+    const isGood = (accountType === 'Revenue' && variance >= 0) || (accountType === 'Expense' && variance <= 0);
+    const isBad = (accountType === 'Revenue' && variance < 0) || (accountType === 'Expense' && variance > 0);
+    
     return (
-        <Card className="hover:shadow-md transition-shadow">
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <CardTitle>{budget.name}</CardTitle>
-                    <span className={`text-sm font-bold ${percentage > 90 ? 'text-destructive' : 'text-muted-foreground'}`}>{percentage.toFixed(0)}% Used</span>
-                </div>
-                 <CardDescription>Remaining: {formatCurrency(budget.remaining_budget)}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Progress value={percentage} />
-                <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                    <span>{formatCurrency(budget.amount_spent)}</span>
-                    <span>{formatCurrency(budget.total_amount)}</span>
-                </div>
-            </CardContent>
-        </Card>
+        <div className={`font-semibold ${isGood ? 'text-green-600' : isBad ? 'text-red-600' : ''}`}>
+            {formatCurrency(variance, 'USD')}
+        </div>
     );
 };
 
-export default function BudgetManager() {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [name, setName] = useState('');
-    const [totalAmount, setTotalAmount] = useState<number | ''>('');
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-    const queryClient = useQueryClient();
+export default function BudgetManager({ initialAccounts }: { initialAccounts: Account[] }) {
+    const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
+    const { openCopilot, setInput: setCopilotInput } = useCopilot();
 
-    const { data: budgets, isLoading } = useQuery({
-        queryKey: ['budgetsWithStatus'],
-        queryFn: getBudgetsWithStatus,
+    const { data: budgets, isLoading: isLoadingBudgets } = useQuery<Budget[]>({
+        queryKey: ['allBudgets'],
+        queryFn: fetchBudgets,
     });
 
-    const createBudgetMutation = useMutation({
-        mutationFn: createBudget,
-        onSuccess: () => {
-            toast.success('Budget created successfully!');
-            queryClient.invalidateQueries({ queryKey: ['budgetsWithStatus'] });
-            setIsDialogOpen(false);
-            setName('');
-            setTotalAmount('');
-            setDateRange(undefined);
-        },
-        onError: (error: any) => {
-            toast.error(`Failed to create budget: ${error.message}`);
-        },
-    });
-
-    const handleSubmit = () => {
-        // THIS IS THE FIX: The logic now correctly checks for a start AND end date.
-        if (!name || !totalAmount || !dateRange?.from || !dateRange?.to) {
-            return toast.error('Please fill all fields: Name, Total Amount, and a valid Date Range.');
+    useEffect(() => {
+        if (budgets && budgets.length > 0 && !selectedBudgetId) {
+            setSelectedBudgetId(budgets[0].id);
         }
-        createBudgetMutation.mutate({
-            name,
-            total_amount: Number(totalAmount),
-            start_date: dateRange.from.toISOString(),
-            end_date: dateRange.to.toISOString(),
-        });
+    }, [budgets, selectedBudgetId]);
+
+    const { data: budgetData, isLoading: isLoadingData } = useQuery<BudgetData[]>({
+        queryKey: ['budgetVsActuals', selectedBudgetId],
+        queryFn: () => fetchBudgetVsActuals(selectedBudgetId!),
+        enabled: !!selectedBudgetId,
+    });
+
+    const { revenue, expenses, totals } = useMemo(() => {
+        if (!budgetData) return { revenue: [], expenses: [], totals: { revenue: { budget: 0, actual: 0, variance: 0 }, expense: { budget: 0, actual: 0, variance: 0 }, net: { budget: 0, actual: 0, variance: 0 } } };
+        const rev = budgetData.filter(d => d.account_type === 'Revenue');
+        const exp = budgetData.filter(d => d.account_type === 'Expense');
+        const totalRevenueBudget = rev.reduce((s, i) => s + i.budgeted_amount, 0);
+        const totalRevenueActual = rev.reduce((s, i) => s + i.actual_amount, 0);
+        const totalExpenseBudget = exp.reduce((s, i) => s + i.budgeted_amount, 0);
+        const totalExpenseActual = exp.reduce((s, i) => s + i.actual_amount, 0);
+
+        return {
+            revenue: rev,
+            expenses: exp,
+            totals: {
+                revenue: { budget: totalRevenueBudget, actual: totalRevenueActual, variance: totalRevenueActual - totalRevenueBudget },
+                expense: { budget: totalExpenseBudget, actual: totalExpenseActual, variance: totalExpenseActual - totalExpenseBudget },
+                net: { budget: totalRevenueBudget - totalExpenseBudget, actual: totalRevenueActual - totalExpenseActual, variance: (totalRevenueActual - totalExpenseActual) - (totalRevenueBudget - totalExpenseBudget) },
+            }
+        };
+    }, [budgetData]);
+    
+    const handleAnalyzeWithAI = () => {
+        const prompt = `Analyze the following "Budget vs. Actuals" report. Identify the top 3 most significant variances (both positive and negative) and provide a brief analysis for each, explaining its potential impact on the business. Finally, suggest one strategic action the business owner could take based on your analysis. Here is the data in JSON format:\n\n${JSON.stringify(budgetData, null, 2)}`;
+        setCopilotInput(prompt);
+        openCopilot();
     };
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold">Budget Management</h1>
-                    <p className="text-muted-foreground">Create and track departmental or project-based budgets in real-time.</p>
+                    <h1 className="text-3xl font-bold">Budget Command Center</h1>
+                    <p className="text-muted-foreground">Strategic financial planning and real-time performance analysis.</p>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button><PlusCircle className="mr-2 h-4 w-4" /> New Budget</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create a New Budget</DialogTitle>
-                            <DialogDescription>Define a new budget to track expenses against.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div>
-                                <Label htmlFor="name">Budget Name</Label>
-                                <Input id="name" placeholder="e.g., Marketing Q4 2025" value={name} onChange={(e) => setName(e.target.value)} />
-                            </div>
-                            <div>
-                                <Label htmlFor="totalAmount">Total Amount (UGX)</Label>
-                                <Input id="totalAmount" type="number" placeholder="50000000" value={totalAmount} onChange={(e) => setTotalAmount(Number(e.target.value))} />
-                            </div>
-                            <div>
-                                <Label>Budget Period</Label>
-                                <DatePickerWithRange date={dateRange} setDate={setDateRange} />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSubmit} disabled={createBudgetMutation.isPending}>
-                                {createBudgetMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create Budget
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <CreateBudgetModal accounts={initialAccounts} />
             </div>
 
-            {isLoading ? <div className="text-center p-8">Loading budgets...</div> :
-             budgets && budgets.length > 0 ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {budgets.map((budget: any) => <BudgetCard key={budget.id} budget={budget} />)}
-                </div>
-             ) : (
-                <div className="text-center p-12 border-2 border-dashed rounded-lg">
-                    <h3 className="text-lg font-medium">No Budgets Found</h3>
-                    <p className="text-muted-foreground mt-1">Create your first budget to start tracking expenses.</p>
-                </div>
-             )
-            }
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Budget vs. Actuals Analysis</CardTitle>
+                        <CardDescription>Select a budget to see its real-time performance against the general ledger.</CardDescription>
+                    </div>
+                     <div className="flex items-center gap-4">
+                        {isLoadingBudgets ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                            <Select value={selectedBudgetId || ''} onValueChange={setSelectedBudgetId}>
+                                <SelectTrigger className="w-72"><SelectValue placeholder="Select a budget..." /></SelectTrigger>
+                                <SelectContent>
+                                    {budgets?.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        <Button onClick={handleAnalyzeWithAI} disabled={!budgetData || isLoadingData}>
+                            <Sparkles className="mr-2 h-4 w-4" /> Analyze with AI
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {isLoadingData ? <div className="text-center p-12"><Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" /></div> :
+                     !budgetData || budgetData.length === 0 ? <div className="text-center p-12">No data found for this budget.</div> :
+                     (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Account</TableHead>
+                                    <TableHead className="text-right">Budgeted</TableHead>
+                                    <TableHead className="text-right">Actual</TableHead>
+                                    <TableHead className="text-right">Variance</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                <TableRow className="font-bold bg-muted/50 hover:bg-muted/50"><TableCell colSpan={4}>Revenue</TableCell></TableRow>
+                                {revenue.map(item => (
+                                    <TableRow key={item.account_id}>
+                                        <TableCell className="pl-8">{item.account_name}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.budgeted_amount, 'USD')}</TableCell>
+                                        <TableCell className="text-right font-semibold cursor-pointer hover:underline">{formatCurrency(item.actual_amount, 'USD')}</TableCell>
+                                        <TableCell className="text-right"><VarianceCell variance={item.actual_amount - item.budgeted_amount} accountType="Revenue" /></TableCell>
+                                    </TableRow>
+                                ))}
+                                <TableRow className="font-semibold border-t"><TableCell>Total Revenue</TableCell><TableCell className="text-right">{formatCurrency(totals.revenue.budget, 'USD')}</TableCell><TableCell className="text-right">{formatCurrency(totals.revenue.actual, 'USD')}</TableCell><TableCell className="text-right"><VarianceCell variance={totals.revenue.variance} accountType="Revenue" /></TableCell></TableRow>
+                                
+                                <TableRow className="font-bold bg-muted/50 hover:bg-muted/50"><TableCell colSpan={4}>Expenses</TableCell></TableRow>
+                                {expenses.map(item => (
+                                    <TableRow key={item.account_id}>
+                                        <TableCell className="pl-8">{item.account_name}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.budgeted_amount, 'USD')}</TableCell>
+                                        <TableCell className="text-right font-semibold cursor-pointer hover:underline">{formatCurrency(item.actual_amount, 'USD')}</TableCell>
+                                        <TableCell className="text-right"><VarianceCell variance={item.actual_amount - item.budgeted_amount} accountType="Expense" /></TableCell>
+                                    </TableRow>
+                                ))}
+                                <TableRow className="font-semibold border-t"><TableCell>Total Expenses</TableCell><TableCell className="text-right">{formatCurrency(totals.expense.budget, 'USD')}</TableCell><TableCell className="text-right">{formatCurrency(totals.expense.actual, 'USD')}</TableCell><TableCell className="text-right"><VarianceCell variance={totals.expense.variance} accountType="Expense" /></TableCell></TableRow>
+                            </TableBody>
+                             <TableFooter>
+                                <TableRow className="text-lg font-bold hover:bg-transparent bg-muted/30">
+                                    <TableCell>Net Profit / (Loss)</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(totals.net.budget, 'USD')}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(totals.net.actual, 'USD')}</TableCell>
+                                    <TableCell className="text-right"><VarianceCell variance={totals.net.variance} accountType="Revenue" /></TableCell>
+                                </TableRow>
+                            </TableFooter>
+                        </Table>
+                     )
+                    }
+                </CardContent>
+            </Card>
         </div>
     );
 }

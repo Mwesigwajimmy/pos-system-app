@@ -1,113 +1,182 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
-import { Lightbulb, AlertTriangle, Briefcase, TrendingUp, Users, Package, Banknote } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, Tooltip, YAxis } from 'recharts'; // Added YAxis import for completeness
+import {
+  Lightbulb, AlertTriangle, AlertOctagon, MessageSquarePlus, LucideIcon,
+  MoreVertical, CheckCircle, XCircle
+} from 'lucide-react';
 
-// --- Type Definitions ---
+// --- TYPE DEFINITIONS for a rich, actionable insight (Reverting to the cleaner type) ---
+interface SuggestedAction {
+  label: string;
+  prompt: string;
+}
 
-// Re-defining the Insight type here to make the component self-contained.
-// This should match the type definition in your `CopilotPage`.
-interface Insight {
-  type: 'profitability' | 'churn_risk' | 'dead_stock' | 'cash_flow' | 'loan_risk' | 'underutilized_property';
+interface KeyDataItem {
+  value: string | number;
+  href?: string; // Make specific dashboard pages linkable
+}
+
+interface ChartDataItem {
+  name: string; // Typically a date or category
+  value: number;
+}
+
+export interface Insight {
+  id: string; // For acknowledging or dismissing
   title: string;
   severity: 'info' | 'warning' | 'critical';
   message: string;
-  data: any;
-  category: 'Financial' | 'Inventory' | 'Customer' | 'Operations';
+  suggested_actions: SuggestedAction[];
+  // FIX: Use the fully structured type for key_data for clean rendering logic
+  key_data?: Record<string, KeyDataItem>; 
+  chart_data?: ChartDataItem[];
 }
 
 interface InsightCardProps {
   insight: Insight;
-  onAction: (type: string, data: any) => void;
+  onAskAI: (prompt: string) => void;
 }
 
-// --- Mappings for Dynamic UI ---
-
-// Map severity levels to specific UI variants (colors, icons)
-const severityConfig = {
-    critical: {
-        icon: AlertTriangle,
-        className: "border-destructive/80 bg-destructive/5",
-        iconClass: "text-destructive",
-    },
-    warning: {
-        icon: AlertTriangle,
-        className: "border-amber-500/80 bg-amber-500/5",
-        iconClass: "text-amber-500",
-    },
-    info: {
-        icon: Lightbulb,
-        className: "border-sky-500/80 bg-sky-500/5",
-        iconClass: "text-sky-500",
-    },
+// --- CONFIGURATION for visual representation ---
+const severityConfig: Record<Insight['severity'], { Icon: LucideIcon; color: string; borderColor: string; }> = {
+  info: { Icon: Lightbulb, color: 'text-sky-500', borderColor: 'border-sky-500/40' },
+  warning: { Icon: AlertTriangle, color: 'text-amber-500', borderColor: 'border-amber-500/50' },
+  critical: { Icon: AlertOctagon, color: 'text-destructive', borderColor: 'border-destructive/60' },
 };
 
-// Map insight categories to specific icons
-const categoryIcons = {
-    Financial: Banknote,
-    Inventory: Package,
-    Customer: Users,
-    Operations: Briefcase,
-};
+// --- SERVER ACTION to interact with the database ---
+const supabase = createClient();
 
-// Map insight types to actionable buttons
-const actionConfig: { [key in Insight['type']]: { label: string; action: string; } } = {
-    profitability: { label: "Analyze Profitability", action: "view_report" },
-    churn_risk: { label: "View Customer", action: "send_follow_up" },
-    dead_stock: { label: "Create Sale", action: "create_discount" },
-    cash_flow: { label: "Review Cash Flow", action: "view_report" },
-    loan_risk: { label: "Assess Risk", action: "view_details" },
-    underutilized_property: { label: "Manage Assets", action: "view_assets" },
-};
+// FIX: Renamed function to be more generic, and added type for returned Promise
+async function dismissInsight(insightId: string): Promise<void> {
+    const { error } = await supabase.rpc('dismiss_insight', { p_insight_id: insightId });
+    if (error) throw new Error(error.message);
+}
 
+// --- THE REVOLUTIONARY COMPONENT ---
+export default function InsightCard({ insight, onAskAI }: InsightCardProps) {
+  const config = severityConfig[insight.severity] || severityConfig['info'];
+  const queryClient = useQueryClient();
 
-// --- The Component ---
+  const mutation = useMutation({
+      mutationFn: dismissInsight,
+      onSuccess: () => {
+          toast.success("Insight has been acknowledged.");
+          // Invalidate the query to refetch insights and remove this card from the UI
+          queryClient.invalidateQueries({ queryKey: ['proactiveInsights'] });
+      },
+      onError: (error: Error) => {
+          toast.error(`Could not dismiss insight: ${error.message}`);
+      }
+  });
 
-/**
- * InsightCard Component
- * Displays an actionable intelligence card for the AI Co-Pilot page.
- * It dynamically adjusts its appearance and actions based on the insight's severity,
- * category, and type.
- */
-export default function InsightCard({ insight, onAction }: InsightCardProps) {
-    const config = severityConfig[insight.severity];
-    const CategoryIcon = categoryIcons[insight.category] || Briefcase;
-    const action = actionConfig[insight.type];
+  const handleDismiss = () => {
+      mutation.mutate(insight.id);
+  };
 
-    return (
-        <Card className={cn("flex flex-col justify-between break-inside-avoid shadow-sm hover:shadow-md transition-shadow", config.className)}>
-            <CardHeader>
-                <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                        <Badge variant="secondary" className="flex items-center gap-1.5 w-fit">
-                            <CategoryIcon className="h-3.5 w-3.5" />
-                            {insight.category}
-                        </Badge>
-                        <CardTitle className="text-lg font-semibold">{insight.title}</CardTitle>
-                    </div>
-                    <config.icon className={cn("h-6 w-6 flex-shrink-0", config.iconClass)} />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">{insight.message}</p>
-            </CardContent>
-            <CardFooter>
-                {action && (
-                    <Button 
-                        size="sm"
-                        variant={insight.severity === 'critical' ? 'destructive' : 'default'}
-                        onClick={() => onAction(action.action, insight.data)}
-                        className="w-full"
-                    >
-                        <TrendingUp className="mr-2 h-4 w-4" />
-                        {action.label}
+  return (
+    <div className={cn('break-inside-avoid rounded-lg border-l-4 bg-card shadow-sm transition-shadow hover:shadow-lg flex flex-col', config.borderColor)}>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-2">
+            <CardTitle className={cn('flex items-center gap-2 text-base font-semibold', config.color)}>
+              <config.Icon className="h-5 w-5 flex-shrink-0" />
+              <span>{insight.title}</span>
+            </CardTitle>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
+                        <MoreVertical className="h-4 w-4" />
                     </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    {/* FIX: Simplified Acknowledge button */}
+                    <DropdownMenuItem onClick={handleDismiss}>
+                        <CheckCircle className="mr-2 h-4 w-4" /> Acknowledge & Archive
+                    </DropdownMenuItem>
+                    {/* FIX: Simplified Dismiss button */}
+                    <DropdownMenuItem onClick={handleDismiss} className="focus:bg-destructive/10 focus:text-destructive text-destructive">
+                        <XCircle className="mr-2 h-4 w-4" /> Dismiss
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4 flex-grow">
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{insight.message}</p>
+        
+        {/* Chart Data Rendering */}
+        {insight.chart_data && insight.chart_data.length > 0 && (
+            <div className="h-24 -mx-6 -mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={insight.chart_data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <Tooltip
+                            contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius)' }}
+                            labelStyle={{ fontWeight: 'bold' }}
+                            // FIX: Use YAxis tickFormatter for currency display, simplify tooltip formatter
+                            formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "Value"]}
+                        />
+                        {/* Added YAxis for clarity and professionalism */}
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                        <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+        )}
+
+        {/* Key Data Rendering */}
+        {insight.key_data && (
+          <div className="text-xs space-y-1 rounded-md border bg-muted/50 p-2">
+            {Object.entries(insight.key_data).map(([key, item]) => (
+              <div key={key} className="flex justify-between items-center gap-2">
+                <span className="font-medium capitalize text-muted-foreground">{key.replace(/_/g, ' ')}:</span>
+                {/* FIX: Use structured KeyDataItem object consistently */}
+                {item.href ? (
+                    <Button asChild variant="link" className="p-0 h-auto font-mono text-primary hover:underline">
+                        <Link href={item.href}>{String(item.value)}</Link>
+                    </Button>
+                ) : (
+                    <span className="font-mono text-foreground">{String(item.value)}</span>
                 )}
-            </CardFooter>
-        </Card>
-    );
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      {insight.suggested_actions && insight.suggested_actions.length > 0 && (
+        <CardFooter className="flex flex-col items-start gap-2 pt-4 border-t bg-muted/30">
+            <h4 className="text-xs font-semibold text-muted-foreground">Ask Aura to...</h4>
+            {insight.suggested_actions.map((action, index) => (
+              <Button
+                key={index}
+                size="sm"
+                variant="outline"
+                className="w-full h-auto justify-start text-left py-2"
+                onClick={() => onAskAI(action.prompt)}
+                aria-label={action.prompt}
+              >
+                <MessageSquarePlus className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span>{action.label}</span>
+              </Button>
+            ))}
+        </CardFooter>
+      )}
+    </div>
+  );
 }

@@ -65,7 +65,7 @@ export default function WelcomePage() {
         <div className="container mx-auto py-10 flex justify-center">
             <Card className="w-full max-w-2xl">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-3xl">Welcome to UG-BizSuite!</CardTitle>
+                    <CardTitle className="text-3xl">Welcome to BBU1!</CardTitle>
                     <CardDescription>Let's get your business set up for success.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">

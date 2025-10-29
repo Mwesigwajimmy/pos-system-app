@@ -69,6 +69,30 @@ export function formatCurrency(
   }).format(numericAmount);
 }
 
+
+// **FIXED: ADDED MISSING EXPORTED FUNCTION**
+/**
+ * Formats a number to a specified number of decimal places, using Intl for locale.
+ * @param amount The number to format.
+ * @param decimalPlaces The number of digits after the decimal point.
+ * @param locale The locale to use for formatting (default 'en-US').
+ * @returns A formatted string representation of the number.
+ */
+export function formatNumber(
+  amount: number | string,
+  decimalPlaces: number = 0,
+  locale?: string
+): string {
+  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  return new Intl.NumberFormat(locale || 'en-US', {
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces,
+  }).format(numericAmount);
+}
+// ---------------------------------------------
+
+
 export function bytesToSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;

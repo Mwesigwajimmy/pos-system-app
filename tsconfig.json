@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "lib": [
       "dom",
       "dom.iterable",
@@ -24,6 +25,19 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      // Add these new path mappings for TypeScript
+      "@langchain/community/chat_models/ollama": [
+        "./src/lib/langchain/chat-ollama-shim.ts"
+      ],
+      "langchain/agents": [
+        "./src/lib/langchain/langchain-agents-shim.ts"
+      ],
+      "@langchain/core/prompts": [
+        "./src/lib/langchain/core-prompts-shim.ts"
+      ],
+      "@langchain/core/tools": [
+        "./src/lib/langchain/core-tools-shim.ts"
       ]
     },
     "target": "ES2017"
