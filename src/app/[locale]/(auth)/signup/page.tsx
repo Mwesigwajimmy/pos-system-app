@@ -59,9 +59,11 @@ const useSignup = () => {
             return;
         }
 
-        // The trigger handles everything else. Now we just refresh.
+        // --- FINAL FIX FOR STUCK LOADING/SPINNING ---
+        // router.refresh() is replaced with router.push('/dashboard') to force
+        // the Next.js app to recognize the new session and redirect, clearing the loading state.
         toast.success('Welcome! Your business is ready.', { id: toastId });
-        router.refresh();
+        router.push('/dashboard'); 
     };
     
     return { form, isLoading, onSubmit: form.handleSubmit(handleSignup) };
