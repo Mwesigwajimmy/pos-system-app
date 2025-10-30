@@ -38,9 +38,6 @@ const useSignup = () => {
         setIsLoading(true);
         const toastId = toast.loading('Creating your account...');
         
-        // This is the standard, secure, and correct way to sign up a user.
-        // We pass the extra form data in the `options.data` object.
-        // The backend trigger will automatically pick this data up.
         const { data, error } = await supabase.auth.signUp({
             email: values.email,
             password: values.password,
@@ -59,17 +56,29 @@ const useSignup = () => {
             return;
         }
 
-        // --- FINAL FIX FOR STUCK LOADING/SPINNING ---
-        // router.refresh() is replaced with router.push('/dashboard') to force
-        // the Next.js app to recognize the new session and redirect, clearing the loading state.
-        toast.success('Welcome! Your business is ready.', { id: toastId });
-        router.push('/dashboard'); 
+        // --- MODIFIED LOGIC HERE ---
+        // Check if a session was successfully created and returned.
+        // This is the key. If `data.session` exists, the user is logged in.
+        if (data.session) {
+            toast.success('Welcome! Your business is ready.', { id: toastId });
+            router.push('/dashboard'); 
+        } else {
+            // This path will be taken if email confirmation is ENABLED in Supabase Auth settings.
+            // The user account is created, but they are not logged in yet.
+            toast.success('Account created! Please check your email to confirm your account and log in.', { id: toastId, duration: 8000 });
+            // Redirect them to a page that tells them to confirm their email, or to the login page.
+            // Since you specifically don't want to redirect to login, we'll suggest a confirmation page.
+            // If you truly want *immediate* dashboard access without any email confirmation,
+            // you *must* disable email confirmation in Supabase settings as described above.
+            router.push('/auth/check-email'); // Assuming you have a /auth/check-email page
+        }
+        setIsLoading(false);
     };
     
     return { form, isLoading, onSubmit: form.handleSubmit(handleSignup) };
 };
 
-// --- UI Sub-components ---
+// --- UI Sub-components (unchanged) ---
 const PasswordInput = memo(({ control }: { control: any }) => {
     const [isVisible, setIsVisible] = useState(false);
     return (
@@ -124,7 +133,7 @@ const BusinessTypeSelect = memo(({ control }: { control: any }) => (
 ));
 BusinessTypeSelect.displayName = 'BusinessTypeSelect';
 
-// --- The Main Page Component ---
+// --- The Main Page Component (unchanged) ---
 export default function SignupPage() {
     const { form, isLoading, onSubmit } = useSignup();
     return (
