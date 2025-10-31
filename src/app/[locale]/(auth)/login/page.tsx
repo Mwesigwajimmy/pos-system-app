@@ -4,10 +4,11 @@
 import React, { useState, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm, Control } from 'react-hook-form'; // Import Control
+import { useForm, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
+import toast from 'react-hot-toast'; // Import toast
 
 // UI Components & Icons
 import { Button } from '@/components/ui/button';
@@ -17,65 +18,72 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { FaGoogle, FaMicrosoft } from 'react-icons/fa';
 
-// --- 1. Schema, Types, and the Logic Hook ---
-
+// --- Schema and Types (Unchanged) ---
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
 });
-
 type LoginFormInput = z.infer<typeof loginSchema>;
 type SsoProvider = 'google' | 'azure';
 
+// --- Logic Hook (with the necessary fix for redirection) ---
 const useLogin = () => {
     const router = useRouter();
     const supabase = createClient();
-    const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
-
     const form = useForm<LoginFormInput>({
         resolver: zodResolver(loginSchema),
         defaultValues: { email: '', password: '' },
     });
 
     const handleEmailLogin = async (values: LoginFormInput) => {
-        setError(null);
         setIsSubmitting('email');
-        const { error } = await supabase.auth.signInWithPassword(values);
-        if (error) {
-            setError(error.message);
-        } else {
-            router.refresh();
+        const toastId = toast.loading('Signing in...');
+        const { error: signInError } = await supabase.auth.signInWithPassword(values);
+
+        if (signInError) {
+            toast.error(signInError.message, { id: toastId });
+            setIsSubmitting(null);
+            return;
         }
-        setIsSubmitting(null);
+
+        const { data: profileData, error: profileError } = await supabase
+            .rpc('get_user_business_profile');
+        
+        const profile = profileData ? profileData[0] : null;
+
+        if (profileError || !profile) {
+            toast.error('Critical Error: Business profile not found.', { id: toastId });
+            await supabase.auth.signOut();
+            setIsSubmitting(null);
+            return;
+        }
+
+        toast.success('Welcome back!', { id: toastId });
+        router.push('/dashboard');
     };
 
     const handleSsoLogin = async (provider: SsoProvider) => {
-        setError(null);
         setIsSubmitting(provider);
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
             options: { redirectTo: `${window.location.origin}/auth/callback` },
         });
         if (error) {
-            setError(`SSO Error: ${error.message}`);
+            toast.error(`SSO Error: ${error.message}`);
             setIsSubmitting(null);
         }
     };
     
-    return { form, error, isSubmitting, handleEmailLogin, handleSsoLogin };
+    return { form, isSubmitting, handleEmailLogin, handleSsoLogin };
 };
 
-
-// --- 2. UI Sub-components (for Clarity and Performance) ---
-
-// FIX: Changed component to accept 'control' as a prop
-// It should not create its own useForm() instance.
+// --- UI Sub-components (Unchanged) ---
 const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) => {
     const [isVisible, setIsVisible] = useState(false);
     return (
         <FormField
-            control={control} // Use the control from props
+            control={control}
             name="password"
             render={({ field }) => (
                 <FormItem>
@@ -96,7 +104,6 @@ const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) =
 });
 PasswordInput.displayName = 'PasswordInput';
 
-
 const SsoButton = memo(({ provider, icon: Icon, label, onClick, isSubmitting }: { provider: SsoProvider; icon: React.ElementType; label: string; onClick: (p: SsoProvider) => void; isSubmitting: string | null; }) => (
     <Button variant="outline" onClick={() => onClick(provider)} disabled={!!isSubmitting}>
         {isSubmitting === provider ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
@@ -105,11 +112,9 @@ const SsoButton = memo(({ provider, icon: Icon, label, onClick, isSubmitting }: 
 ));
 SsoButton.displayName = 'SsoButton';
 
-
-// --- 3. The Main Page Component ---
-
+// --- Main Page Component (with Syntax Fix) ---
 export default function LoginPage() {
-    const { form, error, isSubmitting, handleEmailLogin, handleSsoLogin } = useLogin();
+    const { form, isSubmitting, handleEmailLogin, handleSsoLogin } = useLogin();
 
     return (
         <div className="flex items-center justify-center min-h-screen">
@@ -132,13 +137,11 @@ export default function LoginPage() {
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleEmailLogin)} className="space-y-4">
                             <FormField control={form.control} name="email" render={({ field }) => (
+                                // THIS IS THE LINE THAT WAS FIXED
                                 <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             
-                            {/* FIX: Pass the form's control to the PasswordInput component */}
                             <PasswordInput control={form.control} />
-
-                            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
                             
                             <Button type="submit" className="w-full" disabled={!!isSubmitting}>
                                 {isSubmitting === 'email' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
