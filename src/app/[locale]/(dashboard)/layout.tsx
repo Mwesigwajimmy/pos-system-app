@@ -1,3 +1,5 @@
+// src/app/[locale]/dashboard/layout.tsx
+
 'use client';
 
 import React, { useState, useEffect, memo, ReactNode } from 'react';
@@ -9,7 +11,6 @@ import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
-// --- THE FIX: Removed BusinessProvider import, useBusiness is still used by AppLayout ---
 import { useBusiness } from '@/context/BusinessContext';
 import { useCopilot } from '@/context/CopilotContext';
 
@@ -45,10 +46,11 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 });
 MobileSidebar.displayName = 'MobileSidebar';
 
-// --- The Omnipresent AI Toggle Button (Preserved from your original layout) ---
+// --- The Omnipresent AI Toggle Button (Now conditionally rendered by AppLayout) ---
 const CopilotToggleButton = () => {
+    // This component itself is fine, its rendering needs to be managed by its parent
     const { toggleCopilot, isOpen, isReady } = useCopilot();
-    if (!isReady) {
+    if (!isReady) { // isReady will be false if CopilotWorkerProvider was not rendered
         return null;
     }
     return (
@@ -63,11 +65,12 @@ const CopilotToggleButton = () => {
     );
 }
 
-// --- The Main Application Layout (Preserved and made context-aware) ---
+// --- The Main Application Layout (Will ONLY be rendered for authenticated, non-auth routes) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
-  const { profile, isLoading, error } = useBusiness(); // This hook now gets context from the root layout
+  const { profile, isLoading, error } = useBusiness(); 
 
+  // If profile is still loading or there's an error, show a placeholder for the entire AppLayout
   if (isLoading) {
     return (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
@@ -76,7 +79,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // If there's an error or no profile (e.g., user is not authenticated or profile setup failed)
   if (error || !profile) {
+    // This state should ideally be handled by redirection *before* AppLayout renders,
+    // but as a fallback, display an error. Auth pages should bypass AppLayout entirely.
     return (
         <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
             <div className="text-center">
@@ -105,7 +111,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </main>
       </div>
-
+      {/* CopilotToggleButton is now here, but its own internal isReady check
+          will prevent it from rendering if CopilotContext is not fully available.
+          However, for auth routes, AppLayout itself should not render. */}
       <CopilotToggleButton />
     </div>
   );
@@ -116,10 +124,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <BrandingProvider>
       <SyncProvider>
-        {/*
-          CRITICAL FIX: BusinessProvider has been moved to the root layout.
-          AppLayout now gets its context from the root.
-        */}
+        {/* AppLayout now gets its context from the root. */}
         <AppLayout>
           {children}
         </AppLayout>

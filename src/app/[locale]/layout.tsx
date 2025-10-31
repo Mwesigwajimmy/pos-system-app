@@ -18,12 +18,11 @@ import type { Session } from '@supabase/supabase-js';
 
 // --- NEW IMPORTS: ---
 import dynamic from 'next/dynamic';
-import { BusinessProvider } from '@/context/BusinessContext'; // <--- NEW IMPORT for BusinessProvider
+import { BusinessProvider } from '@/context/BusinessContext';
 
 // CRITICAL FIX: Dynamically import GlobalCopilotProvider with ssr: false
-// Pointing to the context/CopilotContext instead of components/core/GlobalCopilot
 const DynamicGlobalCopilotProvider = dynamic(() => import('@/context/CopilotContext').then(mod => mod.GlobalCopilotProvider), {
-  ssr: false, // This ensures that the problematic imports within the provider are never processed on the server
+  ssr: false,
 });
 // -----------------------------------------------------------
 
@@ -32,13 +31,7 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
-
-/**
- * This is the root layout for the entire application.
- * It establishes all foundational providers, including the AI Kernel's
- * connection to the frontend via the GlobalCopilotProvider.
- */
-export default async function RootLayout({
+export default async function LocaleRootLayout({ // Renamed to avoid confusion with root app/layout.tsx
   children,
   params: { locale },
 }: {
@@ -53,7 +46,7 @@ export default async function RootLayout({
     const { data } = await supabase.auth.getSession();
     session = data.session;
   } catch (error) {
-    console.error('Error fetching Supabase session in root layout:', error);
+    console.error('Error fetching Supabase session in locale root layout:', error);
   }
 
   return (
@@ -67,11 +60,11 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/* --- NEW: BusinessProvider added here --- */}
               <BusinessProvider>
+                {/* DynamicGlobalCopilotProvider will only render CopilotWorkerProvider when profile is ready */}
                 <DynamicGlobalCopilotProvider>
                   <SidebarProvider>
-                    {children}
+                    {children} {/* This is where your /signup page will be rendered */}
                     <Toaster richColors position="bottom-right" />
                   </SidebarProvider>
                 </DynamicGlobalCopilotProvider>
