@@ -35,26 +35,61 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        // --- THIS ENTIRE useEffect BLOCK IS THE FIX ---
+
+        const supabase = createClient();
+
+        // The fetch function remains the same, but with better state clearing.
         const fetchBusinessProfile = async () => {
-            const supabase = createClient();
-            
             // We use the resilient RPC function we created earlier. This is crucial for stability.
             const { data, error: rpcError } = await supabase.rpc('get_user_business_profile');
 
             if (rpcError) {
                 setError('Failed to fetch business profile.');
+                setProfile(null);
                 console.error("Business Context Critical Error:", rpcError);
             } else if (data && data.length > 0) {
                 // The RPC returns an array, we take the first (and only) element.
                 setProfile(data[0] as BusinessProfile);
+                setError(null); // Clear previous errors on success
             } else {
                 // This state occurs if the RPC retried and still found nothing.
                 setError('Business profile not found. The user may not be fully set up.');
+                setProfile(null);
             }
             setIsLoading(false);
         };
 
-        fetchBusinessProfile();
+        // We listen for when the user signs in or out to avoid a race condition.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                // Fetch the profile only AFTER we know the user is signed in.
+                fetchBusinessProfile();
+            } else if (event === 'SIGNED_OUT') {
+                // Clear all data on sign out.
+                setProfile(null);
+                setError(null);
+                setIsLoading(false);
+            }
+        });
+
+        // Also check for a session when the component first mounts.
+        const checkInitialSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                fetchBusinessProfile();
+            } else {
+                setIsLoading(false); // No user is logged in, stop loading.
+            }
+        };
+
+        checkInitialSession();
+
+        // This function cleans up the listener when the component is removed.
+        return () => {
+            subscription.unsubscribe();
+        };
+
     }, []);
 
     const value = { profile, isLoading, error };
