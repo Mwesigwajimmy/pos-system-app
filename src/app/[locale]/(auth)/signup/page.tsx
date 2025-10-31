@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
-
 // UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,17 +15,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
-// --- Schema & Types ---
+// --- Schema & Types (Unchanged) ---
 const signupSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters."),
-  businessName: z.string().min(2, "Business name must be at least 2 characters."),
-  businessType: z.string().min(1, "Please select a business type."),
-  email: z.string().email("Please enter a valid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+    fullName: z.string().min(2, "Full name must be at least 2 characters."),
+    businessName: z.string().min(2, "Business name must be at least 2 characters."),
+    businessType: z.string().min(1, "Please select a business type."),
+    email: z.string().email("Please enter a valid email address."),
+    password: z.string().min(6, "Password must be at least 6 characters."),
 });
 type SignupFormInput = z.infer<typeof signupSchema>;
 
-// --- Logic Hook (The Final, Corrected Version) ---
+
+// --- Logic Hook (The Final, Corrected Version with Race Condition Fix) ---
 const useSignup = () => {
     const router = useRouter();
     const supabase = createClient();
@@ -37,7 +36,7 @@ const useSignup = () => {
     const handleSignup = async (values: SignupFormInput) => {
         setIsLoading(true);
         const toastId = toast.loading('Creating your account...');
-        
+
         const { data, error } = await supabase.auth.signUp({
             email: values.email,
             password: values.password,
@@ -56,29 +55,42 @@ const useSignup = () => {
             return;
         }
 
-        // --- MODIFIED LOGIC HERE ---
-        // Check if a session was successfully created and returned.
-        // This is the key. If `data.session` exists, the user is logged in.
+        // --- MODIFIED LOGIC HERE TO FIX RACE CONDITION ---
         if (data.session) {
+            toast.loading('Finalizing your business setup...', { id: toastId });
+
+            // Call the new PostgreSQL function to safely fetch the profile,
+            // which retries to give the backend trigger time to complete.
+            const { data: profileData, error: profileError } = await supabase
+                .rpc('get_user_business_profile');
+
+            const profile = profileData ? profileData[0] : null;
+
+            if (profileError || !profile) {
+                // If the profile is not found even after retries, it's a critical error.
+                toast.error(profileError?.message || 'Critical error: Could not find your business profile. Please try logging in or contact support.', { id: toastId, duration: 8000 });
+                router.push('/login'); // Redirect to login as a fallback
+                setIsLoading(false);
+                return;
+            }
+            
+            // Profile was found successfully!
             toast.success('Welcome! Your business is ready.', { id: toastId });
-            router.push('/dashboard'); 
+            router.push('/dashboard');
+
         } else {
-            // This path will be taken if email confirmation is ENABLED in Supabase Auth settings.
-            // The user account is created, but they are not logged in yet.
+            // This part handles the case where email confirmation is enabled.
+            // It remains unchanged.
             toast.success('Account created! Please check your email to confirm your account and log in.', { id: toastId, duration: 8000 });
-            // Redirect them to a page that tells them to confirm their email, or to the login page.
-            // Since you specifically don't want to redirect to login, we'll suggest a confirmation page.
-            // If you truly want *immediate* dashboard access without any email confirmation,
-            // you *must* disable email confirmation in Supabase settings as described above.
-            router.push('/auth/check-email'); // Assuming you have a /auth/check-email page
+            router.push('/auth/check-email');
         }
         setIsLoading(false);
     };
-    
+
     return { form, isLoading, onSubmit: form.handleSubmit(handleSignup) };
 };
 
-// --- UI Sub-components (unchanged) ---
+// --- UI Sub-components (Unchanged) ---
 const PasswordInput = memo(({ control }: { control: any }) => {
     const [isVisible, setIsVisible] = useState(false);
     return (
@@ -88,12 +100,12 @@ const PasswordInput = memo(({ control }: { control: any }) => {
                 <div className="relative">
                     <FormControl><Input type={isVisible ? 'text' : 'password'} className="pr-10" {...field} /></FormControl>
                     <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-0 top-0 h-full px-3 text-muted-foreground" aria-label={isVisible ? "Hide password" : "Show password"}>
-                       {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                 </div>
                 <FormMessage />
             </FormItem>
-        )}/>
+        )} />
     );
 });
 PasswordInput.displayName = 'PasswordInput';
@@ -111,12 +123,12 @@ const BusinessTypeSelect = memo(({ control }: { control: any }) => (
                         <SelectItem value="Restaurant / Cafe">Restaurant / Cafe</SelectItem>
                     </SelectGroup>
                     <SelectGroup>
-                         <SelectLabel>Trades & Services</SelectLabel>
+                        <SelectLabel>Trades & Services</SelectLabel>
                         <SelectItem value="Contractor">Contractor (General, Remodeling)</SelectItem>
                         <SelectItem value="Field Service">Field Service (Trades, HVAC, Plumbing)</SelectItem>
                         <SelectItem value="Professional Services">Professional Services (Accounting, Legal)</SelectItem>
                     </SelectGroup>
-                     <SelectGroup>
+                    <SelectGroup>
                         <SelectLabel>Specialized Industries</SelectLabel>
                         <SelectItem value="Distribution">Distribution</SelectItem>
                         <SelectItem value="Lending / Microfinance">Lending / Microfinance</SelectItem>
@@ -129,11 +141,11 @@ const BusinessTypeSelect = memo(({ control }: { control: any }) => (
             </Select>
             <FormMessage />
         </FormItem>
-    )}/>
+    )} />
 ));
 BusinessTypeSelect.displayName = 'BusinessTypeSelect';
 
-// --- The Main Page Component (unchanged) ---
+// --- The Main Page Component (Unchanged) ---
 export default function SignupPage() {
     const { form, isLoading, onSubmit } = useSignup();
     return (
@@ -146,10 +158,10 @@ export default function SignupPage() {
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={onSubmit} className="space-y-4">
-                            <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel>Your Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="businessName" render={({ field }) => (<FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="fullName" render={({ field }) => (<FormItem><FormLabel>Your Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="businessName" render={({ field }) => (<FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <BusinessTypeSelect control={form.control} />
-                            <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <PasswordInput control={form.control} />
                             <Button type="submit" className="w-full" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sign Up Free</Button>
                             <p className="text-center text-sm text-muted-foreground">Already have an account?{' '}<Link href="/login" className="font-semibold text-primary hover:underline">Log In</Link></p>
