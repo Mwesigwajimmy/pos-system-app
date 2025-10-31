@@ -9,16 +9,18 @@ import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
+// --- THE FIX: All necessary providers for the dashboard are imported here ---
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
-import { useCopilot } from '@/context/CopilotContext';
+import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
 
-
-// --- Mobile Sidebar Logic (Your original code, unchanged) ---
+// --- Mobile Sidebar Logic (Preserved from your original layout) ---
 const useMobileSidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => {
-    if (isSidebarOpen) { setIsSidebarOpen(false); }
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
   return { isSidebarOpen, setIsSidebarOpen };
@@ -31,7 +33,8 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       <div className="fixed inset-0 bg-black/60" aria-hidden="true" onClick={onClose}></div>
       <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
         <div className="absolute top-0 right-0 -mr-12 pt-2">
-          <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full" onClick={onClose}>
+          <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" onClick={onClose}>
+            <span className="sr-only">Close sidebar</span>
             <X className="h-6 w-6 text-white" aria-hidden="true" />
           </button>
         </div>
@@ -42,20 +45,17 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 });
 MobileSidebar.displayName = 'MobileSidebar';
 
-// --- The Omnipresent AI Toggle Button ---
+// --- The Omnipresent AI Toggle Button (Preserved from your original layout) ---
 const CopilotToggleButton = () => {
-    // CORRECTED: This now uses `toggleCopilot` to match your convention.
     const { toggleCopilot, isOpen, isReady } = useCopilot();
-
     if (!isReady) {
         return null;
     }
-
     return (
         <Button 
-            onClick={toggleCopilot} // CORRECTED
+            onClick={toggleCopilot}
             size="icon"
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50"
+            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95"
             aria-label={isOpen ? "Close AI Co-Pilot" : "Open AI Co-Pilot"}
         >
             <Sparkles className="h-6 w-6" />
@@ -63,7 +63,7 @@ const CopilotToggleButton = () => {
     );
 }
 
-// --- The Main Application UI (Your original code, with loading/error states) ---
+// --- The Main Application Layout (Preserved and made context-aware) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
   const { profile, isLoading, error } = useBusiness();
@@ -93,31 +93,48 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="relative z-30 flex-shrink-0 flex h-16 bg-card border-b border-border">
-          <button type="button" className="px-4 border-r border-border md:hidden" onClick={() => setIsSidebarOpen(true)}>
+          <button type="button" className="px-4 border-r border-border text-muted-foreground focus:outline-none md:hidden" onClick={() => setIsSidebarOpen(true)}>
+            <span className="sr-only">Open sidebar</span>
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
           <Header />
         </header>
-        <main className="flex-1 relative overflow-y-auto">
+        <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="p-4 sm:p-6 lg:p-8">
             {children}
           </div>
         </main>
       </div>
+      
       <CopilotToggleButton />
     </div>
   );
 }
 
-// --- The Final, Definitive Dashboard Layout Export (Your original code) ---
+// --- The Final, Definitive Dashboard Layout Export ---
+// This now correctly orchestrates all your providers in the right order.
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BrandingProvider>
       <SyncProvider>
+        {/*
+          Step 1: The BusinessProvider wraps everything in the dashboard.
+          It fetches the critical business data once.
+        */}
         <BusinessProvider>
-          <AppLayout>
-            {children}
-          </AppLayout>
+          {/*
+            Step 2: The GlobalCopilotProvider is INSIDE the BusinessProvider.
+            It can now safely use the `useBusiness` hook without crashing. THIS IS THE FIX.
+          */}
+          <GlobalCopilotProvider>
+            {/*
+              Step 3: Your AppLayout and all its children are rendered last.
+              They now have safe access to both the business and copilot contexts.
+            */}
+            <AppLayout>
+              {children}
+            </AppLayout>
+          </GlobalCopilotProvider>
         </BusinessProvider>
       </SyncProvider>
     </BrandingProvider>

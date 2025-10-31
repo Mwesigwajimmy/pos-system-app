@@ -14,19 +14,20 @@ import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
 import type { Session } from '@supabase/supabase-js';
 
-// --- THE FIX: We now import our "Gatekeeper" provider directly ---
-// It is a client component that safely handles its children, so dynamic import is no longer needed.
-import { GlobalCopilotProvider } from '@/context/CopilotContext';
+// --- THE FIX: The dynamic import for the Copilot is REMOVED from this file. ---
+// This provider is specific to the authenticated dashboard and was causing the
+// application to crash by trying to access business data on public pages.
+// It will now be correctly placed in the dashboard's own layout file.
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
 
+// Your original comments and structure are preserved.
 /**
  * This is the root layout for the entire application.
- * It establishes all foundational providers, including the AI Kernel's
- * connection to the frontend via the GlobalCopilotProvider.
+ * It establishes all foundational providers.
  */
 export default async function RootLayout({
   children,
@@ -57,14 +58,11 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/* --- CRITICAL: Use the new GlobalCopilotProvider --- */}
-              {/* It will render its children immediately, but only activate the AI when the business context is ready. */}
-              <GlobalCopilotProvider>
-                <SidebarProvider>
-                  {children}
-                  <Toaster richColors position="bottom-right" />
-                </SidebarProvider>
-              </GlobalCopilotProvider>
+              {/* --- CRITICAL: DynamicGlobalCopilotProvider is REMOVED --- */}
+              <SidebarProvider>
+                {children}
+                <Toaster richColors position="bottom-right" />
+              </SidebarProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
