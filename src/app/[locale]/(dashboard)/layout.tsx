@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, memo, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Sparkles, Loader2 } from 'lucide-react';
+import { Menu, X, Sparkles, Loader2 } from 'lucide-react'; // Added Loader2
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SyncProvider } from '@/components/core/SyncProvider';
@@ -10,8 +10,8 @@ import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
 // --- THE FIX: All necessary providers for the dashboard are imported here ---
-import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
-import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
+import { BusinessProvider, useBusiness } from '@/context/BusinessContext'; // Added BusinessProvider and useBusiness
+import { useCopilot } from '@/context/CopilotContext'; // Only useCopilot hook, provider is in root layout
 
 // --- Mobile Sidebar Logic (Preserved from your original layout) ---
 const useMobileSidebar = () => {
@@ -47,8 +47,8 @@ MobileSidebar.displayName = 'MobileSidebar';
 
 // --- The Omnipresent AI Toggle Button (Preserved from your original layout) ---
 const CopilotToggleButton = () => {
-    const { toggleCopilot, isOpen, isReady } = useCopilot();
-    if (!isReady) {
+    const { toggleCopilot, isOpen, isReady } = useCopilot(); // use 'toggleCopilot' and 'isReady' from the correct context
+    if (!isReady) { // Add loading state check
         return null;
     }
     return (
@@ -66,7 +66,7 @@ const CopilotToggleButton = () => {
 // --- The Main Application Layout (Preserved and made context-aware) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
-  const { profile, isLoading, error } = useBusiness();
+  const { profile, isLoading, error } = useBusiness(); // Use useBusiness hook here
 
   if (isLoading) {
     return (
@@ -123,18 +123,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         */}
         <BusinessProvider>
           {/*
-            Step 2: The GlobalCopilotProvider is INSIDE the BusinessProvider.
-            It can now safely use the `useBusiness` hook without crashing. THIS IS THE FIX.
+            Step 2: The GlobalCopilotProvider is now handled by the root layout.
+            The AppLayout and its children can now safely use the `useCopilot` hook.
           */}
-          <GlobalCopilotProvider>
-            {/*
-              Step 3: Your AppLayout and all its children are rendered last.
-              They now have safe access to both the business and copilot contexts.
-            */}
-            <AppLayout>
-              {children}
-            </AppLayout>
-          </GlobalCopilotProvider>
+          <AppLayout>
+            {children}
+          </AppLayout>
         </BusinessProvider>
       </SyncProvider>
     </BrandingProvider>

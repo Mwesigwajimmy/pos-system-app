@@ -1,3 +1,5 @@
+// src/app/[locale]/layout.tsx
+
 // --- THE FIX: Force this layout to use the Node.js runtime ---
 export const runtime = 'nodejs';
 
@@ -14,20 +16,25 @@ import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
 import type { Session } from '@supabase/supabase-js';
 
-// --- THE FIX: The dynamic import for the Copilot is REMOVED from this file. ---
-// This provider is specific to the authenticated dashboard and was causing the
-// application to crash by trying to access business data on public pages.
-// It will now be correctly placed in the dashboard's own layout file.
+// --- NEW IMPORT: Dynamic Import to prevent server bundling ---
+import dynamic from 'next/dynamic';
+// CRITICAL FIX: Dynamically import GlobalCopilotProvider with ssr: false
+// Pointing to the context/CopilotContext instead of components/core/GlobalCopilot
+const DynamicGlobalCopilotProvider = dynamic(() => import('@/context/CopilotContext').then(mod => mod.GlobalCopilotProvider), {
+  ssr: false, // This ensures that the problematic imports within the provider are never processed on the server
+});
+// -----------------------------------------------------------
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
 
-// Your original comments and structure are preserved.
+
 /**
  * This is the root layout for the entire application.
- * It establishes all foundational providers.
+ * It establishes all foundational providers, including the AI Kernel's
+ * connection to the frontend via the GlobalCopilotProvider.
  */
 export default async function RootLayout({
   children,
@@ -58,11 +65,13 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/* --- CRITICAL: DynamicGlobalCopilotProvider is REMOVED --- */}
-              <SidebarProvider>
-                {children}
-                <Toaster richColors position="bottom-right" />
-              </SidebarProvider>
+              {/* --- CRITICAL: Use the Dynamically Imported Provider --- */}
+              <DynamicGlobalCopilotProvider>
+                <SidebarProvider>
+                  {children}
+                  <Toaster richColors position="bottom-right" />
+                </SidebarProvider>
+              </DynamicGlobalCopilotProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
