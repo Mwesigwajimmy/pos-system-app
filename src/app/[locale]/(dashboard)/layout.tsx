@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, memo, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Sparkles, Loader2 } from 'lucide-react'; // Added Loader2
+import { Menu, X, Sparkles, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SyncProvider } from '@/components/core/SyncProvider';
@@ -10,7 +10,7 @@ import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
 // --- THE FIX: All necessary providers for the dashboard are imported here ---
-import { BusinessProvider, useBusiness } from '@/context/BusinessContext'; // Added BusinessProvider and useBusiness
+import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { useCopilot } from '@/context/CopilotContext'; // Only useCopilot hook, provider is in root layout
 
 // --- Mobile Sidebar Logic (Preserved from your original layout) ---
@@ -47,12 +47,12 @@ MobileSidebar.displayName = 'MobileSidebar';
 
 // --- The Omnipresent AI Toggle Button (Preserved from your original layout) ---
 const CopilotToggleButton = () => {
-    const { toggleCopilot, isOpen, isReady } = useCopilot(); // use 'toggleCopilot' and 'isReady' from the correct context
-    if (!isReady) { // Add loading state check
+    const { toggleCopilot, isOpen, isReady } = useCopilot();
+    if (!isReady) {
         return null;
     }
     return (
-        <Button 
+        <Button
             onClick={toggleCopilot}
             size="icon"
             className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95"
@@ -66,7 +66,7 @@ const CopilotToggleButton = () => {
 // --- The Main Application Layout (Preserved and made context-aware) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
-  const { profile, isLoading, error } = useBusiness(); // Use useBusiness hook here
+  const { profile, isLoading, error } = useBusiness(); // This hook requires BusinessProvider to be an ancestor
 
   if (isLoading) {
     return (
@@ -105,7 +105,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </main>
       </div>
-      
+
       <CopilotToggleButton />
     </div>
   );
@@ -118,14 +118,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <BrandingProvider>
       <SyncProvider>
         {/*
-          Step 1: The BusinessProvider wraps everything in the dashboard.
-          It fetches the critical business data once.
+          CRITICAL FIX: BusinessProvider must wrap AppLayout,
+          because AppLayout consumes the BusinessContext via useBusiness.
         */}
         <BusinessProvider>
-          {/*
-            Step 2: The GlobalCopilotProvider is now handled by the root layout.
-            The AppLayout and its children can now safely use the `useCopilot` hook.
-          */}
           <AppLayout>
             {children}
           </AppLayout>
