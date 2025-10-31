@@ -16,8 +16,10 @@ import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
 import type { Session } from '@supabase/supabase-js';
 
-// --- NEW IMPORT: Dynamic Import to prevent server bundling ---
+// --- NEW IMPORTS: ---
 import dynamic from 'next/dynamic';
+import { BusinessProvider } from '@/context/BusinessContext'; // <--- NEW IMPORT for BusinessProvider
+
 // CRITICAL FIX: Dynamically import GlobalCopilotProvider with ssr: false
 // Pointing to the context/CopilotContext instead of components/core/GlobalCopilot
 const DynamicGlobalCopilotProvider = dynamic(() => import('@/context/CopilotContext').then(mod => mod.GlobalCopilotProvider), {
@@ -65,13 +67,15 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/* --- CRITICAL: Use the Dynamically Imported Provider --- */}
-              <DynamicGlobalCopilotProvider>
-                <SidebarProvider>
-                  {children}
-                  <Toaster richColors position="bottom-right" />
-                </SidebarProvider>
-              </DynamicGlobalCopilotProvider>
+              {/* --- NEW: BusinessProvider added here --- */}
+              <BusinessProvider>
+                <DynamicGlobalCopilotProvider>
+                  <SidebarProvider>
+                    {children}
+                    <Toaster richColors position="bottom-right" />
+                  </SidebarProvider>
+                </DynamicGlobalCopilotProvider>
+              </BusinessProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>

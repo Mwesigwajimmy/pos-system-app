@@ -9,9 +9,9 @@ import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
-// --- THE FIX: All necessary providers for the dashboard are imported here ---
-import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
-import { useCopilot } from '@/context/CopilotContext'; // Only useCopilot hook, provider is in root layout
+// --- THE FIX: Removed BusinessProvider import, useBusiness is still used by AppLayout ---
+import { useBusiness } from '@/context/BusinessContext';
+import { useCopilot } from '@/context/CopilotContext';
 
 // --- Mobile Sidebar Logic (Preserved from your original layout) ---
 const useMobileSidebar = () => {
@@ -66,7 +66,7 @@ const CopilotToggleButton = () => {
 // --- The Main Application Layout (Preserved and made context-aware) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
-  const { profile, isLoading, error } = useBusiness(); // This hook requires BusinessProvider to be an ancestor
+  const { profile, isLoading, error } = useBusiness(); // This hook now gets context from the root layout
 
   if (isLoading) {
     return (
@@ -112,20 +112,17 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 }
 
 // --- The Final, Definitive Dashboard Layout Export ---
-// This now correctly orchestrates all your providers in the right order.
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BrandingProvider>
       <SyncProvider>
         {/*
-          CRITICAL FIX: BusinessProvider must wrap AppLayout,
-          because AppLayout consumes the BusinessContext via useBusiness.
+          CRITICAL FIX: BusinessProvider has been moved to the root layout.
+          AppLayout now gets its context from the root.
         */}
-        <BusinessProvider>
-          <AppLayout>
-            {children}
-          </AppLayout>
-        </BusinessProvider>
+        <AppLayout>
+          {children}
+        </AppLayout>
       </SyncProvider>
     </BrandingProvider>
   );
