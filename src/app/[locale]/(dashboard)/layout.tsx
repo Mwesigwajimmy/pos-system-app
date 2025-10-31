@@ -1,56 +1,28 @@
-// src/app/[locale]/dashboard/layout.tsx
+// src/app/[locale]/(dashboard)/layout.tsx
 
 'use client';
 
-import React, { useState, useEffect, memo, ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { memo, ReactNode } from 'react';
 import { Menu, X, Sparkles, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header';
+import Header from '@/components/Header'; // This component is being used
 import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
 import { useBusiness } from '@/context/BusinessContext';
 import { useCopilot } from '@/context/CopilotContext';
+import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
-// --- Mobile Sidebar Logic (Preserved from your original layout) ---
-const useMobileSidebar = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const pathname = usePathname();
-  useEffect(() => {
-    if (isSidebarOpen) {
-      setIsSidebarOpen(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-  return { isSidebarOpen, setIsSidebarOpen };
-};
-
-const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-black/60" aria-hidden="true" onClick={onClose}></div>
-      <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
-        <div className="absolute top-0 right-0 -mr-12 pt-2">
-          <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" onClick={onClose}>
-            <span className="sr-only">Close sidebar</span>
-            <X className="h-6 w-6 text-white" aria-hidden="true" />
-          </button>
-        </div>
-        <Sidebar />
-      </div>
-    </div>
-  );
-});
-MobileSidebar.displayName = 'MobileSidebar';
-
-// --- The Omnipresent AI Toggle Button (Now conditionally rendered by AppLayout) ---
+// --- The Omnipresent AI Toggle Button ---
 const CopilotToggleButton = () => {
-    // This component itself is fine, its rendering needs to be managed by its parent
+    // This hook is now safe because this component will only be rendered
+    // AFTER the AppLayout confirms the profile and context are ready.
     const { toggleCopilot, isOpen, isReady } = useCopilot();
-    if (!isReady) { // isReady will be false if CopilotWorkerProvider was not rendered
+
+    // The isReady check provides a final layer of safety.
+    if (!isReady) {
         return null;
     }
     return (
@@ -65,33 +37,37 @@ const CopilotToggleButton = () => {
     );
 }
 
-// --- The Main Application Layout (Will ONLY be rendered for authenticated, non-auth routes) ---
+// --- The Main Application Layout ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
-  const { profile, isLoading, error } = useBusiness(); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
-  // If profile is still loading or there's an error, show a placeholder for the entire AppLayout
-  if (isLoading) {
-    return (
-        <div className="flex h-screen w-screen items-center justify-center bg-background">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-    );
-  }
+  useEffect(() => {
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
-  // If there's an error or no profile (e.g., user is not authenticated or profile setup failed)
-  if (error || !profile) {
-    // This state should ideally be handled by redirection *before* AppLayout renders,
-    // but as a fallback, display an error. Auth pages should bypass AppLayout entirely.
+  // Mobile Sidebar component remains the same
+  const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
+    if (!isOpen) return null;
     return (
-        <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
-            <div className="text-center">
-                <h1 className="text-xl font-bold">Application Error</h1>
-                <p>{error || "Your business profile could not be loaded. Please try logging in again."}</p>
-            </div>
+      <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-black/60" aria-hidden="true" onClick={onClose}></div>
+        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
+          <div className="absolute top-0 right-0 -mr-12 pt-2">
+            <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" onClick={onClose}>
+              <span className="sr-only">Close sidebar</span>
+              <X className="h-6 w-6 text-white" aria-hidden="true" />
+            </button>
+          </div>
+          <Sidebar />
         </div>
+      </div>
     );
-  }
+  });
+  MobileSidebar.displayName = 'MobileSidebar';
 
   return (
     <div className="flex h-screen bg-background">
@@ -111,9 +87,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </main>
       </div>
-      {/* CopilotToggleButton is now here, but its own internal isReady check
-          will prevent it from rendering if CopilotContext is not fully available.
-          However, for auth routes, AppLayout itself should not render. */}
       <CopilotToggleButton />
     </div>
   );
@@ -121,10 +94,36 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 // --- The Final, Definitive Dashboard Layout Export ---
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // CRITICAL CHANGE: We now use the useBusiness hook HERE to act as a gatekeeper.
+  const { profile, isLoading, error } = useBusiness();
+
+  // 1. While loading, show a full-screen loader.
+  if (isLoading) {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center bg-background">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
+
+  // 2. If there is an error OR there is no profile, show an error message.
+  // This PREVENTS AppLayout from ever rendering for non-logged-in users.
+  if (error || !profile) {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
+            <div className="text-center">
+                <h1 className="text-xl font-bold">Application Error</h1>
+                <p>{error || "Your business profile could not be loaded. Please log in to continue."}</p>
+                 {/* Optional: Add a button to redirect to login */}
+            </div>
+        </div>
+    );
+  }
+
+  // 3. ONLY if a profile exists, render the full AppLayout.
   return (
     <BrandingProvider>
       <SyncProvider>
-        {/* AppLayout now gets its context from the root. */}
         <AppLayout>
           {children}
         </AppLayout>
