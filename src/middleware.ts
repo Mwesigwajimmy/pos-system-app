@@ -4,8 +4,7 @@
 
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
-// import { createMiddlewareClient } from '@supabase/ssr'; // <-- REMOVED: This is not exported in your version
-import { createServerClient, type CookieOptions } from '@supabase/ssr'; // <-- CHANGED: Revert to createServerClient, keep CookieOptions
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // --- CONFIGURATION (Unchanged) ---
@@ -99,7 +98,6 @@ export async function middleware(request: NextRequest) {
     // --- END: next-intl Integration ---
 
     // --- SUPABASE & AUTH LOGIC ---
-    // CHANGED: Revert to createServerClient but with Edge-compatible cookie handlers
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -107,107 +105,86 @@ export async function middleware(request: NextRequest) {
             cookies: {
                 get: (name: string) => request.cookies.get(name)?.value,
                 set: (name: string, value: string, options: CookieOptions) => {
-                    // Update the request cookie (for subsequent reads in this middleware run)
                     request.cookies.set({ name, value, ...options });
-                    // Update the response cookie (to be sent back to the client)
                     response.cookies.set({ name, value, ...options });
                 },
                 remove: (name: string, options: CookieOptions) => {
-                    // Update the request cookie
                     request.cookies.set({ name, value: '', ...options });
-                    // Update the response cookie
                     response.cookies.set({ name, value: '', ...options });
                 },
             },
         }
     );
     
-    // Ensure the Supabase session is loaded and cookies are correctly synced with the response.
-    // This step is crucial for authentication state to be available and persisted.
-    // This call will use the cookie handlers defined above to read/set cookies on 'request' and 'response'.
     await supabase.auth.getSession();
 
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Define public paths that don't require authentication
     const publicPaths = ['/', '/login', '/signup', '/accept-invite', '/auth/callback'];
 
-    // If no user is logged in:
     if (!user) {
-        // If the current path is a public path, allow access.
         if (publicPaths.includes(pathWithoutLocale)) {
-            return response; // Return the response with potential cookies set by Supabase client
+            return response;
         }
-        // Otherwise, redirect to the login page, preserving the locale.
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // If a user is logged in, fetch their profile to check roles and business setup.
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select(`role, business:businesses ( business_type, setup_complete )`)
-        .eq('id', user.id)
-        .single();
+    // =================================================================================
+    // --- THE FIX: Replace the direct, faulty query with a resilient RPC call ---
+    // =================================================================================
+    const { data: userContextData, error } = await supabase.rpc('get_user_context');
+    const userContext = userContextData ? userContextData[0] : null;
     
     // Handle cases where profile data is missing or an error occurred during fetch.
-    if (error || !profile) {
+    if (error || !userContext) {
         await supabase.auth.signOut(); // Log out the user due to critical profile error.
-        // Redirect to login with error messages, preserving the locale.
         const loginUrl = new URL(`/${localeInPath}/login`, request.url);
         loginUrl.searchParams.set('error', 'profile_not_found');
         loginUrl.searchParams.set('message', 'Critical error: User profile not found.');
         return NextResponse.redirect(loginUrl);
     }
     
-    // Extract business details, handling potential array return.
-    const businessDetails = Array.isArray(profile.business) ? profile.business[0] : profile.business;
-
-    // If business details are missing, redirect to the welcome/setup page.
-    if (!businessDetails) {
+    // Extract user role, business type, and setup status from the RPC call result.
+    const userRole = userContext.user_role;
+    const businessType = userContext.business_type || '';
+    const setupComplete = userContext.setup_complete;
+    
+    // If business details are missing (indicated by setup_complete being null), redirect to the welcome/setup page.
+    if (setupComplete === null || setupComplete === undefined) {
         if (pathWithoutLocale !== '/welcome') {
             return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
         }
         return response; // Allow access to /welcome
     }
+    // =================================================================================
+    // --- End of Fix ---
+    // =================================================================================
 
-    // Extract user role, business type, and setup status.
-    const userRole = profile.role;
-    const businessType = businessDetails.business_type || '';
-    const setupComplete = businessDetails.setup_complete;
-    
-    // Determine the appropriate default dashboard based on role or business type.
+    // The rest of your logic now uses the secure variables from above
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
-    // If user is logged in and trying to access a public path:
     if (publicPaths.includes(pathWithoutLocale)) {
-        // Redirect them to their default dashboard, preserving the locale.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // If setup is not complete and user is not on the welcome page, redirect to welcome.
     if (!setupComplete && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
-    // If setup is complete and user is still on the welcome page, redirect to their default dashboard.
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // Check path permissions based on user role.
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
 
-    // If the path requires specific roles and the user doesn't have them, redirect to their default dashboard.
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
-    // If all checks pass, allow the request to proceed with the modified response (containing updated cookies).
     return response; 
 }
 
 // --- MATCHER (Unchanged) ---
 export const config = {
-  // This matcher ensures the middleware runs on all paths except for specific assets and API routes.
   matcher: [
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
