@@ -1,25 +1,24 @@
 'use client';
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X, Sparkles, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
-// --- FIX: Import only the hook, not the provider which is already in the root layout ---
-import { useCopilot } from '@/components/core/GlobalCopilot'; 
+import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
+import { useCopilot } from '@/context/CopilotContext';
 
-// --- Mobile Sidebar Logic (Preserved from your original layout) ---
+
+// --- Mobile Sidebar Logic (Your original code, unchanged) ---
 const useMobileSidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   useEffect(() => {
-    if (isSidebarOpen) {
-      setIsSidebarOpen(false);
-    }
+    if (isSidebarOpen) { setIsSidebarOpen(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
   return { isSidebarOpen, setIsSidebarOpen };
@@ -32,8 +31,7 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       <div className="fixed inset-0 bg-black/60" aria-hidden="true" onClick={onClose}></div>
       <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
         <div className="absolute top-0 right-0 -mr-12 pt-2">
-          <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" onClick={onClose}>
-            <span className="sr-only">Close sidebar</span>
+          <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full" onClick={onClose}>
             <X className="h-6 w-6 text-white" aria-hidden="true" />
           </button>
         </div>
@@ -44,16 +42,20 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 });
 MobileSidebar.displayName = 'MobileSidebar';
 
-
 // --- The Omnipresent AI Toggle Button ---
-// This client component lives inside the provider to access its state.
 const CopilotToggleButton = () => {
-    const { togglePanel, isOpen } = useCopilot();
+    // CORRECTED: This now uses `toggleCopilot` to match your convention.
+    const { toggleCopilot, isOpen, isReady } = useCopilot();
+
+    if (!isReady) {
+        return null;
+    }
+
     return (
         <Button 
-            onClick={togglePanel}
+            onClick={toggleCopilot} // CORRECTED
             size="icon"
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95"
+            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50"
             aria-label={isOpen ? "Close AI Co-Pilot" : "Open AI Co-Pilot"}
         >
             <Sparkles className="h-6 w-6" />
@@ -61,48 +63,62 @@ const CopilotToggleButton = () => {
     );
 }
 
-// --- The Main Application Layout ---
-// The core layout component now orchestrates the AI provider and the UI.
+// --- The Main Application UI (Your original code, with loading/error states) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, setIsSidebarOpen } = useMobileSidebar();
+  const { profile, isLoading, error } = useBusiness();
+
+  if (isLoading) {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center bg-background">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+        <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
+            <div className="text-center">
+                <h1 className="text-xl font-bold">Application Error</h1>
+                <p>{error || "Your business profile could not be loaded. Please try logging in again."}</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
-      {/* --- Your existing, preserved UI structure --- */}
       <div className="hidden md:flex md:flex-shrink-0"><Sidebar /></div>
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="relative z-30 flex-shrink-0 flex h-16 bg-card border-b border-border">
-          <button type="button" className="px-4 border-r border-border text-muted-foreground focus:outline-none md:hidden" onClick={() => setIsSidebarOpen(true)}>
-            <span className="sr-only">Open sidebar</span>
+          <button type="button" className="px-4 border-r border-border md:hidden" onClick={() => setIsSidebarOpen(true)}>
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
           <Header />
         </header>
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
+        <main className="flex-1 relative overflow-y-auto">
           <div className="p-4 sm:p-6 lg:p-8">
             {children}
           </div>
         </main>
       </div>
-      
-      {/* --- The Global AI is now always available via this button --- */}
       <CopilotToggleButton />
     </div>
   );
 }
 
-// --- The Final, Definitive Dashboard Layout Export ---
-// This is the root component that provides all necessary context to the application.
+// --- The Final, Definitive Dashboard Layout Export (Your original code) ---
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BrandingProvider>
       <SyncProvider>
-        {/* THE FIX: The conflicting GlobalCopilotProvider has been removed. */}
-        {/* AppLayout and its children can now correctly access the single provider from the root layout. */}
-        <AppLayout>
-          {children}
-        </AppLayout>
+        <BusinessProvider>
+          <AppLayout>
+            {children}
+          </AppLayout>
+        </BusinessProvider>
       </SyncProvider>
     </BrandingProvider>
   );

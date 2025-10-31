@@ -1,5 +1,3 @@
-// src/app/[locale]/layout.tsx
-
 // --- THE FIX: Force this layout to use the Node.js runtime ---
 export const runtime = 'nodejs';
 
@@ -14,25 +12,16 @@ import { ThemeProvider } from '@/components/theme-provider';
 import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
-import type { Session } from '@supabase/supabase-js'; // Import the Session type for safety
+import type { Session } from '@supabase/supabase-js';
 
-// --- NEW IMPORT: Dynamic Import to prevent server bundling ---
-import dynamic from 'next/dynamic';
-// CRITICAL FIX: Dynamically import GlobalCopilotProvider with ssr: false
-const DynamicGlobalCopilotProvider = dynamic(() => import('@/components/core/GlobalCopilot').then(mod => mod.GlobalCopilotProvider), {
-  ssr: false, // This ensures that the problematic imports within the provider are never processed on the server
-});
-// -----------------------------------------------------------
+// --- THE FIX: We now import our "Gatekeeper" provider directly ---
+// It is a client component that safely handles its children, so dynamic import is no longer needed.
+import { GlobalCopilotProvider } from '@/context/CopilotContext';
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
-
-// The CopilotToggleButton is now NOT included here, and will instead be a child component
-// of the DynamicGlobalCopilotProvider (likely the one defined in your app/[locale]/page.tsx)
-// or rendered separately. We leave the layout clean.
-
 
 /**
  * This is the root layout for the entire application.
@@ -68,15 +57,14 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {/* --- CRITICAL: Use the Dynamically Imported Provider --- */}
-              <DynamicGlobalCopilotProvider>
+              {/* --- CRITICAL: Use the new GlobalCopilotProvider --- */}
+              {/* It will render its children immediately, but only activate the AI when the business context is ready. */}
+              <GlobalCopilotProvider>
                 <SidebarProvider>
                   {children}
-                  {/* Note: CopilotToggleButton must now be rendered as a child of this provider, 
-                      for example, within app/[locale]/page.tsx if it's meant to be global. */}
                   <Toaster richColors position="bottom-right" />
                 </SidebarProvider>
-              </DynamicGlobalCopilotProvider>
+              </GlobalCopilotProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
