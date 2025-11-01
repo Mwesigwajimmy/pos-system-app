@@ -5,23 +5,23 @@
 import React, { memo, ReactNode } from 'react';
 import { Menu, X, Sparkles, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import Header from '@/components/Header'; // This component is being used
+import Header from '@/components/Header';
 import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
 
-import { useBusiness } from '@/context/BusinessContext';
-import { useCopilot } from '@/context/CopilotContext';
+// --- V-REVOLUTION FIX: IMPORT THE NECESSARY PROVIDERS ---
+import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
+import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
+// --- END OF FIX ---
+
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
-// --- The Omnipresent AI Toggle Button ---
+// --- The Omnipresent AI Toggle Button (No changes needed here) ---
 const CopilotToggleButton = () => {
-    // This hook is now safe because this component will only be rendered
-    // AFTER the AppLayout confirms the profile and context are ready.
     const { toggleCopilot, isOpen, isReady } = useCopilot();
 
-    // The isReady check provides a final layer of safety.
     if (!isReady) {
         return null;
     }
@@ -37,7 +37,7 @@ const CopilotToggleButton = () => {
     );
 }
 
-// --- The Main Application Layout ---
+// --- The Main Application Layout (No changes needed here) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
@@ -49,7 +49,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // Mobile Sidebar component remains the same
   const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
     if (!isOpen) return null;
     return (
@@ -92,42 +91,48 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   );
 }
 
-// --- The Final, Definitive Dashboard Layout Export ---
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // CRITICAL CHANGE: We now use the useBusiness hook HERE to act as a gatekeeper.
-  const { profile, isLoading, error } = useBusiness();
+// --- Gatekeeper Component (Your original, correct logic) ---
+// This component now sits inside the providers and determines if the main UI should render.
+const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
+    const { profile, isLoading, error } = useBusiness();
 
-  // 1. While loading, show a full-screen loader.
-  if (isLoading) {
-    return (
-        <div className="flex h-screen w-screen items-center justify-center bg-background">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-    );
-  }
-
-  // 2. If there is an error OR there is no profile, show an error message.
-  // This PREVENTS AppLayout from ever rendering for non-logged-in users.
-  if (error || !profile) {
-    return (
-        <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
-            <div className="text-center">
-                <h1 className="text-xl font-bold">Application Error</h1>
-                <p>{error || "Your business profile could not be loaded. Please log in to continue."}</p>
-                 {/* Optional: Add a button to redirect to login */}
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-        </div>
-    );
-  }
+        );
+    }
 
-  // 3. ONLY if a profile exists, render the full AppLayout.
+    if (error || !profile) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
+                <div className="text-center">
+                    <h1 className="text-xl font-bold">Application Error</h1>
+                    <p>{error || "Your business profile could not be loaded. Please log in again."}</p>
+                </div>
+            </div>
+        );
+    }
+    
+    // Profile is loaded, render the actual app layout.
+    return <AppLayout>{children}</AppLayout>;
+}
+
+// --- The Final, Definitive Dashboard Layout Export (NOW WITH PROVIDERS) ---
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <BrandingProvider>
-      <SyncProvider>
-        <AppLayout>
-          {children}
-        </AppLayout>
-      </SyncProvider>
-    </BrandingProvider>
+    <BusinessProvider>
+      <GlobalCopilotProvider>
+        <BrandingProvider>
+          <SyncProvider>
+            {/* The Gatekeeper now protects the UI and has access to the contexts it needs */}
+            <DashboardGatekeeper>
+              {children}
+            </DashboardGatekeeper>
+          </SyncProvider>
+        </BrandingProvider>
+      </GlobalCopilotProvider>
+    </BusinessProvider>
   );
 }
