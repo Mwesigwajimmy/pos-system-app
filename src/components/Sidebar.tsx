@@ -1,17 +1,19 @@
+// src/components/Sidebar.tsx
+
 'use client';
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// FIX: Imports from the first file
 import { useSidebar } from '@/context/SidebarContext';
-import { useCopilot } from '@/components/core/GlobalCopilot'; 
 
-// FIX: New imports for collapse/expand functionality
+// --- V-REVOLUTION FIX: THIS IMPORT PATH IS NOW CORRECT ---
+import { useCopilot } from '@/context/CopilotContext'; 
+// --- END OF FIX ---
+
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-// End new imports
 
 import {
     LayoutDashboard, ShoppingCart, Clock, Users, BarChart3, History, Boxes, Truck,
@@ -37,8 +39,8 @@ interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; rol
 type NavItem = NavLink | NavAccordion;
 
 const navSections: NavItem[] = [
-    { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] }, // FIX: Changed root to /dashboard for consistency
-    { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor'] }, // Main AI Link
+    { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
+    { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor'] },
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier'] },
     { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], module: 'sales' },
     {
@@ -160,10 +162,9 @@ const navSections: NavItem[] = [
     },
 ];
 
-const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin'] }; // FIX: Defined settings nav separately
+const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin'] };
 
-// --- Reusable NavLink Component (from first file) ---
-const NavLink = ({ href, label, Icon, isSidebarOpen }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; }) => {
+const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
 
@@ -204,17 +205,14 @@ const NavLink = ({ href, label, Icon, isSidebarOpen }: { href: string; label: st
   );
 };
 
-// --- The Main Sidebar Component (Merged Logic) ---
 export default function Sidebar() {
     const pathname = usePathname();
     const { role, isLoading: isLoadingRole } = useUserRole();
     const { data: enabledModules, isLoading: isLoadingModules } = useTenantModules();
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
     
-    // FIX: Import sidebar and copilot state/functions
     const { isSidebarOpen, toggleSidebar } = useSidebar();
-    const { openPanel } = useCopilot();
-    // End FIX
+    const { openCopilot } = useCopilot(); // The hook is used here.
 
     const isLoading = isLoadingRole || isLoadingModules || isLoadingTenant;
 
@@ -233,7 +231,6 @@ export default function Sidebar() {
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
-            // FIX: Ensure it checks that section.subItems exists before calling .some()
             if (section.type === 'accordion' && section.subItems?.some(sub => pathname.startsWith(sub.href) && sub.href !== '/')) {
                 return section.module;
             }
@@ -241,14 +238,12 @@ export default function Sidebar() {
         return undefined;
     }, [pathname]);
 
-
     const renderAccordionNav = (items: NavItem[]) => (
         <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full">
             {items.map((item) => {
                 if (item.type === 'link') {
-                    // FIX: Destructure item.icon and rename it to 'Icon' to match the NavLink component prop.
                     const { icon: Icon, ...rest } = item;
-                    return <NavLink key={item.href} {...rest} Icon={Icon} isSidebarOpen={isSidebarOpen} />;
+                    return <NavLinkComponent key={item.href} {...rest} Icon={Icon} isSidebarOpen={isSidebarOpen} />;
                 }
                 if (item.type === 'accordion') {
                     const userRole = role?.toLowerCase() || '';
@@ -260,7 +255,7 @@ export default function Sidebar() {
                     });
 
                     if (filteredSubItems.length === 0) return null;
-                    if (!isSidebarOpen) return null; // FIX: Hide full accordion when collapsed
+                    if (!isSidebarOpen) return null;
 
                     return (
                         <AccordionItem key={item.module} value={item.module} className="border-none">
@@ -285,22 +280,17 @@ export default function Sidebar() {
         </Accordion>
     );
 
-
     return (
-        // FIX: Applied the collapse/expand classes from the first file
         <aside className={cn(
             "h-full bg-card border-r flex flex-col transition-all duration-300 ease-in-out",
             isSidebarOpen ? "w-64" : "w-20"
         )}>
-            {/* Header / Logo and Toggle Section */}
             <div className="flex items-center justify-between h-16 border-b px-4 flex-shrink-0">
                 {isSidebarOpen && <h1 className="text-lg font-bold tracking-tight text-primary">BBU1</h1>}
                 <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"} className={cn(!isSidebarOpen && "mx-auto")}>
                     {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
             </div>
-
-            {/* Main Navigation - Integrated Accordion Logic */}
             <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
                 {isLoading ? (
                     <div className="p-3 text-sm text-muted-foreground animate-pulse">Loading navigation...</div>
@@ -308,12 +298,9 @@ export default function Sidebar() {
                     renderAccordionNav(finalNavItems)
                 )}
             </nav>
-
-            {/* Footer Navigation (AI, Settings) - Integrated Collapsed/Expanded Logic */}
             <div className="p-4 mt-auto border-t space-y-2 flex-shrink-0">
-                {/* The Revolutionary AI Button */}
                 {isSidebarOpen ? (
-                    <Button variant="outline" className="w-full justify-start" onClick={openPanel}>
+                    <Button variant="outline" className="w-full justify-start" onClick={openCopilot}>
                         <Sparkles className="mr-3 h-5 w-5 text-primary" />
                         Ask Aura
                     </Button>
@@ -321,7 +308,7 @@ export default function Sidebar() {
                     <TooltipProvider delayDuration={0}>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" className="w-full" onClick={openPanel} aria-label="Ask Aura">
+                                <Button variant="outline" size="icon" className="w-full" onClick={openCopilot} aria-label="Ask Aura">
                                     <Sparkles className="h-5 w-5 text-primary" />
                                 </Button>
                             </TooltipTrigger>
@@ -329,9 +316,7 @@ export default function Sidebar() {
                         </Tooltip>
                     </TooltipProvider>
                 )}
-
-                {/* Settings Link */}
-                <NavLink {...settingsNav} Icon={settingsNav.Icon} isSidebarOpen={isSidebarOpen} />
+                <NavLinkComponent {...settingsNav} Icon={settingsNav.Icon} isSidebarOpen={isSidebarOpen} />
             </div>
         </aside>
     );
