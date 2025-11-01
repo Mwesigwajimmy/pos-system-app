@@ -56,14 +56,11 @@ const defaultDashboards: Record<string, string> = {
     'default': '/dashboard',
 };
 
-// --- MIDDLEWARE FUNCTION (With only the broken part fixed) ---
+// --- MIDDLEWARE FUNCTION ---
 export async function middleware(request: NextRequest) {
-    // --- THIS IS THE ONLY ADDED CODE TO PREVENT REDIRECT LOOPS ---
-    // (Your original code had a similar fix, this just ensures it's robust)
     if (request.headers.get('x-middleware-rewrite')) {
         return NextResponse.next();
     }
-    // --- END OF CORRECTION ---
 
     const { pathname } = request.nextUrl;
 
@@ -92,7 +89,6 @@ export async function middleware(request: NextRequest) {
         response = NextResponse.next({ request: { headers: requestHeaders } }); // Initialize basic "next" response
     }
     
-    // Determine the path without the locale for internal logic (auth, permissions).
     pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
     // --- END: next-intl Integration ---
 
@@ -123,55 +119,63 @@ export async function middleware(request: NextRequest) {
 
     if (!user) {
         if (publicPaths.includes(pathWithoutLocale)) {
-            return response;
+            return response; // Allow access to public paths if not logged in
         }
+        // For any other path, redirect to login
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // =================================================================================
-    // --- START OF THE ONLY FIX ---
-    // This block replaces the direct queries that were failing.
-    // =================================================================================
+    // If we have a user, fetch their context
     const { data: userContextData, error } = await supabase.rpc('get_user_context');
-    const userContext = userContextData ? userContextData[0] : null;
-    
-    // Handle cases where profile data is missing or an error occurred during fetch.
-    if (error || !userContext) {
-        await supabase.auth.signOut(); // Log out the user due to critical profile error.
+
+    if (error || !userContextData || userContextData.length === 0) {
+        await supabase.auth.signOut();
         const loginUrl = new URL(`/${localeInPath}/login`, request.url);
         loginUrl.searchParams.set('error', 'profile_not_found');
-        loginUrl.searchParams.set('message', 'Critical error: User profile not found.');
         return NextResponse.redirect(loginUrl);
     }
     
-    // Extract user role, business type, and setup status from the RPC call result.
+    const userContext = userContextData[0];
     const userRole = userContext.user_role;
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
-    // =================================================================================
-    // --- End of Fix ---
-    // =================================================================================
-
-    // The rest of your V-REVOLUTION logic, now using the secure variables. Untouched.
+    
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
-    if (publicPaths.includes(pathWithoutLocale)) {
-        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
-    }
+    // =================================================================================
+    // --- START OF LOGIC REORDERING (THE ONLY FIX NEEDED) ---
+    // The following blocks have been re-ordered to prioritize the setup check.
+    // =================================================================================
 
+    // PRIORITY 1: If setup is NOT complete, the user MUST be on the welcome page.
+    // If they are anywhere else, redirect them there immediately.
     if (!setupComplete && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
+    
+    // PRIORITY 2: If setup IS complete, the user MUST NOT be on the welcome page.
+    // If they land there by mistake, send them to their dashboard.
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
+    // PRIORITY 3: If setup IS complete and they land on a public page (like the homepage),
+    // redirect them into the application to their dashboard.
+    if (publicPaths.includes(pathWithoutLocale)) {
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+    }
 
+    // =================================================================================
+    // --- END OF LOGIC REORDERING ---
+    // =================================================================================
+
+    // Standard role-based permission check (Your original code, untouched)
+    const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
+    // If all checks pass, allow the request to proceed.
     return response; 
 }
 
