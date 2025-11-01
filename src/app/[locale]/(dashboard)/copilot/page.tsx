@@ -23,7 +23,7 @@ import { Sparkles, Send, User, Loader2, Server, Cog } from 'lucide-react';
 // --- AgentStep Component (Renders the real-time tool execution) ---
 const AgentStep = ({ data }: { data: any }) => {
     if (data.event === 'on_agent_action') {
-        const action = data.data.data[0]; // FIX: Extract tool call from array structure yielded by the shim
+        const action = data.data.data[0]; 
         return (
             <div className="text-xs text-muted-foreground ml-9 my-2 p-3 border rounded-md bg-accent">
                 <div className="flex items-center gap-2">
@@ -42,7 +42,6 @@ const AgentStep = ({ data }: { data: any }) => {
             <div className="text-xs text-muted-foreground ml-9 my-2 p-3 border rounded-md bg-accent">
                 <div className="flex items-center gap-2"><Server className="h-4 w-4" /><p className="font-semibold">Observation Received</p></div>
                 <pre className="mt-2 p-2 bg-background/50 rounded-md text-xs whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
-                    {/* Display a truncated, pretty-printed JSON observation */}
                     <code>{
                         (() => {
                             try {
@@ -68,20 +67,22 @@ const AgentStep = ({ data }: { data: any }) => {
  * AI chat interface using the Vercel AI SDK for streaming and tool calls.
  */
 export default function MissionControlPage() {
-  // --- V-REVOLUTION FIX: Get the profile's loading state for a more robust UI ---
-  const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
+  // --- REAL DATA: Get Business Context ---
+  const { data: userProfile } = useUserProfile();
   
   const businessId = (userProfile as any)?.business_id;
+  // --- V-REVOLUTION FIX: Use the correct property name 'id' from the profile context ---
   const userId = (userProfile as any)?.id;
+  // --- END OF FIX ---
 
   // Ref for the scroll area to enable auto-scrolling to the latest message
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // --- useChat Hook Integration (The Core Upgrade) ---
   const chat: any = useChat({
-    api: '/api/chat', // Your API route for the AI kernel
+    api: '/api/chat', 
     body: { businessId, userId }, 
-    experimental_streamData: true, // Crucial for AgentStep streaming
+    experimental_streamData: true, 
     onError: (err: Error) => toast.error(`AI Error: ${err.message}`),
   } as any); 
   
@@ -91,10 +92,9 @@ export default function MissionControlPage() {
     handleInputChange, 
     handleSubmit, 
     isLoading: isChatLoading, 
-    data // Streamed Agent Steps Data
+    data
   } = chat;
 
-  // Effect to scroll to the bottom whenever the chat messages or stream data is updated
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTo({
@@ -104,7 +104,6 @@ export default function MissionControlPage() {
     }
   }, [messages, data]);
   
-  // Process the streamed data into renderable AgentStep components
   const agentSteps = useMemo(() => {
       if (!data) return [];
       return data.map((chunk: string, i: number) => { 
@@ -118,22 +117,15 @@ export default function MissionControlPage() {
       }).filter(Boolean);
   }, [data]);
   
-  /**
-   * Handles the form submission using the SDK's handleSubmit.
-   */
   const handleSendMessage = (event: FormEvent<HTMLFormElement>) => {
       handleSubmit(event);
   };
   
-  // Get the last message's content for streaming rendering
   const streamingContent = isChatLoading && messages.length > 0 ? (messages[messages.length - 1] as CoreMessage).content : null;
-  // Filter out the last message if it's streaming, to avoid double-rendering it as a final message
   const renderedMessages = isChatLoading && messages.length > 0 ? messages.slice(0, -1) : messages;
-  
-  // --- V-REVOLUTION FIX: The final, robust logic for enabling/disabling UI elements ---
-  const canSend = !isChatLoading && !!businessId && input.trim().length > 0;
-  const isDisabled = isChatLoading || !businessId || isProfileLoading;
-  // --- END OF FIX ---
+  const canSend = !isChatLoading && input && input.trim() && businessId;
+  const isDisabled = isChatLoading || !businessId;
+
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -162,7 +154,7 @@ export default function MissionControlPage() {
                </div>
              </div>
           )}
-          {(!businessId && !isChatLoading) && (
+          {!businessId && !isChatLoading && (
             <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50">
               <p>Cannot connect to the AI Assistant. Your business context is missing or still loading.</p>
             </div>
