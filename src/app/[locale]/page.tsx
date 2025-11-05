@@ -3,13 +3,12 @@
 import React, { useState, useRef, forwardRef, type ReactNode, type ElementRef, type ComponentPropsWithoutRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence, Variants, useInView } from 'framer-motion';
-import { CountUp } from 'use-count-up';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 // --- Vercel AI SDK Imports ---
 import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai';
 // --- UI Components from shadcn/ui ---
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,11 +19,11 @@ import { Input } from '@/components/ui/input';
 // --- Utils & Icons ---
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, Box, BrainCircuit, Cloud, Cog,
-    Facebook, FilePlus, Handshake, Home, KeyRound,
+    Banknote, Bot, Box, BrainCircuit, Cloud,
+    Facebook, Handshake, Home,
     Landmark, Leaf, LifeBuoy, Library, Linkedin, LucideIcon, Menu,
-    Quote, ReceiptText, Rocket, Send, Server,
-    ShieldAlert, ShoppingCart, Signal, Star, Store, Twitter,
+    Quote, ReceiptText, Rocket, Send,
+    Signal, Star, Store, Twitter,
     Users, Utensils, WifiOff, X, ArrowRight
 } from 'lucide-react';
 
@@ -36,7 +35,7 @@ interface TestimonialItem { name: string; company: string; quote: string; avatar
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
-// --- Centralized Site Configuration (with shorter text) ---
+// --- Centralized Site Configuration (No changes needed here) ---
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -46,25 +45,12 @@ const siteConfig = {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
-    navigation: {
-        mainFeatures: [
-            { title: "AI Co-Pilot", href: "#ai-copilot", description: "Your integrated data analyst for strategic decisions.", icon: BrainCircuit },
-            { title: "Offline-First POS", href: "#why-us", description: "Unstoppable sales processing, online or offline.", icon: ShoppingCart },
-            { title: "Multi-Location Inventory", href: "#features", description: "Manage stock, composites, and transfers at scale.", icon: Box },
-            { title: "Autonomous Bookkeeping", href: "#features", description: "Full double-entry bookkeeping and financial intelligence.", icon: ReceiptText },
-            { title: "SACCO & Lending Suite", href: "#solutions", description: "Comprehensive tools for financial institutions.", icon: Landmark },
-            { title: "API & Integrations", href: "#features", description: "Extend and connect your business workflows.", icon: KeyRound },
-        ] as NavItem[],
-        resources: [
-            { title: "Support Hub", href: "#faq", description: "Find answers to common questions.", icon: LifeBuoy },
-            { title: "Contact Sales", href: "#get-started", description: "Get a custom quote for your enterprise.", icon: Users },
-        ] as NavItem[],
-    },
     featureItems: [
-        { icon: ReceiptText, title: "Autonomous Bookkeeping", description: "GAAP-compliant, double-entry accounting that runs itself. Effortless financial mastery." },
-        { icon: ShoppingCart, title: "Unified POS & Inventory", description: "Offline-first sales. Multi-location stock, variants, and orders from one hub." },
-        { icon: Users, title: "CRM & Project Hub", description: "From lead to paid project. Manage clients, track progress, link documents." },
-        { icon: Banknote, title: "HCM & Payroll", description: "Hire, manage, pay your team. Payroll, leave, performance, employee portal." },
+        { icon: ReceiptText, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements, master your finances with zero effort." },
+        { icon: Box, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." },
+        { icon: Users, title: "CRM & Project Hub", description: "Go from lead to paid project without ever leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." },
+        { icon: Banknote, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." },
+        { icon: Library, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." },
     ] as FeatureItem[],
     whyUsItems: [
         { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Power out, internet down? Business keeps running. Core functions are fully operational, syncing instantly when back online." },
@@ -72,12 +58,12 @@ const siteConfig = {
         { icon: Cloud, title: "End Subscription Chaos", description: "Replace 5+ apps with one seamless, intelligent platform at a fraction of the cost. No more data silos or integration fees." }
     ] as WhyUsItem[],
     industrySolutions: [
-        { icon: Signal, name: "Telecom & Distribution", description: "Manage airtime, agent networks, commissions. Real-time transparency." },
-        { icon: Store, name: "Retail & E-commerce", description: "Barcode scanning, multi-location stock, robust sales reports." },
-        { icon: Utensils, name: "Restaurant & Hospitality", description: "KDS integration, service booking, ingredient tracking." },
-        { icon: Landmark, name: "SACCOs & Microfinance", description: "Streamline member management, loans, regulatory reporting." },
-        { icon: Home, name: "Real Estate & Rentals", description: "Automate invoicing, track leases, manage large property portfolios." },
-        { icon: Handshake, name: "Professional Services", description: "Manage appointments, client data, professional invoices." },
+        { icon: Signal, name: "Telecom & Distribution", description: "Manage airtime distribution, agent networks, and commissions for major carriers like MTN and Airtel with full, real-time transparency." },
+        { icon: Store, name: "Retail & E-commerce", description: "Barcode scanning, multi-location stock, and robust sales reporting." },
+        { icon: Utensils, name: "Restaurant & Hospitality", description: "Kitchen Display System (KDS) integration, service booking, and ingredient tracking." },
+        { icon: Landmark, name: "SACCOs & Microfinance", description: "Streamline member management, loan processing, and regulatory reporting at scale." },
+        { icon: Home, name: "Real Estate & Rentals", description: "Automate invoicing, track lease agreements, and manage large property portfolios." },
+        { icon: Handshake, name: "Professional Services", description: "Manage appointments, client data, and create professional service invoices." },
     ] as SolutionItem[],
     testimonials: [
        { name: 'Sarah Namubiru', company: 'CEO, Sarah\'s Boutique Chain', quote: '"The AI Copilot identified a hidden profitable segment, boosting sales by 30%. True data-driven strategy."', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286de2?auto=format&fit=crop&w=200&h=200&q=80', rating: 5 },
@@ -99,31 +85,44 @@ const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { op
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.15 } } };
 
-// --- Reusable Components ---
-const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
-    <motion.section id={id} className={cn("relative py-16 sm:py-20", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-        <div className="container mx-auto px-4 relative z-10">{children}</div>
-    </motion.section>
+// --- NEW Reusable Modal Component ---
+interface DetailModalProps {
+  trigger: ReactNode;
+  title: string;
+  description: ReactNode;
+  icon?: LucideIcon;
+  avatar?: string;
+  company?: string;
+}
+const DetailModal = ({ trigger, title, description, icon: Icon, avatar, company }: DetailModalProps) => (
+  <Dialog>
+    <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <div className="flex items-center gap-4">
+          {Icon && (
+            <div className="bg-primary/10 p-3 rounded-md w-fit">
+              <Icon className="h-6 w-6 text-primary" />
+            </div>
+          )}
+          {avatar && (
+            <Image src={avatar} alt={`Avatar of ${title}`} width={56} height={56} className="h-14 w-14 rounded-full object-cover" />
+          )}
+          <div className="flex-1">
+            <DialogTitle className="text-xl">{title}</DialogTitle>
+            {company && <DialogDescription>{company}</DialogDescription>}
+          </div>
+        </div>
+      </DialogHeader>
+      <div className="py-4 text-muted-foreground">{description}</div>
+    </DialogContent>
+  </Dialog>
 );
 
-const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon?: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
-    <li>
-        <NavigationMenuLink asChild>
-            <a ref={ref} className={cn("block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)} {...props}>
-                <div className="text-sm font-medium leading-none flex items-center gap-2">
-                    {Icon && <Icon className="h-4 w-4 text-primary" />} {title}
-                </div>
-                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">{children}</p>
-            </a>
-        </NavigationMenuLink>
-    </li>
-));
-ListItem.displayName = "ListItem";
-
-// --- Header Component ---
+// --- MODIFIED Header with Interactive Dropdowns ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const { mainFeatures, resources } = siteConfig.navigation;
+    
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-sm">
             <div className="container mx-auto h-16 flex items-center justify-between">
@@ -132,25 +131,93 @@ const MegaMenuHeader = () => {
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
+
+                        {/* Features (Tools) Dropdown */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">{mainFeatures.map((c) => (<ListItem key={c.title} title={c.title} href={c.href} icon={c.icon}>{c.description}</ListItem>))}</ul>
+                                <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                                    {siteConfig.featureItems.map((feature) => (
+                                        <DetailModal
+                                            key={feature.title}
+                                            title={feature.title}
+                                            icon={feature.icon}
+                                            description={feature.description}
+                                            trigger={
+                                                <li className="cursor-pointer">
+                                                    <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                        <div className="text-sm font-medium leading-none flex items-center gap-2">
+                                                            <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            }
+                                        />
+                                    ))}
+                                </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
+
+                        {/* Industries Dropdown */}
                         <NavigationMenuItem>
-                            <Link href="#solutions" legacyBehavior passHref>
-                                <NavigationMenuLink className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium">Solutions</NavigationMenuLink>
-                            </Link>
-                        </NavigationMenuItem>
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger>Resources</NavigationMenuTrigger>
+                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-3 p-4 md:w-[400px]">{resources.map((c) => (<ListItem key={c.title} title={c.title} href={c.href} icon={c.icon}>{c.description}</ListItem>))}</ul>
+                                <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                                    {siteConfig.industrySolutions.map((solution) => (
+                                        <DetailModal
+                                            key={solution.name}
+                                            title={solution.name}
+                                            icon={solution.icon}
+                                            description={solution.description}
+                                            trigger={
+                                                <li className="cursor-pointer">
+                                                     <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                        <div className="text-sm font-medium leading-none flex items-center gap-2">
+                                                            <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            }
+                                        />
+                                    ))}
+                                </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
+                        
+                        {/* Stories Dropdown */}
+                        <NavigationMenuItem>
+                            <NavigationMenuTrigger>Stories</NavigationMenuTrigger>
+                            <NavigationMenuContent>
+                                <ul className="grid w-[400px] gap-1 p-4 md:w-[400px]">
+                                    {siteConfig.testimonials.map((testimonial) => (
+                                        <DetailModal
+                                            key={testimonial.name}
+                                            title={testimonial.name}
+                                            company={testimonial.company}
+                                            avatar={testimonial.avatar}
+                                            description={<p className="italic">"{testimonial.quote}"</p>}
+                                            trigger={
+                                                <li className="cursor-pointer">
+                                                    <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                        <div className="text-sm font-medium leading-none flex items-center gap-2">
+                                                           <Image src={testimonial.avatar} alt={testimonial.name} width={24} height={24} className="h-6 w-6 rounded-full" />
+                                                           <div>
+                                                                <p className="font-medium">{testimonial.name}</p>
+                                                                <p className="text-xs text-muted-foreground">{testimonial.company}</p>
+                                                           </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            }
+                                        />
+                                    ))}
+                                </ul>
+                            </NavigationMenuContent>
+                        </NavigationMenuItem>
+
                     </NavigationMenuList>
                 </NavigationMenu>
+
                 <div className="hidden lg:flex items-center gap-2">
                     <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
@@ -161,13 +228,14 @@ const MegaMenuHeader = () => {
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
                 </div>
             </div>
+            {/* Mobile Menu can be enhanced later to use modals as well */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
-                         <nav className="flex flex-col gap-4">
-                            {mainFeatures.map(f => (<Link key={f.title} href={f.href} onClick={() => setIsMobileMenuOpen(false)} className="text-muted-foreground hover:text-primary flex items-center gap-2"><f.icon className="h-5 w-5" /> {f.title}</Link>))}
-                            <div className="border-t my-2"></div>
-                            {resources.map(f => (<Link key={f.title} href={f.href} onClick={() => setIsMobileMenuOpen(false)} className="text-muted-foreground hover:text-primary flex items-center gap-2"><f.icon className="h-5 w-5" /> {f.title}</Link>))}
+                         <nav className="flex flex-col gap-4 text-lg">
+                            <p className="font-bold text-primary mt-2">Features</p>
+                            <p className="font-bold text-primary mt-2">Industries</p>
+                            <p className="font-bold text-primary mt-2">Stories</p>
                             <div className="border-t my-4"></div>
                             <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
                             <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
@@ -179,7 +247,7 @@ const MegaMenuHeader = () => {
     );
 };
 
-// --- Footer Component ---
+// --- Standard Footer Component ---
 const LandingFooter = () => (
     <footer className="relative border-t bg-background/80 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 pt-12 pb-6">
@@ -196,15 +264,14 @@ const LandingFooter = () => (
                 <div>
                     <h4 className="font-semibold text-base mb-3">Product</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><Link href="#features" className="text-muted-foreground hover:text-primary">Features</Link></li>
-                        <li><Link href="#ai-copilot" className="text-muted-foreground hover:text-primary">AI Copilot</Link></li>
-                        <li><Link href="#solutions" className="text-muted-foreground hover:text-primary">Industries</Link></li>
+                        <li><span className="text-muted-foreground">Features</span></li>
+                        <li><span className="text-muted-foreground">Industries</span></li>
                     </ul>
                 </div>
                 <div>
                     <h4 className="font-semibold text-base mb-3">Company</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><Link href="#testimonials" className="text-muted-foreground hover:text-primary">Testimonials</Link></li>
+                         <li><span className="text-muted-foreground">Stories</span></li>
                         <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Contact Sales</a></li>
                         <li><Link href="#faq" className="text-muted-foreground hover:text-primary">FAQ</Link></li>
                     </ul>
@@ -226,9 +293,15 @@ const LandingFooter = () => (
 );
 
 
-// =================================================================================
-// --- THIS COMPONENT IS NOW FIXED BY REVERTING TO YOUR ORIGINAL LOGIC ---
-// =================================================================================
+// --- Reusable Animated Section Component ---
+const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
+    <motion.section id={id} className={cn("relative py-16 sm:py-20", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+        <div className="container mx-auto px-4 relative z-10">{children}</div>
+    </motion.section>
+);
+
+
+// --- AI Chat Widget (Unchanged) ---
 const getCookie = (name: string): string | null => {
     if (typeof document === 'undefined') return null;
     const value = `; ${document.cookie}`;
@@ -236,7 +309,6 @@ const getCookie = (name: string): string | null => {
     if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
     return null;
 };
-
 const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
     if (typeof content === 'string') return content;
     return content.map((part, index) => {
@@ -246,22 +318,16 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
         return null;
     }).filter(Boolean);
 };
-
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [userContext, setUserContext] = useState({ businessId: '', userId: '' });
     const [chatInput, setChatInput] = useState('');
-
     useEffect(() => {
         const businessId = getCookie('business_id');
         const userId = getCookie('user_id');
         if (businessId && userId) setUserContext({ businessId, userId });
     }, []);
-
-    // --- FIX: Restored your original line to disable type checking on the 'chat' object, fixing all errors. ---
     const chat: any = useChat({} as any);
-
-    // --- FIX: Restored your original useEffect to set the initial message, which works with the `any` cast above. ---
     useEffect(() => {
         if (chat.messages.length === 0 && chat.setMessages) {
             chat.setMessages([
@@ -269,13 +335,10 @@ const AdvancedChatWidget = () => {
             ]);
         }
     }, [chat.messages.length, chat.setMessages]);
-
-    // --- FIX: Restored your original 'sendMessage' logic. ---
     const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const trimmedInput = chatInput.trim();
         if (!trimmedInput) return;
-
         chat.sendMessage({
             content: trimmedInput,
             body: {
@@ -283,79 +346,30 @@ const AdvancedChatWidget = () => {
                 userId: userContext.userId,
             }
         });
-
         setChatInput('');
     };
-
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [chat.messages]);
-
     return (
         <>
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                        transition={{ duration: 0.3, ease: 'easeInOut' }}
-                        className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50"
-                    >
-                        <Card className="h-full w-full flex flex-col shadow-2xl">
-                            <CardHeader className="flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle>
-                                    <CardDescription>Your AI Business Analyst</CardDescription>
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button>
-                            </CardHeader>
-                            <CardContent className="flex-1 flex flex-col p-0">
-                                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                                    <div className="space-y-4">
-                                        {chat.messages.map((m: CoreMessage, i: number) => (
-                                            <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
-                                                {m.role === 'assistant' && <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0"><Bot className="h-4 w-4" /></div>}
-                                                <div className={cn('rounded-lg p-3 max-w-[85%] break-words', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{renderMessageContent(m.content)}</div>
-                                                {m.role === 'user' && <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-bold flex-shrink-0 border"><Users className="h-4 w-4" /></div>}
-                                            </div>
-                                        ))}
-                                        {chat.isPending && <div className="text-sm text-muted-foreground animate-pulse">Aura is thinking...</div>}
-                                    </div>
-                                </ScrollArea>
-                                <div className="p-4 border-t">
-                                    <form onSubmit={handleChatSubmit} className="flex items-center gap-2">
-                                        <Input
-                                            value={chatInput}
-                                            onChange={e => setChatInput(e.target.value)}
-                                            placeholder="Ask Aura anything..."
-                                            disabled={chat.isPending || !userContext.userId}
-                                        />
-                                        <Button type="submit" size="icon" disabled={chat.isPending || !userContext.userId || !chatInput.trim()}><Send className="h-4 w-4" /></Button>
-                                    </form>
-                                </div>
-                            </CardContent>
-                        </Card>
+                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
+                        <Card className="h-full w-full flex flex-col shadow-2xl"><CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader><CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">{chat.messages.map((m: CoreMessage, i: number) => (<div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>{m.role === 'assistant' && <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0"><Bot className="h-4 w-4" /></div>}<div className={cn('rounded-lg p-3 max-w-[85%] break-words', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{renderMessageContent(m.content)}</div>{m.role === 'user' && <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-bold flex-shrink-0 border"><Users className="h-4 w-4" /></div>}</div>))}{chat.isLoading && <div className="text-sm text-muted-foreground animate-pulse">Aura is thinking...</div>}</div></ScrollArea><div className="p-4 border-t"><form onSubmit={handleChatSubmit} className="flex items-center gap-2"><Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Aura anything..." disabled={chat.isLoading || !userContext.userId} /><Button type="submit" size="icon" disabled={chat.isLoading || !userContext.userId || !chatInput.trim()}><Send className="h-4 w-4" /></Button></form></div></CardContent></Card>
                     </motion.div>
                 )}
             </AnimatePresence>
-            <Button
-                onClick={() => setIsOpen(!isOpen)}
-                size="icon"
-                className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95"
-                aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}
-            >
-                {isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}
-            </Button>
+            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
         </>
     );
 };
 
 
-// --- Main Page Component ---
+// --- The NEW, SHORTENED Main Page Component ---
 export default function HomePage() {
     return (
         <>
@@ -384,7 +398,7 @@ export default function HomePage() {
                     </div>
                 </section>
                 
-                 {/* Why Us Section */}
+                 {/* Why Us Section (Kept because it is short and powerful) */}
                 <AnimatedSection id="why-us">
                     <div className="px-4">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
@@ -405,76 +419,13 @@ export default function HomePage() {
                     </div>
                 </AnimatedSection>
                 
-                {/* Features Section */}
-                <AnimatedSection id="features" className="bg-background/80 backdrop-blur-sm">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">All Your Tools, in One Place</h2>
-                        <p className="mt-4 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">Every module is best-in-class. Together, they create an unmatched OS for your business.</p>
-                    </div>
-                    <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
-                        {siteConfig.featureItems.map((feature) => (
-                            <motion.div key={feature.title} variants={itemVariants}>
-                                <Card className="h-full text-left hover:shadow-lg hover:-translate-y-1 transition-all">
-                                    <CardHeader>
-                                        <div className="bg-primary/10 p-3 rounded-md w-fit mb-4"><feature.icon className="h-6 w-6 text-primary" /></div>
-                                        <CardTitle className="text-lg">{feature.title}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent><p className="text-muted-foreground text-sm">{feature.description}</p></CardContent>
-                                </Card>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </AnimatedSection>
-                
-                {/* Solutions Section */}
-                <AnimatedSection id="solutions">
-                    <div className="text-center">
-                        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Tailored for Your Industry</h2>
-                        <p className="mt-4 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">BBU1 is engineered with specialized toolkits for your unique business needs.</p>
-                        <motion.div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6" variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-                            {siteConfig.industrySolutions.map(s => (
-                                <motion.div key={s.name} variants={itemVariants} className="text-center group">
-                                    <div className="bg-muted group-hover:bg-primary/10 transition-colors p-4 rounded-lg flex items-center justify-center w-20 h-20 mx-auto">
-                                        <s.icon className="h-8 w-8 text-primary" />
-                                    </div>
-                                    <h3 className="mt-4 font-semibold text-sm">{s.name}</h3>
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                    </div>
-                </AnimatedSection>
-
-                {/* Testimonials */}
-                 <AnimatedSection id="testimonials" className="bg-background/80 backdrop-blur-sm">
-                    <div className="px-4">
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl font-bold tracking-tight">The Engine Behind Leading Businesses</h2>
-                            <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">Real stories from enterprises thriving with {siteConfig.name}.</p>
-                        </div>
-                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {siteConfig.testimonials.map((t) => (
-                                <motion.div key={t.name} variants={itemVariants}>
-                                    <Card className="h-full flex flex-col p-6">
-                                        <CardContent className="p-0 flex-grow">
-                                            <Quote className="h-6 w-6 text-primary/30 mb-4" />
-                                            <p className="text-muted-foreground italic">"{t.quote}"</p>
-                                        </CardContent>
-                                        <CardHeader className="p-0 flex-row items-center gap-4 mt-4">
-                                            <Image src={t.avatar} alt={`Avatar of ${t.name}`} width={48} height={48} className="h-12 w-12 rounded-full object-cover" />
-                                            <div className="flex-1">
-                                                <CardTitle className="text-sm">{t.name}</CardTitle>
-                                                <CardDescription className="text-xs">{t.company}</CardDescription>
-                                            </div>
-                                        </CardHeader>
-                                    </Card>
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                    </div>
-                </AnimatedSection>
+                {/* 
+                  SECTIONS FOR FEATURES, INDUSTRIES, and TESTIMONIALS ARE NOW REMOVED FROM THE MAIN PAGE.
+                  THEIR CONTENT IS ACCESSIBLE VIA THE NEW DROPDOWNS IN THE HEADER.
+                */}
                 
                 {/* FAQ */}
-                <AnimatedSection id="faq">
+                <AnimatedSection id="faq" className="bg-background/80 backdrop-blur-sm">
                     <div className="max-w-3xl mx-auto">
                         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center">Your Questions, Answered</h2>
                         <Accordion type="single" collapsible className="w-full mt-8">
