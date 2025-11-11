@@ -24,8 +24,10 @@ import {
     Landmark, Leaf, LifeBuoy, Library, Linkedin, LucideIcon, Menu,
     Quote, ReceiptText, Rocket, Send,
     Signal, Star, Store, Twitter, Database,
-    Users, Utensils, WifiOff, X, ArrowRight
-} from 'lucide-react';
+    Users, Utensils, WifiOff, X, ArrowRight,
+    BriefcaseBusiness, Layers3, Zap, ShieldHalf, LayoutGrid, Globe,
+    Wallet, ClipboardList, Package, UserCog, Files, Lightbulb
+} from 'lucide-react'; // Added more descriptive icons
 
 // --- Type Definitions ---
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
@@ -45,20 +47,20 @@ const siteConfig = {
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
     featureItems: [
-        { icon: ReceiptText, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." },
-        { icon: Box, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." },
-        { icon: Users, title: "CRM & Project Hub", description: "Go from lead to paid project without leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." },
-        { icon: Banknote, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." },
-        { icon: Library, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." },
-        { icon: BrainCircuit, title: "AI Business Copilot", description: "Get proactive, data-driven insights on cash flow, client trends, and fraud detection, helping you make smarter decisions, faster."}
+        { icon: Wallet, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." }, // Changed icon
+        { icon: Package, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." }, // Changed icon
+        { icon: ClipboardList, title: "CRM & Project Hub", description: "Go from lead to paid project without leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." }, // Changed icon
+        { icon: UserCog, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." }, // Changed icon
+        { icon: Files, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." }, // Changed icon
+        { icon: Lightbulb, title: "AI Business Copilot", description: "Get proactive, data-driven insights on cash flow, client trends, and fraud detection, helping you make smarter decisions, faster."} // Changed icon
     ] as FeatureItem[],
     standoutItems: [
         { icon: TrendingUp, title: "Built to Scale With You", description: "BBU1 is architected for growth. Whether you're a solo entrepreneur or a global enterprise, our platform scales seamlessly to meet your demands without compromising performance." },
-        { icon: Database, title: "A Single Source of Truth", description: "Eliminate data silos forever. By unifying every department—from sales and accounting to inventory and HR—you get a real-time, 360-degree view of your entire operation." },
+        { icon: LayoutGrid, title: "A Single Source of Truth", description: "Eliminate data silos forever. By unifying every department—from sales and accounting to inventory and HR—you get a real-time, 360-degree view of your entire operation." }, // Changed icon
         { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Internet down? Power outage? No problem. BBU1's core functions work perfectly offline, ensuring business continuity and revenue protection. Everything syncs the moment you're back online." },
-        { icon: Cloud, title: "End Subscription Chaos", description: "Replace 5+ expensive, disconnected apps with one intelligent, cost-effective platform. Simplify your workflow, reduce costs, and remove the headache of integration." },
-        { icon: BrainCircuit, title: "True AI Partnership", description: "Our integrated AI is more than a feature; it's a strategic partner. It analyzes your data to find growth opportunities, predict cash flow, and identify risks before they become problems." },
-        { icon: ShieldCheck, title: "Bank-Level Security", description: "Your data is your most valuable asset. We protect it with a multi-tenant architecture and end-to-end encryption, ensuring your information is completely isolated and secure." }
+        { icon: Zap, title: "End Subscription Chaos", description: "Replace 5+ expensive, disconnected apps with one intelligent, cost-effective platform. Simplify your workflow, reduce costs, and remove the headache of integration." }, // Changed icon
+        { icon: BrainCircuit, title: "True AI Partnership", description: "Our integrated AI is not just a feature; it's a strategic partner. It analyzes your data to find growth opportunities, predict cash flow, and identify risks before they become problems." },
+        { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is your most valuable asset. We protect it with a multi-tenant architecture and end-to-end encryption, ensuring your information is completely isolated and secure." } // Changed icon
     ] as WhyUsItem[],
     industrySolutions: [
         {
@@ -137,15 +139,15 @@ const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-sm">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md"> {/* Increased blur for depth */}
             <div className="container mx-auto h-16 flex items-center justify-between">
                 <Link href="/" className="text-xl font-bold text-primary flex items-center gap-2" aria-label={`${siteConfig.name} Home`}>
-                    <Rocket className="h-6 w-6" /> {siteConfig.name}
+                    <Rocket className="h-6 w-6 animate-spin-slow" /> {siteConfig.name} {/* Subtle animation for logo */}
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
+                            <NavigationMenuTrigger className="text-foreground hover:text-primary">Features</NavigationMenuTrigger> {/* Improved contrast */}
                             <NavigationMenuContent>
                                 <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                                     {siteConfig.featureItems.map((feature) => (
@@ -155,9 +157,9 @@ const MegaMenuHeader = () => {
                                             icon={feature.icon}
                                             description={feature.description}
                                             trigger={
-                                                <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group"> {/* Accent hover */}
                                                     <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                        <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
+                                                        <feature.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {feature.title} {/* Icon color change on hover */}
                                                     </div>
                                                 </li>
                                             }
@@ -167,7 +169,7 @@ const MegaMenuHeader = () => {
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
+                            <NavigationMenuTrigger className="text-foreground hover:text-primary">Industries</NavigationMenuTrigger> {/* Improved contrast */}
                             <NavigationMenuContent>
                                 <ScrollArea className="h-[400px] w-[350px] p-2">
                                     <ul className="grid grid-cols-1 gap-1 p-2">
@@ -181,9 +183,9 @@ const MegaMenuHeader = () => {
                                                         icon={solution.icon}
                                                         description={solution.description}
                                                         trigger={
-                                                            <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                            <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group"> {/* Accent hover */}
                                                                 <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                                    <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
+                                                                    <solution.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {solution.name} {/* Icon color change on hover */}
                                                                 </div>
                                                             </li>
                                                         }
@@ -198,7 +200,7 @@ const MegaMenuHeader = () => {
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
-                    <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
+                    <Button variant="ghost" asChild className="hover:text-primary"><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
                 </div>
@@ -209,10 +211,48 @@ const MegaMenuHeader = () => {
             </div>
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
                          <nav className="flex flex-col gap-4 text-lg">
-                            <p className="font-bold text-primary mt-2">Features</p>
-                            <p className="font-bold text-primary mt-2">Industries</p>
+                            {/* Improved mobile menu with clickable triggers */}
+                            <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value="features">
+                                    <AccordionTrigger className="text-lg hover:no-underline">Features</AccordionTrigger>
+                                    <AccordionContent className="flex flex-col gap-2 pl-4">
+                                        {siteConfig.featureItems.map(feature => (
+                                            <DetailModal
+                                                key={feature.title}
+                                                title={feature.title}
+                                                icon={feature.icon}
+                                                description={feature.description}
+                                                trigger={
+                                                    <Button variant="ghost" className="justify-start gap-2 w-full"><feature.icon className="h-4 w-4 text-primary" /> {feature.title}</Button>
+                                                }
+                                            />
+                                        ))}
+                                    </AccordionContent>
+                                </AccordionItem>
+                                <AccordionItem value="industries">
+                                    <AccordionTrigger className="text-lg hover:no-underline">Industries</AccordionTrigger>
+                                    <AccordionContent className="flex flex-col gap-2 pl-4">
+                                         {siteConfig.industrySolutions.map((category) => (
+                                            <React.Fragment key={category.category}>
+                                                <p className="font-bold text-xs text-muted-foreground uppercase p-2 pt-0">{category.category}</p>
+                                                {category.items.map((solution) => (
+                                                    <DetailModal
+                                                        key={solution.name}
+                                                        title={solution.name}
+                                                        icon={solution.icon}
+                                                        description={solution.description}
+                                                        trigger={
+                                                            <Button variant="ghost" className="justify-start gap-2 w-full"><solution.icon className="h-4 w-4 text-primary" /> {solution.name}</Button>
+                                                        }
+                                                    />
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
                             <div className="border-t my-4"></div>
                             <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
                             <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
@@ -226,37 +266,37 @@ const MegaMenuHeader = () => {
 
 // --- Footer Component ---
 const LandingFooter = () => (
-    <footer className="relative border-t bg-background/80 backdrop-blur-sm z-10">
+    <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10 dark:from-background/50 dark:via-background dark:to-background/90"> {/* Subtle gradient for footer */}
         <div className="container mx-auto px-4 pt-12 pb-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
                 <div className="col-span-2">
                     <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3>
                     <p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p>
                     <div className="flex items-center gap-5 mt-6">
-                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary"><Linkedin size={20} /></a>
-                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary"><Twitter size={20} /></a>
-                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary"><Facebook size={20} /></a>
+                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a>
+                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a>
+                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a>
                     </div>
                 </div>
                 <div>
                     <h4 className="font-semibold text-base mb-3">Product</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><span className="text-muted-foreground">Features</span></li>
-                        <li><span className="text-muted-foreground">Industries</span></li>
+                        <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Features</span></li>
+                        <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Industries</span></li>
                     </ul>
                 </div>
                 <div>
                     <h4 className="font-semibold text-base mb-3">Company</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Contact Sales</a></li>
-                        <li><Link href="#faq" className="text-muted-foreground hover:text-primary">FAQ</Link></li>
+                        <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li>
+                        <li><Link href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li>
                     </ul>
                 </div>
                  <div>
                     <h4 className="font-semibold text-base mb-3">Legal</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li>
-                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li>
+                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li>
+                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li>
                     </ul>
                 </div>
             </div>
@@ -270,7 +310,7 @@ const LandingFooter = () => (
 
 // --- Reusable Animated Section Component ---
 const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
-    <motion.section id={id} className={cn("relative py-16 sm:py-20", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
         <div className="container mx-auto px-4 relative z-10">{children}</div>
     </motion.section>
 );
@@ -366,14 +406,20 @@ export default function HomePage() {
             <main className="flex-grow z-10">
                 
                 {/* Hero Section */}
-                <section id="hero" className="relative pt-20 pb-28 overflow-hidden">
-                     <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
+                <section id="hero" className="relative pt-20 pb-28 overflow-hidden bg-gradient-to-br from-background via-primary/5 to-background dark:from-background dark:via-primary/10 dark:to-background"> {/* Dynamic gradient background */}
+                    {/* Visual system portrayal: subtle animated tech pattern */}
+                    <div className="absolute inset-0 z-0 bg-subtle-pattern animate-pulse-subtle"></div> {/* Subtle dots pattern for overall background */}
+                    <div className="absolute inset-0 z-0 hero-visual-background"></div> {/* Custom CSS for hero background */}
+
                     <div className="container mx-auto text-center relative z-10">
                         <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                            <motion.div variants={itemVariants}>
-                                <span className="inline-flex items-center rounded-full bg-background/80 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-primary border"><BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS</span>
+                            <motion.div variants={itemVariants} className="group"> {/* Added group for icon hover */}
+                                <span className="inline-flex items-center rounded-full bg-background/80 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-primary border border-primary/20 shadow-sm group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                                    <BrainCircuit className="mr-2 h-4 w-4 group-hover:animate-spin-slow" /> {/* subtle spin on hover */}
+                                    The Intelligent Business OS
+                                </span>
                             </motion.div>
-                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6" variants={itemVariants}>
+                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}> {/* Adjusted line height */}
                                 The One Platform <br />
                                 <div className="inline-block h-[1.2em] overflow-hidden">
                                     <AnimatePresence mode="wait">
@@ -383,7 +429,7 @@ export default function HomePage() {
                                             initial="hidden"
                                             animate="visible"
                                             exit="exit"
-                                            className="block text-primary"
+                                            className="block text-primary drop-shadow-md" // Added subtle shadow
                                         >
                                             {rotatingTexts[currentTextIndex]}
                                         </motion.span>
@@ -394,16 +440,20 @@ export default function HomePage() {
                                 Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management. Built for every business, ready for the world.
                             </motion.p>
                             <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                <Button asChild size="lg"><Link href="/signup">Start Free Trial</Link></Button>
-                                <Button asChild size="lg" variant="outline"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                                <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300"><Link href="/signup">Start Free Trial</Link></Button>
+                                <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 transition-colors"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                            </motion.div>
+                            <motion.div variants={itemVariants} className="mt-16 w-full max-w-4xl mx-auto">
+                                
                             </motion.div>
                         </motion.div>
                     </div>
                 </section>
                 
                  {/* What Makes BBU1 Stand Out Section */}
-                <AnimatedSection id="standout">
-                    <div className="px-4">
+                <AnimatedSection id="standout" className="bg-background relative">
+                    <div className="absolute inset-0 z-0 bg-features-pattern animate-pulse-subtle"></div> {/* Pattern for this section */}
+                    <div className="px-4 relative z-10">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
                             <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
                             <p className="text-muted-foreground mt-2">BBU1 is engineered from the ground up to not just manage your business, but to accelerate its growth and simplify complexity.</p>
@@ -411,12 +461,12 @@ export default function HomePage() {
                         <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {siteConfig.standoutItems.map(item => (
                                 <motion.div key={item.title} variants={itemVariants}>
-                                    <Card className="text-left h-full hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50">
+                                    <Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/70 backdrop-blur-sm border-primary/10"> {/* Enhanced card styles */}
                                         <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                                            <div className="p-2 bg-primary/10 rounded-md">
-                                                <item.icon className="h-6 w-6 text-primary" />
+                                            <div className="p-2 bg-primary/10 rounded-md group-hover:bg-primary transition-colors">
+                                                <item.icon className="h-6 w-6 text-primary group-hover:text-primary-foreground transition-colors" />
                                             </div>
-                                            <CardTitle>{item.title}</CardTitle>
+                                            <CardTitle className="text-lg">{item.title}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <p className="text-muted-foreground text-sm">{item.description}</p>
@@ -426,17 +476,20 @@ export default function HomePage() {
                             ))}
                         </motion.div>
                     </div>
+                    <motion.div variants={itemVariants} className="mt-16 w-full max-w-4xl mx-auto">
+                        
+                    </motion.div>
                 </AnimatedSection>
                 
                 {/* FAQ */}
-                <AnimatedSection id="faq" className="bg-background/80 backdrop-blur-sm">
-                    <div className="max-w-3xl mx-auto">
-                        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center">Your Questions, Answered</h2>
-                        <Accordion type="single" collapsible className="w-full mt-8">
+                <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background dark:from-background dark:via-accent/10 dark:to-background"> {/* New gradient background for FAQ */}
+                    <div className="max-w-3xl mx-auto relative z-10">
+                        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-8">Your Questions, Answered</h2>
+                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border border-border/50 bg-background/70 backdrop-blur-sm shadow-lg"> {/* Card-like accordion */}
                             {siteConfig.faqItems.map(i => (
-                                <AccordionItem key={i.q} value={i.q}>
-                                    <AccordionTrigger className="text-base text-left hover:no-underline">{i.q}</AccordionTrigger>
-                                    <AccordionContent className="text-sm text-muted-foreground pb-4">{i.a}</AccordionContent>
+                                <AccordionItem key={i.q} value={i.q} className="px-4">
+                                    <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4 hover:text-primary transition-colors">{i.q}</AccordionTrigger>
+                                    <AccordionContent className="text-sm text-muted-foreground pb-4 leading-relaxed">{i.a}</AccordionContent>
                                 </AccordionItem>
                             ))}
                         </Accordion>
@@ -445,12 +498,12 @@ export default function HomePage() {
 
                 {/* Final CTA */}
                 <AnimatedSection className="text-center container mx-auto px-4">
-                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/20 overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-full bg-grid-white/[0.1] -z-1"></div>
-                        <h2 className="text-3xl font-bold tracking-tight">Ready to Revolutionize Your Enterprise?</h2>
+                    <div className="relative py-16 bg-cta-gradient text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden transform hover:scale-[1.01] transition-transform duration-300"> {/* Gradient CTA and subtle scale on hover */}
+                        <div className="absolute top-0 left-0 w-full h-full bg-grid-white/[0.1] dark:bg-grid-black/[0.1] -z-1"></div>
+                        <h2 className="text-3xl font-bold tracking-tight drop-shadow-md">Ready to Revolutionize Your Enterprise?</h2>
                         <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p>
                         <div className="mt-8">
-                            <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110">
+                            <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110 shadow-lg hover:shadow-xl">
                                 <Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link>
                             </Button>
                         </div>

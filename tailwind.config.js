@@ -2,7 +2,9 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './src/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}', // Ensure this path is correct for your project
+    './pages/**/*.{js,ts,jsx,tsx,mdx}', // Added if you use a pages directory
+    './components/**/*.{js,ts,jsx,tsx,mdx}', // Added if you use a components directory
   ],
   prefix: "",
   theme: {
@@ -37,7 +39,7 @@ module.exports = {
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
+          DEFAULT: "hsl(var(--accent))", // Modern accent color
           foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
@@ -63,10 +65,42 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Custom keyframes for background patterns and subtle movements
+        "hero-gradient": {
+          "0%, 100%": { "background-position": "0% 50%" },
+          "50%": { "background-position": "100% 50%" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "zoom-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "spin-slow": { // Custom animation for the BrainCircuit icon
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "pulse-subtle": { // Custom pulse for background patterns
+          "0%, 100%": { opacity: "0.1" },
+          "50%": { opacity: "0.05" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up .2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        "hero-gradient": "hero-gradient 15s ease infinite",
+        "fade-in-up": "fade-in-up 0.5s ease-out forwards",
+        "zoom-in": "zoom-in 0.3s ease-out forwards",
+        "spin-slow": "spin-slow 5s linear infinite", // 5 seconds, linear, infinite
+        "pulse-subtle": "pulse-subtle 20s infinite ease-in-out", // 20 seconds, subtle, infinite
+      },
+      backgroundImage: {
+        'grid-pattern-light': 'url("/patterns/grid-light.svg")', // We'll create this pattern
+        'grid-pattern-dark': 'url("/patterns/grid-dark.svg")', // Dark mode pattern
+        'dots-pattern-light': 'url("/patterns/dots-light.svg")', // Subtle dots
+        'dots-pattern-dark': 'url("/patterns/dots-dark.svg")', // Dark mode dots
       },
     },
   },
