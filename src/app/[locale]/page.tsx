@@ -20,17 +20,17 @@ import { Input } from '@/components/ui/input';
 import { cn } from "@/lib/utils";
 import {
     Banknote, Bot, Box, BrainCircuit, Cloud,
-    Facebook, Handshake, Home,
+    Facebook, Handshake, Home, ShieldCheck, TrendingUp,
     Landmark, Leaf, LifeBuoy, Library, Linkedin, LucideIcon, Menu,
     Quote, ReceiptText, Rocket, Send,
-    Signal, Star, Store, Twitter,
+    Signal, Star, Store, Twitter, Database,
     Users, Utensils, WifiOff, X, ArrowRight
 } from 'lucide-react';
 
 // --- Type Definitions ---
-interface NavItem { title: string; href: string; description: string; icon: LucideIcon; }
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
-interface SolutionItem { icon: LucideIcon; name: string; description: string; }
+interface IndustryItem { name: string; icon: LucideIcon; description: string; }
+interface IndustryCategory { category: string; items: IndustryItem[]; }
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
@@ -42,29 +42,48 @@ const siteConfig = {
     inventorCredit: "Invented by Mwesigwa Jimmy in Uganda. Built for the world.",
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
-        socials: { linkedin: '#', twitter: '#', facebook: '#' } // Remember to update these links
+        socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
     featureItems: [
-        { icon: ReceiptText, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements, master your finances with zero effort." },
+        { icon: ReceiptText, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." },
         { icon: Box, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." },
-        { icon: Users, title: "CRM & Project Hub", description: "Go from lead to paid project without ever leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." },
+        { icon: Users, title: "CRM & Project Hub", description: "Go from lead to paid project without leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." },
         { icon: Banknote, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." },
         { icon: Library, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." },
+        { icon: BrainCircuit, title: "AI Business Copilot", description: "Get proactive, data-driven insights on cash flow, client trends, and fraud detection, helping you make smarter decisions, faster."}
     ] as FeatureItem[],
-    whyUsItems: [
-        { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Power out, internet down? Business keeps running. Core functions are fully operational, syncing instantly when back online." },
-        { icon: BrainCircuit, title: "A True AI Business Partner", description: "Secure, data-aware AI integrated across all modules. Proactive insights on cash flow, client trends, and fraud detection." },
-        { icon: Cloud, title: "End Subscription Chaos", description: "Replace 5+ apps with one seamless, intelligent platform at a fraction of the cost. No more data silos or integration fees." }
+    standoutItems: [
+        { icon: TrendingUp, title: "Built to Scale With You", description: "BBU1 is architected for growth. Whether you're a solo entrepreneur or a global enterprise, our platform scales seamlessly to meet your demands without compromising performance." },
+        { icon: Database, title: "A Single Source of Truth", description: "Eliminate data silos forever. By unifying every department—from sales and accounting to inventory and HR—you get a real-time, 360-degree view of your entire operation." },
+        { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Internet down? Power outage? No problem. BBU1's core functions work perfectly offline, ensuring business continuity and revenue protection. Everything syncs the moment you're back online." },
+        { icon: Cloud, title: "End Subscription Chaos", description: "Replace 5+ expensive, disconnected apps with one intelligent, cost-effective platform. Simplify your workflow, reduce costs, and remove the headache of integration." },
+        { icon: BrainCircuit, title: "True AI Partnership", description: "Our integrated AI is more than a feature; it's a strategic partner. It analyzes your data to find growth opportunities, predict cash flow, and identify risks before they become problems." },
+        { icon: ShieldCheck, title: "Bank-Level Security", description: "Your data is your most valuable asset. We protect it with a multi-tenant architecture and end-to-end encryption, ensuring your information is completely isolated and secure." }
     ] as WhyUsItem[],
     industrySolutions: [
-        { icon: Signal, name: "Telecom & Distribution", description: "Manage airtime distribution, agent networks, and commissions for major carriers like MTN and Airtel with full, real-time transparency." },
-        { icon: Store, name: "Retail & E-commerce", description: "Barcode scanning, multi-location stock, and robust sales reporting." },
-        { icon: Utensils, name: "Restaurant & Hospitality", description: "Kitchen Display System (KDS) integration, service booking, and ingredient tracking." },
-        { icon: Landmark, name: "SACCOs & Microfinance", description: "Streamline member management, loan processing, and regulatory reporting at scale." },
-        { icon: Home, name: "Real Estate & Rentals", description: "Automate invoicing, track lease agreements, and manage large property portfolios." },
-        { icon: Handshake, name: "Professional Services", description: "Manage appointments, client data, and create professional service invoices." },
-    ] as SolutionItem[],
-    // TESTIMONIALS (SUCCESS STORIES) HAVE BEEN REMOVED
+        {
+            category: "Common",
+            items: [
+                { name: "Retail / Wholesale", icon: Store, description: "Full-scale inventory management, barcode scanning, multi-location stock, and robust sales reporting for any retail environment." },
+                { name: "Restaurant / Cafe", icon: Utensils, description: "Complete restaurant management with Kitchen Display System (KDS) integration, table management, and ingredient-level tracking." },
+                { name: "Trades & Services", icon: Handshake, description: "Manage appointments, dispatch jobs, handle client data, and create professional service invoices with ease." }
+            ]
+        },
+        {
+            category: "Specialized Industries",
+            items: [
+                { name: "Contractor (General, Remodeling)", icon: Home, description: "Project management, job costing, and client invoicing tailored for the construction and remodeling industry." },
+                { name: "Field Service (Trades, HVAC, Plumbing)", icon: Users, description: "Efficiently manage your mobile workforce with scheduling, dispatching, and on-the-go invoicing and payments." },
+                { name: "Professional Services (Accounting, Legal)", icon: Landmark, description: "Time tracking, case management, and secure document handling for firms that demand precision and confidentiality." },
+                { name: "Distribution", icon: Signal, description: "Manage complex supply chains, agent networks, and commissions for major carriers and distributors with real-time transparency." },
+                { name: "Lending / Microfinance", icon: Banknote, description: "A robust solution to streamline member management, automate loan processing, and ensure regulatory reporting at scale." },
+                { name: "Rentals / Real Estate", icon: Home, description: "Automate invoicing, track lease agreements, manage maintenance requests, and oversee large property portfolios effortlessly." },
+                { name: "SACCO / Co-operative", icon: Landmark, description: "Simplify member contributions, automate loan cycles, and generate instant reports for SACCOs and Co-operatives of any size." },
+                { name: "Telecom Services", icon: Signal, description: "Specialized tools for airtime distribution, agent management, and commission tracking for carriers like MTN and Airtel." },
+                { name: "Nonprofit", icon: Handshake, description: "Manage donor relationships, track funding, and handle program expenses with full transparency and compliance features." }
+            ]
+        }
+    ] as IndustryCategory[],
     faqItems: [
        { q: 'How does the AI Copilot deliver insights?', a: 'The AI Copilot securely analyzes your company-wide data to find patterns. It provides simple, actionable insights like "Consider bundling Product A and B" or "Cash flow projected to be low in 3 weeks."' },
        { q: 'Is my enterprise data secure?', a: 'Yes. BBU1 uses a multi-tenant architecture with PostgreSQL\'s Row-Level Security. Your data is completely isolated and protected by bank-level, end-to-end encryption.' },
@@ -91,10 +110,8 @@ interface DetailModalProps {
   title: string;
   description: ReactNode;
   icon?: LucideIcon;
-  avatar?: string;
-  company?: string;
 }
-const DetailModal = ({ trigger, title, description, icon: Icon, avatar, company }: DetailModalProps) => (
+const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => (
   <Dialog>
     <DialogTrigger asChild>{trigger}</DialogTrigger>
     <DialogContent className="sm:max-w-lg">
@@ -105,12 +122,8 @@ const DetailModal = ({ trigger, title, description, icon: Icon, avatar, company 
               <Icon className="h-6 w-6 text-primary" />
             </div>
           )}
-          {avatar && (
-            <Image src={avatar} alt={`Avatar of ${title}`} width={56} height={56} className="h-14 w-14 rounded-full object-cover" />
-          )}
           <div className="flex-1">
             <DialogTitle className="text-xl">{title}</DialogTitle>
-            {company && <DialogDescription>{company}</DialogDescription>}
           </div>
         </div>
       </DialogHeader>
@@ -131,7 +144,6 @@ const MegaMenuHeader = () => {
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
-                        {/* Features (Tools) Dropdown */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
@@ -143,11 +155,9 @@ const MegaMenuHeader = () => {
                                             icon={feature.icon}
                                             description={feature.description}
                                             trigger={
-                                                <li className="cursor-pointer">
-                                                    <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                                                        <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                            <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
-                                                        </div>
+                                                <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                    <div className="text-sm font-medium leading-none flex items-center gap-2">
+                                                        <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
                                                     </div>
                                                 </li>
                                             }
@@ -156,32 +166,35 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        {/* Industries Dropdown */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                                    {siteConfig.industrySolutions.map((solution) => (
-                                        <DetailModal
-                                            key={solution.name}
-                                            title={solution.name}
-                                            icon={solution.icon}
-                                            description={solution.description}
-                                            trigger={
-                                                <li className="cursor-pointer">
-                                                     <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                                                        <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                            <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            }
-                                        />
-                                    ))}
-                                </ul>
+                                <ScrollArea className="h-[400px] w-[350px] p-2">
+                                    <ul className="grid grid-cols-1 gap-1 p-2">
+                                        {siteConfig.industrySolutions.map((category) => (
+                                            <React.Fragment key={category.category}>
+                                                <p className="font-bold text-xs text-muted-foreground uppercase p-2 pt-4">{category.category}</p>
+                                                {category.items.map((solution) => (
+                                                    <DetailModal
+                                                        key={solution.name}
+                                                        title={solution.name}
+                                                        icon={solution.icon}
+                                                        description={solution.description}
+                                                        trigger={
+                                                            <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                                <div className="text-sm font-medium leading-none flex items-center gap-2">
+                                                                    <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
+                                                                </div>
+                                                            </li>
+                                                        }
+                                                    />
+                                                ))}
+                                            </React.Fragment>
+                                        ))}
+                                    </ul>
+                                </ScrollArea>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        {/* STORIES DROPDOWN REMOVED */}
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
@@ -200,7 +213,6 @@ const MegaMenuHeader = () => {
                          <nav className="flex flex-col gap-4 text-lg">
                             <p className="font-bold text-primary mt-2">Features</p>
                             <p className="font-bold text-primary mt-2">Industries</p>
-                            {/* STORIES LINK REMOVED FROM MOBILE MENU */}
                             <div className="border-t my-4"></div>
                             <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
                             <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
@@ -236,7 +248,6 @@ const LandingFooter = () => (
                 <div>
                     <h4 className="font-semibold text-base mb-3">Company</h4>
                     <ul className="space-y-2 text-sm">
-                        {/* STORIES LINK REMOVED FROM FOOTER */}
                         <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Contact Sales</a></li>
                         <li><Link href="#faq" className="text-muted-foreground hover:text-primary">FAQ</Link></li>
                     </ul>
@@ -390,20 +401,26 @@ export default function HomePage() {
                     </div>
                 </section>
                 
-                 {/* Why Us Section */}
-                <AnimatedSection id="why-us">
+                 {/* What Makes BBU1 Stand Out Section */}
+                <AnimatedSection id="standout">
                     <div className="px-4">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
-                            <h2 className="text-3xl font-bold tracking-tight">Your Unfair Advantage</h2>
-                            <p className="text-muted-foreground mt-2">These are not just features; they are your new competitive weapons.</p>
+                            <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
+                            <p className="text-muted-foreground mt-2">BBU1 is engineered from the ground up to not just manage your business, but to accelerate its growth and simplify complexity.</p>
                         </div>
-                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {siteConfig.whyUsItems.map(item => (
+                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {siteConfig.standoutItems.map(item => (
                                 <motion.div key={item.title} variants={itemVariants}>
-                                    <Card className="text-center h-full p-6 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50">
-                                        <item.icon className="h-10 w-10 text-primary mx-auto mb-4" />
-                                        <h3 className="text-xl font-bold">{item.title}</h3>
-                                        <p className="text-muted-foreground mt-2 text-sm">{item.description}</p>
+                                    <Card className="text-left h-full hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/50">
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                                            <div className="p-2 bg-primary/10 rounded-md">
+                                                <item.icon className="h-6 w-6 text-primary" />
+                                            </div>
+                                            <CardTitle>{item.title}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-muted-foreground text-sm">{item.description}</p>
+                                        </CardContent>
                                     </Card>
                                 </motion.div>
                             ))}
