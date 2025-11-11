@@ -19,15 +19,13 @@ import { Input } from '@/components/ui/input';
 // --- Utils & Icons ---
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, Box, BrainCircuit, Cloud,
-    Facebook, Handshake, Home, ShieldCheck, TrendingUp,
-    Landmark, Leaf, LifeBuoy, Library, Linkedin, LucideIcon, Menu,
-    Quote, ReceiptText, Rocket, Send,
-    Signal, Star, Store, Twitter, Database,
+    Banknote, Bot, BrainCircuit, Facebook, Handshake, Home, ShieldCheck, TrendingUp,
+    Landmark, Leaf, Linkedin, LucideIcon, Menu,
+    Rocket, Send, Signal, Store, Twitter,
     Users, Utensils, WifiOff, X, ArrowRight,
-    BriefcaseBusiness, Layers3, Zap, ShieldHalf, LayoutGrid, Globe,
-    Wallet, ClipboardList, Package, UserCog, Files, Lightbulb
-} from 'lucide-react'; // Added more descriptive icons
+    Zap, ShieldHalf, LayoutGrid, Lightbulb,
+    Wallet, ClipboardList, Package, UserCog, Files
+} from 'lucide-react';
 
 // --- Type Definitions ---
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
@@ -47,20 +45,20 @@ const siteConfig = {
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
     featureItems: [
-        { icon: Wallet, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." }, // Changed icon
-        { icon: Package, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." }, // Changed icon
-        { icon: ClipboardList, title: "CRM & Project Hub", description: "Go from lead to paid project without leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." }, // Changed icon
-        { icon: UserCog, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." }, // Changed icon
-        { icon: Files, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." }, // Changed icon
-        { icon: Lightbulb, title: "AI Business Copilot", description: "Get proactive, data-driven insights on cash flow, client trends, and fraud detection, helping you make smarter decisions, faster."} // Changed icon
+        { icon: Wallet, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." },
+        { icon: Package, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." },
+        { icon: ClipboardList, title: "CRM & Project Hub", description: "Go from lead to paid project without leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." },
+        { icon: UserCog, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." },
+        { icon: Files, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." },
+        { icon: Lightbulb, title: "AI Business Copilot", description: "Get proactive, data-driven insights on cash flow, client trends, and fraud detection, helping you make smarter decisions, faster."}
     ] as FeatureItem[],
     standoutItems: [
         { icon: TrendingUp, title: "Built to Scale With You", description: "BBU1 is architected for growth. Whether you're a solo entrepreneur or a global enterprise, our platform scales seamlessly to meet your demands without compromising performance." },
-        { icon: LayoutGrid, title: "A Single Source of Truth", description: "Eliminate data silos forever. By unifying every department—from sales and accounting to inventory and HR—you get a real-time, 360-degree view of your entire operation." }, // Changed icon
+        { icon: LayoutGrid, title: "A Single Source of Truth", description: "Eliminate data silos forever. By unifying every department—from sales and accounting to inventory and HR—you get a real-time, 360-degree view of your entire operation." },
         { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Internet down? Power outage? No problem. BBU1's core functions work perfectly offline, ensuring business continuity and revenue protection. Everything syncs the moment you're back online." },
-        { icon: Zap, title: "End Subscription Chaos", description: "Replace 5+ expensive, disconnected apps with one intelligent, cost-effective platform. Simplify your workflow, reduce costs, and remove the headache of integration." }, // Changed icon
+        { icon: Zap, title: "End Subscription Chaos", description: "Replace 5+ expensive, disconnected apps with one intelligent, cost-effective platform. Simplify your workflow, reduce costs, and remove the headache of integration." },
         { icon: BrainCircuit, title: "True AI Partnership", description: "Our integrated AI is not just a feature; it's a strategic partner. It analyzes your data to find growth opportunities, predict cash flow, and identify risks before they become problems." },
-        { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is your most valuable asset. We protect it with a multi-tenant architecture and end-to-end encryption, ensuring your information is completely isolated and secure." } // Changed icon
+        { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is your most valuable asset. We protect it with a multi-tenant architecture and end-to-end encryption, ensuring your information is completely isolated and secure." }
     ] as WhyUsItem[],
     industrySolutions: [
         {
@@ -74,15 +72,9 @@ const siteConfig = {
         {
             category: "Specialized Industries",
             items: [
-                { name: "Contractor (General, Remodeling)", icon: Home, description: "Project management, job costing, and client invoicing tailored for the construction and remodeling industry." },
-                { name: "Field Service (Trades, HVAC, Plumbing)", icon: Users, description: "Efficiently manage your mobile workforce with scheduling, dispatching, and on-the-go invoicing and payments." },
                 { name: "Professional Services (Accounting, Legal)", icon: Landmark, description: "Time tracking, case management, and secure document handling for firms that demand precision and confidentiality." },
-                { name: "Distribution", icon: Signal, description: "Manage complex supply chains, agent networks, and commissions for major carriers and distributors with real-time transparency." },
                 { name: "Lending / Microfinance", icon: Banknote, description: "A robust solution to streamline member management, automate loan processing, and ensure regulatory reporting at scale." },
-                { name: "Rentals / Real Estate", icon: Home, description: "Automate invoicing, track lease agreements, manage maintenance requests, and oversee large property portfolios effortlessly." },
-                { name: "SACCO / Co-operative", icon: Landmark, description: "Simplify member contributions, automate loan cycles, and generate instant reports for SACCOs and Co-operatives of any size." },
-                { name: "Telecom Services", icon: Signal, description: "Specialized tools for airtime distribution, agent management, and commission tracking for carriers like MTN and Airtel." },
-                { name: "Nonprofit", icon: Handshake, description: "Manage donor relationships, track funding, and handle program expenses with full transparency and compliance features." }
+                { name: "Telecom Services", icon: Signal, description: "Specialized tools for airtime distribution, agent management, and commission tracking for carriers like MTN and Airtel." }
             ]
         }
     ] as IndustryCategory[],
@@ -99,7 +91,7 @@ const siteConfig = {
 // --- Animation Variants ---
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
-const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.15 } } };
+const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
 const textVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } },
@@ -139,15 +131,15 @@ const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md"> {/* Increased blur for depth */}
+        <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md">
             <div className="container mx-auto h-16 flex items-center justify-between">
                 <Link href="/" className="text-xl font-bold text-primary flex items-center gap-2" aria-label={`${siteConfig.name} Home`}>
-                    <Rocket className="h-6 w-6 animate-spin-slow" /> {siteConfig.name} {/* Subtle animation for logo */}
+                    <Rocket className="h-6 w-6" /> {siteConfig.name}
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger className="text-foreground hover:text-primary">Features</NavigationMenuTrigger> {/* Improved contrast */}
+                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
                                 <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                                     {siteConfig.featureItems.map((feature) => (
@@ -157,9 +149,9 @@ const MegaMenuHeader = () => {
                                             icon={feature.icon}
                                             description={feature.description}
                                             trigger={
-                                                <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group"> {/* Accent hover */}
+                                                <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group">
                                                     <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                        <feature.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {feature.title} {/* Icon color change on hover */}
+                                                        <feature.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {feature.title}
                                                     </div>
                                                 </li>
                                             }
@@ -169,7 +161,7 @@ const MegaMenuHeader = () => {
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger className="text-foreground hover:text-primary">Industries</NavigationMenuTrigger> {/* Improved contrast */}
+                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
                                 <ScrollArea className="h-[400px] w-[350px] p-2">
                                     <ul className="grid grid-cols-1 gap-1 p-2">
@@ -183,9 +175,9 @@ const MegaMenuHeader = () => {
                                                         icon={solution.icon}
                                                         description={solution.description}
                                                         trigger={
-                                                            <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group"> {/* Accent hover */}
+                                                            <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group">
                                                                 <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                                    <solution.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {solution.name} {/* Icon color change on hover */}
+                                                                    <solution.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {solution.name}
                                                                 </div>
                                                             </li>
                                                         }
@@ -213,7 +205,6 @@ const MegaMenuHeader = () => {
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
                          <nav className="flex flex-col gap-4 text-lg">
-                            {/* Improved mobile menu with clickable triggers */}
                             <Accordion type="single" collapsible className="w-full">
                                 <AccordionItem value="features">
                                     <AccordionTrigger className="text-lg hover:no-underline">Features</AccordionTrigger>
@@ -224,9 +215,7 @@ const MegaMenuHeader = () => {
                                                 title={feature.title}
                                                 icon={feature.icon}
                                                 description={feature.description}
-                                                trigger={
-                                                    <Button variant="ghost" className="justify-start gap-2 w-full"><feature.icon className="h-4 w-4 text-primary" /> {feature.title}</Button>
-                                                }
+                                                trigger={<Button variant="ghost" className="justify-start gap-2 w-full"><feature.icon className="h-4 w-4 text-primary" /> {feature.title}</Button>}
                                             />
                                         ))}
                                     </AccordionContent>
@@ -243,9 +232,7 @@ const MegaMenuHeader = () => {
                                                         title={solution.name}
                                                         icon={solution.icon}
                                                         description={solution.description}
-                                                        trigger={
-                                                            <Button variant="ghost" className="justify-start gap-2 w-full"><solution.icon className="h-4 w-4 text-primary" /> {solution.name}</Button>
-                                                        }
+                                                        trigger={<Button variant="ghost" className="justify-start gap-2 w-full"><solution.icon className="h-4 w-4 text-primary" /> {solution.name}</Button>}
                                                     />
                                                 ))}
                                             </React.Fragment>
@@ -266,7 +253,7 @@ const MegaMenuHeader = () => {
 
 // --- Footer Component ---
 const LandingFooter = () => (
-    <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10 dark:from-background/50 dark:via-background dark:to-background/90"> {/* Subtle gradient for footer */}
+    <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 pt-12 pb-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
                 <div className="col-span-2">
@@ -344,22 +331,14 @@ const AdvancedChatWidget = () => {
     const chat: any = useChat({} as any);
     useEffect(() => {
         if (chat.messages.length === 0 && chat.setMessages) {
-            chat.setMessages([
-                { id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any
-            ]);
+            chat.setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any]);
         }
     }, [chat.messages.length, chat.setMessages]);
     const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const trimmedInput = chatInput.trim();
         if (!trimmedInput) return;
-        chat.sendMessage({
-            content: trimmedInput,
-            body: {
-                businessId: userContext.businessId,
-                userId: userContext.userId,
-            }
-        });
+        chat.sendMessage({ content: trimmedInput, body: { businessId: userContext.businessId, userId: userContext.userId }});
         setChatInput('');
     };
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -382,14 +361,17 @@ const AdvancedChatWidget = () => {
     );
 };
 
-// --- Main Page Component ---
+// --- Professional SVG Logos for Social Proof section ---
+const Logo1 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M60 0C26.86 0 0 26.86 0 60V0h60z"/><path d="M60 48c33.14 0 60-26.86 60-60V48H60z" opacity=".5"/></svg>;
+const Logo2 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M0 24c0 13.25 10.75 24 24 24h72c13.25 0 24-10.75 24-24S109.25 0 96 0H24C10.75 0 0 10.75 0 24z"/><circle cx="24" cy="24" r="12" fill="#fff" opacity=".5"/></svg>;
+const Logo3 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M24 0h72l24 24-24 24H24L0 24 24 0z"/><path d="M24 0l12 12-12 12L12 12 24 0z" opacity=".5"/></svg>;
+const Logo4 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><circle cx="24" cy="24" r="24"/><circle cx="96" cy="24" r="24" opacity=".5"/></svg>;
+const Logo5 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M0 0h120v48H0V0zm24 12h72v24H24V12z" opacity=".5"/><path d="M0 0l60 48L120 0H0z"/></svg>;
+const Logo6 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M60 0L0 48h120L60 0zm0 12l24 18H36l24-18z" opacity=".5"/><path d="M60 12l-12 9h24l-12-9z"/></svg>;
+
+// --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
-    const rotatingTexts = [
-        "From startup to enterprise.",
-        "For every ambition.",
-        "Your complete business OS.",
-        "Unified and intelligent.",
-    ];
+    const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS.", "Unified and intelligent."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
     useEffect(() => {
@@ -404,33 +386,23 @@ export default function HomePage() {
         <>
             <MegaMenuHeader />
             <main className="flex-grow z-10">
-                
-                {/* Hero Section */}
-                <section id="hero" className="relative pt-20 pb-28 overflow-hidden bg-gradient-to-br from-background via-primary/5 to-background dark:from-background dark:via-primary/10 dark:to-background"> {/* Dynamic gradient background */}
-                    {/* Visual system portrayal: subtle animated tech pattern */}
-                    <div className="absolute inset-0 z-0 bg-subtle-pattern animate-pulse-subtle"></div> {/* Subtle dots pattern for overall background */}
-                    <div className="absolute inset-0 z-0 hero-visual-background"></div> {/* Custom CSS for hero background */}
 
+                {/* Hero Section */}
+                <section id="hero" className="relative pt-20 pb-28 overflow-hidden">
+                    <div className="absolute inset-0 z-0 bg-subtle-pattern animate-pulse-subtle"></div>
+                    <div className="absolute inset-0 z-0 hero-visual-background"></div>
                     <div className="container mx-auto text-center relative z-10">
                         <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                            <motion.div variants={itemVariants} className="group"> {/* Added group for icon hover */}
+                            <motion.div variants={itemVariants} className="group">
                                 <span className="inline-flex items-center rounded-full bg-background/80 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-primary border border-primary/20 shadow-sm group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                                    <BrainCircuit className="mr-2 h-4 w-4 group-hover:animate-spin-slow" /> {/* subtle spin on hover */}
-                                    The Intelligent Business OS
+                                    <BrainCircuit className="mr-2 h-4 w-4 group-hover:animate-spin-slow" /> The Intelligent Business OS
                                 </span>
                             </motion.div>
-                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}> {/* Adjusted line height */}
+                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}>
                                 The One Platform <br />
                                 <div className="inline-block h-[1.2em] overflow-hidden">
                                     <AnimatePresence mode="wait">
-                                        <motion.span
-                                            key={currentTextIndex}
-                                            variants={textVariants}
-                                            initial="hidden"
-                                            animate="visible"
-                                            exit="exit"
-                                            className="block text-primary drop-shadow-md" // Added subtle shadow
-                                        >
+                                        <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-primary drop-shadow-md">
                                             {rotatingTexts[currentTextIndex]}
                                         </motion.span>
                                     </AnimatePresence>
@@ -443,16 +415,41 @@ export default function HomePage() {
                                 <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300"><Link href="/signup">Start Free Trial</Link></Button>
                                 <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 transition-colors"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                             </motion.div>
-                            <motion.div variants={itemVariants} className="mt-16 w-full max-w-4xl mx-auto">
-                                
+                            <motion.div variants={itemVariants} className="mt-16 w-full max-w-5xl mx-auto px-4">
+                                <div className="relative">
+                                    <div className="absolute -inset-8 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite]"></div>
+                                    <Image
+                                        src="/images/hero-visual.png"
+                                        alt="BBU1 Unified Platform Diagram showing modules for bookkeeping, inventory, CRM, and AI insights connected to a central intelligent core."
+                                        width={1200}
+                                        height={900}
+                                        className="relative rounded-lg shadow-2xl shadow-primary/20 border border-primary/10"
+                                        priority
+                                    />
+                                </div>
                             </motion.div>
                         </motion.div>
                     </div>
                 </section>
-                
-                 {/* What Makes BBU1 Stand Out Section */}
+
+                {/* Social Proof Section */}
+                <AnimatedSection id="trusted-by" className="py-12 bg-secondary/50">
+                    <div className="text-center">
+                        <h3 className="text-sm font-semibold text-muted-foreground tracking-wider uppercase">Trusted by innovative companies in Africa & beyond</h3>
+                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-8 gap-y-6 items-center">
+                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo1 /></motion.div>
+                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo2 /></motion.div>
+                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo3 /></motion.div>
+                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo4 /></motion.div>
+                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo5 /></motion.div>
+                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo6 /></motion.div>
+                        </motion.div>
+                    </div>
+                </AnimatedSection>
+
+                {/* What Makes BBU1 Stand Out Section */}
                 <AnimatedSection id="standout" className="bg-background relative">
-                    <div className="absolute inset-0 z-0 bg-features-pattern animate-pulse-subtle"></div> {/* Pattern for this section */}
+                    <div className="absolute inset-0 z-0 bg-features-pattern"></div>
                     <div className="px-4 relative z-10">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
                             <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
@@ -461,33 +458,26 @@ export default function HomePage() {
                         <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {siteConfig.standoutItems.map(item => (
                                 <motion.div key={item.title} variants={itemVariants}>
-                                    <Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/70 backdrop-blur-sm border-primary/10"> {/* Enhanced card styles */}
+                                    <Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/80 backdrop-blur-sm border-primary/10">
                                         <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                                            <div className="p-2 bg-primary/10 rounded-md group-hover:bg-primary transition-colors">
-                                                <item.icon className="h-6 w-6 text-primary group-hover:text-primary-foreground transition-colors" />
-                                            </div>
+                                            <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div>
                                             <CardTitle className="text-lg">{item.title}</CardTitle>
                                         </CardHeader>
-                                        <CardContent>
-                                            <p className="text-muted-foreground text-sm">{item.description}</p>
-                                        </CardContent>
+                                        <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent>
                                     </Card>
                                 </motion.div>
                             ))}
                         </motion.div>
                     </div>
-                    <motion.div variants={itemVariants} className="mt-16 w-full max-w-4xl mx-auto">
-                        
-                    </motion.div>
                 </AnimatedSection>
-                
-                {/* FAQ */}
-                <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background dark:from-background dark:via-accent/10 dark:to-background"> {/* New gradient background for FAQ */}
+
+                {/* FAQ Section */}
+                <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background dark:from-background dark:via-accent/10 dark:to-background">
                     <div className="max-w-3xl mx-auto relative z-10">
                         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-8">Your Questions, Answered</h2>
-                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border border-border/50 bg-background/70 backdrop-blur-sm shadow-lg"> {/* Card-like accordion */}
+                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border border-border/50 bg-background/80 backdrop-blur-sm shadow-lg">
                             {siteConfig.faqItems.map(i => (
-                                <AccordionItem key={i.q} value={i.q} className="px-4">
+                                <AccordionItem key={i.q} value={i.q} className="px-6 data-[state=closed]:border-b">
                                     <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4 hover:text-primary transition-colors">{i.q}</AccordionTrigger>
                                     <AccordionContent className="text-sm text-muted-foreground pb-4 leading-relaxed">{i.a}</AccordionContent>
                                 </AccordionItem>
@@ -496,10 +486,10 @@ export default function HomePage() {
                     </div>
                 </AnimatedSection>
 
-                {/* Final CTA */}
+                {/* Final CTA Section */}
                 <AnimatedSection className="text-center container mx-auto px-4">
-                    <div className="relative py-16 bg-cta-gradient text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden transform hover:scale-[1.01] transition-transform duration-300"> {/* Gradient CTA and subtle scale on hover */}
-                        <div className="absolute top-0 left-0 w-full h-full bg-grid-white/[0.1] dark:bg-grid-black/[0.1] -z-1"></div>
+                    <div className="relative py-16 bg-cta-gradient text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+                        <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern-dark opacity-10 -z-1"></div>
                         <h2 className="text-3xl font-bold tracking-tight drop-shadow-md">Ready to Revolutionize Your Enterprise?</h2>
                         <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p>
                         <div className="mt-8">
@@ -509,8 +499,8 @@ export default function HomePage() {
                         </div>
                     </div>
                 </AnimatedSection>
+
             </main>
-            
             <AdvancedChatWidget />
             <LandingFooter />
         </>
