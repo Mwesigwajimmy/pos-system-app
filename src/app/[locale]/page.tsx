@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "@/components/ui/navigation-menu";
+import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
 // --- Utils & Icons ---
@@ -35,7 +35,7 @@ interface TestimonialItem { name: string; company: string; quote: string; avatar
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
-// --- Centralized Site Configuration (No changes needed here) ---
+// --- Centralized Site Configuration ---
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -85,7 +85,7 @@ const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { op
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.15 } } };
 
-// --- NEW Reusable Modal Component ---
+// --- Reusable Modal Component ---
 interface DetailModalProps {
   trigger: ReactNode;
   title: string;
@@ -119,7 +119,7 @@ const DetailModal = ({ trigger, title, description, icon: Icon, avatar, company 
   </Dialog>
 );
 
-// --- MODIFIED Header with Interactive Dropdowns ---
+// --- Header with Interactive Dropdowns ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
@@ -131,10 +131,42 @@ const MegaMenuHeader = () => {
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
-
-                        {/* Features (Tools) Dropdown */}
+                        {/* For Business */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
+                            <NavigationMenuTrigger>For Business</NavigationMenuTrigger>
+                            <NavigationMenuContent>
+                                <ul className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+                                    <li className="row-span-3">
+                                        <NavigationMenuLink asChild>
+                                            <a
+                                                className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+                                                href="/"
+                                            >
+                                                <Rocket className="h-6 w-6 text-primary" />
+                                                <div className="mb-2 mt-4 text-lg font-medium">
+                                                    {siteConfig.name}
+                                                </div>
+                                                <p className="text-sm leading-tight text-muted-foreground">
+                                                    {siteConfig.shortDescription}
+                                                </p>
+                                            </a>
+                                        </NavigationMenuLink>
+                                    </li>
+                                    <ListItem href="#why-us" title="Why BBU1">
+                                        Discover our unique advantages.
+                                    </ListItem>
+                                    <ListItem href="#faq" title="FAQ">
+                                        Your common questions answered.
+                                    </ListItem>
+                                    <ListItem href={siteConfig.contactInfo.whatsappLink} title="Contact Sales">
+                                        Get a personalized demo for your enterprise.
+                                    </ListItem>
+                                </ul>
+                            </NavigationMenuContent>
+                        </NavigationMenuItem>
+                        {/* Accountants */}
+                        <NavigationMenuItem>
+                            <NavigationMenuTrigger>Accountants</NavigationMenuTrigger>
                             <NavigationMenuContent>
                                 <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                                     {siteConfig.featureItems.map((feature) => (
@@ -145,7 +177,7 @@ const MegaMenuHeader = () => {
                                             description={feature.description}
                                             trigger={
                                                 <li className="cursor-pointer">
-                                                    <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                     <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
                                                         <div className="text-sm font-medium leading-none flex items-center gap-2">
                                                             <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
                                                         </div>
@@ -157,38 +189,22 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-
-                        {/* Industries Dropdown */}
+                         {/* Pricing */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                                    {siteConfig.industrySolutions.map((solution) => (
-                                        <DetailModal
-                                            key={solution.name}
-                                            title={solution.name}
-                                            icon={solution.icon}
-                                            description={solution.description}
-                                            trigger={
-                                                <li className="cursor-pointer">
-                                                     <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                                                        <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                            <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            }
-                                        />
-                                    ))}
-                                </ul>
-                            </NavigationMenuContent>
+                            <Link href="/pricing" legacyBehavior passHref>
+                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                    Pricing
+                                </NavigationMenuLink>
+                            </Link>
                         </NavigationMenuItem>
-                        
-                        {/* Stories Dropdown */}
+                        {/* Learn & Support */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Stories</NavigationMenuTrigger>
+                            <NavigationMenuTrigger>Learn & Support</NavigationMenuTrigger>
                             <NavigationMenuContent>
                                 <ul className="grid w-[400px] gap-1 p-4 md:w-[400px]">
+                                    <ListItem href="#faq" title="Help & FAQ">
+                                        Find answers and get support.
+                                    </ListItem>
                                     {siteConfig.testimonials.map((testimonial) => (
                                         <DetailModal
                                             key={testimonial.name}
@@ -214,10 +230,8 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-
                     </NavigationMenuList>
                 </NavigationMenu>
-
                 <div className="hidden lg:flex items-center gap-2">
                     <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
@@ -228,14 +242,14 @@ const MegaMenuHeader = () => {
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
                 </div>
             </div>
-            {/* Mobile Menu can be enhanced later to use modals as well */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
                          <nav className="flex flex-col gap-4 text-lg">
-                            <p className="font-bold text-primary mt-2">Features</p>
-                            <p className="font-bold text-primary mt-2">Industries</p>
-                            <p className="font-bold text-primary mt-2">Stories</p>
+                            <p className="font-bold text-primary mt-2">For Business</p>
+                            <p className="font-bold text-primary mt-2">Accountants</p>
+                            <Link href="/pricing" className="font-bold text-primary mt-2" onClick={() => setIsMobileMenuOpen(false)}>Pricing</Link>
+                            <p className="font-bold text-primary mt-2">Learn & Support</p>
                             <div className="border-t my-4"></div>
                             <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
                             <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
@@ -247,7 +261,30 @@ const MegaMenuHeader = () => {
     );
 };
 
-// --- Standard Footer Component ---
+const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a">>(({ className, title, children, ...props }, ref) => {
+    return (
+      <li>
+        <NavigationMenuLink asChild>
+          <a
+            ref={ref}
+            className={cn(
+              "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+              className
+            )}
+            {...props}
+          >
+            <div className="text-sm font-medium leading-none">{title}</div>
+            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+              {children}
+            </p>
+          </a>
+        </NavigationMenuLink>
+      </li>
+    )
+})
+ListItem.displayName = "ListItem"
+
+// --- Footer Component ---
 const LandingFooter = () => (
     <footer className="relative border-t bg-background/80 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 pt-12 pb-6">
@@ -292,7 +329,6 @@ const LandingFooter = () => (
     </footer>
 );
 
-
 // --- Reusable Animated Section Component ---
 const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
     <motion.section id={id} className={cn("relative py-16 sm:py-20", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
@@ -300,8 +336,7 @@ const AnimatedSection = ({ children, className, id }: { children: ReactNode; cla
     </motion.section>
 );
 
-
-// --- AI Chat Widget (Unchanged) ---
+// --- AI Chat Widget ---
 const getCookie = (name: string): string | null => {
     if (typeof document === 'undefined') return null;
     const value = `; ${document.cookie}`;
@@ -368,37 +403,16 @@ const AdvancedChatWidget = () => {
     );
 };
 
-
-// --- The NEW, SHORTENED Main Page Component ---
+// --- Main Page Component ---
 export default function HomePage() {
     return (
         <>
             <MegaMenuHeader />
             <main className="flex-grow z-10">
                 
-                {/* Hero Section */}
-                <section id="hero" className="relative pt-20 pb-28 overflow-hidden">
-                     <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
-                    <div className="container mx-auto text-center relative z-10">
-                        <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                            <motion.div variants={itemVariants}>
-                                <span className="inline-flex items-center rounded-full bg-background/80 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-primary border"><BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS</span>
-                            </motion.div>
-                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6" variants={itemVariants}>
-                                One Platform to Run Your<br />Entire Global Ambition
-                            </motion.h1>
-                            <motion.p className="mt-6 text-lg leading-8 text-muted-foreground max-w-2xl mx-auto" variants={itemVariants}>
-                                {siteConfig.shortDescription}
-                            </motion.p>
-                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                <Button asChild size="lg"><Link href="/signup">Start Free Trial</Link></Button>
-                                <Button asChild size="lg" variant="outline"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
-                            </motion.div>
-                        </motion.div>
-                    </div>
-                </section>
+                {/* HERO SECTION HAS BEEN COMPLETELY REMOVED */}
                 
-                 {/* Why Us Section (Kept because it is short and powerful) */}
+                 {/* Why Us Section */}
                 <AnimatedSection id="why-us">
                     <div className="px-4">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
@@ -418,11 +432,6 @@ export default function HomePage() {
                         </motion.div>
                     </div>
                 </AnimatedSection>
-                
-                {/* 
-                  SECTIONS FOR FEATURES, INDUSTRIES, and TESTIMONIALS ARE NOW REMOVED FROM THE MAIN PAGE.
-                  THEIR CONTENT IS ACCESSIBLE VIA THE NEW DROPDOWNS IN THE HEADER.
-                */}
                 
                 {/* FAQ */}
                 <AnimatedSection id="faq" className="bg-background/80 backdrop-blur-sm">
