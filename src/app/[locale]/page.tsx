@@ -31,7 +31,6 @@ import {
 interface NavItem { title: string; href: string; description: string; icon: LucideIcon; }
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
 interface SolutionItem { icon: LucideIcon; name: string; description: string; }
-interface TestimonialItem { name: string; company: string; quote: string; avatar: string; rating: number; }
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
@@ -43,7 +42,7 @@ const siteConfig = {
     inventorCredit: "Invented by Mwesigwa Jimmy in Uganda. Built for the world.",
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
-        socials: { linkedin: '#', twitter: '#', facebook: '#' }
+        socials: { linkedin: '#', twitter: '#', facebook: '#' } // Remember to update these links
     },
     featureItems: [
         { icon: ReceiptText, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements, master your finances with zero effort." },
@@ -65,11 +64,7 @@ const siteConfig = {
         { icon: Home, name: "Real Estate & Rentals", description: "Automate invoicing, track lease agreements, and manage large property portfolios." },
         { icon: Handshake, name: "Professional Services", description: "Manage appointments, client data, and create professional service invoices." },
     ] as SolutionItem[],
-    testimonials: [
-       { name: 'Sarah Namubiru', company: 'CEO, Sarah\'s Boutique Chain', quote: '"The AI Copilot identified a hidden profitable segment, boosting sales by 30%. True data-driven strategy."', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286de2?auto=format&fit=crop&w=200&h=200&q=80', rating: 5 },
-       { name: 'David Kaggwa', company: 'Director, Boda Boda SACCO Ltd.', quote: '"Managing thousands of members was a nightmare. BBU1 automated contributions and loans. Reporting is instant. An essential tool."', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80', rating: 5 },
-       { name: 'Aisha Mutesi', company: 'Property Manager, K Estates', quote: '"We manage 150+ units. BBU1 automated invoicing and provides real-time arrears. It saved us countless hours and improved our cash flow."', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80', rating: 5 }
-    ] as TestimonialItem[],
+    // TESTIMONIALS (SUCCESS STORIES) HAVE BEEN REMOVED
     faqItems: [
        { q: 'How does the AI Copilot deliver insights?', a: 'The AI Copilot securely analyzes your company-wide data to find patterns. It provides simple, actionable insights like "Consider bundling Product A and B" or "Cash flow projected to be low in 3 weeks."' },
        { q: 'Is my enterprise data secure?', a: 'Yes. BBU1 uses a multi-tenant architecture with PostgreSQL\'s Row-Level Security. Your data is completely isolated and protected by bank-level, end-to-end encryption.' },
@@ -84,6 +79,11 @@ const siteConfig = {
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.15 } } };
+const textVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } }
+};
 
 // --- Reusable Modal Component ---
 interface DetailModalProps {
@@ -131,42 +131,9 @@ const MegaMenuHeader = () => {
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
-                        {/* For Business */}
+                        {/* Features (Tools) Dropdown */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>For Business</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ul className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                                    <li className="row-span-3">
-                                        <NavigationMenuLink asChild>
-                                            <a
-                                                className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                                                href="/"
-                                            >
-                                                <Rocket className="h-6 w-6 text-primary" />
-                                                <div className="mb-2 mt-4 text-lg font-medium">
-                                                    {siteConfig.name}
-                                                </div>
-                                                <p className="text-sm leading-tight text-muted-foreground">
-                                                    {siteConfig.shortDescription}
-                                                </p>
-                                            </a>
-                                        </NavigationMenuLink>
-                                    </li>
-                                    <ListItem href="#why-us" title="Why BBU1">
-                                        Discover our unique advantages.
-                                    </ListItem>
-                                    <ListItem href="#faq" title="FAQ">
-                                        Your common questions answered.
-                                    </ListItem>
-                                    <ListItem href={siteConfig.contactInfo.whatsappLink} title="Contact Sales">
-                                        Get a personalized demo for your enterprise.
-                                    </ListItem>
-                                </ul>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
-                        {/* Accountants */}
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger>Accountants</NavigationMenuTrigger>
+                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
                                 <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                                     {siteConfig.featureItems.map((feature) => (
@@ -177,7 +144,7 @@ const MegaMenuHeader = () => {
                                             description={feature.description}
                                             trigger={
                                                 <li className="cursor-pointer">
-                                                     <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                    <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
                                                         <div className="text-sm font-medium leading-none flex items-center gap-2">
                                                             <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
                                                         </div>
@@ -189,38 +156,22 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                         {/* Pricing */}
+                        {/* Industries Dropdown */}
                         <NavigationMenuItem>
-                            <Link href="/pricing" legacyBehavior passHref>
-                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                                    Pricing
-                                </NavigationMenuLink>
-                            </Link>
-                        </NavigationMenuItem>
-                        {/* Learn & Support */}
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger>Learn & Support</NavigationMenuTrigger>
+                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-1 p-4 md:w-[400px]">
-                                    <ListItem href="#faq" title="Help & FAQ">
-                                        Find answers and get support.
-                                    </ListItem>
-                                    {siteConfig.testimonials.map((testimonial) => (
+                                <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                                    {siteConfig.industrySolutions.map((solution) => (
                                         <DetailModal
-                                            key={testimonial.name}
-                                            title={testimonial.name}
-                                            company={testimonial.company}
-                                            avatar={testimonial.avatar}
-                                            description={<p className="italic">"{testimonial.quote}"</p>}
+                                            key={solution.name}
+                                            title={solution.name}
+                                            icon={solution.icon}
+                                            description={solution.description}
                                             trigger={
                                                 <li className="cursor-pointer">
-                                                    <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                                                     <div className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
                                                         <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                           <Image src={testimonial.avatar} alt={testimonial.name} width={24} height={24} className="h-6 w-6 rounded-full" />
-                                                           <div>
-                                                                <p className="font-medium">{testimonial.name}</p>
-                                                                <p className="text-xs text-muted-foreground">{testimonial.company}</p>
-                                                           </div>
+                                                            <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
                                                         </div>
                                                     </div>
                                                 </li>
@@ -230,6 +181,7 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
+                        {/* STORIES DROPDOWN REMOVED */}
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
@@ -246,10 +198,9 @@ const MegaMenuHeader = () => {
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
                          <nav className="flex flex-col gap-4 text-lg">
-                            <p className="font-bold text-primary mt-2">For Business</p>
-                            <p className="font-bold text-primary mt-2">Accountants</p>
-                            <Link href="/pricing" className="font-bold text-primary mt-2" onClick={() => setIsMobileMenuOpen(false)}>Pricing</Link>
-                            <p className="font-bold text-primary mt-2">Learn & Support</p>
+                            <p className="font-bold text-primary mt-2">Features</p>
+                            <p className="font-bold text-primary mt-2">Industries</p>
+                            {/* STORIES LINK REMOVED FROM MOBILE MENU */}
                             <div className="border-t my-4"></div>
                             <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
                             <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
@@ -260,29 +211,6 @@ const MegaMenuHeader = () => {
         </header>
     );
 };
-
-const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a">>(({ className, title, children, ...props }, ref) => {
-    return (
-      <li>
-        <NavigationMenuLink asChild>
-          <a
-            ref={ref}
-            className={cn(
-              "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-              className
-            )}
-            {...props}
-          >
-            <div className="text-sm font-medium leading-none">{title}</div>
-            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-              {children}
-            </p>
-          </a>
-        </NavigationMenuLink>
-      </li>
-    )
-})
-ListItem.displayName = "ListItem"
 
 // --- Footer Component ---
 const LandingFooter = () => (
@@ -308,7 +236,7 @@ const LandingFooter = () => (
                 <div>
                     <h4 className="font-semibold text-base mb-3">Company</h4>
                     <ul className="space-y-2 text-sm">
-                         <li><span className="text-muted-foreground">Stories</span></li>
+                        {/* STORIES LINK REMOVED FROM FOOTER */}
                         <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Contact Sales</a></li>
                         <li><Link href="#faq" className="text-muted-foreground hover:text-primary">FAQ</Link></li>
                     </ul>
@@ -405,12 +333,62 @@ const AdvancedChatWidget = () => {
 
 // --- Main Page Component ---
 export default function HomePage() {
+    const rotatingTexts = [
+        "From startup to enterprise.",
+        "For every ambition.",
+        "Your complete business OS.",
+        "Unified and intelligent.",
+    ];
+    const [currentTextIndex, setCurrentTextIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [rotatingTexts.length]);
+
     return (
         <>
             <MegaMenuHeader />
             <main className="flex-grow z-10">
                 
-                {/* HERO SECTION HAS BEEN COMPLETELY REMOVED */}
+                {/* Hero Section */}
+                <section id="hero" className="relative pt-20 pb-28 overflow-hidden">
+                     <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
+                    <div className="container mx-auto text-center relative z-10">
+                        <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                            <motion.div variants={itemVariants}>
+                                <span className="inline-flex items-center rounded-full bg-background/80 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-primary border"><BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS</span>
+                            </motion.div>
+                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6" variants={itemVariants}>
+                                The One Platform <br />
+                                <div className="inline-block h-[1.2em] overflow-hidden">
+                                    <AnimatePresence mode="wait">
+                                        <motion.span
+                                            key={currentTextIndex}
+                                            variants={textVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                            exit="exit"
+                                            className="block text-primary"
+                                        >
+                                            {rotatingTexts[currentTextIndex]}
+                                        </motion.span>
+                                    </AnimatePresence>
+                                </div>
+                            </motion.h1>
+                            <motion.p className="mt-6 text-lg leading-8 text-muted-foreground max-w-2xl mx-auto" variants={itemVariants}>
+                                Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management. Built for every business, ready for the world.
+                            </motion.p>
+                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
+                                <Button asChild size="lg"><Link href="/signup">Start Free Trial</Link></Button>
+                                <Button asChild size="lg" variant="outline"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                            </motion.div>
+                        </motion.div>
+                    </div>
+                </section>
                 
                  {/* Why Us Section */}
                 <AnimatedSection id="why-us">
