@@ -89,9 +89,24 @@
   background-repeat: no-repeat, repeat;
 }
 
+/* Added this for Ken Burns effect on hero background image */
+.hero-background-image {
+  animation: ken-burns 20s infinite alternate; /* Apply Ken Burns effect */
+}
+
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translateX(0%);
+    transform-origin: 20% 20%;
+  }
+  100% {
+    transform: scale(1.15) translateX(-5%);
+    transform-origin: 80% 80%;
+  }
+}
+
 /* 
   Section background for "What Makes BBU1 Stand Out"
-  --- THIS SECTION HAS INCREASED OPACITY ---
 */
 .bg-features-pattern {
   background-image: url("/patterns/grid-light.svg"), url("/images/showcase/ai-warehouse-logistics.jpg");

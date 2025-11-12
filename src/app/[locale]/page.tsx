@@ -459,7 +459,7 @@ export default function HomePage() {
                             alt="A background image showing a modern office team analyzing data with BBU1."
                             fill
                             style={{ objectFit: 'cover' }}
-                            className="opacity-90 dark:opacity-70"
+                            className="opacity-90 dark:opacity-70 hero-background-image" // Added this class for motion
                             priority
                         />
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
