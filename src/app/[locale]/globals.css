@@ -106,24 +106,27 @@
 }
 
 /* 
+  START OF UPDATED SECTION 
   Section background for "What Makes BBU1 Stand Out"
 */
 .bg-features-pattern {
-  background-image: url("/patterns/grid-light.svg"), url("/images/showcase/ai-warehouse-logistics.jpg");
-  background-size: 80px 80px, cover;
-  background-attachment: scroll, fixed;
-  background-repeat: repeat, no-repeat;
-  opacity: 0.08; /* Adjusted for less interference with text */
+  background-image: url("/images/showcase/ai-warehouse-logistics.jpg");
+  background-size: cover;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  opacity: 0.15; /* Increased visibility for light mode */
   background-position: center center;
 }
 
 .dark .bg-features-pattern {
-  background-image: url("/patterns/grid-dark.svg"), url("/images/showcase/ai-warehouse-logistics.jpg");
-  background-size: 80px 80px, cover;
-  background-attachment: scroll, fixed;
-  background-repeat: repeat, no-repeat;
-  opacity: 0.05; /* Adjusted for less interference with text in dark mode */
+  background-image: url("/images/showcase/ai-warehouse-logistics.jpg");
+  background-size: cover;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  opacity: 0.1; /* Increased visibility for dark mode */
+  background-position: center center;
 }
+/* END OF UPDATED SECTION */
 
 
 /* Final CTA background */
