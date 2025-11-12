@@ -371,23 +371,54 @@ const Logo6 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><p
 
 // --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
+    // --- State for the rotating text in the hero section ---
     const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS.", "Unified and intelligent."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
     useEffect(() => {
-        const interval = setInterval(() => {
+        const textInterval = setInterval(() => {
             setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
         }, 3000);
-
-        return () => clearInterval(interval);
+        return () => clearInterval(textInterval);
     }, [rotatingTexts.length]);
+
+
+    // --- NEW: Configuration for the Hero Image Slideshow ---
+    const heroImages = [
+        { src: "/images/showcase/modern-office-team.jpg", alt: "Diverse team collaborating in a modern office with BBU1's analytics dashboards showing revenue growth." },
+        { src: "/images/showcase/agriculture-tech.jpg", alt: "Farmers in a field using a tablet with BBU1's business support dashboard to analyze crop data." },
+        { src: "/images/showcase/healthcare-team.jpg", alt: "Medical professionals using BBU1 on tablets to manage patient records in a clinic." },
+        { src: "/images/showcase/warehouse-logistics.jpg", alt: "Logistics team managing inventory with BBU1 on handheld scanners in a large warehouse." },
+        { src: "/images/showcase/market-vendor-pos.jpg", alt: "A smiling vendor at a vibrant fruit market uses a modern POS system powered by BBU1." },
+        { src: "/images/showcase/construction-site.jpg", alt: "Construction managers reviewing project blueprints on ruggedized tablets running BBU1 software on site." }
+    ];
+    const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
+
+    useEffect(() => {
+        const imageInterval = setInterval(() => {
+            setCurrentHeroImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
+        }, 5000); // Change image every 5 seconds
+        return () => clearInterval(imageInterval);
+    }, [heroImages.length]);
+
+    // --- NEW: Configuration for the "In Action" Gallery Section ---
+    const galleryImages = [
+        { src: "/images/showcase/education-dashboard.jpg", alt: "Teacher presenting BBU1 educational dashboards to students in a classroom in Africa.", title: "Empowering Education" },
+        { src: "/images/showcase/retail-fashion.jpg", alt: "Shop owner in a colorful fabric store using a BBU1 tablet to manage sales.", title: "Modern Retail" },
+        { src: "/images/showcase/sacco-meeting.jpg", alt: "A community SACCO meeting under a tree, with members using BBU1 on their phones.", title: "Financial Inclusion" },
+        { src: "/images/showcase/restaurant-kitchen.jpg", alt: "Chefs in a professional kitchen using BBU1 on tablets to manage orders.", title: "Hospitality Management" },
+        { src: "/images/showcase/mobile-money-agent.jpg", alt: "An MTN mobile money agent assists customers using the BBU1 system on a tablet.", title: "Telecom Services" },
+        { src: "/images/showcase/crm-team-meeting.jpg", alt: "A corporate team discussing a project on a large screen displaying the BBU1 CRM.", title: "Corporate CRM" },
+        { src: "/images/showcase/local-shop-owner.jpg", alt: "A shopkeeper in a rural store smiles as he completes a transaction with BBU1 POS.", title: "Local Commerce" },
+        { src: "/images/showcase/fishery-management.jpg", alt: "Fishermen using BBU1 on tablets to log their catch and manage sales.", title: "Fisheries & Agriculture" }
+    ];
 
     return (
         <>
             <MegaMenuHeader />
             <main className="flex-grow z-10">
 
-                {/* Hero Section */}
+                {/* Hero Section - NOW WITH IMAGE SLIDESHOW */}
                 <section id="hero" className="relative pt-20 pb-28 overflow-hidden">
                     <div className="absolute inset-0 z-0 bg-subtle-pattern animate-pulse-subtle"></div>
                     <div className="absolute inset-0 z-0 hero-visual-background"></div>
@@ -415,19 +446,33 @@ export default function HomePage() {
                                 <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300"><Link href="/signup">Start Free Trial</Link></Button>
                                 <Button asChild size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 transition-colors"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                             </motion.div>
-                            <motion.div variants={itemVariants} className="mt-16 w-full max-w-5xl mx-auto px-4">
-                                <div className="relative">
-                                    <div className="absolute -inset-8 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite]"></div>
-                                    <Image
-                                        src="/images/hero-visual.png"
-                                        alt="BBU1 Unified Platform Diagram showing modules for bookkeeping, inventory, CRM, and AI insights connected to a central intelligent core."
-                                        width={1200}
-                                        height={900}
-                                        className="relative rounded-lg shadow-2xl shadow-primary/20 border border-primary/10"
-                                        priority
-                                    />
+                            
+                            {/* --- THIS IS THE NEW SLIDESHOW --- */}
+                            <motion.div variants={itemVariants} className="mt-16 w-full max-w-6xl mx-auto px-4">
+                                <div className="relative aspect-video rounded-lg overflow-hidden shadow-2xl shadow-primary/20 border border-primary/10 bg-background">
+                                    <div className="absolute -inset-8 bg-primary/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite] z-0"></div>
+                                    <AnimatePresence>
+                                        <motion.div
+                                            key={currentHeroImageIndex}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 1.5, ease: "easeInOut" }}
+                                            className="absolute inset-0 z-10"
+                                        >
+                                            <Image
+                                                src={heroImages[currentHeroImageIndex].src}
+                                                alt={heroImages[currentHeroImageIndex].alt}
+                                                fill
+                                                style={{ objectFit: 'cover' }}
+                                                className="relative"
+                                                priority={currentHeroImageIndex === 0} // Only prioritize the first image for faster load
+                                            />
+                                        </motion.div>
+                                    </AnimatePresence>
                                 </div>
                             </motion.div>
+
                         </motion.div>
                     </div>
                 </section>
@@ -469,6 +514,34 @@ export default function HomePage() {
                             ))}
                         </motion.div>
                     </div>
+                </AnimatedSection>
+
+                {/* --- NEW: BBU1 IN ACTION GALLERY --- */}
+                <AnimatedSection id="in-action" className="bg-secondary/20">
+                    <div className="text-center mb-12 max-w-3xl mx-auto">
+                        <h2 className="text-3xl font-bold tracking-tight">BBU1 in Action: Powering Diverse Industries</h2>
+                        <p className="text-muted-foreground mt-2">See how BBU1 adapts to and empowers businesses across various sectors, from local markets to global enterprises.</p>
+                    </div>
+                    <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {galleryImages.map((image, index) => (
+                            <motion.div key={index} variants={itemVariants}>
+                                <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group">
+                                    <div className="aspect-w-4 aspect-h-3 overflow-hidden">
+                                        <Image
+                                            src={image.src}
+                                            alt={image.alt}
+                                            width={600}
+                                            height={450}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    </div>
+                                    <CardHeader className="p-4">
+                                        <CardTitle className="text-base">{image.title}</CardTitle>
+                                    </CardHeader>
+                                </Card>
+                            </motion.div>
+                        ))}
+                    </motion.div>
                 </AnimatedSection>
 
                 {/* FAQ Section */}
