@@ -74,7 +74,7 @@
   width: 100%;
   height: 100%;
   background: radial-gradient(circle at 50% 10%, hsl(var(--primary) / 0.1), transparent 70%),
-              url("/patterns/grid-light.svg"); /* Correct path */
+              url("/patterns/grid-light.svg");
   background-size: 100% 100%, 60px 60px;
   background-repeat: no-repeat, repeat;
   animation: hero-gradient 15s ease infinite;
@@ -84,23 +84,41 @@
 
 .dark .hero-visual-background {
   background: radial-gradient(circle at 50% 10%, hsl(var(--primary) / 0.1), transparent 70%),
-              url("/patterns/grid-dark.svg"); /* Correct path */
+              url("/patterns/grid-dark.svg");
   background-size: 100% 100%, 60px 60px;
   background-repeat: no-repeat, repeat;
 }
 
-/* Section specific background for "What Makes BBU1 Stand Out" */
+/* 
+  Section background for "What Makes BBU1 Stand Out"
+  --- THIS IS THE UPDATED SECTION ---
+*/
 .bg-features-pattern {
-  background-image: url("/patterns/grid-light.svg"); /* Correct path */
-  background-size: 80px 80px;
-  opacity: 0.05;
+  /* This creates a layered background: pattern on top of image */
+  background-image: url("/patterns/grid-light.svg"), url("/images/showcase/warehouse-logistics.jpg");
+  
+  /* Set sizes for each background layer respectively */
+  background-size: 80px 80px, cover;
+  
+  /* Make the main image fixed so it doesn't scroll with the page */
+  background-attachment: scroll, fixed;
+  
+  /* Ensure the pattern repeats, but the main image does not */
+  background-repeat: repeat, no-repeat;
+  
+  opacity: 0.05; /* This will apply to the combined background */
   background-position: center center;
 }
 
 .dark .bg-features-pattern {
-  background-image: url("/patterns/grid-dark.svg"); /* Correct path */
-  opacity: 0.03;
+  /* Same layering for dark mode */
+  background-image: url("/patterns/grid-dark.svg"), url("/images/showcase/warehouse-logistics.jpg");
+  background-size: 80px 80px, cover;
+  background-attachment: scroll, fixed;
+  background-repeat: repeat, no-repeat;
+  opacity: 0.04; /* Slightly more subtle for dark mode */
 }
+
 
 /* Final CTA background */
 .bg-cta-gradient {
