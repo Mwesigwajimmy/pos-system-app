@@ -97,6 +97,12 @@ const textVariants: Variants = {
     visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } },
     exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } }
 };
+const slideTextVariants: Variants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.7, ease: "easeOut" } },
+    exit: { opacity: 0, x: 20, transition: { duration: 0.5, ease: "easeIn" } }
+};
+
 
 // --- Reusable Modal Component ---
 interface DetailModalProps {
@@ -361,14 +367,6 @@ const AdvancedChatWidget = () => {
     );
 };
 
-// --- Professional SVG Logos for Social Proof section ---
-const Logo1 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M60 0C26.86 0 0 26.86 0 60V0h60z"/><path d="M60 48c33.14 0 60-26.86 60-60V48H60z" opacity=".5"/></svg>;
-const Logo2 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M0 24c0 13.25 10.75 24 24 24h72c13.25 0 24-10.75 24-24S109.25 0 96 0H24C10.75 0 0 10.75 0 24z"/><circle cx="24" cy="24" r="12" fill="#fff" opacity=".5"/></svg>;
-const Logo3 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M24 0h72l24 24-24 24H24L0 24 24 0z"/><path d="M24 0l12 12-12 12L12 12 24 0z" opacity=".5"/></svg>;
-const Logo4 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><circle cx="24" cy="24" r="24"/><circle cx="96" cy="24" r="24" opacity=".5"/></svg>;
-const Logo5 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M0 0h120v48H0V0zm24 12h72v24H24V12z" opacity=".5"/><path d="M0 0l60 48L120 0H0z"/></svg>;
-const Logo6 = () => <svg height="48" viewBox="0 0 120 48" fill="currentColor"><path d="M60 0L0 48h120L60 0zm0 12l24 18H36l24-18z" opacity=".5"/><path d="M60 12l-12 9h24l-12-9z"/></svg>;
-
 // --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
     // --- State for the rotating text in the hero section ---
@@ -383,47 +381,66 @@ export default function HomePage() {
     }, [rotatingTexts.length]);
 
 
-    // --- Configuration for the EXPANDED Hero Image Slideshow ---
-    const slideshowImages = [
-        // This list now contains a large, diverse selection of your best images for the main slideshow.
-        { src: "/images/showcase/modern-office-team.jpg", alt: "Diverse team collaborating in a modern office with BBU1's analytics dashboards showing revenue growth." },
-        { src: "/images/showcase/farmers-learning.jpg", alt: "A group of farmers in a rural setting learning and collaborating using BBU1 on mobile devices." },
-        { src: "/images/showcase/crm-team-meeting.jpg", alt: "A corporate team discussing a project on a large screen displaying the BBU1 CRM." },
-        { src: "/images/showcase/healthcare-team.jpg", alt: "Medical professionals using BBU1 on tablets to manage patient records in a clinic." },
-        { src: "/images/showcase/warehouse-logistics.jpg", alt: "Logistics team managing inventory with BBU1 on handheld scanners in a large warehouse." },
-        { src: "/images/showcase/market-qr-payment.jpg", alt: "A smiling vendor at a vibrant fruit market uses a modern POS system powered by BBU1." },
-        { src: "/images/showcase/construction-site.jpg", alt: "Construction managers reviewing project blueprints on ruggedized tablets running BBU1 software on site." },
-        { src: "/images/showcase/retail-fashion.jpg", alt: "Shop owner in a colorful fabric store using a BBU1 tablet to manage sales." },
-        { src: "/images/showcase/sacco-meeting.jpg", alt: "A community SACCO meeting under a tree, with members using BBU1 on their phones." },
-        { src: "/images/showcase/restaurant-kitchen-orders.jpg", alt: "Chefs in a professional kitchen using BBU1 on tablets to manage orders." },
-        { src: "/images/showcase/mobile-money-agent.jpg", alt: "An MTN mobile money agent assists customers using the BBU1 system on a tablet." },
-        { src: "/images/showcase/fishery-management.jpg", alt: "Fishermen using BBU1 on tablets to log their catch and manage sales." },
-        { src: "/images/showcase/ai-warehouse-logistics.jpg", alt: "Workers in a futuristic warehouse use tablets to manage inventory with AI-driven data visualizations on screens." },
-        { src: "/images/showcase/delivery-logistics-app.jpg", alt: "A delivery team in uniform coordinates their routes using the BBU1 logistics app on their phones." },
-        { src: "/images/showcase/hotel-reception-pos.jpg", alt: "Hotel receptionists smile as they assist guests, using BBU1 on tablets for check-ins and management." },
-        { src: "/images/showcase/education-dashboard.jpg", alt: "A teacher in a rural classroom uses a laptop to present BBU1 educational dashboards to engaged students." }
+    // --- Configuration for the Integrated "BBU1 in Action" Slideshow ---
+    const slideshowContent = [
+        {
+            src: "/images/showcase/construction-site.jpg",
+            title: "Construction & Project Management",
+            description: "Oversee complex projects on-site with real-time data. Manage resources, track progress, and ensure deadlines are met with BBU1's rugged, reliable interface.",
+            alt: "Construction managers using BBU1 on a tablet at a construction site."
+        },
+        {
+            src: "/images/showcase/mobile-money-agent.jpg",
+            title: "Telecom & Mobile Money",
+            description: "Empower agents with a fast and secure system for handling transactions. BBU1 streamlines telecom services, from airtime distribution to commission tracking.",
+            alt: "A mobile money agent serving customers using the BBU1 system."
+        },
+        {
+            src: "/images/showcase/local-shop-owner.jpg",
+            title: "Local & Retail Commerce",
+            description: "From bustling city shops to local community stores, BBU1 provides a simple yet powerful POS and inventory system to manage sales and stock effortlessly.",
+            alt: "A local shop owner using BBU1 to manage his store."
+        },
+        {
+            src: "/images/showcase/healthcare-team.jpg",
+            title: "Healthcare & Clinic Management",
+            description: "Digitize patient records, manage appointments, and track inventory for medical supplies. BBU1 offers a secure and efficient solution for modern clinics.",
+            alt: "Medical professionals using BBU1 on tablets to manage patient records."
+        },
+        {
+            src: "/images/showcase/farmers-learning.jpg",
+            title: "Agriculture & Agribusiness",
+            description: "Bring modern management to the field. Track crop cycles, manage inventory, and connect with markets, empowering farmers and co-ops with data-driven insights.",
+            alt: "A group of farmers learning and collaborating with BBU1 on mobile devices."
+        },
+        {
+            src: "/images/showcase/modern-office-team.jpg",
+            title: "Corporate & Business Intelligence",
+            description: "Unify your entire operation. Empower teams with real-time analytics dashboards to monitor growth, identify trends, and make smarter, data-backed decisions.",
+            alt: "A diverse team collaborating in a modern office using BBU1 dashboards."
+        },
+        {
+            src: "/images/showcase/sacco-meeting.jpg",
+            title: "Financial Inclusion & SACCOs",
+            description: "Provide accessible financial tools for communities. Manage member data, process loans, and ensure regulatory compliance for SACCOs and microfinance institutions.",
+            alt: "A community SACCO meeting with members using BBU1 on their phones."
+        },
+        {
+            src: "/images/showcase/restaurant-kitchen-orders.jpg",
+            title: "Restaurant & Hospitality",
+            description: "From front-of-house POS to back-of-house kitchen display systems (KDS), manage orders, tables, and ingredient-level inventory for a seamless dining experience.",
+            alt: "Chefs in a professional kitchen using BBU1 on tablets to manage orders."
+        },
     ];
-    const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
+
+    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
     useEffect(() => {
         const imageInterval = setInterval(() => {
-            setCurrentSlideshowIndex((prevIndex) => (prevIndex + 1) % slideshowImages.length);
-        }, 5000); // Change image every 5 seconds
+            setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slideshowContent.length);
+        }, 5000); // Change slide every 5 seconds
         return () => clearInterval(imageInterval);
-    }, [slideshowImages.length]);
-
-    // --- Configuration for the CURATED "In Action" Gallery Section (Now integrated with slideshow) ---
-    const galleryImages = [
-        // This is now a curated list of your 8 most representative images.
-        { src: "/images/showcase/modern-office-analytics.jpg", title: "Business Intelligence", alt: "An office team analyzes performance data on dual-monitor setups running BBU1 analytics dashboards." },
-        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", alt: "An MTN mobile money agent assists customers using the BBU1 system on a tablet." },
-        { src: "/images/showcase/local-shop-owner.jpg", title: "Local Commerce", alt: "A friendly shopkeeper in a local store serves customers using a BBU1 point-of-sale system." },
-        { src: "/images/showcase/retail-fashion.jpg", title: "Modern Retail", alt: "Two women in a vibrant fabric shop use a BBU1 tablet to browse inventory and complete a sale." },
-        { src: "/images/showcase/clinic-patient-management.jpg", title: "Healthcare Management", alt: "Nurses in a clean, modern African clinic use tablets to manage patient data and schedules." },
-        { src: "/images/showcase/construction-site-blueprints.jpg", title: "Construction & Industry", alt: "Two construction workers on a dusty site review digital blueprints on rugged BBU1 tablets." },
-        { src: "/images/showcase/sacco-meeting.jpg", title: "Financial Inclusion", alt: "A community SACCO meeting under a tree, with members using BBU1 on their phones." },
-        { src: "/images/showcase/cafe-pos-system.jpg", title: "Restaurant & Cafe POS", alt: "A barista at a modern cafe takes an order on a sleek BBU1 point-of-sale system." },
-    ];
+    }, [slideshowContent.length]);
 
 
     return (
@@ -459,7 +476,7 @@ export default function HomePage() {
                                     <AnimatePresence mode="wait">
                                         <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md">
                                             {rotatingTexts[currentTextIndex]}
-                                        </motion.span >
+                                        </motion.span>
                                     </AnimatePresence>
                                 </div>
                             </motion.h1>
@@ -475,86 +492,63 @@ export default function HomePage() {
                 </section>
                 {/* === END OF HERO SECTION === */}
 
-                {/* === COMBINED SLIDESHOW AND "BBU1 IN ACTION" SECTION === */}
-                <AnimatedSection id="slideshow-in-action" className="pt-0 -mt-16 pb-16 bg-background">
-                    <div className="w-full max-w-6xl mx-auto px-4">
-                        <div className="relative aspect-video rounded-lg overflow-hidden shadow-2xl shadow-primary/20 border border-primary/10 bg-background mb-12">
-                            <div className="absolute -inset-8 bg-blue-500/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite] z-0"></div>
-                            <AnimatePresence>
-                                <motion.div
-                                    key={currentSlideshowIndex}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 1.5, ease: "easeInOut" }}
-                                    className="absolute inset-0 z-10"
-                                >
-                                    <Image
-                                        src={slideshowImages[currentSlideshowIndex].src}
-                                        alt={slideshowImages[currentSlideshowIndex].alt}
-                                        fill
-                                        style={{ objectFit: 'cover' }}
-                                        className="relative"
-                                        priority={currentSlideshowIndex === 0}
-                                    />
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
+                 {/* === NEW INTEGRATED "BBU1 IN ACTION" SLIDESHOW SECTION === */}
+                <AnimatedSection id="in-action" className="pt-0 -mt-16 pb-16 bg-background">
+                    <div className="bg-secondary/20 rounded-lg shadow-2xl shadow-primary/10 border border-primary/10 overflow-hidden p-8 md:p-12">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                            {/* Left Column: Text Content */}
+                            <div className="flex flex-col justify-center text-center lg:text-left h-full">
+                                <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action: Powering Diverse Industries Globally</h2>
+                                <div className="relative h-24 sm:h-20"> {/* Fixed height to prevent layout shifts */}
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={currentSlideIndex}
+                                            variants={slideTextVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                            exit="exit"
+                                            className="absolute w-full"
+                                        >
+                                            <h3 className="text-lg font-semibold text-primary">{slideshowContent[currentSlideIndex].title}</h3>
+                                            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{slideshowContent[currentSlideIndex].description}</p>
+                                        </motion.div>
+                                    </AnimatePresence>
+                                </div>
+                            </div>
 
-                        <div className="text-center mb-12 max-w-3xl mx-auto">
-                            <h2 className="text-3xl font-bold tracking-tight">BBU1 in Action: Powering Diverse Industries Globally</h2>
-                            <p className="text-muted-foreground mt-2">
-                                From modern offices leveraging advanced business intelligence to bustling local markets embracing mobile payments,
-                                BBU1 seamlessly integrates across various sectors. Experience unified management in retail, healthcare, construction,
-                                and community finance, designed to empower businesses everywhere.
-                            </p>
+                            {/* Right Column: Image Slideshow */}
+                            <div className="relative aspect-video rounded-lg overflow-hidden bg-background">
+                                <AnimatePresence>
+                                    <motion.div
+                                        key={currentSlideIndex}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 1.5, ease: "easeInOut" }}
+                                        className="absolute inset-0"
+                                    >
+                                        <Image
+                                            src={slideshowContent[currentSlideIndex].src}
+                                            alt={slideshowContent[currentSlideIndex].alt}
+                                            fill
+                                            style={{ objectFit: 'cover' }}
+                                            priority={currentSlideIndex === 0}
+                                        />
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
                         </div>
-                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {galleryImages.map((image, index) => (
-                                <motion.div key={index} variants={itemVariants}>
-                                    <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group">
-                                        <div className="aspect-w-4 aspect-h-3 overflow-hidden">
-                                            <Image
-                                                src={image.src}
-                                                alt={image.alt}
-                                                width={600}
-                                                height={450}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                            />
-                                        </div>
-                                        <CardHeader className="p-4">
-                                            <CardTitle className="text-base">{image.title}</CardTitle>
-                                        </CardHeader>
-                                    </Card>
-                                </motion.div>
-                            ))}
-                        </motion.div>
                     </div>
                 </AnimatedSection>
-                {/* === END OF COMBINED SLIDESHOW AND "BBU1 IN ACTION" SECTION === */}
+                {/* === END OF INTEGRATED SLIDESHOW SECTION === */}
 
-                {/* Social Proof Section (Temporarily moved out)
-                <AnimatedSection id="trusted-by" className="py-12 bg-secondary/50">
-                    <div className="text-center">
-                        <h3 className="text-sm font-semibold text-muted-foreground tracking-wider uppercase">Trusted by innovative companies in Africa & beyond</h3>
-                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-8 gap-y-6 items-center">
-                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo1 /></motion.div>
-                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo2 /></motion.div>
-                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo3 /></motion.div>
-                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo4 /></motion.div>
-                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo5 /></motion.div>
-                            <motion.div variants={itemVariants} className="grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all duration-300 flex justify-center text-muted-foreground"><Logo6 /></motion.div>
-                        </motion.div>
-                    </div>
-                </AnimatedSection>
-                */}
 
                 {/* === WHAT MAKES BBU1 STAND OUT - NOW WITH SUBTLE BACKGROUND === */}
                 <AnimatedSection id="standout" className="bg-background relative">
                     {/* New subtle background image */}
                     <div className="absolute inset-0 z-0">
                          <Image
-                            src="/images/showcase/warehouse-logistics.jpg" // Using warehouse-logistics.jpg for a subtle, abstract background
+                            src="/images/showcase/warehouse-logistics.jpg"
                             alt="Abstract background of warehouse logistics"
                             fill
                             style={{ objectFit: 'cover' }}
