@@ -80,7 +80,7 @@ const siteConfig = {
     ] as IndustryCategory[],
     faqItems: [
        { q: 'How does the AI Copilot deliver insights?', a: 'The AI Copilot securely analyzes your company-wide data to find patterns. It provides simple, actionable insights like "Consider bundling Product A and B" or "Cash flow projected to be low in 3 weeks."' },
-       { q: 'Is my enterprise data secure?', a: 'Yes. BBU1 uses a multi-tenant architecture with PostgreSQL\'s Row-Level Security. Your data is completely isolated and protected by bank-level, end-to-end encryption.' },
+       { q: 'Is my enterprise data secure?', a: 'Yes. BBU1 uses a-tenant architecture with PostgreSQL\'s Row-Level Security. Your data is completely isolated and protected by bank-level, end-to-end encryption.' },
        { q: 'Can the system be customized?', a: 'Absolutely. While powerful out-of-the-box, we offer customization services and API access for enterprise clients to tailor the system to your unique workflows.' },
        { q: 'What kind of support is offered?', a: 'Enterprise plans include dedicated onboarding, an account manager, priority support via WhatsApp or phone, and a Service Level Agreement (SLA) guaranteeing uptime.' },
     ] as FaqItem[],
@@ -382,6 +382,7 @@ export default function HomePage() {
 
 
     // --- Configuration for the Integrated "BBU1 in Action" Slideshow ---
+    // --- THIS SECTION HAS BEEN CORRECTED ---
     const slideshowContent = [
         {
             src: "/images/showcase/construction-site.jpg",
@@ -449,31 +450,20 @@ export default function HomePage() {
             <main className="flex-grow z-10">
                 {/* === HERO SECTION WITH NEW BACKGROUND IMAGE === */}
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-white">
-                    {/* Background Image & Overlay */}
-                    {/* Applying the custom CSS class hero-visual-background */}
                     <div className="absolute inset-0 z-0 hero-visual-background">
-                        {/* The background image and pattern are now handled by the CSS class */}
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
                     </div>
-                    {/* If you specifically want the 'modern-office-analytics.jpg' image as an overlay
-                        on top of the pattern, you would add an <Image> component here with a higher z-index,
-                        but generally the CSS approach is cleaner for backgrounds.
-                        For now, I'm removing the explicit Image component here, relying on the pattern.
-                        If you want the image from before AND the pattern, we'd adjust the CSS more.
-                        For example, you could define modern-office-analytics.jpg as a Tailwind background image utility.
-                    */}
                     <div className="absolute inset-0 z-0">
                         <Image
                             src="/images/showcase/modern-office-analytics.jpg"
                             alt="A background image showing a modern office team analyzing data with BBU1."
                             fill
                             style={{ objectFit: 'cover' }}
-                            className="opacity-90 dark:opacity-70" // Adjust opacity for dark mode as well
+                            className="opacity-90 dark:opacity-70"
                             priority
                         />
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
                     </div>
-
 
                     {/* Main Content */}
                     <div className="container mx-auto text-center relative z-10">
@@ -512,7 +502,7 @@ export default function HomePage() {
                             {/* Left Column: Text Content */}
                             <div className="flex flex-col justify-center text-center lg:text-left h-full">
                                 <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action: Powering Diverse Industries Globally</h2>
-                                <div className="relative h-24 sm:h-20"> {/* Fixed height to prevent layout shifts */}
+                                <div className="relative h-24 sm:h-20">
                                     <AnimatePresence mode="wait">
                                         <motion.div
                                             key={currentSlideIndex}
@@ -558,18 +548,7 @@ export default function HomePage() {
 
                 {/* === WHAT MAKES BBU1 STAND OUT - NOW WITH SUBTLE BACKGROUND === */}
                 <AnimatedSection id="standout" className="bg-background relative">
-                    {/* Applying the custom CSS class bg-features-pattern for the grid */}
-                    <div className="absolute inset-0 z-0 bg-features-pattern">
-                         {/* We can optionally add the warehouse image as a CSS background property here
-                             if you want both the image and the pattern.
-                             For now, I'm removing the <Image> component as the pattern is the focus.
-                             If you want warehouse-logistics.jpg, you could add:
-                             style={{ backgroundImage: 'url("/images/showcase/warehouse-logistics.jpg")', backgroundSize: 'cover', backgroundPosition: 'center' }}
-                             to this div, and make sure the .bg-features-pattern has a higher z-index or
-                             is combined as a multiple background in CSS.
-                             However, based on your CSS, .bg-features-pattern *is* the pattern.
-                         */}
-                    </div>
+                    <div className="absolute inset-0 z-0 bg-features-pattern"></div>
                     
                     <div className="px-4 relative z-10">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
@@ -610,9 +589,7 @@ export default function HomePage() {
 
                 {/* Final CTA Section */}
                 <AnimatedSection className="text-center container mx-auto px-4">
-                    {/* Applying the custom CSS class bg-cta-gradient */}
                     <div className="relative py-16 bg-cta-gradient text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
-                        {/* The grid pattern is applied using a direct Tailwind utility */}
                         <div className="absolute top-0 left-0 w-full h-full bg-grid-pattern-dark opacity-10 -z-1"></div>
                         <h2 className="text-3xl font-bold tracking-tight drop-shadow-md">Ready to Revolutionize Your Enterprise?</h2>
                         <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p>
