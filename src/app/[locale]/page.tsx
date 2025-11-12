@@ -400,7 +400,7 @@ export default function HomePage() {
         { src: "/images/showcase/fishery-management.jpg", alt: "Fishermen using BBU1 on tablets to log their catch and manage sales." },
         { src: "/images/showcase/ai-warehouse-logistics.jpg", alt: "Workers in a futuristic warehouse use tablets to manage inventory with AI-driven data visualizations on screens." },
         { src: "/images/showcase/delivery-logistics-app.jpg", alt: "A delivery team in uniform coordinates their routes using the BBU1 logistics app on their phones." },
-        { src: "/images/showcase/hotel-reception-pos.jpg", title: "Hotel Reception POS", alt: "Hotel receptionists smile as they assist guests, using BBU1 on tablets for check-ins and management." },
+        { src: "/images/showcase/hotel-reception-pos.jpg", alt: "Hotel receptionists smile as they assist guests, using BBU1 on tablets for check-ins and management." },
         { src: "/images/showcase/education-dashboard.jpg", alt: "A teacher in a rural classroom uses a laptop to present BBU1 educational dashboards to engaged students." }
     ];
     const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
@@ -412,7 +412,7 @@ export default function HomePage() {
         return () => clearInterval(imageInterval);
     }, [slideshowImages.length]);
 
-    // --- Configuration for the CURATED "In Action" Gallery Section ---
+    // --- Configuration for the CURATED "In Action" Gallery Section (Now integrated with slideshow) ---
     const galleryImages = [
         // This is now a curated list of your 8 most representative images.
         { src: "/images/showcase/modern-office-analytics.jpg", title: "Business Intelligence", alt: "An office team analyzes performance data on dual-monitor setups running BBU1 analytics dashboards." },
@@ -475,10 +475,10 @@ export default function HomePage() {
                 </section>
                 {/* === END OF HERO SECTION === */}
 
-                {/* === NEW DEDICATED SLIDESHOW SECTION === */}
-                <AnimatedSection id="slideshow" className="pt-0 -mt-16 pb-16 bg-background">
-                     <motion.div variants={itemVariants} className="w-full max-w-6xl mx-auto px-4">
-                        <div className="relative aspect-video rounded-lg overflow-hidden shadow-2xl shadow-primary/20 border border-primary/10 bg-background">
+                {/* === COMBINED SLIDESHOW AND "BBU1 IN ACTION" SECTION === */}
+                <AnimatedSection id="slideshow-in-action" className="pt-0 -mt-16 pb-16 bg-background">
+                    <div className="w-full max-w-6xl mx-auto px-4">
+                        <div className="relative aspect-video rounded-lg overflow-hidden shadow-2xl shadow-primary/20 border border-primary/10 bg-background mb-12">
                             <div className="absolute -inset-8 bg-blue-500/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite] z-0"></div>
                             <AnimatePresence>
                                 <motion.div
@@ -500,11 +500,40 @@ export default function HomePage() {
                                 </motion.div>
                             </AnimatePresence>
                         </div>
-                    </motion.div>
-                </AnimatedSection>
-                {/* === END OF SLIDESHOW SECTION === */}
 
-                {/* Social Proof Section */}
+                        <div className="text-center mb-12 max-w-3xl mx-auto">
+                            <h2 className="text-3xl font-bold tracking-tight">BBU1 in Action: Powering Diverse Industries Globally</h2>
+                            <p className="text-muted-foreground mt-2">
+                                From modern offices leveraging advanced business intelligence to bustling local markets embracing mobile payments,
+                                BBU1 seamlessly integrates across various sectors. Experience unified management in retail, healthcare, construction,
+                                and community finance, designed to empower businesses everywhere.
+                            </p>
+                        </div>
+                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {galleryImages.map((image, index) => (
+                                <motion.div key={index} variants={itemVariants}>
+                                    <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group">
+                                        <div className="aspect-w-4 aspect-h-3 overflow-hidden">
+                                            <Image
+                                                src={image.src}
+                                                alt={image.alt}
+                                                width={600}
+                                                height={450}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
+                                        </div>
+                                        <CardHeader className="p-4">
+                                            <CardTitle className="text-base">{image.title}</CardTitle>
+                                        </CardHeader>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    </div>
+                </AnimatedSection>
+                {/* === END OF COMBINED SLIDESHOW AND "BBU1 IN ACTION" SECTION === */}
+
+                {/* Social Proof Section (Temporarily moved out)
                 <AnimatedSection id="trusted-by" className="py-12 bg-secondary/50">
                     <div className="text-center">
                         <h3 className="text-sm font-semibold text-muted-foreground tracking-wider uppercase">Trusted by innovative companies in Africa & beyond</h3>
@@ -518,13 +547,14 @@ export default function HomePage() {
                         </motion.div>
                     </div>
                 </AnimatedSection>
+                */}
 
                 {/* === WHAT MAKES BBU1 STAND OUT - NOW WITH SUBTLE BACKGROUND === */}
                 <AnimatedSection id="standout" className="bg-background relative">
                     {/* New subtle background image */}
                     <div className="absolute inset-0 z-0">
                          <Image
-                            src="/images/showcase/ai-warehouse-logistics.jpg"
+                            src="/images/showcase/warehouse-logistics.jpg" // Using warehouse-logistics.jpg for a subtle, abstract background
                             alt="Abstract background of warehouse logistics"
                             fill
                             style={{ objectFit: 'cover' }}
@@ -553,35 +583,6 @@ export default function HomePage() {
                     </div>
                 </AnimatedSection>
                 {/* === END OF STANDOUT SECTION === */}
-
-                {/* === BBU1 IN ACTION GALLERY - CURATED LIST === */}
-                <AnimatedSection id="in-action" className="bg-secondary/20">
-                    <div className="text-center mb-12 max-w-3xl mx-auto">
-                        <h2 className="text-3xl font-bold tracking-tight">BBU1 in Action: Powering Diverse Industries</h2>
-                        <p className="text-muted-foreground mt-2">See how BBU1 adapts to and empowers businesses across various sectors, from local markets to global enterprises.</p>
-                    </div>
-                    <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {galleryImages.map((image, index) => (
-                            <motion.div key={index} variants={itemVariants}>
-                                <Card className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group">
-                                    <div className="aspect-w-4 aspect-h-3 overflow-hidden">
-                                        <Image
-                                            src={image.src}
-                                            alt={image.alt}
-                                            width={600}
-                                            height={450}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                    </div>
-                                    <CardHeader className="p-4">
-                                        <CardTitle className="text-base">{image.title}</CardTitle>
-                                    </CardHeader>
-                                </Card>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </AnimatedSection>
-                {/* === END OF GALLERY SECTION === */}
 
                 {/* FAQ Section */}
                 <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background dark:from-background dark:via-accent/10 dark:to-background">
