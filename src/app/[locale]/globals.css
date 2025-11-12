@@ -98,7 +98,7 @@
   background-size: 80px 80px, cover;
   background-attachment: scroll, fixed;
   background-repeat: repeat, no-repeat;
-  opacity: 0.15; /* <-- INCREASED VISIBILITY */
+  opacity: 0.08; /* Adjusted for less interference with text */
   background-position: center center;
 }
 
@@ -107,7 +107,7 @@
   background-size: 80px 80px, cover;
   background-attachment: scroll, fixed;
   background-repeat: repeat, no-repeat;
-  opacity: 0.1; /* <-- INCREASED VISIBILITY FOR DARK MODE */
+  opacity: 0.05; /* Adjusted for less interference with text in dark mode */
 }
 
 
