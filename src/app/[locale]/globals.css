@@ -89,9 +89,9 @@
   background-repeat: no-repeat, repeat;
 }
 
-/* Added this for Ken Burns effect on hero background image */
+/* Ken Burns animation for background images */
 .hero-background-image {
-  animation: ken-burns 20s infinite alternate; /* Apply Ken Burns effect */
+  animation: ken-burns 20s infinite alternate;
 }
 
 @keyframes ken-burns {
@@ -114,17 +114,13 @@
   background-size: cover;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  opacity: 0.15; /* Increased visibility for light mode */
+  opacity: 0.25; /* Increased visibility for light mode */
   background-position: center center;
+  animation: ken-burns 45s infinite alternate; /* Slower animation applied */
 }
 
 .dark .bg-features-pattern {
-  background-image: url("/images/showcase/ai-warehouse-logistics.jpg");
-  background-size: cover;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  opacity: 0.1; /* Increased visibility for dark mode */
-  background-position: center center;
+  opacity: 0.2; /* Increased visibility for dark mode */
 }
 /* END OF UPDATED SECTION */
 
