@@ -114,13 +114,13 @@
   background-size: cover;
   background-attachment: fixed;
   background-repeat: no-repeat;
-  opacity: 0.25; /* Increased visibility for light mode */
+  opacity: 0.50; /* Increased visibility for light mode to 50% */
   background-position: center center;
   animation: ken-burns 45s infinite alternate; /* Slower animation applied */
 }
 
 .dark .bg-features-pattern {
-  opacity: 0.2; /* Increased visibility for dark mode */
+  opacity: 0.50; /* Increased visibility for dark mode to 50% */
 }
 /* END OF UPDATED SECTION */
 

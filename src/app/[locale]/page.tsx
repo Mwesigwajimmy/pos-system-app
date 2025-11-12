@@ -105,9 +105,10 @@ const slideTextVariants: Variants = {
 // New variant for the revolving background image
 const backgroundVariants: Variants = {
     animate: (index: number) => ({
-        scale: [1, 1.1, 1],
-        x: [`${index % 2 * -5}%`, '0%', `${index % 3 * 5}%`],
-        transition: { duration: 15, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" }
+        scale: [1, 1.05, 1], // Slightly zoom in and out
+        x: [`${index % 2 * -2}%`, '0%', `${index % 3 * 2}%`], // Subtle horizontal movement
+        y: [`${index % 2 * -2}%`, '0%', `${index % 3 * 2}%`], // Subtle vertical movement
+        transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" } // Slower, smoother animation
     })
 };
 
@@ -517,7 +518,7 @@ export default function HomePage() {
                                 alt="A background image of a modern office team."
                                 fill
                                 style={{ objectFit: 'cover' }}
-                                className="opacity-20 dark:opacity-10"
+                                className="opacity-50" // Increased opacity
                             />
                         </motion.div>
                         <div className="absolute inset-0 z-10 bg-background/80 dark:bg-background/90"></div>
