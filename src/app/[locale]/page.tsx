@@ -25,7 +25,7 @@ import {
     Users, Utensils, WifiOff, X, ArrowRight,
     Zap, ShieldHalf, LayoutGrid, Lightbulb,
     Wallet, ClipboardList, Package, UserCog, Files,
-    Download // --- ADDED THIS ICON ---
+    Download, Share // --- ADDED 'Share' ICON ---
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -101,39 +101,51 @@ const backgroundVariants: Variants = { animate: (index: number) => ({ scale: [1,
 interface DetailModalProps { trigger: ReactNode; title: string; description: ReactNode; icon?: LucideIcon; }
 const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => ( <Dialog> <DialogTrigger asChild>{trigger}</DialogTrigger> <DialogContent className="sm:max-w-lg"> <DialogHeader> <div className="flex items-center gap-4"> {Icon && ( <div className="bg-primary/10 p-3 rounded-md w-fit"> <Icon className="h-6 w-6 text-primary" /> </div> )} <div className="flex-1"> <DialogTitle className="text-xl">{title}</DialogTitle> </div> </div> </DialogHeader> <div className="py-4 text-muted-foreground">{description}</div> </DialogContent> </Dialog> );
 
-// --- Header with Interactive Dropdowns (AND INSTALL BUTTON LOGIC) ---
+// --- Header with Interactive Dropdowns (AND "SMART" INSTALL BUTTON LOGIC) ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
-    // --- ADDED: State and logic for the PWA Install Button ---
+    // --- State and logic for the PWA Install Button ---
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-    const [showInstallButton, setShowInstallButton] = useState(false);
+    const [isIos, setIsIos] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
+        // 1. Check if the app is already installed and running in standalone mode
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsStandalone(true);
+        }
+
+        // 2. Detect if the user is on an iOS device
+        const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        setIsIos(isIosDevice);
+
+        // 3. Listen for the browser's install prompt event (for non-iOS devices)
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            if (!window.matchMedia('(display-mode: standalone)').matches) {
-                 setShowInstallButton(true);
-            }
         };
+        
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         };
     }, []);
 
     const handleInstallClick = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                setShowInstallButton(false);
-            }
+        if (!deferredPrompt) return; // Guard clause
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            // User accepted the prompt, no need to show the button anymore
             setDeferredPrompt(null);
         }
     };
-    // --- END OF ADDED LOGIC ---
+    
+    // Determine if any install button should be shown at all
+    const showAnyInstallButton = !isStandalone;
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md">
@@ -197,23 +209,65 @@ const MegaMenuHeader = () => {
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
-                    {/* --- ADDED: Install Button for Desktop --- */}
-                    {showInstallButton && (
-                        <Button variant="outline" className="flex items-center gap-2" onClick={handleInstallClick}>
-                            <Download className="h-4 w-4" /> Install App
-                        </Button>
+                    {/* --- START: SMART INSTALL BUTTON LOGIC (DESKTOP) --- */}
+                    {showAnyInstallButton && (
+                        <>
+                            {isIos ? (
+                                // --- iOS Install Button (shows instructions) ---
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" className="flex items-center gap-2">
+                                            <Download className="h-4 w-4" /> Install App
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Install BBU1 on your iOS Device</DialogTitle>
+                                            <DialogDescription className="pt-4 space-y-2 text-left">
+                                                <p>To install the app, please follow these simple steps:</p>
+                                                <ol className="list-decimal list-inside space-y-3">
+                                                    <li>Tap the <Share className="h-5 w-5 inline-block mx-1" /> icon in the Safari menu bar.</li>
+                                                    <li>Scroll down and tap on <strong>'Add to Home Screen'</strong>.</li>
+                                                    <li>Confirm by tapping <strong>'Add'</strong> in the top right.</li>
+                                                </ol>
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                    </DialogContent>
+                                </Dialog>
+                            ) : (
+                                // --- Standard PWA Install Button (Chrome/Edge) ---
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center gap-2"
+                                    onClick={handleInstallClick}
+                                    disabled={!deferredPrompt} // Button is disabled until it's ready to fire
+                                    title={!deferredPrompt ? "Installation not available yet" : "Install App"}
+                                >
+                                    <Download className="h-4 w-4" /> Install App
+                                </Button>
+                            )}
+                        </>
                     )}
+                    {/* --- END: SMART INSTALL BUTTON LOGIC (DESKTOP) --- */}
+
                     <Button variant="ghost" asChild className="hover:text-primary"><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
                 </div>
                 <div className="lg:hidden flex items-center gap-2">
-                    {/* --- ADDED: Install Button for Mobile --- */}
-                    {showInstallButton && (
-                         <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App">
+                     {/* --- START: SMART INSTALL BUTTON LOGIC (MOBILE) --- */}
+                     {showAnyInstallButton && !isIos && ( // Only show for non-iOS mobile
+                         <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleInstallClick}
+                            disabled={!deferredPrompt}
+                            aria-label="Install App"
+                         >
                             <Download className="h-6 w-6" />
                         </Button>
-                    )}
+                     )}
+                    {/* --- END: SMART INSTALL BUTTON LOGIC (MOBILE) --- */}
                     <ModeToggle />
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
                 </div>
