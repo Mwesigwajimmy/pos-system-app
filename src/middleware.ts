@@ -181,7 +181,9 @@ export async function middleware(request: NextRequest) {
 
 // --- MATCHER (Your original code, untouched) ---
 export const config = {
+  // The matcher is updated to skip all static assets in the public folder.
+  // This prevents the middleware from adding a locale prefix to image paths.
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|images|icons|patterns|templates|videos|favicon.ico).*)',
   ],
 };
