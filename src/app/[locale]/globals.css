@@ -4,55 +4,48 @@
 
 @layer base {
   :root {
-    --background: 240 10% 99%; /* Very light off-white */
-    --foreground: 240 10% 3.9%; /* Darker text */
+    --background: 240 10% 99%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 210 100% 38%; /* A richer, deeper blue */
-    --primary-foreground: 210 20% 98%; /* Light text for primary background */
-    --secondary: 210 40% 96.1%; /* Slightly off-white for secondary elements */
+    --primary: 210 100% 38%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%; /* Mid-tone grey for muted text */
-    --accent: 260 80% 60%; /* A modern purple/magenta for highlights */
-    --accent-foreground: 210 20% 98%; /* Light text for accent background */
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 260 80% 60%;
+    --accent-foreground: 210 20% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 20% 98%;
-    --border: 214.3 31.8% 91.4%; /* Light grey border */
+    --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 210 100% 38%; /* Matches primary */
+    --ring: 210 100% 38%;
     --radius: 0.5rem;
-
-    /* RGB values for JS gradient calculations (optional, but good for consistency) */
-    --primary-rgb: 47, 107, 232;
-    --background-rgb: 250, 250, 252;
   }
  
   .dark {
-    --background: 222.2 84% 4.9%; /* Dark background */
-    --foreground: 210 20% 98%; /* Light text */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 20% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 20% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 20% 98%;
-    --primary: 217.2 91.2% 59.8%; /* Lighter primary for dark mode */
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 84% 4.9%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 20% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 270 70% 70%; /* Lighter accent for dark mode */
+    --accent: 270 70% 70%;
     --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 20% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 217.2 91.2% 59.8%;
-
-    --primary-rgb: 90, 160, 245;
-    --background-rgb: 10, 15, 20;
   }
 }
  
@@ -62,7 +55,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* This creates a more dynamic and professional background */
     background: radial-gradient(at top left, hsl(var(--primary) / 0.05), transparent 50%),
                 radial-gradient(at bottom right, hsl(var(--accent) / 0.05), transparent 50%),
                 linear-gradient(to bottom, hsl(var(--background)), hsl(var(--secondary) / 0.2));
@@ -72,60 +64,45 @@
   }
 }
 
-/* Custom background patterns for hero and other sections */
+/* Custom background patterns */
 
-/* This will be used as a base pattern for multiple sections to give depth */
-.bg-subtle-pattern {
-  background-image: var(--dots-pattern-light);
-  background-size: 40px 40px;
-  background-repeat: repeat;
-  opacity: 0.1; /* Very subtle */
-  transition: opacity 0.5s ease-in-out;
-}
-
-.dark .bg-subtle-pattern {
-  background-image: var(--dots-pattern-dark);
-  opacity: 0.05; /* Even more subtle in dark mode */
-}
-
-/* Hero Section background (subtle animated grid/dots) */
+/* Hero Section background */
 .hero-visual-background {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  /* This combines a radial gradient with a grid pattern */
   background: radial-gradient(circle at 50% 10%, hsl(var(--primary) / 0.1), transparent 70%),
-              var(--grid-pattern-light);
+              url("/patterns/grid-light.svg"); /* Correct path */
   background-size: 100% 100%, 60px 60px;
   background-repeat: no-repeat, repeat;
-  animation: hero-gradient 15s ease infinite; /* from tailwind.config.js */
+  animation: hero-gradient 15s ease infinite;
   opacity: 0.8;
   z-index: -2;
 }
 
 .dark .hero-visual-background {
   background: radial-gradient(circle at 50% 10%, hsl(var(--primary) / 0.1), transparent 70%),
-              var(--grid-pattern-dark);
+              url("/patterns/grid-dark.svg"); /* Correct path */
   background-size: 100% 100%, 60px 60px;
   background-repeat: no-repeat, repeat;
 }
 
 /* Section specific background for "What Makes BBU1 Stand Out" */
 .bg-features-pattern {
-  background-image: var(--grid-pattern-light);
+  background-image: url("/patterns/grid-light.svg"); /* Correct path */
   background-size: 80px 80px;
   opacity: 0.05;
   background-position: center center;
 }
 
 .dark .bg-features-pattern {
-  background-image: var(--grid-pattern-dark);
+  background-image: url("/patterns/grid-dark.svg"); /* Correct path */
   opacity: 0.03;
 }
 
-/* Final CTA background, leveraging the new primary/accent */
+/* Final CTA background */
 .bg-cta-gradient {
   background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
 }
