@@ -102,6 +102,14 @@ const slideTextVariants: Variants = {
     visible: { opacity: 1, x: 0, transition: { duration: 0.7, ease: "easeOut" } },
     exit: { opacity: 0, x: 20, transition: { duration: 0.5, ease: "easeIn" } }
 };
+// New variant for the revolving background image
+const backgroundVariants: Variants = {
+    animate: (index: number) => ({
+        scale: [1, 1.1, 1],
+        x: [`${index % 2 * -5}%`, '0%', `${index % 3 * 5}%`],
+        transition: { duration: 15, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" }
+    })
+};
 
 
 // --- Reusable Modal Component ---
@@ -382,7 +390,6 @@ export default function HomePage() {
 
 
     // --- Configuration for the Integrated "BBU1 in Action" Slideshow ---
-    // --- THIS SECTION HAS BEEN CORRECTED ---
     const slideshowContent = [
         {
             src: "/images/showcase/construction-site.jpg",
@@ -439,7 +446,7 @@ export default function HomePage() {
     useEffect(() => {
         const imageInterval = setInterval(() => {
             setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slideshowContent.length);
-        }, 5000); // Change slide every 5 seconds
+        }, 15000); // <-- UPDATED: Change slide every 15 seconds
         return () => clearInterval(imageInterval);
     }, [slideshowContent.length]);
 
@@ -497,8 +504,26 @@ export default function HomePage() {
 
                  {/* === NEW INTEGRATED "BBU1 IN ACTION" SLIDESHOW SECTION === */}
                 <AnimatedSection id="in-action" className="pt-0 -mt-16 pb-16 bg-background">
-                    <div className="bg-secondary/20 rounded-lg shadow-2xl shadow-primary/10 border border-primary/10 overflow-hidden p-8 md:p-12">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div className="relative bg-secondary/20 rounded-lg shadow-2xl shadow-primary/10 border border-primary/10 overflow-hidden p-8 md:p-12">
+                        {/* START: New Animated Background */}
+                        <motion.div
+                            className="absolute inset-0 z-0"
+                            variants={backgroundVariants}
+                            custom={currentSlideIndex}
+                            animate="animate"
+                        >
+                            <Image
+                                src="/images/showcase/modern-office-team.jpg"
+                                alt="A background image of a modern office team."
+                                fill
+                                style={{ objectFit: 'cover' }}
+                                className="opacity-20 dark:opacity-10"
+                            />
+                        </motion.div>
+                        <div className="absolute inset-0 z-10 bg-background/80 dark:bg-background/90"></div>
+                        {/* END: New Animated Background */}
+
+                        <div className="relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                             {/* Left Column: Text Content */}
                             <div className="flex flex-col justify-center text-center lg:text-left h-full">
                                 <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action: Powering Diverse Industries Globally</h2>
