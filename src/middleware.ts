@@ -58,6 +58,9 @@ const defaultDashboards: Record<string, string> = {
 
 // --- MIDDLEWARE FUNCTION ---
 export async function middleware(request: NextRequest) {
+    if (request.nextUrl.searchParams.has('_rsc')) {
+        return NextResponse.next();
+    }
     if (request.headers.get('x-middleware-rewrite')) {
         return NextResponse.next();
     }
