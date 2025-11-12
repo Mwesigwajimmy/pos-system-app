@@ -48,8 +48,13 @@ const nextConfig = {
   // other config...
 };
 
+// This is the final, corrected PWA configuration using your original package.
+// It tells `next-pwa` where to build the service worker files to prevent the 404 error.
 const pwaConfig = withPWA({
-  // ... your PWA config
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
 });
 
 // Chain the plugins together.
