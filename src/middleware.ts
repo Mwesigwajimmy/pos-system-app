@@ -181,9 +181,14 @@ export async function middleware(request: NextRequest) {
 
 // --- MATCHER (Your original code, untouched) ---
 export const config = {
-  // The matcher is updated to skip all static assets in the public folder,
-  // INCLUDING the PWA manifest and service worker.
+  /*
+   * Match all request paths except for the ones starting with:
+   * - api (API routes)
+   * - _next/static (static files)
+   * - _next/image (image optimization files)
+   * - any path containing a period '.' (most static assets like .png, .js, .webmanifest)
+   */
   matcher: [
-    '/((?!api|_next/static|_next/image|images|icons|patterns|templates|videos|favicon.ico|site.webmanifest|sw.js).*)',
+    '/((?!api|_next/static|_next/image|.*\\..*).*)',
   ],
 };
