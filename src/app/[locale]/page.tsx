@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
+import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
 // --- Utils & Icons ---
 import { cn } from "@/lib/utils";
@@ -22,12 +24,8 @@ import {
     Rocket, Send, Signal, Store, Twitter,
     Users, Utensils, WifiOff, X, ArrowRight,
     Zap, ShieldHalf, LayoutGrid, Lightbulb,
-    Wallet, ClipboardList, Package, UserCog, Files
+    Wallet, ClipboardList, Package, UserCog, Files, Download
 } from 'lucide-react';
-
-// --- IMPORT THE NEW HEADER ---
-import MegaMenuHeader from '@/components/MegaMenuHeader';
-
 
 // --- Type Definitions ---
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
@@ -36,7 +34,7 @@ interface IndustryCategory { category: string; items: IndustryItem[]; }
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
-// --- Centralized Site Configuration ---
+// --- Centralized Site Configuration (Your Complete Original) ---
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -90,263 +88,172 @@ const siteConfig = {
     privacyPolicy: ( <div className="space-y-4 text-sm"><p>We collect Personal, Transactional, and Usage Data to provide and improve our Service. Your data is secured with bank-level encryption and is never sold...</p></div> ),
 };
 
-// --- Animation Variants ---
+// --- Animation Variants (Your Original) ---
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
-const textVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } }
-};
-const slideTextVariants: Variants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0, transition: { duration: 0.7, ease: "easeOut" } },
-    exit: { opacity: 0, x: 20, transition: { duration: 0.5, ease: "easeIn" } }
-};
-const backgroundVariants: Variants = {
-    animate: (index: number) => ({
-        scale: [1, 1.1, 1],
-        x: [`${index % 2 * -5}%`, '0%', `${index % 3 * 5}%`],
-        transition: { duration: 15, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" }
-    })
-};
+const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
+const slideTextVariants: Variants = { hidden: { opacity: 0, x: -20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.7, ease: "easeOut" } }, exit: { opacity: 0, x: 20, transition: { duration: 0.5, ease: "easeIn" } } };
+const backgroundVariants: Variants = { animate: (index: number) => ({ scale: [1, 1.1, 1], x: [`${index % 2 * -5}%`, '0%', `${index % 3 * 5}%`], transition: { duration: 15, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" } }) };
 
-// --- Footer Component ---
-const LandingFooter = () => (
-    <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10">
-        <div className="container mx-auto px-4 pt-12 pb-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-                <div className="col-span-2">
-                    <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p>
-                    <div className="flex items-center gap-5 mt-6">
-                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a>
-                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a>
-                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a>
-                    </div>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-base mb-3">Product</h4>
-                    <ul className="space-y-2 text-sm">
-                        <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Features</span></li>
-                        <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Industries</span></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-base mb-3">Company</h4>
-                    <ul className="space-y-2 text-sm">
-                        <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li>
-                        <li><Link href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li>
-                    </ul>
-                </div>
-                 <div>
-                    <h4 className="font-semibold text-base mb-3">Legal</h4>
-                    <ul className="space-y-2 text-sm">
-                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li>
-                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li>
-                    </ul>
-                </div>
-            </div>
-            <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground">
-                <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
-                <p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p>
-            </div>
-        </div>
-    </footer>
-);
+// --- Reusable Components (Now inside the page file) ---
+interface DetailModalProps { trigger: ReactNode; title: string; description: ReactNode; icon?: LucideIcon; }
+const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => ( <Dialog> <DialogTrigger asChild>{trigger}</DialogTrigger> <DialogContent className="sm:max-w-lg"> <DialogHeader> <div className="flex items-center gap-4"> {Icon && ( <div className="bg-primary/10 p-3 rounded-md w-fit"> <Icon className="h-6 w-6 text-primary" /> </div> )} <div className="flex-1"> <DialogTitle className="text-xl">{title}</DialogTitle> </div> </div> </DialogHeader> <div className="py-4 text-muted-foreground">{description}</div> </DialogContent> </Dialog> );
+const LandingFooter = () => ( <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10"> <div className="container mx-auto px-4 pt-12 pb-6"> <div className="grid grid-cols-2 md:grid-cols-5 gap-8"> <div className="col-span-2"> <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3> <p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p> <div className="flex items-center gap-5 mt-6"> <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a> <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a> <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a> </div> </div> <div> <h4 className="font-semibold text-base mb-3">Product</h4> <ul className="space-y-2 text-sm"> <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Features</span></li> <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Industries</span></li> </ul> </div> <div> <h4 className="font-semibold text-base mb-3">Company</h4> <ul className="space-y-2 text-sm"> <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li> <li><Link href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li> </ul> </div> <div> <h4 className="font-semibold text-base mb-3">Legal</h4> <ul className="space-y-2 text-sm"> <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li> <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li> </ul> </div> </div> <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"> <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p> <p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p> </div> </div> </footer> );
+const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => ( <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}> <div className="container mx-auto px-4 relative z-10">{children}</div> </motion.section> );
+const AdvancedChatWidget = () => { const getCookie = (name: string): string | null => { if (typeof document === 'undefined') return null; const value = `; ${document.cookie}`; const parts = value.split(`; ${name}=`); if (parts.length === 2) return parts.pop()?.split(';').shift() || null; return null; }; const renderMessageContent = (content: CoreMessage['content']): ReactNode => { if (typeof content === 'string') return content; return content.map((part, index) => { if ((part as any).type === 'text') { return <React.Fragment key={index}>{(part as any).text}</React.Fragment>; } return null; }).filter(Boolean); }; const [isOpen, setIsOpen] = useState(false); const [userContext, setUserContext] = useState({ businessId: '', userId: '' }); const [chatInput, setChatInput] = useState(''); useEffect(() => { const businessId = getCookie('business_id'); const userId = getCookie('user_id'); if (businessId && userId) setUserContext({ businessId, userId }); }, []); const chat: any = useChat({} as any); useEffect(() => { if (chat.messages.length === 0 && chat.setMessages) { chat.setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any]); } }, [chat.messages.length, chat.setMessages]); const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const trimmedInput = chatInput.trim(); if (!trimmedInput) return; chat.sendMessage({ content: trimmedInput, body: { businessId: userContext.businessId, userId: userContext.userId }}); setChatInput(''); }; const scrollRef = useRef<HTMLDivElement>(null); useEffect(() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; } }, [chat.messages]); return ( <> <AnimatePresence> {isOpen && ( <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50"> <Card className="h-full w-full flex flex-col shadow-2xl"><CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader><CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">{chat.messages.map((m: CoreMessage, i: number) => (<div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>{m.role === 'assistant' && <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0"><Bot className="h-4 w-4" /></div>}<div className={cn('rounded-lg p-3 max-w-[85%] break-words', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{renderMessageContent(m.content)}</div>{m.role === 'user' && <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-bold flex-shrink-0 border"><Users className="h-4 w-4" /></div>}</div>))}{chat.isLoading && <div className="text-sm text-muted-foreground animate-pulse">Aura is thinking...</div>}</div></ScrollArea><div className="p-4 border-t"><form onSubmit={handleChatSubmit} className="flex items-center gap-2"><Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Aura anything..." disabled={chat.isLoading || !userContext.userId} /><Button type="submit" size="icon" disabled={chat.isLoading || !userContext.userId || !chatInput.trim()}><Send className="h-4 w-4" /></Button></form></div></CardContent></Card> </motion.div> )} </AnimatePresence> <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button> </> ); };
 
-// --- Reusable Animated Section Component ---
-const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
-    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-        <div className="container mx-auto px-4 relative z-10">{children}</div>
-    </motion.section>
-);
-
-// --- AI Chat Widget ---
-const getCookie = (name: string): string | null => {
-    if (typeof document === 'undefined') return null;
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-    return null;
-};
-const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
-    if (typeof content === 'string') return content;
-    return content.map((part, index) => {
-        if ((part as any).type === 'text') {
-            return <React.Fragment key={index}>{(part as any).text}</React.Fragment>;
-        }
-        return null;
-    }).filter(Boolean);
-};
-const AdvancedChatWidget = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [userContext, setUserContext] = useState({ businessId: '', userId: '' });
-    const [chatInput, setChatInput] = useState('');
-    useEffect(() => {
-        const businessId = getCookie('business_id');
-        const userId = getCookie('user_id');
-        if (businessId && userId) setUserContext({ businessId, userId });
-    }, []);
-    const chat: any = useChat({} as any);
-    useEffect(() => {
-        if (chat.messages.length === 0 && chat.setMessages) {
-            chat.setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any]);
-        }
-    }, [chat.messages.length, chat.setMessages]);
-    const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const trimmedInput = chatInput.trim();
-        if (!trimmedInput) return;
-        chat.sendMessage({ content: trimmedInput, body: { businessId: userContext.businessId, userId: userContext.userId }});
-        setChatInput('');
-    };
-    const scrollRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [chat.messages]);
-    return (
-        <>
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
-                        <Card className="h-full w-full flex flex-col shadow-2xl"><CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader><CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">{chat.messages.map((m: CoreMessage, i: number) => (<div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>{m.role === 'assistant' && <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0"><Bot className="h-4 w-4" /></div>}<div className={cn('rounded-lg p-3 max-w-[85%] break-words', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{renderMessageContent(m.content)}</div>{m.role === 'user' && <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-bold flex-shrink-0 border"><Users className="h-4 w-4" /></div>}</div>))}{chat.isLoading && <div className="text-sm text-muted-foreground animate-pulse">Aura is thinking...</div>}</div></ScrollArea><div className="p-4 border-t"><form onSubmit={handleChatSubmit} className="flex items-center gap-2"><Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Aura anything..." disabled={chat.isLoading || !userContext.userId} /><Button type="submit" size="icon" disabled={chat.isLoading || !userContext.userId || !chatInput.trim()}><Send className="h-4 w-4" /></Button></form></div></CardContent></Card>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
-        </>
-    );
-};
-
-// --- MAIN PAGE COMPONENT (YOUR ORIGINAL FULLY-FEATURED COMPONENT) ---
+// --- MAIN PAGE COMPONENT (ALL CODE IS NOW INSIDE) ---
 export default function HomePage() {
-    // --- State for the rotating text in the hero section ---
+    // --- State and logic for Header & PWA Install Button ---
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [showInstallButton, setShowInstallButton] = useState(false);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                 setShowInstallButton(true);
+            }
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                setShowInstallButton(false);
+            }
+            setDeferredPrompt(null);
+        }
+    };
+
+    // --- State and logic from your original landing page ---
     const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS.", "Unified and intelligent."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
-
-    useEffect(() => {
-        const textInterval = setInterval(() => {
-            setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
-        }, 3000);
-        return () => clearInterval(textInterval);
-    }, [rotatingTexts.length]);
-
-
-    // --- Configuration for the Integrated "BBU1 in Action" Slideshow ---
-    const slideshowContent = [
-        {
-            src: "/images/showcase/construction-site.jpg",
-            title: "Construction & Project Management",
-            description: "Oversee complex projects on-site with real-time data. Manage resources, track progress, and ensure deadlines are met with BBU1's rugged, reliable interface.",
-            alt: "Construction managers using BBU1 on a tablet at a construction site."
-        },
-        {
-            src: "/images/showcase/mobile-money-agent.jpg",
-            title: "Telecom & Mobile Money",
-            description: "Empower agents with a fast and secure system for handling transactions. BBU1 streamlines telecom services, from airtime distribution to commission tracking.",
-            alt: "A mobile money agent serving customers using the BBU1 system."
-        },
-        {
-            src: "/images/showcase/local-shop-owner.jpg",
-            title: "Local & Retail Commerce",
-            description: "From bustling city shops to local community stores, BBU1 provides a simple yet powerful POS and inventory system to manage sales and stock effortlessly.",
-            alt: "A local shop owner using BBU1 to manage his store."
-        },
-    ];
-
+    const slideshowContent = [ { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data. Manage resources, track progress, and ensure deadlines are met with BBU1's rugged, reliable interface.", alt: "Construction managers using BBU1 on a tablet at a construction site." }, { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast and secure system for handling transactions. BBU1 streamlines telecom services, from airtime distribution to commission tracking.", alt: "A mobile money agent serving customers using the BBU1 system." }, { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "From bustling city shops to local community stores, BBU1 provides a simple yet powerful POS and inventory system to manage sales and stock effortlessly.", alt: "A local shop owner using BBU1 to manage his store." }, ];
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
     useEffect(() => {
-        const imageInterval = setInterval(() => {
-            setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slideshowContent.length);
-        }, 15000);
-        return () => clearInterval(imageInterval);
-    }, [slideshowContent.length]);
-
+        const textInterval = setInterval(() => { setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length); }, 3000);
+        const imageInterval = setInterval(() => { setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slideshowContent.length); }, 15000);
+        return () => { clearInterval(textInterval); clearInterval(imageInterval); };
+    }, [rotatingTexts.length, slideshowContent.length]);
 
     return (
         <>
-            {/* --- THIS IS THE ONLY LINE THAT HAS CHANGED --- */}
-            <MegaMenuHeader />
-
+            {/* --- Header JSX is now directly part of the page --- */}
+            <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md">
+                <div className="container mx-auto h-16 flex items-center justify-between">
+                    <Link href="/" className="text-xl font-bold text-primary flex items-center gap-2" aria-label={`${siteConfig.name} Home`}>
+                        <Rocket className="h-6 w-6" /> {siteConfig.name}
+                    </Link>
+                    <NavigationMenu className="hidden lg:flex">
+                        <NavigationMenuList>
+                            <NavigationMenuItem>
+                                <NavigationMenuTrigger>Features</NavigationMenuTrigger>
+                                <NavigationMenuContent>
+                                    <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                                        {siteConfig.featureItems.map((feature) => (
+                                            <DetailModal key={feature.title} title={feature.title} icon={feature.icon} description={feature.description}
+                                                trigger={ <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 focus:bg-accent/10 group"> <div className="text-sm font-medium leading-none flex items-center gap-2"> <feature.icon className="h-4 w-4 text-primary" /> {feature.title} </div> </li> }
+                                            />
+                                        ))}
+                                    </ul>
+                                </NavigationMenuContent>
+                            </NavigationMenuItem>
+                            <NavigationMenuItem>
+                                <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
+                                <NavigationMenuContent>
+                                    <ScrollArea className="h-[400px] w-[350px] p-2">
+                                        <ul className="grid grid-cols-1 gap-1 p-2">
+                                            {siteConfig.industrySolutions.map((category) => (
+                                                <React.Fragment key={category.category}>
+                                                    <p className="font-bold text-xs text-muted-foreground uppercase p-2 pt-4">{category.category}</p>
+                                                    {category.items.map((solution) => (
+                                                        <DetailModal key={solution.name} title={solution.name} icon={solution.icon} description={solution.description}
+                                                            trigger={ <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 focus:bg-accent/10 group"> <div className="text-sm font-medium leading-none flex items-center gap-2"> <solution.icon className="h-4 w-4 text-primary" /> {solution.name} </div> </li> }
+                                                        />
+                                                    ))}
+                                                </React.Fragment>
+                                            ))}
+                                        </ul>
+                                    </ScrollArea>
+                                </NavigationMenuContent>
+                            </NavigationMenuItem>
+                        </NavigationMenuList>
+                    </NavigationMenu>
+                    <div className="hidden lg:flex items-center gap-2">
+                        {showInstallButton && ( <Button variant="outline" className="flex items-center gap-2" onClick={handleInstallClick}> <Download className="h-4 w-4" /> Install App </Button> )}
+                        <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
+                        <Button asChild><Link href="/signup">Get Started</Link></Button>
+                        <ModeToggle />
+                    </div>
+                    <div className="lg:hidden flex items-center gap-2">
+                        {showInstallButton && ( <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App"> <Download className="h-6 w-6" /> </Button> )}
+                        <ModeToggle />
+                        <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
+                    </div>
+                </div>
+                <AnimatePresence>
+                    {isMobileMenuOpen && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
+                            <nav className="flex flex-col gap-4 text-lg">
+                                <Accordion type="single" collapsible className="w-full">
+                                    <AccordionItem value="features">
+                                        <AccordionTrigger className="text-lg hover:no-underline">Features</AccordionTrigger>
+                                        <AccordionContent className="flex flex-col gap-2 pl-4"> {siteConfig.featureItems.map(feature => <Button variant="ghost" className="justify-start gap-2 w-full" key={feature.title}><feature.icon className="h-4 w-4 text-primary" />{feature.title}</Button>)} </AccordionContent>
+                                    </AccordionItem>
+                                    <AccordionItem value="industries">
+                                        <AccordionTrigger className="text-lg hover:no-underline">Industries</AccordionTrigger>
+                                        <AccordionContent className="flex flex-col gap-2 pl-4"> {siteConfig.industrySolutions.flatMap(c => c.items).map(s => <Button variant="ghost" className="justify-start gap-2 w-full" key={s.name}><s.icon className="h-4 w-4 text-primary" />{s.name}</Button>)} </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                                <div className="border-t my-4"></div>
+                                <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
+                                <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
+                            </nav>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </header>
+            
+            {/* --- Your Original, Full-Featured Main Content --- */}
             <main className="flex-grow z-10">
-                {/* === HERO SECTION === */}
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-white">
-                     <div className="absolute inset-0 z-0">
-                        <Image
-                            src="/images/showcase/modern-office-analytics.jpg"
-                            alt="A background image showing a modern office team analyzing data with BBU1."
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            className="opacity-90 dark:opacity-70"
-                            priority
-                        />
+                    <div className="absolute inset-0 z-0">
+                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="A background image showing a modern office team analyzing data with BBU1." fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70 hero-background-image" priority />
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
                     </div>
                     <div className="container mx-auto text-center relative z-10">
                         <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                            <motion.div variants={itemVariants} className="group">
-                                <span className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-white border border-white/20 shadow-sm">
-                                    <BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS
-                                </span>
-                            </motion.div>
-                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}>
-                                The One Platform <br />
-                                <div className="inline-block h-[1.2em] overflow-hidden">
-                                    <AnimatePresence mode="wait">
-                                        <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md">
-                                            {rotatingTexts[currentTextIndex]}
-                                        </motion.span >
-                                    </AnimatePresence>
-                                </div>
-                            </motion.h1>
-                            <motion.p className="mt-6 text-lg leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>
-                                Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management.
-                            </motion.p>
-                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                <Button asChild size="lg" className="shadow-lg"><Link href="/signup">Start Free Trial</Link></Button>
-                                <Button asChild size="lg" variant="outline" className="border-white text-white"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
-                            </motion.div>
+                            <motion.div variants={itemVariants} className="group"> <span className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-white border border-white/20 shadow-sm group-hover:bg-white/20 transition-all duration-300"> <BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS </span> </motion.div>
+                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}> The One Platform <br /> <div className="inline-block h-[1.2em] overflow-hidden"> <AnimatePresence mode="wait"> <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md"> {rotatingTexts[currentTextIndex]} </motion.span > </AnimatePresence> </div> </motion.h1>
+                            <motion.p className="mt-6 text-lg leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}> Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management. Built for every business, ready for the world. </motion.p>
+                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}> <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300 bg-blue-500 hover:bg-blue-600 text-white"><Link href="/signup">Start Free Trial</Link></Button> <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10 transition-colors"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button> </motion.div>
                         </motion.div>
                     </div>
                 </section>
-                {/* === END OF HERO SECTION === */}
 
-                 {/* === BBU1 IN ACTION SLIDESHOW SECTION === */}
                 <AnimatedSection id="in-action" className="pt-0 -mt-16 pb-16 bg-background">
-                    <div className="relative bg-secondary/20 rounded-lg shadow-2xl border border-primary/10 overflow-hidden p-8 md:p-12">
-                        <motion.div
-                            className="absolute inset-0 z-0"
-                            variants={backgroundVariants}
-                            custom={currentSlideIndex}
-                            animate="animate"
-                        >
-                            <Image
-                                src="/images/showcase/modern-office-team.jpg"
-                                alt="A background image of a modern office team."
-                                fill
-                                style={{ objectFit: 'cover' }}
-                                className="opacity-50"
-                            />
+                    <div className="relative bg-secondary/20 rounded-lg shadow-2xl shadow-primary/10 border border-primary/10 overflow-hidden p-8 md:p-12">
+                        <motion.div className="absolute inset-0 z-0" variants={backgroundVariants} custom={currentSlideIndex} animate="animate">
+                            <Image src="/images/showcase/modern-office-team.jpg" alt="A background image of a modern office team." fill style={{ objectFit: 'cover' }} className="opacity-50 dark:opacity-50" />
                         </motion.div>
                         <div className="absolute inset-0 z-10 bg-background/80 dark:bg-background/90"></div>
                         <div className="relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                             <div className="flex flex-col justify-center text-center lg:text-left h-full">
-                                <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action: Powering Diverse Industries</h2>
+                                <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action: Powering Diverse Industries Globally</h2>
                                 <div className="relative h-24 sm:h-20">
                                     <AnimatePresence mode="wait">
-                                        <motion.div
-                                            key={currentSlideIndex}
-                                            variants={slideTextVariants}
-                                            initial="hidden"
-                                            animate="visible"
-                                            exit="exit"
-                                            className="absolute w-full"
-                                        >
+                                        <motion.div key={currentSlideIndex} variants={slideTextVariants} initial="hidden" animate="visible" exit="exit" className="absolute w-full">
                                             <h3 className="text-lg font-semibold text-primary">{slideshowContent[currentSlideIndex].title}</h3>
                                             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{slideshowContent[currentSlideIndex].description}</p>
                                         </motion.div>
@@ -355,87 +262,46 @@ export default function HomePage() {
                             </div>
                             <div className="relative aspect-video rounded-lg overflow-hidden bg-background">
                                 <AnimatePresence>
-                                    <motion.div
-                                        key={currentSlideIndex}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                                        className="absolute inset-0"
-                                    >
-                                        <Image
-                                            src={slideshowContent[currentSlideIndex].src}
-                                            alt={slideshowContent[currentSlideIndex].alt}
-                                            fill
-                                            style={{ objectFit: 'cover' }}
-                                            priority={currentSlideIndex === 0}
-                                        />
+                                    <motion.div key={currentSlideIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5, ease: "easeInOut" }} className="absolute inset-0">
+                                        <Image src={slideshowContent[currentSlideIndex].src} alt={slideshowContent[currentSlideIndex].alt} fill style={{ objectFit: 'cover' }} priority={currentSlideIndex === 0} />
                                     </motion.div>
                                 </AnimatePresence>
                             </div>
                         </div>
                     </div>
                 </AnimatedSection>
-                {/* === END OF SLIDESHOW SECTION === */}
 
-
-                {/* === WHAT MAKES BBU1 STAND OUT === */}
                 <AnimatedSection id="standout" className="bg-background relative">
                     <div className="absolute inset-0 z-0 opacity-50">
-                        <Image src="/images/showcase/ai-warehouse-logistics.jpg" alt="AI in logistics" fill style={{ objectFit: 'cover' }} />
-                         <div className="absolute inset-0 bg-background/50"></div>
+                       <Image src="/images/showcase/ai-warehouse-logistics.jpg" alt="AI in logistics" fill style={{ objectFit: 'cover' }} />
+                       <div className="absolute inset-0 bg-background/50"></div>
                     </div>
                     <div className="px-4 relative z-10">
-                        <div className="text-center mb-12 max-w-3xl mx-auto">
-                            <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
-                            <p className="text-muted-foreground mt-2">BBU1 is engineered to accelerate its growth and simplify complexity.</p>
-                        </div>
+                        <div className="text-center mb-12 max-w-3xl mx-auto"> <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2> <p className="text-muted-foreground mt-2">BBU1 is engineered from the ground up to not just manage your business, but to accelerate its growth and simplify complexity.</p> </div>
                         <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {siteConfig.standoutItems.map(item => (
-                                <motion.div key={item.title} variants={itemVariants}>
-                                    <Card className="text-left h-full bg-background/80 backdrop-blur-sm border-primary/10">
-                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                                            <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div>
-                                            <CardTitle className="text-lg">{item.title}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent>
-                                    </Card>
-                                </motion.div>
-                            ))}
+                            {siteConfig.standoutItems.map(item => ( <motion.div key={item.title} variants={itemVariants}> <Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/80 backdrop-blur-sm border-primary/10"> <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2"> <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div> <CardTitle className="text-lg">{item.title}</CardTitle> </CardHeader> <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent> </Card> </motion.div> ))}
                         </motion.div>
                     </div>
                 </AnimatedSection>
-                {/* === END OF STANDOUT SECTION === */}
-
-                {/* FAQ Section */}
-                <AnimatedSection id="faq" className="bg-secondary/20">
+                
+                <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background dark:from-background dark:via-accent/10 dark:to-background">
                     <div className="max-w-3xl mx-auto relative z-10">
                         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-8">Your Questions, Answered</h2>
-                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border bg-background/80 backdrop-blur-sm shadow-lg">
-                            {siteConfig.faqItems.map(i => (
-                                <AccordionItem key={i.q} value={i.q} className="px-6 data-[state=closed]:border-b">
-                                    <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4">{i.q}</AccordionTrigger>
-                                    <AccordionContent className="text-sm text-muted-foreground pb-4 leading-relaxed">{i.a}</AccordionContent>
-                                </AccordionItem>
-                            ))}
+                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border border-border/50 bg-background/80 backdrop-blur-sm shadow-lg">
+                            {siteConfig.faqItems.map(i => ( <AccordionItem key={i.q} value={i.q} className="px-6 data-[state=closed]:border-b"> <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4 hover:text-primary transition-colors">{i.q}</AccordionTrigger> <AccordionContent className="text-sm text-muted-foreground pb-4 leading-relaxed">{i.a}</AccordionContent> </AccordionItem> ))}
                         </Accordion>
                     </div>
                 </AnimatedSection>
                 
-                 {/* Final CTA Section */}
                 <AnimatedSection className="text-center container mx-auto px-4">
-                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl overflow-hidden">
-                        <h2 className="text-3xl font-bold tracking-tight">Ready to Revolutionize Your Enterprise?</h2>
-                        <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth.</p>
-                        <div className="mt-8">
-                            <Button asChild size="lg" variant="secondary" className="text-primary scale-105">
-                                <Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link>
-                            </Button>
-                        </div>
+                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+                        <h2 className="text-3xl font-bold tracking-tight drop-shadow-md">Ready to Revolutionize Your Enterprise?</h2>
+                        <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p>
+                        <div className="mt-8"> <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110 shadow-lg hover:shadow-xl"> <Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link> </Button> </div>
                     </div>
                 </AnimatedSection>
-
             </main>
+
             <AdvancedChatWidget />
             <LandingFooter />
         </>
