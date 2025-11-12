@@ -383,73 +383,46 @@ export default function HomePage() {
     }, [rotatingTexts.length]);
 
 
-    // --- Configuration for the Hero Image Slideshow ---
-    const heroImages = [
+    // --- Configuration for the EXPANDED Hero Image Slideshow ---
+    const slideshowImages = [
+        // This list now contains a large, diverse selection of your best images for the main slideshow.
         { src: "/images/showcase/modern-office-team.jpg", alt: "Diverse team collaborating in a modern office with BBU1's analytics dashboards showing revenue growth." },
+        { src: "/images/showcase/farmers-learning.jpg", alt: "A group of farmers in a rural setting learning and collaborating using BBU1 on mobile devices." },
         { src: "/images/showcase/crm-team-meeting.jpg", alt: "A corporate team discussing a project on a large screen displaying the BBU1 CRM." },
         { src: "/images/showcase/healthcare-team.jpg", alt: "Medical professionals using BBU1 on tablets to manage patient records in a clinic." },
         { src: "/images/showcase/warehouse-logistics.jpg", alt: "Logistics team managing inventory with BBU1 on handheld scanners in a large warehouse." },
         { src: "/images/showcase/market-qr-payment.jpg", alt: "A smiling vendor at a vibrant fruit market uses a modern POS system powered by BBU1." },
-        { src: "/images/showcase/construction-site.jpg", alt: "Construction managers reviewing project blueprints on ruggedized tablets running BBU1 software on site." }
+        { src: "/images/showcase/construction-site.jpg", alt: "Construction managers reviewing project blueprints on ruggedized tablets running BBU1 software on site." },
+        { src: "/images/showcase/retail-fashion.jpg", alt: "Shop owner in a colorful fabric store using a BBU1 tablet to manage sales." },
+        { src: "/images/showcase/sacco-meeting.jpg", alt: "A community SACCO meeting under a tree, with members using BBU1 on their phones." },
+        { src: "/images/showcase/restaurant-kitchen-orders.jpg", alt: "Chefs in a professional kitchen using BBU1 on tablets to manage orders." },
+        { src: "/images/showcase/mobile-money-agent.jpg", alt: "An MTN mobile money agent assists customers using the BBU1 system on a tablet." },
+        { src: "/images/showcase/fishery-management.jpg", alt: "Fishermen using BBU1 on tablets to log their catch and manage sales." },
+        { src: "/images/showcase/ai-warehouse-logistics.jpg", alt: "Workers in a futuristic warehouse use tablets to manage inventory with AI-driven data visualizations on screens." },
+        { src: "/images/showcase/delivery-logistics-app.jpg", alt: "A delivery team in uniform coordinates their routes using the BBU1 logistics app on their phones." },
+        { src: "/images/showcase/hotel-reception-pos.jpg", title: "Hotel Reception POS", alt: "Hotel receptionists smile as they assist guests, using BBU1 on tablets for check-ins and management." },
+        { src: "/images/showcase/education-dashboard.jpg", alt: "A teacher in a rural classroom uses a laptop to present BBU1 educational dashboards to engaged students." }
     ];
-    const [currentHeroImageIndex, setCurrentHeroImageIndex] = useState(0);
+    const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
 
     useEffect(() => {
         const imageInterval = setInterval(() => {
-            setCurrentHeroImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
+            setCurrentSlideshowIndex((prevIndex) => (prevIndex + 1) % slideshowImages.length);
         }, 5000); // Change image every 5 seconds
         return () => clearInterval(imageInterval);
-    }, [heroImages.length]);
+    }, [slideshowImages.length]);
 
-    // --- NEW: Configuration for the "In Action" Gallery Section ---
-    // THIS LIST NOW CONTAINS ALL YOUR IMAGES FROM THE SHOWCASE FOLDER
+    // --- Configuration for the CURATED "In Action" Gallery Section ---
     const galleryImages = [
-        { src: "/images/showcase/farmers-learning.jpg", title: "Agricultural Cooperatives", alt: "A group of farmers in a rural setting learning and collaborating using BBU1 on mobile devices." },
-        { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare Management", alt: "A team of doctors and nurses consulting with a patient, using BBU1 on tablets to access medical records." },
-        { src: "/images/showcase/market-vendor-payfast.jpg", title: "Marketplace Payments", alt: "A female vendor at a bustling market receives a payment from a customer using a mobile payment system." },
-        { src: "/images/showcase/agriculture-tech.jpg", title: "Modern Farming", alt: "Farmers in a field harvesting crops with a BBU1 business support dashboard displayed on a tablet." },
+        // This is now a curated list of your 8 most representative images.
+        { src: "/images/showcase/modern-office-analytics.jpg", title: "Business Intelligence", alt: "An office team analyzes performance data on dual-monitor setups running BBU1 analytics dashboards." },
+        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", alt: "An MTN mobile money agent assists customers using the BBU1 system on a tablet." },
         { src: "/images/showcase/local-shop-owner.jpg", title: "Local Commerce", alt: "A friendly shopkeeper in a local store serves customers using a BBU1 point-of-sale system." },
-        { src: "/images/showcase/produce-inspection.jpg", title: "Supply Chain & QC", alt: "Workers in safety vests inspecting a harvest of fresh produce, using a mobile app for quality control." },
-        { src: "/images/showcase/market-boy-bbu1.jpg", title: "Offline POS", alt: "A young boy at a muddy market stall uses a durable BBU1 POS terminal to manage sales." },
-        { src: "/images/showcase/sacco-meeting.jpg", title: "Financial Inclusion", alt: "Members of a community SACCO having a meeting under a tree, using BBU1 on their smartphones." },
-        { src: "/images/showcase/market-qr-payment.jpg", title: "Digital Payments", alt: "A vendor at a vegetable stall accepts a QR code payment from a customer via a smartphone." },
-        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom Services", alt: "An MTN mobile money agent assists customers with transactions using the BBU1 system on a tablet." },
-        { src: "/images/showcase/office-admin-bbu1.jpg", title: "Business Administration", alt: "A professional woman works in a sunlit office, managing documents with the BBU1 business system on her laptop." },
-        { src: "/images/showcase/cattle-market-records.jpg", title: "Livestock Management", alt: "A man at a cattle market digitizes handwritten records into the BBU1 system on his phone." },
-        { src: "/images/showcase/shop-owner-mobile.jpg", title: "Small Business Tech", alt: "A young woman in her shop uses her smartphone and a BBU1 device to manage inventory and sales." },
-        { src: "/images/showcase/community-group-meeting.jpg", title: "Community Groups", alt: "A group of women sit together, laughing and learning, with notebooks and smartphones for their meeting." },
-        { src: "/images/showcase/literacy-and-tech.jpg", title: "Bridging the Digital Divide", alt: "An elderly man in a rustic home uses a smartphone to cross-reference his handwritten notes." },
-        { src: "/images/showcase/roadside-fruit-stand.jpg", title: "Roadside Commerce", alt: "A vendor at a roadside fruit and goods stall uses his phone to manage his business." },
-        { src: "/images/showcase/bakery-pos-system.jpg", title: "Bakery & Cafe POS", alt: "Bakers in a professional kitchen use a tablet-based BBU1 POS system to manage orders." },
-        { src: "/images/showcase/ai-warehouse-logistics.jpg", title: "AI-Powered Logistics", alt: "Workers in a futuristic warehouse use tablets to manage inventory with AI-driven data visualizations on screens." },
-        { src: "/images/showcase/mobile-clinic-pharmacy.jpg", title: "Mobile Healthcare", alt: "Medical staff stock a mobile pharmacy van, using tablets to manage medical inventory on the go." },
-        { src: "/images/showcase/artisan-cooperative-tech.jpg", title: "Artisan Cooperatives", alt: "A group of artisans making colorful crafts use their smartphones to manage orders and sales." },
-        { src: "/images/showcase/warehouse-scanning.jpg", title: "Warehouse Management", alt: "Warehouse employees use handheld scanners and phones to scan barcodes and manage stock." },
-        { src: "/images/showcase/retail-fashion.jpg", title: "Fashion Retail", alt: "Two women in a vibrant fabric shop use a BBU1 tablet to browse inventory and complete a sale." },
-        { src: "/images/showcase/street-food-vendor-payment.jpg", title: "Food Stall POS", alt: "A street food vendor shows a customer an AI-powered business dashboard on his phone while accepting a payment." },
-        { src: "/images/showcase/classroom-tablets.jpg", title: "Educational Tech", alt: "Students in a classroom engage with a lesson using tablets connected to the BBU1 system." },
-        { src: "/images/showcase/cafe-pos-system.jpg", title: "Restaurant POS", alt: "A barista at a modern cafe takes an order on a sleek BBU1 point-of-sale system." },
-        { src: "/images/showcase/retail-ai-integration.jpg", title: "AI in Retail", alt: "A shop assistant uses her phone to interact with an AI interface overlaid on the store's POS system." },
-        { src: "/images/showcase/crm-team-meeting.jpg", title: "Corporate CRM", alt: "A diverse corporate team in a boardroom discusses strategy around a large screen displaying the BBU1 CRM." },
-        { src: "/images/showcase/office-team-collaboration.jpg", title: "Team Collaboration", alt: "A happy and diverse team collaborates in a bright office, using BBU1 on multiple devices." },
-        { src: "/images/showcase/fishery-management.jpg", title: "Fisheries & Supply Chain", alt: "Fishermen use rugged tablets with the BBU1 system to log their catch and manage distribution." },
-        { src: "/images/showcase/call-center-crm.jpg", title: "Customer Support", alt: "Customer service agents in a call center use the BBU1 CRM with holographic displays to assist clients." },
-        { src: "/images/showcase/clinic-patient-management.jpg", title: "Clinic Management", alt: "Nurses in a clean, modern African clinic use tablets to manage patient data and schedules." },
-        { src: "/images/showcase/delivery-logistics-app.jpg", title: "Delivery & Logistics", alt: "A delivery team in uniform coordinates their routes using the BBU1 logistics app on their phones." },
-        { src: "/images/showcase/grocery-store-bbu1.jpg", title: "Grocery & General Store", alt: "A family running a rustic grocery store interacts with a customer using BBU1 on tablets." },
-        { src: "/images/showcase/office-presentation-dashboard.jpg", title: "Business Intelligence", alt: "A young professional presents a BBU1 dashboard to his team on a large interactive whiteboard." },
-        { src: "/images/showcase/restaurant-kitchen-orders.jpg", title: "Kitchen Display System", alt: "Chefs in a busy restaurant kitchen use tablets running BBU1's KDS to manage incoming orders." },
-        { src: "/images/showcase/future-of-business-tech.jpg", title: "Future of Business", alt: "A group of professionals in a city interacts with holographic BBU1 dashboards on their phones." },
-        { src: "/images/showcase/creative-agency-pm.jpg", title: "Project Management", alt: "A creative team in a colorful studio uses BBU1 for project management on their computers and tablets." },
-        { src: "/images/showcase/workflow-collaboration.jpg", title: "Workflow Design", alt: "Team members collaborate by drawing a workflow diagram on a glass wall, supplemented by their tablets." },
-        { src: "/images/showcase/modern-office-analytics.jpg", title: "Data Analytics", alt: "An office team analyzes performance data on dual-monitor setups running BBU1 analytics dashboards." },
-        { src: "/images/showcase/hotel-reception-pos.jpg", title: "Hospitality", alt: "Hotel receptionists smile as they assist guests, using BBU1 on tablets for check-ins and management." },
-        { src: "/images/showcase/construction-site-blueprints.jpg", title: "Construction Management", alt: "Two construction workers on a dusty site review digital blueprints on rugged BBU1 tablets." },
-        { src: "/images/showcase/education-dashboard.jpg", title: "EdTech Dashboards", alt: "A teacher in a rural classroom uses a laptop to present BBU1 educational dashboards to engaged students." },
-        { src: "/images/showcase/logistics-handheld-scanner.jpg", title: "Logistics & Warehousing", alt: "A worker in a warehouse uses a rugged BBU1 handheld device to scan a package barcode." },
-        { src: "/images/showcase/retail-system-customer-service.jpg", title: "In-Store Assistance", alt: "A retail employee uses a BBU1 tablet to provide information to a couple in a modern clothing store." },
-        { src: "/images/showcase/construction-site.jpg", title: "Heavy Industry", alt: "A construction worker on a mining site uses a rugged tablet with heavy machinery in the background." },
-        { src: "/images/showcase/modern-office-team.jpg", title: "Enterprise Ready", alt: "A diverse team in a modern office, collaborating effectively with BBU1's powerful business tools." },
+        { src: "/images/showcase/retail-fashion.jpg", title: "Modern Retail", alt: "Two women in a vibrant fabric shop use a BBU1 tablet to browse inventory and complete a sale." },
+        { src: "/images/showcase/clinic-patient-management.jpg", title: "Healthcare Management", alt: "Nurses in a clean, modern African clinic use tablets to manage patient data and schedules." },
+        { src: "/images/showcase/construction-site-blueprints.jpg", title: "Construction & Industry", alt: "Two construction workers on a dusty site review digital blueprints on rugged BBU1 tablets." },
+        { src: "/images/showcase/sacco-meeting.jpg", title: "Financial Inclusion", alt: "A community SACCO meeting under a tree, with members using BBU1 on their phones." },
+        { src: "/images/showcase/cafe-pos-system.jpg", title: "Restaurant & Cafe POS", alt: "A barista at a modern cafe takes an order on a sleek BBU1 point-of-sale system." },
     ];
 
 
@@ -457,20 +430,18 @@ export default function HomePage() {
         <>
             <MegaMenuHeader />
             <main className="flex-grow z-10">
-
-                {/* === NEW HERO SECTION WITH BACKGROUND IMAGE === */}
-                <section id="hero" className="relative pt-20 pb-28 overflow-hidden text-white">
+                {/* === HERO SECTION WITH NEW BACKGROUND IMAGE === */}
+                <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-white">
                     {/* Background Image & Overlay */}
                     <div className="absolute inset-0 z-0">
                         <Image
-                            src="/images/showcase/agriculture-tech.jpg"
-                            alt="A background image showing a modern farm with technology integration."
+                            src="/images/showcase/modern-office-analytics.jpg"
+                            alt="A background image showing a modern office team analyzing data with BBU1."
                             fill
                             style={{ objectFit: 'cover' }}
                             className="opacity-90"
-                            priority // Load this image first
+                            priority
                         />
-                        {/* Dark Overlay for Text Readability */}
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
                     </div>
 
@@ -478,7 +449,6 @@ export default function HomePage() {
                     <div className="container mx-auto text-center relative z-10">
                         <motion.div variants={staggerContainer} initial="hidden" animate="visible">
                             <motion.div variants={itemVariants} className="group">
-                                {/* Badge is now lighter to stand out on the dark background */}
                                 <span className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-white border border-white/20 shadow-sm group-hover:bg-white/20 transition-all duration-300">
                                     <BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS
                                 </span>
@@ -497,41 +467,42 @@ export default function HomePage() {
                                 Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management. Built for every business, ready for the world.
                             </motion.p>
                             <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                {/* Buttons are updated to stand out */}
                                 <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300 bg-blue-500 hover:bg-blue-600 text-white"><Link href="/signup">Start Free Trial</Link></Button>
                                 <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10 transition-colors"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                             </motion.div>
-                            
-                            {/* Slideshow (preserved below the text) */}
-                            <motion.div variants={itemVariants} className="mt-16 w-full max-w-6xl mx-auto px-4">
-                                <div className="relative aspect-video rounded-lg overflow-hidden shadow-2xl shadow-black/30 border border-white/10 bg-black/20">
-                                    <div className="absolute -inset-8 bg-blue-500/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite] z-0"></div>
-                                    <AnimatePresence>
-                                        <motion.div
-                                            key={currentHeroImageIndex}
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ duration: 1.5, ease: "easeInOut" }}
-                                            className="absolute inset-0 z-10"
-                                        >
-                                            <Image
-                                                src={heroImages[currentHeroImageIndex].src}
-                                                alt={heroImages[currentHeroImageIndex].alt}
-                                                fill
-                                                style={{ objectFit: 'cover' }}
-                                                className="relative"
-                                                priority={currentHeroImageIndex === 0}
-                                            />
-                                        </motion.div>
-                                    </AnimatePresence>
-                                </div>
-                            </motion.div>
-
                         </motion.div>
                     </div>
                 </section>
-                {/* === END OF NEW HERO SECTION === */}
+                {/* === END OF HERO SECTION === */}
+
+                {/* === NEW DEDICATED SLIDESHOW SECTION === */}
+                <AnimatedSection id="slideshow" className="pt-0 -mt-16 pb-16 bg-background">
+                     <motion.div variants={itemVariants} className="w-full max-w-6xl mx-auto px-4">
+                        <div className="relative aspect-video rounded-lg overflow-hidden shadow-2xl shadow-primary/20 border border-primary/10 bg-background">
+                            <div className="absolute -inset-8 bg-blue-500/20 rounded-full blur-3xl opacity-50 dark:opacity-30 animate-[pulse_8s_ease-in-out_infinite] z-0"></div>
+                            <AnimatePresence>
+                                <motion.div
+                                    key={currentSlideshowIndex}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                                    className="absolute inset-0 z-10"
+                                >
+                                    <Image
+                                        src={slideshowImages[currentSlideshowIndex].src}
+                                        alt={slideshowImages[currentSlideshowIndex].alt}
+                                        fill
+                                        style={{ objectFit: 'cover' }}
+                                        className="relative"
+                                        priority={currentSlideshowIndex === 0}
+                                    />
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                    </motion.div>
+                </AnimatedSection>
+                {/* === END OF SLIDESHOW SECTION === */}
 
                 {/* Social Proof Section */}
                 <AnimatedSection id="trusted-by" className="py-12 bg-secondary/50">
@@ -548,9 +519,19 @@ export default function HomePage() {
                     </div>
                 </AnimatedSection>
 
-                {/* What Makes BBU1 Stand Out Section */}
+                {/* === WHAT MAKES BBU1 STAND OUT - NOW WITH SUBTLE BACKGROUND === */}
                 <AnimatedSection id="standout" className="bg-background relative">
-                    <div className="absolute inset-0 z-0 bg-features-pattern"></div>
+                    {/* New subtle background image */}
+                    <div className="absolute inset-0 z-0">
+                         <Image
+                            src="/images/showcase/ai-warehouse-logistics.jpg"
+                            alt="Abstract background of warehouse logistics"
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            className="opacity-5 grayscale blur-sm"
+                        />
+                    </div>
+                    
                     <div className="px-4 relative z-10">
                         <div className="text-center mb-12 max-w-3xl mx-auto">
                             <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
@@ -571,8 +552,9 @@ export default function HomePage() {
                         </motion.div>
                     </div>
                 </AnimatedSection>
+                {/* === END OF STANDOUT SECTION === */}
 
-                {/* === BBU1 IN ACTION GALLERY - NOW SHOWING ALL IMAGES === */}
+                {/* === BBU1 IN ACTION GALLERY - CURATED LIST === */}
                 <AnimatedSection id="in-action" className="bg-secondary/20">
                     <div className="text-center mb-12 max-w-3xl mx-auto">
                         <h2 className="text-3xl font-bold tracking-tight">BBU1 in Action: Powering Diverse Industries</h2>
