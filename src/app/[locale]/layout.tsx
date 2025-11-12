@@ -1,5 +1,3 @@
-// src/app/[locale]/layout.tsx
-
 import { ReactNode } from 'react';
 import { Inter as FontSans } from 'next/font/google';
 import { cookies } from 'next/headers';
@@ -12,14 +10,12 @@ import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
 import type { Session } from '@supabase/supabase-js';
+import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
-
-// NOTE: You do not need dynamic imports or business-related providers here.
-// This layout is for things that apply to EVERY page, including login/signup.
 
 export default async function LocaleRootLayout({
   children,
@@ -34,8 +30,12 @@ export default async function LocaleRootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="theme-color" content="#ffffff" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
-        {/* These providers are truly global and are needed everywhere. */}
         <SupabaseProvider session={session}>
           <TanstackProvider>
             <ThemeProvider
@@ -45,12 +45,13 @@ export default async function LocaleRootLayout({
               disableTransitionOnChange
             >
               <SidebarProvider>
-                {children} {/* This renders all your pages (login, dashboard, etc.) */}
+                {children}
                 <Toaster richColors position="bottom-right" />
               </SidebarProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
