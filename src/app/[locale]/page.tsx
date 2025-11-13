@@ -35,7 +35,7 @@ interface FeatureDetail {
 }
 interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized'; }
 interface FaqItem { q: string; a: ReactNode; }
-interface PlatformPillar { icon: LucideIcon; title: string; description: string; }
+interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; } // Added backgroundImage property
 
 // --- Cookie Consent Types ---
 type CookieCategoryKey = 'essential' | 'analytics' | 'marketing';
@@ -120,12 +120,12 @@ const siteConfig = {
     ] as FeatureDetail[],
     // PLATFORM PILLARS
     platformPillars: [
-        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise." },
-        { icon: BrainCircuit, title: "AI Does The Work", description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions." },
-        { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online." },
-        { icon: Globe, title: "Truly Global", description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world." },
-        { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is protected with end-to-end encryption and a multi-tenant architecture, ensuring complete isolation and security." },
-        { icon: Settings, title: "Deep Customization", description: "Tailor the system with custom fields, workflows, and robust API integrations to match your unique business processes." },
+        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", backgroundImage: "/images/showcase/office-presentation-on-dashboard.jpg" },
+        { icon: BrainCircuit, title: "AI Does The Work", description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
+        { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online.", backgroundImage: "/images/showcase/education-dashboard.jpg" },
+        { icon: Globe, title: "Truly Global", description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world.", backgroundImage: "/images/showcase/community-group-meeting.jpg" },
+        { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is protected with end-to-end encryption and a multi-tenant architecture, ensuring complete isolation and security.", backgroundImage: "/images/showcase/cattle-market-records.jpg" },
+        { icon: Settings, title: "Deep Customization", description: "Tailor the system with custom fields, workflows, and robust API integrations to match your unique business processes.", backgroundImage: "/images/showcase/creative-agency-pm.jpg" },
     ] as PlatformPillar[],
     // INDUSTRY ITEMS
     industryItems: [
@@ -425,8 +425,8 @@ export default function HomePage() {
         const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 3000);
         const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % slideshowContent.length); }, 8000);
         
-        // Interval for platform pillars animation
-        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 4000); // Change pillar every 4 seconds
+        // Interval for platform pillars animation - set to 15 seconds
+        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 15000); // Changed to 15 seconds
 
         return () => { 
             clearInterval(textInterval); 
@@ -484,14 +484,30 @@ export default function HomePage() {
                 </section>
                 
                 {/* Platform Pillars Section */}
-                <AnimatedSection id="platform" className="bg-gradient-to-b from-background to-accent/20">
+                <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-gradient-to-b from-background to-accent/20">
+                    {/* Background image for the entire section */}
+                    <motion.div 
+                        className="absolute inset-0 z-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.75 }} // Set opacity to 0.75
+                        transition={{ duration: 1 }}
+                    >
+                        <Image 
+                            src="/images/showcase/office-admin-bbu1.jpg" // Chosen background image for the section
+                            alt="Seamless business operations with BBU1" 
+                            fill 
+                            style={{ objectFit: 'cover' }} 
+                            className="filter brightness-[0.6]" // Darken the image slightly for better text contrast
+                        />
+                    </motion.div>
+
                     <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Left Column: Heading and List of Pillars */}
-                        <div className="text-left">
+                        <div className="text-left text-white"> {/* Changed text color to white for contrast */}
                             <h2 className="text-4xl font-extrabold tracking-tight mb-6">
                                 An Operating System <br /> Engineered for Growth
                             </h2>
-                            <p className="text-lg text-muted-foreground mt-2 mb-8">
+                            <p className="text-lg text-gray-200 mt-2 mb-8"> {/* Changed text color for contrast */}
                                 BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.
                             </p>
                             <ul className="space-y-6">
@@ -500,12 +516,12 @@ export default function HomePage() {
                                         key={pillar.title}
                                         className={cn(
                                             "flex items-center gap-4 cursor-pointer p-3 rounded-lg transition-all",
-                                            activePillarIndex === index ? "bg-primary/10 text-primary font-bold shadow-lg" : "text-foreground/70 hover:bg-accent/50 hover:text-foreground"
+                                            activePillarIndex === index ? "bg-white/20 text-white font-bold shadow-lg" : "text-gray-300 hover:bg-white/10 hover:text-white" // Adjust colors for dark background
                                         )}
                                         onClick={() => setActivePillarIndex(index)}
                                         variants={itemVariants}
                                     >
-                                        <pillar.icon className="h-7 w-7 flex-shrink-0" />
+                                        <pillar.icon className="h-7 w-7 flex-shrink-0 text-primary" /> {/* Kept icon primary color */}
                                         <span className="text-xl">{pillar.title}</span>
                                     </motion.li>
                                 ))}
@@ -523,26 +539,36 @@ export default function HomePage() {
                                     transition={{ duration: 0.7, ease: "easeInOut" }}
                                     className="absolute w-full"
                                 >
-                                    <Card className="text-left h-full bg-background/80 border-primary/10 p-8 shadow-2xl">
-                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-                                            <div className="p-4 bg-primary/10 rounded-full">
-                                                {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
-                                            </div>
-                                            <CardTitle className="text-3xl font-bold">
-                                                {siteConfig.platformPillars[activePillarIndex].title}
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="mt-4">
-                                            <p className="text-lg text-muted-foreground leading-relaxed">
-                                                {siteConfig.platformPillars[activePillarIndex].description}
-                                            </p>
-                                        </CardContent>
+                                    <Card className="text-left h-full overflow-hidden relative"> {/* Added relative and overflow-hidden */}
+                                        {/* Individual background image for the card */}
+                                        <Image
+                                            src={siteConfig.platformPillars[activePillarIndex].backgroundImage}
+                                            alt={siteConfig.platformPillars[activePillarIndex].title}
+                                            fill
+                                            style={{ objectFit: 'cover' }}
+                                            className="absolute inset-0 z-0 opacity-100 filter brightness-[0.5]" // Opacity 100%, darkened for text contrast
+                                        />
+                                        <div className="relative z-10 p-8 text-white"> {/* Ensure text is white and above image */}
+                                            <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
+                                                <div className="p-4 bg-primary/10 rounded-full">
+                                                    {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
+                                                </div>
+                                                <CardTitle className="text-3xl font-bold">
+                                                    {siteConfig.platformPillars[activePillarIndex].title}
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="mt-4">
+                                                <p className="text-lg leading-relaxed">
+                                                    {siteConfig.platformPillars[activePillarIndex].description}
+                                                </p>
+                                            </CardContent>
+                                        </div>
                                     </Card>
                                 </motion.div>
                             </AnimatePresence>
                         </div>
                     </div>
-                </AnimatedSection>
+                </section>
 
                 {/* BBU1 in Action Section */}
                 <AnimatedSection id="in-action" className="bg-gradient-to-b from-accent/20 to-background">
