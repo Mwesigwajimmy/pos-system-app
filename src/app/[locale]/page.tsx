@@ -4,10 +4,8 @@ import React, { useState, useEffect, useRef, useCallback, ReactNode, forwardRef,
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-// --- Vercel AI SDK Imports ---
 import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai';
-// --- UI Components from shadcn/ui ---
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -18,15 +16,11 @@ import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-// --- Utils & Icons ---
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch
+    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck
 } from 'lucide-react';
 
-
-// --- Type Definitions ---
 interface FeatureDetail {
     icon: LucideIcon;
     title: string;
@@ -35,16 +29,13 @@ interface FeatureDetail {
 }
 interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized'; }
 interface FaqItem { q: string; a: ReactNode; }
-interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; } // Added backgroundImage property
+interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; }
 
-// --- Cookie Consent Types ---
 type CookieCategoryKey = 'essential' | 'analytics' | 'marketing';
 interface CookieCategoryInfo { id: CookieCategoryKey; name: string; description: string; isRequired: boolean; defaultChecked: boolean; }
 type CookiePreferences = { [key in CookieCategoryKey]: boolean; };
 interface ToastState { visible: boolean; message: string; }
 
-
-// --- Helper Functions ---
 const getCookie = (name: string): string | null => {
     if (typeof document === 'undefined') return null;
     const value = `; ${document.cookie}`;
@@ -61,7 +52,6 @@ const setCookie = (name: string, value: string, days: number) => {
     document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
-// --- Centralized Site Configuration ---
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -70,7 +60,6 @@ const siteConfig = {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
-    // DETAILED FEATURE SETS
     featureSets: [
         {
             icon: Users, title: "Human Resources", description: "Manage your most valuable asset—your people—from recruitment to retirement.",
@@ -118,25 +107,20 @@ const siteConfig = {
             ]
         },
     ] as FeatureDetail[],
-    // PLATFORM PILLARS
     platformPillars: [
-        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", backgroundImage: "/images/showcase/office-presentation-on-dashboard.jpg" }, // Used office-presentation-on-dashboard.jpg
+        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", backgroundImage: "" },
         { icon: BrainCircuit, title: "AI Does The Work", description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
         { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online.", backgroundImage: "/images/showcase/education-dashboard.jpg" },
         { icon: Globe, title: "Truly Global", description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world.", backgroundImage: "/images/showcase/community-group-meeting.jpg" },
         { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is protected with end-to-end encryption and a multi-tenant architecture, ensuring complete isolation and security.", backgroundImage: "/images/showcase/cattle-market-records.jpg" },
         { icon: Settings, title: "Deep Customization", description: "Tailor the system with custom fields, workflows, and robust API integrations to match your unique business processes.", backgroundImage: "/images/showcase/creative-agency-pm.jpg" },
     ] as PlatformPillar[],
-    // INDUSTRY ITEMS
     industryItems: [
-        // Common
         { name: "Retail / Wholesale", icon: Store, description: "Unified POS, inventory, and CRM for single or multi-location retail operations.", category: 'Common' },
         { name: "Restaurant / Cafe", icon: Utensils, description: "Complete management with KDS, table management, and ingredient-level inventory.", category: 'Common' },
         { name: "Professional Services", icon: Briefcase, description: "Project tracking, time billing, and client management for agencies and consultants.", category: 'Common' },
-        // Trades & Services
         { name: "Contractor", icon: Building, description: "Job costing, project management, and invoicing for general and remodeling contractors.", category: 'Trades & Services' },
         { name: "Field Service", icon: Wrench, description: "Scheduling, dispatch, and mobile invoicing for HVAC, plumbing, and other trades.", category: 'Trades & Services' },
-        // Specialized
         { name: "Distribution", icon: Package, description: "End-to-end warehouse management, logistics, and supply chain optimization.", category: 'Specialized' },
         { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, and automated collections.", category: 'Specialized' },
         { name: "Rentals / Real Estate", icon: KeyRound, description: "Property management, tenant billing, and lease tracking.", category: 'Specialized' },
@@ -160,34 +144,12 @@ const siteConfig = {
     ] as CookieCategoryInfo[],
 };
 
-// --- Animation Variants ---
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut", staggerChildren: 0.2 } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
+const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } } };
+const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
 
-const heroImageVariants: Variants = {
-    initial: { scale: 1, x: '0%', y: '0%' },
-    animate: {
-        scale: [1, 1.05, 1], // Zoom in slightly and back
-        x: ['0%', '2%', '0%'], // Pan slightly right and back
-        y: ['0%', '2%', '0%'], // Pan slightly down and back
-        transition: {
-            duration: 20, // Duration of one complete animation cycle
-            ease: "easeInOut",
-            repeat: Infinity,
-            repeatType: "reverse"
-        }
-    }
-};
-
-const pillarCardContentVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }
-};
-
-
-// --- Reusable UI Components ---
 const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
     <li>
         <NavigationMenuLink asChild>
@@ -220,7 +182,6 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
     </AnimatePresence>
 );
 
-// --- Header Component ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
@@ -231,7 +192,6 @@ const MegaMenuHeader = () => {
                 
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
-                        {/* Features Mega Menu */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
@@ -265,8 +225,6 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-
-                        {/* Industries Mega Menu */}
                          <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
@@ -286,8 +244,6 @@ const MegaMenuHeader = () => {
                                 </div>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        
-                        {/* Platform Mega Menu */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
                              <NavigationMenuContent>
@@ -298,10 +254,7 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        
                         <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
-
-                        {/* FAQ Dialog Button */}
                         <NavigationMenuItem>
                             <Dialog>
                                 <DialogTrigger asChild>
@@ -338,7 +291,6 @@ const MegaMenuHeader = () => {
                 </div>
             </div>
 
-            {/* Mobile Menu Panel */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30">
@@ -361,7 +313,6 @@ const MegaMenuHeader = () => {
     );
 };
 
-// --- Footer Component ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
     <footer className="relative border-t bg-background/90 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 pt-12 pb-6">
@@ -376,7 +327,6 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
     </footer>
 );
 
-// --- AI Chat Widget ---
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [userContext, setUserContext] = useState<{ businessId: string | null; userId: string | null }>({ businessId: null, userId: null });
@@ -425,10 +375,8 @@ const AdvancedChatWidget = () => {
     );
 };
 
-
-// --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
-    const rotatingTexts = ["Automation where it counts. Human when it matters.", "From startup to enterprise.", "For every ambition.", "Your complete business OS."]; // Added your new text here
+    const rotatingTexts = ["Automation where it counts. Human when it matters.", "From startup to enterprise.", "For every ambition."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers using BBU1 on a tablet." },
@@ -439,26 +387,15 @@ export default function HomePage() {
     ];
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
-    // For the Platform Pillars animation
     const [activePillarIndex, setActivePillarIndex] = useState(0);
 
     useEffect(() => {
-        // Updated text rotation interval for your new tagline
-        const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 4000); // Slower interval for the main tagline
-
+        const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 4000);
         const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % slideshowContent.length); }, 8000);
-        
-        // Interval for platform pillars animation - set to 8 seconds for smoother interaction
-        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 8000); // Changed to 8 seconds
-
-        return () => { 
-            clearInterval(textInterval); 
-            clearInterval(imageInterval); 
-            clearInterval(pillarInterval); // Cleanup pillar interval
-        };
+        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 8000);
+        return () => { clearInterval(textInterval); clearInterval(imageInterval); clearInterval(pillarInterval); };
     }, [rotatingTexts.length, slideshowContent.length, siteConfig.platformPillars.length]);
 
-    // --- COOKIE CONSENT AND TOAST NOTIFICATION LOGIC ---
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences);
     const [showCookieBanner, setShowCookieBanner] = useState(false);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
@@ -483,7 +420,6 @@ export default function HomePage() {
         <>
             <MegaMenuHeader />
             <main>
-                {/* Hero Section */}
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[600px] flex items-center justify-center">
                     <motion.div 
                         className="absolute inset-0 z-0"
@@ -491,9 +427,7 @@ export default function HomePage() {
                         initial="initial"
                         animate="animate"
                     >
-                        {/* Ensure this image path is correct */}
                         <Image src="/images/showcase/modern-office-analytics.jpg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
-                        {/* Stronger, semi-transparent overlay for text readability */}
                         <div className="absolute inset-0 bg-black/70"></div> 
                     </motion.div>
                     <div className="container mx-auto relative z-10 text-white">
@@ -513,32 +447,14 @@ export default function HomePage() {
                     </div>
                 </section>
                 
-                {/* Platform Pillars Section */}
-                <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-gradient-to-b from-background to-accent/20">
-                    {/* Background image for the entire section with animation */}
-                    <motion.div 
-                        className="absolute inset-0 z-0"
-                        variants={heroImageVariants} // Re-using for subtle animation
-                        initial="initial"
-                        animate="animate"
-                    >
-                        <Image 
-                            src="/images/showcase/office-admin-bbu1.jpg" // Confirmed path for background
-                            alt="Seamless business operations with BBU1" 
-                            fill 
-                            style={{ objectFit: 'cover' }} 
-                            className="filter brightness-[0.4]" // Darken the image significantly for better text contrast
-                            priority // Load this background image early
-                        />
-                    </motion.div>
-
+                <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
+                     <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
                     <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                        {/* Left Column: Heading and List of Pillars */}
-                        <div className="text-left text-white">
+                        <div className="text-left">
                             <h2 className="text-4xl font-extrabold tracking-tight mb-6">
                                 An Operating System <br /> Engineered for Growth
                             </h2>
-                            <p className="text-lg text-gray-200 mt-2 mb-8">
+                            <p className="text-lg text-muted-foreground mt-2 mb-8">
                                 BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.
                             </p>
                             <ul className="space-y-6">
@@ -547,54 +463,69 @@ export default function HomePage() {
                                         key={pillar.title}
                                         className={cn(
                                             "flex items-center gap-4 cursor-pointer p-3 rounded-lg transition-all",
-                                            activePillarIndex === index ? "bg-white/20 text-white font-bold shadow-lg" : "text-gray-300 hover:bg-white/10 hover:text-white"
+                                            activePillarIndex === index ? "bg-primary/10 text-primary font-bold shadow-lg" : "text-muted-foreground hover:bg-accent hover:text-primary"
                                         )}
                                         onClick={() => setActivePillarIndex(index)}
                                         variants={itemVariants}
                                     >
-                                        <pillar.icon className="h-7 w-7 flex-shrink-0 text-primary" />
+                                        <pillar.icon className="h-7 w-7 flex-shrink-0" />
                                         <span className="text-xl">{pillar.title}</span>
                                     </motion.li>
                                 ))}
                             </ul>
                         </div>
 
-                        {/* Right Column: Animated Pillar Content */}
                         <div className="relative h-[450px] flex items-center justify-center">
-                            <AnimatePresence mode="wait" initial={false}> {/* initial={false} prevents exit animation on first render */}
-                                {/* Card for the active pillar with its own background image */}
+                            <AnimatePresence mode="wait" initial={false}>
                                 <motion.div
                                     key={activePillarIndex}
                                     initial="hidden"
                                     animate="visible"
                                     exit="exit"
-                                    variants={pillarCardContentVariants} // Use specific variants for smoother transitions
-                                    className="absolute inset-0 flex items-center justify-center" // Ensure it takes full space and centers content
+                                    variants={pillarCardContentVariants}
+                                    className="absolute inset-0 flex items-center justify-center"
                                 >
                                     <Card className="text-left h-full w-full overflow-hidden relative">
-                                        <Image
-                                            src={siteConfig.platformPillars[activePillarIndex].backgroundImage}
-                                            alt={siteConfig.platformPillars[activePillarIndex].title}
-                                            fill
-                                            style={{ objectFit: 'cover' }}
-                                            className="absolute inset-0 z-0 filter brightness-[0.3]" // Even darker overlay for card image
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Added sizes prop for better performance
-                                        />
-                                        <div className="relative z-10 p-8 text-white flex flex-col justify-center h-full"> {/* Ensure text is white and above image */}
-                                            <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-                                                <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
-                                                    {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
+                                        {siteConfig.platformPillars[activePillarIndex].title === "Built for Growth" ? (
+                                            <div className="relative z-10 p-8 flex flex-col justify-center h-full bg-primary/5">
+                                                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
+                                                    <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
+                                                        <TrendingUp className="h-8 w-8 text-primary" />
+                                                    </div>
+                                                    <CardTitle className="text-3xl font-bold">Built for Growth</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="mt-4 flex-grow space-y-4">
+                                                    <p className="text-lg leading-relaxed text-muted-foreground">{siteConfig.platformPillars[activePillarIndex].description}</p>
+                                                    <div className="border-t pt-4 space-y-2">
+                                                        <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Scales infinitely from 1 to 100,000+ users.</p>
+                                                        <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Multi-branch & multi-country architecture.</p>
+                                                        <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Robust APIs for enterprise integration.</p>
+                                                    </div>
+                                                </CardContent>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Image
+                                                    src={siteConfig.platformPillars[activePillarIndex].backgroundImage}
+                                                    alt={siteConfig.platformPillars[activePillarIndex].title}
+                                                    fill
+                                                    style={{ objectFit: 'cover' }}
+                                                    className="absolute inset-0 z-0 filter brightness-[0.3]"
+                                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                                />
+                                                <div className="relative z-10 p-8 text-white flex flex-col justify-center h-full">
+                                                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
+                                                        <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
+                                                            {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
+                                                        </div>
+                                                        <CardTitle className="text-3xl font-bold">{siteConfig.platformPillars[activePillarIndex].title}</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="mt-4 flex-grow">
+                                                        <p className="text-lg leading-relaxed">{siteConfig.platformPillars[activePillarIndex].description}</p>
+                                                    </CardContent>
                                                 </div>
-                                                <CardTitle className="text-3xl font-bold">
-                                                    {siteConfig.platformPillars[activePillarIndex].title}
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="mt-4 flex-grow"> {/* Allow content to grow */}
-                                                <p className="text-lg leading-relaxed">
-                                                    {siteConfig.platformPillars[activePillarIndex].description}
-                                                </p>
-                                            </CardContent>
-                                        </div>
+                                            </>
+                                        )}
                                     </Card>
                                 </motion.div>
                             </AnimatePresence>
@@ -602,24 +533,26 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                {/* BBU1 in Action Section (Industries Slideshow) */}
-                <AnimatedSection id="in-action" className="bg-gradient-to-b from-accent/20 to-background">
-                    <div className="text-center mb-12">
-                        <motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>
-                            Transforming Industries, One Insight at a Time
+                <AnimatedSection id="in-action" className="bg-gray-900 text-white">
+                    <div className="absolute inset-0 z-0">
+                         <Image src="/images/showcase/future-of-business-tech.jpg" alt="Global Business Technology Network" layout="fill" objectFit="cover" className="opacity-20" />
+                    </div>
+                    <div className="relative z-10 text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-white" variants={itemVariants}>
+                            The Engine For Every African Enterprise
                         </motion.h2>
-                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>
-                            See how BBU1 empowers diverse industries across the continent.
+                        <motion.p className="mt-4 text-lg text-gray-300" variants={itemVariants}>
+                            From bustling city markets to the digital frontier, BBU1 is built for the continent's ambition.
                         </motion.p>
                     </div>
-                    <motion.div className="relative rounded-xl overflow-hidden shadow-xl border h-[400px] md:h-[550px] lg:h-[700px] bg-gray-800" variants={itemVariants}>
-                        <AnimatePresence mode="wait" initial={false}> {/* initial={false} to prevent a blank state on first load */}
+                    <motion.div className="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 h-[400px] md:h-[550px] lg:h-[700px] bg-black/50" variants={itemVariants}>
+                        <AnimatePresence mode="wait" initial={false}>
                             <motion.div 
                                 key={currentSlideIndex} 
-                                initial={{ opacity: 0, x: 50 }} // Slide in from right
-                                animate={{ opacity: 1, x: 0 }} 
-                                exit={{ opacity: 0, x: -50 }} // Slide out to left
-                                transition={{ duration: 0.8, ease: "easeInOut" }} // Smoother transition duration
+                                initial={{ opacity: 0, scale: 1.05 }} 
+                                animate={{ opacity: 1, scale: 1 }} 
+                                exit={{ opacity: 0, scale: 0.95 }} 
+                                transition={{ duration: 1.2, ease: "easeInOut" }} 
                                 className="absolute inset-0"
                             >
                                 <Image 
@@ -627,9 +560,9 @@ export default function HomePage() {
                                     alt={slideshowContent[currentSlideIndex].alt} 
                                     layout="fill" 
                                     objectFit="cover" 
-                                    className="filter brightness-[0.6]" // Slightly brighter for this section's image
-                                    priority={currentSlideIndex === 0} // Prioritize first image, others lazy load
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw" // Added sizes prop
+                                    className="filter brightness-[0.7]"
+                                    priority={currentSlideIndex === 0}
+                                    sizes="(max-width: 768px) 100vw, 70vw"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
@@ -640,27 +573,51 @@ export default function HomePage() {
                         </AnimatePresence>
                         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
                             {slideshowContent.map((_, idx) => (
-                                <button 
-                                    key={idx} 
-                                    className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} 
-                                    onClick={() => setCurrentSlideIndex(idx)} 
-                                    aria-label={`Go to slide ${idx + 1}`} 
-                                />
+                                <button key={idx} className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} onClick={() => setCurrentSlideIndex(idx)} aria-label={`Go to slide ${idx + 1}`} />
                             ))}
                         </div>
                     </motion.div>
                 </AnimatedSection>
+                
+                <AnimatedSection id="partnership-promise" className="bg-background">
+                     <motion.div 
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        viewport={{ once: true, amount: 0.5 }}
+                        className="text-center max-w-4xl mx-auto p-8 border rounded-2xl relative overflow-hidden"
+                     >
+                        <div className="absolute top-4 right-4">
+                            <div className="flex items-center gap-2 text-xs font-bold text-green-600 border border-green-500 bg-green-500/10 rounded-full px-3 py-1.5">
+                                <BadgeCheck className="h-5 w-5" />
+                                <span>VALUED PARTNER PROMISE</span>
+                            </div>
+                        </div>
+                        <h3 className="text-3xl font-bold tracking-tight text-primary mt-8">Your Success is Our Onboarding Mission</h3>
+                        <p className="mt-4 text-lg text-muted-foreground">
+                            We don't just sell software; we forge partnerships. From your very first day, you receive <strong className="text-foreground">complimentary, dedicated human support</strong> to ensure BBU1 is perfectly tailored to your vision. We succeed only when you do.
+                        </p>
+                     </motion.div>
+                </AnimatedSection>
                                 
-                {/* Final CTA */}
                 <AnimatedSection className="text-center">
-                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden"><h2 className="text-3xl font-bold tracking-tight">Ready to Revolutionize Your Enterprise?</h2><p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p><div className="mt-8"><Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110"><Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link></Button></div></div>
+                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden">
+                        <h2 className="text-3xl font-bold tracking-tight">Build an Enterprise That Lasts Generations</h2>
+                        <p className="mt-4 max-w-2xl mx-auto text-lg text-primary-foreground/80">
+                            The tools, insights, and platform to not only revolutionize your business today, but to build a durable legacy for tomorrow. Your journey to generational wealth starts here.
+                        </p>
+                        <div className="mt-8">
+                            <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110">
+                                <Link href="/signup">Start Your Free Trial & Build Your Legacy <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                            </Button>
+                        </div>
+                    </div>
                 </AnimatedSection>
             </main>
 
             {mounted && <AdvancedChatWidget />}
             <LandingFooter onManageCookies={openCookiePreferences} />
             
-            {/* --- Cookie Banner --- */}
             <Toast message={toast.message} isVisible={toast.visible} />
             {mounted && (
                 <AnimatePresence>
