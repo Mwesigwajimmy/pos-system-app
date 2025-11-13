@@ -98,12 +98,12 @@ const siteConfig = {
     url: "https://www.bbu1.com/",
     inventorCredit: "Invented by Mwesigwa Jimmy in Uganda. Built for the world.",
     analytics: {
-        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID', // REPLACE WITH YOUR ACTUAL GA ID
-        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID', // REPLACE WITH YOUR ACTUAL FB PIXEL ID
+        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID',
+        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID',
     },
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
-        socials: { linkedin: '#', twitter: '#', facebook: '#' } // Update these with actual links
+        socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
     featureItems: [
         { icon: Wallet, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." },
@@ -187,7 +187,26 @@ const backgroundVariants: Variants = { animate: (index: number) => ({ scale: [1,
 
 // --- Reusable Modal Component ---
 interface DetailModalProps { trigger: ReactNode; title: string; description: ReactNode; icon?: LucideIcon; }
-const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => ( <Dialog> <DialogTrigger asChild>{trigger}</DialogTrigger> <DialogContent className="sm:max-w-lg"> <DialogHeader> <div className="flex items-center gap-4"> {Icon && ( <div className="bg-primary/10 p-3 rounded-md w-fit"> <Icon className="h-6 w-6 text-primary" /> </div> )} <div className="flex-1"> <DialogTitle className="text-xl">{title}</DialogTitle> </div> </div> </DialogHeader> <div className="py-4 text-muted-foreground">{description}</div> </DialogContent> </Dialog> );
+const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => (
+    <Dialog>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <div className="flex items-center gap-4">
+                    {Icon && (
+                        <div className="bg-primary/10 p-3 rounded-md w-fit">
+                            <Icon className="h-6 w-6 text-primary" />
+                        </div>
+                    )}
+                    <div className="flex-1">
+                        <DialogTitle className="text-xl">{title}</DialogTitle>
+                    </div>
+                </div>
+            </DialogHeader>
+            <div className="py-4 text-muted-foreground">{description}</div>
+        </DialogContent>
+    </Dialog>
+);
 
 // --- Header ---
 const MegaMenuHeader = () => {
@@ -197,26 +216,22 @@ const MegaMenuHeader = () => {
     const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
-            setIsStandalone(true);
-        }
-        const isIosDevice = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        setIsIos(isIosDevice);
-
-        const handleBeforeInstallPrompt = (e: Event) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
-
         if (typeof window !== 'undefined') {
-            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        }
-
-        return () => {
-            if (typeof window !== 'undefined') {
-                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                setIsStandalone(true);
             }
-        };
+            const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+            setIsIos(isIosDevice);
+
+            const handleBeforeInstallPrompt = (e: Event) => {
+                e.preventDefault();
+                setDeferredPrompt(e);
+            };
+            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            return () => {
+                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            };
+        }
     }, []);
 
     const handleInstallClick = useCallback(async () => {
@@ -426,6 +441,12 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
     if (typeof content === 'string') {
         return content;
     }
+    // Ensure content is an array, if not, treat as empty for safety
+    if (!Array.isArray(content)) {
+        console.warn("Unexpected content type for message:", content);
+        return null; // Or some fallback UI
+    }
+
     return content.map((part, index) => {
         if (part.type === 'text') {
             return <React.Fragment key={index}>{part.text}</React.Fragment>;
@@ -434,7 +455,6 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
             const imagePart = part as ImagePart;
             let imageUrl: string | undefined;
 
-            // Ensure image property exists and is a string or URL
             if (typeof imagePart.image === 'string') {
                 imageUrl = imagePart.image;
             } else if (imagePart.image instanceof URL) {
@@ -445,28 +465,28 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
                 return <img key={index} src={imageUrl} alt="AI generated image" className="max-w-full h-auto rounded-md my-2" />;
             }
         }
-        return null;
-    }).filter(Boolean);
+        return null; // Ensure a return value even if type is unknown or image URL is missing
+    }).filter(Boolean); // Filter out any nulls if image parts failed to render
 };
 
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [userContext, setUserContext] = useState<{ businessId: string; userId: string; } | null>(null); // Initialize as null
+    const [userContext, setUserContext] = useState<{ businessId: string | null; userId: string | null }>({ businessId: null, userId: null });
     const [chatInput, setChatInput] = useState('');
 
     useEffect(() => {
-        // Ensure this runs only client-side
         if (typeof window !== 'undefined') {
             const businessId = getCookie('business_id');
             const userId = getCookie('user_id');
-            // Only set context if both IDs are present
-            if (businessId && userId) {
-                setUserContext({ businessId, userId });
-            } else {
-                console.warn("AI Chat Widget: Missing 'business_id' or 'user_id' cookies. Chat functionality may be limited.");
-            }
+            setUserContext({ businessId, userId });
         }
     }, []);
+
+    // Ensure businessId and userId are not null before passing to useChat body
+    const chatBody = {
+        businessId: userContext.businessId || undefined,
+        userId: userContext.userId || undefined,
+    };
 
     const {
         messages,
@@ -475,22 +495,20 @@ const AdvancedChatWidget = () => {
         isLoading
     }: any = useChat({
         api: '/api/chat',
-        body: userContext ? { businessId: userContext.businessId, userId: userContext.userId } : {}, // Pass body only if context is available
+        body: chatBody,
         onError: (error: Error) => console.error("Chat error:", error),
     } as any);
 
     useEffect(() => {
-        // Initialize messages only if userContext is available and messages are empty
-        if (userContext && messages.length === 0 && setMessages) {
+        if (messages.length === 0 && setMessages) {
             setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' }]);
         }
-    }, [messages.length, setMessages, userContext]); // Add userContext to dependencies
+    }, [messages.length, setMessages]);
 
     const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const trimmedInput = chatInput.trim();
-        // Ensure userContext is not null before attempting to send
-        if (!trimmedInput || !userContext?.userId || !userContext?.businessId) return;
+        if (!trimmedInput || !userContext.userId || !userContext.businessId) return;
 
         sendMessage({ content: trimmedInput, role: 'user' });
         setChatInput('');
@@ -501,12 +519,11 @@ const AdvancedChatWidget = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages, isLoading]); // Added isLoading to dependencies for scrolling
+    }, [messages]);
 
-    // Chat is disabled if loading, or if userContext (cookies) are not yet loaded
-    const isDisabled = isLoading || userContext === null || !userContext.userId || !userContext.businessId;
-    const canSend = !isDisabled && chatInput.trim().length > 0;
-
+    // Ensure userContext.userId and userContext.businessId are non-null for canSend/isDisabled
+    const canSend = !isLoading && chatInput.trim() && userContext.userId !== null && userContext.businessId !== null;
+    const isDisabled = isLoading || userContext.userId === null || userContext.businessId === null;
 
     return (
         <>
@@ -548,10 +565,9 @@ const AdvancedChatWidget = () => {
                                                 </div>
                                             </div>
                                         )}
-                                        {userContext === null && !isLoading && (
+                                        {(!userContext.businessId || !userContext.userId) && !isLoading && (
                                             <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50">
                                                 <p>Cannot connect to the AI Assistant. Your business context (Business ID/User ID cookies) is missing or still loading.</p>
-                                                <p className="mt-2 text-xs text-red-400">Please ensure you are logged in or your session is active.</p>
                                             </div>
                                         )}
                                     </div>
@@ -614,10 +630,7 @@ export default function HomePage() {
 
     const [showCookieBanner, setShowCookieBanner] = useState(false);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
-    // Use a temporary state for customization to avoid immediate application
-    const [currentEditingPreferences, setCurrentEditingPreferences] = useState<CookiePreferences>(initialCookiePreferences);
-    const [actualCookiePreferences, setActualCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
-
+    const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
 
     const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
         if (typeof window === 'undefined') return;
@@ -626,15 +639,15 @@ export default function HomePage() {
         const hasGaId = gaMeasurementId && gaMeasurementId !== 'G-YOUR_GA_MEASUREMENT_ID';
         const hasFbId = fbPixelId && fbPixelId !== 'YOUR_FACEBOOK_PIXEL_ID';
 
-        // Google Analytics / Gtag
+        // Google Analytics setup
         if (hasGaId) {
-            window.gtag('consent', 'update', { // Use 'update' to correctly apply changes
+            window.gtag('consent', 'default', {
                 'analytics_storage': prefs.analytics ? 'granted' : 'denied',
                 'ad_storage': prefs.marketing ? 'granted' : 'denied',
             });
 
-            // Conditionally load GA script only if analytics or ad storage is granted and script not loaded
-            if ((prefs.analytics || prefs.marketing) && !document.querySelector('#google-analytics-script')) {
+            // Ensure GA scripts are added only once
+            if (!document.querySelector('#google-analytics-script')) {
                 const gaScript = document.createElement('script');
                 gaScript.id = 'google-analytics-script';
                 gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`;
@@ -650,10 +663,16 @@ export default function HomePage() {
                     gtag('config', '${gaMeasurementId}', { 'anonymize_ip': true });
                 `;
                 document.head.appendChild(gaConfigScript);
+            } else {
+                // If scripts already exist, just update consent
+                window.gtag('consent', 'update', {
+                    'analytics_storage': prefs.analytics ? 'granted' : 'denied',
+                    'ad_storage': prefs.marketing ? 'granted' : 'denied',
+                });
             }
         }
         
-        // Facebook Pixel
+        // Facebook Pixel setup
         const fbScript = document.querySelector('#facebook-pixel-script');
         if (prefs.marketing && hasFbId) {
             if (!fbScript) {
@@ -666,14 +685,14 @@ export default function HomePage() {
                 `;
                 document.head.appendChild(newFbScript);
             } else {
-                // If script exists, ensure it's initialized/tracked
+                 // If script exists, ensure pixel is initialized and tracked
+                window.fbq('init', fbPixelId);
                 window.fbq('track', 'PageView');
             }
         } else if (fbScript) {
-            // Remove FB Pixel script if marketing cookies are denied and script is present
+            // If marketing cookies are denied, remove the script if it exists
             fbScript.remove();
         }
-        setActualCookiePreferences(prefs); // Update the actual applied preferences
     }, []);
 
     const initializeCookiePreferences = useCallback(() => {
@@ -681,24 +700,18 @@ export default function HomePage() {
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (!consentCookie) {
             setShowCookieBanner(true);
-            // Apply default preferences when banner first shows
-            applyCookiePreferences(initialCookiePreferences);
-            setCurrentEditingPreferences(initialCookiePreferences);
+            applyCookiePreferences(initialCookiePreferences); // Apply defaults if no consent yet
         } else {
             try {
                 const storedPrefs: CookiePreferences = JSON.parse(consentCookie);
-                // Ensure all categories are covered, especially new ones
-                const mergedPrefs = { ...initialCookiePreferences, ...storedPrefs };
-                setActualCookiePreferences(mergedPrefs);
+                setCookiePreferences(storedPrefs);
                 setShowCookieBanner(false);
-                applyCookiePreferences(mergedPrefs); // Apply stored preferences
-                setCurrentEditingPreferences(mergedPrefs); // Also set editing prefs to stored ones
+                applyCookiePreferences(storedPrefs); // Apply stored preferences
             } catch (e) {
-                console.error("Failed to parse cookie consent, resetting.", e);
-                clearCookie('bbu1_cookie_consent');
-                setShowCookieBanner(true);
-                applyCookiePreferences(initialCookiePreferences);
-                setCurrentEditingPreferences(initialCookiePreferences);
+                console.error("Error parsing cookie consent:", e);
+                clearCookie('bbu1_cookie_consent'); // Clear corrupted cookie
+                setShowCookieBanner(true); // Show banner to re-get consent
+                applyCookiePreferences(initialCookiePreferences); // Apply defaults
             }
         }
     }, [initialCookiePreferences, applyCookiePreferences]);
@@ -709,39 +722,39 @@ export default function HomePage() {
 
     const handleAcceptAllCookies = useCallback(() => {
         const allTruePrefs: CookiePreferences = { essential: true, analytics: true, marketing: true };
+        setCookiePreferences(allTruePrefs);
         setCookie('bbu1_cookie_consent', JSON.stringify(allTruePrefs), 365);
         setShowCookieBanner(false);
         setIsCustomizingCookies(false);
-        applyCookiePreferences(allTruePrefs); // Apply the changes
+        applyCookiePreferences(allTruePrefs);
     }, [applyCookiePreferences]);
 
     const handleSaveCookiePreferences = useCallback(() => {
-        setCookie('bbu1_cookie_consent', JSON.stringify(currentEditingPreferences), 365);
+        setCookie('bbu1_cookie_consent', JSON.stringify(cookiePreferences), 365);
         setShowCookieBanner(false);
         setIsCustomizingCookies(false);
-        applyCookiePreferences(currentEditingPreferences); // Apply the changes
-    }, [currentEditingPreferences, applyCookiePreferences]);
+        applyCookiePreferences(cookiePreferences);
+    }, [cookiePreferences, applyCookiePreferences]);
 
     const toggleCookiePreference = useCallback((id: CookieCategoryKey) => {
-        setCurrentEditingPreferences(prev => ({ ...prev, [id]: !prev[id] }));
+        setCookiePreferences(prev => ({ ...prev, [id]: !prev[id] }));
     }, []);
 
     const openCookiePreferences = useCallback(() => {
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (consentCookie) {
             try {
-                // Load existing preferences into editing state
-                setCurrentEditingPreferences(JSON.parse(consentCookie));
+                setCookiePreferences(JSON.parse(consentCookie));
             } catch (e) {
-                setCurrentEditingPreferences(initialCookiePreferences);
+                console.error("Error parsing cookie consent for customization:", e);
+                setCookiePreferences(initialCookiePreferences);
             }
         } else {
-            setCurrentEditingPreferences(initialCookiePreferences);
+            setCookiePreferences(initialCookiePreferences);
         }
         setShowCookieBanner(true);
         setIsCustomizingCookies(true);
     }, [initialCookiePreferences]);
-
 
     return (
         <>
@@ -774,7 +787,7 @@ export default function HomePage() {
                         </motion.div>
                     </div>
                 </section>
-                
+
                 <AnimatedSection id="in-action" className="pt-0 -mt-16 pb-16 bg-background">
                     <div className="relative bg-secondary/20 rounded-lg shadow-2xl overflow-hidden p-8 md:p-12">
                         <div className="relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -799,7 +812,7 @@ export default function HomePage() {
                         </div>
                     </div>
                 </AnimatedSection>
-                
+
                 <AnimatedSection id="standout" className="bg-background">
                     <div className="text-center mb-12 max-w-3xl mx-auto">
                         <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
@@ -851,10 +864,8 @@ export default function HomePage() {
                                 <CardTitle className="flex items-center gap-2">
                                     <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
                                 </CardTitle>
-                            </CardHeader>
-                            {!isCustomizingCookies ? (
-                                <>
-                                    <CardDescription className="px-6 pb-4 text-sm">
+                                {!isCustomizingCookies ? ( // Only show description if not customizing
+                                    <CardDescription>
                                         We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
                                         <Dialog>
                                             <DialogTrigger asChild>
@@ -866,18 +877,20 @@ export default function HomePage() {
                                             </DialogContent>
                                         </Dialog>.
                                     </CardDescription>
-                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 px-6">
-                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
-                                        <Button onClick={handleAcceptAllCookies}>Accept All</Button>
-                                    </CardFooter>
-                                </>
+                                ) : null} {/* Explicitly return null if not displaying description */}
+                            </CardHeader>
+                            {!isCustomizingCookies ? (
+                                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                                    <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
+                                    <Button onClick={handleAcceptAllCookies}>Accept All</Button>
+                                </CardFooter>
                             ) : (
-                                <CardContent className="space-y-4 pt-0 px-6">
+                                <CardContent className="space-y-4 pt-0">
                                     {siteConfig.cookieCategories.map(category => (
                                         <div key={category.id} className="flex items-start space-x-3 py-2 border-t first:border-t-0">
                                             <Checkbox
                                                 id={category.id}
-                                                checked={currentEditingPreferences[category.id]}
+                                                checked={cookiePreferences[category.id]}
                                                 onCheckedChange={() => toggleCookiePreference(category.id as CookieCategoryKey)}
                                                 disabled={category.isRequired}
                                                 className="mt-1"
