@@ -1,34 +1,39 @@
 'use client';
 
-import React, { useState, useRef, forwardRef, type ReactNode, type ElementRef, type ComponentPropsWithoutRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, ReactNode, forwardRef, ElementRef, ComponentPropsWithoutRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-// --- Vercel AI SDK Imports ---
+// --- Vercel AI SDK Imports (Adjusted for image support) ---
 import { useChat } from '@ai-sdk/react';
-import { type CoreMessage, type ImagePart } from 'ai'; // Explicitly import ImagePart from 'ai'
+import { type CoreMessage } from 'ai';
 // --- UI Components from shadcn/ui ---
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+    Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
+// --- ADDED COMPONENTS FOR COOKIE CONSENT ---
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Import Avatar and AvatarFallback for chat UI
+// --- ADDED COMPONENTS FOR CHAT UI ---
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 // --- Utils & Icons ---
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Facebook, Handshake, Home, ShieldCheck, TrendingUp,
-    Landmark, Leaf, Linkedin, LucideIcon, Menu,
+    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp,
+    Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff,
     Rocket, Send, Signal, Store, Twitter,
-    Users, Utensils, WifiOff, X, ArrowRight,
-    Zap, ShieldHalf, LayoutGrid, Lightbulb,
+    Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb,
     Wallet, ClipboardList, Package, UserCog, Files,
-    Download, Share, Sparkles, Loader2 // Added Sparkles and Loader2 for chat UI
+    Download, Share, Sparkles, Loader2
 } from 'lucide-react';
+
 
 // --- Global Type Declarations for external scripts (for TypeScript) ---
 declare global {
@@ -43,14 +48,14 @@ declare global {
 // Ensure gtag and dataLayer are initialized early to prevent errors if scripts haven't loaded yet
 if (typeof window !== 'undefined') {
     window.dataLayer = window.dataLayer || [];
-    window.gtag = window.gtag || function() { window.dataLayer.push(arguments); };
-    window.fbq = window.fbq || function() { /* no-op */ }; // Initialize as no-op to prevent errors
+    window.gtag = window.gtag || function () { (window.dataLayer as any).push(arguments); };
+    window.fbq = window.fbq || function () { /* no-op */ }; // Initialize as no-op to prevent errors
 }
 
 // --- Type Definitions ---
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
 interface IndustryItem { name: string; icon: LucideIcon; description: string; }
-interface IndustryCategory { category: string; items: IndustryItem[]; }
+interface TestimonialItem { name: string; title: string; quote: string; image: string; }
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
@@ -60,20 +65,11 @@ interface CookieCategoryInfo {
     id: CookieCategoryKey;
     name: string;
     description: string;
-    isRequired: boolean; // Cannot be unchecked
+    isRequired: boolean;
     defaultChecked: boolean;
 }
 type CookiePreferences = {
     [key in CookieCategoryKey]: boolean;
-};
-
-// Helper to set a cookie
-const setCookie = (name: string, value: string, days: number) => {
-    if (typeof document === 'undefined') return;
-    const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    const expires = "expires=" + date.toUTCString();
-    document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
 // Helper to get a cookie
@@ -83,6 +79,15 @@ const getCookie = (name: string): string | null => {
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
     return null;
+};
+
+// Helper to set a cookie
+const setCookie = (name: string, value: string, days: number) => {
+    if (typeof document === 'undefined') return;
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
 // Helper to clear a cookie (set expiry to past)
@@ -96,23 +101,37 @@ const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
     url: "https://www.bbu1.com/",
-    inventorCredit: "Invented by Mwesigwa Jimmy in Uganda. Built for the world.",
-    analytics: {
-        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID',
-        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID',
-    },
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
     },
+    analytics: {
+        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID', // Replace with your GA Measurement ID
+        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID', // Replace with your Facebook Pixel ID
+    },
     featureItems: [
         { icon: Wallet, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." },
-        { icon: Package, title: "Unified POS & Inventory", description: "An unstoppable, offline-first POS integrated with multi-location inventory. Manage stock, variants, purchase orders, and sales from a single command center." },
-        { icon: ClipboardList, title: "CRM & Project Hub", description: "Go from lead to paid project without leaving the platform. Manage clients, track project status on a visual Kanban board, and link every document to its source." },
-        { icon: UserCog, title: "HCM & Payroll", description: "Hire, manage, and pay your team from a single system. Handle payroll, leave, performance, and provide a dedicated portal for your employees." },
-        { icon: Files, title: "Secure Document Fortress", description: "A revolutionary, multi-tenant file explorer for your most sensitive data. Bank-level security and row-level policies make it architecturally impossible for data to cross between tenants." },
-        { icon: Lightbulb, title: "AI Business Copilot", description: "Get proactive, data-driven insights on cash flow, client trends, and fraud detection, helping you make smarter decisions, faster."}
+        { icon: LayoutGrid, title: "Integrated Business OS", description: "Unify every department: accounting, CRM, inventory, HR, and project management, all in one platform." },
+        { icon: BrainCircuit, title: "AI-Powered Insights", description: "Aura, your AI copilot, analyzes data, predicts trends, and offers strategic recommendations to drive growth." },
+        { icon: ClipboardList, title: "Intelligent Inventory", description: "Automated stock management, real-time tracking, and predictive reordering across multiple warehouses and stores." },
+        { icon: Users, title: "Customer Relationship Management", description: "Manage leads, track customer interactions, automate sales processes, and improve customer satisfaction." },
+        { icon: Package, title: "Supply Chain Optimization", description: "From procurement to delivery, streamline your supply chain with intelligent forecasting and vendor management." },
+        { icon: UserCog, title: "HR & Payroll Automation", description: "Simplify employee management, payroll processing, performance tracking, and compliance with local regulations." },
+        { icon: Files, title: "Document Management", description: "Securely store, organize, and share all your business documents with version control and access permissions." },
     ] as FeatureItem[],
+    industryItems: [
+        { name: "Retail & E-commerce", icon: Store, description: "Streamline sales, inventory, and customer loyalty across all channels." },
+        { name: "Manufacturing", icon: Landmark, description: "Optimize production, manage raw materials, and track finished goods with precision." },
+        { name: "Agriculture", icon: Leaf, description: "From farm to market, manage crops, livestock, and sales with integrated tools." },
+        { name: "Professional Services", icon: Handshake, description: "Automate billing, project tracking, and client management for consulting firms, agencies, and more." },
+        { name: "Financial Services", icon: Banknote, description: "Securely manage client accounts, transactions, and compliance with robust financial tools." },
+        { name: "Telecom & Utilities", icon: Signal, description: "Handle billing, customer support, and asset management for essential services." },
+    ] as IndustryItem[],
+    testimonials: [
+        { name: "Alice Mutesi", title: "CEO, Agri-Innovate Uganda", quote: "BBU1 has transformed our agricultural supply chain. We now have real-time visibility from farm to market, boosting our efficiency by 40%.", image: "/images/testimonials/alice-mutesi.jpg" },
+        { name: "David Ochieng", title: "Head of Operations, SwiftLogistics Kenya", quote: "Managing our fleet and inventory across East Africa used to be a nightmare. BBU1 brought everything into one intelligent system, saving us significant operational costs.", image: "/images/testimonials/david-ochieng.jpg" },
+        { name: "Zainab Ali", title: "Founder, Nile Retail Egypt", quote: "The AI Copilot is a game-changer! Aura helps us predict market trends and personalize customer experiences, giving us a competitive edge.", image: "/images/testimonials/zainab-ali.jpg" },
+    ] as TestimonialItem[],
     standoutItems: [
         { icon: TrendingUp, title: "Built to Scale With You", description: "BBU1 is architected for growth. Whether you're a solo entrepreneur or a global enterprise, our platform scales seamlessly to meet your demands without compromising performance." },
         { icon: LayoutGrid, title: "A Single Source of Truth", description: "Eliminate data silos forever. By unifying every department—from sales and accounting to inventory and HR—you get a real-time, 360-degree view of your entire operation." },
@@ -121,31 +140,14 @@ const siteConfig = {
         { icon: BrainCircuit, title: "True AI Partnership", description: "Our integrated AI is not just a feature; it's a strategic partner. It analyzes your data to find growth opportunities, predict cash flow, and identify risks before they become problems." },
         { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is your most valuable asset. We protect it with a multi-tenant architecture and end-to-end encryption, ensuring your information is completely isolated and secure." }
     ] as WhyUsItem[],
-    industrySolutions: [
-        {
-            category: "Common",
-            items: [
-                { name: "Retail / Wholesale", icon: Store, description: "Full-scale inventory management, barcode scanning, multi-location stock, and robust sales reporting for any retail environment." },
-                { name: "Restaurant / Cafe", icon: Utensils, description: "Complete restaurant management with Kitchen Display System (KDS) integration, table management, and ingredient-level tracking." },
-                { name: "Trades & Services", icon: Handshake, description: "Manage appointments, dispatch jobs, handle client data, and create professional service invoices with ease." }
-            ]
-        },
-        {
-            category: "Specialized Industries",
-            items: [
-                { name: "Professional Services (Accounting, Legal)", icon: Landmark, description: "Time tracking, case management, and secure document handling for firms that demand precision and confidentiality." },
-                { name: "Lending / Microfinance", icon: Banknote, description: "A robust solution to streamline member management, automate loan processing, and ensure regulatory reporting at scale." },
-                { name: "Telecom Services", icon: Signal, description: "Specialized tools for airtime distribution, agent management, and commission tracking for carriers like MTN and Airtel." }
-            ]
-        }
-    ] as IndustryCategory[],
     faqItems: [
-       { q: 'How does the AI Copilot deliver insights?', a: 'The AI Copilot securely analyzes your company-wide data to find patterns. It provides simple, actionable insights like "Consider bundling Product A and B" or "Cash flow projected to be low in 3 weeks."' },
-       { q: 'Is my enterprise data secure?', a: 'Yes. BBU1 uses a-tenant architecture with PostgreSQL\'s Row-Level Security. Your data is completely isolated and protected by bank-level, end-to-end encryption.' },
-       { q: 'Can the system be customized?', a: 'Absolutely. While powerful out-of-the-box, we offer customization services and API access for enterprise clients to tailor the system to your unique workflows.' },
-       { q: 'What kind of support is offered?', a: 'Enterprise plans include dedicated onboarding, an account manager, priority support via WhatsApp or phone, and a Service Level Agreement (SLA) guaranteeing uptime.' },
+        { q: 'What is BBU1?', a: 'BBU1 (Big Business Unified) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform.' },
+        { q: 'How does the AI Copilot deliver insights?', a: 'The AI Copilot securely analyzes your company-wide data to find patterns. It provides simple, actionable insights like "Consider bundling Product A and B" or "Cash flow projected to be low in 3 weeks."' },
+        { q: 'Is my enterprise data secure?', a: 'Yes. BBU1 uses a-tenant architecture with PostgreSQL\'s Row-Level Security. Your data is completely isolated and protected by bank-level, end-to-end encryption.' },
+        { q: 'Can the system be customized?', a: 'Absolutely. While powerful out-of-the-box, we offer customization services and API access for enterprise clients to tailor the system to your unique workflows.' },
+        { q: 'What kind of support is offered?', a: 'Enterprise plans include dedicated onboarding, an account manager, priority support via WhatsApp or phone, and a Service Level Agreement (SLA) guaranteeing uptime.' },
     ] as FaqItem[],
-    termsOfService: ( <div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms govern your use of our Service. By using our Service, you agree to these terms...</p></div> ),
+    termsOfService: (<div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms govern your use of our Service. By using our Service, you agree to these terms...</p></div>),
     privacyPolicy: (
         <div className="space-y-4 text-sm">
             <h3 className="text-lg font-bold">Privacy Policy</h3>
@@ -178,162 +180,161 @@ const siteConfig = {
 };
 
 // --- Animation Variants ---
-const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } } };
-const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
+const sectionVariants: Variants = {
+    hidden: { opacity: 0, y: 50 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            duration: 0.8,
+            ease: "easeOut",
+            when: "beforeChildren",
+            staggerChildren: 0.2
+        }
+    }
+};
+
+const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+};
 const staggerContainer: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
-const slideTextVariants: Variants = { hidden: { opacity: 0, x: -20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.7, ease: "easeOut" } }, exit: { opacity: 0, x: 20, transition: { duration: 0.5, ease: "easeIn" } } };
-const backgroundVariants: Variants = { animate: (index: number) => ({ scale: [1, 1.05, 1], x: [`${index % 2 * -2}%`, '0%', `${index % 3 * 2}%`], y: [`${index % 2 * -2}%`, '0%', `${index % 3 * 2}%`], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" } }) };
 
-// --- Reusable Modal Component ---
-interface DetailModalProps { trigger: ReactNode; title: string; description: ReactNode; icon?: LucideIcon; }
-const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => (
-    <Dialog>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-                <div className="flex items-center gap-4">
-                    {Icon && (
-                        <div className="bg-primary/10 p-3 rounded-md w-fit">
-                            <Icon className="h-6 w-6 text-primary" />
-                        </div>
-                    )}
-                    <div className="flex-1">
-                        <DialogTitle className="text-xl">{title}</DialogTitle>
-                    </div>
-                </div>
-            </DialogHeader>
-            <div className="py-4 text-muted-foreground">{description}</div>
-        </DialogContent>
-    </Dialog>
-);
 
-// --- Header ---
+// --- Header Component with Mega Menu ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // --- State and logic for the PWA Install Button ---
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isIos, setIsIos] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
-    // FIX: Add a 'mounted' state to prevent hydration mismatch for PWA install buttons.
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        // FIX: Set mounted to true only on the client-side.
+        if (typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone)) {
+            setIsStandalone(true);
+        }
+
         setMounted(true);
+        const isIosDevice = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        setIsIos(isIosDevice);
+
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
 
         if (typeof window !== 'undefined') {
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                setIsStandalone(true);
-            }
-            const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-            setIsIos(isIosDevice);
-
-            const handleBeforeInstallPrompt = (e: Event) => {
-                e.preventDefault();
-                setDeferredPrompt(e);
-            };
             window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-            return () => {
-                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-            };
         }
+
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            }
+        };
     }, []);
 
-    const handleInstallClick = useCallback(async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        setDeferredPrompt(null);
-    }, [deferredPrompt]);
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+            setDeferredPrompt(null);
+        }
+    };
 
-    const showAnyInstallButton = !isStandalone;
+    const showAnyInstallButton = !isStandalone && (deferredPrompt || isIos);
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md">
-            <div className="container mx-auto h-16 flex items-center justify-between">
-                <Link href="/" className="text-xl font-bold text-primary flex items-center gap-2" aria-label={`${siteConfig.name} Home`}>
-                    <Rocket className="h-6 w-6" /> {siteConfig.name}
+        <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
+            <div className="container mx-auto flex h-16 items-center justify-between px-4">
+                <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary">
+                    <Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span>
                 </Link>
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
+                            <NavigationMenuTrigger>Product</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-1 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                                    {siteConfig.featureItems.map((feature) => (
-                                        <DetailModal
-                                            key={feature.title}
-                                            title={feature.title}
-                                            icon={feature.icon}
-                                            description={feature.description}
-                                            trigger={
-                                                <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group">
-                                                    <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                        <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
-                                                    </div>
-                                                </li>
-                                            }
-                                        />
-                                    ))}
-                                </ul >
+                                <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+                                    <li className="row-span-3">
+                                        <NavigationMenuLink asChild>
+                                            <a
+                                                className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+                                                href="/"
+                                            >
+                                                <Rocket className="h-6 w-6 text-primary" />
+                                                <div className="mb-2 mt-4 text-lg font-medium">
+                                                    {siteConfig.name}
+                                                </div>
+                                                <p className="text-sm leading-tight text-muted-foreground">
+                                                    {siteConfig.shortDescription}
+                                                </p>
+                                            </a>
+                                        </NavigationMenuLink>
+                                    </li>
+                                    <ListItem href="#features" title="Features">
+                                        All the tools you need, unified.
+                                    </ListItem>
+                                    <ListItem href="#industries" title="Industries">
+                                        Solutions for every sector.
+                                    </ListItem>
+                                    <ListItem href="#standout" title="Why BBU1">
+                                        Discover our unique advantages.
+                                    </ListItem>
+                                </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ScrollArea className="h-[400px] w-[350px] p-2">
-                                    <ul className="grid grid-cols-1 gap-1 p-2">
-                                        {siteConfig.industrySolutions.map((category) => (
-                                            <React.Fragment key={category.category}>
-                                                <p className="font-bold text-xs text-muted-foreground uppercase p-2 pt-4">{category.category}</p>
-                                                {category.items.map((solution) => (
-                                                    <DetailModal
-                                                        key={solution.name}
-                                                        title={solution.name}
-                                                        icon={solution.icon}
-                                                        description={solution.description}
-                                                        trigger={
-                                                            <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group">
-                                                                <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                                    <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
-                                                                </div>
-                                                            </li>
-                                                        }
-                                                    />
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-                                    </ul>
-                                </ScrollArea>
-                            </NavigationMenuContent>
+                            <Link href="#testimonials" legacyBehavior passHref>
+                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                    Testimonials
+                                </NavigationMenuLink>
+                            </Link>
+                        </NavigationMenuItem>
+                        <NavigationMenuItem>
+                            <Link href="#faq" legacyBehavior passHref>
+                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                                    FAQ
+                                </NavigationMenuLink>
+                            </Link>
+                        </NavigationMenuItem>
+                        <NavigationMenuItem>
+                            <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className={navigationMenuTriggerStyle()}>
+                                Contact Sales
+                            </a>
                         </NavigationMenuItem>
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
-                    {/* FIX: Conditionally render these buttons only when the component is mounted on the client. */}
                     {mounted && showAnyInstallButton && (
                         <>
                             {isIos ? (
                                 <Dialog>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline" className="flex items-center gap-2"><Download className="h-4 w-4" /> Install App</Button>
+                                        <Button variant="outline">
+                                            <Download className="h-4 w-4 mr-2" /> Install App
+                                        </Button>
                                     </DialogTrigger>
                                     <DialogContent>
-                                        <DialogHeader><DialogTitle>Install BBU1 on your iOS Device</DialogTitle>
-                                            <DialogDescription className="pt-4 space-y-2 text-left">
-                                                <p>To install the app, please follow these simple steps:</p>
-                                                <ol className="list-decimal list-inside space-y-3">
-                                                    <li>Tap the <Share className="h-5 w-5 inline-block mx-1" /> icon in the Safari menu bar.</li>
-                                                    <li>Scroll down and tap on <strong>'Add to Home Screen'</strong>.</li>
-                                                    <li>Confirm by tapping <strong>'Add'</strong> in the top right.</li>
+                                        <DialogHeader>
+                                            <DialogTitle>Install App on iOS</DialogTitle>
+                                            <DialogDescription>
+                                                To install this app on your iOS device:
+                                                <ol className="list-decimal list-inside mt-2 space-y-1">
+                                                    <li>Tap the <Share className="inline h-4 w-4" /> (Share) button in Safari.</li>
+                                                    <li>Select "Add to Home Screen".</li>
+                                                    <li>Tap "Add" in the top right corner.</li>
                                                 </ol>
                                             </DialogDescription>
                                         </DialogHeader>
                                     </DialogContent>
                                 </Dialog>
                             ) : (
-                                <Button variant="outline" className="flex items-center gap-2" onClick={handleInstallClick} disabled={!deferredPrompt} title={!deferredPrompt ? "Installation not available yet" : "Install App"}>
-                                    <Download className="h-4 w-4" /> Install App
+                                <Button onClick={handleInstallClick} variant="outline" disabled={!deferredPrompt}>
+                                    <Download className="h-4 w-4 mr-2" /> Install App
                                 </Button>
                             )}
                         </>
@@ -343,57 +344,93 @@ const MegaMenuHeader = () => {
                     <ModeToggle />
                 </div>
                 <div className="lg:hidden flex items-center gap-2">
-                     {/* FIX: Conditionally render this button only when the component is mounted on the client. */}
-                     {mounted && showAnyInstallButton && !isIos && (
-                         <Button variant="ghost" size="icon" onClick={handleInstallClick} disabled={!deferredPrompt} aria-label="Install App">
+                    {mounted && showAnyInstallButton && !isIos && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleInstallClick}
+                            disabled={!deferredPrompt}
+                            aria-label="Install App"
+                        >
                             <Download className="h-6 w-6" />
                         </Button>
-                     )}
+                    )}
                     <ModeToggle />
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
                 </div>
             </div>
-            <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }} className="lg:hidden p-4 border-t bg-background overflow-hidden">
-                         <nav className="flex flex-col gap-4 text-lg">
-                            <Accordion type="single" collapsible className="w-full">
-                                <AccordionItem value="features">
-                                    <AccordionTrigger className="text-lg hover:no-underline">Features</AccordionTrigger>
-                                    <AccordionContent className="flex flex-col gap-2 pl-4">
-                                        {siteConfig.featureItems.map(feature => (
-                                            <DetailModal key={feature.title} title={feature.title} icon={feature.icon} description={feature.description}
-                                                trigger={<Button variant="ghost" className="justify-start gap-2 w-full"><feature.icon className="h-4 w-4 text-primary" /> {feature.title}</Button>}
-                                            />
-                                        ))}
-                                    </AccordionContent>
-                                </AccordionItem>
-                                <AccordionItem value="industries">
-                                    <AccordionTrigger className="text-lg hover:no-underline">Industries</AccordionTrigger>
-                                    <AccordionContent className="flex flex-col gap-2 pl-4">
-                                         {siteConfig.industrySolutions.map((category) => (
-                                            <React.Fragment key={category.category}>
-                                                <p className="font-bold text-xs text-muted-foreground uppercase p-2 pt-0">{category.category}</p>
-                                                {category.items.map((solution) => (
-                                                    <DetailModal key={solution.name} title={solution.name} icon={solution.icon} description={solution.description}
-                                                        trigger={<Button variant="ghost" className="justify-start gap-2 w-full"><solution.icon className="h-4 w-4 text-primary" /> {solution.name}</Button>}
-                                                    />
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-                                    </AccordionContent>
-                                </AccordionItem>
-                            </Accordion>
-                            <div className="border-t my-4"></div>
-                            <Button variant="ghost" asChild className="w-full"><Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Log In</Link></Button>
-                            <Button asChild className="w-full"><Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link></Button>
-                        </nav>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {isMobileMenuOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30"
+                >
+                    <div className="container mx-auto py-4 px-4 space-y-4">
+                        <Link href="#features" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Features</Link>
+                        <Link href="#industries" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Industries</Link>
+                        <Link href="#testimonials" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Testimonials</Link>
+                        <Link href="#faq" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
+                        <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Contact Sales</a>
+                        <div className="flex flex-col gap-2 pt-4 border-t">
+                            <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
+                            <Button asChild><Link href="/signup">Get Started</Link></Button>
+                            {mounted && showAnyInstallButton && isIos && (
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline">
+                                            <Download className="h-4 w-4 mr-2" /> Install App (iOS)
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Install App on iOS</DialogTitle>
+                                            <DialogDescription>
+                                                To install this app on your iOS device:
+                                                <ol className="list-decimal list-inside mt-2 space-y-1">
+                                                    <li>Tap the <Share className="inline h-4 w-4" /> (Share) button in Safari.</li>
+                                                    <li>Select "Add to Home Screen".</li>
+                                                    <li>Tap "Add" in the top right corner.</li>
+                                                </ol>
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
+                        </div>
+                    </div>
+                </motion.div>
+            )}
         </header>
     );
 };
+
+const ListItem = forwardRef<
+    ElementRef<"a">,
+    ComponentPropsWithoutRef<"a">
+>(({ className, title, children, ...props }, ref) => {
+    return (
+        <li>
+            <NavigationMenuLink asChild>
+                <a
+                    ref={ref}
+                    className={cn(
+                        "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                        className
+                    )}
+                    {...props}
+                >
+                    <div className="text-sm font-medium leading-none">{title}</div>
+                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                        {children}
+                    </p>
+                </a>
+            </NavigationMenuLink>
+        </li>
+    );
+});
+ListItem.displayName = "ListItem";
 
 // --- Footer Component ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
@@ -441,17 +478,16 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
 );
 
 // --- Reusable Animated Section Component ---
-const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => ( <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}> <div className="container mx-auto px-4 relative z-10">{children}</div> </motion.section> );
+const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
+    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}> <div className="container mx-auto px-4 relative z-10">{children}</div> </motion.section>);
 
 // --- AI Chat Widget ---
 const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
     if (typeof content === 'string') {
         return content;
     }
-    // Ensure content is an array, if not, treat as empty for safety
     if (!Array.isArray(content)) {
-        console.warn("Unexpected content type for message:", content);
-        return null; // Or some fallback UI
+        return null;
     }
 
     return content.map((part, index) => {
@@ -459,7 +495,7 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
             return <React.Fragment key={index}>{part.text}</React.Fragment>;
         }
         if (part.type === 'image') {
-            const imagePart = part as ImagePart;
+            const imagePart = part as any;
             let imageUrl: string | undefined;
 
             if (typeof imagePart.image === 'string') {
@@ -469,11 +505,11 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
             }
 
             if (imageUrl) {
-                return <img key={index} src={imageUrl} alt="AI generated image" className="max-w-full h-auto rounded-md my-2" />;
+                return <img key={index} src={imageUrl} alt="AI generated" className="max-w-full h-auto rounded-md my-2" />;
             }
         }
-        return null; // Ensure a return value even if type is unknown or image URL is missing
-    }).filter(Boolean); // Filter out any nulls if image parts failed to render
+        return null;
+    }).filter(Boolean);
 };
 
 const AdvancedChatWidget = () => {
@@ -489,7 +525,6 @@ const AdvancedChatWidget = () => {
         }
     }, []);
 
-    // Ensure businessId and userId are not null before passing to useChat body
     const chatBody = {
         businessId: userContext.businessId || undefined,
         userId: userContext.userId || undefined,
@@ -528,7 +563,6 @@ const AdvancedChatWidget = () => {
         }
     }, [messages]);
 
-    // Ensure userContext.userId and userContext.businessId are non-null for canSend/isDisabled
     const canSend = !isLoading && chatInput.trim() && userContext.userId !== null && userContext.businessId !== null;
     const isDisabled = isLoading || userContext.userId === null || userContext.businessId === null;
 
@@ -536,7 +570,7 @@ const AdvancedChatWidget = () => {
         <>
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
+                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
                         <Card className="h-full w-full flex flex-col shadow-2xl">
                             <CardHeader className="flex-row items-center justify-between">
                                 <div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div>
@@ -549,7 +583,7 @@ const AdvancedChatWidget = () => {
                                             <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
                                                 {m.role === 'assistant' && (
                                                     <Avatar className="h-8 w-8">
-                                                        <AvatarFallback><Sparkles className="h-4 w-4 text-primary"/></AvatarFallback>
+                                                        <AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback>
                                                     </Avatar>
                                                 )}
                                                 <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>
@@ -565,7 +599,7 @@ const AdvancedChatWidget = () => {
                                         {isLoading && (
                                             <div className="flex items-start gap-3 text-sm justify-start">
                                                 <Avatar className="h-8 w-8">
-                                                    <AvatarFallback><Sparkles className="h-4 w-4 text-primary"/></AvatarFallback>
+                                                    <AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback>
                                                 </Avatar>
                                                 <div className="rounded-lg p-3 max-w-[85%] break-words bg-background border">
                                                     Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" />
@@ -605,30 +639,37 @@ const AdvancedChatWidget = () => {
     );
 };
 
+
 // --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
+    // --- State for the rotating text in the hero section ---
     const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS.", "Unified and intelligent."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
     useEffect(() => {
-        const textInterval = setInterval(() => {
+        const interval = setInterval(() => {
             setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
         }, 3000);
-        return () => clearInterval(textInterval);
+        return () => clearInterval(interval);
     }, [rotatingTexts.length]);
 
+    // --- Configuration for the Integrated "BBU1 in Action" Slideshow ---
     const slideshowContent = [
-        { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data. Manage resources, track progress, and ensure deadlines are met with BBU1's rugged, reliable interface.", alt: "Construction managers using BBU1 on a tablet at a construction site." },
-        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast and secure system for handling transactions. BBU1 streamlines telecom services, from airtime distribution to commission tracking.", alt: "A mobile money agent serving customers using the BBU1 system." },
+        { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects with real-time data. Manage resources, track progress, and ensure deadlines are met.", alt: "Construction managers using BBU1 on a tablet." },
+        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast, secure system for transactions, from airtime distribution to commission tracking.", alt: "A mobile money agent serving customers." },
+        { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A simple yet powerful POS and inventory system to manage sales and stock effortlessly for any shop size.", alt: "A local shop owner managing his store." },
+        { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track medical supplies securely and efficiently.", alt: "Medical professionals using BBU1 on tablets." },
+        { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field. Track crop cycles, manage inventory, and connect with markets.", alt: "Farmers collaborating with BBU1 on mobile devices." },
     ];
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
     useEffect(() => {
         const imageInterval = setInterval(() => {
             setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slideshowContent.length);
         }, 15000);
         return () => clearInterval(imageInterval);
     }, [slideshowContent.length]);
-    
+
     // --- COOKIE CONSENT LOGIC AND STATE ---
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({
         ...acc,
@@ -638,8 +679,6 @@ export default function HomePage() {
     const [showCookieBanner, setShowCookieBanner] = useState(false);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
     const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
-
-    // FIX: Add a single 'mounted' state here to control all client-side-only components in this page.
     const [mounted, setMounted] = useState(false);
 
     const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
@@ -649,14 +688,13 @@ export default function HomePage() {
         const hasGaId = gaMeasurementId && gaMeasurementId !== 'G-YOUR_GA_MEASUREMENT_ID';
         const hasFbId = fbPixelId && fbPixelId !== 'YOUR_FACEBOOK_PIXEL_ID';
 
-        // Google Analytics setup
+        // Google Analytics
         if (hasGaId) {
             window.gtag('consent', 'default', {
                 'analytics_storage': prefs.analytics ? 'granted' : 'denied',
                 'ad_storage': prefs.marketing ? 'granted' : 'denied',
             });
 
-            // Ensure GA scripts are added only once
             if (!document.querySelector('#google-analytics-script')) {
                 const gaScript = document.createElement('script');
                 gaScript.id = 'google-analytics-script';
@@ -673,16 +711,10 @@ export default function HomePage() {
                     gtag('config', '${gaMeasurementId}', { 'anonymize_ip': true });
                 `;
                 document.head.appendChild(gaConfigScript);
-            } else {
-                // If scripts already exist, just update consent
-                window.gtag('consent', 'update', {
-                    'analytics_storage': prefs.analytics ? 'granted' : 'denied',
-                    'ad_storage': prefs.marketing ? 'granted' : 'denied',
-                });
             }
         }
-        
-        // Facebook Pixel setup
+
+        // Facebook Pixel
         const fbScript = document.querySelector('#facebook-pixel-script');
         if (prefs.marketing && hasFbId) {
             if (!fbScript) {
@@ -694,13 +726,8 @@ export default function HomePage() {
                   fbq('track', 'PageView');
                 `;
                 document.head.appendChild(newFbScript);
-            } else {
-                 // If script exists, ensure pixel is initialized and tracked
-                window.fbq('init', fbPixelId);
-                window.fbq('track', 'PageView');
             }
         } else if (fbScript) {
-            // If marketing cookies are denied, remove the script if it exists
             fbScript.remove();
         }
     }, []);
@@ -710,24 +737,22 @@ export default function HomePage() {
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (!consentCookie) {
             setShowCookieBanner(true);
-            applyCookiePreferences(initialCookiePreferences); // Apply defaults if no consent yet
+            applyCookiePreferences(initialCookiePreferences);
         } else {
             try {
                 const storedPrefs: CookiePreferences = JSON.parse(consentCookie);
                 setCookiePreferences(storedPrefs);
                 setShowCookieBanner(false);
-                applyCookiePreferences(storedPrefs); // Apply stored preferences
+                applyCookiePreferences(storedPrefs);
             } catch (e) {
-                console.error("Error parsing cookie consent:", e);
-                clearCookie('bbu1_cookie_consent'); // Clear corrupted cookie
-                setShowCookieBanner(true); // Show banner to re-get consent
-                applyCookiePreferences(initialCookiePreferences); // Apply defaults
+                clearCookie('bbu1_cookie_consent');
+                setShowCookieBanner(true);
+                applyCookiePreferences(initialCookiePreferences);
             }
         }
     }, [initialCookiePreferences, applyCookiePreferences]);
 
     useEffect(() => {
-        // FIX: Set mounted to true after the initial render.
         setMounted(true);
         initializeCookiePreferences();
     }, [initializeCookiePreferences]);
@@ -758,7 +783,6 @@ export default function HomePage() {
             try {
                 setCookiePreferences(JSON.parse(consentCookie));
             } catch (e) {
-                console.error("Error parsing cookie consent for customization:", e);
                 setCookiePreferences(initialCookiePreferences);
             }
         } else {
@@ -768,102 +792,214 @@ export default function HomePage() {
         setIsCustomizingCookies(true);
     }, [initialCookiePreferences]);
 
+
     return (
         <>
             <MegaMenuHeader />
-            <main className="flex-grow z-10">
-                <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-white">
+            <main>
+                {/* Hero Section */}
+                <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center">
                     <div className="absolute inset-0 z-0">
-                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="A background image showing a modern office team analyzing data with BBU1." fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
+                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
                     </div>
-                    <div className="container mx-auto text-center relative z-10">
+                    <div className="container mx-auto relative z-10 text-white">
                         <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20">
+                                <Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS
+                            </motion.span>
                             <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}>
-                                The One Platform <br />
+                                Your All-in-One OS for Global Business.
+                                <br />
                                 <div className="inline-block h-[1.2em] overflow-hidden">
                                     <AnimatePresence mode="wait">
                                         <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md">
                                             {rotatingTexts[currentTextIndex]}
-                                        </motion.span >
+                                        </motion.span>
                                     </AnimatePresence>
                                 </div>
                             </motion.h1>
                             <motion.p className="mt-6 text-lg leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>
-                                Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management.
+                                Unify accounting, CRM, inventory, and AI insights. Empower your enterprise with the intelligence and efficiency to thrive globally.
                             </motion.p>
                             <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                <Button asChild size="lg" className="shadow-lg bg-blue-500 hover:bg-blue-600 text-white"><Link href="/signup">Start Free Trial</Link></Button>
-                                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                                <Button asChild size="lg" className="shadow-lg"><Link href="/signup">Get Started Free</Link></Button>
+                                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                             </motion.div>
                         </motion.div>
                     </div>
                 </section>
-
-                <AnimatedSection id="in-action" className="pt-0 -mt-16 pb-16 bg-background">
-                    <div className="relative bg-secondary/20 rounded-lg shadow-2xl overflow-hidden p-8 md:p-12">
-                        <div className="relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                            <div className="flex flex-col justify-center text-center lg:text-left h-full">
-                                <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action</h2>
-                                <div className="relative h-24 sm:h-20">
-                                    <AnimatePresence mode="wait">
-                                        <motion.div key={currentSlideIndex} variants={slideTextVariants} initial="hidden" animate="visible" exit="exit" className="absolute w-full">
-                                            <h3 className="text-lg font-semibold text-primary">{slideshowContent[currentSlideIndex].title}</h3>
-                                            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{slideshowContent[currentSlideIndex].description}</p>
-                                        </motion.div>
-                                    </AnimatePresence>
+                
+                {/* Features Section */}
+                <AnimatedSection id="features" className="bg-gradient-to-b from-background to-accent/20">
+                    <div className="text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-foreground" variants={itemVariants}>Core Capabilities</motion.h2>
+                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Discover how BBU1 unifies and supercharges your business operations.</motion.p>
+                    </div>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {siteConfig.featureItems.map((feature, index) => (
+                            <motion.div key={index} className="flex flex-col items-center text-center p-6 border rounded-lg shadow-sm bg-background/70 backdrop-blur-sm" variants={itemVariants}>
+                                <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
+                                    <feature.icon className="h-6 w-6" />
                                 </div>
-                            </div>
-                            <div className="relative aspect-video rounded-lg overflow-hidden bg-background">
-                                <AnimatePresence>
-                                    <motion.div key={currentSlideIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} className="absolute inset-0">
-                                        <Image src={slideshowContent[currentSlideIndex].src} alt={slideshowContent[currentSlideIndex].alt} fill style={{ objectFit: 'cover' }} priority={currentSlideIndex === 0} />
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </div>
-                </AnimatedSection>
-
-                <AnimatedSection id="standout" className="bg-background">
-                    <div className="text-center mb-12 max-w-3xl mx-auto">
-                        <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
-                        <p className="text-muted-foreground mt-2">BBU1 is engineered to accelerate your growth and simplify complexity.</p>
-                    </div>
-                    <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {siteConfig.standoutItems.map(item => (
-                            <motion.div key={item.title} variants={itemVariants}>
-                                <Card className="text-left h-full hover:shadow-xl hover:-translate-y-1.5 transition-all">
-                                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                                        <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div>
-                                        <CardTitle className="text-lg">{item.title}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent>
-                                </Card>
+                                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                                <p className="text-muted-foreground text-sm">{feature.description}</p>
                             </motion.div>
                         ))}
-                    </motion.div>
+                    </div>
                 </AnimatedSection>
 
+                {/* BBU1 in Action / Slideshow Section */}
+                <AnimatedSection className="bg-gradient-to-b from-accent/20 to-background">
+                    <div className="text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-foreground" variants={itemVariants}>BBU1 In Action</motion.h2>
+                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>See how BBU1 empowers diverse industries across the continent.</motion.p>
+                    </div>
+                    <motion.div
+                        className="relative rounded-xl overflow-hidden shadow-xl border h-[400px] md:h-[550px] lg:h-[700px] flex items-center justify-center bg-gray-200 dark:bg-gray-800"
+                        variants={itemVariants}
+                    >
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentSlideIndex}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.8, ease: "easeInOut" }}
+                                className="absolute inset-0 w-full h-full"
+                            >
+                                <Image
+                                    src={slideshowContent[currentSlideIndex].src}
+                                    alt={slideshowContent[currentSlideIndex].alt}
+                                    layout="fill"
+                                    objectFit="cover"
+                                    quality={85}
+                                    className="filter brightness-[0.7]"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30"></div>
+                                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
+                                    <h3 className="text-2xl md:text-4xl font-bold mb-2">{slideshowContent[currentSlideIndex].title}</h3>
+                                    <p className="text-base md:text-lg">{slideshowContent[currentSlideIndex].description}</p>
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+                            {slideshowContent.map((_, idx) => (
+                                <button
+                                    key={idx}
+                                    className={cn("h-2 w-2 rounded-full bg-white opacity-50 transition-opacity", { "opacity-100 scale-125": currentSlideIndex === idx })}
+                                    onClick={() => setCurrentSlideIndex(idx)}
+                                    aria-label={`Go to slide ${idx + 1}`}
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+                </AnimatedSection>
+                
+                {/* Standout Section */}
+                <AnimatedSection id="standout" className="bg-background relative">
+                    <div className="absolute inset-0 z-0 opacity-50"><Image src="/images/showcase/ai-warehouse-logistics.jpg" alt="ai warehouse" fill style={{ objectFit: 'cover' }}/></div>
+                    <div className="absolute inset-0 z-0 bg-background/80"></div>
+                    <div className="px-4 relative z-10">
+                        <div className="text-center mb-12 max-w-3xl mx-auto">
+                            <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
+                            <p className="text-muted-foreground mt-2">BBU1 is engineered from the ground up to not just manage your business, but to accelerate its growth and simplify complexity.</p>
+                        </div>
+                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {siteConfig.standoutItems.map(item => (
+                                <motion.div key={item.title} variants={itemVariants}>
+                                    <Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/80 backdrop-blur-sm border-primary/10">
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                                            <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div>
+                                            <CardTitle className="text-lg">{item.title}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    </div>
+                </AnimatedSection>
+
+                {/* Industries Section */}
+                <AnimatedSection id="industries" className="bg-gradient-to-b from-background to-accent/20">
+                    <div className="text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-foreground" variants={itemVariants}>Industries We Serve</motion.h2>
+                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Tailored solutions designed to meet the unique demands of your sector.</motion.p>
+                    </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {siteConfig.industryItems.map((industry, index) => (
+                            <motion.div key={index} className="flex items-start p-5 border rounded-lg bg-background/70 shadow-sm" variants={itemVariants}>
+                                <div className="p-3 rounded-full bg-accent text-accent-foreground mr-4 flex-shrink-0">
+                                    <industry.icon className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-semibold mb-1">{industry.name}</h3>
+                                    <p className="text-muted-foreground text-sm">{industry.description}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </AnimatedSection>
+                
+                {/* Testimonials Section */}
+                <AnimatedSection id="testimonials" className="bg-gradient-to-b from-accent/20 to-background">
+                    <div className="text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-foreground" variants={itemVariants}>What Our Clients Say</motion.h2>
+                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Hear from business leaders who are transforming their operations with BBU1.</motion.p>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {siteConfig.testimonials.map((testimonial, index) => (
+                            <motion.div key={index} className="bg-background border rounded-lg p-6 shadow-md flex flex-col justify-between" variants={itemVariants}>
+                                <p className="text-lg italic text-foreground mb-6">"{testimonial.quote}"</p>
+                                <div className="flex items-center">
+                                    <Image src={testimonial.image} alt={testimonial.name} width={56} height={56} className="rounded-full mr-4 object-cover" />
+                                    <div>
+                                        <p className="font-semibold text-primary">{testimonial.name}</p>
+                                        <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </AnimatedSection>
+                
+                {/* FAQ Section */}
                 <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background">
-                    <div className="max-w-3xl mx-auto">
-                        <h2 className="text-3xl font-bold tracking-tight text-center mb-8">Your Questions, Answered</h2>
-                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border bg-background shadow-lg">
-                            {siteConfig.faqItems.map(i => (
-                                <AccordionItem key={i.q} value={i.q} className="px-6">
-                                    <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4">{i.q}</AccordionTrigger>
-                                    <AccordionContent className="text-sm text-muted-foreground pb-4 leading-relaxed">{i.a}</AccordionContent>
+                    <div className="text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-foreground" variants={itemVariants}>Frequently Asked Questions</motion.h2>
+                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Find quick answers to the most common questions about BBU1.</motion.p>
+                    </div>
+                    <motion.div className="max-w-3xl mx-auto" variants={itemVariants}>
+                        <Accordion type="single" collapsible className="w-full">
+                            {siteConfig.faqItems.map((faq, index) => (
+                                <AccordionItem key={index} value={`item-${index}`}>
+                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                    <AccordionContent className="text-muted-foreground text-base">
+                                        {faq.a}
+                                    </AccordionContent>
                                 </AccordionItem>
                             ))}
                         </Accordion>
+                    </motion.div>
+                </AnimatedSection>
+
+                {/* Final CTA Section */}
+                <AnimatedSection className="text-center container mx-auto px-4">
+                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden">
+                        <h2 className="text-3xl font-bold tracking-tight">Ready to Revolutionize Your Enterprise?</h2>
+                        <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p>
+                        <div className="mt-8">
+                            <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110">
+                                <Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                            </Button>
+                        </div>
                     </div>
                 </AnimatedSection>
             </main>
-            {/* FIX: Conditionally render the chat widget only when the component is mounted on the client. */}
             {mounted && <AdvancedChatWidget />}
             <LandingFooter onManageCookies={openCookiePreferences} />
 
-            {/* FIX: Conditionally render the entire cookie banner logic only when mounted. */}
             {mounted && (
                 <AnimatePresence>
                     {showCookieBanner && (
@@ -878,20 +1014,11 @@ export default function HomePage() {
                                     <CardTitle className="flex items-center gap-2">
                                         <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
                                     </CardTitle>
-                                    {!isCustomizingCookies ? ( // Only show description if not customizing
+                                    {!isCustomizingCookies && (
                                         <CardDescription>
-                                            We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <button className="text-primary hover:underline font-semibold">Privacy Policy</button>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-w-3xl">
-                                                    <DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>
-                                                    {siteConfig.privacyPolicy}
-                                                </DialogContent>
-                                            </Dialog>.
+                                            We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies.
                                         </CardDescription>
-                                    ) : null} {/* Explicitly return null if not displaying description */}
+                                    )}
                                 </CardHeader>
                                 {!isCustomizingCookies ? (
                                     <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
