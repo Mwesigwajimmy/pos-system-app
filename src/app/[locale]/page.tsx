@@ -34,7 +34,6 @@ import {
 // --- Type Definitions ---
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
 interface IndustryItem { name: string; icon: LucideIcon; description: string; }
-interface TestimonialItem { name: string; title: string; quote: string; image: string; }
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
 
@@ -100,11 +99,6 @@ const siteConfig = {
         { name: "Financial Services", icon: Banknote, description: "Securely manage client accounts, transactions, and compliance with robust financial tools." },
         { name: "Telecom & Utilities", icon: Signal, description: "Handle billing, customer support, and asset management for essential services." },
     ] as IndustryItem[],
-    testimonials: [
-        { name: "Alice Mutesi", title: "CEO, Agri-Innovate Uganda", quote: "BBU1 has transformed our agricultural supply chain. We now have real-time visibility from farm to market, boosting our efficiency by 40%.", image: "/images/testimonials/alice-mutesi.jpg" },
-        { name: "David Ochieng", title: "Head of Operations, SwiftLogistics Kenya", quote: "Managing our fleet and inventory across East Africa used to be a nightmare. BBU1 brought everything into one intelligent system, saving us significant operational costs.", image: "/images/testimonials/david-ochieng.jpg" },
-        { name: "Zainab Ali", title: "Founder, Nile Retail Egypt", quote: "The AI Copilot is a game-changer! Aura helps us predict market trends and personalize customer experiences, giving us a competitive edge.", image: "/images/testimonials/zainab-ali.jpg" },
-    ] as TestimonialItem[],
     faqItems: [
         { q: 'What is BBU1?', a: 'BBU1 (Big Business Unified) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform.' },
         { q: 'How does the AI Copilot deliver insights?', a: 'The AI Copilot securely analyzes your company-wide data to find patterns. It provides simple, actionable insights like "Consider bundling Product A and B" or "Cash flow projected to be low in 3 weeks."' },
@@ -128,12 +122,15 @@ const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opaci
 
 
 // --- Reusable UI Components ---
-const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a">>(({ className, title, children, ...props }, ref) => (
+const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon?: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
     <li>
         <NavigationMenuLink asChild>
             <a ref={ref} className={cn("block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)} {...props}>
-                <div className="text-sm font-medium leading-none">{title}</div>
-                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">{children}</p>
+                <div className="flex items-center gap-2 text-sm font-medium leading-none">
+                    {Icon && <Icon className="h-4 w-4 text-primary" />}
+                    {title}
+                </div>
+                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground pl-6">{children}</p>
             </a>
         </NavigationMenuLink>
     </li>
@@ -202,19 +199,72 @@ const MegaMenuHeader = () => {
                 {/* Desktop Navigation */}
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
+
+                        {/* Features Dialog */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Product</NavigationMenuTrigger>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>Features</Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl">Core Capabilities</DialogTitle>
+                                        <DialogDescription>Discover how BBU1 unifies and supercharges your business operations.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
+                                        {siteConfig.featureItems.map((feature, index) => (
+                                            <div key={index} className="flex items-start text-left p-4 border rounded-lg bg-background/70">
+                                                <div className="p-3 rounded-full bg-primary/10 text-primary mr-4">
+                                                    <feature.icon className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-semibold mb-1">{feature.title}</h3>
+                                                    <p className="text-muted-foreground text-sm">{feature.description}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        </NavigationMenuItem>
+                        
+                        {/* Industries We Serve Dropdown */}
+                        <NavigationMenuItem>
+                            <NavigationMenuTrigger>Industries We Serve</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                                    <li className="row-span-3"><NavigationMenuLink asChild><a className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md" href="/"><Rocket className="h-6 w-6 text-primary" /><div className="mb-2 mt-4 text-lg font-medium">{siteConfig.name}</div><p className="text-sm leading-tight text-muted-foreground">{siteConfig.shortDescription}</p></a></NavigationMenuLink></li>
-                                    <ListItem href="#features" title="Features">All the tools you need, unified.</ListItem>
-                                    <ListItem href="#industries" title="Industries">Solutions for every sector.</ListItem>
-                                    <ListItem href="#standout" title="Why BBU1">Discover our unique advantages.</ListItem>
+                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+                                    {siteConfig.industryItems.map((industry) => (
+                                        <ListItem key={industry.name} title={industry.name} href="#" icon={industry.icon}>
+                                            {industry.description}
+                                        </ListItem>
+                                    ))}
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        <NavigationMenuItem><Link href="#testimonials" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Testimonials</NavigationMenuLink></Link></NavigationMenuItem>
-                        <NavigationMenuItem><Link href="#faq" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>FAQ</NavigationMenuLink></Link></NavigationMenuItem>
+                        
+                        <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
+
+                        {/* FAQ Dialog */}
+                        <NavigationMenuItem>
+                             <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
+                                    </DialogHeader>
+                                    <Accordion type="single" collapsible className="w-full py-4">
+                                        {siteConfig.faqItems.map((faq, index) => (
+                                            <AccordionItem key={index} value={`item-${index}`}>
+                                                <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                </DialogContent>
+                            </Dialog>
+                        </NavigationMenuItem>
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
@@ -226,6 +276,7 @@ const MegaMenuHeader = () => {
                     ) : (
                         <Button onClick={handleInstallClick} variant="outline" disabled={!deferredPrompt}><Download className="h-4 w-4 mr-2" /> Install App</Button>
                     ))}
+                    <Button variant="outline" asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
                     <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
@@ -242,11 +293,13 @@ const MegaMenuHeader = () => {
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30">
                         <div className="container mx-auto py-4 px-4 space-y-4">
-                            <Link href="#features" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Features</Link>
-                            <Link href="#industries" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Industries</Link>
-                            <Link href="#testimonials" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Testimonials</Link>
-                            <Link href="#faq" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
+                            {/* Mobile menu items to match new desktop nav */}
+                            <Link href="#" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Features</Link>
+                            <Link href="#" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Industries</Link>
+                             <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                            <Link href="#" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
                             <div className="flex flex-col gap-2 pt-4 border-t">
+                                <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
                                 <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
                                 <Button asChild><Link href="/signup">Get Started</Link></Button>
                                 {showAnyInstallButton && isIos && (
@@ -270,8 +323,8 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
         <div className="container mx-auto px-4 pt-12 pb-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
                 <div className="col-span-2"><h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3><p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p><div className="flex items-center gap-5 mt-6"><a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a><a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a><a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a></div></div>
-                <div><h4 className="font-semibold text-base mb-3">Product</h4><ul className="space-y-2 text-sm"><li><Link href="#features" className="text-muted-foreground hover:text-primary transition-colors">Features</Link></li><li><Link href="#industries" className="text-muted-foreground hover:text-primary transition-colors">Industries</Link></li></ul></div>
-                <div><h4 className="font-semibold text-base mb-3">Company</h4><ul className="space-y-2 text-sm"><li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li><li><Link href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li></ul></div>
+                <div><h4 className="font-semibold text-base mb-3">Product</h4><ul className="space-y-2 text-sm"><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Features</Link></li><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Industries</Link></li></ul></div>
+                <div><h4 className="font-semibold text-base mb-3">Company</h4><ul className="space-y-2 text-sm"><li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li></ul></div>
                 <div><h4 className="font-semibold text-base mb-3">Legal</h4><ul className="space-y-2 text-sm"><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li><li><button onClick={onManageCookies} className="text-muted-foreground hover:text-primary text-left transition-colors">Manage Cookies</button></li></ul></div>
             </div>
             <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"><p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p><p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p></div>
@@ -439,11 +492,6 @@ export default function HomePage() {
                 </section>
                 
                 {/* Sections from Both Files Merged */}
-                <AnimatedSection id="features" className="bg-gradient-to-b from-background to-accent/20">
-                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>Core Capabilities</motion.h2><motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Discover how BBU1 unifies and supercharges your business operations.</motion.p></div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">{siteConfig.featureItems.map((feature, index) => (<motion.div key={index} className="flex flex-col items-center text-center p-6 border rounded-lg shadow-sm bg-background/70" variants={itemVariants}><div className="p-3 rounded-full bg-primary/10 text-primary mb-4"><feature.icon className="h-6 w-6" /></div><h3 className="text-xl font-semibold mb-2">{feature.title}</h3><p className="text-muted-foreground text-sm">{feature.description}</p></motion.div>))}</div>
-                </AnimatedSection>
-
                 <AnimatedSection id="in-action" className="bg-gradient-to-b from-accent/20 to-background">
                     <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>BBU1 In Action</motion.h2><motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>See how BBU1 empowers diverse industries across the continent.</motion.p></div>
                     <motion.div className="relative rounded-xl overflow-hidden shadow-xl border h-[400px] md:h-[550px] lg:h-[700px] bg-gray-800" variants={itemVariants}>
@@ -457,19 +505,7 @@ export default function HomePage() {
                     <div className="relative z-10 text-center mb-12 max-w-3xl mx-auto"><h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2><p className="text-muted-foreground mt-2">BBU1 is engineered to not just manage your business, but to accelerate its growth and simplify complexity.</p></div>
                     <motion.div variants={{ visible: { transition: { staggerChildren: 0.1 } } }} initial="hidden" whileInView="visible" className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{siteConfig.standoutItems.map(item => (<motion.div key={item.title} variants={itemVariants}><Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all bg-background/80 border-primary/10"><CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2"><div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent></Card></motion.div>))} </motion.div>
                 </AnimatedSection>
-                
-                <AnimatedSection id="industries" className="bg-gradient-to-b from-accent/20 to-background">
-                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>Industries We Serve</motion.h2><motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Tailored solutions designed to meet the unique demands of your sector.</motion.p></div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">{siteConfig.industryItems.map((industry, index) => (<motion.div key={index} className="flex items-start p-5 border rounded-lg bg-background/70 shadow-sm" variants={itemVariants}><div className="p-3 rounded-full bg-accent text-accent-foreground mr-4 flex-shrink-0"><industry.icon className="h-6 w-6" /></div><div><h3 className="text-xl font-semibold mb-1">{industry.name}</h3><p className="text-muted-foreground text-sm">{industry.description}</p></div></motion.div>))}</div>
-                </AnimatedSection>
-
-                
-
-                <AnimatedSection id="faq" className="bg-gradient-to-b from-accent/20 to-background">
-                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>Frequently Asked Questions</motion.h2></div>
-                    <motion.div className="max-w-3xl mx-auto" variants={itemVariants}><Accordion type="single" collapsible className="w-full">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></motion.div>
-                </AnimatedSection>
-                
+                                
                 <AnimatedSection className="text-center">
                     <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden"><h2 className="text-3xl font-bold tracking-tight">Ready to Revolutionize Your Enterprise?</h2><p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p><div className="mt-8"><Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110"><Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link></Button></div></div>
                 </AnimatedSection>
