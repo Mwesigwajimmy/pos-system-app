@@ -120,7 +120,7 @@ const siteConfig = {
     ] as FeatureDetail[],
     // PLATFORM PILLARS
     platformPillars: [
-        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", backgroundImage: "/images/showcase/office-presentation-on-dashboard.jpg" },
+        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", backgroundImage: "/images/showcase/office-presentation-on-dashboard.jpg" }, // Used office-presentation-on-dashboard.jpg
         { icon: BrainCircuit, title: "AI Does The Work", description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
         { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online.", backgroundImage: "/images/showcase/education-dashboard.jpg" },
         { icon: Globe, title: "Truly Global", description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world.", backgroundImage: "/images/showcase/community-group-meeting.jpg" },
@@ -180,13 +180,10 @@ const heroImageVariants: Variants = {
     }
 };
 
-const pillarBackgroundVariants: Variants = {
-    initial: { opacity: 0, scale: 1.05 },
-    animate: {
-        opacity: 0.75, // Keeps the background slightly transparent for text
-        scale: 1,
-        transition: { duration: 1, ease: "easeOut" }
-    }
+const pillarCardContentVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }
 };
 
 
@@ -431,7 +428,7 @@ const AdvancedChatWidget = () => {
 
 // --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
-    const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS."];
+    const rotatingTexts = ["Automation where it counts. Human when it matters.", "From startup to enterprise.", "For every ambition.", "Your complete business OS."]; // Added your new text here
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers using BBU1 on a tablet." },
@@ -446,11 +443,13 @@ export default function HomePage() {
     const [activePillarIndex, setActivePillarIndex] = useState(0);
 
     useEffect(() => {
-        const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 3000);
+        // Updated text rotation interval for your new tagline
+        const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 4000); // Slower interval for the main tagline
+
         const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % slideshowContent.length); }, 8000);
         
-        // Interval for platform pillars animation - set to 15 seconds
-        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 15000); // Changed to 15 seconds
+        // Interval for platform pillars animation - set to 8 seconds for smoother interaction
+        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 8000); // Changed to 8 seconds
 
         return () => { 
             clearInterval(textInterval); 
@@ -492,6 +491,7 @@ export default function HomePage() {
                         initial="initial"
                         animate="animate"
                     >
+                        {/* Ensure this image path is correct */}
                         <Image src="/images/showcase/modern-office-analytics.jpg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
                         {/* Stronger, semi-transparent overlay for text readability */}
                         <div className="absolute inset-0 bg-black/70"></div> 
@@ -523,21 +523,22 @@ export default function HomePage() {
                         animate="animate"
                     >
                         <Image 
-                            src="/images/showcase/office-admin-bbu1.jpg" // Chosen background image for the section
+                            src="/images/showcase/office-admin-bbu1.jpg" // Confirmed path for background
                             alt="Seamless business operations with BBU1" 
                             fill 
                             style={{ objectFit: 'cover' }} 
                             className="filter brightness-[0.4]" // Darken the image significantly for better text contrast
+                            priority // Load this background image early
                         />
                     </motion.div>
 
                     <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Left Column: Heading and List of Pillars */}
-                        <div className="text-left text-white"> {/* Changed text color to white for contrast */}
+                        <div className="text-left text-white">
                             <h2 className="text-4xl font-extrabold tracking-tight mb-6">
                                 An Operating System <br /> Engineered for Growth
                             </h2>
-                            <p className="text-lg text-gray-200 mt-2 mb-8"> {/* Changed text color for contrast */}
+                            <p className="text-lg text-gray-200 mt-2 mb-8">
                                 BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.
                             </p>
                             <ul className="space-y-6">
@@ -546,12 +547,12 @@ export default function HomePage() {
                                         key={pillar.title}
                                         className={cn(
                                             "flex items-center gap-4 cursor-pointer p-3 rounded-lg transition-all",
-                                            activePillarIndex === index ? "bg-white/20 text-white font-bold shadow-lg" : "text-gray-300 hover:bg-white/10 hover:text-white" // Adjust colors for dark background
+                                            activePillarIndex === index ? "bg-white/20 text-white font-bold shadow-lg" : "text-gray-300 hover:bg-white/10 hover:text-white"
                                         )}
                                         onClick={() => setActivePillarIndex(index)}
                                         variants={itemVariants}
                                     >
-                                        <pillar.icon className="h-7 w-7 flex-shrink-0 text-primary" /> {/* Kept icon primary color */}
+                                        <pillar.icon className="h-7 w-7 flex-shrink-0 text-primary" />
                                         <span className="text-xl">{pillar.title}</span>
                                     </motion.li>
                                 ))}
@@ -560,34 +561,35 @@ export default function HomePage() {
 
                         {/* Right Column: Animated Pillar Content */}
                         <div className="relative h-[450px] flex items-center justify-center">
-                            <AnimatePresence mode="wait">
+                            <AnimatePresence mode="wait" initial={false}> {/* initial={false} prevents exit animation on first render */}
                                 {/* Card for the active pillar with its own background image */}
                                 <motion.div
                                     key={activePillarIndex}
-                                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -30, scale: 0.95 }}
-                                    transition={{ duration: 0.7, ease: "easeInOut" }}
-                                    className="absolute w-full"
+                                    initial="hidden"
+                                    animate="visible"
+                                    exit="exit"
+                                    variants={pillarCardContentVariants} // Use specific variants for smoother transitions
+                                    className="absolute inset-0 flex items-center justify-center" // Ensure it takes full space and centers content
                                 >
-                                    <Card className="text-left h-full overflow-hidden relative">
+                                    <Card className="text-left h-full w-full overflow-hidden relative">
                                         <Image
                                             src={siteConfig.platformPillars[activePillarIndex].backgroundImage}
                                             alt={siteConfig.platformPillars[activePillarIndex].title}
                                             fill
                                             style={{ objectFit: 'cover' }}
                                             className="absolute inset-0 z-0 filter brightness-[0.3]" // Even darker overlay for card image
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Added sizes prop for better performance
                                         />
-                                        <div className="relative z-10 p-8 text-white"> {/* Ensure text is white and above image */}
+                                        <div className="relative z-10 p-8 text-white flex flex-col justify-center h-full"> {/* Ensure text is white and above image */}
                                             <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-                                                <div className="p-4 bg-primary/10 rounded-full">
+                                                <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
                                                     {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
                                                 </div>
                                                 <CardTitle className="text-3xl font-bold">
                                                     {siteConfig.platformPillars[activePillarIndex].title}
                                                 </CardTitle>
                                             </CardHeader>
-                                            <CardContent className="mt-4">
+                                            <CardContent className="mt-4 flex-grow"> {/* Allow content to grow */}
                                                 <p className="text-lg leading-relaxed">
                                                     {siteConfig.platformPillars[activePillarIndex].description}
                                                 </p>
@@ -600,7 +602,7 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                {/* BBU1 in Action Section */}
+                {/* BBU1 in Action Section (Industries Slideshow) */}
                 <AnimatedSection id="in-action" className="bg-gradient-to-b from-accent/20 to-background">
                     <div className="text-center mb-12">
                         <motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>
@@ -611,13 +613,13 @@ export default function HomePage() {
                         </motion.p>
                     </div>
                     <motion.div className="relative rounded-xl overflow-hidden shadow-xl border h-[400px] md:h-[550px] lg:h-[700px] bg-gray-800" variants={itemVariants}>
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="wait" initial={false}> {/* initial={false} to prevent a blank state on first load */}
                             <motion.div 
                                 key={currentSlideIndex} 
-                                initial={{ opacity: 0, scale: 1.05 }} 
-                                animate={{ opacity: 1, scale: 1 }} 
-                                exit={{ opacity: 0, scale: 0.95 }} 
-                                transition={{ duration: 1.2, ease: "easeInOut" }} 
+                                initial={{ opacity: 0, x: 50 }} // Slide in from right
+                                animate={{ opacity: 1, x: 0 }} 
+                                exit={{ opacity: 0, x: -50 }} // Slide out to left
+                                transition={{ duration: 0.8, ease: "easeInOut" }} // Smoother transition duration
                                 className="absolute inset-0"
                             >
                                 <Image 
@@ -626,6 +628,8 @@ export default function HomePage() {
                                     layout="fill" 
                                     objectFit="cover" 
                                     className="filter brightness-[0.6]" // Slightly brighter for this section's image
+                                    priority={currentSlideIndex === 0} // Prioritize first image, others lazy load
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw" // Added sizes prop
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
