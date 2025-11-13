@@ -214,8 +214,13 @@ const MegaMenuHeader = () => {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isIos, setIsIos] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
+    // FIX: Add a 'mounted' state to prevent hydration mismatch for PWA install buttons.
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // FIX: Set mounted to true only on the client-side.
+        setMounted(true);
+
         if (typeof window !== 'undefined') {
             if (window.matchMedia('(display-mode: standalone)').matches) {
                 setIsStandalone(true);
@@ -305,7 +310,8 @@ const MegaMenuHeader = () => {
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
-                    {showAnyInstallButton && (
+                    {/* FIX: Conditionally render these buttons only when the component is mounted on the client. */}
+                    {mounted && showAnyInstallButton && (
                         <>
                             {isIos ? (
                                 <Dialog>
@@ -337,7 +343,8 @@ const MegaMenuHeader = () => {
                     <ModeToggle />
                 </div>
                 <div className="lg:hidden flex items-center gap-2">
-                     {showAnyInstallButton && !isIos && (
+                     {/* FIX: Conditionally render this button only when the component is mounted on the client. */}
+                     {mounted && showAnyInstallButton && !isIos && (
                          <Button variant="ghost" size="icon" onClick={handleInstallClick} disabled={!deferredPrompt} aria-label="Install App">
                             <Download className="h-6 w-6" />
                         </Button>
@@ -621,7 +628,7 @@ export default function HomePage() {
         }, 15000);
         return () => clearInterval(imageInterval);
     }, [slideshowContent.length]);
-
+    
     // --- COOKIE CONSENT LOGIC AND STATE ---
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({
         ...acc,
@@ -631,6 +638,9 @@ export default function HomePage() {
     const [showCookieBanner, setShowCookieBanner] = useState(false);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
     const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
+
+    // FIX: Add a single 'mounted' state here to control all client-side-only components in this page.
+    const [mounted, setMounted] = useState(false);
 
     const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
         if (typeof window === 'undefined') return;
@@ -717,6 +727,8 @@ export default function HomePage() {
     }, [initialCookiePreferences, applyCookiePreferences]);
 
     useEffect(() => {
+        // FIX: Set mounted to true after the initial render.
+        setMounted(true);
         initializeCookiePreferences();
     }, [initializeCookiePreferences]);
 
@@ -847,72 +859,75 @@ export default function HomePage() {
                     </div>
                 </AnimatedSection>
             </main>
-            <AdvancedChatWidget />
+            {/* FIX: Conditionally render the chat widget only when the component is mounted on the client. */}
+            {mounted && <AdvancedChatWidget />}
             <LandingFooter onManageCookies={openCookiePreferences} />
 
-            {/* --- COOKIE CONSENT BANNER --- */}
-            <AnimatePresence>
-                {showCookieBanner && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 100 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 100 }}
-                        className="fixed bottom-0 left-0 right-0 z-[100] p-4"
-                    >
-                        <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
-                                </CardTitle>
-                                {!isCustomizingCookies ? ( // Only show description if not customizing
-                                    <CardDescription>
-                                        We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <button className="text-primary hover:underline font-semibold">Privacy Policy</button>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-3xl">
-                                                <DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>
-                                                {siteConfig.privacyPolicy}
-                                            </DialogContent>
-                                        </Dialog>.
-                                    </CardDescription>
-                                ) : null} {/* Explicitly return null if not displaying description */}
-                            </CardHeader>
-                            {!isCustomizingCookies ? (
-                                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                                    <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
-                                    <Button onClick={handleAcceptAllCookies}>Accept All</Button>
-                                </CardFooter>
-                            ) : (
-                                <CardContent className="space-y-4 pt-0">
-                                    {siteConfig.cookieCategories.map(category => (
-                                        <div key={category.id} className="flex items-start space-x-3 py-2 border-t first:border-t-0">
-                                            <Checkbox
-                                                id={category.id}
-                                                checked={cookiePreferences[category.id]}
-                                                onCheckedChange={() => toggleCookiePreference(category.id as CookieCategoryKey)}
-                                                disabled={category.isRequired}
-                                                className="mt-1"
-                                            />
-                                            <div className="grid gap-1.5 leading-none">
-                                                <label htmlFor={category.id} className="text-sm font-medium">
-                                                    {category.name} {category.isRequired && <span className="text-muted-foreground text-xs">(Always Active)</span>}
-                                                </label>
-                                                <p className="text-sm text-muted-foreground">{category.description}</p>
+            {/* FIX: Conditionally render the entire cookie banner logic only when mounted. */}
+            {mounted && (
+                <AnimatePresence>
+                    {showCookieBanner && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 100 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 100 }}
+                            className="fixed bottom-0 left-0 right-0 z-[100] p-4"
+                        >
+                            <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
+                                    </CardTitle>
+                                    {!isCustomizingCookies ? ( // Only show description if not customizing
+                                        <CardDescription>
+                                            We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <button className="text-primary hover:underline font-semibold">Privacy Policy</button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-3xl">
+                                                    <DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>
+                                                    {siteConfig.privacyPolicy}
+                                                </DialogContent>
+                                            </Dialog>.
+                                        </CardDescription>
+                                    ) : null} {/* Explicitly return null if not displaying description */}
+                                </CardHeader>
+                                {!isCustomizingCookies ? (
+                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
+                                        <Button onClick={handleAcceptAllCookies}>Accept All</Button>
+                                    </CardFooter>
+                                ) : (
+                                    <CardContent className="space-y-4 pt-0">
+                                        {siteConfig.cookieCategories.map(category => (
+                                            <div key={category.id} className="flex items-start space-x-3 py-2 border-t first:border-t-0">
+                                                <Checkbox
+                                                    id={category.id}
+                                                    checked={cookiePreferences[category.id]}
+                                                    onCheckedChange={() => toggleCookiePreference(category.id as CookieCategoryKey)}
+                                                    disabled={category.isRequired}
+                                                    className="mt-1"
+                                                />
+                                                <div className="grid gap-1.5 leading-none">
+                                                    <label htmlFor={category.id} className="text-sm font-medium">
+                                                        {category.name} {category.isRequired && <span className="text-muted-foreground text-xs">(Always Active)</span>}
+                                                    </label>
+                                                    <p className="text-sm text-muted-foreground">{category.description}</p>
+                                                </div>
                                             </div>
+                                        ))}
+                                        <div className="flex justify-end gap-2 pt-4 border-t">
+                                            <Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
+                                            <Button onClick={handleSaveCookiePreferences}>Save Preferences</Button>
                                         </div>
-                                    ))}
-                                    <div className="flex justify-end gap-2 pt-4 border-t">
-                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
-                                        <Button onClick={handleSaveCookiePreferences}>Save Preferences</Button>
-                                    </div>
-                                </CardContent>
-                            )}
-                        </Card>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                    </CardContent>
+                                )}
+                            </Card>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            )}
         </>
     );
 }
