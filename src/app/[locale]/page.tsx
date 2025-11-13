@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, forwardRef, type ReactNode, type ElementRef, type ComponentPropsWithoutRef, useEffect } from 'react';
+import React, { useState, useRef, forwardRef, type ReactNode, type ElementRef, type ComponentPropsWithoutRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -10,12 +10,13 @@ import { type CoreMessage } from 'ai';
 // --- UI Components from shadcn/ui ---
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 // --- Utils & Icons ---
 import { cn } from "@/lib/utils";
 import {
@@ -25,8 +26,18 @@ import {
     Users, Utensils, WifiOff, X, ArrowRight,
     Zap, ShieldHalf, LayoutGrid, Lightbulb,
     Wallet, ClipboardList, Package, UserCog, Files,
-    Download, Share // --- ADDED 'Share' ICON ---
+    Download, Share
 } from 'lucide-react';
+
+// --- Global Type Declarations for external scripts (for TypeScript) ---
+declare global {
+    interface Window {
+        dataLayer: any[];
+        gtag: (...args: any[]) => void;
+        fbq: (...args: any[]) => void;
+        _fbq: any;
+    }
+}
 
 // --- Type Definitions ---
 interface FeatureItem { icon: LucideIcon; title: string; description: string; }
@@ -34,6 +45,43 @@ interface IndustryItem { name: string; icon: LucideIcon; description: string; }
 interface IndustryCategory { category: string; items: IndustryItem[]; }
 interface FaqItem { q: string; a: ReactNode; }
 interface WhyUsItem { icon: LucideIcon; title: string; description: string; }
+
+// --- Cookie Consent Types ---
+type CookieCategoryKey = 'essential' | 'analytics' | 'marketing';
+interface CookieCategoryInfo {
+    id: CookieCategoryKey;
+    name: string;
+    description: string;
+    isRequired: boolean; // Cannot be unchecked
+    defaultChecked: boolean;
+}
+type CookiePreferences = {
+    [key in CookieCategoryKey]: boolean;
+};
+
+// Helper to set a cookie
+const setCookie = (name: string, value: string, days: number) => {
+    if (typeof document === 'undefined') return;
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
+};
+
+// Helper to get a cookie
+const getCookie = (name: string): string | null => {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+    return null;
+};
+
+// Helper to clear a cookie (set expiry to past)
+const clearCookie = (name: string) => {
+    if (typeof document === 'undefined') return;
+    document.cookie = `${name}=; Max-Age=-99999999; path=/;SameSite=Lax`;
+};
 
 // --- Centralized Site Configuration ---
 const siteConfig = {
@@ -86,7 +134,70 @@ const siteConfig = {
        { q: 'What kind of support is offered?', a: 'Enterprise plans include dedicated onboarding, an account manager, priority support via WhatsApp or phone, and a Service Level Agreement (SLA) guaranteeing uptime.' },
     ] as FaqItem[],
     termsOfService: ( <div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms govern your use of our Service. By using our Service, you agree to these terms...</p></div> ),
-    privacyPolicy: ( <div className="space-y-4 text-sm"><p>We collect Personal, Transactional, and Usage Data to provide and improve our Service. Your data is secured with bank-level encryption and is never sold...</p></div> ),
+    privacyPolicy: (
+        <div className="space-y-4 text-sm">
+            <h3 className="text-lg font-bold">Privacy Policy</h3>
+            <p>This Privacy Policy describes how BBU1 ("we", "us", or "our") collects, uses, and discloses your information, including Personal Data and data collected through cookies and similar technologies, when you use our website and services.</p>
+
+            <h4 className="font-semibold mt-4">1. Information We Collect</h4>
+            <p>We collect several types of information:</p>
+            <ul className="list-disc list-inside ml-4">
+                <li><strong>Personal Data:</strong> Information that can be used to identify you (e.g., name, email address, phone number, business ID).</li>
+                <li><strong>Transactional Data:</strong> Details about your use of our services (e.g., purchases, project data, inventory movements).</li>
+                <li><strong>Usage Data:</strong> Information on how the Service is accessed and used, which may include your computer's IP address, browser type, browser version, the pages of our Service that you visit, the time and date of your visit, the time spent on those pages, unique device identifiers and other diagnostic data.</li>
+            </ul>
+
+            <h4 className="font-semibold mt-4">2. Cookies and Tracking Technologies</h4>
+            <p>We use cookies and similar tracking technologies to track the activity on our Service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier. Cookies are sent to your browser from a website and stored on your device.</p>
+            <p>We use the following types of cookies:</p>
+            <ul className="list-disc list-inside ml-4">
+                <li><strong>Essential Cookies:</strong> These cookies are strictly necessary to provide you with services available through our website and to use some of its features, such as accessing secure areas. Without these cookies, services like secure login cannot be provided.</li>
+                <li><strong>Analytics Cookies:</strong> These cookies collect information that is used either in aggregate form to help us understand how our website is being used or how effective our marketing campaigns are, or to help us customize our website for you. We use tools like Google Analytics for this purpose. <span className="text-muted-foreground">(These are only activated with your consent.)</span></li>
+                <li><strong>Marketing Cookies:</strong> These cookies are used to make advertising messages more relevant to you and your interests. They perform functions like preventing the same ad from continuously reappearing, ensuring that ads are properly displayed for advertisers, and in some cases, selecting advertisements that are based on your interests. <span className="text-muted-foreground">(These are only activated with your consent.)</span></li>
+            </ul>
+            <p>You have the right to decide whether to accept or reject cookies. You can exercise your cookie preferences by clicking on the "Customize" button in our cookie consent banner or by using the "Manage Cookie Preferences" link in the footer. Most web browsers allow you to manage cookies through their settings. Please note that if you disable essential cookies, some parts of our website may not function properly.</p>
+
+            <h4 className="font-semibold mt-4">3. How We Use Your Data</h4>
+            <p>We use the collected data for various purposes:</p>
+            <ul className="list-disc list-inside ml-4">
+                <li>To provide and maintain our Service.</li>
+                <li>To notify you about changes to our Service.</li>
+                <li>To allow you to participate in interactive features of our Service when you choose to do so.</li>
+                <li>To provide customer support.</li>
+                <li>To monitor the usage of our Service.</li>
+                <li>To detect, prevent and address technical issues.</li>
+                <li>To provide you with news, special offers and general information about other goods, services and events which we offer that are similar to those that you have already purchased or enquired about unless you have opted not to receive such information.</li>
+            </ul>
+
+            <h4 className="font-semibold mt-4">4. Security of Data</h4>
+            <p>Your data is secured with bank-level encryption and stored in a multi-tenant architecture with PostgreSQL's Row-Level Security, ensuring complete isolation and protection. We strive to use commercially acceptable means to protect your Personal Data, but remember that no method of transmission over the Internet or method of electronic storage is 100% secure.</p>
+
+            <p className="mt-6">By continuing to use our service, you acknowledge you have read and understood this Privacy Policy.</p>
+        </div>
+    ),
+    cookieCategories: [
+        {
+            id: 'essential',
+            name: 'Essential Cookies',
+            description: 'These cookies are crucial for the website to function properly and cannot be switched off in our systems. They are usually set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms.',
+            isRequired: true,
+            defaultChecked: true,
+        },
+        {
+            id: 'analytics',
+            name: 'Analytics Cookies',
+            description: 'These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous.',
+            isRequired: false,
+            defaultChecked: false,
+        },
+        {
+            id: 'marketing',
+            name: 'Marketing Cookies',
+            description: 'These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device.',
+            isRequired: false,
+            defaultChecked: false,
+        }
+    ] as CookieCategoryInfo[],
 };
 
 // --- Animation Variants ---
@@ -112,12 +223,12 @@ const MegaMenuHeader = () => {
 
     useEffect(() => {
         // 1. Check if the app is already installed and running in standalone mode
-        if (window.matchMedia('(display-mode: standalone)').matches) {
+        if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
             setIsStandalone(true);
         }
 
         // 2. Detect if the user is on an iOS device
-        const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        const isIosDevice = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
         setIsIos(isIosDevice);
 
         // 3. Listen for the browser's install prompt event (for non-iOS devices)
@@ -126,10 +237,14 @@ const MegaMenuHeader = () => {
             setDeferredPrompt(e);
         };
         
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        if (typeof window !== 'undefined') {
+            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        }
 
         return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            }
         };
     }, []);
 
@@ -323,13 +438,56 @@ const MegaMenuHeader = () => {
 };
 
 // --- Footer Component ---
-const LandingFooter = () => ( <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10"> <div className="container mx-auto px-4 pt-12 pb-6"> <div className="grid grid-cols-2 md:grid-cols-5 gap-8"> <div className="col-span-2"> <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3> <p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p> <div className="flex items-center gap-5 mt-6"> <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a> <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a> <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a> </div> </div> <div> <h4 className="font-semibold text-base mb-3">Product</h4> <ul className="space-y-2 text-sm"> <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Features</span></li> <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Industries</span></li> </ul> </div> <div> <h4 className="font-semibold text-base mb-3">Company</h4> <ul className="space-y-2 text-sm"> <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li> <li><Link href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li> </ul> </div> <div> <h4 className="font-semibold text-base mb-3">Legal</h4> <ul className="space-y-2 text-sm"> <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li> <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li> </ul> </div> </div> <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"> <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p> <p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p> </div> </div> </footer> );
+const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
+    <footer className="relative border-t bg-gradient-to-t from-background/50 via-background to-background/90 backdrop-blur-sm z-10">
+        <div className="container mx-auto px-4 pt-12 pb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+                <div className="col-span-2">
+                    <h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p>
+                    <div className="flex items-center gap-5 mt-6">
+                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a>
+                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a>
+                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a>
+                    </div>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-base mb-3">Product</h4>
+                    <ul className="space-y-2 text-sm">
+                        <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Features</span></li>
+                        <li><span className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">Industries</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-base mb-3">Company</h4>
+                    <ul className="space-y-2 text-sm">
+                        <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li>
+                        <li><Link href="#faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="font-semibold text-base mb-3">Legal</h4>
+                    <ul className="space-y-2 text-sm">
+                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li>
+                        <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li>
+                        {/* New link to open cookie preferences */}
+                        <li><button onClick={onManageCookies} className="text-muted-foreground hover:text-primary text-left transition-colors">Manage Cookie Preferences</button></li>
+                    </ul>
+                </div>
+            </div>
+            <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground">
+                <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
+                <p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p>
+            </div>
+        </div>
+    </footer>
+);
 
 // --- Reusable Animated Section Component ---
 const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => ( <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}> <div className="container mx-auto px-4 relative z-10">{children}</div> </motion.section> );
 
 // --- AI Chat Widget ---
-const getCookie = (name: string): string | null => { if (typeof document === 'undefined') return null; const value = `; ${document.cookie}`; const parts = value.split(`; ${name}=`); if (parts.length === 2) return parts.pop()?.split(';').shift() || null; return null; };
+// Re-using the getCookie from above. No change needed for this specific function within the chat widget.
 const renderMessageContent = (content: CoreMessage['content']): ReactNode => { if (typeof content === 'string') return content; return content.map((part, index) => { if ((part as any).type === 'text') { return <React.Fragment key={index}>{(part as any).text}</React.Fragment>; } return null; }).filter(Boolean); };
 const AdvancedChatWidget = () => { const [isOpen, setIsOpen] = useState(false); const [userContext, setUserContext] = useState({ businessId: '', userId: '' }); const [chatInput, setChatInput] = useState(''); useEffect(() => { const businessId = getCookie('business_id'); const userId = getCookie('user_id'); if (businessId && userId) setUserContext({ businessId, userId }); }, []); const chat: any = useChat({} as any); useEffect(() => { if (chat.messages.length === 0 && chat.setMessages) { chat.setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any]); } }, [chat.messages.length, chat.setMessages]); const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const trimmedInput = chatInput.trim(); if (!trimmedInput) return; chat.sendMessage({ content: trimmedInput, body: { businessId: userContext.businessId, userId: userContext.userId }}); setChatInput(''); }; const scrollRef = useRef<HTMLDivElement>(null); useEffect(() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; } }, [chat.messages]); return ( <> <AnimatePresence> {isOpen && ( <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50"> <Card className="h-full w-full flex flex-col shadow-2xl"><CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader><CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">{chat.messages.map((m: CoreMessage, i: number) => (<div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>{m.role === 'assistant' && <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0"><Bot className="h-4 w-4" /></div>}<div className={cn('rounded-lg p-3 max-w-[85%] break-words', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{renderMessageContent(m.content)}</div>{m.role === 'user' && <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-bold flex-shrink-0 border"><Users className="h-4 w-4" /></div>}</div>))}{chat.isLoading && <div className="text-sm text-muted-foreground animate-pulse">Aura is thinking...</div>}</div></ScrollArea><div className="p-4 border-t"><form onSubmit={handleChatSubmit} className="flex items-center gap-2"><Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Aura anything..." disabled={chat.isLoading || !userContext.userId} /><Button type="submit" size="icon" disabled={chat.isLoading || !userContext.userId || !chatInput.trim()}><Send className="h-4 w-4" /></Button></form></div></CardContent></Card> </motion.div> )} </AnimatePresence> <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button> </> ); };
 
@@ -367,6 +525,185 @@ export default function HomePage() {
         }, 15000);
         return () => clearInterval(imageInterval);
     }, [slideshowContent.length]);
+
+
+    // --- COOKIE CONSENT LOGIC AND STATE ---
+    const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({
+        ...acc,
+        [cat.id]: cat.defaultChecked,
+    }), {} as CookiePreferences);
+
+    const [showCookieBanner, setShowCookieBanner] = useState(false);
+    const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
+    const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
+
+    // Function to apply cookie preferences (e.g., load/unload scripts)
+    const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
+        if (typeof window === 'undefined') return; // Ensure client-side
+
+        // --- Google Analytics 4 (GA4) with Consent Mode v2 ---
+        // Initialize gtag if it's not already there
+        if (!window.dataLayer) {
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function() { window.dataLayer.push(arguments); };
+        }
+
+        // Set default consent state *before* loading GA script
+        window.gtag('consent', 'default', {
+            'analytics_storage': prefs.analytics ? 'granted' : 'denied',
+            'ad_storage': prefs.marketing ? 'granted' : 'denied',
+            'ad_user_data': prefs.marketing ? 'granted' : 'denied',
+            'ad_personalization': prefs.marketing ? 'granted' : 'denied',
+            'wait_for_update': 500 // Wait up to 500ms for consent update
+        });
+
+        // Load GA script if not already loaded (only once)
+        if (!document.querySelector('#google-analytics-script')) {
+            const gaScript = document.createElement('script');
+            gaScript.id = 'google-analytics-script';
+            gaScript.src = `https://www.googletagmanager.com/gtag/js?id=G-YOUR_GA_MEASUREMENT_ID`; // !!! REPLACE WITH YOUR ACTUAL GA4 MEASUREMENT ID !!!
+            gaScript.async = true;
+            document.head.appendChild(gaScript);
+
+            const gaConfigScript = document.createElement('script');
+            gaConfigScript.id = 'google-analytics-config';
+            gaConfigScript.innerHTML = `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-YOUR_GA_MEASUREMENT_ID', { // !!! REPLACE WITH YOUR ACTUAL GA4 MEASUREMENT ID !!!
+                  'anonymize_ip': true // Good practice for privacy
+                });
+            `;
+            document.head.appendChild(gaConfigScript);
+            console.log("Google Analytics scripts initialized.");
+        } else {
+            // If scripts are already loaded, just update consent
+            window.gtag('consent', 'update', {
+                'analytics_storage': prefs.analytics ? 'granted' : 'denied',
+                'ad_storage': prefs.marketing ? 'granted' : 'denied',
+                'ad_user_data': prefs.marketing ? 'granted' : 'denied',
+                'ad_personalization': prefs.marketing ? 'granted' : 'denied'
+            });
+            console.log("Google Analytics consent updated.");
+        }
+
+
+        // --- Facebook Pixel ---
+        const fbPixelId = 'YOUR_FACEBOOK_PIXEL_ID'; // !!! REPLACE WITH YOUR ACTUAL FACEBOOK PIXEL ID !!!
+        if (prefs.marketing) {
+            // Load Facebook Pixel script if not already loaded
+            if (!document.querySelector('#facebook-pixel-script')) {
+                const fbScript = document.createElement('script');
+                fbScript.id = 'facebook-pixel-script';
+                fbScript.innerHTML = `
+                  !function(f,b,e,v,n,t,s)
+                  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                  n.queue=[];t=b.createElement(e);t.async=!0;
+                  t.src=v;s=b.getElementsByTagName(e)[0];
+                  s.parentNode.insertBefore(t,s)}(window, document,'script',
+                  'https://connect.facebook.net/en_US/fbevents.js');
+                  fbq('init', '${fbPixelId}');
+                  fbq('track', 'PageView');
+                `;
+                document.head.appendChild(fbScript);
+                console.log("Facebook Pixel script loaded.");
+            } else {
+                // If script is already there, ensure it's active for tracking
+                window.fbq('track', 'PageView');
+                console.log("Facebook Pixel tracking activated.");
+            }
+        } else {
+            // Remove Facebook Pixel script and disable tracking if consent is denied
+            const fbScript = document.querySelector('#facebook-pixel-script');
+            if (fbScript) {
+                fbScript.remove();
+                // Clear any existing fbq functions to prevent further tracking
+                if (window.fbq) {
+                    window.fbq = function() {};
+                    window._fbq = undefined;
+                }
+                console.log("Facebook Pixel script removed and tracking disabled.");
+            }
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+    // Function to initialize cookie preferences from storage
+    const initializeCookiePreferences = useCallback(() => {
+        if (typeof window === 'undefined') return; // Ensure client-side
+
+        const consentCookie = getCookie('bbu1_cookie_consent');
+        if (!consentCookie) {
+            setShowCookieBanner(true); // No consent found, show banner
+            setCookiePreferences(initialCookiePreferences); // Reset to defaults
+            // Apply default preferences (essential) or wait for user interaction
+            applyCookiePreferences(initialCookiePreferences);
+        } else {
+            try {
+                const storedPrefs: CookiePreferences = JSON.parse(consentCookie);
+                setCookiePreferences(storedPrefs);
+                setShowCookieBanner(false); // Consent found, hide banner
+                applyCookiePreferences(storedPrefs); // Apply effects of consent
+            } catch (e) {
+                console.error("Failed to parse cookie consent cookie:", e);
+                setShowCookieBanner(true); // Corrupted cookie, show banner
+                setCookiePreferences(initialCookiePreferences);
+                applyCookiePreferences(initialCookiePreferences);
+            }
+        }
+    }, [initialCookiePreferences, applyCookiePreferences]);
+
+
+    // Effect to run on initial load to check for consent
+    useEffect(() => {
+        initializeCookiePreferences();
+    }, [initializeCookiePreferences]);
+
+    const handleAcceptAllCookies = () => {
+        const allTruePrefs: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({
+            ...acc,
+            [cat.id]: true,
+        }), {} as CookiePreferences);
+        setCookiePreferences(allTruePrefs);
+        setCookie('bbu1_cookie_consent', JSON.stringify(allTruePrefs), 365);
+        setShowCookieBanner(false);
+        applyCookiePreferences(allTruePrefs);
+    };
+
+    const handleSaveCookiePreferences = () => {
+        setCookie('bbu1_cookie_consent', JSON.stringify(cookiePreferences), 365);
+        setShowCookieBanner(false);
+        setIsCustomizingCookies(false);
+        applyCookiePreferences(cookiePreferences);
+    };
+
+    const toggleCookiePreference = (id: CookieCategoryKey) => {
+        setCookiePreferences(prev => ({
+            ...prev,
+            [id]: !prev[id],
+        }));
+    };
+
+    const openCookiePreferences = () => {
+        // When opening preferences, load current saved state or defaults
+        const consentCookie = getCookie('bbu1_cookie_consent');
+        if (consentCookie) {
+            try {
+                setCookiePreferences(JSON.parse(consentCookie));
+            } catch (e) {
+                console.error("Failed to parse cookie consent for customization:", e);
+                setCookiePreferences(initialCookiePreferences);
+            }
+        } else {
+            setCookiePreferences(initialCookiePreferences);
+        }
+        setShowCookieBanner(true);
+        setIsCustomizingCookies(true);
+    };
+    // --- END COOKIE CONSENT LOGIC AND STATE ---
 
 
     return (
@@ -493,7 +830,78 @@ export default function HomePage() {
 
             </main>
             <AdvancedChatWidget />
-            <LandingFooter />
+            <LandingFooter onManageCookies={openCookiePreferences} /> {/* Pass handler to Footer */}
+
+            {/* --- COOKIE CONSENT BANNER (EMBEDDED) --- */}
+            <AnimatePresence>
+                {showCookieBanner && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 100 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 100 }}
+                        transition={{ duration: 0.5, ease: 'easeInOut' }}
+                        className="fixed bottom-0 left-0 right-0 z-[100] p-4"
+                    >
+                        <Card className="max-w-xl mx-auto shadow-2xl border-2 border-primary/20 bg-background/90 backdrop-blur-md">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
+                                </CardTitle>
+                                {!isCustomizingCookies && (
+                                    <CardDescription>
+                                        We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.
+                                        You can manage your preferences below or learn more in our <DialogTrigger asChild><button className="text-primary hover:underline font-semibold">Privacy Policy</button></DialogTrigger>.
+                                    </CardDescription>
+                                )}
+                            </CardHeader>
+                            {!isCustomizingCookies ? (
+                                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                                    <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>
+                                        Customize
+                                    </Button>
+                                    <Button onClick={handleAcceptAllCookies}>
+                                        Accept All <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </CardFooter>
+                            ) : (
+                                <CardContent className="space-y-4 pt-0">
+                                    {siteConfig.cookieCategories.map(category => (
+                                        <div key={category.id} className="flex items-start space-x-3 py-2 border-t first:border-t-0">
+                                            <Checkbox
+                                                id={category.id}
+                                                checked={cookiePreferences[category.id]}
+                                                onCheckedChange={() => toggleCookiePreference(category.id as CookieCategoryKey)}
+                                                disabled={category.isRequired}
+                                                className="mt-1"
+                                            />
+                                            <div className="grid gap-1.5 leading-none">
+                                                <label
+                                                    htmlFor={category.id}
+                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                >
+                                                    {category.name} {category.isRequired && <span className="text-muted-foreground text-xs">(Always Active)</span>}
+                                                </label>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {category.description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-end gap-2 pt-4 border-t">
+                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>
+                                            Back
+                                        </Button>
+                                        <Button onClick={handleSaveCookiePreferences}>
+                                            Save Preferences
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {/* --- END COOKIE CONSENT BANNER --- */}
         </>
     );
 }
