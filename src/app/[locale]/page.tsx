@@ -165,6 +165,30 @@ const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { op
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
 
+const heroImageVariants: Variants = {
+    initial: { scale: 1, x: '0%', y: '0%' },
+    animate: {
+        scale: [1, 1.05, 1], // Zoom in slightly and back
+        x: ['0%', '2%', '0%'], // Pan slightly right and back
+        y: ['0%', '2%', '0%'], // Pan slightly down and back
+        transition: {
+            duration: 20, // Duration of one complete animation cycle
+            ease: "easeInOut",
+            repeat: Infinity,
+            repeatType: "reverse"
+        }
+    }
+};
+
+const pillarBackgroundVariants: Variants = {
+    initial: { opacity: 0, scale: 1.05 },
+    animate: {
+        opacity: 0.75, // Keeps the background slightly transparent for text
+        scale: 1,
+        transition: { duration: 1, ease: "easeOut" }
+    }
+};
+
 
 // --- Reusable UI Components ---
 const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
@@ -461,11 +485,17 @@ export default function HomePage() {
             <MegaMenuHeader />
             <main>
                 {/* Hero Section */}
-                <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center">
-                    <div className="absolute inset-0 z-0">
+                <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[600px] flex items-center justify-center">
+                    <motion.div 
+                        className="absolute inset-0 z-0"
+                        variants={heroImageVariants}
+                        initial="initial"
+                        animate="animate"
+                    >
                         <Image src="/images/showcase/modern-office-analytics.jpg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>
-                    </div>
+                        {/* Stronger, semi-transparent overlay for text readability */}
+                        <div className="absolute inset-0 bg-black/70"></div> 
+                    </motion.div>
                     <div className="container mx-auto relative z-10 text-white">
                         <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
                             <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20"><Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS</motion.span>
@@ -477,7 +507,7 @@ export default function HomePage() {
                                     </AnimatePresence>
                                 </div>
                             </motion.h1>
-                            <motion.p className="mt-6 text-lg leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.</motion.p>
+                            <motion.p className="mt-6 text-xl leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.</motion.p>
                             <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}><Button asChild size="lg"><Link href="/signup">Start Free Trial</Link></Button><Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button></motion.div>
                         </motion.div>
                     </div>
@@ -485,19 +515,19 @@ export default function HomePage() {
                 
                 {/* Platform Pillars Section */}
                 <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-gradient-to-b from-background to-accent/20">
-                    {/* Background image for the entire section */}
+                    {/* Background image for the entire section with animation */}
                     <motion.div 
                         className="absolute inset-0 z-0"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.75 }} // Set opacity to 0.75
-                        transition={{ duration: 1 }}
+                        variants={heroImageVariants} // Re-using for subtle animation
+                        initial="initial"
+                        animate="animate"
                     >
                         <Image 
                             src="/images/showcase/office-admin-bbu1.jpg" // Chosen background image for the section
                             alt="Seamless business operations with BBU1" 
                             fill 
                             style={{ objectFit: 'cover' }} 
-                            className="filter brightness-[0.6]" // Darken the image slightly for better text contrast
+                            className="filter brightness-[0.4]" // Darken the image significantly for better text contrast
                         />
                     </motion.div>
 
@@ -531,6 +561,7 @@ export default function HomePage() {
                         {/* Right Column: Animated Pillar Content */}
                         <div className="relative h-[450px] flex items-center justify-center">
                             <AnimatePresence mode="wait">
+                                {/* Card for the active pillar with its own background image */}
                                 <motion.div
                                     key={activePillarIndex}
                                     initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -539,14 +570,13 @@ export default function HomePage() {
                                     transition={{ duration: 0.7, ease: "easeInOut" }}
                                     className="absolute w-full"
                                 >
-                                    <Card className="text-left h-full overflow-hidden relative"> {/* Added relative and overflow-hidden */}
-                                        {/* Individual background image for the card */}
+                                    <Card className="text-left h-full overflow-hidden relative">
                                         <Image
                                             src={siteConfig.platformPillars[activePillarIndex].backgroundImage}
                                             alt={siteConfig.platformPillars[activePillarIndex].title}
                                             fill
                                             style={{ objectFit: 'cover' }}
-                                            className="absolute inset-0 z-0 opacity-100 filter brightness-[0.5]" // Opacity 100%, darkened for text contrast
+                                            className="absolute inset-0 z-0 filter brightness-[0.3]" // Even darker overlay for card image
                                         />
                                         <div className="relative z-10 p-8 text-white"> {/* Ensure text is white and above image */}
                                             <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
@@ -572,10 +602,48 @@ export default function HomePage() {
 
                 {/* BBU1 in Action Section */}
                 <AnimatedSection id="in-action" className="bg-gradient-to-b from-accent/20 to-background">
-                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>BBU1 In Action</motion.h2><motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>See how BBU1 empowers diverse industries across the continent.</motion.p></div>
+                    <div className="text-center mb-12">
+                        <motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>
+                            Transforming Industries, One Insight at a Time
+                        </motion.h2>
+                        <motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>
+                            See how BBU1 empowers diverse industries across the continent.
+                        </motion.p>
+                    </div>
                     <motion.div className="relative rounded-xl overflow-hidden shadow-xl border h-[400px] md:h-[550px] lg:h-[700px] bg-gray-800" variants={itemVariants}>
-                        <AnimatePresence mode="wait"><motion.div key={currentSlideIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.2, ease: "easeInOut" }} className="absolute inset-0"><Image src={slideshowContent[currentSlideIndex].src} alt={slideshowContent[currentSlideIndex].alt} layout="fill" objectFit="cover" className="filter brightness-[0.7]" /><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" /><div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl"><h3 className="text-2xl md:text-4xl font-bold mb-2">{slideshowContent[currentSlideIndex].title}</h3><p className="text-base md:text-lg">{slideshowContent[currentSlideIndex].description}</p></div></motion.div></AnimatePresence>
-                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">{slideshowContent.map((_, idx) => (<button key={idx} className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} onClick={() => setCurrentSlideIndex(idx)} aria-label={`Go to slide ${idx + 1}`} />))}</div>
+                        <AnimatePresence mode="wait">
+                            <motion.div 
+                                key={currentSlideIndex} 
+                                initial={{ opacity: 0, scale: 1.05 }} 
+                                animate={{ opacity: 1, scale: 1 }} 
+                                exit={{ opacity: 0, scale: 0.95 }} 
+                                transition={{ duration: 1.2, ease: "easeInOut" }} 
+                                className="absolute inset-0"
+                            >
+                                <Image 
+                                    src={slideshowContent[currentSlideIndex].src} 
+                                    alt={slideshowContent[currentSlideIndex].alt} 
+                                    layout="fill" 
+                                    objectFit="cover" 
+                                    className="filter brightness-[0.6]" // Slightly brighter for this section's image
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
+                                    <h3 className="text-2xl md:text-4xl font-bold mb-2">{slideshowContent[currentSlideIndex].title}</h3>
+                                    <p className="text-base md:text-lg">{slideshowContent[currentSlideIndex].description}</p>
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+                            {slideshowContent.map((_, idx) => (
+                                <button 
+                                    key={idx} 
+                                    className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} 
+                                    onClick={() => setCurrentSlideIndex(idx)} 
+                                    aria-label={`Go to slide ${idx + 1}`} 
+                                />
+                            ))}
+                        </div>
                     </motion.div>
                 </AnimatedSection>
                                 
