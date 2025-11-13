@@ -463,10 +463,7 @@ export default function HomePage() {
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">{siteConfig.industryItems.map((industry, index) => (<motion.div key={index} className="flex items-start p-5 border rounded-lg bg-background/70 shadow-sm" variants={itemVariants}><div className="p-3 rounded-full bg-accent text-accent-foreground mr-4 flex-shrink-0"><industry.icon className="h-6 w-6" /></div><div><h3 className="text-xl font-semibold mb-1">{industry.name}</h3><p className="text-muted-foreground text-sm">{industry.description}</p></div></motion.div>))}</div>
                 </AnimatedSection>
 
-                <AnimatedSection id="testimonials" className="bg-gradient-to-b from-background to-accent/20">
-                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>What Our Clients Say</motion.h2><motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>Hear from leaders transforming their operations with BBU1.</motion.p></div>
-                    <div className="grid md:grid-cols-3 gap-8">{siteConfig.testimonials.map((testimonial, index) => (<motion.div key={index} className="bg-background border rounded-lg p-6 shadow-md flex flex-col justify-between" variants={itemVariants}><p className="text-lg italic text-foreground mb-6">"{testimonial.quote}"</p><div className="flex items-center"><Image src={testimonial.image} alt={testimonial.name} width={56} height={56} className="rounded-full mr-4 object-cover" /><div><p className="font-semibold text-primary">{testimonial.name}</p><p className="text-sm text-muted-foreground">{testimonial.title}</p></div></div></motion.div>))}</div>
-                </AnimatedSection>
+                
 
                 <AnimatedSection id="faq" className="bg-gradient-to-b from-accent/20 to-background">
                     <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>Frequently Asked Questions</motion.h2></div>
