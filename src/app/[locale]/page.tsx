@@ -418,11 +418,22 @@ export default function HomePage() {
     ];
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+    // For the Platform Pillars animation
+    const [activePillarIndex, setActivePillarIndex] = useState(0);
+
     useEffect(() => {
         const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 3000);
         const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % slideshowContent.length); }, 8000);
-        return () => { clearInterval(textInterval); clearInterval(imageInterval); };
-    }, [rotatingTexts.length, slideshowContent.length]);
+        
+        // Interval for platform pillars animation
+        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 4000); // Change pillar every 4 seconds
+
+        return () => { 
+            clearInterval(textInterval); 
+            clearInterval(imageInterval); 
+            clearInterval(pillarInterval); // Cleanup pillar interval
+        };
+    }, [rotatingTexts.length, slideshowContent.length, siteConfig.platformPillars.length]);
 
     // --- COOKIE CONSENT AND TOAST NOTIFICATION LOGIC ---
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences);
@@ -474,8 +485,63 @@ export default function HomePage() {
                 
                 {/* Platform Pillars Section */}
                 <AnimatedSection id="platform" className="bg-gradient-to-b from-background to-accent/20">
-                    <div className="relative z-10 text-center mb-12 max-w-3xl mx-auto"><h2 className="text-3xl font-bold tracking-tight">An Operating System Engineered for Growth</h2><p className="text-muted-foreground mt-2">BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.</p></div>
-                    <motion.div variants={{ visible: { transition: { staggerChildren: 0.1 } } }} initial="hidden" whileInView="visible" className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{siteConfig.platformPillars.map(item => (<motion.div key={item.title} variants={itemVariants}><Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all bg-background/80 border-primary/10"><CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2"><div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent></Card></motion.div>))} </motion.div>
+                    <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                        {/* Left Column: Heading and List of Pillars */}
+                        <div className="text-left">
+                            <h2 className="text-4xl font-extrabold tracking-tight mb-6">
+                                An Operating System <br /> Engineered for Growth
+                            </h2>
+                            <p className="text-lg text-muted-foreground mt-2 mb-8">
+                                BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.
+                            </p>
+                            <ul className="space-y-6">
+                                {siteConfig.platformPillars.map((pillar, index) => (
+                                    <motion.li
+                                        key={pillar.title}
+                                        className={cn(
+                                            "flex items-center gap-4 cursor-pointer p-3 rounded-lg transition-all",
+                                            activePillarIndex === index ? "bg-primary/10 text-primary font-bold shadow-lg" : "text-foreground/70 hover:bg-accent/50 hover:text-foreground"
+                                        )}
+                                        onClick={() => setActivePillarIndex(index)}
+                                        variants={itemVariants}
+                                    >
+                                        <pillar.icon className="h-7 w-7 flex-shrink-0" />
+                                        <span className="text-xl">{pillar.title}</span>
+                                    </motion.li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Right Column: Animated Pillar Content */}
+                        <div className="relative h-[450px] flex items-center justify-center">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={activePillarIndex}
+                                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -30, scale: 0.95 }}
+                                    transition={{ duration: 0.7, ease: "easeInOut" }}
+                                    className="absolute w-full"
+                                >
+                                    <Card className="text-left h-full bg-background/80 border-primary/10 p-8 shadow-2xl">
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
+                                            <div className="p-4 bg-primary/10 rounded-full">
+                                                {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
+                                            </div>
+                                            <CardTitle className="text-3xl font-bold">
+                                                {siteConfig.platformPillars[activePillarIndex].title}
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="mt-4">
+                                            <p className="text-lg text-muted-foreground leading-relaxed">
+                                                {siteConfig.platformPillars[activePillarIndex].description}
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                    </div>
                 </AnimatedSection>
 
                 {/* BBU1 in Action Section */}
