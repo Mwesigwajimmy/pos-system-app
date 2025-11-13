@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 // --- Vercel AI SDK Imports ---
 import { useChat } from '@ai-sdk/react';
-import { type CoreMessage } from 'ai';
+import { type CoreMessage, type ImagePart } from 'ai'; // Explicitly import ImagePart from 'ai'
 // --- UI Components from shadcn/ui ---
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMe
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Import Avatar and AvatarFallback for chat UI
 // --- Utils & Icons ---
 import { cn } from "@/lib/utils";
 import {
@@ -26,7 +27,7 @@ import {
     Users, Utensils, WifiOff, X, ArrowRight,
     Zap, ShieldHalf, LayoutGrid, Lightbulb,
     Wallet, ClipboardList, Package, UserCog, Files,
-    Download, Share
+    Download, Share, Sparkles, Loader2 // Added Sparkles and Loader2 for chat UI
 } from 'lucide-react';
 
 // --- Global Type Declarations for external scripts (for TypeScript) ---
@@ -37,6 +38,13 @@ declare global {
         fbq: (...args: any[]) => void;
         _fbq: any;
     }
+}
+
+// Ensure gtag and dataLayer are initialized early to prevent errors if scripts haven't loaded yet
+if (typeof window !== 'undefined') {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function() { window.dataLayer.push(arguments); };
+    window.fbq = window.fbq || function() { /* no-op */ }; // Initialize as no-op to prevent errors
 }
 
 // --- Type Definitions ---
@@ -89,6 +97,10 @@ const siteConfig = {
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
     url: "https://www.bbu1.com/",
     inventorCredit: "Invented by Mwesigwa Jimmy in Uganda. Built for the world.",
+    analytics: {
+        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID',
+        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID',
+    },
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
         socials: { linkedin: '#', twitter: '#', facebook: '#' }
@@ -137,63 +149,28 @@ const siteConfig = {
     privacyPolicy: (
         <div className="space-y-4 text-sm">
             <h3 className="text-lg font-bold">Privacy Policy</h3>
-            <p>This Privacy Policy describes how BBU1 ("we", "us", or "our") collects, uses, and discloses your information, including Personal Data and data collected through cookies and similar technologies, when you use our website and services.</p>
-
-            <h4 className="font-semibold mt-4">1. Information We Collect</h4>
-            <p>We collect several types of information:</p>
-            <ul className="list-disc list-inside ml-4">
-                <li><strong>Personal Data:</strong> Information that can be used to identify you (e.g., name, email address, phone number, business ID).</li>
-                <li><strong>Transactional Data:</strong> Details about your use of our services (e.g., purchases, project data, inventory movements).</li>
-                <li><strong>Usage Data:</strong> Information on how the Service is accessed and used, which may include your computer's IP address, browser type, browser version, the pages of our Service that you visit, the time and date of your visit, the time spent on those pages, unique device identifiers and other diagnostic data.</li>
-            </ul>
-
-            <h4 className="font-semibold mt-4">2. Cookies and Tracking Technologies</h4>
-            <p>We use cookies and similar tracking technologies to track the activity on our Service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier. Cookies are sent to your browser from a website and stored on your device.</p>
-            <p>We use the following types of cookies:</p>
-            <ul className="list-disc list-inside ml-4">
-                <li><strong>Essential Cookies:</strong> These cookies are strictly necessary to provide you with services available through our website and to use some of its features, such as accessing secure areas. Without these cookies, services like secure login cannot be provided.</li>
-                <li><strong>Analytics Cookies:</strong> These cookies collect information that is used either in aggregate form to help us understand how our website is being used or how effective our marketing campaigns are, or to help us customize our website for you. We use tools like Google Analytics for this purpose. <span className="text-muted-foreground">(These are only activated with your consent.)</span></li>
-                <li><strong>Marketing Cookies:</strong> These cookies are used to make advertising messages more relevant to you and your interests. They perform functions like preventing the same ad from continuously reappearing, ensuring that ads are properly displayed for advertisers, and in some cases, selecting advertisements that are based on your interests. <span className="text-muted-foreground">(These are only activated with your consent.)</span></li>
-            </ul>
-            <p>You have the right to decide whether to accept or reject cookies. You can exercise your cookie preferences by clicking on the "Customize" button in our cookie consent banner or by using the "Manage Cookie Preferences" link in the footer. Most web browsers allow you to manage cookies through their settings. Please note that if you disable essential cookies, some parts of our website may not function properly.</p>
-
-            <h4 className="font-semibold mt-4">3. How We Use Your Data</h4>
-            <p>We use the collected data for various purposes:</p>
-            <ul className="list-disc list-inside ml-4">
-                <li>To provide and maintain our Service.</li>
-                <li>To notify you about changes to our Service.</li>
-                <li>To allow you to participate in interactive features of our Service when you choose to do so.</li>
-                <li>To provide customer support.</li>
-                <li>To monitor the usage of our Service.</li>
-                <li>To detect, prevent and address technical issues.</li>
-                <li>To provide you with news, special offers and general information about other goods, services and events which we offer that are similar to those that you have already purchased or enquired about unless you have opted not to receive such information.</li>
-            </ul>
-
-            <h4 className="font-semibold mt-4">4. Security of Data</h4>
-            <p>Your data is secured with bank-level encryption and stored in a multi-tenant architecture with PostgreSQL's Row-Level Security, ensuring complete isolation and protection. We strive to use commercially acceptable means to protect your Personal Data, but remember that no method of transmission over the Internet or method of electronic storage is 100% secure.</p>
-
-            <p className="mt-6">By continuing to use our service, you acknowledge you have read and understood this Privacy Policy.</p>
+            <p>This Privacy Policy describes how BBU1 ("we", "us", or "our") collects, uses, and discloses your information when you use our website and services.</p>
         </div>
     ),
     cookieCategories: [
         {
             id: 'essential',
             name: 'Essential Cookies',
-            description: 'These cookies are crucial for the website to function properly and cannot be switched off in our systems. They are usually set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms.',
+            description: 'These cookies are crucial for the website to function properly and cannot be switched off in our systems.',
             isRequired: true,
             defaultChecked: true,
         },
         {
             id: 'analytics',
             name: 'Analytics Cookies',
-            description: 'These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous.',
+            description: 'These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site.',
             isRequired: false,
             defaultChecked: false,
         },
         {
             id: 'marketing',
             name: 'Marketing Cookies',
-            description: 'These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device.',
+            description: 'These cookies may be set through our site by our advertising partners to show you relevant adverts on other sites.',
             isRequired: false,
             defaultChecked: false,
         }
@@ -212,35 +189,26 @@ const backgroundVariants: Variants = { animate: (index: number) => ({ scale: [1,
 interface DetailModalProps { trigger: ReactNode; title: string; description: ReactNode; icon?: LucideIcon; }
 const DetailModal = ({ trigger, title, description, icon: Icon }: DetailModalProps) => ( <Dialog> <DialogTrigger asChild>{trigger}</DialogTrigger> <DialogContent className="sm:max-w-lg"> <DialogHeader> <div className="flex items-center gap-4"> {Icon && ( <div className="bg-primary/10 p-3 rounded-md w-fit"> <Icon className="h-6 w-6 text-primary" /> </div> )} <div className="flex-1"> <DialogTitle className="text-xl">{title}</DialogTitle> </div> </div> </DialogHeader> <div className="py-4 text-muted-foreground">{description}</div> </DialogContent> </Dialog> );
 
-// --- Header with Interactive Dropdowns (AND "SMART" INSTALL BUTTON LOGIC) ---
+// --- Header ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    
-    // --- State and logic for the PWA Install Button ---
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isIos, setIsIos] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
-        // 1. Check if the app is already installed and running in standalone mode
         if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) {
             setIsStandalone(true);
         }
-
-        // 2. Detect if the user is on an iOS device
         const isIosDevice = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
         setIsIos(isIosDevice);
-
-        // 3. Listen for the browser's install prompt event (for non-iOS devices)
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
             setDeferredPrompt(e);
         };
-        
         if (typeof window !== 'undefined') {
             window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         }
-
         return () => {
             if (typeof window !== 'undefined') {
                 window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -248,18 +216,13 @@ const MegaMenuHeader = () => {
         };
     }, []);
 
-    const handleInstallClick = async () => {
-        if (!deferredPrompt) return; // Guard clause
-        
+    const handleInstallClick = useCallback(async () => {
+        if (!deferredPrompt) return;
         deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            // User accepted the prompt, no need to show the button anymore
-            setDeferredPrompt(null);
-        }
-    };
-    
-    // Determine if any install button should be shown at all
+        await deferredPrompt.userChoice;
+        setDeferredPrompt(null);
+    }, [deferredPrompt]);
+
     const showAnyInstallButton = !isStandalone;
 
     return (
@@ -283,13 +246,13 @@ const MegaMenuHeader = () => {
                                             trigger={
                                                 <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group">
                                                     <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                        <feature.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {feature.title}
+                                                        <feature.icon className="h-4 w-4 text-primary" /> {feature.title}
                                                     </div>
                                                 </li>
                                             }
                                         />
                                     ))}
-                                </ul>
+                                </ul >
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
@@ -309,7 +272,7 @@ const MegaMenuHeader = () => {
                                                         trigger={
                                                             <li className="cursor-pointer block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent/10 hover:text-accent-foreground focus:bg-accent/10 focus:text-accent-foreground group">
                                                                 <div className="text-sm font-medium leading-none flex items-center gap-2">
-                                                                    <solution.icon className="h-4 w-4 text-primary group-hover:text-accent transition-colors" /> {solution.name}
+                                                                    <solution.icon className="h-4 w-4 text-primary" /> {solution.name}
                                                                 </div>
                                                             </li>
                                                         }
@@ -324,20 +287,15 @@ const MegaMenuHeader = () => {
                     </NavigationMenuList>
                 </NavigationMenu>
                 <div className="hidden lg:flex items-center gap-2">
-                    {/* --- START: SMART INSTALL BUTTON LOGIC (DESKTOP) --- */}
                     {showAnyInstallButton && (
                         <>
                             {isIos ? (
-                                // --- iOS Install Button (shows instructions) ---
                                 <Dialog>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline" className="flex items-center gap-2">
-                                            <Download className="h-4 w-4" /> Install App
-                                        </Button>
+                                        <Button variant="outline" className="flex items-center gap-2"><Download className="h-4 w-4" /> Install App</Button>
                                     </DialogTrigger>
                                     <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Install BBU1 on your iOS Device</DialogTitle>
+                                        <DialogHeader><DialogTitle>Install BBU1 on your iOS Device</DialogTitle>
                                             <DialogDescription className="pt-4 space-y-2 text-left">
                                                 <p>To install the app, please follow these simple steps:</p>
                                                 <ol className="list-decimal list-inside space-y-3">
@@ -350,39 +308,22 @@ const MegaMenuHeader = () => {
                                     </DialogContent>
                                 </Dialog>
                             ) : (
-                                // --- Standard PWA Install Button (Chrome/Edge) ---
-                                <Button
-                                    variant="outline"
-                                    className="flex items-center gap-2"
-                                    onClick={handleInstallClick}
-                                    disabled={!deferredPrompt} // Button is disabled until it's ready to fire
-                                    title={!deferredPrompt ? "Installation not available yet" : "Install App"}
-                                >
+                                <Button variant="outline" className="flex items-center gap-2" onClick={handleInstallClick} disabled={!deferredPrompt} title={!deferredPrompt ? "Installation not available yet" : "Install App"}>
                                     <Download className="h-4 w-4" /> Install App
                                 </Button>
                             )}
                         </>
                     )}
-                    {/* --- END: SMART INSTALL BUTTON LOGIC (DESKTOP) --- */}
-
                     <Button variant="ghost" asChild className="hover:text-primary"><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
                 </div>
                 <div className="lg:hidden flex items-center gap-2">
-                     {/* --- START: SMART INSTALL BUTTON LOGIC (MOBILE) --- */}
-                     {showAnyInstallButton && !isIos && ( // Only show for non-iOS mobile
-                         <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleInstallClick}
-                            disabled={!deferredPrompt}
-                            aria-label="Install App"
-                         >
+                     {showAnyInstallButton && !isIos && (
+                         <Button variant="ghost" size="icon" onClick={handleInstallClick} disabled={!deferredPrompt} aria-label="Install App">
                             <Download className="h-6 w-6" />
                         </Button>
                      )}
-                    {/* --- END: SMART INSTALL BUTTON LOGIC (MOBILE) --- */}
                     <ModeToggle />
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
                 </div>
@@ -396,11 +337,7 @@ const MegaMenuHeader = () => {
                                     <AccordionTrigger className="text-lg hover:no-underline">Features</AccordionTrigger>
                                     <AccordionContent className="flex flex-col gap-2 pl-4">
                                         {siteConfig.featureItems.map(feature => (
-                                            <DetailModal
-                                                key={feature.title}
-                                                title={feature.title}
-                                                icon={feature.icon}
-                                                description={feature.description}
+                                            <DetailModal key={feature.title} title={feature.title} icon={feature.icon} description={feature.description}
                                                 trigger={<Button variant="ghost" className="justify-start gap-2 w-full"><feature.icon className="h-4 w-4 text-primary" /> {feature.title}</Button>}
                                             />
                                         ))}
@@ -413,11 +350,7 @@ const MegaMenuHeader = () => {
                                             <React.Fragment key={category.category}>
                                                 <p className="font-bold text-xs text-muted-foreground uppercase p-2 pt-0">{category.category}</p>
                                                 {category.items.map((solution) => (
-                                                    <DetailModal
-                                                        key={solution.name}
-                                                        title={solution.name}
-                                                        icon={solution.icon}
-                                                        description={solution.description}
+                                                    <DetailModal key={solution.name} title={solution.name} icon={solution.icon} description={solution.description}
                                                         trigger={<Button variant="ghost" className="justify-start gap-2 w-full"><solution.icon className="h-4 w-4 text-primary" /> {solution.name}</Button>}
                                                     />
                                                 ))}
@@ -470,7 +403,6 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     <ul className="space-y-2 text-sm">
                         <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader>{siteConfig.termsOfService}</DialogContent></Dialog></li>
                         <li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>{siteConfig.privacyPolicy}</DialogContent></Dialog></li>
-                        {/* New link to open cookie preferences */}
                         <li><button onClick={onManageCookies} className="text-muted-foreground hover:text-primary text-left transition-colors">Manage Cookie Preferences</button></li>
                     </ul>
                 </div>
@@ -487,13 +419,154 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
 const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => ( <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}> <div className="container mx-auto px-4 relative z-10">{children}</div> </motion.section> );
 
 // --- AI Chat Widget ---
-// Re-using the getCookie from above. No change needed for this specific function within the chat widget.
-const renderMessageContent = (content: CoreMessage['content']): ReactNode => { if (typeof content === 'string') return content; return content.map((part, index) => { if ((part as any).type === 'text') { return <React.Fragment key={index}>{(part as any).text}</React.Fragment>; } return null; }).filter(Boolean); };
-const AdvancedChatWidget = () => { const [isOpen, setIsOpen] = useState(false); const [userContext, setUserContext] = useState({ businessId: '', userId: '' }); const [chatInput, setChatInput] = useState(''); useEffect(() => { const businessId = getCookie('business_id'); const userId = getCookie('user_id'); if (businessId && userId) setUserContext({ businessId, userId }); }, []); const chat: any = useChat({} as any); useEffect(() => { if (chat.messages.length === 0 && chat.setMessages) { chat.setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' } as any]); } }, [chat.messages.length, chat.setMessages]); const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const trimmedInput = chatInput.trim(); if (!trimmedInput) return; chat.sendMessage({ content: trimmedInput, body: { businessId: userContext.businessId, userId: userContext.userId }}); setChatInput(''); }; const scrollRef = useRef<HTMLDivElement>(null); useEffect(() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; } }, [chat.messages]); return ( <> <AnimatePresence> {isOpen && ( <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50"> <Card className="h-full w-full flex flex-col shadow-2xl"><CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader><CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">{chat.messages.map((m: CoreMessage, i: number) => (<div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>{m.role === 'assistant' && <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0"><Bot className="h-4 w-4" /></div>}<div className={cn('rounded-lg p-3 max-w-[85%] break-words', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{renderMessageContent(m.content)}</div>{m.role === 'user' && <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center font-bold flex-shrink-0 border"><Users className="h-4 w-4" /></div>}</div>))}{chat.isLoading && <div className="text-sm text-muted-foreground animate-pulse">Aura is thinking...</div>}</div></ScrollArea><div className="p-4 border-t"><form onSubmit={handleChatSubmit} className="flex items-center gap-2"><Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Aura anything..." disabled={chat.isLoading || !userContext.userId} /><Button type="submit" size="icon" disabled={chat.isLoading || !userContext.userId || !chatInput.trim()}><Send className="h-4 w-4" /></Button></form></div></CardContent></Card> </motion.div> )} </AnimatePresence> <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button> </> ); };
+const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
+    if (typeof content === 'string') {
+        return content;
+    }
+    return content.map((part, index) => {
+        if (part.type === 'text') {
+            return <React.Fragment key={index}>{part.text}</React.Fragment>;
+        }
+        if (part.type === 'image') {
+            const imagePart = part as ImagePart;
+            let imageUrl: string | undefined;
+
+            if (typeof imagePart.image === 'string') {
+                imageUrl = imagePart.image;
+            } else if (imagePart.image instanceof URL) {
+                imageUrl = imagePart.image.toString();
+            }
+
+            if (imageUrl) {
+                return <img key={index} src={imageUrl} alt="AI generated image" className="max-w-full h-auto rounded-md my-2" />;
+            }
+        }
+        return null;
+    }).filter(Boolean);
+};
+
+const AdvancedChatWidget = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [userContext, setUserContext] = useState({ businessId: '', userId: '' });
+    const [chatInput, setChatInput] = useState('');
+
+    useEffect(() => {
+        const businessId = getCookie('business_id');
+        const userId = getCookie('user_id'); 
+        if (businessId && userId) setUserContext({ businessId, userId });
+    }, []);
+
+    const { 
+        messages, 
+        setMessages, 
+        sendMessage, 
+        isLoading 
+    }: any = useChat({
+        api: '/api/chat', 
+        body: { businessId: userContext.businessId, userId: userContext.userId },
+        onError: (error: Error) => console.error("Chat error:", error),
+    } as any);
+
+    useEffect(() => {
+        if (messages.length === 0 && setMessages) {
+            setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' }]);
+        }
+    }, [messages.length, setMessages]);
+
+    const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const trimmedInput = chatInput.trim();
+        if (!trimmedInput || !userContext.userId || !userContext.businessId) return;
+
+        sendMessage({ content: trimmedInput, role: 'user' });
+        setChatInput('');
+    };
+
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages]);
+
+    const canSend = !isLoading && chatInput.trim() && userContext.userId && userContext.businessId;
+    const isDisabled = isLoading || !userContext.userId || !userContext.businessId;
+
+    return (
+        <>
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
+                        <Card className="h-full w-full flex flex-col shadow-2xl">
+                            <CardHeader className="flex-row items-center justify-between">
+                                <div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div>
+                                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col p-0">
+                                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                                    <div className="space-y-4">
+                                        {messages.map((m: CoreMessage, i: number) => (
+                                            <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
+                                                {m.role === 'assistant' && (
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarFallback><Sparkles className="h-4 w-4 text-primary"/></AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                                <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>
+                                                    {renderMessageContent(m.content)}
+                                                </div>
+                                                {m.role === 'user' && (
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarFallback>U</AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {isLoading && (
+                                            <div className="flex items-start gap-3 text-sm justify-start">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarFallback><Sparkles className="h-4 w-4 text-primary"/></AvatarFallback>
+                                                </Avatar>
+                                                <div className="rounded-lg p-3 max-w-[85%] break-words bg-background border">
+                                                    Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {!userContext.businessId && !userContext.userId && !isLoading && (
+                                            <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50">
+                                                <p>Cannot connect to the AI Assistant. Your business context (Business ID/User ID cookies) is missing or still loading.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                                <div className="p-4 border-t">
+                                    <form onSubmit={handleChatSubmit} className="flex items-center gap-2">
+                                        <Input
+                                            value={chatInput}
+                                            onChange={e => setChatInput(e.target.value)}
+                                            placeholder={isDisabled ? "Loading business context..." : "Ask Aura anything..."}
+                                            disabled={isDisabled}
+                                            className="flex-1"
+                                        />
+                                        <Button type="submit" size="icon" disabled={!canSend}>
+                                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                        </Button>
+                                    </form>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>
+                {isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}
+            </Button>
+        </>
+    );
+};
 
 // --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
-    // --- State for the rotating text in the hero section ---
     const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS.", "Unified and intelligent."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
@@ -504,28 +577,17 @@ export default function HomePage() {
         return () => clearInterval(textInterval);
     }, [rotatingTexts.length]);
 
-
-    // --- Configuration for the Integrated "BBU1 in Action" Slideshow ---
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data. Manage resources, track progress, and ensure deadlines are met with BBU1's rugged, reliable interface.", alt: "Construction managers using BBU1 on a tablet at a construction site." },
         { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast and secure system for handling transactions. BBU1 streamlines telecom services, from airtime distribution to commission tracking.", alt: "A mobile money agent serving customers using the BBU1 system." },
-        { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "From bustling city shops to local community stores, BBU1 provides a simple yet powerful POS and inventory system to manage sales and stock effortlessly.", alt: "A local shop owner using BBU1 to manage his store." },
-        { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track inventory for medical supplies. BBU1 offers a secure and efficient solution for modern clinics.", alt: "Medical professionals using BBU1 on tablets to manage patient records." },
-        { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field. Track crop cycles, manage inventory, and connect with markets, empowering farmers and co-ops with data-driven insights.", alt: "A group of farmers learning and collaborating with BBU1 on mobile devices." },
-        { src: "/images/showcase/modern-office-team.jpg", title: "Corporate & Business Intelligence", description: "Unify your entire operation. Empower teams with real-time analytics dashboards to monitor growth, identify trends, and make smarter, data-backed decisions.", alt: "A diverse team collaborating in a modern office using BBU1 dashboards." },
-        { src: "/images/showcase/sacco-meeting.jpg", title: "Financial Inclusion & SACCOs", description: "Provide accessible financial tools for communities. Manage member data, process loans, and ensure regulatory compliance for SACCOs and microfinance institutions.", alt: "A community SACCO meeting with members using BBU1 on their phones." },
-        { src: "/images/showcase/restaurant-kitchen-orders.jpg", title: "Restaurant & Hospitality", description: "From front-of-house POS to back-of-house kitchen display systems (KDS), manage orders, tables, and ingredient-level inventory for a seamless dining experience.", alt: "Chefs in a professional kitchen using BBU1 on tablets to manage orders." },
     ];
-
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-
     useEffect(() => {
         const imageInterval = setInterval(() => {
             setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slideshowContent.length);
         }, 15000);
         return () => clearInterval(imageInterval);
     }, [slideshowContent.length]);
-
 
     // --- COOKIE CONSENT LOGIC AND STATE ---
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({
@@ -537,174 +599,111 @@ export default function HomePage() {
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
     const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
 
-    // Function to apply cookie preferences (e.g., load/unload scripts)
     const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
-        if (typeof window === 'undefined') return; // Ensure client-side
+        if (typeof window === 'undefined') return;
 
-        // --- Google Analytics 4 (GA4) with Consent Mode v2 ---
-        // Initialize gtag if it's not already there
-        if (!window.dataLayer) {
-            window.dataLayer = window.dataLayer || [];
-            window.gtag = function() { window.dataLayer.push(arguments); };
-        }
+        const { gaMeasurementId, fbPixelId } = siteConfig.analytics;
+        const hasGaId = gaMeasurementId && gaMeasurementId !== 'G-YOUR_GA_MEASUREMENT_ID';
+        const hasFbId = fbPixelId && fbPixelId !== 'YOUR_FACEBOOK_PIXEL_ID';
 
-        // Set default consent state *before* loading GA script
-        window.gtag('consent', 'default', {
-            'analytics_storage': prefs.analytics ? 'granted' : 'denied',
-            'ad_storage': prefs.marketing ? 'granted' : 'denied',
-            'ad_user_data': prefs.marketing ? 'granted' : 'denied',
-            'ad_personalization': prefs.marketing ? 'granted' : 'denied',
-            'wait_for_update': 500 // Wait up to 500ms for consent update
-        });
-
-        // Load GA script if not already loaded (only once)
-        if (!document.querySelector('#google-analytics-script')) {
-            const gaScript = document.createElement('script');
-            gaScript.id = 'google-analytics-script';
-            gaScript.src = `https://www.googletagmanager.com/gtag/js?id=G-YOUR_GA_MEASUREMENT_ID`; // !!! REPLACE WITH YOUR ACTUAL GA4 MEASUREMENT ID !!!
-            gaScript.async = true;
-            document.head.appendChild(gaScript);
-
-            const gaConfigScript = document.createElement('script');
-            gaConfigScript.id = 'google-analytics-config';
-            gaConfigScript.innerHTML = `
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', 'G-YOUR_GA_MEASUREMENT_ID', { // !!! REPLACE WITH YOUR ACTUAL GA4 MEASUREMENT ID !!!
-                  'anonymize_ip': true // Good practice for privacy
-                });
-            `;
-            document.head.appendChild(gaConfigScript);
-            console.log("Google Analytics scripts initialized.");
-        } else {
-            // If scripts are already loaded, just update consent
-            window.gtag('consent', 'update', {
+        if (hasGaId) {
+            window.gtag('consent', 'default', {
                 'analytics_storage': prefs.analytics ? 'granted' : 'denied',
                 'ad_storage': prefs.marketing ? 'granted' : 'denied',
-                'ad_user_data': prefs.marketing ? 'granted' : 'denied',
-                'ad_personalization': prefs.marketing ? 'granted' : 'denied'
             });
-            console.log("Google Analytics consent updated.");
+
+            if (!document.querySelector('#google-analytics-script')) {
+                const gaScript = document.createElement('script');
+                gaScript.id = 'google-analytics-script';
+                gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`;
+                gaScript.async = true;
+                document.head.appendChild(gaScript);
+
+                const gaConfigScript = document.createElement('script');
+                gaConfigScript.id = 'google-analytics-config';
+                gaConfigScript.innerHTML = `
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', '${gaMeasurementId}', { 'anonymize_ip': true });
+                `;
+                document.head.appendChild(gaConfigScript);
+            }
         }
-
-
-        // --- Facebook Pixel ---
-        const fbPixelId = 'YOUR_FACEBOOK_PIXEL_ID'; // !!! REPLACE WITH YOUR ACTUAL FACEBOOK PIXEL ID !!!
-        if (prefs.marketing) {
-            // Load Facebook Pixel script if not already loaded
-            if (!document.querySelector('#facebook-pixel-script')) {
-                const fbScript = document.createElement('script');
-                fbScript.id = 'facebook-pixel-script';
-                fbScript.innerHTML = `
-                  !function(f,b,e,v,n,t,s)
-                  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                  n.queue=[];t=b.createElement(e);t.async=!0;
-                  t.src=v;s=b.getElementsByTagName(e)[0];
-                  s.parentNode.insertBefore(t,s)}(window, document,'script',
-                  'https://connect.facebook.net/en_US/fbevents.js');
+        
+        const fbScript = document.querySelector('#facebook-pixel-script');
+        if (prefs.marketing && hasFbId) {
+            if (!fbScript) {
+                const newFbScript = document.createElement('script');
+                newFbScript.id = 'facebook-pixel-script';
+                newFbScript.innerHTML = `
+                  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
                   fbq('init', '${fbPixelId}');
                   fbq('track', 'PageView');
                 `;
-                document.head.appendChild(fbScript);
-                console.log("Facebook Pixel script loaded.");
-            } else {
-                // If script is already there, ensure it's active for tracking
-                window.fbq('track', 'PageView');
-                console.log("Facebook Pixel tracking activated.");
+                document.head.appendChild(newFbScript);
             }
-        } else {
-            // Remove Facebook Pixel script and disable tracking if consent is denied
-            const fbScript = document.querySelector('#facebook-pixel-script');
-            if (fbScript) {
-                fbScript.remove();
-                // Clear any existing fbq functions to prevent further tracking
-                if (window.fbq) {
-                    window.fbq = function() {};
-                    window._fbq = undefined;
-                }
-                console.log("Facebook Pixel script removed and tracking disabled.");
-            }
+        } else if (fbScript) {
+            fbScript.remove();
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
-
-    // Function to initialize cookie preferences from storage
     const initializeCookiePreferences = useCallback(() => {
-        if (typeof window === 'undefined') return; // Ensure client-side
-
+        if (typeof window === 'undefined') return;
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (!consentCookie) {
-            setShowCookieBanner(true); // No consent found, show banner
-            setCookiePreferences(initialCookiePreferences); // Reset to defaults
-            // Apply default preferences (essential) or wait for user interaction
+            setShowCookieBanner(true);
             applyCookiePreferences(initialCookiePreferences);
         } else {
             try {
                 const storedPrefs: CookiePreferences = JSON.parse(consentCookie);
                 setCookiePreferences(storedPrefs);
-                setShowCookieBanner(false); // Consent found, hide banner
-                applyCookiePreferences(storedPrefs); // Apply effects of consent
+                setShowCookieBanner(false);
+                applyCookiePreferences(storedPrefs);
             } catch (e) {
-                console.error("Failed to parse cookie consent cookie:", e);
-                setShowCookieBanner(true); // Corrupted cookie, show banner
-                setCookiePreferences(initialCookiePreferences);
+                clearCookie('bbu1_cookie_consent');
+                setShowCookieBanner(true);
                 applyCookiePreferences(initialCookiePreferences);
             }
         }
     }, [initialCookiePreferences, applyCookiePreferences]);
 
-
-    // Effect to run on initial load to check for consent
     useEffect(() => {
         initializeCookiePreferences();
     }, [initializeCookiePreferences]);
 
-    const handleAcceptAllCookies = () => {
-        const allTruePrefs: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({
-            ...acc,
-            [cat.id]: true,
-        }), {} as CookiePreferences);
+    const handleAcceptAllCookies = useCallback(() => {
+        const allTruePrefs: CookiePreferences = { essential: true, analytics: true, marketing: true };
         setCookiePreferences(allTruePrefs);
         setCookie('bbu1_cookie_consent', JSON.stringify(allTruePrefs), 365);
         setShowCookieBanner(false);
+        setIsCustomizingCookies(false);
         applyCookiePreferences(allTruePrefs);
-    };
+    }, [applyCookiePreferences]);
 
-    const handleSaveCookiePreferences = () => {
+    const handleSaveCookiePreferences = useCallback(() => {
         setCookie('bbu1_cookie_consent', JSON.stringify(cookiePreferences), 365);
         setShowCookieBanner(false);
         setIsCustomizingCookies(false);
         applyCookiePreferences(cookiePreferences);
-    };
+    }, [cookiePreferences, applyCookiePreferences]);
 
-    const toggleCookiePreference = (id: CookieCategoryKey) => {
-        setCookiePreferences(prev => ({
-            ...prev,
-            [id]: !prev[id],
-        }));
-    };
+    const toggleCookiePreference = useCallback((id: CookieCategoryKey) => {
+        setCookiePreferences(prev => ({ ...prev, [id]: !prev[id] }));
+    }, []);
 
-    const openCookiePreferences = () => {
-        // When opening preferences, load current saved state or defaults
+    const openCookiePreferences = useCallback(() => {
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (consentCookie) {
             try {
                 setCookiePreferences(JSON.parse(consentCookie));
-            } catch (e) {
-                console.error("Failed to parse cookie consent for customization:", e);
-                setCookiePreferences(initialCookiePreferences);
-            }
+            } catch (e) { setCookiePreferences(initialCookiePreferences); }
         } else {
             setCookiePreferences(initialCookiePreferences);
         }
         setShowCookieBanner(true);
         setIsCustomizingCookies(true);
-    };
-    // --- END COOKIE CONSENT LOGIC AND STATE ---
-
+    }, [initialCookiePreferences]);
 
     return (
         <>
@@ -712,16 +711,11 @@ export default function HomePage() {
             <main className="flex-grow z-10">
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-white">
                     <div className="absolute inset-0 z-0">
-                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="A background image showing a modern office team analyzing data with BBU1." fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70 hero-background-image" priority />
+                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="A background image showing a modern office team analyzing data with BBU1." fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
                         <div className="absolute inset-0 bg-black/60 dark:bg-black/70"></div>
                     </div>
                     <div className="container mx-auto text-center relative z-10">
                         <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                            <motion.div variants={itemVariants} className="group">
-                                <span className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-white border border-white/20 shadow-sm group-hover:bg-white/20 transition-all duration-300">
-                                    <BrainCircuit className="mr-2 h-4 w-4" /> The Intelligent Business OS
-                                </span>
-                            </motion.div>
                             <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}>
                                 The One Platform <br />
                                 <div className="inline-block h-[1.2em] overflow-hidden">
@@ -733,30 +727,21 @@ export default function HomePage() {
                                 </div>
                             </motion.h1>
                             <motion.p className="mt-6 text-lg leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>
-                                Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management. Built for every business, ready for the world.
+                                Stop juggling multiple apps. BBU1 is the single, unified operating system for your entire business—from accounting and inventory to team and project management.
                             </motion.p>
                             <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow duration-300 bg-blue-500 hover:bg-blue-600 text-white"><Link href="/signup">Start Free Trial</Link></Button>
-                                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10 transition-colors"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                                <Button asChild size="lg" className="shadow-lg bg-blue-500 hover:bg-blue-600 text-white"><Link href="/signup">Start Free Trial</Link></Button>
+                                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Book a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                             </motion.div>
                         </motion.div>
                     </div>
                 </section>
                 
                 <AnimatedSection id="in-action" className="pt-0 -mt-16 pb-16 bg-background">
-                    <div className="relative bg-secondary/20 rounded-lg shadow-2xl shadow-primary/10 border border-primary/10 overflow-hidden p-8 md:p-12">
-                        <motion.div
-                            className="absolute inset-0 z-0"
-                            variants={backgroundVariants}
-                            custom={currentSlideIndex}
-                            animate="animate"
-                        >
-                            <Image src="/images/showcase/modern-office-team.jpg" alt="A background image of a modern office team." fill style={{ objectFit: 'cover' }} className="opacity-50" />
-                        </motion.div>
-                        <div className="absolute inset-0 z-10 bg-background/80 dark:bg-background/90"></div>
+                    <div className="relative bg-secondary/20 rounded-lg shadow-2xl overflow-hidden p-8 md:p-12">
                         <div className="relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                             <div className="flex flex-col justify-center text-center lg:text-left h-full">
-                                <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action: Powering Diverse Industries Globally</h2>
+                                <h2 className="text-3xl font-bold tracking-tight mb-4">BBU1 in Action</h2>
                                 <div className="relative h-24 sm:h-20">
                                     <AnimatePresence mode="wait">
                                         <motion.div key={currentSlideIndex} variants={slideTextVariants} initial="hidden" animate="visible" exit="exit" className="absolute w-full">
@@ -768,7 +753,7 @@ export default function HomePage() {
                             </div>
                             <div className="relative aspect-video rounded-lg overflow-hidden bg-background">
                                 <AnimatePresence>
-                                    <motion.div key={currentSlideIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5, ease: "easeInOut" }} className="absolute inset-0">
+                                    <motion.div key={currentSlideIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} className="absolute inset-0">
                                         <Image src={slideshowContent[currentSlideIndex].src} alt={slideshowContent[currentSlideIndex].alt} fill style={{ objectFit: 'cover' }} priority={currentSlideIndex === 0} />
                                     </motion.div>
                                 </AnimatePresence>
@@ -777,91 +762,76 @@ export default function HomePage() {
                     </div>
                 </AnimatedSection>
                 
-                <AnimatedSection id="standout" className="bg-background relative">
-                    <div className="absolute inset-0 z-0 opacity-50"><Image src="/images/showcase/ai-warehouse-logistics.jpg" alt="ai warehouse" fill style={{ objectFit: 'cover' }}/></div>
-                    <div className="absolute inset-0 z-0 bg-background/80"></div>
-                    <div className="px-4 relative z-10">
-                        <div className="text-center mb-12 max-w-3xl mx-auto">
-                            <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
-                            <p className="text-muted-foreground mt-2">BBU1 is engineered from the ground up to not just manage your business, but to accelerate its growth and simplify complexity.</p>
-                        </div>
-                        <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {siteConfig.standoutItems.map(item => (
-                                <motion.div key={item.title} variants={itemVariants}>
-                                    <Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 bg-background/80 backdrop-blur-sm border-primary/10">
-                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
-                                            <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div>
-                                            <CardTitle className="text-lg">{item.title}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent>
-                                    </Card>
-                                </motion.div>
-                            ))}
-                        </motion.div>
+                <AnimatedSection id="standout" className="bg-background">
+                    <div className="text-center mb-12 max-w-3xl mx-auto">
+                        <h2 className="text-3xl font-bold tracking-tight">What Makes BBU1 Stand Out</h2>
+                        <p className="text-muted-foreground mt-2">BBU1 is engineered to accelerate your growth and simplify complexity.</p>
                     </div>
+                    <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {siteConfig.standoutItems.map(item => (
+                            <motion.div key={item.title} variants={itemVariants}>
+                                <Card className="text-left h-full hover:shadow-xl hover:-translate-y-1.5 transition-all">
+                                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                                        <div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div>
+                                        <CardTitle className="text-lg">{item.title}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent>
+                                </Card>
+                            </motion.div>
+                        ))}
+                    </motion.div>
                 </AnimatedSection>
 
-                <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background dark:from-background dark:via-accent/10 dark:to-background">
-                    <div className="max-w-3xl mx-auto relative z-10">
-                        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-8">Your Questions, Answered</h2>
-                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border border-border/50 bg-background/80 backdrop-blur-sm shadow-lg">
+                <AnimatedSection id="faq" className="bg-gradient-to-br from-background via-accent/5 to-background">
+                    <div className="max-w-3xl mx-auto">
+                        <h2 className="text-3xl font-bold tracking-tight text-center mb-8">Your Questions, Answered</h2>
+                        <Accordion type="single" collapsible className="w-full mt-8 rounded-lg border bg-background shadow-lg">
                             {siteConfig.faqItems.map(i => (
-                                <AccordionItem key={i.q} value={i.q} className="px-6 data-[state=closed]:border-b">
-                                    <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4 hover:text-primary transition-colors">{i.q}</AccordionTrigger>
+                                <AccordionItem key={i.q} value={i.q} className="px-6">
+                                    <AccordionTrigger className="text-base text-left hover:no-underline font-semibold py-4">{i.q}</AccordionTrigger>
                                     <AccordionContent className="text-sm text-muted-foreground pb-4 leading-relaxed">{i.a}</AccordionContent>
                                 </AccordionItem>
                             ))}
                         </Accordion>
                     </div>
                 </AnimatedSection>
-                
-                <AnimatedSection className="text-center container mx-auto px-4">
-                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
-                        <div className="absolute top-0 left-0 w-full h-full opacity-10 -z-1"></div>
-                        <h2 className="text-3xl font-bold tracking-tight drop-shadow-md">Ready to Revolutionize Your Enterprise?</h2>
-                        <p className="mt-4 max-w-xl mx-auto text-lg text-primary-foreground/80">Join leaders who trust {siteConfig.name} to drive growth and unlock their true potential.</p>
-                        <div className="mt-8">
-                            <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110 shadow-lg hover:shadow-xl">
-                                <Link href="/signup">Start Your Free Trial Today <ArrowRight className="ml-2 h-5 w-5" /></Link>
-                            </Button>
-                        </div>
-                    </div>
-                </AnimatedSection>
-
             </main>
             <AdvancedChatWidget />
-            <LandingFooter onManageCookies={openCookiePreferences} /> {/* Pass handler to Footer */}
+            <LandingFooter onManageCookies={openCookiePreferences} />
 
-            {/* --- COOKIE CONSENT BANNER (EMBEDDED) --- */}
+            {/* --- COOKIE CONSENT BANNER --- */}
             <AnimatePresence>
                 {showCookieBanner && (
                     <motion.div
                         initial={{ opacity: 0, y: 100 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 100 }}
-                        transition={{ duration: 0.5, ease: 'easeInOut' }}
                         className="fixed bottom-0 left-0 right-0 z-[100] p-4"
                     >
-                        <Card className="max-w-xl mx-auto shadow-2xl border-2 border-primary/20 bg-background/90 backdrop-blur-md">
+                        <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
                                 </CardTitle>
                                 {!isCustomizingCookies && (
                                     <CardDescription>
-                                        We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.
-                                        You can manage your preferences below or learn more in our <DialogTrigger asChild><button className="text-primary hover:underline font-semibold">Privacy Policy</button></DialogTrigger>.
+                                        We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <button className="text-primary hover:underline font-semibold">Privacy Policy</button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-3xl">
+                                                <DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader>
+                                                {siteConfig.privacyPolicy}
+                                            </DialogContent>
+                                        </Dialog>.
                                     </CardDescription>
                                 )}
-                            </CardHeader>
+                            </CardHeader> {/* Added missing closing tag for CardHeader */}
                             {!isCustomizingCookies ? (
                                 <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                                    <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>
-                                        Customize
-                                    </Button>
-                                    <Button onClick={handleAcceptAllCookies}>
-                                        Accept All <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
+                                    <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
+                                    <Button onClick={handleAcceptAllCookies}>Accept All</Button>
                                 </CardFooter>
                             ) : (
                                 <CardContent className="space-y-4 pt-0">
@@ -875,25 +845,16 @@ export default function HomePage() {
                                                 className="mt-1"
                                             />
                                             <div className="grid gap-1.5 leading-none">
-                                                <label
-                                                    htmlFor={category.id}
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                                >
+                                                <label htmlFor={category.id} className="text-sm font-medium">
                                                     {category.name} {category.isRequired && <span className="text-muted-foreground text-xs">(Always Active)</span>}
                                                 </label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {category.description}
-                                                </p>
+                                                <p className="text-sm text-muted-foreground">{category.description}</p>
                                             </div>
                                         </div>
                                     ))}
                                     <div className="flex justify-end gap-2 pt-4 border-t">
-                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>
-                                            Back
-                                        </Button>
-                                        <Button onClick={handleSaveCookiePreferences}>
-                                            Save Preferences
-                                        </Button>
+                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
+                                        <Button onClick={handleSaveCookiePreferences}>Save Preferences</Button>
                                     </div>
                                 </CardContent>
                             )}
@@ -901,7 +862,6 @@ export default function HomePage() {
                     </motion.div>
                 )}
             </AnimatePresence>
-            {/* --- END COOKIE CONSENT BANNER --- */}
         </>
     );
 }
