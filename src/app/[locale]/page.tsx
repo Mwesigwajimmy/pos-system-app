@@ -98,12 +98,12 @@ const siteConfig = {
     url: "https://www.bbu1.com/",
     inventorCredit: "Invented by Mwesigwa Jimmy in Uganda. Built for the world.",
     analytics: {
-        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID',
-        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID',
+        gaMeasurementId: 'G-YOUR_GA_MEASUREMENT_ID', // REPLACE WITH YOUR ACTUAL GA ID
+        fbPixelId: 'YOUR_FACEBOOK_PIXEL_ID', // REPLACE WITH YOUR ACTUAL FB PIXEL ID
     },
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
-        socials: { linkedin: '#', twitter: '#', facebook: '#' }
+        socials: { linkedin: '#', twitter: '#', facebook: '#' } // Update these with actual links
     },
     featureItems: [
         { icon: Wallet, title: "Autonomous Bookkeeping", description: "A complete, GAAP-compliant, double-entry accounting system that runs itself. From automated journal entries to one-click financial statements." },
@@ -202,13 +202,16 @@ const MegaMenuHeader = () => {
         }
         const isIosDevice = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
         setIsIos(isIosDevice);
+
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
             setDeferredPrompt(e);
         };
+
         if (typeof window !== 'undefined') {
             window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         }
+
         return () => {
             if (typeof window !== 'undefined') {
                 window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -431,6 +434,7 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
             const imagePart = part as ImagePart;
             let imageUrl: string | undefined;
 
+            // Ensure image property exists and is a string or URL
             if (typeof imagePart.image === 'string') {
                 imageUrl = imagePart.image;
             } else if (imagePart.image instanceof URL) {
@@ -447,36 +451,46 @@ const renderMessageContent = (content: CoreMessage['content']): ReactNode => {
 
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [userContext, setUserContext] = useState({ businessId: '', userId: '' });
+    const [userContext, setUserContext] = useState<{ businessId: string; userId: string; } | null>(null); // Initialize as null
     const [chatInput, setChatInput] = useState('');
 
     useEffect(() => {
-        const businessId = getCookie('business_id');
-        const userId = getCookie('user_id'); 
-        if (businessId && userId) setUserContext({ businessId, userId });
+        // Ensure this runs only client-side
+        if (typeof window !== 'undefined') {
+            const businessId = getCookie('business_id');
+            const userId = getCookie('user_id');
+            // Only set context if both IDs are present
+            if (businessId && userId) {
+                setUserContext({ businessId, userId });
+            } else {
+                console.warn("AI Chat Widget: Missing 'business_id' or 'user_id' cookies. Chat functionality may be limited.");
+            }
+        }
     }, []);
 
-    const { 
-        messages, 
-        setMessages, 
-        sendMessage, 
-        isLoading 
+    const {
+        messages,
+        setMessages,
+        sendMessage,
+        isLoading
     }: any = useChat({
-        api: '/api/chat', 
-        body: { businessId: userContext.businessId, userId: userContext.userId },
+        api: '/api/chat',
+        body: userContext ? { businessId: userContext.businessId, userId: userContext.userId } : {}, // Pass body only if context is available
         onError: (error: Error) => console.error("Chat error:", error),
     } as any);
 
     useEffect(() => {
-        if (messages.length === 0 && setMessages) {
+        // Initialize messages only if userContext is available and messages are empty
+        if (userContext && messages.length === 0 && setMessages) {
             setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' }]);
         }
-    }, [messages.length, setMessages]);
+    }, [messages.length, setMessages, userContext]); // Add userContext to dependencies
 
     const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const trimmedInput = chatInput.trim();
-        if (!trimmedInput || !userContext.userId || !userContext.businessId) return;
+        // Ensure userContext is not null before attempting to send
+        if (!trimmedInput || !userContext?.userId || !userContext?.businessId) return;
 
         sendMessage({ content: trimmedInput, role: 'user' });
         setChatInput('');
@@ -487,10 +501,12 @@ const AdvancedChatWidget = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, isLoading]); // Added isLoading to dependencies for scrolling
 
-    const canSend = !isLoading && chatInput.trim() && userContext.userId && userContext.businessId;
-    const isDisabled = isLoading || !userContext.userId || !userContext.businessId;
+    // Chat is disabled if loading, or if userContext (cookies) are not yet loaded
+    const isDisabled = isLoading || userContext === null || !userContext.userId || !userContext.businessId;
+    const canSend = !isDisabled && chatInput.trim().length > 0;
+
 
     return (
         <>
@@ -532,9 +548,10 @@ const AdvancedChatWidget = () => {
                                                 </div>
                                             </div>
                                         )}
-                                        {!userContext.businessId && !userContext.userId && !isLoading && (
+                                        {userContext === null && !isLoading && (
                                             <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50">
                                                 <p>Cannot connect to the AI Assistant. Your business context (Business ID/User ID cookies) is missing or still loading.</p>
+                                                <p className="mt-2 text-xs text-red-400">Please ensure you are logged in or your session is active.</p>
                                             </div>
                                         )}
                                     </div>
@@ -597,7 +614,10 @@ export default function HomePage() {
 
     const [showCookieBanner, setShowCookieBanner] = useState(false);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
-    const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
+    // Use a temporary state for customization to avoid immediate application
+    const [currentEditingPreferences, setCurrentEditingPreferences] = useState<CookiePreferences>(initialCookiePreferences);
+    const [actualCookiePreferences, setActualCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
+
 
     const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
         if (typeof window === 'undefined') return;
@@ -606,13 +626,15 @@ export default function HomePage() {
         const hasGaId = gaMeasurementId && gaMeasurementId !== 'G-YOUR_GA_MEASUREMENT_ID';
         const hasFbId = fbPixelId && fbPixelId !== 'YOUR_FACEBOOK_PIXEL_ID';
 
+        // Google Analytics / Gtag
         if (hasGaId) {
-            window.gtag('consent', 'default', {
+            window.gtag('consent', 'update', { // Use 'update' to correctly apply changes
                 'analytics_storage': prefs.analytics ? 'granted' : 'denied',
                 'ad_storage': prefs.marketing ? 'granted' : 'denied',
             });
 
-            if (!document.querySelector('#google-analytics-script')) {
+            // Conditionally load GA script only if analytics or ad storage is granted and script not loaded
+            if ((prefs.analytics || prefs.marketing) && !document.querySelector('#google-analytics-script')) {
                 const gaScript = document.createElement('script');
                 gaScript.id = 'google-analytics-script';
                 gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`;
@@ -631,6 +653,7 @@ export default function HomePage() {
             }
         }
         
+        // Facebook Pixel
         const fbScript = document.querySelector('#facebook-pixel-script');
         if (prefs.marketing && hasFbId) {
             if (!fbScript) {
@@ -642,10 +665,15 @@ export default function HomePage() {
                   fbq('track', 'PageView');
                 `;
                 document.head.appendChild(newFbScript);
+            } else {
+                // If script exists, ensure it's initialized/tracked
+                window.fbq('track', 'PageView');
             }
         } else if (fbScript) {
+            // Remove FB Pixel script if marketing cookies are denied and script is present
             fbScript.remove();
         }
+        setActualCookiePreferences(prefs); // Update the actual applied preferences
     }, []);
 
     const initializeCookiePreferences = useCallback(() => {
@@ -653,17 +681,24 @@ export default function HomePage() {
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (!consentCookie) {
             setShowCookieBanner(true);
+            // Apply default preferences when banner first shows
             applyCookiePreferences(initialCookiePreferences);
+            setCurrentEditingPreferences(initialCookiePreferences);
         } else {
             try {
                 const storedPrefs: CookiePreferences = JSON.parse(consentCookie);
-                setCookiePreferences(storedPrefs);
+                // Ensure all categories are covered, especially new ones
+                const mergedPrefs = { ...initialCookiePreferences, ...storedPrefs };
+                setActualCookiePreferences(mergedPrefs);
                 setShowCookieBanner(false);
-                applyCookiePreferences(storedPrefs);
+                applyCookiePreferences(mergedPrefs); // Apply stored preferences
+                setCurrentEditingPreferences(mergedPrefs); // Also set editing prefs to stored ones
             } catch (e) {
+                console.error("Failed to parse cookie consent, resetting.", e);
                 clearCookie('bbu1_cookie_consent');
                 setShowCookieBanner(true);
                 applyCookiePreferences(initialCookiePreferences);
+                setCurrentEditingPreferences(initialCookiePreferences);
             }
         }
     }, [initialCookiePreferences, applyCookiePreferences]);
@@ -674,36 +709,39 @@ export default function HomePage() {
 
     const handleAcceptAllCookies = useCallback(() => {
         const allTruePrefs: CookiePreferences = { essential: true, analytics: true, marketing: true };
-        setCookiePreferences(allTruePrefs);
         setCookie('bbu1_cookie_consent', JSON.stringify(allTruePrefs), 365);
         setShowCookieBanner(false);
         setIsCustomizingCookies(false);
-        applyCookiePreferences(allTruePrefs);
+        applyCookiePreferences(allTruePrefs); // Apply the changes
     }, [applyCookiePreferences]);
 
     const handleSaveCookiePreferences = useCallback(() => {
-        setCookie('bbu1_cookie_consent', JSON.stringify(cookiePreferences), 365);
+        setCookie('bbu1_cookie_consent', JSON.stringify(currentEditingPreferences), 365);
         setShowCookieBanner(false);
         setIsCustomizingCookies(false);
-        applyCookiePreferences(cookiePreferences);
-    }, [cookiePreferences, applyCookiePreferences]);
+        applyCookiePreferences(currentEditingPreferences); // Apply the changes
+    }, [currentEditingPreferences, applyCookiePreferences]);
 
     const toggleCookiePreference = useCallback((id: CookieCategoryKey) => {
-        setCookiePreferences(prev => ({ ...prev, [id]: !prev[id] }));
+        setCurrentEditingPreferences(prev => ({ ...prev, [id]: !prev[id] }));
     }, []);
 
     const openCookiePreferences = useCallback(() => {
         const consentCookie = getCookie('bbu1_cookie_consent');
         if (consentCookie) {
             try {
-                setCookiePreferences(JSON.parse(consentCookie));
-            } catch (e) { setCookiePreferences(initialCookiePreferences); }
+                // Load existing preferences into editing state
+                setCurrentEditingPreferences(JSON.parse(consentCookie));
+            } catch (e) {
+                setCurrentEditingPreferences(initialCookiePreferences);
+            }
         } else {
-            setCookiePreferences(initialCookiePreferences);
+            setCurrentEditingPreferences(initialCookiePreferences);
         }
         setShowCookieBanner(true);
         setIsCustomizingCookies(true);
     }, [initialCookiePreferences]);
+
 
     return (
         <>
@@ -813,8 +851,10 @@ export default function HomePage() {
                                 <CardTitle className="flex items-center gap-2">
                                     <ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy
                                 </CardTitle>
-                                {!isCustomizingCookies && (
-                                    <CardDescription>
+                            </CardHeader>
+                            {!isCustomizingCookies ? (
+                                <>
+                                    <CardDescription className="px-6 pb-4 text-sm">
                                         We use cookies to enhance your browsing experience, analyze our traffic, and for marketing. By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
                                         <Dialog>
                                             <DialogTrigger asChild>
@@ -826,20 +866,18 @@ export default function HomePage() {
                                             </DialogContent>
                                         </Dialog>.
                                     </CardDescription>
-                                )}
-                            </CardHeader> {/* Added missing closing tag for CardHeader */}
-                            {!isCustomizingCookies ? (
-                                <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                                    <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
-                                    <Button onClick={handleAcceptAllCookies}>Accept All</Button>
-                                </CardFooter>
+                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 px-6">
+                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
+                                        <Button onClick={handleAcceptAllCookies}>Accept All</Button>
+                                    </CardFooter>
+                                </>
                             ) : (
-                                <CardContent className="space-y-4 pt-0">
+                                <CardContent className="space-y-4 pt-0 px-6">
                                     {siteConfig.cookieCategories.map(category => (
                                         <div key={category.id} className="flex items-start space-x-3 py-2 border-t first:border-t-0">
                                             <Checkbox
                                                 id={category.id}
-                                                checked={cookiePreferences[category.id]}
+                                                checked={currentEditingPreferences[category.id]}
                                                 onCheckedChange={() => toggleCookiePreference(category.id as CookieCategoryKey)}
                                                 disabled={category.isRequired}
                                                 className="mt-1"
