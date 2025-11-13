@@ -279,6 +279,28 @@ const MegaMenuHeader = () => {
                         </NavigationMenuItem>
                         
                         <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
+
+                        {/* FAQ Dialog Button */}
+                        <NavigationMenuItem>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
+                                    </DialogHeader>
+                                    <Accordion type="single" collapsible className="w-full py-4">
+                                        {siteConfig.faqItems.map((faq, index) => (
+                                            <AccordionItem key={index} value={`item-${index}`}>
+                                                <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                </DialogContent>
+                            </Dialog>
+                        </NavigationMenuItem>
                     </NavigationMenuList>
                 </NavigationMenu>
 
@@ -304,6 +326,7 @@ const MegaMenuHeader = () => {
                             <Link href="#" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Industries</Link>
                             <Link href="#" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Platform</Link>
                              <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                             <Link href="#" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>FAQ</Link>
                             <div className="flex flex-col gap-2 pt-4 border-t">
                                 <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
                                 <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
@@ -386,11 +409,20 @@ const AdvancedChatWidget = () => {
 export default function HomePage() {
     const rotatingTexts = ["From startup to enterprise.", "For every ambition.", "Your complete business OS."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
-    
+    const slideshowContent = [
+        { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers using BBU1 on a tablet." },
+        { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast, secure system for transactions.", alt: "A mobile money agent serving customers." },
+        { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A simple yet powerful POS and inventory system to manage sales and stock.", alt: "A local shop owner managing his store." },
+        { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track medical supplies.", alt: "Medical professionals using BBU1 on tablets." },
+        { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field to track crops and connect with markets.", alt: "Farmers collaborating with BBU1 on mobile devices." },
+    ];
+    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
     useEffect(() => {
         const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 3000);
-        return () => { clearInterval(textInterval); };
-    }, [rotatingTexts.length]);
+        const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % slideshowContent.length); }, 8000);
+        return () => { clearInterval(textInterval); clearInterval(imageInterval); };
+    }, [rotatingTexts.length, slideshowContent.length]);
 
     // --- COOKIE CONSENT AND TOAST NOTIFICATION LOGIC ---
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences);
@@ -441,16 +473,18 @@ export default function HomePage() {
                 </section>
                 
                 {/* Platform Pillars Section */}
-                <AnimatedSection id="platform" className="bg-background relative">
-                    <div className="absolute inset-0 z-0 opacity-10"><Image src="/images/showcase/ai-warehouse-logistics.jpg" alt="ai warehouse" fill style={{ objectFit: 'cover' }}/></div><div className="absolute inset-0 z-0 bg-background/80 backdrop-blur-sm"></div>
+                <AnimatedSection id="platform" className="bg-gradient-to-b from-background to-accent/20">
                     <div className="relative z-10 text-center mb-12 max-w-3xl mx-auto"><h2 className="text-3xl font-bold tracking-tight">An Operating System Engineered for Growth</h2><p className="text-muted-foreground mt-2">BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.</p></div>
                     <motion.div variants={{ visible: { transition: { staggerChildren: 0.1 } } }} initial="hidden" whileInView="visible" className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{siteConfig.platformPillars.map(item => (<motion.div key={item.title} variants={itemVariants}><Card className="text-left h-full hover:shadow-primary/20 hover:shadow-xl hover:-translate-y-1.5 transition-all bg-background/80 border-primary/10"><CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2"><div className="p-3 bg-primary/10 rounded-md"><item.icon className="h-6 w-6 text-primary" /></div><CardTitle className="text-lg">{item.title}</CardTitle></CardHeader><CardContent><p className="text-muted-foreground text-sm">{item.description}</p></CardContent></Card></motion.div>))} </motion.div>
                 </AnimatedSection>
 
-                {/* FAQ Section */}
-                <AnimatedSection id="faq" className="bg-gradient-to-b from-accent/20 to-background">
-                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>Frequently Asked Questions</motion.h2></div>
-                    <motion.div className="max-w-3xl mx-auto" variants={itemVariants}><Accordion type="single" collapsible className="w-full">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></motion.div>
+                {/* BBU1 in Action Section */}
+                <AnimatedSection id="in-action" className="bg-gradient-to-b from-accent/20 to-background">
+                    <div className="text-center mb-12"><motion.h2 className="text-3xl sm:text-4xl font-bold" variants={itemVariants}>BBU1 In Action</motion.h2><motion.p className="mt-4 text-lg text-muted-foreground" variants={itemVariants}>See how BBU1 empowers diverse industries across the continent.</motion.p></div>
+                    <motion.div className="relative rounded-xl overflow-hidden shadow-xl border h-[400px] md:h-[550px] lg:h-[700px] bg-gray-800" variants={itemVariants}>
+                        <AnimatePresence mode="wait"><motion.div key={currentSlideIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.2, ease: "easeInOut" }} className="absolute inset-0"><Image src={slideshowContent[currentSlideIndex].src} alt={slideshowContent[currentSlideIndex].alt} layout="fill" objectFit="cover" className="filter brightness-[0.7]" /><div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" /><div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl"><h3 className="text-2xl md:text-4xl font-bold mb-2">{slideshowContent[currentSlideIndex].title}</h3><p className="text-base md:text-lg">{slideshowContent[currentSlideIndex].description}</p></div></motion.div></AnimatePresence>
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">{slideshowContent.map((_, idx) => (<button key={idx} className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} onClick={() => setCurrentSlideIndex(idx)} aria-label={`Go to slide ${idx + 1}`} />))}</div>
+                    </motion.div>
                 </AnimatedSection>
                                 
                 {/* Final CTA */}
