@@ -660,7 +660,7 @@ export default function HomePage() {
                         </div>
                         <h3 className="text-3xl font-bold tracking-tight text-primary mt-8">Your Success is Our Onboarding Mission</h3>
                         <p className="mt-4 text-lg text-muted-foreground">
-                            We don't just sell software; we forge partnerships. From your very first day, you receive <strong className="text-foreground">complimentary, dedicated human support</strong> to ensure BBU1 is perfectly tailored to your vision. We succeed only when you do.
+                            We don't just sell software; we forge partnerships. From your very first day, you receive <strong className="text-foreground">complimentary, dedicated human support</strong> to ensure BBU1 is perfectly tailored to your vision. We succeed only.
                         </p>
                      </motion.div>
                 </AnimatedSection>
