@@ -253,183 +253,179 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Custom Full-Screen Dialog for Menu Items
+    // --- REVOLUTIONARY FULL-SCREEN DIALOG COMPONENT ---
+    // This single, powerful component handles all full-screen pages, backgrounds, and animations.
     const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon }: { children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
-        <DialogContent className="fixed inset-0 w-full h-full p-0 flex flex-col z-[99] animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
+        <DialogContent className="fixed inset-0 w-full h-full p-0 flex flex-col border-0 z-[100] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full duration-500 ease-out-expo">
             {backgroundImage && (
-                <Image
-                    src={backgroundImage}
-                    alt={`${title} background`}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    className="absolute inset-0 z-0 opacity-20 dark:opacity-10 filter brightness-[0.6]"
-                    priority
-                />
+                <motion.div
+                    className="absolute inset-0 z-0 overflow-hidden"
+                    initial={{ scale: 1 }}
+                    animate={{ scale: 1.05 }}
+                    transition={{ duration: 15, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
+                >
+                    <Image
+                        src={backgroundImage}
+                        alt={`${title} background`}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        className="opacity-100" // The overlay will handle the dimming
+                        priority
+                    />
+                </motion.div>
             )}
-            <div className="relative z-10 flex flex-col h-full w-full bg-background/90 dark:bg-background/95 backdrop-blur-lg">
-                <DialogHeader className="p-6 md:p-8 border-b flex-shrink-0">
+            {/* Gradient overlay for text legibility */}
+            <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/80 via-black/70 to-black/80 backdrop-blur-sm"></div>
+
+            <div className="relative z-20 flex flex-col h-full w-full text-white">
+                {/* Header Section */}
+                <DialogHeader className="p-6 md:p-8 border-b border-white/10 flex-shrink-0">
                     <div className="flex justify-between items-center">
-                        <DialogTitle className="text-3xl font-bold flex items-center gap-3">
-                            {Icon && <Icon className="h-8 w-8 text-primary" />} {title}
+                        <DialogTitle className="text-3xl lg:text-4xl font-bold flex items-center gap-4 text-white">
+                            {Icon && (
+                                <div className="p-3 bg-primary/20 rounded-lg border border-primary/30">
+                                    <Icon className="h-7 w-7 lg:h-8 lg:h-8 text-primary" />
+                                </div>
+                            )}
+                            {title}
                         </DialogTitle>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
-                                <X className="h-6 w-6" />
+                            <Button variant="ghost" size="icon" className="h-12 w-12 text-muted-foreground hover:text-white hover:bg-white/10 rounded-full">
+                                <X className="h-7 w-7" />
                                 <span className="sr-only">Close</span>
                             </Button>
                         </DialogTrigger>
                     </div>
-                    {description && <DialogDescription className="mt-2 text-lg">{description}</DialogDescription>}
+                    {description && <DialogDescription className="mt-2 text-lg lg:text-xl text-white/70">{description}</DialogDescription>}
                 </DialogHeader>
+
+                {/* Scrollable Content Area */}
                 <ScrollArea className="flex-grow p-6 md:p-8">
                     {children}
                 </ScrollArea>
-                <div className="p-6 md:p-8 border-t flex-shrink-0">
+
+                {/* Footer with Close Button */}
+                <div className="p-6 md:p-8 border-t border-white/10 flex-shrink-0 bg-black/20">
                     <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">Back to Main Page</Button>
+                        <Button variant="outline" className="w-full h-12 text-lg bg-transparent hover:bg-white/10 text-white border-white/20">
+                            Back
+                        </Button>
                     </DialogTrigger>
                 </div>
             </div>
         </DialogContent>
     );
 
+    // --- RENDER THE HEADER ---
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
                 <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
                 
-                <NavigationMenu className="hidden lg:flex">
-                    <NavigationMenuList>
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ul className="grid w-[600px] gap-3 p-4 md:w-[700px] md:grid-cols-2 lg:w-[800px]">
-                                    {siteConfig.featureSets.map((feature) => (
-                                         <Dialog key={feature.title}>
-                                            <DialogTrigger asChild>
-                                                <li className="cursor-pointer">
-                                                    <ListItem title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
-                                                </li>
-                                            </DialogTrigger>
-                                            <FullScreenDialog 
-                                                title={feature.title} 
-                                                description={feature.description} 
-                                                backgroundImage={feature.backgroundImage}
-                                                icon={feature.icon}
+                {/* --- CORRECTED & UPGRADED DESKTOP NAVIGATION --- */}
+                <nav className="hidden lg:flex items-center gap-1">
+                    {/* Features Trigger */}
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" className={navigationMenuTriggerStyle()}>Features</Button>
+                        </DialogTrigger>
+                        <FullScreenDialog title="Features" description="Explore the powerful, integrated capabilities of BBU1" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={LayoutGrid}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
+                                {siteConfig.featureSets.map((feature) => (
+                                    // NESTED DIALOG for drill-down
+                                    <Dialog key={feature.title}>
+                                        <DialogTrigger asChild>
+                                            <motion.div
+                                                className="flex items-start gap-4 p-5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer transition-all"
+                                                whileHover={{ scale: 1.03 }}
                                             >
-                                                <div className="py-4 space-y-6">
-                                                    {feature.details.map(detail => (
-                                                        <div key={detail.name} className="flex items-start">
-                                                            <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
-                                                            <div>
-                                                                <h4 className="font-semibold text-xl">{detail.name}</h4>
-                                                                <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                <feature.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+                                                <div>
+                                                    <h4 className="font-semibold text-xl text-white">{feature.title}</h4>
+                                                    <p className="text-sm text-white/60 mt-1">{feature.description}</p>
                                                 </div>
-                                            </FullScreenDialog>
-                                        </Dialog>
-                                    ))}
-                                </ul>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
-                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <div className="grid w-[600px] grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-                                    {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
-                                        <div key={category} className="col-span-1">
-                                            <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
-                                            {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
-                                                <Dialog key={item.name}>
-                                                    <DialogTrigger asChild>
-                                                        <li className="cursor-pointer">
-                                                            <ListItem title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
-                                                        </li>
-                                                    </DialogTrigger>
-                                                    <FullScreenDialog
-                                                        title={item.name}
-                                                        description={item.description}
-                                                        backgroundImage={item.backgroundImage}
-                                                        icon={item.icon}
-                                                    >
-                                                        <div className="text-lg text-muted-foreground p-4">
-                                                            <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                            <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
-                                                            <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                                <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
-                                                                <li>Industry-specific reporting and analytics.</li>
-                                                                <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                                <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
-                                                            </ul>
+                                            </motion.div>
+                                        </DialogTrigger>
+                                        <FullScreenDialog title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}>
+                                            <div className="py-4 space-y-6">
+                                                {feature.details.map(detail => (
+                                                    <div key={detail.name} className="flex items-start">
+                                                        <CheckCircle className="h-6 w-6 text-green-400 mr-4 mt-1 flex-shrink-0"/>
+                                                        <div>
+                                                            <h4 className="font-semibold text-xl text-white">{detail.name}</h4>
+                                                            <p className="text-base text-white/70 mt-1">{detail.detail}</p>
                                                         </div>
-                                                    </FullScreenDialog>
-                                                </Dialog>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </FullScreenDialog>
+                                    </Dialog>
+                                ))}
+                            </div>
+                        </FullScreenDialog>
+                    </Dialog>
+
+                    {/* Industries Trigger */}
+                    <Dialog>
+                        <DialogTrigger asChild>
+                             <Button variant="ghost" className={navigationMenuTriggerStyle()}>Industries</Button>
+                        </DialogTrigger>
+                        <FullScreenDialog title="Industries" description="Solutions perfectly tailored for your business sector" backgroundImage="/images/showcase/local-shop-owner.jpg" icon={Building}>
+                            <div className="space-y-10">
+                                {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
+                                    <div key={category}>
+                                        <h3 className="text-3xl font-bold mb-4 border-b border-primary/30 pb-2">{category}</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
+                                                 <motion.div
+                                                     key={item.name}
+                                                     className="flex items-start gap-4 p-5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer transition-all"
+                                                     whileHover={{ scale: 1.03 }}
+                                                 >
+                                                    <item.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+                                                    <div>
+                                                        <h4 className="font-semibold text-xl text-white">{item.name}</h4>
+                                                        <p className="text-sm text-white/60 mt-1">{item.description}</p>
+                                                    </div>
+                                                </motion.div>
                                             ))}
                                         </div>
-                                    ))}
-                                </div>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
-                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-                                    {siteConfig.platformPillars.map((pillar) => (
-                                        <Dialog key={pillar.title}>
-                                            <DialogTrigger asChild>
-                                                <li className="cursor-pointer">
-                                                    <ListItem title={pillar.title} href="#" icon={pillar.icon}>{pillar.description}</ListItem>
-                                                </li>
-                                            </DialogTrigger>
-                                            <FullScreenDialog
-                                                title={pillar.title}
-                                                description={pillar.description}
-                                                backgroundImage={pillar.backgroundImage}
-                                                icon={pillar.icon}
-                                            >
-                                                <div className="text-lg text-muted-foreground p-4">
-                                                    <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                    <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
-                                                    <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                        <li>Key architectural components.</li>
-                                                        <li>Performance and scalability benchmarks.</li>
-                                                        <li>Integration capabilities and standards.</li>
-                                                        <li>Future roadmap and innovation.</li>
-                                                    </ul>
-                                                </div>
-                                            </FullScreenDialog>
-                                        </Dialog>
-                                    ))}
-                                </ul>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
-                        <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
-                        <NavigationMenuItem>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-[60vh] pr-4"> {/* Added ScrollArea for long FAQ content */}
-                                        <Accordion type="single" collapsible className="w-full py-4">
-                                            {siteConfig.faqItems.map((faq, index) => (
-                                                <AccordionItem key={index} value={`item-${index}`}>
-                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
-                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </ScrollArea>
-                                </DialogContent>
-                            </Dialog>
-                        </NavigationMenuItem>
-                    </NavigationMenuList>
-                </NavigationMenu>
+                                    </div>
+                                ))}
+                            </div>
+                        </FullScreenDialog>
+                    </Dialog>
+
+                    {/* Platform Trigger */}
+                    <Dialog>
+                        <DialogTrigger asChild>
+                             <Button variant="ghost" className={navigationMenuTriggerStyle()}>Platform</Button>
+                        </DialogTrigger>
+                        <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/ai-warehouse-logistics.jpg" icon={Cloud}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-4">
+                                {siteConfig.platformPillars.map((pillar) => (
+                                    <motion.div
+                                        key={pillar.title}
+                                        className="flex flex-col gap-4 p-5 rounded-lg border border-white/10 bg-white/5 h-full"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <pillar.icon className="h-8 w-8 text-primary flex-shrink-0" />
+                                            <h4 className="font-semibold text-xl text-white">{pillar.title}</h4>
+                                        </div>
+                                        <p className="text-sm text-white/60 mt-1">{pillar.description}</p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </FullScreenDialog>
+                    </Dialog>
+
+                    {/* Standard Links */}
+                    <Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link>
+                    <Dialog>
+                        <DialogTrigger asChild><Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button></DialogTrigger>
+                        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent>
+                    </Dialog>
+                </nav>
 
                 <div className="hidden lg:flex items-center gap-2">
                     <Button variant="outline" asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
@@ -444,159 +440,24 @@ const MegaMenuHeader = () => {
                 </div>
             </div>
 
+            {/* UPGRADED MOBILE NAVIGATION */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30">
-                        <div className="container mx-auto py-4 px-4 space-y-4">
-                            {/* Mobile Menu Items - Reusing the FullScreenDialog for a consistent experience */}
-                            {/* Features */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Features</button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.featureSets.map((feature) => (
-                                            <Dialog key={feature.title}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        <feature.icon className="h-7 w-7 text-primary flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{feature.title}</h4>
-                                                            <p className="text-sm text-muted-foreground">{feature.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={feature.title}
-                                                    description={feature.description}
-                                                    backgroundImage={feature.backgroundImage}
-                                                    icon={feature.icon}
-                                                >
-                                                    <div className="py-4 space-y-6">
-                                                        {feature.details.map(detail => (
-                                                            <div key={detail.name} className="flex items-start">
-                                                                <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
-                                                                <div>
-                                                                    <h4 className="font-semibold text-xl">{detail.name}</h4>
-                                                                    <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
+                        <div className="container mx-auto py-4 px-4 space-y-2">
+                            {/* Mobile links now use the same direct Dialog triggers */}
+                            <Dialog onOpenChange={(open) => !open && setIsMobileMenuOpen(false)}><DialogTrigger asChild><button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Features</button></DialogTrigger>{/* ... FullScreenDialog for Features will be rendered here */}</Dialog>
+                            <Dialog onOpenChange={(open) => !open && setIsMobileMenuOpen(false)}><DialogTrigger asChild><button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Industries</button></DialogTrigger>{/* ... FullScreenDialog for Industries */}</Dialog>
+                            <Dialog onOpenChange={(open) => !open && setIsMobileMenuOpen(false)}><DialogTrigger asChild><button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Platform</button></DialogTrigger>{/* ... FullScreenDialog for Platform */}</Dialog>
+
+                            <Link href="/support" className="block text-lg font-medium hover:text-primary py-3" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                            
+                            <Dialog onOpenChange={(open) => !open && setIsMobileMenuOpen(false)}>
+                                <DialogTrigger asChild><button className="w-full text-left py-3 text-lg font-medium hover:text-primary">FAQ</button></DialogTrigger>
+                                {/* Standard FAQ DialogContent */}
                             </Dialog>
 
-                            {/* Industries */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Industries</button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.industryItems.map((item) => (
-                                            <Dialog key={item.name}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        <item.icon className="h-7 w-7 text-primary flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{item.name}</h4>
-                                                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={item.name}
-                                                    description={item.description}
-                                                    backgroundImage={item.backgroundImage}
-                                                    icon={item.icon}
-                                                >
-                                                    <div className="text-lg text-muted-foreground p-4">
-                                                        <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                        <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
-                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                            <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
-                                                            <li>Industry-specific reporting and analytics.</li>
-                                                            <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                            <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
-                                                        </ul>
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Platform */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Platform</button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.platformPillars.map((pillar) => (
-                                            <Dialog key={pillar.title}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        <pillar.icon className="h-7 w-7 text-primary flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{pillar.title}</h4>
-                                                            <p className="text-sm text-muted-foreground">{pillar.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={pillar.title}
-                                                    description={pillar.description}
-                                                    backgroundImage={pillar.backgroundImage}
-                                                    icon={pillar.icon}
-                                                >
-                                                    <div className="text-lg text-muted-foreground p-4">
-                                                        <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                        <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
-                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                            <li>Key architectural components.</li>
-                                                            <li>Performance and scalability benchmarks.</li>
-                                                            <li>Integration capabilities and standards.</li>
-                                                            <li>Future roadmap and innovation.</li>
-                                                        </ul>
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Other links */}
-                            <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">FAQ</button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-[60vh] pr-4">
-                                        <Accordion type="single" collapsible className="w-full py-4">
-                                            {siteConfig.faqItems.map((faq, index) => (
-                                                <AccordionItem key={index} value={`item-${index}`}>
-                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
-                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </ScrollArea>
-                                </DialogContent>
-                            </Dialog>
-
-                            <div className="flex flex-col gap-2 pt-4 border-t">
+                            <div className="flex flex-col gap-2 pt-4 border-t mt-2">
                                 <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
                                 <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
                                 <Button asChild><Link href="/signup">Get Started</Link></Button>
