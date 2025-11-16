@@ -216,12 +216,26 @@ const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { op
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
 const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } } };
-const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
+const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" }, }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
 
-const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
+// CORRECTED ListItem COMPONENT
+const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon; }>(({ className, title, children, icon: Icon, onClick, ...props }, ref) => (
     <li>
         <NavigationMenuLink asChild>
-            <a ref={ref} className={cn("flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)} {...props}>
+            <a
+                ref={ref}
+                className={cn(
+                    "flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                    className
+                )}
+                {...props}
+                onClick={(e) => {
+                    e.stopPropagation(); // Stop propagation to prevent NavigationMenu from closing
+                    if (onClick) {
+                        onClick(e);
+                    }
+                }}
+            >
                 <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1"><Icon className="h-6 w-6 text-primary" /></div>
                 <div>
                     <div className="text-sm font-medium leading-none">{title}</div>
@@ -252,6 +266,7 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
 
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false); // New state to manage dialog open/close
 
     // Custom Full-Screen Dialog for Menu Items
     const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon }: { children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
@@ -308,6 +323,7 @@ const MegaMenuHeader = () => {
                                          <Dialog key={feature.title}>
                                             <DialogTrigger asChild>
                                                 <li className="cursor-pointer">
+                                                    {/* CORRECTED: Removed onSelect, as onClick in ListItem now handles stopPropagation */}
                                                     <ListItem title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
                                                 </li>
                                             </DialogTrigger>
@@ -345,6 +361,7 @@ const MegaMenuHeader = () => {
                                                 <Dialog key={item.name}>
                                                     <DialogTrigger asChild>
                                                         <li className="cursor-pointer">
+                                                            {/* CORRECTED: Removed onSelect, as onClick in ListItem now handles stopPropagation */}
                                                             <ListItem title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
                                                         </li>
                                                     </DialogTrigger>
@@ -380,6 +397,7 @@ const MegaMenuHeader = () => {
                                         <Dialog key={pillar.title}>
                                             <DialogTrigger asChild>
                                                 <li className="cursor-pointer">
+                                                    {/* CORRECTED: Removed onSelect, as onClick in ListItem now handles stopPropagation */}
                                                     <ListItem title={pillar.title} href="#" icon={pillar.icon}>{pillar.description}</ListItem>
                                                 </li>
                                             </DialogTrigger>
@@ -450,16 +468,16 @@ const MegaMenuHeader = () => {
                         <div className="container mx-auto py-4 px-4 space-y-4">
                             {/* Mobile Menu Items - Reusing the FullScreenDialog for a consistent experience */}
                             {/* Features */}
-                            <Dialog>
+                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Features</button>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>Features</button>
                                 </DialogTrigger>
                                 <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.featureSets.map((feature) => (
                                             <Dialog key={feature.title}>
                                                 <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsDialogOpen(true); }}>
                                                         <feature.icon className="h-7 w-7 text-primary flex-shrink-0" />
                                                         <div>
                                                             <h4 className="font-semibold text-xl">{feature.title}</h4>
@@ -492,16 +510,16 @@ const MegaMenuHeader = () => {
                             </Dialog>
 
                             {/* Industries */}
-                            <Dialog>
+                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Industries</button>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>Industries</button>
                                 </DialogTrigger>
                                 <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.industryItems.map((item) => (
                                             <Dialog key={item.name}>
                                                 <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsDialogOpen(true); }}>
                                                         <item.icon className="h-7 w-7 text-primary flex-shrink-0" />
                                                         <div>
                                                             <h4 className="font-semibold text-xl">{item.name}</h4>
@@ -533,16 +551,16 @@ const MegaMenuHeader = () => {
                             </Dialog>
 
                             {/* Platform */}
-                            <Dialog>
+                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Platform</button>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>Platform</button>
                                 </DialogTrigger>
                                 <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.platformPillars.map((pillar) => (
                                             <Dialog key={pillar.title}>
                                                 <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsDialogOpen(true); }}>
                                                         <pillar.icon className="h-7 w-7 text-primary flex-shrink-0" />
                                                         <div>
                                                             <h4 className="font-semibold text-xl">{pillar.title}</h4>
@@ -575,9 +593,9 @@ const MegaMenuHeader = () => {
 
                             {/* Other links */}
                             <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
-                            <Dialog>
+                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">FAQ</button>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>FAQ</button>
                                 </DialogTrigger>
                                 <DialogContent className="max-w-3xl">
                                     <DialogHeader>
@@ -655,7 +673,7 @@ const AdvancedChatWidget = () => {
                                 {messages.map((m: CoreMessage, i: number) => (
                                     <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
                                         {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>}
-                                        <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{m.content as string}</div>
+                                        <div className="rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: m.content as string }} />
                                         {m.role === 'user' && <Avatar className="h-8 w-8"><AvatarFallback>U</AvatarFallback></Avatar>}
                                     </div>))}
                                 {isLoading && <div className="flex items-start gap-3 text-sm"><Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar><div className="rounded-lg p-3 max-w-[85%] bg-background border">Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" /></div></div>}
