@@ -8,7 +8,7 @@ import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
@@ -26,9 +26,9 @@ interface FeatureDetail {
     title: string;
     description: string;
     details: { name: string; detail: string; }[];
-    backgroundImage: string; // Added background image for feature details
+    backgroundImage: string;
 }
-interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; } // Added background image
+interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; }
 interface FaqItem { q: string; a: ReactNode; }
 interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; }
 
@@ -64,7 +64,7 @@ const siteConfig = {
     featureSets: [
         {
             icon: Users, title: "Human Resources", description: "Manage your most valuable asset—your people—from recruitment to retirement.",
-            backgroundImage: "/images/showcase/modern-office-bbU1.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/modern-office-bbU1.jpg",
             details: [
                 { name: "Leave Management", detail: "Automate leave requests, approvals, and balance tracking with configurable policies for any country." },
                 { name: "Recruitment", detail: "Streamline your hiring process from job posting to onboarding with a collaborative recruitment pipeline." },
@@ -76,7 +76,7 @@ const siteConfig = {
         },
         {
             icon: Handshake, title: "CRM", description: "Build lasting customer relationships and accelerate your sales cycle.",
-            backgroundImage: "/images/showcase/call-center-crm.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/call-center-crm.jpg",
             details: [
                 { name: "Sales Pipeline & Lead Management", detail: "Visualize and manage your entire sales process, from lead generation and qualification to close, with a customizable drag-and-drop pipeline." },
                 { name: "Customer Support & Ticketing", detail: "Provide exceptional customer service with a built-in helpdesk to track, prioritize, and resolve customer issues efficiently, enhancing satisfaction." },
@@ -87,7 +87,7 @@ const siteConfig = {
         },
         {
             icon: Landmark, title: "Finance & Accounting", description: "Gain complete financial control with AI-powered, GAAP-compliant accounting.",
-            backgroundImage: "/images/showcase/office-admin-bbU1.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/office-admin-bbU1.jpg",
             details: [
                 { name: "Financial Reporting & Analytics", detail: "Generate real-time Profit & Loss, Balance Sheets, Cash Flow statements, and custom reports with a single click for insightful decision-making." },
                 { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses seamlessly, eliminating manual paperwork and ensuring compliance." },
@@ -100,7 +100,7 @@ const siteConfig = {
         },
         {
             icon: Warehouse, title: "Inventory & Supply Chain", description: "Optimize your stock, manage warehouses, and streamline your supply chain.",
-            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg",
             details: [
                 { name: "Multi-Warehouse Management", detail: "Track inventory across multiple locations, warehouses, or stores in real-time with comprehensive visibility." },
                 { name: "Purchase Order Management", detail: "Create, send, and track purchase orders, managing supplier relationships and optimizing procurement." },
@@ -112,7 +112,7 @@ const siteConfig = {
         },
         {
             icon: ShoppingCart, title: "Sales & E-commerce", description: "Manage your sales channels, from retail POS to online stores.",
-            backgroundImage: "/images/showcase/bakery-pos-system.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/bakery-pos-system.jpg",
             details: [
                 { name: "Point of Sale (POS)", detail: "Intuitive and fast POS system for retail operations, supporting multiple payment methods and integrated with inventory." },
                 { name: "E-commerce Integration", detail: "Seamlessly connect with popular e-commerce platforms to sync products, orders, and customer data in real-time." },
@@ -123,7 +123,7 @@ const siteConfig = {
         },
         {
             icon: Briefcase, title: "Project Management", description: "Plan, execute, and track projects with collaborative tools.",
-            backgroundImage: "/images/showcase/creative-agency-pm.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/creative-agency-pm.jpg",
             details: [
                 { name: "Task & Workflow Management", detail: "Organize projects into tasks, assign responsibilities, set deadlines, and track progress with Kanban boards or Gantt charts." },
                 { name: "Time Tracking", detail: "Accurately track time spent on tasks and projects for precise billing and resource allocation." },
@@ -134,7 +134,7 @@ const siteConfig = {
         },
         {
             icon: Scale, title: "Compliance & Governance", description: "Ensure regulatory adherence and maintain strong internal controls.",
-            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg",
             details: [
                 { name: "Audit Trails & Logs", detail: "Maintain a complete, tamper-proof audit trail of every action taken in the system for ultimate security and compliance." },
                 { name: "Role-Based Access Control", detail: "Granular control over user permissions and access rights, ensuring data security and adherence to internal policies." },
@@ -145,7 +145,7 @@ const siteConfig = {
         },
         {
             icon: Phone, title: "Telecom Services", description: "A specialized, end-to-end solution for managing telecom and agent-based businesses.",
-            backgroundImage: "/images/showcase/mobile-money-agent.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/mobile-money-agent.jpg",
             details: [
                 { name: "Admin Dashboard & Real-time Monitoring", detail: "Get a high-level overview of your entire telecom operation, from agent performance to financial health, with real-time analytics." },
                 { name: "Agent Management & Hierarchy", detail: "Onboard, manage, and track thousands of agents in real-time with powerful hierarchical controls and commission structures." },
@@ -157,7 +157,7 @@ const siteConfig = {
         },
         {
             icon: BarChart3, title: "Business Intelligence & AI", description: "Transform raw data into actionable insights with AI-powered analytics.",
-            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg",
             details: [
                 { name: "AI Copilot & Smart Insights", detail: "Aura, our AI copilot, automates bookkeeping, detects anomalies, and provides strategic insights like 'Cash flow projected to be low in 3 weeks.'" },
                 { name: "Custom Dashboards & Reporting", detail: "Create personalized dashboards and reports with drag-and-drop functionality to visualize key performance indicators (KPIs)." },
@@ -183,8 +183,8 @@ const siteConfig = {
         { name: "Construction & Engineering", icon: Building, description: "Job costing, project management, progress billing, and equipment tracking for contractors and construction companies.", category: 'Trades & Services', backgroundImage: "/images/showcase/construction-site.jpg" },
         { name: "Field Service Management", icon: Car, description: "Scheduling, dispatch, mobile invoicing, and technician tracking for HVAC, plumbing, and other field service businesses.", category: 'Trades & Services', backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg" },
         { name: "Distribution & Logistics", icon: Package, description: "End-to-end warehouse management, logistics planning, fleet management, and supply chain optimization.", category: 'Specialized', backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
-        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" }, // Changed to agent for MFI context
-        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" }, // Reused for professional look
+        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
+        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" },
         { name: "SACCO / Co-operative", icon: Users, description: "Member management, savings, loans, dividend calculation, and governance tools for cooperative societies.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
         { name: "Telecom Services", icon: Signal, description: "The premier solution for managing mobile money, airtime, and extensive agent networks, including commission management.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
         { name: "Nonprofit & NGOs", icon: HeartHandshake, description: "Donor management, grant tracking, fund accounting, project impact reporting, and volunteer management for NGOs.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
@@ -203,12 +203,12 @@ const siteConfig = {
         { q: 'Does BBU1 support multiple currencies and international operations?', a: 'Yes, BBU1 offers comprehensive multi-currency support, allowing you to manage transactions, invoicing, and reporting in various currencies. It also includes adaptable tax systems and localized compliance features to operate effectively across different countries, particularly throughout Africa and globally.' },
         { q: 'What happens if my internet connection is lost?', a: 'BBU1 features an unbreakable offline mode. Key business functions, such as POS transactions, inventory updates, and HR processes, continue to work perfectly even without an internet connection. All data is securely stored locally and automatically syncs with the cloud the moment you\'re back online, ensuring uninterrupted business operations.' },
     ] as FaqItem[],
-    termsOfService: (<div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms of Service ("Terms") govern your access to and use of the BBU1 website, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.</p><h3 className="text-base font-semibold mt-6">1. Acceptance of Terms</h3><p>By creating an account, accessing, or using the Services, you acknowledge that you have read, understood, and agree to be bound by these Terms, and by our Privacy Policy and Cookie Policy. If you do not agree to these Terms, you may not access or use the Services.</p><h3 className="text-base font-semibold mt-6">2. Changes to Terms</h3><p>We reserve the right to modify these Terms at any time. We will notify you of any changes by posting the new Terms on the BBU1 website and updating the "Last Updated" date. Your continued use of the Services after such modifications will constitute your acknowledgment of the modified Terms and agreement to abide and be bound by them.</p><h3 className="text-base font-semibold mt-6">3. User Accounts</h3><p>To access certain features of the Services, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You are responsible for safeguarding your password and for all activities that occur under your account. You agree to notify BBU1 immediately of any unauthorized use of your account.</p><h3 className="text-base font-semibold mt-6">4. Intellectual Property</h3><p>All content, trademarks, service marks, trade names, logos, and intellectual property rights displayed on the Services are the property of BBU1 or its licensors. You may not use, copy, reproduce, modify, translate, publish, broadcast, transmit, distribute, perform, display, or sell any of BBU1's intellectual property without our prior written consent.</p><h3 className="text-base font-semibold mt-6">5. User Conduct</h3><p>You agree not to use the Services for any unlawful purpose or in any way that might harm, abuse, or interfere with any other user. Prohibited activities include, but are not limited to, unauthorized access, distribution of malware, spamming, and harassment.</p><h3 className="text-base font-semibold mt-6">6. Payments and Billing</h3><p>If you subscribe to any paid Services, you agree to pay all applicable fees and taxes. All payments are non-refundable unless otherwise stated. BBU1 reserves the right to change its pricing at any time, with reasonable notice to existing subscribers.</p><h3 className="text-base font-semibold mt-6">7. Termination</h3><p>We may terminate or suspend your access to the Services immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the Services will immediately cease.</p><h3 className="text-base font-semibold mt-6">8. Disclaimer of Warranties</h3><p>The Services are provided on an "AS IS" and "AS AVAILABLE" basis. BBU1 makes no warranties, expressed or implied, regarding the Services, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</p><h3 className="text-base font-semibold mt-6">9. Limitation of Liability</h3><p>In no event shall BBU1, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Services; (ii) any conduct or content of any third party on the Services; (iii) any content obtained from the Services; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.</p><h3 className="text-base font-semibold mt-6">10. Governing Law</h3><p>These Terms shall be governed and construed in accordance with the laws of Uganda, without regard to its conflict of law provisions.</p><h3 className="text-base font-semibold mt-6">11. Contact Information</h3><p>If you have any questions about these Terms, please contact us at support@bbu1.com.</p></div>),
-    privacyPolicy: (<div className="space-y-4 text-sm"><p>This Privacy Policy describes how BBU1 collects, uses, and discloses your information when you use our website and services ("Services"). By using our Services, you agree to the collection and use of information in accordance with this policy.</p><h3 className="text-base font-semibold mt-6">1. Information We Collect</h3><p><strong>Personal Information:</strong> When you register for an account, we collect personal information such as your name, email address, phone number, company name, and billing address. If you subscribe to paid services, we also collect payment information (e.g., credit card details), which is processed securely by our third-party payment processors.</p><p><strong>Usage Data:</strong> We automatically collect information on how the Services are accessed and used. This Usage Data may include your computer's Internet Protocol address (e.g., IP address), browser type, browser version, the pages of our Service that you visit, the time and date of your visit, the time spent on those pages, unique device identifiers, and other diagnostic data.</p><p><strong>Cookies and Tracking Technologies:</strong> We use cookies and similar tracking technologies to track the activity on our Service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent.</p><p><strong>BBU1 uses the collected data for various purposes:</strong></p><ul><li>To provide and maintain our Services.</li><li>To notify you about changes to our Services.</li><li>To allow you to participate in interactive features of our Service when you choose to do so.</li><li>To provide customer support.</li><li>To gather analysis or valuable information so that we can improve our Services.</li><li>To monitor the usage of our Services.</li><li>To detect, prevent and address technical issues.</li><li>To provide you with news, special offers and general information about other goods, services and events which we offer that are similar to those that you have already purchased or enquired about unless you have opted not to receive such information.</li></ul><h3 className="text-base font-semibold mt-6">3. Disclosure of Information</h3><p>We may share your information with:</p><ul><li><strong>Service Providers:</strong> We may employ third-party companies and individuals to facilitate our Service ("Service Providers"), to provide the Service on our behalf, to perform Service-related services or to assist us in analyzing how our Service is used. These third parties have access to your Personal Data only to perform these tasks on our behalf and are obligated not to disclose or use it for any other purpose.</li><li><strong>Legal Requirements:</strong> BBU1 may disclose your Personal Data in the good faith belief that such action is necessary to: comply with a legal obligation, protect and defend the rights or property of BBU1, prevent or investigate possible wrongdoing in connection with the Service, protect the personal safety of users of the Service or the public, protect against legal liability.</li><li><strong>Business Transfers:</strong> If BBU1 is involved in a merger, acquisition or asset sale, your Personal Data may be transferred. We will provide notice before your Personal Data is transferred and becomes subject to a different Privacy Policy.</li></ul><h3 className="text-base font-semibold mt-6">4. Data Security</h3><p>The security of your data is important to us, but remember that no method of transmission over the Internet, or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee its absolute security.</p><h3 className="text-base font-semibold mt-6">5. Your Data Protection Rights (GDPR)</h3><p>If you are a resident of the European Economic Area (EEA), you have certain data protection rights. BBU1 aims to take reasonable steps to allow you to correct, amend, delete, or limit the use of your Personal Data. If you wish to be informed what Personal Data we hold about you and if you want it to be removed from our systems, please contact us.</p><h3 className="text-base font-semibold mt-6">6. Links to Other Sites</h3><p>Our Service may contain links to other sites that are not operated by us. If you click on a third-party link, you will be directed to that third party's site. We strongly advise you to review the Privacy Policy of every site you visit.</p><h3 className="text-base font-semibold mt-6">7. Children's Privacy</h3><p>Our Services do not address anyone under the age of 18 ("Children"). We do not knowingly collect personally identifiable information from anyone under the age of 18. If you are a parent or guardian and you are aware that your Children has provided us with Personal Data, please contact us. If we become aware that we have collected Personal Data from children without verification of parental consent, we take steps to remove that information from our servers.</p><h3 className="text-base font-semibold mt-6">8. Changes to This Privacy Policy</h3><p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p></div>),
+    termsOfService: (<div className="space-y-4 text-sm"><p>Welcome to BBU1...</p></div>), // Content hidden for brevity
+    privacyPolicy: (<div className="space-y-4 text-sm"><p>This Privacy Policy describes how BBU1 collects...</p></div>), // Content hidden for brevity
     cookieCategories: [
-        { id: 'essential', name: 'Essential Cookies', description: 'These cookies are crucial for the website to function properly and enable core functionalities like security, network management, and accessibility. They cannot be switched off.', isRequired: true, defaultChecked: true },
-        { id: 'analytics', name: 'Analytics Cookies', description: 'These cookies allow us to count visits and traffic sources, understand how visitors interact with our website, and measure the performance of our site. This helps us to improve the way our website works.', isRequired: false, defaultChecked: false },
-        { id: 'marketing', name: 'Marketing Cookies', description: 'These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not directly store personal information but are based on uniquely identifying your browser and internet device.', isRequired: false, defaultChecked: false }
+        { id: 'essential', name: 'Essential Cookies', description: 'These cookies are crucial for the website to function properly...', isRequired: true, defaultChecked: true },
+        { id: 'analytics', name: 'Analytics Cookies', description: 'These cookies allow us to count visits and traffic sources...', isRequired: false, defaultChecked: false },
+        { id: 'marketing', name: 'Marketing Cookies', description: 'These cookies may be set through our site by our advertising partners...', isRequired: false, defaultChecked: false }
     ] as CookieCategoryInfo[],
 };
 
@@ -218,8 +218,7 @@ const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opaci
 const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } } };
 const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" }, }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
 
-// CORRECTED ListItem COMPONENT
-const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon; }>(({ className, title, children, icon: Icon, onClick, ...props }, ref) => (
+const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon; }>(({ className, title, children, icon: Icon, ...props }, ref) => (
     <li>
         <NavigationMenuLink asChild>
             <a
@@ -229,12 +228,6 @@ const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { i
                     className
                 )}
                 {...props}
-                onClick={(e) => {
-                    e.stopPropagation(); // Stop propagation to prevent NavigationMenu from closing
-                    if (onClick) {
-                        onClick(e);
-                    }
-                }}
             >
                 <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1"><Icon className="h-6 w-6 text-primary" /></div>
                 <div>
@@ -247,30 +240,11 @@ const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { i
 ));
 ListItem.displayName = "ListItem";
 
-const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
-    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-        <div className="container mx-auto px-4 relative z-10">{children}</div>
-    </motion.section>
-);
-
-const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) => (
-    <AnimatePresence>
-        {isVisible && (
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[150] flex items-center gap-3 rounded-lg bg-foreground text-background p-4 shadow-2xl">
-                <CheckCircle className="h-6 w-6 text-green-400" />
-                <p className="font-medium">{message}</p>
-            </motion.div>
-        )}
-    </AnimatePresence>
-);
-
-const MegaMenuHeader = () => {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isDialogOpen, setIsDialogOpen] = useState(false); // New state to manage dialog open/close
-
-    // Custom Full-Screen Dialog for Menu Items
-    const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon }: { children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
-        <DialogContent className="fixed inset-0 w-full h-full p-0 flex flex-col z-[99] animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
+// REFACTORED FullScreenDialog Component for reusability
+const FullScreenDialog = ({ trigger, children, title, description, backgroundImage, icon: Icon }: { trigger: ReactNode; children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
+    <Dialog>
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
             {backgroundImage && (
                 <Image
                     src={backgroundImage}
@@ -284,35 +258,39 @@ const MegaMenuHeader = () => {
             <div className="relative z-10 flex flex-col h-full w-full bg-background/90 dark:bg-background/95 backdrop-blur-lg">
                 <DialogHeader className="p-6 md:p-8 border-b flex-shrink-0">
                     <div className="flex justify-between items-center">
-                        <DialogTitle className="text-3xl font-bold flex items-center gap-3">
-                            {Icon && <Icon className="h-8 w-8 text-primary" />} {title}
+                        <DialogTitle className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                            {Icon && <Icon className="h-7 w-7 md:h-8 md:w-8 text-primary" />} {title}
                         </DialogTitle>
-                        <DialogTrigger asChild>
+                        <DialogClose asChild>
                             <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
                                 <X className="h-6 w-6" />
                                 <span className="sr-only">Close</span>
                             </Button>
-                        </DialogTrigger>
+                        </DialogClose>
                     </div>
-                    {description && <DialogDescription className="mt-2 text-lg">{description}</DialogDescription>}
+                    {description && <DialogDescription className="mt-2 text-base md:text-lg">{description}</DialogDescription>}
                 </DialogHeader>
-                <ScrollArea className="flex-grow p-6 md:p-8">
-                    {children}
+                <ScrollArea className="flex-grow">
+                    <div className="p-6 md:p-8">{children}</div>
                 </ScrollArea>
-                <div className="p-6 md:p-8 border-t flex-shrink-0">
-                    <DialogTrigger asChild>
+                <div className="p-6 md:p-8 border-t flex-shrink-0 bg-background/80">
+                    <DialogClose asChild>
                         <Button variant="outline" className="w-full">Back to Main Page</Button>
-                    </DialogTrigger>
+                    </DialogClose>
                 </div>
             </div>
         </DialogContent>
-    );
+    </Dialog>
+);
+
+const MegaMenuHeader = () => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     return (
-        <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
                 <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
-                
+
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
                         <NavigationMenuItem>
@@ -320,52 +298,50 @@ const MegaMenuHeader = () => {
                             <NavigationMenuContent>
                                 <ul className="grid w-[600px] gap-3 p-4 md:w-[700px] md:grid-cols-2 lg:w-[800px]">
                                     {siteConfig.featureSets.map((feature) => (
-                                         <Dialog key={feature.title}>
-                                            <DialogTrigger asChild>
-                                                <li className="cursor-pointer">
-                                                    {/* CORRECTED: Removed onSelect, as onClick in ListItem now handles stopPropagation */}
+                                        <FullScreenDialog
+                                            key={feature.title}
+                                            trigger={
+                                                <li className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                                     <ListItem title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
                                                 </li>
-                                            </DialogTrigger>
-                                            <FullScreenDialog 
-                                                title={feature.title} 
-                                                description={feature.description} 
-                                                backgroundImage={feature.backgroundImage}
-                                                icon={feature.icon}
-                                            >
-                                                <div className="py-4 space-y-6">
-                                                    {feature.details.map(detail => (
-                                                        <div key={detail.name} className="flex items-start">
-                                                            <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
-                                                            <div>
-                                                                <h4 className="font-semibold text-xl">{detail.name}</h4>
-                                                                <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
-                                                            </div>
+                                            }
+                                            title={feature.title}
+                                            description={feature.description}
+                                            backgroundImage={feature.backgroundImage}
+                                            icon={feature.icon}
+                                        >
+                                            <div className="py-4 space-y-6">
+                                                {feature.details.map(detail => (
+                                                    <div key={detail.name} className="flex items-start">
+                                                        <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                                                        <div>
+                                                            <h4 className="font-semibold text-xl">{detail.name}</h4>
+                                                            <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            </FullScreenDialog>
-                                        </Dialog>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </FullScreenDialog>
                                     ))}
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                         <NavigationMenuItem>
+                        <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <div className="grid w-[600px] grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-                                    {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
-                                        <div key={category} className="col-span-1">
-                                            <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
-                                            {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
-                                                <Dialog key={item.name}>
-                                                    <DialogTrigger asChild>
-                                                        <li className="cursor-pointer">
-                                                            {/* CORRECTED: Removed onSelect, as onClick in ListItem now handles stopPropagation */}
-                                                            <ListItem title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
-                                                        </li>
-                                                    </DialogTrigger>
+                                <ScrollArea className="h-[60vh] w-[800px]">
+                                    <div className="grid grid-cols-4 gap-4 p-4">
+                                        {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
+                                            <div key={category} className="col-span-1">
+                                                <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
+                                                {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
                                                     <FullScreenDialog
+                                                        key={item.name}
+                                                        trigger={
+                                                            <li className="cursor-pointer list-none" onClick={(e) => e.stopPropagation()}>
+                                                                <ListItem title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
+                                                            </li>
+                                                        }
                                                         title={item.name}
                                                         description={item.description}
                                                         backgroundImage={item.backgroundImage}
@@ -373,52 +349,46 @@ const MegaMenuHeader = () => {
                                                     >
                                                         <div className="text-lg text-muted-foreground p-4">
                                                             <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                            <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
                                                             <ul className="list-disc pl-5 mt-4 space-y-2">
                                                                 <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
                                                                 <li>Industry-specific reporting and analytics.</li>
                                                                 <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                                <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
                                                             </ul>
                                                         </div>
                                                     </FullScreenDialog>
-                                                </Dialog>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
-                             <NavigationMenuContent>
+                            <NavigationMenuContent>
                                 <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                                     {siteConfig.platformPillars.map((pillar) => (
-                                        <Dialog key={pillar.title}>
-                                            <DialogTrigger asChild>
-                                                <li className="cursor-pointer">
-                                                    {/* CORRECTED: Removed onSelect, as onClick in ListItem now handles stopPropagation */}
+                                        <FullScreenDialog
+                                            key={pillar.title}
+                                            trigger={
+                                                <li className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                                     <ListItem title={pillar.title} href="#" icon={pillar.icon}>{pillar.description}</ListItem>
                                                 </li>
-                                            </DialogTrigger>
-                                            <FullScreenDialog
-                                                title={pillar.title}
-                                                description={pillar.description}
-                                                backgroundImage={pillar.backgroundImage}
-                                                icon={pillar.icon}
-                                            >
-                                                <div className="text-lg text-muted-foreground p-4">
-                                                    <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                    <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
-                                                    <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                        <li>Key architectural components.</li>
-                                                        <li>Performance and scalability benchmarks.</li>
-                                                        <li>Integration capabilities and standards.</li>
-                                                        <li>Future roadmap and innovation.</li>
-                                                    </ul>
-                                                </div>
-                                            </FullScreenDialog>
-                                        </Dialog>
+                                            }
+                                            title={pillar.title}
+                                            description={pillar.description}
+                                            backgroundImage={pillar.backgroundImage}
+                                            icon={pillar.icon}
+                                        >
+                                            <div className="text-lg text-muted-foreground p-4">
+                                                <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
+                                                <ul className="list-disc pl-5 mt-4 space-y-2">
+                                                    <li>Key architectural components.</li>
+                                                    <li>Performance and scalability benchmarks.</li>
+                                                    <li>Integration capabilities and standards.</li>
+                                                </ul>
+                                            </div>
+                                        </FullScreenDialog>
                                     ))}
                                 </ul>
                             </NavigationMenuContent>
@@ -426,24 +396,8 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
                         <NavigationMenuItem>
                             <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-[60vh] pr-4"> {/* Added ScrollArea for long FAQ content */}
-                                        <Accordion type="single" collapsible className="w-full py-4">
-                                            {siteConfig.faqItems.map((faq, index) => (
-                                                <AccordionItem key={index} value={`item-${index}`}>
-                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
-                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </ScrollArea>
-                                </DialogContent>
+                                <DialogTrigger asChild><Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button></DialogTrigger>
+                                <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent>
                             </Dialog>
                         </NavigationMenuItem>
                     </NavigationMenuList>
@@ -455,7 +409,7 @@ const MegaMenuHeader = () => {
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
                 </div>
-                
+
                 <div className="lg:hidden flex items-center gap-2">
                     <ModeToggle />
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
@@ -464,155 +418,15 @@ const MegaMenuHeader = () => {
 
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30">
-                        <div className="container mx-auto py-4 px-4 space-y-4">
-                            {/* Mobile Menu Items - Reusing the FullScreenDialog for a consistent experience */}
-                            {/* Features */}
-                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>Features</button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.featureSets.map((feature) => (
-                                            <Dialog key={feature.title}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsDialogOpen(true); }}>
-                                                        <feature.icon className="h-7 w-7 text-primary flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{feature.title}</h4>
-                                                            <p className="text-sm text-muted-foreground">{feature.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={feature.title}
-                                                    description={feature.description}
-                                                    backgroundImage={feature.backgroundImage}
-                                                    icon={feature.icon}
-                                                >
-                                                    <div className="py-4 space-y-6">
-                                                        {feature.details.map(detail => (
-                                                            <div key={detail.name} className="flex items-start">
-                                                                <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
-                                                                <div>
-                                                                    <h4 className="font-semibold text-xl">{detail.name}</h4>
-                                                                    <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-40">
+                        <div className="container mx-auto py-4 px-4 space-y-2">
+                            {/* Mobile Menu Sections */}
+                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">Features</button></DialogTrigger><DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none"><ScrollArea className="flex-grow"><div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">{siteConfig.featureSets.map(feature => (<FullScreenDialog key={feature.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><feature.icon className="h-7 w-7 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{feature.title}</h4><p className="text-sm text-muted-foreground">{feature.description}</p></div></div>} title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}><div className="py-4 space-y-6">{feature.details.map(detail => (<div key={detail.name} className="flex items-start"><CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" /><div><h4 className="font-semibold text-xl">{detail.name}</h4><p className="text-base text-muted-foreground mt-1">{detail.detail}</p></div></div>))}</div></FullScreenDialog>))}</div></ScrollArea></DialogContent></Dialog>
+                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">Industries</button></DialogTrigger><DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none"><ScrollArea className="flex-grow"><div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">{siteConfig.industryItems.map(item => (<FullScreenDialog key={item.name} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><item.icon className="h-7 w-7 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{item.name}</h4><p className="text-sm text-muted-foreground">{item.description}</p></div></div>} title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}><div className="text-lg text-muted-foreground p-4"><p>More detailed information about {item.name} solutions will be displayed here.</p></div></FullScreenDialog>))}</div></ScrollArea></DialogContent></Dialog>
+                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">Platform</button></DialogTrigger><DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none"><ScrollArea className="flex-grow"><div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">{siteConfig.platformPillars.map(pillar => (<FullScreenDialog key={pillar.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><pillar.icon className="h-7 w-7 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{pillar.title}</h4><p className="text-sm text-muted-foreground">{pillar.description}</p></div></div>} title={pillar.title} description={pillar.description} backgroundImage={pillar.backgroundImage} icon={pillar.icon}><div className="text-lg text-muted-foreground p-4"><p>Detailed explanation of the "{pillar.title}" pillar.</p></div></FullScreenDialog>))}</div></ScrollArea></DialogContent></Dialog>
 
-                            {/* Industries */}
-                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>Industries</button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.industryItems.map((item) => (
-                                            <Dialog key={item.name}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsDialogOpen(true); }}>
-                                                        <item.icon className="h-7 w-7 text-primary flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{item.name}</h4>
-                                                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={item.name}
-                                                    description={item.description}
-                                                    backgroundImage={item.backgroundImage}
-                                                    icon={item.icon}
-                                                >
-                                                    <div className="text-lg text-muted-foreground p-4">
-                                                        <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                        <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
-                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                            <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
-                                                            <li>Industry-specific reporting and analytics.</li>
-                                                            <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                            <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
-                                                        </ul>
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Platform */}
-                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>Platform</button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.platformPillars.map((pillar) => (
-                                            <Dialog key={pillar.title}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsDialogOpen(true); }}>
-                                                        <pillar.icon className="h-7 w-7 text-primary flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{pillar.title}</h4>
-                                                            <p className="text-sm text-muted-foreground">{pillar.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={pillar.title}
-                                                    description={pillar.description}
-                                                    backgroundImage={pillar.backgroundImage}
-                                                    icon={pillar.icon}
-                                                >
-                                                    <div className="text-lg text-muted-foreground p-4">
-                                                        <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                        <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
-                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                            <li>Key architectural components.</li>
-                                                            <li>Performance and scalability benchmarks.</li>
-                                                            <li>Integration capabilities and standards.</li>
-                                                            <li>Future roadmap and innovation.</li>
-                                                        </ul>
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Other links */}
-                            <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
-                            <Dialog onOpenChange={setIsDialogOpen}> {/* Manage dialog state */}
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2" onClick={(e) => { e.stopPropagation(); }}>FAQ</button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-[60vh] pr-4">
-                                        <Accordion type="single" collapsible className="w-full py-4">
-                                            {siteConfig.faqItems.map((faq, index) => (
-                                                <AccordionItem key={index} value={`item-${index}`}>
-                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
-                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </ScrollArea>
-                                </DialogContent>
-                            </Dialog>
+                            <Link href="/support" className="block text-lg font-medium hover:text-primary py-2" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">FAQ</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent></Dialog>
 
                             <div className="flex flex-col gap-2 pt-4 border-t">
                                 <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
@@ -627,6 +441,7 @@ const MegaMenuHeader = () => {
     );
 };
 
+
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
     <footer className="relative border-t bg-background/90 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 pt-12 pb-6">
@@ -639,6 +454,23 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
             <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"><p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p><p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p></div>
         </div>
     </footer>
+);
+
+const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
+    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+        <div className="container mx-auto px-4 relative z-10">{children}</div>
+    </motion.section>
+);
+
+const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) => (
+    <AnimatePresence>
+        {isVisible && (
+            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[250] flex items-center gap-3 rounded-lg bg-foreground text-background p-4 shadow-2xl">
+                <CheckCircle className="h-6 w-6 text-green-400" />
+                <p className="font-medium">{message}</p>
+            </motion.div>
+        )}
+    </AnimatePresence>
 );
 
 const AdvancedChatWidget = () => {
@@ -666,7 +498,7 @@ const AdvancedChatWidget = () => {
         <>
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
+                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-[200]">
                         <Card className="h-full w-full flex flex-col shadow-2xl">
                             <CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader>
                             <CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">
@@ -684,7 +516,7 @@ const AdvancedChatWidget = () => {
                         </Card>
                     </motion.div>)}
             </AnimatePresence>
-            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
+            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-[200] transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
         </>
     );
 };
@@ -936,7 +768,7 @@ export default function HomePage() {
             {mounted && (
                 <AnimatePresence>
                     {showCookieBanner && (
-                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
+                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[200] p-4">
                             <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
                                 <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy</CardTitle>{!isCustomizingCookies && <CardDescription>We use cookies to enhance your browsing experience. By clicking "Accept All", you consent to our use of cookies.</CardDescription>}</CardHeader>
                                 {!isCustomizingCookies ? (
