@@ -8,7 +8,7 @@ import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
@@ -26,9 +26,9 @@ interface FeatureDetail {
     title: string;
     description: string;
     details: { name: string; detail: string; }[];
-    backgroundImage: string;
+    backgroundImage: string; // Added background image for feature details
 }
-interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; }
+interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; } // Added background image
 interface FaqItem { q: string; a: ReactNode; }
 interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; }
 
@@ -53,7 +53,6 @@ const setCookie = (name: string, value: string, days: number) => {
     document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
-// FULLY RESTORED siteConfig object
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -65,7 +64,7 @@ const siteConfig = {
     featureSets: [
         {
             icon: Users, title: "Human Resources", description: "Manage your most valuable asset—your people—from recruitment to retirement.",
-            backgroundImage: "/images/showcase/modern-office-bbU1.jpg",
+            backgroundImage: "/images/showcase/modern-office-bbU1.jpg", // Choose a suitable background
             details: [
                 { name: "Leave Management", detail: "Automate leave requests, approvals, and balance tracking with configurable policies for any country." },
                 { name: "Recruitment", detail: "Streamline your hiring process from job posting to onboarding with a collaborative recruitment pipeline." },
@@ -77,7 +76,7 @@ const siteConfig = {
         },
         {
             icon: Handshake, title: "CRM", description: "Build lasting customer relationships and accelerate your sales cycle.",
-            backgroundImage: "/images/showcase/call-center-crm.jpg",
+            backgroundImage: "/images/showcase/call-center-crm.jpg", // Choose a suitable background
             details: [
                 { name: "Sales Pipeline & Lead Management", detail: "Visualize and manage your entire sales process, from lead generation and qualification to close, with a customizable drag-and-drop pipeline." },
                 { name: "Customer Support & Ticketing", detail: "Provide exceptional customer service with a built-in helpdesk to track, prioritize, and resolve customer issues efficiently, enhancing satisfaction." },
@@ -88,7 +87,7 @@ const siteConfig = {
         },
         {
             icon: Landmark, title: "Finance & Accounting", description: "Gain complete financial control with AI-powered, GAAP-compliant accounting.",
-            backgroundImage: "/images/showcase/office-admin-bbU1.jpg",
+            backgroundImage: "/images/showcase/office-admin-bbU1.jpg", // Choose a suitable background
             details: [
                 { name: "Financial Reporting & Analytics", detail: "Generate real-time Profit & Loss, Balance Sheets, Cash Flow statements, and custom reports with a single click for insightful decision-making." },
                 { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses seamlessly, eliminating manual paperwork and ensuring compliance." },
@@ -101,7 +100,7 @@ const siteConfig = {
         },
         {
             icon: Warehouse, title: "Inventory & Supply Chain", description: "Optimize your stock, manage warehouses, and streamline your supply chain.",
-            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg",
+            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg", // Choose a suitable background
             details: [
                 { name: "Multi-Warehouse Management", detail: "Track inventory across multiple locations, warehouses, or stores in real-time with comprehensive visibility." },
                 { name: "Purchase Order Management", detail: "Create, send, and track purchase orders, managing supplier relationships and optimizing procurement." },
@@ -113,7 +112,7 @@ const siteConfig = {
         },
         {
             icon: ShoppingCart, title: "Sales & E-commerce", description: "Manage your sales channels, from retail POS to online stores.",
-            backgroundImage: "/images/showcase/bakery-pos-system.jpg",
+            backgroundImage: "/images/showcase/bakery-pos-system.jpg", // Choose a suitable background
             details: [
                 { name: "Point of Sale (POS)", detail: "Intuitive and fast POS system for retail operations, supporting multiple payment methods and integrated with inventory." },
                 { name: "E-commerce Integration", detail: "Seamlessly connect with popular e-commerce platforms to sync products, orders, and customer data in real-time." },
@@ -124,7 +123,7 @@ const siteConfig = {
         },
         {
             icon: Briefcase, title: "Project Management", description: "Plan, execute, and track projects with collaborative tools.",
-            backgroundImage: "/images/showcase/creative-agency-pm.jpg",
+            backgroundImage: "/images/showcase/creative-agency-pm.jpg", // Choose a suitable background
             details: [
                 { name: "Task & Workflow Management", detail: "Organize projects into tasks, assign responsibilities, set deadlines, and track progress with Kanban boards or Gantt charts." },
                 { name: "Time Tracking", detail: "Accurately track time spent on tasks and projects for precise billing and resource allocation." },
@@ -135,7 +134,7 @@ const siteConfig = {
         },
         {
             icon: Scale, title: "Compliance & Governance", description: "Ensure regulatory adherence and maintain strong internal controls.",
-            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg",
+            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg", // Choose a suitable background
             details: [
                 { name: "Audit Trails & Logs", detail: "Maintain a complete, tamper-proof audit trail of every action taken in the system for ultimate security and compliance." },
                 { name: "Role-Based Access Control", detail: "Granular control over user permissions and access rights, ensuring data security and adherence to internal policies." },
@@ -146,7 +145,7 @@ const siteConfig = {
         },
         {
             icon: Phone, title: "Telecom Services", description: "A specialized, end-to-end solution for managing telecom and agent-based businesses.",
-            backgroundImage: "/images/showcase/mobile-money-agent.jpg",
+            backgroundImage: "/images/showcase/mobile-money-agent.jpg", // Choose a suitable background
             details: [
                 { name: "Admin Dashboard & Real-time Monitoring", detail: "Get a high-level overview of your entire telecom operation, from agent performance to financial health, with real-time analytics." },
                 { name: "Agent Management & Hierarchy", detail: "Onboard, manage, and track thousands of agents in real-time with powerful hierarchical controls and commission structures." },
@@ -158,7 +157,7 @@ const siteConfig = {
         },
         {
             icon: BarChart3, title: "Business Intelligence & AI", description: "Transform raw data into actionable insights with AI-powered analytics.",
-            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg",
+            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg", // Choose a suitable background
             details: [
                 { name: "AI Copilot & Smart Insights", detail: "Aura, our AI copilot, automates bookkeeping, detects anomalies, and provides strategic insights like 'Cash flow projected to be low in 3 weeks.'" },
                 { name: "Custom Dashboards & Reporting", detail: "Create personalized dashboards and reports with drag-and-drop functionality to visualize key performance indicators (KPIs)." },
@@ -184,8 +183,8 @@ const siteConfig = {
         { name: "Construction & Engineering", icon: Building, description: "Job costing, project management, progress billing, and equipment tracking for contractors and construction companies.", category: 'Trades & Services', backgroundImage: "/images/showcase/construction-site.jpg" },
         { name: "Field Service Management", icon: Car, description: "Scheduling, dispatch, mobile invoicing, and technician tracking for HVAC, plumbing, and other field service businesses.", category: 'Trades & Services', backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg" },
         { name: "Distribution & Logistics", icon: Package, description: "End-to-end warehouse management, logistics planning, fleet management, and supply chain optimization.", category: 'Specialized', backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
-        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
-        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" },
+        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" }, // Changed to agent for MFI context
+        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" }, // Reused for professional look
         { name: "SACCO / Co-operative", icon: Users, description: "Member management, savings, loans, dividend calculation, and governance tools for cooperative societies.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
         { name: "Telecom Services", icon: Signal, description: "The premier solution for managing mobile money, airtime, and extensive agent networks, including commission management.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
         { name: "Nonprofit & NGOs", icon: HeartHandshake, description: "Donor management, grant tracking, fund accounting, project impact reporting, and volunteer management for NGOs.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
@@ -213,7 +212,6 @@ const siteConfig = {
     ] as CookieCategoryInfo[],
 };
 
-
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut", staggerChildren: 0.2 } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
@@ -221,23 +219,43 @@ const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [
 const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
 
 const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
-    <NavigationMenuLink asChild>
-        <a ref={ref} className={cn("flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)} {...props}>
-            <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1"><Icon className="h-6 w-6 text-primary" /></div>
-            <div>
-                <div className="text-sm font-medium leading-none">{title}</div>
-                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">{children}</p>
-            </div>
-        </a>
-    </NavigationMenuLink>
+    <li>
+        <NavigationMenuLink asChild>
+            <a ref={ref} className={cn("flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)} {...props}>
+                <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1"><Icon className="h-6 w-6 text-primary" /></div>
+                <div>
+                    <div className="text-sm font-medium leading-none">{title}</div>
+                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">{children}</p>
+                </div>
+            </a>
+        </NavigationMenuLink>
+    </li>
 ));
 ListItem.displayName = "ListItem";
 
-// REUSABLE FullScreenDialog Component to solve sizing and scrolling issues
-const FullScreenDialog = ({ trigger, children, title, description, backgroundImage, icon: Icon }: { trigger: ReactNode; children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
-    <Dialog>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-from-bottom-2 data-[state=open]:slide-in-from-bottom-2">
+const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
+    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+        <div className="container mx-auto px-4 relative z-10">{children}</div>
+    </motion.section>
+);
+
+const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) => (
+    <AnimatePresence>
+        {isVisible && (
+            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[150] flex items-center gap-3 rounded-lg bg-foreground text-background p-4 shadow-2xl">
+                <CheckCircle className="h-6 w-6 text-green-400" />
+                <p className="font-medium">{message}</p>
+            </motion.div>
+        )}
+    </AnimatePresence>
+);
+
+const MegaMenuHeader = () => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Custom Full-Screen Dialog for Menu Items
+    const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon }: { children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
+        <DialogContent className="fixed inset-0 w-full h-full p-0 flex flex-col z-[99] animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
             {backgroundImage && (
                 <Image
                     src={backgroundImage}
@@ -251,121 +269,138 @@ const FullScreenDialog = ({ trigger, children, title, description, backgroundIma
             <div className="relative z-10 flex flex-col h-full w-full bg-background/90 dark:bg-background/95 backdrop-blur-lg">
                 <DialogHeader className="p-6 md:p-8 border-b flex-shrink-0">
                     <div className="flex justify-between items-center">
-                        <DialogTitle className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                            {Icon && <Icon className="h-7 w-7 md:h-8 md:w-8 text-primary" />} {title}
+                        <DialogTitle className="text-3xl font-bold flex items-center gap-3">
+                            {Icon && <Icon className="h-8 w-8 text-primary" />} {title}
                         </DialogTitle>
-                        <DialogClose asChild>
+                        <DialogTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
                                 <X className="h-6 w-6" />
                                 <span className="sr-only">Close</span>
                             </Button>
-                        </DialogClose>
+                        </DialogTrigger>
                     </div>
-                    {description && <DialogDescription className="mt-2 text-base md:text-lg">{description}</DialogDescription>}
+                    {description && <DialogDescription className="mt-2 text-lg">{description}</DialogDescription>}
                 </DialogHeader>
-                <ScrollArea className="flex-grow">
-                    <div className="p-6 md:p-8">{children}</div>
+                <ScrollArea className="flex-grow p-6 md:p-8">
+                    {children}
                 </ScrollArea>
-                <div className="p-6 md:p-8 border-t flex-shrink-0 bg-background/80">
-                    <DialogClose asChild>
+                <div className="p-6 md:p-8 border-t flex-shrink-0">
+                    <DialogTrigger asChild>
                         <Button variant="outline" className="w-full">Back to Main Page</Button>
-                    </DialogClose>
+                    </DialogTrigger>
                 </div>
             </div>
         </DialogContent>
-    </Dialog>
-);
-
-const MegaMenuHeader = () => {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    // This function prevents the navigation menu from closing when an item is selected.
-    // This is the key to fixing the "race condition" / disappearing dialog.
-    const handleSelect = (e: React.SyntheticEvent) => {
-        e.preventDefault();
-    };
+    );
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
                 <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
-
+                
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ScrollArea className="h-auto max-h-[70vh]">
-                                    <ul className="grid w-[600px] gap-3 p-4 md:w-[700px] md:grid-cols-2 lg:w-[800px]">
-                                        {siteConfig.featureSets.map((feature) => (
-                                            <li key={feature.title}>
-                                                <FullScreenDialog
-                                                    trigger={
-                                                        <ListItem onSelect={handleSelect} title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
-                                                    }
-                                                    title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}
-                                                >
-                                                    <div className="py-4 space-y-6">
-                                                        {feature.details.map(detail => (
-                                                            <div key={detail.name} className="flex items-start"><CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" /><div><h4 className="font-semibold text-xl">{detail.name}</h4><p className="text-base text-muted-foreground mt-1">{detail.detail}</p></div></div>
-                                                        ))}
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </ScrollArea>
+                                <ul className="grid w-[600px] gap-3 p-4 md:w-[700px] md:grid-cols-2 lg:w-[800px]">
+                                    {siteConfig.featureSets.map((feature) => (
+                                         <Dialog key={feature.title}>
+                                            <DialogTrigger asChild>
+                                                <li className="cursor-pointer">
+                                                    <ListItem title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
+                                                </li>
+                                            </DialogTrigger>
+                                            <FullScreenDialog 
+                                                title={feature.title} 
+                                                description={feature.description} 
+                                                backgroundImage={feature.backgroundImage}
+                                                icon={feature.icon}
+                                            >
+                                                <div className="py-4 space-y-6">
+                                                    {feature.details.map(detail => (
+                                                        <div key={detail.name} className="flex items-start">
+                                                            <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
+                                                            <div>
+                                                                <h4 className="font-semibold text-xl">{detail.name}</h4>
+                                                                <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </FullScreenDialog>
+                                        </Dialog>
+                                    ))}
+                                </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        <NavigationMenuItem>
+                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ScrollArea className="h-auto max-h-[70vh]">
-                                    <div className="grid w-[700px] grid-cols-4 gap-4 p-4 lg:w-[800px]">
-                                        {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
-                                            <div key={category} className="col-span-1">
-                                                <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
-                                                <ul className='space-y-1'>
-                                                    {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
-                                                        <li key={item.name}>
-                                                            <FullScreenDialog
-                                                                trigger={
-                                                                    <ListItem onSelect={handleSelect} title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
-                                                                }
-                                                                title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}
-                                                            >
-                                                                <div className="text-lg text-muted-foreground p-4">
-                                                                    <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                                    <ul className="list-disc pl-5 mt-4 space-y-2"><li>Tailored modules for {item.name.toLowerCase()} operations.</li><li>Industry-specific reporting and analytics.</li></ul>
-                                                                </div>
-                                                            </FullScreenDialog>
+                                <div className="grid w-[600px] grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+                                    {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
+                                        <div key={category} className="col-span-1">
+                                            <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
+                                            {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
+                                                <Dialog key={item.name}>
+                                                    <DialogTrigger asChild>
+                                                        <li className="cursor-pointer">
+                                                            <ListItem title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
                                                         </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </ScrollArea>
+                                                    </DialogTrigger>
+                                                    <FullScreenDialog
+                                                        title={item.name}
+                                                        description={item.description}
+                                                        backgroundImage={item.backgroundImage}
+                                                        icon={item.icon}
+                                                    >
+                                                        <div className="text-lg text-muted-foreground p-4">
+                                                            <p>More detailed information about {item.name} solutions will be displayed here.</p>
+                                                            <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
+                                                            <ul className="list-disc pl-5 mt-4 space-y-2">
+                                                                <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
+                                                                <li>Industry-specific reporting and analytics.</li>
+                                                                <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
+                                                                <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
+                                                            </ul>
+                                                        </div>
+                                                    </FullScreenDialog>
+                                                </Dialog>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                             <NavigationMenuContent>
+                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                                     {siteConfig.platformPillars.map((pillar) => (
-                                        <li key={pillar.title}>
+                                        <Dialog key={pillar.title}>
+                                            <DialogTrigger asChild>
+                                                <li className="cursor-pointer">
+                                                    <ListItem title={pillar.title} href="#" icon={pillar.icon}>{pillar.description}</ListItem>
+                                                </li>
+                                            </DialogTrigger>
                                             <FullScreenDialog
-                                                trigger={
-                                                    <ListItem onSelect={handleSelect} title={pillar.title} icon={pillar.icon} href="#">{pillar.description}</ListItem>
-                                                }
-                                                title={pillar.title} description={pillar.description} backgroundImage={pillar.backgroundImage} icon={pillar.icon}
+                                                title={pillar.title}
+                                                description={pillar.description}
+                                                backgroundImage={pillar.backgroundImage}
+                                                icon={pillar.icon}
                                             >
                                                 <div className="text-lg text-muted-foreground p-4">
                                                     <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                    <ul className="list-disc pl-5 mt-4 space-y-2"><li>Key architectural components.</li><li>Performance and scalability benchmarks.</li></ul>
+                                                    <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
+                                                    <ul className="list-disc pl-5 mt-4 space-y-2">
+                                                        <li>Key architectural components.</li>
+                                                        <li>Performance and scalability benchmarks.</li>
+                                                        <li>Integration capabilities and standards.</li>
+                                                        <li>Future roadmap and innovation.</li>
+                                                    </ul>
                                                 </div>
                                             </FullScreenDialog>
-                                        </li>
+                                        </Dialog>
                                     ))}
                                 </ul>
                             </NavigationMenuContent>
@@ -373,8 +408,24 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
                         <NavigationMenuItem>
                             <Dialog>
-                                <DialogTrigger asChild><Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button></DialogTrigger>
-                                <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
+                                    </DialogHeader>
+                                    <ScrollArea className="h-[60vh] pr-4"> {/* Added ScrollArea for long FAQ content */}
+                                        <Accordion type="single" collapsible className="w-full py-4">
+                                            {siteConfig.faqItems.map((faq, index) => (
+                                                <AccordionItem key={index} value={`item-${index}`}>
+                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                        </Accordion>
+                                    </ScrollArea>
+                                </DialogContent>
                             </Dialog>
                         </NavigationMenuItem>
                     </NavigationMenuList>
@@ -386,7 +437,7 @@ const MegaMenuHeader = () => {
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
                 </div>
-
+                
                 <div className="lg:hidden flex items-center gap-2">
                     <ModeToggle />
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
@@ -395,39 +446,168 @@ const MegaMenuHeader = () => {
 
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-40">
-                        <ScrollArea className='h-[calc(100vh-8rem)]'>
-                            <div className="container mx-auto py-4 px-4 space-y-2">
-                                {/* Mobile Menu Sections */}
-                                <FullScreenDialog trigger={<button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Features</button>} title="Features" icon={LayoutGrid} description="Explore the powerful features of BBU1">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 -m-2">{siteConfig.featureSets.map(feature => (<FullScreenDialog key={feature.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><feature.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{feature.title}</h4><p className="text-sm text-muted-foreground">{feature.description}</p></div></div>} title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}><div className="py-4 space-y-6">{feature.details.map(detail => (<div key={detail.name} className="flex items-start"><CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" /><div><h4 className="font-semibold text-xl">{detail.name}</h4><p className="text-base text-muted-foreground mt-1">{detail.detail}</p></div></div>))}</div></FullScreenDialog>))}</div>
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30">
+                        <div className="container mx-auto py-4 px-4 space-y-4">
+                            {/* Mobile Menu Items - Reusing the FullScreenDialog for a consistent experience */}
+                            {/* Features */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Features</button>
+                                </DialogTrigger>
+                                <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                                        {siteConfig.featureSets.map((feature) => (
+                                            <Dialog key={feature.title}>
+                                                <DialogTrigger asChild>
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
+                                                        <feature.icon className="h-7 w-7 text-primary flex-shrink-0" />
+                                                        <div>
+                                                            <h4 className="font-semibold text-xl">{feature.title}</h4>
+                                                            <p className="text-sm text-muted-foreground">{feature.description}</p>
+                                                        </div>
+                                                    </div>
+                                                </DialogTrigger>
+                                                <FullScreenDialog
+                                                    title={feature.title}
+                                                    description={feature.description}
+                                                    backgroundImage={feature.backgroundImage}
+                                                    icon={feature.icon}
+                                                >
+                                                    <div className="py-4 space-y-6">
+                                                        {feature.details.map(detail => (
+                                                            <div key={detail.name} className="flex items-start">
+                                                                <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
+                                                                <div>
+                                                                    <h4 className="font-semibold text-xl">{detail.name}</h4>
+                                                                    <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </FullScreenDialog>
+                                            </Dialog>
+                                        ))}
+                                    </div>
                                 </FullScreenDialog>
-                                <FullScreenDialog trigger={<button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Industries</button>} title="Industries" icon={Building} description="Solutions tailored for your business sector">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 -m-2">{siteConfig.industryItems.map(item => (<FullScreenDialog key={item.name} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><item.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{item.name}</h4><p className="text-sm text-muted-foreground">{item.description}</p></div></div>} title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}><div className="text-lg text-muted-foreground p-4"><p>More detailed information about {item.name} solutions will be displayed here.</p></div></FullScreenDialog>))}</div>
-                                </FullScreenDialog>
-                                <FullScreenDialog trigger={<button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Platform</button>} title="Platform" icon={Cloud} description="The foundational pillars of BBU1">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 -m-2">{siteConfig.platformPillars.map(pillar => (<FullScreenDialog key={pillar.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><pillar.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{pillar.title}</h4><p className="text-sm text-muted-foreground">{pillar.description}</p></div></div>} title={pillar.title} description={pillar.description} backgroundImage={pillar.backgroundImage} icon={pillar.icon}><div className="text-lg text-muted-foreground p-4"><p>Detailed explanation of the "{pillar.title}" pillar.</p></div></FullScreenDialog>))}</div>
-                                </FullScreenDialog>
+                            </Dialog>
 
-                                <Link href="/support" className="block text-lg font-medium hover:text-primary py-3" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
-                                <Dialog><DialogTrigger asChild><button className="w-full text-left py-3 text-lg font-medium hover:text-primary">FAQ</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent></Dialog>
+                            {/* Industries */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Industries</button>
+                                </DialogTrigger>
+                                <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                                        {siteConfig.industryItems.map((item) => (
+                                            <Dialog key={item.name}>
+                                                <DialogTrigger asChild>
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
+                                                        <item.icon className="h-7 w-7 text-primary flex-shrink-0" />
+                                                        <div>
+                                                            <h4 className="font-semibold text-xl">{item.name}</h4>
+                                                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                                                        </div>
+                                                    </div>
+                                                </DialogTrigger>
+                                                <FullScreenDialog
+                                                    title={item.name}
+                                                    description={item.description}
+                                                    backgroundImage={item.backgroundImage}
+                                                    icon={item.icon}
+                                                >
+                                                    <div className="text-lg text-muted-foreground p-4">
+                                                        <p>More detailed information about {item.name} solutions will be displayed here.</p>
+                                                        <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
+                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
+                                                            <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
+                                                            <li>Industry-specific reporting and analytics.</li>
+                                                            <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
+                                                            <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
+                                                        </ul>
+                                                    </div>
+                                                </FullScreenDialog>
+                                            </Dialog>
+                                        ))}
+                                    </div>
+                                </FullScreenDialog>
+                            </Dialog>
 
-                                <div className="flex flex-col gap-2 pt-4 border-t">
-                                    <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
-                                    <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
-                                    <Button asChild><Link href="/signup">Get Started</Link></Button>
-                                </div>
+                            {/* Platform */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Platform</button>
+                                </DialogTrigger>
+                                <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                                        {siteConfig.platformPillars.map((pillar) => (
+                                            <Dialog key={pillar.title}>
+                                                <DialogTrigger asChild>
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
+                                                        <pillar.icon className="h-7 w-7 text-primary flex-shrink-0" />
+                                                        <div>
+                                                            <h4 className="font-semibold text-xl">{pillar.title}</h4>
+                                                            <p className="text-sm text-muted-foreground">{pillar.description}</p>
+                                                        </div>
+                                                    </div>
+                                                </DialogTrigger>
+                                                <FullScreenDialog
+                                                    title={pillar.title}
+                                                    description={pillar.description}
+                                                    backgroundImage={pillar.backgroundImage}
+                                                    icon={pillar.icon}
+                                                >
+                                                    <div className="text-lg text-muted-foreground p-4">
+                                                        <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
+                                                        <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
+                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
+                                                            <li>Key architectural components.</li>
+                                                            <li>Performance and scalability benchmarks.</li>
+                                                            <li>Integration capabilities and standards.</li>
+                                                            <li>Future roadmap and innovation.</li>
+                                                        </ul>
+                                                    </div>
+                                                </FullScreenDialog>
+                                            </Dialog>
+                                        ))}
+                                    </div>
+                                </FullScreenDialog>
+                            </Dialog>
+
+                            {/* Other links */}
+                            <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">FAQ</button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
+                                    </DialogHeader>
+                                    <ScrollArea className="h-[60vh] pr-4">
+                                        <Accordion type="single" collapsible className="w-full py-4">
+                                            {siteConfig.faqItems.map((faq, index) => (
+                                                <AccordionItem key={index} value={`item-${index}`}>
+                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                        </Accordion>
+                                    </ScrollArea>
+                                </DialogContent>
+                            </Dialog>
+
+                            <div className="flex flex-col gap-2 pt-4 border-t">
+                                <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
+                                <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
+                                <Button asChild><Link href="/signup">Get Started</Link></Button>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
         </header>
     );
 };
-
-// ... Rest of your components (LandingFooter, AnimatedSection, Toast, AdvancedChatWidget) remain unchanged ...
-// They are included here for completeness of the file.
 
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
     <footer className="relative border-t bg-background/90 backdrop-blur-sm z-10">
@@ -441,23 +621,6 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
             <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"><p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p><p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p></div>
         </div>
     </footer>
-);
-
-const AnimatedSection = ({ children, className, id }: { children: ReactNode; className?: string; id?: string; }) => (
-    <motion.section id={id} className={cn("relative py-16 sm:py-20 overflow-hidden", className)} variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-        <div className="container mx-auto px-4 relative z-10">{children}</div>
-    </motion.section>
-);
-
-const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) => (
-    <AnimatePresence>
-        {isVisible && (
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[250] flex items-center gap-3 rounded-lg bg-foreground text-background p-4 shadow-2xl">
-                <CheckCircle className="h-6 w-6 text-green-400" />
-                <p className="font-medium">{message}</p>
-            </motion.div>
-        )}
-    </AnimatePresence>
 );
 
 const AdvancedChatWidget = () => {
@@ -485,14 +648,14 @@ const AdvancedChatWidget = () => {
         <>
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-[200]">
+                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
                         <Card className="h-full w-full flex flex-col shadow-2xl">
                             <CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader>
                             <CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">
                                 {messages.map((m: CoreMessage, i: number) => (
                                     <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
                                         {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>}
-                                        <div className="rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: m.content as string }} />
+                                        <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{m.content as string}</div>
                                         {m.role === 'user' && <Avatar className="h-8 w-8"><AvatarFallback>U</AvatarFallback></Avatar>}
                                     </div>))}
                                 {isLoading && <div className="flex items-start gap-3 text-sm"><Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar><div className="rounded-lg p-3 max-w-[85%] bg-background border">Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" /></div></div>}
@@ -503,7 +666,7 @@ const AdvancedChatWidget = () => {
                         </Card>
                     </motion.div>)}
             </AnimatePresence>
-            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-[200] transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
+            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
         </>
     );
 };
@@ -755,7 +918,7 @@ export default function HomePage() {
             {mounted && (
                 <AnimatePresence>
                     {showCookieBanner && (
-                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[200] p-4">
+                        <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
                             <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
                                 <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy</CardTitle>{!isCustomizingCookies && <CardDescription>We use cookies to enhance your browsing experience. By clicking "Accept All", you consent to our use of cookies.</CardDescription>}</CardHeader>
                                 {!isCustomizingCookies ? (
