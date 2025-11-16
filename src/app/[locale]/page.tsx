@@ -53,6 +53,7 @@ const setCookie = (name: string, value: string, days: number) => {
     document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
+// FULLY RESTORED siteConfig object
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -203,48 +204,40 @@ const siteConfig = {
         { q: 'Does BBU1 support multiple currencies and international operations?', a: 'Yes, BBU1 offers comprehensive multi-currency support, allowing you to manage transactions, invoicing, and reporting in various currencies. It also includes adaptable tax systems and localized compliance features to operate effectively across different countries, particularly throughout Africa and globally.' },
         { q: 'What happens if my internet connection is lost?', a: 'BBU1 features an unbreakable offline mode. Key business functions, such as POS transactions, inventory updates, and HR processes, continue to work perfectly even without an internet connection. All data is securely stored locally and automatically syncs with the cloud the moment you\'re back online, ensuring uninterrupted business operations.' },
     ] as FaqItem[],
-    termsOfService: (<div className="space-y-4 text-sm"><p>Welcome to BBU1...</p></div>), // Content hidden for brevity
-    privacyPolicy: (<div className="space-y-4 text-sm"><p>This Privacy Policy describes how BBU1 collects...</p></div>), // Content hidden for brevity
+    termsOfService: (<div className="space-y-4 text-sm"><p>Welcome to BBU1. These Terms of Service ("Terms") govern your access to and use of the BBU1 website, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.</p><h3 className="text-base font-semibold mt-6">1. Acceptance of Terms</h3><p>By creating an account, accessing, or using the Services, you acknowledge that you have read, understood, and agree to be bound by these Terms, and by our Privacy Policy and Cookie Policy. If you do not agree to these Terms, you may not access or use the Services.</p><h3 className="text-base font-semibold mt-6">2. Changes to Terms</h3><p>We reserve the right to modify these Terms at any time. We will notify you of any changes by posting the new Terms on the BBU1 website and updating the "Last Updated" date. Your continued use of the Services after such modifications will constitute your acknowledgment of the modified Terms and agreement to abide and be bound by them.</p><h3 className="text-base font-semibold mt-6">3. User Accounts</h3><p>To access certain features of the Services, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You are responsible for safeguarding your password and for all activities that occur under your account. You agree to notify BBU1 immediately of any unauthorized use of your account.</p><h3 className="text-base font-semibold mt-6">4. Intellectual Property</h3><p>All content, trademarks, service marks, trade names, logos, and intellectual property rights displayed on the Services are the property of BBU1 or its licensors. You may not use, copy, reproduce, modify, translate, publish, broadcast, transmit, distribute, perform, display, or sell any of BBU1's intellectual property without our prior written consent.</p><h3 className="text-base font-semibold mt-6">5. User Conduct</h3><p>You agree not to use the Services for any unlawful purpose or in any way that might harm, abuse, or interfere with any other user. Prohibited activities include, but are not limited to, unauthorized access, distribution of malware, spamming, and harassment.</p><h3 className="text-base font-semibold mt-6">6. Payments and Billing</h3><p>If you subscribe to any paid Services, you agree to pay all applicable fees and taxes. All payments are non-refundable unless otherwise stated. BBU1 reserves the right to change its pricing at any time, with reasonable notice to existing subscribers.</p><h3 className="text-base font-semibold mt-6">7. Termination</h3><p>We may terminate or suspend your access to the Services immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms. Upon termination, your right to use the Services will immediately cease.</p><h3 className="text-base font-semibold mt-6">8. Disclaimer of Warranties</h3><p>The Services are provided on an "AS IS" and "AS AVAILABLE" basis. BBU1 makes no warranties, expressed or implied, regarding the Services, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</p><h3 className="text-base font-semibold mt-6">9. Limitation of Liability</h3><p>In no event shall BBU1, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Services; (ii) any conduct or content of any third party on the Services; (iii) any content obtained from the Services; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.</p><h3 className="text-base font-semibold mt-6">10. Governing Law</h3><p>These Terms shall be governed and construed in accordance with the laws of Uganda, without regard to its conflict of law provisions.</p><h3 className="text-base font-semibold mt-6">11. Contact Information</h3><p>If you have any questions about these Terms, please contact us at support@bbu1.com.</p></div>),
+    privacyPolicy: (<div className="space-y-4 text-sm"><p>This Privacy Policy describes how BBU1 collects, uses, and discloses your information when you use our website and services ("Services"). By using our Services, you agree to the collection and use of information in accordance with this policy.</p><h3 className="text-base font-semibold mt-6">1. Information We Collect</h3><p><strong>Personal Information:</strong> When you register for an account, we collect personal information such as your name, email address, phone number, company name, and billing address. If you subscribe to paid services, we also collect payment information (e.g., credit card details), which is processed securely by our third-party payment processors.</p><p><strong>Usage Data:</strong> We automatically collect information on how the Services are accessed and used. This Usage Data may include your computer's Internet Protocol address (e.g., IP address), browser type, browser version, the pages of our Service that you visit, the time and date of your visit, the time spent on those pages, unique device identifiers, and other diagnostic data.</p><p><strong>Cookies and Tracking Technologies:</strong> We use cookies and similar tracking technologies to track the activity on our Service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent.</p><p><strong>BBU1 uses the collected data for various purposes:</strong></p><ul><li>To provide and maintain our Services.</li><li>To notify you about changes to our Services.</li><li>To allow you to participate in interactive features of our Service when you choose to do so.</li><li>To provide customer support.</li><li>To gather analysis or valuable information so that we can improve our Services.</li><li>To monitor the usage of our Services.</li><li>To detect, prevent and address technical issues.</li><li>To provide you with news, special offers and general information about other goods, services and events which we offer that are similar to those that you have already purchased or enquired about unless you have opted not to receive such information.</li></ul><h3 className="text-base font-semibold mt-6">3. Disclosure of Information</h3><p>We may share your information with:</p><ul><li><strong>Service Providers:</strong> We may employ third-party companies and individuals to facilitate our Service ("Service Providers"), to provide the Service on our behalf, to perform Service-related services or to assist us in analyzing how our Service is used. These third parties have access to your Personal Data only to perform these tasks on our behalf and are obligated not to disclose or use it for any other purpose.</li><li><strong>Legal Requirements:</strong> BBU1 may disclose your Personal Data in the good faith belief that such action is necessary to: comply with a legal obligation, protect and defend the rights or property of BBU1, prevent or investigate possible wrongdoing in connection with the Service, protect the personal safety of users of the Service or the public, protect against legal liability.</li><li><strong>Business Transfers:</strong> If BBU1 is involved in a merger, acquisition or asset sale, your Personal Data may be transferred. We will provide notice before your Personal Data is transferred and becomes subject to a different Privacy Policy.</li></ul><h3 className="text-base font-semibold mt-6">4. Data Security</h3><p>The security of your data is important to us, but remember that no method of transmission over the Internet, or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee its absolute security.</p><h3 className="text-base font-semibold mt-6">5. Your Data Protection Rights (GDPR)</h3><p>If you are a resident of the European Economic Area (EEA), you have certain data protection rights. BBU1 aims to take reasonable steps to allow you to correct, amend, delete, or limit the use of your Personal Data. If you wish to be informed what Personal Data we hold about you and if you want it to be removed from our systems, please contact us.</p><h3 className="text-base font-semibold mt-6">6. Links to Other Sites</h3><p>Our Service may contain links to other sites that are not operated by us. If you click on a third-party link, you will be directed to that third party's site. We strongly advise you to review the Privacy Policy of every site you visit.</p><h3 className="text-base font-semibold mt-6">7. Children's Privacy</h3><p>Our Services do not address anyone under the age of 18 ("Children"). We do not knowingly collect personally identifiable information from anyone under the age of 18. If you are a parent or guardian and you are aware that your Children has provided us with Personal Data, please contact us. If we become aware that we have collected Personal Data from children without verification of parental consent, we take steps to remove that information from our servers.</p><h3 className="text-base font-semibold mt-6">8. Changes to This Privacy Policy</h3><p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p></div>),
     cookieCategories: [
-        { id: 'essential', name: 'Essential Cookies', description: 'These cookies are crucial for the website to function properly...', isRequired: true, defaultChecked: true },
-        { id: 'analytics', name: 'Analytics Cookies', description: 'These cookies allow us to count visits and traffic sources...', isRequired: false, defaultChecked: false },
-        { id: 'marketing', name: 'Marketing Cookies', description: 'These cookies may be set through our site by our advertising partners...', isRequired: false, defaultChecked: false }
+        { id: 'essential', name: 'Essential Cookies', description: 'These cookies are crucial for the website to function properly and enable core functionalities like security, network management, and accessibility. They cannot be switched off.', isRequired: true, defaultChecked: true },
+        { id: 'analytics', name: 'Analytics Cookies', description: 'These cookies allow us to count visits and traffic sources, understand how visitors interact with our website, and measure the performance of our site. This helps us to improve the way our website works.', isRequired: false, defaultChecked: false },
+        { id: 'marketing', name: 'Marketing Cookies', description: 'These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not directly store personal information but are based on uniquely identifying your browser and internet device.', isRequired: false, defaultChecked: false }
     ] as CookieCategoryInfo[],
 };
+
 
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut", staggerChildren: 0.2 } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
 const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } } };
-const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" }, }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
+const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
 
-const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon; }>(({ className, title, children, icon: Icon, ...props }, ref) => (
-    <li>
-        <NavigationMenuLink asChild>
-            <a
-                ref={ref}
-                className={cn(
-                    "flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                    className
-                )}
-                {...props}
-            >
-                <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1"><Icon className="h-6 w-6 text-primary" /></div>
-                <div>
-                    <div className="text-sm font-medium leading-none">{title}</div>
-                    <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">{children}</p>
-                </div>
-            </a>
-        </NavigationMenuLink>
-    </li>
+const ListItem = forwardRef<ElementRef<"a">, ComponentPropsWithoutRef<"a"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
+    <NavigationMenuLink asChild>
+        <a ref={ref} className={cn("flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground", className)} {...props}>
+            <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1"><Icon className="h-6 w-6 text-primary" /></div>
+            <div>
+                <div className="text-sm font-medium leading-none">{title}</div>
+                <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">{children}</p>
+            </div>
+        </a>
+    </NavigationMenuLink>
 ));
 ListItem.displayName = "ListItem";
 
-// REFACTORED FullScreenDialog Component for reusability
+// REUSABLE FullScreenDialog Component to solve sizing and scrolling issues
 const FullScreenDialog = ({ trigger, children, title, description, backgroundImage, icon: Icon }: { trigger: ReactNode; children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
     <Dialog>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
+        <DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-from-bottom-2 data-[state=open]:slide-in-from-bottom-2">
             {backgroundImage && (
                 <Image
                     src={backgroundImage}
@@ -286,6 +279,12 @@ const FullScreenDialog = ({ trigger, children, title, description, backgroundIma
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    // This function prevents the navigation menu from closing when an item is selected.
+    // This is the key to fixing the "race condition" / disappearing dialog.
+    const handleSelect = (e: React.SyntheticEvent) => {
+        e.preventDefault();
+    };
+
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -296,67 +295,53 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[600px] gap-3 p-4 md:w-[700px] md:grid-cols-2 lg:w-[800px]">
-                                    {siteConfig.featureSets.map((feature) => (
-                                        <FullScreenDialog
-                                            key={feature.title}
-                                            trigger={
-                                                <li className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                                                    <ListItem title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
-                                                </li>
-                                            }
-                                            title={feature.title}
-                                            description={feature.description}
-                                            backgroundImage={feature.backgroundImage}
-                                            icon={feature.icon}
-                                        >
-                                            <div className="py-4 space-y-6">
-                                                {feature.details.map(detail => (
-                                                    <div key={detail.name} className="flex items-start">
-                                                        <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl">{detail.name}</h4>
-                                                            <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
-                                                        </div>
+                                <ScrollArea className="h-auto max-h-[70vh]">
+                                    <ul className="grid w-[600px] gap-3 p-4 md:w-[700px] md:grid-cols-2 lg:w-[800px]">
+                                        {siteConfig.featureSets.map((feature) => (
+                                            <li key={feature.title}>
+                                                <FullScreenDialog
+                                                    trigger={
+                                                        <ListItem onSelect={handleSelect} title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
+                                                    }
+                                                    title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}
+                                                >
+                                                    <div className="py-4 space-y-6">
+                                                        {feature.details.map(detail => (
+                                                            <div key={detail.name} className="flex items-start"><CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" /><div><h4 className="font-semibold text-xl">{detail.name}</h4><p className="text-base text-muted-foreground mt-1">{detail.detail}</p></div></div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </FullScreenDialog>
-                                    ))}
-                                </ul>
+                                                </FullScreenDialog>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </ScrollArea>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ScrollArea className="h-[60vh] w-[800px]">
-                                    <div className="grid grid-cols-4 gap-4 p-4">
+                                <ScrollArea className="h-auto max-h-[70vh]">
+                                    <div className="grid w-[700px] grid-cols-4 gap-4 p-4 lg:w-[800px]">
                                         {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
                                             <div key={category} className="col-span-1">
                                                 <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
-                                                {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
-                                                    <FullScreenDialog
-                                                        key={item.name}
-                                                        trigger={
-                                                            <li className="cursor-pointer list-none" onClick={(e) => e.stopPropagation()}>
-                                                                <ListItem title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
-                                                            </li>
-                                                        }
-                                                        title={item.name}
-                                                        description={item.description}
-                                                        backgroundImage={item.backgroundImage}
-                                                        icon={item.icon}
-                                                    >
-                                                        <div className="text-lg text-muted-foreground p-4">
-                                                            <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                            <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                                <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
-                                                                <li>Industry-specific reporting and analytics.</li>
-                                                                <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                            </ul>
-                                                        </div>
-                                                    </FullScreenDialog>
-                                                ))}
+                                                <ul className='space-y-1'>
+                                                    {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
+                                                        <li key={item.name}>
+                                                            <FullScreenDialog
+                                                                trigger={
+                                                                    <ListItem onSelect={handleSelect} title={item.name} icon={item.icon} href="#">{item.description}</ListItem>
+                                                                }
+                                                                title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}
+                                                            >
+                                                                <div className="text-lg text-muted-foreground p-4">
+                                                                    <p>More detailed information about {item.name} solutions will be displayed here.</p>
+                                                                    <ul className="list-disc pl-5 mt-4 space-y-2"><li>Tailored modules for {item.name.toLowerCase()} operations.</li><li>Industry-specific reporting and analytics.</li></ul>
+                                                                </div>
+                                                            </FullScreenDialog>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
                                         ))}
                                     </div>
@@ -366,29 +351,21 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+                                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                                     {siteConfig.platformPillars.map((pillar) => (
-                                        <FullScreenDialog
-                                            key={pillar.title}
-                                            trigger={
-                                                <li className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                                                    <ListItem title={pillar.title} href="#" icon={pillar.icon}>{pillar.description}</ListItem>
-                                                </li>
-                                            }
-                                            title={pillar.title}
-                                            description={pillar.description}
-                                            backgroundImage={pillar.backgroundImage}
-                                            icon={pillar.icon}
-                                        >
-                                            <div className="text-lg text-muted-foreground p-4">
-                                                <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                    <li>Key architectural components.</li>
-                                                    <li>Performance and scalability benchmarks.</li>
-                                                    <li>Integration capabilities and standards.</li>
-                                                </ul>
-                                            </div>
-                                        </FullScreenDialog>
+                                        <li key={pillar.title}>
+                                            <FullScreenDialog
+                                                trigger={
+                                                    <ListItem onSelect={handleSelect} title={pillar.title} icon={pillar.icon} href="#">{pillar.description}</ListItem>
+                                                }
+                                                title={pillar.title} description={pillar.description} backgroundImage={pillar.backgroundImage} icon={pillar.icon}
+                                            >
+                                                <div className="text-lg text-muted-foreground p-4">
+                                                    <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
+                                                    <ul className="list-disc pl-5 mt-4 space-y-2"><li>Key architectural components.</li><li>Performance and scalability benchmarks.</li></ul>
+                                                </div>
+                                            </FullScreenDialog>
+                                        </li>
                                     ))}
                                 </ul>
                             </NavigationMenuContent>
@@ -419,21 +396,29 @@ const MegaMenuHeader = () => {
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-40">
-                        <div className="container mx-auto py-4 px-4 space-y-2">
-                            {/* Mobile Menu Sections */}
-                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">Features</button></DialogTrigger><DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none"><ScrollArea className="flex-grow"><div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">{siteConfig.featureSets.map(feature => (<FullScreenDialog key={feature.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><feature.icon className="h-7 w-7 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{feature.title}</h4><p className="text-sm text-muted-foreground">{feature.description}</p></div></div>} title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}><div className="py-4 space-y-6">{feature.details.map(detail => (<div key={detail.name} className="flex items-start"><CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" /><div><h4 className="font-semibold text-xl">{detail.name}</h4><p className="text-base text-muted-foreground mt-1">{detail.detail}</p></div></div>))}</div></FullScreenDialog>))}</div></ScrollArea></DialogContent></Dialog>
-                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">Industries</button></DialogTrigger><DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none"><ScrollArea className="flex-grow"><div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">{siteConfig.industryItems.map(item => (<FullScreenDialog key={item.name} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><item.icon className="h-7 w-7 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{item.name}</h4><p className="text-sm text-muted-foreground">{item.description}</p></div></div>} title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}><div className="text-lg text-muted-foreground p-4"><p>More detailed information about {item.name} solutions will be displayed here.</p></div></FullScreenDialog>))}</div></ScrollArea></DialogContent></Dialog>
-                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">Platform</button></DialogTrigger><DialogContent className="fixed inset-0 w-full h-full max-w-none p-0 flex flex-col z-[200] border-none rounded-none"><ScrollArea className="flex-grow"><div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">{siteConfig.platformPillars.map(pillar => (<FullScreenDialog key={pillar.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><pillar.icon className="h-7 w-7 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{pillar.title}</h4><p className="text-sm text-muted-foreground">{pillar.description}</p></div></div>} title={pillar.title} description={pillar.description} backgroundImage={pillar.backgroundImage} icon={pillar.icon}><div className="text-lg text-muted-foreground p-4"><p>Detailed explanation of the "{pillar.title}" pillar.</p></div></FullScreenDialog>))}</div></ScrollArea></DialogContent></Dialog>
+                        <ScrollArea className='h-[calc(100vh-8rem)]'>
+                            <div className="container mx-auto py-4 px-4 space-y-2">
+                                {/* Mobile Menu Sections */}
+                                <FullScreenDialog trigger={<button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Features</button>} title="Features" icon={LayoutGrid} description="Explore the powerful features of BBU1">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 -m-2">{siteConfig.featureSets.map(feature => (<FullScreenDialog key={feature.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><feature.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{feature.title}</h4><p className="text-sm text-muted-foreground">{feature.description}</p></div></div>} title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}><div className="py-4 space-y-6">{feature.details.map(detail => (<div key={detail.name} className="flex items-start"><CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" /><div><h4 className="font-semibold text-xl">{detail.name}</h4><p className="text-base text-muted-foreground mt-1">{detail.detail}</p></div></div>))}</div></FullScreenDialog>))}</div>
+                                </FullScreenDialog>
+                                <FullScreenDialog trigger={<button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Industries</button>} title="Industries" icon={Building} description="Solutions tailored for your business sector">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 -m-2">{siteConfig.industryItems.map(item => (<FullScreenDialog key={item.name} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><item.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{item.name}</h4><p className="text-sm text-muted-foreground">{item.description}</p></div></div>} title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}><div className="text-lg text-muted-foreground p-4"><p>More detailed information about {item.name} solutions will be displayed here.</p></div></FullScreenDialog>))}</div>
+                                </FullScreenDialog>
+                                <FullScreenDialog trigger={<button className="w-full text-left py-3 text-lg font-medium hover:text-primary">Platform</button>} title="Platform" icon={Cloud} description="The foundational pillars of BBU1">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 -m-2">{siteConfig.platformPillars.map(pillar => (<FullScreenDialog key={pillar.title} trigger={<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer"><pillar.icon className="h-8 w-8 text-primary flex-shrink-0 mt-1" /><div><h4 className="font-semibold text-lg">{pillar.title}</h4><p className="text-sm text-muted-foreground">{pillar.description}</p></div></div>} title={pillar.title} description={pillar.description} backgroundImage={pillar.backgroundImage} icon={pillar.icon}><div className="text-lg text-muted-foreground p-4"><p>Detailed explanation of the "{pillar.title}" pillar.</p></div></FullScreenDialog>))}</div>
+                                </FullScreenDialog>
 
-                            <Link href="/support" className="block text-lg font-medium hover:text-primary py-2" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
-                            <Dialog><DialogTrigger asChild><button className="w-full text-left py-2 text-lg font-medium hover:text-primary">FAQ</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent></Dialog>
+                                <Link href="/support" className="block text-lg font-medium hover:text-primary py-3" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                                <Dialog><DialogTrigger asChild><button className="w-full text-left py-3 text-lg font-medium hover:text-primary">FAQ</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4"><Accordion type="single" collapsible className="w-full py-4">{siteConfig.faqItems.map((faq, index) => (<AccordionItem key={index} value={`item-${index}`}><AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger><AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent></AccordionItem>))}</Accordion></ScrollArea></DialogContent></Dialog>
 
-                            <div className="flex flex-col gap-2 pt-4 border-t">
-                                <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
-                                <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
-                                <Button asChild><Link href="/signup">Get Started</Link></Button>
+                                <div className="flex flex-col gap-2 pt-4 border-t">
+                                    <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
+                                    <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
+                                    <Button asChild><Link href="/signup">Get Started</Link></Button>
+                                </div>
                             </div>
-                        </div>
+                        </ScrollArea>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -441,6 +426,8 @@ const MegaMenuHeader = () => {
     );
 };
 
+// ... Rest of your components (LandingFooter, AnimatedSection, Toast, AdvancedChatWidget) remain unchanged ...
+// They are included here for completeness of the file.
 
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
     <footer className="relative border-t bg-background/90 backdrop-blur-sm z-10">
