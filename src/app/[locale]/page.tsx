@@ -8,7 +8,7 @@ import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog'; // Added DialogClose
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
@@ -18,8 +18,16 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign
+    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud // Added DownloadCloud for Install button
 } from 'lucide-react';
+
+// --- Constants for Magic Numbers/Strings ---
+const COOKIE_CONSENT_NAME = 'bbu1_cookie_consent';
+const COOKIE_EXPIRY_DAYS = 365;
+const TOAST_DURATION = 4000;
+const TEXT_ROTATION_INTERVAL = 4000;
+const SLIDESHOW_INTERVAL = 8000;
+const PILLAR_INTERVAL = 8000;
 
 interface FeatureDetail {
     icon: LucideIcon;
@@ -37,6 +45,7 @@ interface CookieCategoryInfo { id: CookieCategoryKey; name: string; description:
 type CookiePreferences = { [key in CookieCategoryKey]: boolean; };
 interface ToastState { visible: boolean; message: string; }
 
+// --- Helper Functions (Memoized/Optimized where possible) ---
 const getCookie = (name: string): string | null => {
     if (typeof document === 'undefined') return null;
     const value = `; ${document.cookie}`;
@@ -53,6 +62,7 @@ const setCookie = (name: string, value: string, days: number) => {
     document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
+// --- Site Configuration (Memoized to prevent re-creation) ---
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -212,6 +222,7 @@ const siteConfig = {
     ] as CookieCategoryInfo[],
 };
 
+// --- Framer Motion Variants (no changes needed here) ---
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut", staggerChildren: 0.2 } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
@@ -250,12 +261,21 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
     </AnimatePresence>
 );
 
-const MegaMenuHeader = () => {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+// --- FullScreenDialog Component for reusability ---
+interface FullScreenDialogProps {
+    children: ReactNode;
+    title: string;
+    description?: string;
+    backgroundImage?: string;
+    icon?: LucideIcon;
+    // Callback to potentially close a parent menu when this dialog opens (e.g., mobile menu)
+    onClose?: () => void;
+}
 
-    // Custom Full-Screen Dialog for Menu Items
-    const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon }: { children: ReactNode; title: string; description?: string; backgroundImage?: string; icon?: LucideIcon; }) => (
-        <DialogContent className="fixed inset-0 w-full h-full p-0 flex flex-col z-[99] animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
+const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon, onClose }: FullScreenDialogProps) => {
+    return (
+        // The DialogContent itself is styled to be full screen
+        <DialogContent className="fixed inset-0 w-screen h-screen max-w-full max-h-full p-0 flex flex-col z-[99] animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
             {backgroundImage && (
                 <Image
                     src={backgroundImage}
@@ -263,7 +283,8 @@ const MegaMenuHeader = () => {
                     fill
                     style={{ objectFit: 'cover' }}
                     className="absolute inset-0 z-0 opacity-20 dark:opacity-10 filter brightness-[0.6]"
-                    priority
+                    priority // Prioritize loading for full-screen dialogs
+                    sizes="100vw"
                 />
             )}
             <div className="relative z-10 flex flex-col h-full w-full bg-background/90 dark:bg-background/95 backdrop-blur-lg">
@@ -272,12 +293,12 @@ const MegaMenuHeader = () => {
                         <DialogTitle className="text-3xl font-bold flex items-center gap-3">
                             {Icon && <Icon className="h-8 w-8 text-primary" />} {title}
                         </DialogTitle>
-                        <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
+                        <DialogClose asChild> {/* Use DialogClose here */}
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground" onClick={onClose}>
                                 <X className="h-6 w-6" />
                                 <span className="sr-only">Close</span>
                             </Button>
-                        </DialogTrigger>
+                        </DialogClose>
                     </div>
                     {description && <DialogDescription className="mt-2 text-lg">{description}</DialogDescription>}
                 </DialogHeader>
@@ -285,21 +306,47 @@ const MegaMenuHeader = () => {
                     {children}
                 </ScrollArea>
                 <div className="p-6 md:p-8 border-t flex-shrink-0">
-                    <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full">Back to Main Page</Button>
-                    </DialogTrigger>
+                    <DialogClose asChild> {/* Use DialogClose here */}
+                        <Button variant="outline" className="w-full" onClick={onClose}>Back to Main Page</Button>
+                    </DialogClose>
                 </div>
             </div>
         </DialogContent>
     );
+};
+
+// --- MegaMenuHeader Component ---
+const MegaMenuHeader = () => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
+
+    useEffect(() => {
+        // Event listener for PWA install prompt
+        const handler = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            setDeferredPrompt(null); // Clear the prompt after use
+        }
+    };
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
                 <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
-                
+
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
+                        {/* Features Menu Item */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
@@ -311,9 +358,9 @@ const MegaMenuHeader = () => {
                                                     <ListItem title={feature.title} icon={feature.icon} href="#">{feature.description}</ListItem>
                                                 </li>
                                             </DialogTrigger>
-                                            <FullScreenDialog 
-                                                title={feature.title} 
-                                                description={feature.description} 
+                                            <FullScreenDialog
+                                                title={feature.title}
+                                                description={feature.description}
                                                 backgroundImage={feature.backgroundImage}
                                                 icon={feature.icon}
                                             >
@@ -334,6 +381,8 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
+
+                        {/* Industries Menu Item */}
                          <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
@@ -372,6 +421,8 @@ const MegaMenuHeader = () => {
                                 </div>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
+
+                        {/* Platform Menu Item */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
                              <NavigationMenuContent>
@@ -405,45 +456,61 @@ const MegaMenuHeader = () => {
                                 </ul>
                             </NavigationMenuContent>
                         </NavigationMenuItem>
-                        <NavigationMenuItem><Link href="/support" legacyBehavior passHref><NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink></Link></NavigationMenuItem>
+
+                        {/* Support Link */}
+                        <NavigationMenuItem>
+                            <Link href="/support" legacyBehavior passHref>
+                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink>
+                            </Link>
+                        </NavigationMenuItem>
+
+                        {/* FAQ Dialog */}
                         <NavigationMenuItem>
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-[60vh] pr-4"> {/* Added ScrollArea for long FAQ content */}
-                                        <Accordion type="single" collapsible className="w-full py-4">
-                                            {siteConfig.faqItems.map((faq, index) => (
-                                                <AccordionItem key={index} value={`item-${index}`}>
-                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
-                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </ScrollArea>
-                                </DialogContent>
+                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbu1.jpg">
+                                    <Accordion type="single" collapsible className="w-full py-4">
+                                        {siteConfig.faqItems.map((faq, index) => (
+                                            <AccordionItem key={index} value={`item-${index}`}>
+                                                <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                </FullScreenDialog>
                             </Dialog>
                         </NavigationMenuItem>
                     </NavigationMenuList>
                 </NavigationMenu>
 
+                {/* Desktop Actions */}
                 <div className="hidden lg:flex items-center gap-2">
+                    {deferredPrompt && (
+                         <Button variant="outline" onClick={handleInstallClick} className="flex items-center gap-1">
+                            <DownloadCloud className="h-4 w-4" /> Install App
+                        </Button>
+                    )}
                     <Button variant="outline" asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
                     <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
                     <Button asChild><Link href="/signup">Get Started</Link></Button>
                     <ModeToggle />
                 </div>
-                
+
+                {/* Mobile Actions */}
                 <div className="lg:hidden flex items-center gap-2">
                     <ModeToggle />
+                    {deferredPrompt && (
+                        <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App">
+                            <DownloadCloud className="h-6 w-6" />
+                        </Button>
+                    )}
                     <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
                 </div>
             </div>
 
+            {/* Mobile Menu Overlay */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30">
@@ -454,13 +521,13 @@ const MegaMenuHeader = () => {
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Features</button>
                                 </DialogTrigger>
-                                <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid}>
+                                <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid} onClose={() => setIsMobileMenuOpen(false)}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.featureSets.map((feature) => (
                                             <Dialog key={feature.title}>
                                                 <DialogTrigger asChild>
                                                     <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        <feature.icon className="h-7 w-7 text-primary flex-shrink-0" />
+                                                        {React.createElement(feature.icon, { className: "h-7 w-7 text-primary flex-shrink-0" })}
                                                         <div>
                                                             <h4 className="font-semibold text-xl">{feature.title}</h4>
                                                             <p className="text-sm text-muted-foreground">{feature.description}</p>
@@ -472,6 +539,7 @@ const MegaMenuHeader = () => {
                                                     description={feature.description}
                                                     backgroundImage={feature.backgroundImage}
                                                     icon={feature.icon}
+                                                    onClose={() => setIsMobileMenuOpen(false)} // Close mobile menu when sub-dialog opens
                                                 >
                                                     <div className="py-4 space-y-6">
                                                         {feature.details.map(detail => (
@@ -496,13 +564,13 @@ const MegaMenuHeader = () => {
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Industries</button>
                                 </DialogTrigger>
-                                <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building}>
+                                <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building} onClose={() => setIsMobileMenuOpen(false)}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.industryItems.map((item) => (
                                             <Dialog key={item.name}>
                                                 <DialogTrigger asChild>
                                                     <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        <item.icon className="h-7 w-7 text-primary flex-shrink-0" />
+                                                        {React.createElement(item.icon, { className: "h-7 w-7 text-primary flex-shrink-0" })}
                                                         <div>
                                                             <h4 className="font-semibold text-xl">{item.name}</h4>
                                                             <p className="text-sm text-muted-foreground">{item.description}</p>
@@ -514,6 +582,7 @@ const MegaMenuHeader = () => {
                                                     description={item.description}
                                                     backgroundImage={item.backgroundImage}
                                                     icon={item.icon}
+                                                    onClose={() => setIsMobileMenuOpen(false)} // Close mobile menu when sub-dialog opens
                                                 >
                                                     <div className="text-lg text-muted-foreground p-4">
                                                         <p>More detailed information about {item.name} solutions will be displayed here.</p>
@@ -537,13 +606,13 @@ const MegaMenuHeader = () => {
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Platform</button>
                                 </DialogTrigger>
-                                <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud}>
+                                <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud} onClose={() => setIsMobileMenuOpen(false)}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.platformPillars.map((pillar) => (
                                             <Dialog key={pillar.title}>
                                                 <DialogTrigger asChild>
                                                     <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        <pillar.icon className="h-7 w-7 text-primary flex-shrink-0" />
+                                                        {React.createElement(pillar.icon, { className: "h-7 w-7 text-primary flex-shrink-0" })}
                                                         <div>
                                                             <h4 className="font-semibold text-xl">{pillar.title}</h4>
                                                             <p className="text-sm text-muted-foreground">{pillar.description}</p>
@@ -555,6 +624,7 @@ const MegaMenuHeader = () => {
                                                     description={pillar.description}
                                                     backgroundImage={pillar.backgroundImage}
                                                     icon={pillar.icon}
+                                                    onClose={() => setIsMobileMenuOpen(false)} // Close mobile menu when sub-dialog opens
                                                 >
                                                     <div className="text-lg text-muted-foreground p-4">
                                                         <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
@@ -579,21 +649,16 @@ const MegaMenuHeader = () => {
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">FAQ</button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-3xl">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-2xl">Frequently Asked Questions</DialogTitle>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-[60vh] pr-4">
-                                        <Accordion type="single" collapsible className="w-full py-4">
-                                            {siteConfig.faqItems.map((faq, index) => (
-                                                <AccordionItem key={index} value={`item-${index}`}>
-                                                    <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
-                                                    <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                                </AccordionItem>
-                                            ))}
-                                        </Accordion>
-                                    </ScrollArea>
-                                </DialogContent>
+                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbu1.jpg" onClose={() => setIsMobileMenuOpen(false)}> {/* Close mobile menu on dialog open */}
+                                    <Accordion type="single" collapsible className="w-full py-4">
+                                        {siteConfig.faqItems.map((faq, index) => (
+                                            <AccordionItem key={index} value={`item-${index}`}>
+                                                <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
+                                            </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                </FullScreenDialog>
                             </Dialog>
 
                             <div className="flex flex-col gap-2 pt-4 border-t">
@@ -609,6 +674,7 @@ const MegaMenuHeader = () => {
     );
 };
 
+// --- LandingFooter Component (Updated with FullScreenDialog for legal documents) ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
     <footer className="relative border-t bg-background/90 backdrop-blur-sm z-10">
         <div className="container mx-auto px-4 pt-12 pb-6">
@@ -616,23 +682,39 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                 <div className="col-span-2"><h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3><p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p><div className="flex items-center gap-5 mt-6"><a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a><a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a><a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a></div></div>
                 <div><h4 className="font-semibold text-base mb-3">Product</h4><ul className="space-y-2 text-sm"><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Features</Link></li><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Industries</Link></li><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Platform</Link></li></ul></div>
                 <div><h4 className="font-semibold text-base mb-3">Company</h4><ul className="space-y-2 text-sm"><li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li><li><Link href="/support" className="text-muted-foreground hover:text-primary transition-colors">Support</Link></li></ul></div>
-                <div><h4 className="font-semibold text-base mb-3">Legal</h4><ul className="space-y-2 text-sm"><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Terms of Service</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4">{siteConfig.termsOfService}</ScrollArea></DialogContent></Dialog></li><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Privacy Policy</DialogTitle></DialogHeader><ScrollArea className="h-[60vh] pr-4">{siteConfig.privacyPolicy}</ScrollArea></DialogContent></Dialog></li><li><button onClick={onManageCookies} className="text-muted-foreground hover:text-primary text-left transition-colors">Manage Cookies</button></li></ul></div>
+                <div><h4 className="font-semibold text-base mb-3">Legal</h4><ul className="space-y-2 text-sm"><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><FullScreenDialog title="Terms of Service" icon={FileText} backgroundImage="/images/showcase/office-admin-bbU1.jpg"><ScrollArea className="h-[60vh] pr-4">{siteConfig.termsOfService}</ScrollArea></FullScreenDialog></Dialog></li><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><FullScreenDialog title="Privacy Policy" icon={ShieldCheck} backgroundImage="/images/showcase/office-presentation-dashboard.jpg"><ScrollArea className="h-[60vh] pr-4">{siteConfig.privacyPolicy}</ScrollArea></FullScreenDialog></Dialog></li><li><button onClick={onManageCookies} className="text-muted-foreground hover:text-primary text-left transition-colors">Manage Cookies</button></li></ul></div>
             </div>
             <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"><p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p><p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> in Kampala, Uganda.</p></div>
         </div>
     </footer>
 );
 
+// --- AdvancedChatWidget Component (Corrected and complete) ---
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [userContext, setUserContext] = useState<{ businessId: string | null; userId: string | null }>({ businessId: null, userId: null });
     const [chatInput, setChatInput] = useState('');
+    
+    // THIS IS THE CORRECTED LINE, REVERTED TO YOUR ORIGINAL IMPLEMENTATION
     const { messages, setMessages, append, isLoading }: any = useChat({ api: '/api/chat', body: { businessId: userContext.businessId, userId: userContext.userId } } as any);
 
-    useEffect(() => { setUserContext({ businessId: getCookie('business_id'), userId: getCookie('user_id') }); }, []);
-    useEffect(() => { if (messages.length === 0 && setMessages) { setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' }]); } }, [messages.length, setMessages]);
+    useEffect(() => {
+        // Correctly use cookie names for business and user IDs
+        setUserContext({ businessId: getCookie('business_id'), userId: getCookie('user_id') });
+    }, []);
+
+    useEffect(() => {
+        if (messages.length === 0 && setMessages) {
+            setMessages([{ id: 'initial', role: 'assistant', content: 'Hello! I am Aura, your business copilot. How can I assist you today?' }]);
+        }
+    }, [messages.length, setMessages]);
+
     const scrollRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; } }, [messages]);
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages]);
 
     const handleChatSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -648,29 +730,75 @@ const AdvancedChatWidget = () => {
         <>
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }} className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50">
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 50, scale: 0.9 }}
+                        className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] sm:w-[400px] h-[600px] z-50"
+                    >
                         <Card className="h-full w-full flex flex-col shadow-2xl">
-                            <CardHeader className="flex-row items-center justify-between"><div><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle><CardDescription>Your AI Business Analyst</CardDescription></div><Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}><X className="h-4 w-4" /></Button></CardHeader>
-                            <CardContent className="flex-1 flex flex-col p-0"><ScrollArea className="flex-1 p-4" ref={scrollRef}><div className="space-y-4">
-                                {messages.map((m: CoreMessage, i: number) => (
-                                    <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
-                                        {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>}
-                                        <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>{m.content as string}</div>
-                                        {m.role === 'user' && <Avatar className="h-8 w-8"><AvatarFallback>U</AvatarFallback></Avatar>}
-                                    </div>))}
-                                {isLoading && <div className="flex items-start gap-3 text-sm"><Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar><div className="rounded-lg p-3 max-w-[85%] bg-background border">Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" /></div></div>}
-                                {(!userContext.businessId || !userContext.userId) && !isLoading && <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50/50"><p>Your business context is missing. Please log in to use the AI Assistant.</p></div>}
-                            </div></ScrollArea><div className="p-4 border-t"><form onSubmit={handleChatSubmit} className="flex items-center gap-2">
-                                <Input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={isDisabled ? "Please log in..." : "Ask Aura anything..."} disabled={isDisabled} />
-                                <Button type="submit" size="icon" disabled={isDisabled || !chatInput.trim()}><Send className="h-4 w-4" /></Button></form></div></CardContent>
+                            <CardHeader className="flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Aura Copilot</CardTitle>
+                                    <CardDescription>Your AI Business Analyst</CardDescription>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col p-0">
+                                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                                    <div className="space-y-4">
+                                        {messages.map((m: CoreMessage, i: number) => (
+                                            <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
+                                                {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>}
+                                                <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>
+                                                    {m.content as string}
+                                                </div>
+                                                {m.role === 'user' && <Avatar className="h-8 w-8"><AvatarFallback>U</AvatarFallback></Avatar>}
+                                            </div>
+                                        ))}
+                                        {isLoading && (
+                                            <div className="flex items-start gap-3 text-sm">
+                                                <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>
+                                                <div className="rounded-lg p-3 max-w-[85%] bg-background border">
+                                                    Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {(!userContext.businessId || !userContext.userId) && !isLoading && (
+                                            <div className="text-center text-red-500 text-sm p-4 border rounded-lg bg-red-50/50">
+                                                <p>Your business context is missing. Please log in to use the AI Assistant.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                                <div className="p-4 border-t">
+                                    <form onSubmit={handleChatSubmit} className="flex items-center gap-2">
+                                        <Input
+                                            value={chatInput}
+                                            onChange={e => setChatInput(e.target.value)}
+                                            placeholder={isDisabled ? "Please log in..." : "Ask Aura anything..."}
+                                            disabled={isDisabled}
+                                        />
+                                        <Button type="submit" size="icon" disabled={isDisabled || !chatInput.trim()}>
+                                            <Send className="h-4 w-4" />
+                                        </Button>
+                                    </form>
+                                </div>
+                            </CardContent>
                         </Card>
-                    </motion.div>)}
+                    </motion.div>
+                )}
             </AnimatePresence>
-            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>{isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}</Button>
+            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>
+                {isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}
+            </Button>
         </>
     );
 };
 
+// --- HomePage Component ---
 export default function HomePage() {
     const rotatingTexts = ["Automation where it counts. Human when it matters.", "From startup to enterprise.", "For every ambition."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -685,12 +813,21 @@ export default function HomePage() {
 
     const [activePillarIndex, setActivePillarIndex] = useState(0);
 
+    // Memoize static arrays to prevent unnecessary re-renders in useEffect dependencies
+    const memoizedRotatingTexts = React.useMemo(() => rotatingTexts, []);
+    const memoizedSlideshowContent = React.useMemo(() => slideshowContent, []);
+    const memoizedPlatformPillars = React.useMemo(() => siteConfig.platformPillars, []);
+
     useEffect(() => {
-        const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % rotatingTexts.length); }, 4000);
-        const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % slideshowContent.length); }, 8000);
-        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % siteConfig.platformPillars.length); }, 8000);
-        return () => { clearInterval(textInterval); clearInterval(imageInterval); clearInterval(pillarInterval); };
-    }, [rotatingTexts.length, slideshowContent.length, siteConfig.platformPillars.length]);
+        const textInterval = setInterval(() => { setCurrentTextIndex(prev => (prev + 1) % memoizedRotatingTexts.length); }, TEXT_ROTATION_INTERVAL);
+        const imageInterval = setInterval(() => { setCurrentSlideIndex(prev => (prev + 1) % memoizedSlideshowContent.length); }, SLIDESHOW_INTERVAL);
+        const pillarInterval = setInterval(() => { setActivePillarIndex(prev => (prev + 1) % memoizedPlatformPillars.length); }, PILLAR_INTERVAL);
+        return () => {
+            clearInterval(textInterval);
+            clearInterval(imageInterval);
+            clearInterval(pillarInterval);
+        };
+    }, [memoizedRotatingTexts.length, memoizedSlideshowContent.length, memoizedPlatformPillars.length]);
 
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences);
     const [showCookieBanner, setShowCookieBanner] = useState(false);
@@ -699,32 +836,85 @@ export default function HomePage() {
     const [toast, setToast] = useState<ToastState>({ visible: false, message: '' });
     const [mounted, setMounted] = useState(false);
 
-    const applyCookiePreferences = useCallback((prefs: CookiePreferences) => { console.log("Applying cookie preferences:", prefs); }, []);
-    const showToast = (message: string) => { setToast({ visible: true, message }); setTimeout(() => setToast({ visible: false, message: '' }), 4000); };
-    const handleAcceptAllCookies = useCallback(() => { const allTruePrefs: CookiePreferences = { essential: true, analytics: true, marketing: true }; setCookiePreferences(allTruePrefs); setCookie('bbu1_cookie_consent', JSON.stringify(allTruePrefs), 365); setShowCookieBanner(false); applyCookiePreferences(allTruePrefs); showToast("All cookies have been accepted."); }, [applyCookiePreferences]);
-    const handleSaveCookiePreferences = useCallback(() => { setCookie('bbu1_cookie_consent', JSON.stringify(cookiePreferences), 365); setShowCookieBanner(false); setIsCustomizingCookies(false); applyCookiePreferences(cookiePreferences); showToast("Your privacy preferences have been saved."); }, [cookiePreferences, applyCookiePreferences]);
-    const openCookiePreferences = useCallback(() => { const consentCookie = getCookie('bbu1_cookie_consent'); try { const storedPrefs = consentCookie ? JSON.parse(consentCookie) : initialCookiePreferences; setCookiePreferences(storedPrefs); } catch { setCookiePreferences(initialCookiePreferences); } setShowCookieBanner(true); setIsCustomizingCookies(true); }, [initialCookiePreferences]);
-    
+    // useCallback for functions passed down to children to optimize performance
+    const applyCookiePreferences = useCallback((prefs: CookiePreferences) => {
+        console.log("Applying cookie preferences:", prefs);
+        // Here you would integrate with your actual analytics/tracking scripts
+        // E.g., if (prefs.analytics) initializeGoogleAnalytics(); else disableGoogleAnalytics();
+    }, []);
+
+    const showToast = useCallback((message: string) => {
+        setToast({ visible: true, message });
+        setTimeout(() => setToast({ visible: false, message: '' }), TOAST_DURATION);
+    }, []);
+
+    const handleAcceptAllCookies = useCallback(() => {
+        const allTruePrefs: CookiePreferences = { essential: true, analytics: true, marketing: true };
+        setCookiePreferences(allTruePrefs);
+        setCookie(COOKIE_CONSENT_NAME, JSON.stringify(allTruePrefs), COOKIE_EXPIRY_DAYS);
+        setShowCookieBanner(false);
+        applyCookiePreferences(allTruePrefs);
+        showToast("All cookies have been accepted.");
+    }, [applyCookiePreferences, showToast]);
+
+    const handleSaveCookiePreferences = useCallback(() => {
+        setCookie(COOKIE_CONSENT_NAME, JSON.stringify(cookiePreferences), COOKIE_EXPIRY_DAYS);
+        setShowCookieBanner(false);
+        setIsCustomizingCookies(false);
+        applyCookiePreferences(cookiePreferences);
+        showToast("Your privacy preferences have been saved.");
+    }, [cookiePreferences, applyCookiePreferences, showToast]);
+
+    const openCookiePreferences = useCallback(() => {
+        const consentCookie = getCookie(COOKIE_CONSENT_NAME);
+        try {
+            const storedPrefs = consentCookie ? JSON.parse(consentCookie) : initialCookiePreferences;
+            setCookiePreferences(storedPrefs);
+        } catch (error) {
+            console.error("Failed to parse cookie preferences, resetting to initial.", error);
+            setCookiePreferences(initialCookiePreferences);
+        }
+        setShowCookieBanner(true);
+        setIsCustomizingCookies(true);
+    }, [initialCookiePreferences]);
+
+    // Effect for initial cookie banner visibility and application
     useEffect(() => {
-        setMounted(true);
-        const consentCookie = getCookie('bbu1_cookie_consent');
-        if (!consentCookie) { setShowCookieBanner(true); } 
-        else { try { applyCookiePreferences(JSON.parse(consentCookie)); } catch { setShowCookieBanner(true); } }
-    }, [applyCookiePreferences]);
+        setMounted(true); // Indicate that the component has mounted client-side
+        const consentCookie = getCookie(COOKIE_CONSENT_NAME);
+        if (!consentCookie) {
+            setShowCookieBanner(true);
+        } else {
+            try {
+                applyCookiePreferences(JSON.parse(consentCookie));
+            } catch (error) {
+                console.error("Error applying cookie preferences from storage:", error);
+                setShowCookieBanner(true); // Show banner if there's an error parsing existing cookie
+            }
+        }
+    }, [applyCookiePreferences]); // Dependencies: only re-run if applyCookiePreferences changes (which it won't due to useCallback)
 
     return (
         <>
             <MegaMenuHeader />
             <main>
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[600px] flex items-center justify-center">
-                    <motion.div 
+                    <motion.div
                         className="absolute inset-0 z-0"
                         variants={heroImageVariants}
                         initial="initial"
                         animate="animate"
                     >
-                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
-                        <div className="absolute inset-0 bg-black/70"></div> 
+                        <Image
+                            src="/images/showcase/modern-office-analytics.jpg"
+                            alt="Modern office analyzing data"
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            className="opacity-90 dark:opacity-70"
+                            priority
+                            sizes="100vw" // Optimized: Added sizes prop for hero image
+                        />
+                        <div className="absolute inset-0 bg-black/70"></div>
                     </motion.div>
                     <div className="container mx-auto relative z-10 text-white">
                         <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
@@ -733,7 +923,7 @@ export default function HomePage() {
                                 The One Platform <br />
                                 <div className="inline-block h-[1.2em] overflow-hidden">
                                     <AnimatePresence mode="wait">
-                                        <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md">{rotatingTexts[currentTextIndex]}</motion.span>
+                                        <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md">{memoizedRotatingTexts[currentTextIndex]}</motion.span>
                                     </AnimatePresence>
                                 </div>
                             </motion.h1>
@@ -742,7 +932,7 @@ export default function HomePage() {
                         </motion.div>
                     </div>
                 </section>
-                
+
                 <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
                      <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
                     <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -754,7 +944,7 @@ export default function HomePage() {
                                 BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.
                             </p>
                             <ul className="space-y-6">
-                                {siteConfig.platformPillars.map((pillar, index) => (
+                                {memoizedPlatformPillars.map((pillar, index) => (
                                     <motion.li
                                         key={pillar.title}
                                         className={cn(
@@ -782,7 +972,7 @@ export default function HomePage() {
                                     className="absolute inset-0 flex items-center justify-center"
                                 >
                                     <Card className="text-left h-full w-full overflow-hidden relative">
-                                        {siteConfig.platformPillars[activePillarIndex].title === "Built for Growth" ? (
+                                        {memoizedPlatformPillars[activePillarIndex].title === "Built for Growth" ? (
                                             <div className="relative z-10 p-8 flex flex-col justify-center h-full bg-primary/5">
                                                 <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
                                                     <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
@@ -791,7 +981,7 @@ export default function HomePage() {
                                                     <CardTitle className="text-3xl font-bold">Built for Growth</CardTitle>
                                                 </CardHeader>
                                                 <CardContent className="mt-4 flex-grow space-y-4">
-                                                    <p className="text-lg leading-relaxed text-muted-foreground">{siteConfig.platformPillars[activePillarIndex].description}</p>
+                                                    <p className="text-lg leading-relaxed text-muted-foreground">{memoizedPlatformPillars[activePillarIndex].description}</p>
                                                     <div className="border-t pt-4 space-y-2">
                                                         <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Scales infinitely from 1 to 100,000+ users.</p>
                                                         <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Multi-branch & multi-country architecture.</p>
@@ -802,22 +992,22 @@ export default function HomePage() {
                                         ) : (
                                             <>
                                                 <Image
-                                                    src={siteConfig.platformPillars[activePillarIndex].backgroundImage}
-                                                    alt={siteConfig.platformPillars[activePillarIndex].title}
+                                                    src={memoizedPlatformPillars[activePillarIndex].backgroundImage}
+                                                    alt={memoizedPlatformPillars[activePillarIndex].title}
                                                     fill
                                                     style={{ objectFit: 'cover' }}
                                                     className="absolute inset-0 z-0 filter brightness-[0.3]"
-                                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                                    sizes="(max-width: 768px) 100vw, 50vw" // Optimized: Added sizes prop
                                                 />
                                                 <div className="relative z-10 p-8 text-white flex flex-col justify-center h-full">
                                                     <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
                                                         <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
-                                                            {React.createElement(siteConfig.platformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
+                                                            {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
                                                         </div>
-                                                        <CardTitle className="text-3xl font-bold">{siteConfig.platformPillars[activePillarIndex].title}</CardTitle>
+                                                        <CardTitle className="text-3xl font-bold">{memoizedPlatformPillars[activePillarIndex].title}</CardTitle>
                                                     </CardHeader>
                                                     <CardContent className="mt-4 flex-grow">
-                                                        <p className="text-lg leading-relaxed">{siteConfig.platformPillars[activePillarIndex].description}</p>
+                                                        <p className="text-lg leading-relaxed">{memoizedPlatformPillars[activePillarIndex].description}</p>
                                                     </CardContent>
                                                 </div>
                                             </>
@@ -831,7 +1021,7 @@ export default function HomePage() {
 
                 <AnimatedSection id="in-action" className="bg-gray-900 text-white">
                     <div className="absolute inset-0 z-0">
-                         <Image src="/images/showcase/future-of-business-tech.jpg" alt="Global Business Technology Network" layout="fill" objectFit="cover" className="opacity-20" />
+                         <Image src="/images/showcase/future-of-business-tech.jpg" alt="Global Business Technology Network" layout="fill" objectFit="cover" className="opacity-20" sizes="100vw" /> {/* Optimized: Added sizes prop */}
                     </div>
                     <div className="relative z-10 text-center mb-12">
                         <motion.h2 className="text-3xl sm:text-4xl font-bold text-white" variants={itemVariants}>
@@ -843,40 +1033,40 @@ export default function HomePage() {
                     </div>
                     <motion.div className="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 h-[400px] md:h-[550px] lg:h-[700px] bg-black/50" variants={itemVariants}>
                         <AnimatePresence mode="wait" initial={false}>
-                            <motion.div 
-                                key={currentSlideIndex} 
-                                initial={{ opacity: 0, scale: 1.05 }} 
-                                animate={{ opacity: 1, scale: 1 }} 
-                                exit={{ opacity: 0, scale: 0.95 }} 
-                                transition={{ duration: 1.2, ease: "easeInOut" }} 
+                            <motion.div
+                                key={currentSlideIndex}
+                                initial={{ opacity: 0, scale: 1.05 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 1.2, ease: "easeInOut" }}
                                 className="absolute inset-0"
                             >
-                                <Image 
-                                    src={slideshowContent[currentSlideIndex].src} 
-                                    alt={slideshowContent[currentSlideIndex].alt} 
-                                    layout="fill" 
-                                    objectFit="cover" 
+                                <Image
+                                    src={memoizedSlideshowContent[currentSlideIndex].src}
+                                    alt={memoizedSlideshowContent[currentSlideIndex].alt}
+                                    layout="fill"
+                                    objectFit="cover"
                                     className="filter brightness-[0.7]"
                                     priority={currentSlideIndex === 0}
                                     sizes="(max-width: 768px) 100vw, 70vw"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
-                                    <h3 className="text-2xl md:text-4xl font-bold mb-2">{slideshowContent[currentSlideIndex].title}</h3>
-                                    <p className="text-base md:text-lg">{slideshowContent[currentSlideIndex].description}</p>
+                                    <h3 className="text-2xl md:text-4xl font-bold mb-2">{memoizedSlideshowContent[currentSlideIndex].title}</h3>
+                                    <p className="text-base md:text-lg">{memoizedSlideshowContent[currentSlideIndex].description}</p>
                                 </div>
                             </motion.div>
                         </AnimatePresence>
                         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
-                            {slideshowContent.map((_, idx) => (
+                            {memoizedSlideshowContent.map((_, idx) => (
                                 <button key={idx} className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} onClick={() => setCurrentSlideIndex(idx)} aria-label={`Go to slide ${idx + 1}`} />
                             ))}
                         </div>
                     </motion.div>
                 </AnimatedSection>
-                
+
                 <AnimatedSection id="partnership-promise" className="bg-background">
-                     <motion.div 
+                     <motion.div
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         transition={{ duration: 1.5, ease: "easeOut" }}
@@ -891,11 +1081,11 @@ export default function HomePage() {
                         </div>
                         <h3 className="text-3xl font-bold tracking-tight text-primary mt-8">Your Success is Our Onboarding Mission</h3>
                         <p className="mt-4 text-lg text-muted-foreground">
-                            We don't just sell software; we forge partnerships. From your very first day, you receive <strong className="text-foreground">complimentary, dedicated human support</strong> to ensure BBU1 is perfectly tailored to your vision. We succeed only.
+                            We don't just sell software; we forge partnerships. From your very first day, you receive <strong className="text-foreground">complimentary, dedicated human support</strong> to ensure BBU1 is perfectly tailored to your vision. We succeed only when you do.
                         </p>
                      </motion.div>
                 </AnimatedSection>
-                                
+
                 <AnimatedSection className="text-center">
                     <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden">
                         <h2 className="text-3xl font-bold tracking-tight">Build an Enterprise That Lasts Generations</h2>
@@ -913,7 +1103,7 @@ export default function HomePage() {
 
             {mounted && <AdvancedChatWidget />}
             <LandingFooter onManageCookies={openCookiePreferences} />
-            
+
             <Toast message={toast.message} isVisible={toast.visible} />
             {mounted && (
                 <AnimatePresence>
