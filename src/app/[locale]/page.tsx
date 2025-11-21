@@ -230,8 +230,6 @@ const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [
 const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
 
 // --- CORRECTED ListItem Component ---
-// REPLACEMENT: Switched from 'a' tag to 'div'. Removed NavigationMenuLink.
-// This prevents the "Client Error" caused by nesting <a> inside <button>.
 const ListItem = forwardRef<ElementRef<"div">, ComponentPropsWithoutRef<"div"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
     <div
         ref={ref}
@@ -271,9 +269,9 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
     </AnimatePresence>
 );
 
-// --- FullScreenDialog Component ---
-// REVOLUTIONARY UX: Instead of a redirect, this opens a "page-like" modal instantly.
-// This is the "Page to read information" requested.
+// --- FullScreenDialog Component (FIXED FOR ALL DEVICES) ---
+// CRITICAL FIX: Added !fixed !inset-0 !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0
+// This ensures the modal ignores all parent positioning and covers the screen perfectly on every device.
 interface FullScreenDialogProps {
     children: ReactNode;
     title: string;
@@ -285,7 +283,7 @@ interface FullScreenDialogProps {
 
 const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon, onClose }: FullScreenDialogProps) => {
     return (
-        <DialogContent className="fixed inset-0 w-screen h-screen max-w-full max-h-full p-0 flex flex-col z-[99] animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
+        <DialogContent className="!fixed !inset-0 !left-0 !top-0 !z-[200] !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0 !border-none p-0 flex flex-col animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
             {backgroundImage && (
                 <Image
                     src={backgroundImage}
@@ -359,14 +357,12 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Features</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                {/* ADDED SCROLL AREA: Solves the "Scroll factor" request */}
-                                <ScrollArea className="h-[65vh] w-[600px] md:w-[700px] lg:w-[800px] rounded-md">
+                                {/* FIXED: Responsive widths using max-w and vw to prevent overflow on laptops */}
+                                <ScrollArea className="h-[65vh] w-[90vw] md:w-[600px] lg:w-[800px] max-w-[94vw] rounded-md">
                                     <ul className="grid gap-3 p-4 md:grid-cols-2">
                                         {siteConfig.featureSets.map((feature) => (
                                             <li key={feature.title} className="list-none">
                                                 <Dialog>
-                                                    {/* REPLACEMENT: Wrapped in 'button' for valid HTML. */}
-                                                    {/* Triggers the FullScreenDialog to "Read Info" */}
                                                     <DialogTrigger asChild>
                                                         <button className="w-full text-left">
                                                             <ListItem title={feature.title} icon={feature.icon}>{feature.description}</ListItem>
@@ -402,15 +398,14 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                {/* ADDED SCROLL AREA */}
-                                <ScrollArea className="h-[65vh] w-[600px] md:w-[700px] lg:w-[800px] rounded-md">
+                                {/* FIXED: Responsive widths */}
+                                <ScrollArea className="h-[65vh] w-[90vw] md:w-[700px] lg:w-[800px] max-w-[94vw] rounded-md">
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
                                         {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
                                             <div key={category} className="col-span-1">
                                                 <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
                                                 {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
                                                     <Dialog key={item.name}>
-                                                        {/* REPLACEMENT: Valid button trigger */}
                                                         <DialogTrigger asChild>
                                                             <button className="w-full text-left mb-2 block">
                                                                 <ListItem title={item.name} icon={item.icon}>{item.description}</ListItem>
@@ -446,13 +441,12 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                {/* ADDED SCROLL AREA */}
-                                <ScrollArea className="h-[65vh] w-[400px] md:w-[500px] lg:w-[600px] rounded-md">
+                                {/* FIXED: Responsive widths */}
+                                <ScrollArea className="h-[65vh] w-[90vw] md:w-[500px] lg:w-[600px] max-w-[94vw] rounded-md">
                                     <ul className="grid gap-3 p-4 md:grid-cols-2">
                                         {siteConfig.platformPillars.map((pillar) => (
                                             <li key={pillar.title} className="list-none">
                                                 <Dialog>
-                                                    {/* REPLACEMENT: Valid button trigger */}
                                                     <DialogTrigger asChild>
                                                         <button className="w-full text-left">
                                                             <ListItem title={pillar.title} icon={pillar.icon}>{pillar.description}</ListItem>
