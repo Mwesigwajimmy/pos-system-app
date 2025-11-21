@@ -8,7 +8,7 @@ import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog'; // Added DialogClose
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud // Added DownloadCloud for Install button
+    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud
 } from 'lucide-react';
 
 // --- Constants for Magic Numbers/Strings ---
@@ -34,9 +34,9 @@ interface FeatureDetail {
     title: string;
     description: string;
     details: { name: string; detail: string; }[];
-    backgroundImage: string; // Added background image for feature details
+    backgroundImage: string;
 }
-interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; } // Added background image
+interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; }
 interface FaqItem { q: string; a: ReactNode; }
 interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; }
 
@@ -45,7 +45,7 @@ interface CookieCategoryInfo { id: CookieCategoryKey; name: string; description:
 type CookiePreferences = { [key in CookieCategoryKey]: boolean; };
 interface ToastState { visible: boolean; message: string; }
 
-// --- Helper Functions (Memoized/Optimized where possible) ---
+// --- Helper Functions ---
 const getCookie = (name: string): string | null => {
     if (typeof document === 'undefined') return null;
     const value = `; ${document.cookie}`;
@@ -62,7 +62,7 @@ const setCookie = (name: string, value: string, days: number) => {
     document.cookie = `${name}=${value};${expires};path=/;SameSite=Lax`;
 };
 
-// --- Site Configuration (Memoized to prevent re-creation) ---
+// --- Site Configuration ---
 const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
@@ -74,7 +74,7 @@ const siteConfig = {
     featureSets: [
         {
             icon: Users, title: "Human Resources", description: "Manage your most valuable asset—your people—from recruitment to retirement.",
-            backgroundImage: "/images/showcase/modern-office-bbU1.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/modern-office-bbU1.jpg",
             details: [
                 { name: "Leave Management", detail: "Automate leave requests, approvals, and balance tracking with configurable policies for any country." },
                 { name: "Recruitment", detail: "Streamline your hiring process from job posting to onboarding with a collaborative recruitment pipeline." },
@@ -86,7 +86,7 @@ const siteConfig = {
         },
         {
             icon: Handshake, title: "CRM", description: "Build lasting customer relationships and accelerate your sales cycle.",
-            backgroundImage: "/images/showcase/call-center-crm.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/call-center-crm.jpg",
             details: [
                 { name: "Sales Pipeline & Lead Management", detail: "Visualize and manage your entire sales process, from lead generation and qualification to close, with a customizable drag-and-drop pipeline." },
                 { name: "Customer Support & Ticketing", detail: "Provide exceptional customer service with a built-in helpdesk to track, prioritize, and resolve customer issues efficiently, enhancing satisfaction." },
@@ -97,7 +97,7 @@ const siteConfig = {
         },
         {
             icon: Landmark, title: "Finance & Accounting", description: "Gain complete financial control with AI-powered, GAAP-compliant accounting.",
-            backgroundImage: "/images/showcase/office-admin-bbU1.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/office-admin-bbU1.jpg",
             details: [
                 { name: "Financial Reporting & Analytics", detail: "Generate real-time Profit & Loss, Balance Sheets, Cash Flow statements, and custom reports with a single click for insightful decision-making." },
                 { name: "Expense Management", detail: "Capture, approve, and reimburse employee expenses seamlessly, eliminating manual paperwork and ensuring compliance." },
@@ -110,7 +110,7 @@ const siteConfig = {
         },
         {
             icon: Warehouse, title: "Inventory & Supply Chain", description: "Optimize your stock, manage warehouses, and streamline your supply chain.",
-            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg",
             details: [
                 { name: "Multi-Warehouse Management", detail: "Track inventory across multiple locations, warehouses, or stores in real-time with comprehensive visibility." },
                 { name: "Purchase Order Management", detail: "Create, send, and track purchase orders, managing supplier relationships and optimizing procurement." },
@@ -122,7 +122,7 @@ const siteConfig = {
         },
         {
             icon: ShoppingCart, title: "Sales & E-commerce", description: "Manage your sales channels, from retail POS to online stores.",
-            backgroundImage: "/images/showcase/bakery-pos-system.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/bakery-pos-system.jpg",
             details: [
                 { name: "Point of Sale (POS)", detail: "Intuitive and fast POS system for retail operations, supporting multiple payment methods and integrated with inventory." },
                 { name: "E-commerce Integration", detail: "Seamlessly connect with popular e-commerce platforms to sync products, orders, and customer data in real-time." },
@@ -133,7 +133,7 @@ const siteConfig = {
         },
         {
             icon: Briefcase, title: "Project Management", description: "Plan, execute, and track projects with collaborative tools.",
-            backgroundImage: "/images/showcase/creative-agency-pm.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/creative-agency-pm.jpg",
             details: [
                 { name: "Task & Workflow Management", detail: "Organize projects into tasks, assign responsibilities, set deadlines, and track progress with Kanban boards or Gantt charts." },
                 { name: "Time Tracking", detail: "Accurately track time spent on tasks and projects for precise billing and resource allocation." },
@@ -144,7 +144,7 @@ const siteConfig = {
         },
         {
             icon: Scale, title: "Compliance & Governance", description: "Ensure regulatory adherence and maintain strong internal controls.",
-            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/office-presentation-dashboard.jpg",
             details: [
                 { name: "Audit Trails & Logs", detail: "Maintain a complete, tamper-proof audit trail of every action taken in the system for ultimate security and compliance." },
                 { name: "Role-Based Access Control", detail: "Granular control over user permissions and access rights, ensuring data security and adherence to internal policies." },
@@ -155,7 +155,7 @@ const siteConfig = {
         },
         {
             icon: Phone, title: "Telecom Services", description: "A specialized, end-to-end solution for managing telecom and agent-based businesses.",
-            backgroundImage: "/images/showcase/mobile-money-agent.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/mobile-money-agent.jpg",
             details: [
                 { name: "Admin Dashboard & Real-time Monitoring", detail: "Get a high-level overview of your entire telecom operation, from agent performance to financial health, with real-time analytics." },
                 { name: "Agent Management & Hierarchy", detail: "Onboard, manage, and track thousands of agents in real-time with powerful hierarchical controls and commission structures." },
@@ -167,7 +167,7 @@ const siteConfig = {
         },
         {
             icon: BarChart3, title: "Business Intelligence & AI", description: "Transform raw data into actionable insights with AI-powered analytics.",
-            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg", // Choose a suitable background
+            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg",
             details: [
                 { name: "AI Copilot & Smart Insights", detail: "Aura, our AI copilot, automates bookkeeping, detects anomalies, and provides strategic insights like 'Cash flow projected to be low in 3 weeks.'" },
                 { name: "Custom Dashboards & Reporting", detail: "Create personalized dashboards and reports with drag-and-drop functionality to visualize key performance indicators (KPIs)." },
@@ -193,8 +193,8 @@ const siteConfig = {
         { name: "Construction & Engineering", icon: Building, description: "Job costing, project management, progress billing, and equipment tracking for contractors and construction companies.", category: 'Trades & Services', backgroundImage: "/images/showcase/construction-site.jpg" },
         { name: "Field Service Management", icon: Car, description: "Scheduling, dispatch, mobile invoicing, and technician tracking for HVAC, plumbing, and other field service businesses.", category: 'Trades & Services', backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg" },
         { name: "Distribution & Logistics", icon: Package, description: "End-to-end warehouse management, logistics planning, fleet management, and supply chain optimization.", category: 'Specialized', backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
-        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" }, // Changed to agent for MFI context
-        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" }, // Reused for professional look
+        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
+        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" },
         { name: "SACCO / Co-operative", icon: Users, description: "Member management, savings, loans, dividend calculation, and governance tools for cooperative societies.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
         { name: "Telecom Services", icon: Signal, description: "The premier solution for managing mobile money, airtime, and extensive agent networks, including commission management.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
         { name: "Nonprofit & NGOs", icon: HeartHandshake, description: "Donor management, grant tracking, fund accounting, project impact reporting, and volunteer management for NGOs.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
@@ -222,7 +222,7 @@ const siteConfig = {
     ] as CookieCategoryInfo[],
 };
 
-// --- Framer Motion Variants (no changes needed here) ---
+// --- Framer Motion Variants ---
 const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut", staggerChildren: 0.2 } } };
 const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
@@ -261,7 +261,7 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
     </AnimatePresence>
 );
 
-// --- FullScreenDialog Component for reusability ---
+// --- FullScreenDialog Component for reusability (FIXED LAYOUT ISSUES HERE) ---
 interface FullScreenDialogProps {
     children: ReactNode;
     title: string;
@@ -274,8 +274,9 @@ interface FullScreenDialogProps {
 
 const FullScreenDialog = ({ children, title, description, backgroundImage, icon: Icon, onClose }: FullScreenDialogProps) => {
     return (
-        // FIXED: Added !max-w-none !w-screen !h-[100dvh] !left-0 !top-0 !translate-x-0 !translate-y-0 to ensure it stays full screen and centered without shifting left
-        <DialogContent className="fixed !inset-0 !left-0 !top-0 !z-[99] flex !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 flex-col border-none bg-background p-0 shadow-none outline-none animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
+        // MAJOR FIX: Added !max-w-none !w-screen !h-[100dvh] !left-0 !top-0 !translate-x-0 !translate-y-0
+        // This overrides default Dialog centering and ensures full coverage on all devices without left-shifting.
+        <DialogContent className="fixed !inset-0 !left-0 !top-0 !z-[100] !flex !h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 flex-col border-none bg-background p-0 shadow-none outline-none animate-in slide-in-from-bottom-full duration-500 ease-out-expo data-[state=closed]:slide-out-to-bottom-full data-[state=closed]:duration-500 data-[state=closed]:ease-in-expo">
             {backgroundImage && (
                 <Image
                     src={backgroundImage}
@@ -342,7 +343,7 @@ const MegaMenuHeader = () => {
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
+                <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary flex-shrink-0"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
 
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
@@ -486,7 +487,7 @@ const MegaMenuHeader = () => {
                 </NavigationMenu>
 
                 {/* Desktop Actions */}
-                <div className="hidden lg:flex items-center gap-2">
+                <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
                     {deferredPrompt && (
                          <Button variant="outline" onClick={handleInstallClick} className="flex items-center gap-1">
                             <DownloadCloud className="h-4 w-4" /> Install App
@@ -499,7 +500,7 @@ const MegaMenuHeader = () => {
                 </div>
 
                 {/* Mobile Actions */}
-                <div className="lg:hidden flex items-center gap-2">
+                <div className="lg:hidden flex items-center gap-2 flex-shrink-0">
                     <ModeToggle />
                     {deferredPrompt && (
                         <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App">
@@ -689,17 +690,15 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
     </footer>
 );
 
-// --- AdvancedChatWidget Component (Corrected and complete) ---
+// --- AdvancedChatWidget Component ---
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [userContext, setUserContext] = useState<{ businessId: string | null; userId: string | null }>({ businessId: null, userId: null });
     const [chatInput, setChatInput] = useState('');
     
-    // THIS IS THE CORRECTED LINE, REVERTED TO YOUR ORIGINAL IMPLEMENTATION
     const { messages, setMessages, append, isLoading }: any = useChat({ api: '/api/chat', body: { businessId: userContext.businessId, userId: userContext.userId } } as any);
 
     useEffect(() => {
-        // Correctly use cookie names for business and user IDs
         setUserContext({ businessId: getCookie('business_id'), userId: getCookie('user_id') });
     }, []);
 
