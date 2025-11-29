@@ -1,4 +1,3 @@
-// src/components/accounting/CreateTransactionModal.tsx
 'use client';
 
 import { useEffect } from 'react';

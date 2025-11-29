@@ -1,69 +1,105 @@
-// src/app/(dashboard)/sacco/page.tsx
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
-'use client';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, BarChart, Landmark, Wallet, AlertCircle } from 'lucide-react';
+// --- Enterprise Components (These contain the logic you sent previously) ---
+import { BIAnalyticsDashboard } from '@/components/sacco/BIAnalyticsDashboard';
+import { AgentMobilePortal } from '@/components/sacco/AgentMobilePortal';
+import { DividendManager } from '@/components/sacco/DividendManager';
+import { NotificationManager } from '@/components/sacco/NotificationManager';
+import { SaccoReportsCenter } from '@/components/sacco/SaccoReportsCenter';
+import { ShareLedgerTable } from '@/components/sacco/ShareLedgerTable';
+import { KYCManager } from '@/components/sacco/KYCManager';
+import { AdminBoard } from '@/components/sacco/AdminBoard';
 
-// --- Data Fetching Function ---
-async function fetchDashboardKPIs() {
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc('get_sacco_dashboard_kpis');
-    if (error) throw new Error(error.message);
-    return data;
-}
+export const metadata = {
+  title: "SACCO Operations Dashboard",
+  description: "Overview of cooperative performance, member activities, and financial health.",
+};
 
-const formatCurrency = (value: number | null | undefined) => 
-    value != null ? `UGX ${new Intl.NumberFormat('en-US').format(value)}` : 'UGX 0';
+export default async function SaccoDashboardPage() {
+    // 1. Server-Side Authentication & Tenant Resolution
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-export default function SaccoDashboardPage() {
-    const { data: kpis, isLoading, error } = useQuery({
-        queryKey: ['saccoDashboardKPIs'],
-        queryFn: fetchDashboardKPIs,
-    });
-
-    if (error) {
-        return (
-            <div className="container mx-auto py-6 space-y-6 text-center">
-                 <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-                 <h1 className="text-2xl font-bold text-destructive">Failed to Load Dashboard</h1>
-                 <p className="text-muted-foreground">{error.message}</p>
-                 <p>This can happen if the database functions are not set up correctly. Please ensure the latest SQL script has been run.</p>
-            </div>
-        )
+    if (error || !user) {
+        redirect('/auth/login');
     }
 
-    const kpiCards = [
-        { title: 'Active Members', value: kpis?.total_members, icon: Users },
-        { title: 'Total Share Capital', value: formatCurrency(kpis?.total_shares), icon: Landmark },
-        { title: 'Total Savings Balance', value: formatCurrency(kpis?.total_savings), icon: Wallet },
-        { title: 'Active Loan Portfolio', value: formatCurrency(kpis?.total_loans_outstanding), icon: BarChart },
-    ];
+    // Securely determine context
+    const tenantId = user.user_metadata?.tenant_id || user.id;
 
+    // 2. Render the Full Dashboard
     return (
-        <div className="container mx-auto py-6 space-y-6">
-            <h1 className="text-3xl font-bold">SACCO & Co-operative Dashboard</h1>
-            
-            {isLoading && <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => <Card key={i}><CardHeader><div className="h-4 bg-muted rounded w-3/4"></div></CardHeader><CardContent><div className="h-8 bg-muted rounded w-1/2"></div></CardContent></Card>)}
-            </div>}
-            
-            {!isLoading && <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {kpiCards.map(card => (
-                    <Card key={card.title}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                            <card.icon className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {card.value ?? '0'}
+        <div className="container mx-auto py-6 space-y-8">
+            {/* Header Section */}
+            <div className="flex flex-col space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">SACCO & Co-operative Dashboard</h1>
+                <p className="text-muted-foreground">
+                    Real-time overview of active members, share capital, savings balance, and loan portfolio.
+                </p>
+            </div>
+
+            <Separator />
+
+            {/* 3. Executive BI Dashboard (The KPI Cards) */}
+            {/* This component handles the 'fetchDashboardKPIs' logic internally now for better performance */}
+            <div className="w-full">
+                <BIAnalyticsDashboard tenantId={tenantId} />
+            </div>
+
+            <Separator />
+
+            {/* 4. Operations Command Center */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                
+                {/* Main Operations Area (3/4 Width) */}
+                <div className="lg:col-span-3">
+                    <Tabs defaultValue="operations" className="space-y-4">
+                        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+                            <TabsTrigger value="operations">Field Ops</TabsTrigger>
+                            <TabsTrigger value="shares">Shares & Dividends</TabsTrigger>
+                            <TabsTrigger value="kyc">Member KYC</TabsTrigger>
+                            <TabsTrigger value="reports">Reports</TabsTrigger>
+                        </TabsList>
+
+                        {/* Tab: Field Operations */}
+                        <TabsContent value="operations" className="space-y-4 animate-in fade-in-50">
+                            <AgentMobilePortal tenantId={tenantId} agentId={user.id} />
+                        </TabsContent>
+
+                        {/* Tab: Shares & Dividends */}
+                        <TabsContent value="shares" className="space-y-4 animate-in fade-in-50">
+                            <div className="grid gap-6">
+                                <DividendManager tenantId={tenantId} />
+                                <ShareLedgerTable tenantId={tenantId} />
                             </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>}
+                        </TabsContent>
+
+                        {/* Tab: Member KYC */}
+                        <TabsContent value="kyc" className="space-y-4 animate-in fade-in-50">
+                            <KYCManager tenantId={tenantId} />
+                        </TabsContent>
+
+                        {/* Tab: Reports */}
+                        <TabsContent value="reports" className="space-y-4 animate-in fade-in-50">
+                            <SaccoReportsCenter tenantId={tenantId} />
+                        </TabsContent>
+                    </Tabs>
+                </div>
+
+                {/* Sidebar Tools (1/4 Width) */}
+                <div className="space-y-6 lg:col-span-1">
+                    {/* Communication Widget */}
+                    <NotificationManager tenantId={tenantId} />
+                    
+                    {/* Admin Actions Widget */}
+                    <AdminBoard tenantId={tenantId} />
+                </div>
+            </div>
         </div>
     );
 }

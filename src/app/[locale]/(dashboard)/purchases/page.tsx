@@ -1,3 +1,6 @@
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
@@ -6,12 +9,21 @@ import SupplierDataTable from "@/components/purchases/SupplierDataTable";
 import { poColumns } from "@/components/purchases/poColumns";
 import { supplierColumns } from "@/components/purchases/supplierColumns";
 
-/**
- * Renders the main Purchases page, allowing users to switch between
- * viewing Purchase Orders and Suppliers via a tabbed interface.
- * Provides a primary action button to create new purchase orders.
- */
-export default function PurchasesPage() {
+export default async function PurchasesPage() {
+  // 1. Init Supabase on Server
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  
+  // 2. Get Authenticated User
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect('/auth/login');
+  }
+
+  // 3. Get Tenant ID (Fallback to user ID if no specific tenant metadata exists)
+  const tenantId = user.user_metadata?.tenant_id || user.id;
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <Tabs defaultValue="purchase-orders" className="space-y-4">
@@ -30,6 +42,7 @@ export default function PurchasesPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Track and manage orders from your suppliers to maintain optimal stock levels.
           </p>
+          {/* Note: Ensure PurchaseOrderDataTable is also updated to accept tenantId if you refactored it similarly */}
           <PurchaseOrderDataTable columns={poColumns} />
         </TabsContent>
 
@@ -38,7 +51,8 @@ export default function PurchasesPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Manage all your supplier records and contact information.
           </p>
-          <SupplierDataTable columns={supplierColumns} />
+          {/* FIX: Passed the required tenantId prop here */}
+          <SupplierDataTable columns={supplierColumns} tenantId={tenantId} />
         </TabsContent>
       </Tabs>
     </div>

@@ -6,8 +6,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { useToast } from '@/components/ui/use-toast';
-import { rescheduleWorkOrder } from '@/lib/field-service/actions/schedule';
-import { EventDropArg } from '@fullcalendar/core';
+import { rescheduleWorkOrder } from '@/lib/actions/scheduler'; // Import the new server action
+import { EventDropArg, EventClickArg } from '@fullcalendar/core';
+import { Card } from '@/components/ui/card';
 
 // Define the structure of the event object you pass to the calendar
 interface CalendarEvent {
@@ -31,58 +32,58 @@ export function DispatchCalendar({ initialEvents }: DispatchCalendarProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // This function is called when a user drags and drops an event
+  // Handle Drag & Drop Rescheduling
   const handleEventDrop = async (dropInfo: EventDropArg) => {
-    if (!dropInfo.event.start) {
-        console.error("New event date is null.");
-        return;
-    }
+    if (!dropInfo.event.start) return;
 
     setIsLoading(true);
 
     const workOrderId = dropInfo.event.id;
-    const newStartDate = dropInfo.event.start;
+    // FullCalendar returns a Date object. Passed to Server Action.
+    const newStartDate = dropInfo.event.start; 
 
-    const result = await rescheduleWorkOrder(workOrderId, newStartDate);
+    try {
+        const result = await rescheduleWorkOrder(workOrderId, newStartDate);
 
-    if (result.success) {
-      toast({
-        title: 'Schedule Updated',
-        description: `Work order has been rescheduled to ${newStartDate.toLocaleDateString()}.`,
-      });
-    } else {
-      toast({
-        title: 'Error',
-        description: result.message || 'Could not update the schedule. Reverting change.',
-        variant: 'destructive',
-      });
-      // If the server update fails, revert the event to its original position
-      dropInfo.revert();
+        if (result.success) {
+            toast({
+                title: 'Schedule Updated',
+                description: `Job rescheduled to ${newStartDate.toLocaleString()}`,
+            });
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error: any) {
+        toast({
+            title: 'Update Failed',
+            description: error.message || 'Could not update schedule',
+            variant: 'destructive',
+        });
+        dropInfo.revert(); // Snap back if failed
+    } finally {
+        setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
-  // --- Optional: Handle clicking on an event to show details ---
-  const handleEventClick = (clickInfo: any) => {
-    const { uid, status, priority, customer, technicians } = clickInfo.event.extendedProps;
-    alert(
-        `Work Order: ${uid}\n` +
-        `Summary: ${clickInfo.event.title}\n` +
-        `Customer: ${customer}\n` +
-        `Status: ${status}\n` +
-        `Priority: ${priority}\n` +
-        `Assigned: ${technicians.join(', ') || 'None'}`
-    );
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const { status, customer } = clickInfo.event.extendedProps;
+    toast({
+        title: clickInfo.event.title,
+        description: `Customer: ${customer} | Status: ${status}`,
+    });
   };
 
   return (
-    <div className={`relative h-full ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+    <Card className="h-full p-2 relative overflow-hidden">
       {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/60 z-10">
-              <p>Updating schedule...</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-50 backdrop-blur-[1px]">
+              <div className="bg-white p-3 rounded shadow-lg flex items-center gap-2">
+                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                 <span className="text-sm font-medium">Updating Schedule...</span>
+              </div>
           </div>
       )}
+      
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
@@ -92,14 +93,18 @@ export function DispatchCalendar({ initialEvents }: DispatchCalendarProps) {
           right: 'dayGridMonth,timeGridWeek,timeGridDay',
         }}
         events={initialEvents}
-        editable={true}          // Allows dragging and resizing events
-        droppable={true}          // Allows events to be dropped onto the calendar
-        eventDrop={handleEventDrop} // The magic function for drag-and-drop
-        eventClick={handleEventClick} // Optional: for showing event details
-        height="100%"
+        editable={true}
+        droppable={true}
+        eventDrop={handleEventDrop}
+        eventClick={handleEventClick}
+        height="750px"
         nowIndicator={true}
-        scrollTime="08:00:00"     // Start the weekly/daily view at 8 AM
+        scrollTime="08:00:00"
+        slotMinTime="06:00:00"
+        slotMaxTime="20:00:00"
+        allDaySlot={false}
+        eventClassNames="cursor-pointer text-xs font-semibold"
       />
-    </div>
+    </Card>
   );
 }

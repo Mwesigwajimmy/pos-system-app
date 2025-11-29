@@ -14,94 +14,91 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { ArrowUpDown, Eye, Circle, Hourglass, CheckCircle } from "lucide-react";
+import { ArrowUpDown, Eye, Search, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { DataTableFacetedFilter } from "@/components/ui/data-table-faceted-filter";
+import { WorkOrder, WorkOrderStatus } from "@/lib/actions/work-orders"; // Import shared types
 
-interface Customer { id: string; name: string; }
-export interface WorkOrder {
-    id: string;
-    work_order_uid: string;
-    summary: string;
-    status: 'SCHEDULED' | 'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'INVOICED' | 'CANCELLED';
-    scheduled_date: string | null;
-    customers: Customer | null;
-}
-
-export const statuses = [
-    { value: "SCHEDULED", label: "Scheduled", icon: Circle },
-    { value: "DISPATCHED", label: "Dispatched", icon: Hourglass },
-    { value: "IN_PROGRESS", label: "In Progress", icon: Hourglass },
-    { value: "COMPLETED", label: "Completed", icon: CheckCircle },
-];
-
-// Define the valid variant types for the Badge component
-type BadgeVariant = "default" | "destructive" | "outline" | "secondary";
-
-// --- UPDATED FUNCTION ---
-const getStatusVariant = (status: WorkOrder['status']): BadgeVariant => {
+// Status Badge Styling Helper
+const getStatusClasses = (status: WorkOrderStatus): string => {
     switch (status) {
-        case 'COMPLETED':
-        case 'INVOICED':
-            return 'default'; // Corrected from 'success'
-        case 'CANCELLED':
-            return 'destructive';
-        case 'IN_PROGRESS':
-        case 'DISPATCHED':
-            return 'default';
-        case 'SCHEDULED':
-        default:
-            return 'secondary';
+        case 'completed': return 'bg-green-100 text-green-700 border-green-200 hover:bg-green-100';
+        case 'canceled': return 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100';
+        case 'in_progress': return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100';
+        case 'en_route': return 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100';
+        default: return 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-100';
     }
 };
 
 export const columns: ColumnDef<WorkOrder>[] = [
     {
         accessorKey: "work_order_uid",
-        header: "Work Order #",
+        header: "Order #",
         cell: ({ row }) => (
-            <Link href={`/field-service/work-orders/${row.original.id}`} className="font-medium text-primary hover:underline">
-                {row.getValue("work_order_uid")}
+            <Link 
+                href={`/field-service/work-orders/${row.original.id}`} 
+                className="font-bold text-primary hover:underline font-mono"
+            >
+                {row.getValue("work_order_uid") || `#${row.original.id}`}
             </Link>
         ),
     },
-    { accessorKey: "summary", header: "Summary" },
-    { accessorKey: "customers", header: "Customer", cell: ({ row }) => row.original.customers?.name || 'N/A' },
+    { 
+        accessorKey: "summary", 
+        header: "Summary",
+        cell: ({ row }) => <span className="font-medium">{row.getValue("summary")}</span>
+    },
+    { 
+        accessorKey: "customer_name", 
+        header: "Customer", 
+        cell: ({ row }) => row.original.customer_name 
+    },
     {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => (
-            <Badge variant={getStatusVariant(row.getValue("status"))}>
-                {statuses.find(s => s.value === row.getValue("status"))?.label || 'Unknown'}
+            <Badge variant="outline" className={getStatusClasses(row.original.status)}>
+                {row.original.status.replace('_', ' ').toUpperCase()}
             </Badge>
         ),
-        filterFn: (row, id, value) => value.includes(row.getValue(id)),
+        filterFn: (row, id, value) => {
+            return value.includes(row.getValue(id))
+        },
     },
     {
-        accessorKey: "scheduled_date",
+        accessorKey: "scheduled_at",
         header: ({ column }) => (
-             <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                Scheduled Date <ArrowUpDown className="ml-2 h-4 w-4" />
+             <Button variant="ghost" className="p-0 hover:bg-transparent" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Scheduled <ArrowUpDown className="ml-2 h-3 w-3" />
             </Button>
         ),
-        cell: ({ row }) => row.original.scheduled_date ? format(new Date(row.original.scheduled_date), "LLL dd, yyyy") : 'Not Scheduled',
+        cell: ({ row }) => {
+            const date = row.original.scheduled_at;
+            return date ? (
+                <div className="flex flex-col">
+                    <span className="text-xs font-medium">{format(new Date(date), "MMM dd, yyyy")}</span>
+                    <span className="text-[10px] text-muted-foreground">{format(new Date(date), "h:mm a")}</span>
+                </div>
+            ) : <span className="text-muted-foreground text-xs italic">—</span>;
+        },
     },
     {
         id: "actions",
         cell: ({ row }) => (
             <div className="text-right">
-                <Link href={`/field-service/work-orders/${row.original.id}`}><Button variant="ghost" size="sm"><Eye className="mr-2 h-4 w-4" /> View</Button></Link>
+                <Link href={`/field-service/work-orders/${row.original.id}`}>
+                    <Button variant="outline" size="sm" className="h-8"><Eye className="mr-2 h-3 w-3" /> View</Button>
+                </Link>
             </div>
         ),
     },
 ];
 
 export function WorkOrderList({ workOrders }: { workOrders: WorkOrder[] }) {
-    const [sorting, setSorting] = React.useState<SortingState>([{ id: 'scheduled_date', desc: true }]);
+    const [sorting, setSorting] = React.useState<SortingState>([{ id: 'scheduled_at', desc: true }]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
 
     const table = useReactTable({
@@ -117,28 +114,42 @@ export function WorkOrderList({ workOrders }: { workOrders: WorkOrder[] }) {
     });
 
     return (
-        <Card>
+        <Card className="w-full border shadow-sm">
             <CardContent className="p-4">
-                <div className="flex items-center justify-between py-4">
-                    <Input placeholder="Filter by summary..." value={(table.getColumn("summary")?.getFilterValue() as string) ?? ""} onChange={(event) => table.getColumn("summary")?.setFilterValue(event.target.value)} className="max-w-sm"/>
-                    <DataTableFacetedFilter column={table.getColumn("status")} title="Status" options={statuses} />
+                <div className="flex items-center justify-between py-4 gap-4">
+                    <div className="relative w-full max-w-sm">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Filter by summary..." 
+                            value={(table.getColumn("summary")?.getFilterValue() as string) ?? ""} 
+                            onChange={(event) => table.getColumn("summary")?.setFilterValue(event.target.value)} 
+                            className="pl-8 h-9"
+                        />
+                    </div>
+                    {/* Add more filter components here if needed */}
                 </div>
                 <div className="rounded-md border">
                     <Table>
                         <TableHeader>
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
-                                    {headerGroup.headers.map((header) => <TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>)}
+                                <TableRow key={headerGroup.id} className="bg-muted/40">
+                                    {headerGroup.headers.map((header) => (
+                                        <TableHead key={header.id}>
+                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </TableHead>
+                                    ))}
                                 </TableRow>
                             ))}
                         </TableHeader>
                         <TableBody>
                             {table.getRowModel().rows?.length ? table.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getVisibleCells().map((cell) => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>)}
+                                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                                    {row.getVisibleCells().map((cell) => (
+                                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                                    ))}
                                 </TableRow>
                             )) : (
-                                <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No work orders found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">No work orders found.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

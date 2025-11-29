@@ -1,4 +1,3 @@
-// src/components/professional-services/expenses/data-table-faceted-filter.tsx
 'use client';
 
 import * as React from 'react';
@@ -15,6 +14,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandEmpty,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
@@ -40,7 +40,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 border-dashed">
+        <Button variant="outline" size="sm" className="h-8 border-dashed bg-white">
           <PlusCircle className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
@@ -76,6 +76,7 @@ export function DataTableFacetedFilter<TData, TValue>({
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value);
@@ -123,7 +124,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <CommandGroup>
                   <CommandItem
                     onSelect={() => column?.setFilterValue(undefined)}
-                    className="justify-center text-center"
+                    className="justify-center text-center font-medium text-slate-900"
                   >
                     Clear filters
                   </CommandItem>

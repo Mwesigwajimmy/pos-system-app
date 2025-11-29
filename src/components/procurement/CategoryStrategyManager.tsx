@@ -1,0 +1,157 @@
+"use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Loader2, X, PlusCircle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { createClient } from "@/lib/supabase/client";
+
+interface CategoryStrategy {
+  id: string;
+  category: string;
+  owner: string;
+  priority: "core" | "leverage" | "bottleneck" | "non-critical";
+  budget: number;
+  strategy: string;
+  review_date: string;
+  entity: string;
+  country: string;
+}
+
+interface Props {
+  tenantId?: string;
+}
+
+export default function CategoryStrategyManager({ tenantId }: Props) {
+  const [categories, setCategories] = useState<CategoryStrategy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  // Form states
+  const [cat, setCat] = useState('');
+  const [owner, setOwner] = useState('');
+  const [priority, setPriority] = useState("core");
+  const [budget, setBudget] = useState('');
+  const [strategy, setStrategy] = useState('');
+  const [entity, setEntity] = useState('');
+  const [country, setCountry] = useState('');
+  const [reviewDate, setReviewDate] = useState('');
+
+  useEffect(() => {
+    if(!tenantId) return;
+
+    const fetchData = async () => {
+      const { data } = await supabase
+        .from('procurement_category_strategies')
+        .select('*')
+        .eq('tenant_id', tenantId);
+      
+      if (data) setCategories(data as any);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [tenantId, supabase]);
+
+  const addCategory = async () => {
+    if (!tenantId || !cat || !owner || !budget) return;
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('procurement_category_strategies')
+      .insert({
+        tenant_id: tenantId,
+        category: cat,
+        owner,
+        priority,
+        budget: parseFloat(budget),
+        strategy,
+        review_date: reviewDate,
+        entity,
+        country
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setCategories(prev => [...prev, data as any]);
+      // Reset form
+      setCat(''); setOwner(''); setBudget(''); setStrategy(''); setEntity(''); setCountry(''); setReviewDate('');
+    }
+    setLoading(false);
+  };
+
+  const [filter, setFilter] = useState('');
+  const filtered = useMemo(
+    () => categories.filter(c =>
+      c.category.toLowerCase().includes(filter.toLowerCase()) ||
+      c.owner.toLowerCase().includes(filter.toLowerCase())
+    ),
+    [categories, filter]
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Procurement Category Strategy</CardTitle>
+        <CardDescription>
+          Manage strategies and budgets for spend categories.
+        </CardDescription>
+        <div className="relative mt-3 max-w-xs">
+          <Input placeholder="Filter..." value={filter} onChange={e=>setFilter(e.target.value)} className="pl-8"/>
+          {filter && <X className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer" onClick={()=>setFilter("")}/>}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 mb-3 flex-wrap">
+          <Input placeholder="Category" value={cat} onChange={e=>setCat(e.target.value)} className="w-32" />
+          <Input placeholder="Owner" value={owner} onChange={e=>setOwner(e.target.value)} className="w-32" />
+          <select className="border p-2 rounded text-sm" value={priority} onChange={e=>setPriority(e.target.value)}>
+            <option value="core">Core</option>
+            <option value="leverage">Leverage</option>
+            <option value="bottleneck">Bottleneck</option>
+            <option value="non-critical">Non-Critical</option>
+          </select>
+          <Input placeholder="Budget" type="number" value={budget} onChange={e=>setBudget(e.target.value)} className="w-24"/>
+          <Input placeholder="Entity" value={entity} onChange={e=>setEntity(e.target.value)} className="w-24" />
+          <Button variant="secondary" onClick={addCategory} disabled={loading}><PlusCircle className="h-5 w-5"/></Button>
+        </div>
+
+        {loading
+          ? <div className="flex py-8 justify-center"><Loader2 className="h-7 w-7 animate-spin" /></div>
+          : <ScrollArea className="h-52">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Budget</TableHead>
+                    <TableHead>Review</TableHead>
+                    <TableHead>Entity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0
+                    ? <TableRow><TableCell colSpan={6}>No strategies defined.</TableCell></TableRow>
+                    : filtered.map(c => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.category}</TableCell>
+                          <TableCell>{c.owner}</TableCell>
+                          <TableCell className="capitalize">{c.priority}</TableCell>
+                          <TableCell>{c.budget.toLocaleString()}</TableCell>
+                          <TableCell>{c.review_date}</TableCell>
+                          <TableCell>{c.entity}</TableCell>
+                        </TableRow>
+                      ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+        }
+      </CardContent>
+    </Card>
+  );
+}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Check, ChevronsUpDown, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,40 +16,58 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
-import { createWorkOrder, FormState } from '@/lib/field-service/actions/work_orders';
+import { createWorkOrder, FormState } from '@/lib/actions/work-orders'; // Import Server Action
 
 interface Customer { id: string; name: string; }
+
 function SubmitButton() {
     const { pending } = useFormStatus();
-    return <Button type="submit" disabled={pending}>{pending ? 'Creating...' : 'Create Work Order'}</Button>;
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Creating...</> : 'Create Work Order'}
+        </Button>
+    );
 }
 
 export function CreateWorkOrderModal() {
     const router = useRouter();
     const { toast } = useToast();
     const supabase = createClient();
+    
     const [isOpen, setIsOpen] = useState(false);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState('');
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
+    
+    // Server Action State Hook
     const initialState: FormState = { success: false, message: '', errors: null };
     const [formState, formAction] = useFormState(createWorkOrder, initialState);
 
+    // Fetch customers dynamically on modal open
     useEffect(() => {
         if (isOpen) {
             const fetchCustomers = async () => {
-                const { data } = await supabase.from('customers').select('id, name').limit(10);
-                if (data) setCustomers(data);
+                // Enterprise: This uses RLS policies on the 'customers' table to ensure data isolation
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('id, name')
+                    .order('name')
+                    .limit(20);
+                
+                if (!error && data) setCustomers(data);
             };
             fetchCustomers();
         }
     }, [isOpen, supabase]);
     
+    // Handle form submission response
     useEffect(() => {
         if (formState.success) {
             toast({ title: "Success!", description: formState.message });
             setIsOpen(false);
-            router.refresh();
+            // Reset form locally if needed
+            setSelectedCustomer('');
+            router.refresh(); 
         } else if (formState.message && !formState.errors) {
             toast({ title: "Error", description: formState.message, variant: "destructive" });
         }
@@ -57,20 +75,28 @@ export function CreateWorkOrderModal() {
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> New Work Order</Button></DialogTrigger>
+            <DialogTrigger asChild>
+                <Button><PlusCircle className="mr-2 h-4 w-4" /> New Work Order</Button>
+            </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
                 <form action={formAction}>
                     <DialogHeader>
                         <DialogTitle>Create New Work Order</DialogTitle>
-                        <DialogDescription>Schedule a new job for a customer.</DialogDescription>
+                        <DialogDescription>Schedule a new job securely for an existing customer.</DialogDescription>
                     </DialogHeader>
+                    
                     <div className="grid gap-4 py-6">
+                        {/* Summary */}
                         <div className="space-y-1">
-                            <Label htmlFor="summary">Summary</Label>
+                            <Label htmlFor="summary">Summary / Title</Label>
                             <Input id="summary" name="summary" placeholder="e.g., Annual HVAC Service" required />
-                            {formState.errors?.summary && <p className="text-sm text-destructive">{formState.errors.summary[0]}</p>}
+                            {formState.errors?.summary && (
+                                <p className="text-sm text-destructive font-medium">{formState.errors.summary[0]}</p>
+                            )}
                         </div>
-                        <div className="space-y-1">
+
+                        {/* Customer Search */}
+                        <div className="space-y-1 flex flex-col">
                             <Label htmlFor="customer_id">Customer</Label>
                             <input type="hidden" name="customer_id" value={selectedCustomer} />
                             <Popover>
@@ -95,11 +121,15 @@ export function CreateWorkOrderModal() {
                                     </Command>
                                 </PopoverContent>
                             </Popover>
-                            {formState.errors?.customer_id && <p className="text-sm text-destructive">{formState.errors.customer_id[0]}</p>}
+                            {formState.errors?.customer_id && (
+                                <p className="text-sm text-destructive font-medium">{formState.errors.customer_id[0]}</p>
+                            )}
                         </div>
+
+                        {/* Date & Priority */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <Label htmlFor="scheduled_date">Scheduled Date</Label>
+                                <Label>Scheduled Date</Label>
                                 <input type="hidden" name="scheduled_date" value={scheduledDate ? format(scheduledDate, 'yyyy-MM-dd') : ''} />
                                 <Popover>
                                     <PopoverTrigger asChild>
@@ -127,6 +157,7 @@ export function CreateWorkOrderModal() {
                             </div>
                         </div>
                     </div>
+                    
                     <DialogFooter>
                         <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
                         <SubmitButton />

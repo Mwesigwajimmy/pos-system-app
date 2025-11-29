@@ -1,256 +1,492 @@
 // src/components/accounting/BillsDataTable.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner'; // Or 'react-hot-toast' depending on your setup
 import {
-    ColumnDef,
-    ColumnFiltersState,
-    SortingState,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    useReactTable,
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
 } from '@tanstack/react-table';
-import { Loader2, DollarSign, ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { 
+  Loader2, 
+  DollarSign, 
+  ArrowUpDown, 
+  MoreHorizontal, 
+  Filter 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// UI Component Imports
+// UI Components
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// --- Data Types and API Functions ---
+// --- Types ---
 
-interface Bill {
-    id: number;
-    supplier_name: string;
-    bill_date: string;
-    due_date: string;
-    total_amount: number;
-    amount_paid: number;
-    status: 'draft' | 'awaiting_payment' | 'paid' | 'partial';
+export type BillStatus = 'draft' | 'pending' | 'overdue' | 'paid' | 'partial';
+
+export interface Bill {
+  id: string;
+  vendor_name: string;
+  reference_number: string;
+  date: string;
+  due_date: string;
+  currency: string;
+  total_amount: number;
+  amount_paid: number;
+  status: BillStatus;
+  tenant_id: string;
 }
 
-interface Account {
-    id: number;
-    name: string;
+interface PaymentAccount {
+  id: string;
+  name: string;
+  currency: string;
+  balance: number;
 }
 
-async function fetchBills(): Promise<Bill[]> {
-    const { data, error } = await createClient().rpc('get_all_bills');
-    if (error) throw error;
-    return data || [];
-}
+// --- API Functions ---
 
-async function fetchPaymentAccounts(): Promise<Account[]> {
-    const { data, error } = await createClient().from('accounts').select('id, name').eq('type', 'ASSET').filter('is_bank_account', 'eq', true);
-    if (error) throw error;
-    return data || [];
-}
+const fetchBills = async () => {
+  const supabase = createClient();
+  // Using an RPC function is often cleaner for calculated fields like 'amount_paid' 
+  // or joining vendor names, but a standard select works if your view is set up.
+  const { data, error } = await supabase
+    .from('accounting_bills_view') // Assuming a view that aggregates payments
+    .select('*')
+    .order('due_date', { ascending: true });
 
-async function recordBillPayment(vars: { billId: number; amount: number; accountId: number }) {
-    const { error } = await createClient().rpc('record_bill_payment', {
-        p_bill_id: vars.billId,
-        p_amount_paid: vars.amount,
-        p_payment_account_id: vars.accountId
-    });
-    if (error) throw error;
-}
-
-// --- Helper Functions and Constants ---
-
-const formatCurrency = (value: number) => `UGX ${new Intl.NumberFormat('en-US').format(value)}`;
-const statusStyles: Record<Bill['status'], string> = {
-    draft: "bg-gray-200 text-gray-800 hover:bg-gray-300",
-    awaiting_payment: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-    partial: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-    paid: "bg-green-100 text-green-800 hover:bg-green-200"
+  if (error) throw new Error(error.message);
+  return data as Bill[];
 };
 
-// --- Sub-Components ---
+const fetchPaymentAccounts = async () => {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('accounting_accounts')
+    .select('id, name, currency, balance')
+    .in('type', ['Asset', 'Bank', 'Cash']) // Adjust based on your Chart of Accounts
+    .eq('is_active', true);
 
-const RecordPaymentDialog = ({ bill, onClose }: { bill: Bill; onClose: () => void }) => {
-    const queryClient = useQueryClient();
-    const [amount, setAmount] = useState<number>(bill.total_amount - bill.amount_paid);
-    const [accountId, setAccountId] = useState<string | undefined>();
-    const { data: accounts, isLoading: isLoadingAccounts } = useQuery({ queryKey: ['paymentAccounts'], queryFn: fetchPaymentAccounts });
+  if (error) throw new Error(error.message);
+  return data as PaymentAccount[];
+};
 
-    const mutation = useMutation({
-        mutationFn: recordBillPayment,
-        onSuccess: () => {
-            toast.success('Payment recorded successfully!');
-            queryClient.invalidateQueries({ queryKey: ['bills'] });
-            onClose();
-        },
-        onError: (err: Error) => toast.error(`Payment failed: ${err.message}`),
-    });
+const recordPayment = async (payload: { bill_id: string; account_id: string; amount: number; payment_date: string }) => {
+  const supabase = createClient();
+  // Using an RPC transaction to update bill balance and create ledger entries safely
+  const { data, error } = await supabase.rpc('record_bill_payment', {
+    p_bill_id: payload.bill_id,
+    p_account_id: payload.account_id,
+    p_amount: payload.amount,
+    p_date: payload.payment_date
+  });
 
-    const handleSubmit = () => {
-        if (!accountId || amount <= 0) {
-            return toast.error("Please select a payment account and enter a valid amount.");
-        }
-        mutation.mutate({ billId: bill.id, amount, accountId: Number(accountId) });
-    };
+  if (error) throw new Error(error.message);
+  return data;
+};
 
-    return (
-        <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Record Payment for Bill #{bill.id}</DialogTitle>
-                    <DialogDescription>
-                        Supplier: {bill.supplier_name} | Amount Due: {formatCurrency(bill.total_amount - bill.amount_paid)}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div>
-                        <Label htmlFor="payment-account">Payment Account</Label>
-                        <Select onValueChange={setAccountId} value={accountId}>
-                            <SelectTrigger id="payment-account" disabled={isLoadingAccounts}>
-                                <SelectValue placeholder="Select account..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {accounts?.map(acc => <SelectItem key={acc.id} value={String(acc.id)}>{acc.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label htmlFor="amount">Amount Paid (UGX)</Label>
-                        <Input id="amount" type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} max={bill.total_amount - bill.amount_paid} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button onClick={onClose} variant="outline">Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={mutation.isPending}>
-                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirm Payment
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+// --- Sub-Component: Payment Dialog ---
+
+interface PaymentDialogProps {
+  bill: Bill | null;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-// --- Main Data Table Component ---
+const PaymentDialog = ({ bill, isOpen, onClose }: PaymentDialogProps) => {
+  const queryClient = useQueryClient();
+  const [amount, setAmount] = useState<string>('');
+  const [accountId, setAccountId] = useState<string>('');
+  
+  // Fetch accounts only when modal is open
+  const { data: accounts, isLoading } = useQuery({
+    queryKey: ['payment_accounts'],
+    queryFn: fetchPaymentAccounts,
+    enabled: isOpen
+  });
+
+  useEffect(() => {
+    if (bill) {
+      // Default to remaining balance
+      setAmount((bill.total_amount - bill.amount_paid).toString());
+    }
+  }, [bill]);
+
+  const mutation = useMutation({
+    mutationFn: recordPayment,
+    onSuccess: () => {
+      toast.success("Payment recorded successfully");
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      onClose();
+    },
+    onError: (error) => {
+      toast.error(`Payment failed: ${error.message}`);
+    }
+  });
+
+  const handleSubmit = () => {
+    if (!bill || !accountId || !amount) return;
+    
+    mutation.mutate({
+      bill_id: bill.id,
+      account_id: accountId,
+      amount: parseFloat(amount),
+      payment_date: new Date().toISOString()
+    });
+  };
+
+  if (!bill) return null;
+
+  const remaining = bill.total_amount - bill.amount_paid;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Record Payment</DialogTitle>
+          <DialogDescription>
+            Paying <strong>{bill.vendor_name}</strong> (Ref: {bill.reference_number})
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Balance Due</Label>
+            <div className="col-span-3 font-mono text-sm">
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency }).format(remaining)}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="account" className="text-right">Pay From</Label>
+            <Select onValueChange={setAccountId} value={accountId}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder={isLoading ? "Loading..." : "Select Account"} />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts?.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name} ({acc.currency})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="amount" className="text-right">Amount</Label>
+            <Input
+              id="amount"
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="col-span-3"
+              max={remaining}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={mutation.isPending}>
+            {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Confirm Payment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// --- Main Component ---
 
 export default function BillsDataTable() {
-    const { data: bills = [], isLoading } = useQuery({ queryKey: ['bills'], queryFn: fetchBills });
-    const [payingBill, setPayingBill] = useState<Bill | null>(null);
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  
+  // Action State
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
-    const columns: ColumnDef<Bill>[] = [
-        { accessorKey: "id", header: "Bill #", cell: ({ row }) => <span className="font-medium">#{row.original.id}</span> },
-        {
-            accessorKey: "supplier_name",
-            header: ({ column }) => (
-                <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Supplier <ArrowUpDown className="ml-2 h-4 w-4" />
+  const { data: bills = [], isLoading, isError, error } = useQuery({
+    queryKey: ['bills'],
+    queryFn: fetchBills,
+  });
+
+  const columns: ColumnDef<Bill>[] = [
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        const styles = {
+          paid: "bg-green-100 text-green-800 border-green-200 hover:bg-green-100",
+          partial: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
+          overdue: "bg-red-100 text-red-800 border-red-200 hover:bg-red-100",
+          pending: "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100",
+          draft: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100",
+        };
+        return (
+          <Badge variant="outline" className={cn("capitalize", styles[status as keyof typeof styles] || styles.draft)}>
+            {status}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "vendor_name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Vendor
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+    },
+    {
+      accessorKey: "reference_number",
+      header: "Ref #",
+    },
+    {
+      accessorKey: "due_date",
+      header: "Due Date",
+      cell: ({ row }) => {
+        return <div className="text-sm text-muted-foreground">{format(new Date(row.getValue("due_date")), "PP")}</div>
+      },
+    },
+    {
+      accessorKey: "total_amount",
+      header: () => <div className="text-right">Total</div>,
+      cell: ({ row }) => {
+        const amount = parseFloat(row.getValue("total_amount"));
+        const formatted = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: row.original.currency,
+        }).format(amount);
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
+    },
+    {
+      id: "balance",
+      header: () => <div className="text-right">Balance</div>,
+      cell: ({ row }) => {
+        const balance = row.original.total_amount - row.original.amount_paid;
+        const formatted = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: row.original.currency,
+        }).format(balance);
+        return <div className="text-right font-mono text-xs">{formatted}</div>;
+      },
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const bill = row.original;
+        return (
+          <div className="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
-            ),
-        },
-        { accessorKey: "due_date", header: "Due Date", cell: ({ row }) => format(new Date(row.original.due_date), 'dd MMM, yyyy') },
-        {
-            accessorKey: "status",
-            header: "Status",
-            cell: ({ row }) => (
-                <Badge className={cn("capitalize", statusStyles[row.original.status])}>
-                    {row.original.status.replace('_', ' ')}
-                </Badge>
-            )
-        },
-        {
-            accessorKey: "total_amount",
-            header: () => <div className="text-right">Amount Due</div>,
-            cell: ({ row }) => {
-                const amountDue = row.original.total_amount - row.original.amount_paid;
-                return <div className="text-right font-medium">{formatCurrency(amountDue)}</div>;
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(bill.id)}>
+                  Copy Bill ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>View Details</DropdownMenuItem>
+                {bill.status !== 'paid' && (
+                  <DropdownMenuItem onClick={() => {
+                    setSelectedBill(bill);
+                    setPaymentModalOpen(true);
+                  }}>
+                    <DollarSign className="mr-2 h-4 w-4 text-green-600" />
+                    Record Payment
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: bills,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  });
+
+  if (isError) {
+    return <div className="p-4 text-red-500">Error loading bills: {error.message}</div>;
+  }
+
+  return (
+    <div className="w-full space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter vendors..."
+            value={(table.getColumn("vendor_name")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("vendor_name")?.setFilterValue(event.target.value)
             }
-        },
-        {
-            id: "actions",
-            cell: ({ row }) => (
-                <div className="text-right">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            {row.original.status !== 'paid' && (
-                                <DropdownMenuItem onClick={() => setPayingBill(row.original)}>
-                                    <DollarSign className="mr-2 h-4 w-4" /> Record Payment
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            ),
-        },
-    ];
+            className="max-w-sm"
+          />
+        </div>
+      </div>
+      
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                   <div className="flex items-center justify-center gap-2">
+                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                     <span>Loading bills...</span>
+                   </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
+        </div>
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
 
-    const table = useReactTable({
-        data: bills,
-        columns,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        onSortingChange: setSorting,
-        getSortedRowModel: getSortedRowModel(),
-        onColumnFiltersChange: setColumnFilters,
-        getFilteredRowModel: getFilteredRowModel(),
-        state: { sorting, columnFilters },
-    });
-
-    return (
-        <>
-            <div className="flex items-center py-4">
-                <Input
-                    placeholder="Filter by supplier..."
-                    value={(table.getColumn("supplier_name")?.getFilterValue() as string) ?? ""}
-                    onChange={(event) => table.getColumn("supplier_name")?.setFilterValue(event.target.value)}
-                    className="max-w-sm"
-                />
-            </div>
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map(hg => <TableRow key={hg.id}>{hg.headers.map(h => <TableHead key={h.id}>{h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}</TableHead>)}</TableRow>)}
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">Loading bills...</TableCell></TableRow>
-                        ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map(row => <TableRow key={row.id}>{row.getVisibleCells().map(cell => <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>)}</TableRow>)
-                        ) : (
-                            <TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No outstanding bills found.</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Previous</Button>
-                <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Next</Button>
-            </div>
-            {payingBill && <RecordPaymentDialog bill={payingBill} onClose={() => setPayingBill(null)} />}
-        </>
-    );
+      <PaymentDialog 
+        bill={selectedBill} 
+        isOpen={paymentModalOpen} 
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedBill(null);
+        }} 
+      />
+    </div>
+  );
 }

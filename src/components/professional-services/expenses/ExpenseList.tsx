@@ -16,7 +16,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { format } from 'date-fns';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Edit2, ExternalLink, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 import {
   Table,
@@ -38,10 +38,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/lib/utils';
-import { DataTableToolbar } from './data-table-toolbar'; // Imports corrected in previous step
+import { DataTableToolbar } from './data-table-toolbar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Define the shape of our expense data, ensuring nested objects are handled
+// --- Types ---
 export interface Expense {
   id: string;
   date: string;
@@ -52,7 +52,7 @@ export interface Expense {
   customers: { name: string } | null;
 }
 
-// Define the columns with sorting, filtering, and custom rendering
+// --- Column Definitions ---
 export const columns: ColumnDef<Expense>[] = [
   {
     id: 'select',
@@ -76,38 +76,63 @@ export const columns: ColumnDef<Expense>[] = [
   {
     accessorKey: 'date',
     header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+      <Button 
+        variant="ghost" 
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        className="text-xs uppercase font-semibold"
+      >
         Date
       </Button>
     ),
-    cell: ({ row }) => format(new Date(row.getValue('date')), 'PP'),
+    cell: ({ row }) => <div className="pl-4">{format(new Date(row.getValue('date')), 'MMM d, yyyy')}</div>,
   },
   {
     accessorKey: 'description',
-    header: 'Description',
+    header: ({ column }) => <Button variant="ghost" className="text-xs uppercase font-semibold">Description</Button>,
+    cell: ({ row }) => <div className="font-medium">{row.getValue('description')}</div>,
   },
   {
-    accessorKey: 'expense_categories',
-    header: 'Category',
-    cell: ({ row }) => row.original.expense_categories?.name || <span className="text-muted-foreground">Uncategorized</span>,
+    // Accessor key matches the faceted filter column ID
+    accessorKey: 'expense_categories', 
+    header: ({ column }) => <Button variant="ghost" className="text-xs uppercase font-semibold">Category</Button>,
+    cell: ({ row }) => {
+        const cat = row.original.expense_categories?.name;
+        return cat ? (
+            <Badge variant="secondary" className="font-normal">{cat}</Badge>
+        ) : (
+            <span className="text-muted-foreground text-xs italic">Uncategorized</span>
+        );
+    },
+    // Custom filter function for nested object
     filterFn: (row, id, value) => {
-        return value.includes(row.original.expense_categories?.name)
+        const rowValue = row.original.expense_categories?.name || '';
+        return value.includes(rowValue);
     }
   },
   {
     accessorKey: 'customers',
-    header: 'Billed To',
+    header: ({ column }) => <Button variant="ghost" className="text-xs uppercase font-semibold">Billed To</Button>,
     cell: ({ row }) =>
       row.original.customers ? (
-        <Badge variant="outline">{row.original.customers.name}</Badge>
+        <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+            <span className="text-sm">{row.original.customers.name}</span>
+        </div>
       ) : (
-        <span className="text-muted-foreground">Internal</span>
+        <span className="text-muted-foreground text-xs">Internal</span>
       ),
   },
   {
     accessorKey: 'amount',
-    header: () => <div className="text-right">Amount</div>,
-    cell: ({ row }) => <div className="text-right font-medium">{formatCurrency(row.getValue('amount'), 'USD')}</div>,
+    header: () => <div className="text-right text-xs uppercase font-semibold">Amount</div>,
+    cell: ({ row }) => {
+        const amount = parseFloat(row.getValue('amount'));
+        const formatted = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(amount);
+        return <div className="text-right font-medium font-mono">{formatted}</div>
+    },
   },
   {
     id: 'actions',
@@ -123,17 +148,21 @@ export const columns: ColumnDef<Expense>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => console.log('Editing', expense.id)}>
-              Edit Expense
+            <DropdownMenuItem onClick={() => console.log('Edit', expense.id)}>
+              <Edit2 className="mr-2 h-4 w-4 text-blue-600" /> Edit Details
             </DropdownMenuItem>
             {expense.receipt_url && (
-              // FIX: Used non-null assertion operator (!) to assure window.open the URL is a string/URL, not null/undefined
               <DropdownMenuItem onClick={() => window.open(expense.receipt_url!, '_blank')}>
-                View Receipt
+                <ExternalLink className="mr-2 h-4 w-4 text-slate-500" /> View Receipt
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">Delete Expense</DropdownMenuItem>
+            <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600"
+                onClick={() => console.log('Delete', expense.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -145,11 +174,15 @@ export function RevolutionaryExpenseTable({ expenses }: { expenses: Expense[] })
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'date', desc: true }]);
   
+  // Extract unique categories for the Faceted Filter
   const uniqueCategories = React.useMemo(() => {
-    // Only includes categories with a name (i.e., not null)
-    const categories = new Set(expenses.map(e => e.expense_categories?.name).filter(Boolean) as string[]); 
+    const categories = new Set(
+        expenses
+            .map(e => e.expense_categories?.name)
+            .filter((name): name is string => !!name)
+    ); 
     return Array.from(categories).map(name => ({ value: name, label: name }));
   }, [expenses]);
 
@@ -172,16 +205,17 @@ export function RevolutionaryExpenseTable({ expenses }: { expenses: Expense[] })
   });
 
   const totalAmount = React.useMemo(
-    () => table.getRowModel().rows.reduce((total, row) => total + row.original.amount, 0),
-    [table.getRowModel().rows]
+    () => table.getFilteredRowModel().rows.reduce((total, row) => total + row.original.amount, 0),
+    [table.getFilteredRowModel().rows]
   );
 
   return (
     <div className="space-y-4">
       <DataTableToolbar table={table} categories={uniqueCategories} />
-      <div className="rounded-md border">
+      
+      <div className="rounded-md border bg-white shadow-sm">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-slate-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -207,26 +241,100 @@ export function RevolutionaryExpenseTable({ expenses }: { expenses: Expense[] })
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No expenses recorded yet.
+                <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center">
+                        <FileText className="h-8 w-8 text-slate-300 mb-2" />
+                        No expenses match your filters.
+                    </div>
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
-           <TableFooter>
+           <TableFooter className="bg-slate-50">
                 <TableRow>
-                    <TableCell colSpan={columns.length - 2} className="font-semibold">
-                      Total for filtered period
+                    <TableCell colSpan={5} className="font-semibold text-right">
+                      Total (Visible Rows)
                     </TableCell>
-                    <TableCell className="text-right font-bold">
-                        {formatCurrency(totalAmount, 'USD')}
+                    <TableCell className="text-right font-bold font-mono text-slate-900">
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}
                     </TableCell>
                     <TableCell />
                 </TableRow>
            </TableFooter>
         </Table>
       </div>
-      {/* Add Pagination Component Here */}
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+                <p className="text-sm font-medium">Rows per page</p>
+                <Select
+                    value={`${table.getState().pagination.pageSize}`}
+                    onValueChange={(value) => {
+                        table.setPageSize(Number(value))
+                    }}
+                >
+                    <SelectTrigger className="h-8 w-[70px]">
+                        <SelectValue placeholder={table.getState().pagination.pageSize} />
+                    </SelectTrigger>
+                    <SelectContent side="top">
+                        {[10, 20, 30, 40, 50].map((pageSize) => (
+                            <SelectItem key={pageSize} value={`${pageSize}`}>
+                                {pageSize}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount()}
+            </div>
+            <div className="flex items-center space-x-2">
+                <Button
+                    variant="outline"
+                    className="hidden h-8 w-8 p-0 lg:flex"
+                    onClick={() => table.setPageIndex(0)}
+                    disabled={!table.getCanPreviousPage()}
+                >
+                    <span className="sr-only">Go to first page</span>
+                    <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                >
+                    <span className="sr-only">Go to previous page</span>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                >
+                    <span className="sr-only">Go to next page</span>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                    variant="outline"
+                    className="hidden h-8 w-8 p-0 lg:flex"
+                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                    disabled={!table.getCanNextPage()}
+                >
+                    <span className="sr-only">Go to last page</span>
+                    <ChevronsRight className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+      </div>
     </div>
   );
 }

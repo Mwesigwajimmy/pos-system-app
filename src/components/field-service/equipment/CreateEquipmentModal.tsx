@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { createEquipment } from '@/lib/field-service/actions/equipment';
-import type { FormState } from '@/lib/field-service/actions/work_orders';
+import { createEquipment, FormState } from '@/lib/actions/equipment'; // Import from new action file
 
 function SubmitButton() {
     const { pending } = useFormStatus();
-    return <Button type="submit" disabled={pending}>{pending ? 'Adding...' : 'Add Equipment'}</Button>;
+    return (
+        <Button type="submit" disabled={pending}>
+            {pending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Adding...</> : 'Add Equipment'}
+        </Button>
+    );
 }
 
 export function CreateEquipmentModal() {
@@ -26,6 +29,7 @@ export function CreateEquipmentModal() {
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
     const [nextMaintenanceDate, setNextMaintenanceDate] = useState<Date | undefined>();
+    
     const initialState: FormState = { success: false, message: '', errors: null };
     const [formState, formAction] = useFormState(createEquipment, initialState);
 
@@ -33,7 +37,8 @@ export function CreateEquipmentModal() {
         if (formState.success) {
             toast({ title: "Success!", description: formState.message });
             setIsOpen(false);
-            router.refresh();
+            setNextMaintenanceDate(undefined);
+            router.refresh(); // Refresh Server Components to show new data
         } else if (formState.message && !formState.errors) {
             toast({ title: "Error", description: formState.message, variant: "destructive" });
         }
@@ -41,19 +46,25 @@ export function CreateEquipmentModal() {
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Add Equipment</Button></DialogTrigger>
+            <DialogTrigger asChild>
+                <Button><PlusCircle className="mr-2 h-4 w-4" /> Add Equipment</Button>
+            </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
                 <form action={formAction}>
                     <DialogHeader>
                         <DialogTitle>Add New Equipment</DialogTitle>
                         <DialogDescription>Add a new vehicle, tool, or other asset to your inventory.</DialogDescription>
                     </DialogHeader>
+                    
                     <div className="grid gap-4 py-6">
+                        {/* Name Field */}
                         <div className="space-y-1">
                             <Label htmlFor="name">Equipment Name</Label>
                             <Input id="name" name="name" placeholder="e.g., Service Van #4" required />
-                            {formState.errors?.name && <p className="text-sm text-destructive">{formState.errors.name[0]}</p>}
+                            {formState.errors?.name && <p className="text-sm text-destructive font-medium">{formState.errors.name[0]}</p>}
                         </div>
+
+                        {/* Type and Serial */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="type">Type</Label>
@@ -64,6 +75,8 @@ export function CreateEquipmentModal() {
                                 <Input id="serial_number" name="serial_number" />
                             </div>
                         </div>
+
+                        {/* Date Picker */}
                         <div className="space-y-1">
                             <Label htmlFor="next_maintenance_date">Next Maintenance</Label>
                             <input type="hidden" name="next_maintenance_date" value={nextMaintenanceDate ? format(nextMaintenanceDate, 'yyyy-MM-dd') : ''} />
@@ -74,12 +87,13 @@ export function CreateEquipmentModal() {
                                         {nextMaintenanceDate ? format(nextMaintenanceDate, "PPP") : <span>Pick a date</span>}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar mode="single" selected={nextMaintenanceDate} onSelect={setNextMaintenanceDate} />
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="single" selected={nextMaintenanceDate} onSelect={setNextMaintenanceDate} initialFocus />
                                 </PopoverContent>
                             </Popover>
                         </div>
                     </div>
+                    
                     <DialogFooter>
                         <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
                         <SubmitButton />

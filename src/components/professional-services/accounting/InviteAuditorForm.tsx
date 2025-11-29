@@ -1,161 +1,269 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useFormState, useFormStatus } from 'react-dom';
-import { inviteAuditorAction, FormState } from '@/lib/actions';
-import { useToast } from '@/components/ui/use-toast';
+import { useMutation } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Textarea } from '@/components/ui/textarea';
-import { Mail, Send, CalendarIcon, Sparkles, ShieldCheck, BookOpen, BarChart3, Wallet } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Mail, CalendarIcon, Shield, Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const permissionsList = [
-  { id: 'view_gl', label: 'View General Ledger', Icon: BookOpen },
-  { id: 'view_reports', label: 'View Financial Reports', Icon: BarChart3 },
-  { id: 'view_expenses', label: 'View Expense Records', Icon: Wallet },
-  { id: 'view_payroll', label: 'View Payroll Data', Icon: ShieldCheck, isSensitive: true },
-];
+// --- Configuration ---
+const PERMISSIONS = [
+  { id: 'view_gl', label: 'View General Ledger' },
+  { id: 'view_reports', label: 'View Financial Reports' },
+  { id: 'view_invoices', label: 'View Invoices & Receipts' },
+  { id: 'export_data', label: 'Export Data (CSV/PDF)' },
+] as const;
 
-const formSchema = z.object({
-  email: z.string().email(),
-  expiresAt: z.date(),
-  permissions: z.array(z.string()).min(1),
-  welcomeMessage: z.string().optional(),
+// --- Schema ---
+// FIX: Removed invalid 'required_error' object. Zod dates are required by default.
+const inviteSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  expiresAt: z.date(), 
+  permissions: z.array(z.string()).min(1, "Select at least one permission"),
+  message: z.string().optional(),
 });
-type FormData = z.infer<typeof formSchema>;
 
-function SubmitButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button type="submit" disabled={pending} className="w-full">
-            {pending ? 'Sending Invitation...' : <><Send className="mr-2 h-4 w-4" /> Send Secure Invitation</>}
-        </Button>
-    );
-}
+type InviteFormValues = z.infer<typeof inviteSchema>;
 
-export function InviteAuditorForm() {
-    const { toast } = useToast();
-    const formRef = useRef<HTMLFormElement>(null);
-    const { register, handleSubmit, control, setValue, formState: { errors }, reset } = useForm<FormData>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            email: '',
-            expiresAt: addMonths(new Date(), 3),
-            permissions: ['view_gl', 'view_reports'],
-            welcomeMessage: "Welcome to our BBU1 portal. You have been granted temporary, read-only access to our financial records for audit purposes. Please let us know if you have any questions."
-        },
-    });
+// --- Component ---
+export function InviteAuditorForm({ tenantId }: { tenantId: string }) {
+  const form = useForm<InviteFormValues>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: {
+      email: '',
+      expiresAt: addMonths(new Date(), 1), // Default 1 month access
+      permissions: ['view_gl', 'view_reports'],
+      message: ''
+    }
+  });
 
-    const initialState: FormState = { success: false, message: '' };
-    const [formState, formAction] = useFormState(inviteAuditorAction, initialState);
+  const mutation = useMutation({
+    mutationFn: async (data: InviteFormValues) => {
+      const db = createClient();
+      
+      // 1. Authenticate & Get Context
+      const { data: { user }, error: authError } = await db.auth.getUser();
+      if (authError || !user) throw new Error("You must be logged in to invite auditors.");
 
-    useEffect(() => {
-        if (formState.message) {
-            if (formState.success) {
-                toast({ title: "Success!", description: formState.message });
-                reset();
-            } else {
-                toast({ title: "Error", description: formState.message, variant: 'destructive' });
-            }
-        }
-    }, [formState, toast, reset]);
-    
-    const onFormSubmit = (data: FormData) => {
-        const formData = new FormData(formRef.current!);
-        formData.set('expires_at', data.expiresAt.toISOString());
-        formAction(formData);
-    };
-    
-    const generateWelcomeMessage = () => {
-        setValue('welcomeMessage', "This is an AI-generated welcome message. You have been granted secure, time-limited access to our company's financial records on the BBU1 platform for the purpose of conducting your audit. Your access is read-only and will expire automatically. Please feel free to explore the provided sections. Should you require any assistance, do not hesitate to contact us.");
-        toast({ title: "AI Generated", description: "Welcome message has been generated." });
-    };
+      // 2. Insert Invite Record
+      const { error } = await db.from('auditor_invites').insert({
+        tenant_id: tenantId,
+        email: data.email,
+        permissions: data.permissions,
+        expires_at: data.expiresAt.toISOString(),
+        message: data.message,
+        status: 'PENDING',
+        invited_by: user.id, 
+        created_at: new Date().toISOString()
+      });
 
-    return (
-        <form ref={formRef} onSubmit={handleSubmit(onFormSubmit)} className="space-y-6 max-w-2xl">
-            <div className="space-y-2">
-                <Label htmlFor="email" className="font-semibold">Auditor's Email Address</Label>
-                <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="email" type="email" placeholder="auditor@kpmg.com" className="pl-9" {...register("email")} />
-                </div>
-                {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Secure invitation sent to auditor.");
+      form.reset({
+        email: '',
+        expiresAt: addMonths(new Date(), 1),
+        permissions: ['view_gl', 'view_reports'],
+        message: ''
+      });
+    },
+    onError: (e: Error) => {
+      toast.error(e.message || "Failed to send invitation.");
+    }
+  });
+
+  const generateAIMessage = () => {
+    const currentExpiry = form.getValues('expiresAt');
+    const msg = `Dear Auditor,\n\nYou have been granted temporary, read-only access to our financial records.\n\nAccess expires on: ${format(currentExpiry, 'PPP')}.\n\nPlease click the link in the invitation email to authenticate securely via magic link.`;
+    form.setValue('message', msg);
+    toast.success("Message generated successfully");
+  };
+
+  return (
+    <Card className="max-w-2xl mx-auto border-t-4 border-t-purple-600 shadow-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="w-6 h-6 text-purple-600"/> Auditor Access Control
+        </CardTitle>
+        <CardDescription>
+          Grant temporary, read-only access to external auditors or accountants.
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-6">
+            
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md flex gap-3 text-amber-800 text-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <p>Auditors will receive a secure magic link. Access is strictly read-only and automatically revokes on the expiry date.</p>
             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="expiresAt" className="font-semibold">Access Expiry Date</Label>
-                <Controller
-                    control={control}
-                    name="expiresAt"
-                    render={({ field }) => (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                            </PopoverContent>
-                        </Popover>
-                    )}
-                />
-                {errors.expiresAt && <p className="text-sm text-destructive mt-1">{errors.expiresAt.message}</p>}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Auditor Email</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="auditor@firm.com" className="pl-9" {...field} />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="space-y-3">
-                <Label className="font-semibold">Grant Permissions</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border p-4">
-                    {permissionsList.map((item) => (
-                        <Controller
-                            key={item.id}
-                            control={control}
-                            name="permissions"
-                            render={({ field }) => (
-                                <div className={cn("flex items-center space-x-3 rounded-md p-3", item.isSensitive && "bg-destructive/10")}>
-                                    <Checkbox
-                                        id={item.id}
-                                        value={item.id}
-                                        checked={field.value?.includes(item.id)}
-                                        onCheckedChange={(checked) => {
-                                            return checked
-                                                ? field.onChange([...(field.value || []), item.id])
-                                                : field.onChange(field.value?.filter((value) => value !== item.id));
-                                        }}
-                                    />
-                                    <Label htmlFor={item.id} className="flex items-center gap-2 font-normal cursor-pointer">
-                                        <item.Icon className="h-5 w-5" />
-                                        {item.label}
-                                    </Label>
-                                </div>
+              <FormField
+                control={form.control}
+                name="expiresAt"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Access Expiration</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
                             )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
                         />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="permissions"
+              render={() => (
+                <FormItem>
+                  <div className="mb-4">
+                    <FormLabel className="text-base">Permissions Scope</FormLabel>
+                    <CardDescription>Select specific data modules the auditor can access.</CardDescription>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {PERMISSIONS.map((item) => (
+                      <FormField
+                        key={item.id}
+                        control={form.control}
+                        name="permissions"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={item.id}
+                              className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-white"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(item.id)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...field.value, item.id])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== item.id
+                                          )
+                                        )
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer w-full select-none">
+                                {item.label}
+                              </FormLabel>
+                            </FormItem>
+                          )
+                        }}
+                      />
                     ))}
-                </div>
-                 {errors.permissions && <p className="text-sm text-destructive mt-1">{errors.permissions.message}</p>}
-            </div>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <div className="space-y-2">
-                 <div className="flex justify-between items-center">
-                    <Label htmlFor="welcomeMessage" className="font-semibold">Personalized Welcome Message (Optional)</Label>
-                    <Button type="button" variant="ghost" size="sm" onClick={generateWelcomeMessage}>
-                        <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
+            <FormField
+              control={form.control}
+              name="message"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex justify-between items-center">
+                    <FormLabel>Welcome Message (Optional)</FormLabel>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={generateAIMessage} 
+                      className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Sparkles className="w-3 h-3 mr-1"/> AI Generate
                     </Button>
-                </div>
-                <Textarea id="welcomeMessage" placeholder="Include a welcome message in the invitation email..." className="min-h-[120px]" {...register("welcomeMessage")} />
-            </div>
+                  </div>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Enter specific instructions for the audit team..." 
+                      className="resize-none min-h-[100px]" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <SubmitButton />
-        </form>
-    );
+            <CardFooter className="px-0 pt-4">
+              <Button 
+                type="submit" 
+                className="w-full bg-purple-700 hover:bg-purple-800 transition-colors" 
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Mail className="mr-2 h-4 w-4"/>}
+                Send Secure Invitation
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
 }
