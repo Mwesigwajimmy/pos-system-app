@@ -67,17 +67,17 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="relative z-30 flex-shrink-0 flex h-16 bg-white border-b border-slate-200 shadow-sm">
-          <button type="button" className="px-4 border-r border-slate-200 text-slate-500 focus:outline-none md:hidden hover:bg-slate-50" onClick={() => setIsSidebarOpen(true)}>
+        <header className="relative z-30 flex-shrink-0 flex h-16 bg-blue-700 border-b border-blue-800 shadow-md">
+          <button type="button" className="px-4 border-r border-blue-600 text-blue-100 focus:outline-none md:hidden hover:bg-blue-600" onClick={() => setIsSidebarOpen(true)}>
             <span className="sr-only">Open sidebar</span>
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
-          <div className="flex-1 flex justify-between px-4 sm:px-6 lg:px-8 bg-white">
+          <div className="flex-1 flex justify-between px-4 sm:px-6 lg:px-8 bg-blue-700 text-white">
             <Header />
           </div>
         </header>
         
-        <main className="flex-1 relative overflow-y-auto focus:outline-none bg-slate-50/50">
+        <main className="flex-1 relative overflow-y-auto focus:outline-none bg-gradient-to-br from-slate-50 to-slate-100">
           <div className="p-4 sm:p-6 lg:p-8 h-full">
             {children}
           </div>

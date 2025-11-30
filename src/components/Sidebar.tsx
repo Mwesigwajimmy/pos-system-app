@@ -506,7 +506,7 @@ export default function Sidebar() {
                                 "px-3 py-2 text-sm font-medium rounded-md hover:no-underline mb-1",
                                 activeAccordionValue === item.module 
                                     ? "text-white font-bold bg-slate-800" 
-                                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                             )}>
                                 <div className="flex items-center flex-1"><item.icon className={cn("mr-3 h-5 w-5", activeAccordionValue === item.module ? "text-blue-400" : "text-slate-500")} /><span>{item.title}</span></div>
                             </AccordionTrigger>
@@ -517,7 +517,7 @@ export default function Sidebar() {
                                         <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} 
                                             className={cn(
                                                 "flex items-center py-2 px-3 pl-10 text-sm font-medium transition-colors duration-150 rounded-md mx-2", 
-                                                isSubItemActive ? "text-blue-400 bg-slate-800" : "text-slate-500 hover:text-slate-200 hover:bg-slate-800"
+                                                isSubItemActive ? "text-blue-400 bg-slate-800" : "text-slate-400 hover:text-white hover:bg-slate-800"
                                             )}>
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
                                         </Link>
@@ -535,7 +535,6 @@ export default function Sidebar() {
     return (
         <aside className={cn(
             "h-full flex flex-col transition-all duration-300 ease-in-out border-r",
-            // DARK MODE COLORS APPLIED HERE
             "bg-slate-950 border-slate-800",
             isSidebarOpen ? "w-64" : "w-20"
         )}>
