@@ -464,21 +464,12 @@ export default function Sidebar() {
     const isLoading = isLoadingRole || isLoadingTenant; 
 
     const finalNavItems = useMemo(() => {
-        // We now proceed even if enabledModules is null/empty
         if (isLoading || !role || !tenant) return [];
         const userRole = role.toLowerCase();
         
-        // Use default empty string if not found
-        const businessType = tenant.business_type || ''; 
-
         return navSections.filter(item => {
-            // Role Permission Check (Keep this to ensure security)
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
-
-            // --- MODULE CHECK BYPASS ---
-            // Original: if (item.module) return enabledModules.includes(item.module);
-            // Modified: We return true so ALL modules are visible during development
             return true; 
         });
     }, [isLoading, role, enabledModules, tenant]);
@@ -501,18 +492,9 @@ export default function Sidebar() {
                 }
                 if (item.type === 'accordion') {
                     const userRole = role?.toLowerCase() || '';
-                    // const businessType = tenant?.business_type || ''; // Unused for now
-
                     const filteredSubItems = item.subItems.filter(sub => {
-                        // Role check
                         const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-                        
-                        // --- BUSINESS TYPE BYPASS ---
-                        // Original: const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
-                        // Modified: We default to true so all sub-items appear
-                        const hasBusinessTypePermission = true; 
-
-                        return hasRolePermission && hasBusinessTypePermission;
+                        return hasRolePermission;
                     });
 
                     if (filteredSubItems.length === 0) return null;
@@ -520,14 +502,23 @@ export default function Sidebar() {
 
                     return (
                         <AccordionItem key={item.module} value={item.module} className="border-none">
-                            <AccordionTrigger className={cn("px-3 py-2 text-sm font-medium rounded-md hover:bg-accent hover:no-underline", activeAccordionValue === item.module && "text-primary font-bold")}>
-                                <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
+                            <AccordionTrigger className={cn(
+                                "px-3 py-2 text-sm font-medium rounded-md hover:no-underline mb-1",
+                                activeAccordionValue === item.module 
+                                    ? "text-white font-bold bg-slate-800" 
+                                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                            )}>
+                                <div className="flex items-center flex-1"><item.icon className={cn("mr-3 h-5 w-5", activeAccordionValue === item.module ? "text-blue-400" : "text-slate-500")} /><span>{item.title}</span></div>
                             </AccordionTrigger>
-                            <AccordionContent className="pl-6 pt-1 space-y-1">
+                            <AccordionContent className="pl-0 pt-1 space-y-1 bg-slate-900/50 pb-2">
                                 {filteredSubItems.map(subItem => {
                                     const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
                                     return (
-                                        <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
+                                        <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} 
+                                            className={cn(
+                                                "flex items-center py-2 px-3 pl-10 text-sm font-medium transition-colors duration-150 rounded-md mx-2", 
+                                                isSubItemActive ? "text-blue-400 bg-slate-800" : "text-slate-500 hover:text-slate-200 hover:bg-slate-800"
+                                            )}>
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
                                         </Link>
                                     );
@@ -543,37 +534,41 @@ export default function Sidebar() {
 
     return (
         <aside className={cn(
-            "h-full bg-card border-r flex flex-col transition-all duration-300 ease-in-out",
+            "h-full flex flex-col transition-all duration-300 ease-in-out border-r",
+            // DARK MODE COLORS APPLIED HERE
+            "bg-slate-950 border-slate-800",
             isSidebarOpen ? "w-64" : "w-20"
         )}>
-            <div className="flex items-center justify-between h-16 border-b px-4 flex-shrink-0">
-                {isSidebarOpen && <h1 className="text-lg font-bold tracking-tight text-primary">BBU1</h1>}
-                <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"} className={cn(!isSidebarOpen && "mx-auto")}>
+            <div className="flex items-center justify-between h-16 border-b border-slate-800 px-4 flex-shrink-0">
+                {isSidebarOpen && <h1 className="text-xl font-bold tracking-tight text-white">BBU1</h1>}
+                <Button variant="ghost" size="icon" onClick={toggleSidebar} className={cn("text-slate-400 hover:bg-slate-800 hover:text-white", !isSidebarOpen && "mx-auto")}>
                     {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
             </div>
-            <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
+            
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                 {isLoading ? (
-                    <div className="p-3 text-sm text-muted-foreground animate-pulse">Loading navigation...</div>
+                    <div className="p-3 text-sm text-slate-500 animate-pulse">Loading navigation...</div>
                 ) : (
                     renderAccordionNav(finalNavItems)
                 )}
             </nav>
-            <div className="p-4 mt-auto border-t space-y-2 flex-shrink-0">
+
+            <div className="p-4 mt-auto border-t border-slate-800 space-y-2 flex-shrink-0 bg-slate-950">
                 {isSidebarOpen ? (
-                    <Button variant="outline" className="w-full justify-start" onClick={openCopilot}>
-                        <Sparkles className="mr-3 h-5 w-5 text-primary" />
+                    <Button variant="outline" className="w-full justify-start bg-slate-900 border-slate-700 text-slate-200 hover:bg-blue-900 hover:text-white hover:border-blue-700" onClick={openCopilot}>
+                        <Sparkles className="mr-3 h-5 w-5 text-blue-400" />
                         Ask Aura
                     </Button>
                 ) : (
                     <TooltipProvider delayDuration={0}>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" className="w-full" onClick={openCopilot} aria-label="Ask Aura">
-                                    <Sparkles className="h-5 w-5 text-primary" />
+                                <Button variant="outline" size="icon" className="w-full bg-slate-900 border-slate-700 text-slate-200 hover:bg-blue-900" onClick={openCopilot}>
+                                    <Sparkles className="h-5 w-5 text-blue-400" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="right"><p>Ask Aura</p></TooltipContent>
+                            <TooltipContent side="right" className="bg-slate-900 text-white"><p>Ask Aura</p></TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 )}
