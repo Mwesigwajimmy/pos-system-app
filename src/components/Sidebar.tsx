@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-// --- ICONS (Fully synced with File 1) ---
+// --- ICONS ---
 import {
     LayoutDashboard, ShoppingCart, Clock, Users, BarChart3, History, Boxes, Truck,
     ClipboardCheck, Receipt, BookOpen, Banknote, BookCopy, Briefcase, UsersRound,
@@ -48,7 +48,7 @@ const navSections: NavItem[] = [
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier'] },
     { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], module: 'sales' },
     
-    // --- ACTIVITIES & LOGS (Added from File 1) ---
+    // --- ACTIVITIES & LOGS ---
     {
         type: 'accordion', title: 'Activities & Logs', icon: ListChecks, roles: ['admin', 'manager', 'auditor'], module: 'activities',
         subItems: [
@@ -61,7 +61,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- INVOICING (Moved out of Sales, format from File 1) ---
+    // --- INVOICING ---
     {
         type: 'accordion', title: 'Invoicing', icon: Receipt, roles: ['admin', 'manager', 'accountant', 'cashier'], module: 'invoicing',
         subItems: [
@@ -87,7 +87,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- REPORTS CENTER (Added from File 1) ---
+    // --- REPORTS CENTER ---
     {
         type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor'], module: 'reports',
         subItems: [
@@ -107,7 +107,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- INVENTORY (Updated with File 1 items) ---
+    // --- INVENTORY ---
     {
         type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager'], module: 'inventory',
         subItems: [
@@ -178,7 +178,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- FINANCE (Updated to match File 1 structure) ---
+    // --- FINANCE ---
     {
         type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'], module: 'finance',
         subItems: [ 
@@ -211,7 +211,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- SACCO & CO-OPS (Full list from File 1) ---
+    // --- SACCO & CO-OPS ---
     {
         type: 'accordion', title: 'SACCO & Co-ops', icon: Handshake, roles: ['admin', 'manager'], module: 'sacco',
         subItems: [ 
@@ -238,7 +238,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- LENDING (Full list from File 1) ---
+    // --- LENDING ---
     {
         type: 'accordion', title: 'Lending', icon: Landmark, roles: ['admin', 'manager'], module: 'lending',
         subItems: [ 
@@ -270,7 +270,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- TELECOM SERVICES (Full list from File 1) ---
+    // --- TELECOM SERVICES ---
     {
         type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant'], module: 'telecom',
         subItems: [ 
@@ -294,7 +294,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- E-COMMERCE (Updated with File 1 items) ---
+    // --- E-COMMERCE ---
     {
         type: 'accordion', title: 'eCommerce', icon: ShoppingCart, roles: ['admin', 'manager'], module: 'ecommerce',
         subItems: [ 
@@ -373,13 +373,13 @@ const navSections: NavItem[] = [
         subItems: [ { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] }, ]
     },
 
-    // --- BUSINESS HUB (Synced with File 1) ---
+    // --- BUSINESS HUB ---
     {
         type: 'accordion', title: 'Business Hub', icon: Briefcase, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'], module: 'business-hub',
         subItems: [ { href: '/library', label: 'Document Library', icon: Library, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'] }, ]
     },
 
-    // --- MANAGEMENT (Full list from File 1) ---
+    // --- MANAGEMENT ---
     {
         type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor'], module: 'management',
         subItems: [
@@ -458,18 +458,26 @@ export default function Sidebar() {
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
 
-    const isLoading = isLoadingRole || isLoadingModules || isLoadingTenant;
+    // Removed isLoadingModules from here to avoid blocking render if modules are missing
+    const isLoading = isLoadingRole || isLoadingTenant; 
 
     const finalNavItems = useMemo(() => {
-        if (isLoading || !role || !enabledModules || !tenant) return [];
+        // We now proceed even if enabledModules is null/empty
+        if (isLoading || !role || !tenant) return [];
         const userRole = role.toLowerCase();
-        const businessType = tenant.business_type || '';
+        
+        // Use default empty string if not found
+        const businessType = tenant.business_type || ''; 
 
         return navSections.filter(item => {
+            // Role Permission Check (Keep this to ensure security)
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
-            if (item.module) return enabledModules.includes(item.module);
-            return true;
+
+            // --- MODULE CHECK BYPASS ---
+            // Original: if (item.module) return enabledModules.includes(item.module);
+            // Modified: We return true so ALL modules are visible during development
+            return true; 
         });
     }, [isLoading, role, enabledModules, tenant]);
 
@@ -491,10 +499,17 @@ export default function Sidebar() {
                 }
                 if (item.type === 'accordion') {
                     const userRole = role?.toLowerCase() || '';
-                    const businessType = tenant?.business_type || '';
+                    // const businessType = tenant?.business_type || ''; // Unused for now
+
                     const filteredSubItems = item.subItems.filter(sub => {
+                        // Role check
                         const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-                        const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
+                        
+                        // --- BUSINESS TYPE BYPASS ---
+                        // Original: const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
+                        // Modified: We default to true so all sub-items appear
+                        const hasBusinessTypePermission = true; 
+
                         return hasRolePermission && hasBusinessTypePermission;
                     });
 
