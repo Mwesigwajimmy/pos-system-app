@@ -23,7 +23,7 @@ import {
     UploadCloud, Plug, Scale, Wallet, FileWarning, Construction, Wrench, FolderKanban, 
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
-    CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus,
+    CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Utensils,
     // Icons for Activities
     Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock
 } from 'lucide-react';
@@ -46,7 +46,10 @@ const navSections: NavItem[] = [
     { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
     { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor'] }, 
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier'] },
+    
+    // --- POS & KDS (Added KDS Here) ---
     { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], module: 'sales' },
+    { type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, roles: ['admin', 'manager', 'cashier', 'kitchen'], module: 'sales' },
     
     // --- ACTIVITIES & LOGS ---
     {
@@ -55,7 +58,7 @@ const navSections: NavItem[] = [
             { href: '/activities/timeline', label: 'Global Timeline', icon: Activity },      
             { href: '/activities/user-feeds', label: 'User Activity Feed', icon: UserCog },  
             { href: '/activities/workflows', label: 'Workflow Logs', icon: GitGraph },       
-            { href: '/activities/tasks', label: 'Task Activities', icon: ClipboardCheck }, 
+            { href: '/activities/tasks', label: 'Task Activities', icon: ClipboardCheck }, // This links to your AssignmentTaskPanel
             { href: '/activities/notifications', label: 'Notifications', icon: Bell },       
             { href: '/activities/comments', label: 'Comments History', icon: MessageSquare },
         ]
@@ -458,7 +461,6 @@ export default function Sidebar() {
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
 
-    // Removed isLoadingModules from here to avoid blocking render if modules are missing
     const isLoading = isLoadingRole || isLoadingTenant; 
 
     const finalNavItems = useMemo(() => {
