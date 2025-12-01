@@ -1,20 +1,22 @@
-// src/app/[locale]/(dashboard)/dashboard/page.tsx
 import React from 'react';
-import { LayoutDashboard } from 'lucide-react';
+import DashboardClientPage from '@/components/DashboardClientPage';
+import { Metadata } from 'next';
 
-// This file will now load when the URL is /en/dashboard
+// 1. Add Metadata for SEO and browser tab titles (Professional touch)
+export const metadata: Metadata = {
+  title: 'Dashboard Overview | POS System',
+  description: 'Real-time business overview, financial KPIs, and inventory alerts.',
+};
+
+// 2. This is the Server Component that loads the page
 export default function DashboardOverviewPage() {
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold flex items-center">
-         <LayoutDashboard className="h-7 w-7 mr-3" /> Dashboard Overview
-      </h1>
-      <p className="mt-4 text-lg text-muted-foreground">
-         This is the correct location for your main dashboard overview components (charts, KPIs, etc.).
-      </p>
-      <p className="mt-2 text-sm text-green-600">
-         The AI Chat component has been successfully moved to the /copilot route!
-      </p>
-    </div>
+    <main className="min-h-screen w-full bg-background">
+      {/* 
+         3. We render the Client Component here. 
+         This separates Server logic (Metadata) from Client logic (Interactivity/State)
+      */}
+      <DashboardClientPage />
+    </main>
   );
 }
