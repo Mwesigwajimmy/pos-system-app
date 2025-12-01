@@ -30,7 +30,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   const [units, setUnits] = useState<Unit[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
   
-  // CONTROLLED TAB STATE (Fixes the "Button doesn't respond" issue)
+  // CONTROLLED TAB STATE
   const [activeTab, setActiveTab] = useState("attributes");
   
   // Basic Info
@@ -45,10 +45,13 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   const [simpleSku, setSimpleSku] = useState('');
 
   // Advanced Mode State
-  const [attributes, setAttributes] = useState<{ name: string; values: string[] }[]>([{ name: 'Size', values: [] }]);
+  // We keep 'inputValue' to track exactly what the user types before comma splitting
+  const [attributes, setAttributes] = useState<{ name: string; inputValue: string; values: string[] }[]>([
+    { name: 'Size', inputValue: '', values: [] }
+  ]);
   const [generatedVariants, setGeneratedVariants] = useState<any[]>([]);
 
-  // --- Fetch Units (Using the fixed DB column 'abbreviation') ---
+  // --- Fetch Units ---
   useEffect(() => {
     if (open) {
       const fetchUnits = async () => {
@@ -59,35 +62,32 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
     }
   }, [open]);
 
-  // --- Variant Generation Logic (The "Generate" Button) ---
+  // --- Variant Generation Logic ---
   const generateVariants = () => {
-    // 1. Validation
-    if (attributes.length === 0 || !attributes[0].values.length) {
-        toast.error("Please add at least one attribute (e.g. Size: Small)");
-        return;
-    }
-
-    // 2. Cartesian Product Logic (Combinatorics)
-    const cartesian = (args: any[]) => args.reduce((a, b) => a.flatMap((d: any) => b.map((e: any) => [d, e].flat())));
-    const attrValues = attributes.map(a => a.values);
+    console.log("Attempting to generate variants...");
     
-    // Ensure no empty arrays
-    if(attrValues.some(arr => arr.length === 0)) {
-        toast.error("Every attribute must have at least one value.");
+    // 1. Validation
+    // We check 'values' array which is updated on change
+    const validAttributes = attributes.filter(a => a.values.length > 0);
+
+    if (validAttributes.length === 0) {
+        toast.error("Please enter attribute values (e.g. Small, Medium)");
         return;
     }
 
+    // 2. Cartesian Product Logic
+    const cartesian = (args: any[]) => args.reduce((a, b) => a.flatMap((d: any) => b.map((e: any) => [d, e].flat())));
+    const attrValues = validAttributes.map(a => a.values);
+    
     const combinations = attrValues.length > 1 ? cartesian(attrValues) : attrValues[0].map(v => [v]);
 
     // 3. Create Variant Objects
     const variants = combinations.map((combo: string[]) => {
-      // Handle single vs multiple attributes
       const comboArray = Array.isArray(combo) ? combo : [combo];
       const name = comboArray.join(' / ');
       
-      // Create the JSON attribute map { "Size": "Small", "Color": "Red" }
       const attrMap: Record<string, string> = {};
-      attributes.forEach((attr, idx) => {
+      validAttributes.forEach((attr, idx) => {
           attrMap[attr.name] = comboArray[idx];
       });
 
@@ -101,24 +101,35 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       };
     });
 
+    console.log("Generated:", variants);
     setGeneratedVariants(variants);
     toast.success(`Generated ${variants.length} variants!`);
     
-    // 4. CRITICAL FIX: Automatically switch the tab so the user sees the table
+    // 4. Switch Tab
     setActiveTab("variants");
   };
 
+  // UPDATED: Instant Update Logic
   const handleAttributeValueChange = (index: number, valueStr: string) => {
     const newAttrs = [...attributes];
-    // Split by comma, trim whitespace, remove empty strings
+    newAttrs[index].inputValue = valueStr;
+    // Update the array immediately so the button works even without blurring
     newAttrs[index].values = valueStr.split(',').map(s => s.trim()).filter(Boolean);
     setAttributes(newAttrs);
+  };
+
+  const addAttribute = () => {
+    setAttributes([...attributes, { name: '', inputValue: '', values: [] }]);
+  };
+
+  const removeAttribute = (index: number) => {
+    setAttributes(attributes.filter((_, i) => i !== index));
   };
 
   // --- Submission to Backend ---
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      // 1. Auth Check & Tenant ID
+      // 1. Auth Check
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
@@ -140,30 +151,27 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       let variantsToInsert = [];
 
       if (!hasVariants) {
-        // Single Variant Mode
         variantsToInsert.push({
           product_id: product.id,
           sku: simpleSku,
           price: Number(simplePrice) || 0,
           cost_price: Number(simpleCost) || 0,
           stock_quantity: Number(simpleStock) || 0,
-          attributes: {}, // Empty JSON
+          attributes: {},
           uom_id: uomId ? parseInt(uomId) : null
         });
       } else {
-        // Multi Variant Mode
         variantsToInsert = generatedVariants.map(v => ({
           product_id: product.id,
           sku: v.sku,
           price: Number(v.price) || 0,
           cost_price: Number(v.cost) || 0,
           stock_quantity: Number(v.stock) || 0,
-          attributes: v.attributes, // The JSON map we created
+          attributes: v.attributes,
           uom_id: uomId ? parseInt(uomId) : null
         }));
       }
 
-      // 4. Insert Variants
       const { error: varError } = await supabase.from('product_variants').insert(variantsToInsert);
       if (varError) throw varError;
 
@@ -175,7 +183,8 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       setOpen(false);
       // Reset Form
       setProductName(''); setHasVariants(false); setGeneratedVariants([]); setActiveTab("attributes");
-      setSimplePrice(''); setSimpleCost(''); setAttributes([{ name: 'Size', values: [] }]);
+      setSimplePrice(''); setSimpleCost(''); 
+      setAttributes([{ name: 'Size', inputValue: '', values: [] }]);
     },
     onError: (err: any) => toast.error(err.message || "Failed to create product")
   });
@@ -214,7 +223,6 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
               <Select onValueChange={setUomId}>
                 <SelectTrigger><SelectValue placeholder="e.g. Pcs, Kg, Liters" /></SelectTrigger>
                 <SelectContent>
-                  {/* Using 'abbreviation' to match DB */}
                   {units.map(u => (
                     <SelectItem key={u.id} value={String(u.id)}>
                       {u.name} ({u.abbreviation})
@@ -255,7 +263,6 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
           {/* Advanced Variant Builder */}
           {hasVariants && (
-            // Controlled Tabs ensures we can programmatically switch tabs
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="attributes">1. Define Attributes</TabsTrigger>
@@ -274,23 +281,24 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                     </div>
                     <div className="w-2/3 space-y-1">
                       <Label>Values (comma separated)</Label>
+                      {/* FIXED: Using controlled value and onChange */}
                       <Input 
                         placeholder="e.g. Small, Medium, Large" 
-                        onBlur={e => handleAttributeValueChange(idx, e.target.value)} // Process on blur for better UX
-                        defaultValue={attr.values.join(', ')}
+                        value={attr.inputValue}
+                        onChange={e => handleAttributeValueChange(idx, e.target.value)}
                       />
                     </div>
-                    {idx > 0 && <Button variant="ghost" size="icon" onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))}><Trash className="h-4 w-4" /></Button>}
+                    {idx > 0 && <Button variant="ghost" size="icon" onClick={() => removeAttribute(idx)}><Trash className="h-4 w-4" /></Button>}
                   </div>
                 ))}
                 
                 <div className="flex justify-between items-center mt-4">
-                  <Button variant="outline" size="sm" onClick={() => setAttributes([...attributes, { name: '', values: [] }])}>
+                  <Button variant="outline" size="sm" onClick={addAttribute}>
                     <Plus className="h-4 w-4 mr-2" /> Add Another Option
                   </Button>
                   
-                  {/* GENERATE BUTTON */}
-                  <Button size="sm" onClick={generateVariants}>
+                  {/* GENERATE BUTTON: Now explicit type="button" */}
+                  <Button type="button" size="sm" onClick={generateVariants}>
                     <Wand2 className="h-4 w-4 mr-2" /> Generate Variants
                   </Button>
                 </div>
@@ -329,9 +337,6 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                     </tbody>
                   </table>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 text-right">
-                    Review generated variants before saving.
-                </p>
               </TabsContent>
             </Tabs>
           )}
