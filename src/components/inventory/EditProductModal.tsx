@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { Loader2, Save, AlertTriangle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Loader2, Save, Package, Layers } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { Category, ProductRow } from '@/types/dashboard';
@@ -14,127 +14,79 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// --- Enterprise Data Types ---
+// --- Enterprise Types ---
 
-// Detailed interface that strictly matches the database schema + UI requirements.
-// We extend ProductRow to ensure compatibility with the parent table.
-interface ProductDetails extends Omit<ProductRow, 'category'> {
-  // Parent Product Fields
-  category_id: string | null; // Mapped to string for Select component compatibility
-  image_url?: string | null;  // Explicitly defined to prevent TS errors
-  
-  // Explicitly define category to satisfy the interface check
-  category: Category | null;
+interface Unit {
+  id: string;
+  name: string;
+  abbreviation: string;
+}
 
-  // Primary Variant Specific Fields
-  variant_id: string; 
-  variant_name: string; 
+interface Variant {
+  id: string;
+  sku: string | null;
   price: number;
   cost_price: number;
-  sku: string | null;
-  barcode: string | null;
-  low_stock_threshold: number;
-  
-  // Advanced Inventory / UOM Fields
+  stock_quantity: number;
+  attributes: Record<string, string>;
   uom_id: string | null;
-  measurement_value: number;
-  
-  // Override stock to ensure it matches the specific usage in the modal
-  stock: number;
+}
+
+interface ProductDetails {
+  id: number;
+  name: string;
+  category_id: string | null;
+  uom_id: string | null;
+  variants: Variant[];
 }
 
 interface EditProductModalProps {
-  product: ProductRow | null; // The row object passed from the DataTable
+  product: ProductRow | null;
   isOpen: boolean;
   onClose: () => void;
   categories: Category[];
 }
 
-interface Unit {
-  id: string;
-  name: string;
-  symbol: string;
-}
+// --- Fetch Logic ---
 
-// --- Server-Side Data Fetching Logic ---
-
-/**
- * Fetches the full object graph for a product.
- * In an Enterprise system, a Product is a Container for Variants.
- * This function retrieves the Parent Product and its Primary Variant securely.
- */
 async function fetchProductDetails(productId: string): Promise<ProductDetails> {
   const supabase = createClient();
   
-  // 1. Fetch Parent Product Entity with Category Join
-  // Updated select to '*, category(*)' to ensure the category object is actually returned
+  // 1. Fetch Parent Product
   const { data: prod, error: prodError } = await supabase
     .from('products')
-    .select('*, category(*)') 
+    .select('*') 
     .eq('id', productId)
     .single();
 
-  if (prodError) {
-    console.error("Critical: Failed to fetch parent product", prodError);
-    throw new Error(`System Error: ${prodError.message}`);
-  }
+  if (prodError) throw new Error(prodError.message);
 
-  // 2. Fetch the Primary Variant securely
-  // We order by ID or Created_At to ensure we always get the "Master" variant deterministically.
+  // 2. Fetch ALL Variants
   const { data: variants, error: varError } = await supabase
     .from('product_variants')
     .select('*')
     .eq('product_id', productId)
-    .order('created_at', { ascending: true }) // Enterprise: Ensure deterministic result
-    .limit(1);
+    .order('created_at', { ascending: true });
 
-  if (varError) {
-    console.error("Critical: Failed to fetch product variants", varError);
-    throw new Error(`Variant Error: ${varError.message}`);
-  }
+  if (varError) throw new Error(varError.message);
 
-  // Handle Data Inconsistency: 
-  // If a product exists but has no variants (e.g. data migration error), we create a "Virtual" empty variant 
-  // so the form doesn't crash and the user can "fix" the product by saving.
-  const primaryVariant = variants && variants.length > 0 ? variants[0] : null;
-
-  // Helper to safely extract category object (Supabase can return array or object depending on relation type)
-  const categoryData = Array.isArray(prod.category) ? prod.category[0] : prod.category;
-
-  // 3. Data Transformation Layer
   return {
-    // Parent Data
-    id: Number(prod.id), 
+    id: prod.id,
     name: prod.name,
-    image_url: prod.image_url || null,
-    
-    // Explicitly casting the joined category object
-    category: categoryData || null,
-    
-    // --- REQUIRED BY PRODUCTROW INTERFACE ---
-    // These fields are missing in the raw select but required by the Type definition.
-    // We populate them with safe defaults or derived values.
-    category_name: categoryData?.name || '',
-    total_stock: 0, // Stock is computed dynamically via inventory ledger
-    variants_count: variants ? variants.length : 0,
-    // ----------------------------------------
-
-    stock: 0, // Local stock reference
-    
-    // Form Field Mapping (BigInt -> String for React Inputs)
     category_id: prod.category_id ? String(prod.category_id) : null,
-    
-    // Variant Data (With Fallbacks for robustness)
-    variant_id: primaryVariant ? String(primaryVariant.id) : '',
-    variant_name: primaryVariant?.sku || 'Standard', 
-    price: primaryVariant?.price || 0,
-    cost_price: primaryVariant?.cost_price || 0,
-    sku: primaryVariant?.sku || '',
-    barcode: primaryVariant?.barcode || '',
-    low_stock_threshold: primaryVariant?.low_stock_threshold || 5,
-    uom_id: primaryVariant?.uom_id || null,
-    measurement_value: primaryVariant?.measurement_value || 1,
+    uom_id: prod.uom_id ? String(prod.uom_id) : null,
+    variants: variants.map((v: any) => ({
+      id: v.id, // Keep as number/string depending on DB, usually number for bigint
+      sku: v.sku || '',
+      price: v.price || 0,
+      cost_price: v.cost_price || 0,
+      stock_quantity: v.stock_quantity || 0,
+      attributes: v.attributes || {},
+      uom_id: v.uom_id ? String(v.uom_id) : null
+    }))
   };
 }
 
@@ -144,263 +96,185 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
   const queryClient = useQueryClient();
   const supabase = createClient();
   
-  // Form State
-  const [formData, setFormData] = useState<Partial<ProductDetails>>({});
+  const [formData, setFormData] = useState<ProductDetails | null>(null);
+  const [activeTab, setActiveTab] = useState("general");
 
-  // 1. Fetch Reference Data: Units of Measure
+  // 1. Fetch Units (Reference Data)
   const { data: units } = useQuery({
     queryKey: ['unitsOfMeasure'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('units_of_measure').select('id, name, symbol');
+      const { data, error } = await supabase.from('units_of_measure').select('id, name, abbreviation');
       if (error) throw error;
       return (data || []) as Unit[];
     },
     enabled: isOpen,
-    staleTime: 1000 * 60 * 60, // Cache for 1 hour
   });
 
-  // 2. Fetch Transactional Data: Product Details
-  const { data: productDetails, isLoading, isError, error } = useQuery({
+  // 2. Fetch Product Data
+  const { data: productDetails, isLoading, isError } = useQuery({
     queryKey: ['productDetails', product?.id],
     queryFn: () => fetchProductDetails(String(product!.id)),
     enabled: isOpen && !!product?.id,
-    retry: 1, // Don't retry indefinitely on 404s
   });
 
-  // 3. Hydrate Form State
   useEffect(() => {
     if (productDetails) {
       setFormData(productDetails);
     }
   }, [productDetails]);
 
-  // 4. Update Mutation (Atomic Transaction Logic)
+  // 3. ENTERPRISE UPDATE MUTATION
   const { mutate: updateProduct, isPending: isUpdating } = useMutation({
-    mutationFn: async (updatedData: Partial<ProductDetails>) => {
-      if (!updatedData.id) throw new Error("Invalid Context: Missing Product ID");
+    mutationFn: async (data: ProductDetails) => {
+      
+      // We perform a Remote Procedure Call (RPC) to Supabase
+      // This runs the complex transaction on the database server, not the browser.
+      const { error } = await supabase.rpc('update_product_and_variants_v2', {
+        p_product_id: data.id,
+        p_name: data.name,
+        p_category_id: data.category_id ? Number(data.category_id) : null,
+        p_uom_id: data.uom_id ? Number(data.uom_id) : null,
+        p_variants: data.variants // Pass the entire array of variants as JSON
+      });
 
-      // Step A: Update Parent Product Metadata
-      const { error: prodError } = await supabase
-        .from('products')
-        .update({
-          name: updatedData.name,
-          image_url: updatedData.image_url,
-          category_id: updatedData.category_id ? Number(updatedData.category_id) : null
-        })
-        .eq('id', updatedData.id);
-
-      if (prodError) throw new Error(`Failed to update Product: ${prodError.message}`);
-
-      // Step B: Update or Create Primary Variant
-      // If variant_id exists, we update. If we are fixing a broken product, we might insert (logic simplified for Edit mode).
-      if (updatedData.variant_id) {
-        const { error: varError } = await supabase
-          .from('product_variants')
-          .update({
-            sku: updatedData.sku,
-            barcode: updatedData.barcode,
-            price: updatedData.price,
-            cost_price: updatedData.cost_price,
-            low_stock_threshold: updatedData.low_stock_threshold,
-            uom_id: updatedData.uom_id,
-            measurement_value: updatedData.measurement_value
-          })
-          .eq('id', updatedData.variant_id);
-
-        if (varError) throw new Error(`Failed to update Variant: ${varError.message}`);
-      } else {
-        // Fallback: This is a robust system. If the product had NO variant, we create one now to fix the data.
-        const { error: createVarError } = await supabase
-          .from('product_variants')
-          .insert({
-            product_id: updatedData.id,
-            sku: updatedData.sku,
-            price: updatedData.price,
-            // Add other defaults as necessary
-          });
-          
-        if (createVarError) throw new Error(`Failed to auto-repair Product Variant: ${createVarError.message}`);
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
-      toast.success(`Product "${formData.name}" saved successfully.`);
-      // Invalidate relevant queries to refresh the UI
+      toast.success("Product updated successfully");
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
       queryClient.invalidateQueries({ queryKey: ['productDetails'] });
       onClose();
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error(err);
-      toast.error(`Save operation failed. Please try again.`);
-    },
+      toast.error(err.message || "Failed to update product");
+    }
   });
 
   // --- Handlers ---
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? (value === '' ? 0 : parseFloat(value)) : value,
-    }));
+  const handleVariantChange = (index: number, field: keyof Variant, value: any) => {
+    if (!formData) return;
+    const newVariants = [...formData.variants];
+    newVariants[index] = { ...newVariants[index], [field]: value };
+    setFormData({ ...formData, variants: newVariants });
   };
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData && formData.id) {
-      updateProduct(formData);
-    } else {
-      toast.error("System Error: Form context is invalid.");
-    }
-  };
-
-  // --- Render Logic ---
 
   const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex flex-col justify-center items-center h-64 space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm font-medium">Retrieving secure product data...</p>
-        </div>
-      );
-    }
-    
-    if (isError) {
-      return (
-        <div className="flex flex-col items-center justify-center h-64 p-8 text-destructive space-y-3 bg-destructive/5 rounded-md border border-destructive/20">
-          <AlertTriangle className="h-10 w-10" />
-          <div className="text-center">
-            <p className="font-semibold text-lg">Unable to load details</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">{error.message}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry Connection</Button>
-        </div>
-      );
-    }
+    if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
+    if (isError) return <div className="text-destructive p-4 text-center font-medium">Unable to load product data.</div>;
+    if (!formData) return null;
 
-    if (productDetails) {
-      return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Group 1: Core Identity */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">Product Identity</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name" className="mb-1.5 block">Product Name <span className="text-destructive">*</span></Label>
-                <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required className="bg-background" />
+    return (
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1">
+          <TabsTrigger value="general" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Package className="w-4 h-4 mr-2"/> General Info
+          </TabsTrigger>
+          <TabsTrigger value="variants" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Layers className="w-4 h-4 mr-2"/> Variants ({formData.variants.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* --- Tab 1: General Info --- */}
+        <TabsContent value="general" className="space-y-4 px-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Product Name</Label>
+                <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               </div>
-              <div>
-                <Label htmlFor="category_id" className="mb-1.5 block">Category</Label>
-                <Select 
-                  onValueChange={(val) => setFormData(prev => ({ ...prev, category_id: val }))} 
-                  value={String(formData.category_id || '')}
-                >
-                  <SelectTrigger className="bg-background"><SelectValue placeholder="Select Category" /></SelectTrigger>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={formData.category_id || ''} onValueChange={v => setFormData({...formData, category_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Uncategorized</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
-                    ))}
+                    {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          </div>
-
-          {/* Group 2: Advanced Measurements (UOM) */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">Measurements & Configuration</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="uom_id" className="mb-1.5 block">Unit of Measure</Label>
-                <Select 
-                  onValueChange={(val) => setFormData(prev => ({ ...prev, uom_id: val }))} 
-                  value={formData.uom_id || ''}
-                >
-                  <SelectTrigger className="bg-background"><SelectValue placeholder="e.g. Pcs, Kg, L" /></SelectTrigger>
+              <div className="space-y-2">
+                <Label>Default Unit</Label>
+                <Select value={formData.uom_id || ''} onValueChange={v => setFormData({...formData, uom_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                   <SelectContent>
                     {units?.map(u => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name} ({u.symbol})
-                      </SelectItem>
+                      <SelectItem key={u.id} value={String(u.id)}>{u.name} ({u.abbreviation})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground mt-1">Defines how this product is stocked and sold.</p>
-              </div>
-              <div>
-                <Label htmlFor="measurement_value" className="mb-1.5 block">Standard Value / Weight</Label>
-                <Input 
-                  id="measurement_value" 
-                  name="measurement_value" 
-                  type="number" 
-                  step="0.0001" // High precision for chemical/medical
-                  value={formData.measurement_value} 
-                  onChange={handleChange} 
-                  placeholder="e.g. 500 (for 500ml)"
-                  className="bg-background"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">Multiplier for the unit (e.g. 0.75 for 750ml).</p>
               </div>
             </div>
-          </div>
+        </TabsContent>
 
-          {/* Group 3: Financials & Tracking */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b pb-2">Financials & Inventory</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price" className="mb-1.5 block">Selling Price (UGX)</Label>
-                <Input id="price" name="price" type="number" value={formData.price} onChange={handleChange} className="font-mono font-medium bg-background" />
-              </div>
-              <div>
-                <Label htmlFor="cost_price" className="mb-1.5 block">Cost Price (UGX)</Label>
-                <Input id="cost_price" name="cost_price" type="number" value={formData.cost_price} onChange={handleChange} className="font-mono bg-background" />
-              </div>
-              <div>
-                <Label htmlFor="sku" className="mb-1.5 block">SKU Code</Label>
-                <Input id="sku" name="sku" value={formData.sku || ''} onChange={handleChange} className="uppercase font-mono bg-background" placeholder="AUTO-GEN" />
-              </div>
-              <div>
-                <Label htmlFor="low_stock_threshold" className="mb-1.5 block">Low Stock Alert Level</Label>
-                <Input id="low_stock_threshold" name="low_stock_threshold" type="number" value={formData.low_stock_threshold} onChange={handleChange} className="bg-background" />
-              </div>
-            </div>
-          </div>
+        {/* --- Tab 2: Variants --- */}
+        <TabsContent value="variants" className="px-1">
+          <div className="border rounded-md max-h-[400px] overflow-y-auto shadow-sm">
+            <Table>
+              <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                <TableRow>
+                  <TableHead className="w-[180px]">Variant Name</TableHead>
+                  <TableHead className="w-[110px]">Price (UGX)</TableHead>
+                  <TableHead className="w-[110px]">Cost (UGX)</TableHead>
+                  <TableHead className="w-[130px]">SKU</TableHead>
+                  <TableHead className="w-[100px]">Stock</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {formData.variants.map((variant, idx) => {
+                    const attrString = variant.attributes 
+                        ? Object.entries(variant.attributes).map(([k,v]) => `${k}: ${v}`).join(', ') 
+                        : '';
+                    const displayName = attrString || variant.sku || 'Standard Variant';
 
-          <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isUpdating}>Cancel</Button>
-            <Button type="submit" disabled={isUpdating} className="min-w-[140px] shadow-sm">
-              {isUpdating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" /> Save Changes
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      );
-    }
-    return null;
+                    return (
+                        <TableRow key={variant.id} className="hover:bg-muted/5">
+                            <TableCell className="font-medium text-xs text-muted-foreground">{displayName}</TableCell>
+                            <TableCell>
+                                <Input type="number" className="h-8 text-xs font-mono" 
+                                    value={variant.price} 
+                                    onChange={e => handleVariantChange(idx, 'price', Number(e.target.value))} />
+                            </TableCell>
+                            <TableCell>
+                                <Input type="number" className="h-8 text-xs font-mono" 
+                                    value={variant.cost_price} 
+                                    onChange={e => handleVariantChange(idx, 'cost_price', Number(e.target.value))} />
+                            </TableCell>
+                            <TableCell>
+                                <Input className="h-8 text-xs uppercase" 
+                                    value={variant.sku || ''} 
+                                    onChange={e => handleVariantChange(idx, 'sku', e.target.value)} />
+                            </TableCell>
+                            <TableCell>
+                                <Input type="number" className="h-8 text-xs" 
+                                    value={variant.stock_quantity} 
+                                    onChange={e => handleVariantChange(idx, 'stock_quantity', Number(e.target.value))} />
+                            </TableCell>
+                        </TableRow>
+                    );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
+    );
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold tracking-tight">Edit Product Details</DialogTitle>
-          <DialogDescription>
-            Manage core attributes, pricing logic, and inventory settings for <strong>{product?.name}</strong>.
-          </DialogDescription>
+          <DialogTitle>Edit Product</DialogTitle>
+          <DialogDescription>Modify product details and manage variant pricing securely.</DialogDescription>
         </DialogHeader>
         <Separator className="my-2" />
         {renderContent()}
+        <DialogFooter className="mt-4 pt-4 border-t">
+          <Button variant="outline" onClick={onClose} disabled={isUpdating}>Cancel</Button>
+          <Button onClick={() => formData && updateProduct(formData)} disabled={isUpdating} className="min-w-[130px]">
+            {isUpdating ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <Save className="mr-2 h-4 w-4"/>} 
+            Save Changes
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
