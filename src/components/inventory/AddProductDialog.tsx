@@ -14,7 +14,8 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Trash, Wand2 } from 'lucide-react';
 import { Category } from '@/types/dashboard';
 
-interface Unit { id: string; name: string; symbol: string; }
+// UPDATED: Matches Database Column 'abbreviation'
+interface Unit { id: number; name: string; abbreviation: string; }
 
 interface AddProductDialogProps {
   categories: Category[];
@@ -28,6 +29,9 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   // --- State ---
   const [units, setUnits] = useState<Unit[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
+  
+  // NEW: Control the active tab so we can switch it automatically
+  const [activeTab, setActiveTab] = useState("attributes");
   
   // Basic Info
   const [productName, setProductName] = useState('');
@@ -48,8 +52,10 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   useEffect(() => {
     if (open) {
       const fetchUnits = async () => {
-        const { data } = await supabase.from('units_of_measure').select('*');
+        // Select 'abbreviation' along with other cols
+        const { data, error } = await supabase.from('units_of_measure').select('*');
         if (data) setUnits(data);
+        if (error) console.error("Error loading units:", error);
       };
       fetchUnits();
     }
@@ -57,25 +63,41 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
   // --- Variant Generation Logic ---
   const generateVariants = () => {
-    if (attributes.length === 0 || attributes[0].values.length === 0) return;
+    if (attributes.length === 0 || attributes[0].values.length === 0) {
+        toast.error("Please add at least one attribute value (e.g. Small)");
+        return;
+    }
 
     // Cartesian Product Helper
     const cartesian = (args: any[]) => args.reduce((a, b) => a.flatMap((d: any) => b.map((e: any) => [d, e].flat())));
     
     const attrValues = attributes.map(a => a.values);
+    
+    // Safety check for empty attributes
+    if(attrValues.some(arr => arr.length === 0)) {
+        toast.error("All attributes must have at least one value.");
+        return;
+    }
+
     const combinations = attrValues.length > 1 ? cartesian(attrValues) : attrValues[0].map(v => [v]);
 
     const variants = combinations.map((combo: string[]) => ({
-      name: combo.join(' / '), // e.g. "Red / Small"
+      name: Array.isArray(combo) ? combo.join(' / ') : combo, // Handle single attribute case
       price: 0,
       cost: 0,
       stock: 0,
       sku: '',
-      attributes: attributes.reduce((acc, attr, idx) => ({ ...acc, [attr.name]: combo[idx] }), {})
+      attributes: attributes.reduce((acc, attr, idx) => ({ 
+          ...acc, 
+          [attr.name]: Array.isArray(combo) ? combo[idx] : combo 
+      }), {})
     }));
 
     setGeneratedVariants(variants);
     toast.success(`Generated ${variants.length} variants!`);
+    
+    // NEW: Automatically switch to the variants tab so the user sees them
+    setActiveTab("variants");
   };
 
   const handleAttributeValueChange = (index: number, valueStr: string) => {
@@ -88,54 +110,53 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   // --- Submission ---
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      // 1. Create Product
+      // 1. Get current user for tenant_id (or use a stored context if available)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Fetch profile to get tenant_id/business_id
+      const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+      const tenantId = profile?.business_id;
+
+      // 2. Create Product
       const { data: product, error: prodError } = await supabase.from('products').insert({
         name: productName,
         category_id: categoryId ? parseInt(categoryId) : null,
+        uom_id: uomId ? parseInt(uomId) : null, // Save the Unit of Measure
+        business_id: tenantId, // Enterprise requirement
         is_active: true
       }).select().single();
 
       if (prodError) throw prodError;
 
-      // 2. Prepare Variants
+      // 3. Prepare Variants
       let variantsToInsert = [];
 
       if (!hasVariants) {
         // Simple Mode
         variantsToInsert.push({
-          tenant_id: product.tenant_id,
           product_id: product.id,
           sku: simpleSku,
-          price: Number(simplePrice),
-          cost_price: Number(simpleCost),
-          uom_id: uomId || null,
+          price: Number(simplePrice) || 0,
+          cost_price: Number(simpleCost) || 0,
+          stock_quantity: Number(simpleStock) || 0, // Assuming your DB has this col on variants
           attributes: {},
-          measurement_value: 1 // Default
         });
       } else {
         // Advanced Mode
         variantsToInsert = generatedVariants.map(v => ({
-          tenant_id: product.tenant_id,
           product_id: product.id,
           sku: v.sku,
-          price: Number(v.price),
-          cost_price: Number(v.cost),
-          uom_id: uomId || null,
+          price: Number(v.price) || 0,
+          cost_price: Number(v.cost) || 0,
+          stock_quantity: Number(v.stock) || 0,
           attributes: v.attributes,
-          measurement_value: 1 // They can edit specifically later
         }));
       }
 
-      // 3. Insert Variants
-      const { data: insertedVariants, error: varError } = await supabase.from('product_variants').insert(variantsToInsert).select();
+      // 4. Insert Variants
+      const { error: varError } = await supabase.from('product_variants').insert(variantsToInsert);
       if (varError) throw varError;
-
-      // 4. Initial Stock (If Simple Mode)
-      if (!hasVariants && simpleStock) {
-        // Find default location or create logic for stock entry
-        // For simplicity in this dialog, we assume inventory is handled separately or via RPC
-        // You can add an inventory insert here if your system supports direct stock on create
-      }
 
       return product;
     },
@@ -144,7 +165,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
       setOpen(false);
       // Reset Form
-      setProductName(''); setHasVariants(false); setGeneratedVariants([]);
+      setProductName(''); setHasVariants(false); setGeneratedVariants([]); setActiveTab("attributes");
     },
     onError: (err) => toast.error(err.message)
   });
@@ -183,7 +204,12 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
               <Select onValueChange={setUomId}>
                 <SelectTrigger><SelectValue placeholder="e.g. Pcs, Kg, Liters" /></SelectTrigger>
                 <SelectContent>
-                  {units.map(u => <SelectItem key={u.id} value={u.id}>{u.name} ({u.symbol})</SelectItem>)}
+                  {/* UPDATED: Uses abbreviation from DB */}
+                  {units.map(u => (
+                    <SelectItem key={u.id} value={String(u.id)}>
+                      {u.name} ({u.abbreviation})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -219,7 +245,8 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
           {/* Advanced Variant Builder */}
           {hasVariants && (
-            <Tabs defaultValue="attributes" className="w-full">
+            // UPDATED: Controlled Tabs
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="attributes">1. Define Attributes</TabsTrigger>
                 <TabsTrigger value="variants" disabled={generatedVariants.length === 0}>2. Edit Variants</TabsTrigger>
@@ -256,6 +283,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                         <th className="p-2 w-24">Price</th>
                         <th className="p-2 w-24">Cost</th>
                         <th className="p-2 w-32">SKU</th>
+                        <th className="p-2 w-24">Stock</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -270,6 +298,9 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                           }} /></td>
                           <td className="p-2"><Input className="h-8" value={v.sku} onChange={e => {
                             const newV = [...generatedVariants]; newV[idx].sku = e.target.value; setGeneratedVariants(newV);
+                          }} /></td>
+                           <td className="p-2"><Input className="h-8" type="number" value={v.stock} onChange={e => {
+                            const newV = [...generatedVariants]; newV[idx].stock = e.target.value; setGeneratedVariants(newV);
                           }} /></td>
                         </tr>
                       ))}
