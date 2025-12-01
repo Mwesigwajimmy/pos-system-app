@@ -1,8 +1,9 @@
 import React from "react";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers"; // <--- 1. Import cookies
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import DeferredRevenueTable from "@/components/invoicing/DeferredRevenueTable";
+import { ShieldAlert } from "lucide-react";
 
 interface PageProps {
   params: {
@@ -11,28 +12,26 @@ interface PageProps {
 }
 
 export default async function DeferredRevenuePage({ params: { locale } }: PageProps) {
-  // 2. Get the cookie store
   const cookieStore = cookies();
-
-  // 3. Init Supabase with cookies
   const supabase = createClient(cookieStore);
 
-  // 4. Authenticate
+  // 1. Auth Check
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect(`/${locale}/auth/login`);
 
-  // 5. Secure Tenant ID Fetch
+  // 2. Tenant Context (Fixed: 'business_id')
   const { data: profile } = await supabase
     .from("profiles")
-    .select("organization_id")
+    .select("business_id")
     .eq("id", user.id)
     .single();
 
-  const tenantId = profile?.organization_id;
+  const tenantId = profile?.business_id;
 
   if (!tenantId) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 text-red-700 rounded-lg m-4">
+      <div className="p-6 bg-red-50 border border-red-200 text-red-700 rounded-lg m-4 text-center">
+        <ShieldAlert className="h-8 w-8 mx-auto mb-2" />
         <strong>Access Denied:</strong> No Organization found.
       </div>
     );

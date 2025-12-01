@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server"; 
 import InvoicesToBeIssuedTable from "@/components/invoicing/InvoicesToBeIssuedTable";
+import { ShieldAlert } from "lucide-react";
 
 interface PageProps {
   params: {
@@ -14,19 +15,27 @@ export default async function InvoicesToBeIssuedPage({ params: { locale } }: Pag
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
+  // 1. Auth Check
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect(`/${locale}/auth/login`);
 
+  // 2. Secure Tenant Context (Fixed: 'business_id')
   const { data: profile } = await supabase
     .from("profiles")
-    .select("organization_id")
+    .select("business_id") 
     .eq("id", user.id)
     .single();
 
-  const tenantId = profile?.organization_id;
+  const tenantId = profile?.business_id;
 
   if (!tenantId) {
-    return <div className="p-6 text-red-600">Access Denied: No Tenant ID.</div>;
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center text-center">
+        <ShieldAlert className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-gray-900">Access Denied</h2>
+        <p className="text-muted-foreground">Your account is not linked to an active Organization.</p>
+      </div>
+    );
   }
 
   return (
