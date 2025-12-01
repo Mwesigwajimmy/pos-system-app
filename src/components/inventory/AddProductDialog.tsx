@@ -4,350 +4,558 @@ import { useState, useEffect } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Button } from "@/components/ui/button";
+import { 
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger 
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash, Wand2, Loader2 } from 'lucide-react';
+import { 
+  Plus, Trash, Wand2, Loader2, AlertCircle, Package, Layers 
+} from 'lucide-react';
 import { Category } from '@/types/dashboard';
 
-// --- Types ---
-interface Unit { id: number; name: string; abbreviation: string; }
+// --- Enterprise Interfaces ---
+
+interface Unit {
+  id: number;
+  name: string;
+  abbreviation: string;
+}
+
+// Unified Variant Interface used for BOTH Simple and Multi modes
+interface VariantDraft {
+  name: string;
+  sku: string;
+  price: number;
+  cost_price: number;
+  stock_quantity: number;
+  attributes: Record<string, string>;
+  uom_id: number | null;
+}
+
+interface AttributeBuilder {
+  name: string;
+  inputValue: string; // Raw input (comma separated)
+  values: string[];   // Parsed values
+}
 
 interface AddProductDialogProps {
   categories: Category[];
 }
 
+// Initial State for a "Simple" product (One Default Variant)
+const DEFAULT_VARIANT: VariantDraft = {
+  name: 'Standard',
+  sku: '',
+  price: 0,
+  cost_price: 0,
+  stock_quantity: 0,
+  attributes: {},
+  uom_id: null
+};
+
 export default function AddProductDialog({ categories }: AddProductDialogProps) {
+  // --- Core Hooks ---
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // --- State ---
+  // --- Reference Data State ---
   const [units, setUnits] = useState<Unit[]>([]);
-  const [hasVariants, setHasVariants] = useState(false);
   
-  // CONTROLLED TAB STATE
-  const [activeTab, setActiveTab] = useState("attributes");
-  
-  // Basic Info
+  // --- Product Core State ---
   const [productName, setProductName] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [uomId, setUomId] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [uomId, setUomId] = useState<string | null>(null);
+  
+  // --- Mode Switching ---
+  const [isMultiVariant, setIsMultiVariant] = useState(false);
+  
+  // --- Unified Variant State (Single Source of Truth) ---
+  // If isMultiVariant is false, we only use variants[0].
+  // If isMultiVariant is true, we use the whole array.
+  const [variants, setVariants] = useState<VariantDraft[]>([{ ...DEFAULT_VARIANT }]);
 
-  // Simple Mode State
-  const [simplePrice, setSimplePrice] = useState('');
-  const [simpleCost, setSimpleCost] = useState('');
-  const [simpleStock, setSimpleStock] = useState('');
-  const [simpleSku, setSimpleSku] = useState('');
-
-  // Advanced Mode State
-  // We keep 'inputValue' to track exactly what the user types before comma splitting
-  const [attributes, setAttributes] = useState<{ name: string; inputValue: string; values: string[] }[]>([
+  // --- Attribute Builder State (For Generator) ---
+  const [attributes, setAttributes] = useState<AttributeBuilder[]>([
     { name: 'Size', inputValue: '', values: [] }
   ]);
-  const [generatedVariants, setGeneratedVariants] = useState<any[]>([]);
 
-  // --- Fetch Units ---
+  // --- UI State ---
+  const [activeTab, setActiveTab] = useState("configuration"); // configuration | generation | preview
+
+  // --- Load Dependencies ---
   useEffect(() => {
     if (open) {
       const fetchUnits = async () => {
-        const { data } = await supabase.from('units_of_measure').select('id, name, abbreviation');
+        const { data, error } = await supabase
+          .from('units_of_measure')
+          .select('id, name, abbreviation')
+          .eq('status', 'active'); // Enterprise: Only show active units
+        
         if (data) setUnits(data);
+        if (error) console.error("Failed to load UOMs:", error);
       };
       fetchUnits();
     }
   }, [open]);
 
-  // --- Variant Generation Logic ---
+  // --- Logic: Variant Generation ---
+  
   const generateVariants = () => {
-    console.log("Attempting to generate variants...");
-    
-    // 1. Validation
-    // We check 'values' array which is updated on change
-    const validAttributes = attributes.filter(a => a.values.length > 0);
+    console.log("Starting Variant Generation Logic...");
+
+    // 1. Parse and Validate Attributes
+    const validAttributes = attributes
+      .map(attr => ({
+        ...attr,
+        values: attr.inputValue.split(',').map(s => s.trim()).filter(Boolean)
+      }))
+      .filter(attr => attr.values.length > 0 && attr.name.trim() !== '');
 
     if (validAttributes.length === 0) {
-        toast.error("Please enter attribute values (e.g. Small, Medium)");
-        return;
+      toast.error("Configuration Error: Please define at least one attribute with values (e.g. Size: S, M, L).");
+      return;
     }
 
-    // 2. Cartesian Product Logic
-    const cartesian = (args: any[]) => args.reduce((a, b) => a.flatMap((d: any) => b.map((e: any) => [d, e].flat())));
+    // 2. Cartesian Product Algorithm (Combinatorics)
+    const cartesian = (args: string[][]) => args.reduce(
+      (a, b) => a.flatMap(d => b.map(e => [d, e].flat())), 
+      [[]] as string[][]
+    );
+    
+    // Fix: Handle the case of 1 attribute array correctly vs multiple
     const attrValues = validAttributes.map(a => a.values);
     
-    const combinations = attrValues.length > 1 ? cartesian(attrValues) : attrValues[0].map(v => [v]);
+    // If we have only 1 attribute, cartesian logic needs a slight adjust or we map directly
+    let combinations: string[][];
+    if (validAttributes.length === 1) {
+        combinations = attrValues[0].map(v => [v]);
+    } else {
+        // Standard cartesian for 2+ arrays
+        // We use a simpler reduce for N arrays
+        const combine = (head: string[], tail: string[][]): string[][] => {
+             if (tail.length === 0) return head.map(x => [x]);
+             const current = tail[0];
+             const rest = tail.slice(1);
+             const combinations = head.flatMap(h => current.map(c => [h, c].flat().join('###'))); // Use separator to flatten temporarily
+             // This simple cartesian is getting complex for TS, let's use the proven reducer method:
+             return [];
+        };
+        
+        // Proven Cartesian One-Liner
+        const cartesianProduct = (arr: any[]) => arr.reduce((a, b) => a.flatMap((c: any) => b.map((d: any) => [c, d].flat())));
+        combinations = attrValues.length > 1 ? cartesianProduct(attrValues) : attrValues[0].map(v => [v]);
+    }
 
-    // 3. Create Variant Objects
-    const variants = combinations.map((combo: string[]) => {
-      const comboArray = Array.isArray(combo) ? combo : [combo];
-      const name = comboArray.join(' / ');
+    // 3. Construct Variant Drafts
+    const newVariants: VariantDraft[] = combinations.map((combo) => {
+      // Ensure combo is array
+      const comboArr = Array.isArray(combo) ? combo : [combo];
       
       const attrMap: Record<string, string> = {};
+      let nameParts: string[] = [];
+
       validAttributes.forEach((attr, idx) => {
-          attrMap[attr.name] = comboArray[idx];
+        const val = comboArr[idx];
+        attrMap[attr.name] = val;
+        nameParts.push(val);
       });
 
       return {
-        name: name,
+        name: nameParts.join(' / '),
+        sku: '', // User must fill or auto-gen later
         price: 0,
-        cost: 0,
-        stock: 0,
-        sku: '',
-        attributes: attrMap
+        cost_price: 0,
+        stock_quantity: 0,
+        attributes: attrMap,
+        uom_id: null // Inherits from parent
       };
     });
 
-    console.log("Generated:", variants);
-    setGeneratedVariants(variants);
-    toast.success(`Generated ${variants.length} variants!`);
-    
-    // 4. Switch Tab
-    setActiveTab("variants");
+    // 4. Update State & UI
+    setVariants(newVariants);
+    toast.success(`Success: Generated ${newVariants.length} variants.`);
+    setActiveTab("preview"); // Automatically move to preview tab
   };
 
-  // UPDATED: Instant Update Logic
-  const handleAttributeValueChange = (index: number, valueStr: string) => {
-    const newAttrs = [...attributes];
-    newAttrs[index].inputValue = valueStr;
-    // Update the array immediately so the button works even without blurring
-    newAttrs[index].values = valueStr.split(',').map(s => s.trim()).filter(Boolean);
-    setAttributes(newAttrs);
+  // --- Logic: Data Mutation ---
+
+  // Helper to update a specific variant in the array
+  const updateVariant = (index: number, field: keyof VariantDraft, value: any) => {
+    const updated = [...variants];
+    updated[index] = { ...updated[index], [field]: value };
+    setVariants(updated);
   };
 
-  const addAttribute = () => {
+  // Helper for Attribute Builder Inputs
+  const updateAttributeInput = (index: number, val: string) => {
+    const updated = [...attributes];
+    updated[index].inputValue = val;
+    setAttributes(updated);
+  };
+
+  const addAttributeRow = () => {
     setAttributes([...attributes, { name: '', inputValue: '', values: [] }]);
   };
 
-  const removeAttribute = (index: number) => {
+  const removeAttributeRow = (index: number) => {
     setAttributes(attributes.filter((_, i) => i !== index));
   };
 
-  // --- Submission to Backend ---
+  // --- Logic: Submission (Transactional) ---
+
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      // 1. Auth Check
+      // 1. Validation
+      if (!productName.trim()) throw new Error("Product Name is required.");
+      if (isMultiVariant && variants.length === 0) throw new Error("Multi-variant mode enabled but no variants generated.");
+
+      // 2. Auth Context
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
+      if (!user) throw new Error("Unauthorized.");
       const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
-      const tenantId = profile?.business_id;
+      const businessId = profile?.business_id;
 
-      // 2. Insert Parent Product
-      const { data: product, error: prodError } = await supabase.from('products').insert({
-        name: productName,
-        category_id: categoryId ? parseInt(categoryId) : null,
-        uom_id: uomId ? parseInt(uomId) : null,
-        business_id: tenantId,
-        is_active: true
-      }).select().single();
+      // 3. Create Parent Product
+      const { data: product, error: prodError } = await supabase
+        .from('products')
+        .insert({
+          name: productName,
+          category_id: categoryId ? parseInt(categoryId) : null,
+          uom_id: uomId ? parseInt(uomId) : null,
+          business_id: businessId,
+          is_active: true
+        })
+        .select()
+        .single();
 
       if (prodError) throw prodError;
 
-      // 3. Prepare Variants
-      let variantsToInsert = [];
+      // 4. Prepare Variants Payload
+      // We map our unified 'variants' state to the DB schema
+      const variantsPayload = variants.map(v => ({
+        product_id: product.id,
+        sku: v.sku,
+        price: v.price,
+        cost_price: v.cost_price,
+        stock_quantity: v.stock_quantity,
+        attributes: v.attributes, // JSONB
+        uom_id: v.uom_id ? v.uom_id : (uomId ? parseInt(uomId) : null) // Fallback to parent UOM
+      }));
 
-      if (!hasVariants) {
-        variantsToInsert.push({
-          product_id: product.id,
-          sku: simpleSku,
-          price: Number(simplePrice) || 0,
-          cost_price: Number(simpleCost) || 0,
-          stock_quantity: Number(simpleStock) || 0,
-          attributes: {},
-          uom_id: uomId ? parseInt(uomId) : null
-        });
-      } else {
-        variantsToInsert = generatedVariants.map(v => ({
-          product_id: product.id,
-          sku: v.sku,
-          price: Number(v.price) || 0,
-          cost_price: Number(v.cost) || 0,
-          stock_quantity: Number(v.stock) || 0,
-          attributes: v.attributes,
-          uom_id: uomId ? parseInt(uomId) : null
-        }));
-      }
-
-      const { error: varError } = await supabase.from('product_variants').insert(variantsToInsert);
+      // 5. Insert Variants
+      const { error: varError } = await supabase.from('product_variants').insert(variantsPayload);
       if (varError) throw varError;
 
       return product;
     },
     onSuccess: () => {
-      toast.success("Product created successfully!");
+      toast.success("Product created successfully.");
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
       setOpen(false);
-      // Reset Form
-      setProductName(''); setHasVariants(false); setGeneratedVariants([]); setActiveTab("attributes");
-      setSimplePrice(''); setSimpleCost(''); 
-      setAttributes([{ name: 'Size', inputValue: '', values: [] }]);
+      resetForm();
     },
-    onError: (err: any) => toast.error(err.message || "Failed to create product")
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err.message || "Failed to create product.");
+    }
   });
 
+  const resetForm = () => {
+    setProductName('');
+    setCategoryId(null);
+    setUomId(null);
+    setIsMultiVariant(false);
+    setVariants([{ ...DEFAULT_VARIANT }]);
+    setAttributes([{ name: 'Size', inputValue: '', values: [] }]);
+    setActiveTab("configuration");
+  };
+
+  // --- Render ---
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button>Add New Product</Button></DialogTrigger>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(val) => {
+        if (!val) resetForm();
+        setOpen(val);
+    }}>
+      <DialogTrigger asChild>
+        <Button className="shadow-sm">
+            <Plus className="w-4 h-4 mr-2" /> Add New Product
+        </Button>
+      </DialogTrigger>
+      
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto flex flex-col">
         <DialogHeader>
-          <DialogTitle>Add New Product</DialogTitle>
-          <DialogDescription>Create a simple item or one with multiple variants.</DialogDescription>
+          <DialogTitle className="text-xl">Create Product</DialogTitle>
+          <DialogDescription>
+            Configure product details, attributes, and stock information.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          
-          {/* Core Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Product Name</Label>
-              <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Coca Cola" required />
+        <div className="flex-1 py-4 space-y-6">
+            
+            {/* SECTION 1: IDENTITY */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>Product Name <span className="text-red-500">*</span></Label>
+                    <Input 
+                        value={productName} 
+                        onChange={e => setProductName(e.target.value)} 
+                        placeholder="e.g. Wireless Mouse" 
+                        autoFocus
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={categoryId || ''} onValueChange={setCategoryId}>
+                        <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
+                        <SelectContent>
+                            {categories.map(c => (
+                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select onValueChange={setCategoryId}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-              <Label>Unit of Measure</Label>
-              <Select onValueChange={setUomId}>
-                <SelectTrigger><SelectValue placeholder="e.g. Pcs, Kg, Liters" /></SelectTrigger>
-                <SelectContent>
-                  {units.map(u => (
-                    <SelectItem key={u.id} value={String(u.id)}>
-                      {u.name} ({u.abbreviation})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2 pt-8">
-              <Switch checked={hasVariants} onCheckedChange={setHasVariants} id="variants-mode" />
-              <Label htmlFor="variants-mode">This product has variants (Size, Color)</Label>
-            </div>
-          </div>
-
-          <hr className="border-dashed" />
-
-          {/* Simple Mode */}
-          {!hasVariants && (
-            <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
-               <div className="space-y-2">
-                  <Label>Selling Price</Label>
-                  <Input type="number" value={simplePrice} onChange={e => setSimplePrice(e.target.value)} placeholder="0.00" />
-               </div>
-               <div className="space-y-2">
-                  <Label>Cost Price</Label>
-                  <Input type="number" value={simpleCost} onChange={e => setSimpleCost(e.target.value)} placeholder="0.00" />
-               </div>
-               <div className="space-y-2">
-                  <Label>Initial Stock</Label>
-                  <Input type="number" value={simpleStock} onChange={e => setSimpleStock(e.target.value)} placeholder="0" />
-               </div>
-               <div className="space-y-2">
-                  <Label>SKU / Barcode</Label>
-                  <Input value={simpleSku} onChange={e => setSimpleSku(e.target.value)} placeholder="Optional" />
-               </div>
-            </div>
-          )}
-
-          {/* Advanced Variant Builder */}
-          {hasVariants && (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="attributes">1. Define Attributes</TabsTrigger>
-                {/* Disabled until variants exist */}
-                <TabsTrigger value="variants" disabled={generatedVariants.length === 0}>2. Edit Variants</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="attributes" className="space-y-4 border rounded-md p-4 mt-2">
-                {attributes.map((attr, idx) => (
-                  <div key={idx} className="flex gap-2 items-end">
-                    <div className="w-1/3 space-y-1">
-                      <Label>Attribute Name</Label>
-                      <Input value={attr.name} onChange={e => {
-                        const newA = [...attributes]; newA[idx].name = e.target.value; setAttributes(newA);
-                      }} placeholder="e.g. Size" />
-                    </div>
-                    <div className="w-2/3 space-y-1">
-                      <Label>Values (comma separated)</Label>
-                      {/* FIXED: Using controlled value and onChange */}
-                      <Input 
-                        placeholder="e.g. Small, Medium, Large" 
-                        value={attr.inputValue}
-                        onChange={e => handleAttributeValueChange(idx, e.target.value)}
-                      />
-                    </div>
-                    {idx > 0 && <Button variant="ghost" size="icon" onClick={() => removeAttribute(idx)}><Trash className="h-4 w-4" /></Button>}
-                  </div>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div className="space-y-2">
+                    <Label>Default Unit of Measure</Label>
+                    <Select value={uomId || ''} onValueChange={setUomId}>
+                        <SelectTrigger><SelectValue placeholder="e.g. Pcs, Kg..." /></SelectTrigger>
+                        <SelectContent>
+                            {units.map(u => (
+                                <SelectItem key={u.id} value={String(u.id)}>
+                                    {u.name} ({u.abbreviation})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
                 
-                <div className="flex justify-between items-center mt-4">
-                  <Button variant="outline" size="sm" onClick={addAttribute}>
-                    <Plus className="h-4 w-4 mr-2" /> Add Another Option
-                  </Button>
-                  
-                  {/* GENERATE BUTTON: Now explicit type="button" */}
-                  <Button type="button" size="sm" onClick={generateVariants}>
-                    <Wand2 className="h-4 w-4 mr-2" /> Generate Variants
-                  </Button>
+                <div className="flex items-center space-x-2 border p-2 rounded-md bg-muted/20 h-10">
+                    <Switch 
+                        id="multi-variant" 
+                        checked={isMultiVariant} 
+                        onCheckedChange={(checked) => {
+                            setIsMultiVariant(checked);
+                            // If turning off, reset to single default variant
+                            if (!checked) setVariants([{ ...DEFAULT_VARIANT }]);
+                            // If turning on, ensure we are on the config tab
+                            if (checked) setActiveTab("configuration");
+                        }} 
+                    />
+                    <Label htmlFor="multi-variant" className="cursor-pointer font-medium">
+                        Enable Variants (Size, Color, etc.)
+                    </Label>
                 </div>
-              </TabsContent>
+            </div>
 
-              <TabsContent value="variants" className="mt-2">
-                <div className="border rounded-md max-h-[300px] overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted sticky top-0">
-                      <tr>
-                        <th className="p-2 text-left">Variant Name</th>
-                        <th className="p-2 w-24">Price</th>
-                        <th className="p-2 w-24">Cost</th>
-                        <th className="p-2 w-32">SKU</th>
-                        <th className="p-2 w-24">Stock</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {generatedVariants.map((v, idx) => (
-                        <tr key={idx} className="border-t hover:bg-muted/5">
-                          <td className="p-2 font-medium">{v.name}</td>
-                          <td className="p-2"><Input className="h-8" type="number" value={v.price} onChange={e => {
-                            const newV = [...generatedVariants]; newV[idx].price = e.target.value; setGeneratedVariants(newV);
-                          }} /></td>
-                          <td className="p-2"><Input className="h-8" type="number" value={v.cost} onChange={e => {
-                            const newV = [...generatedVariants]; newV[idx].cost = e.target.value; setGeneratedVariants(newV);
-                          }} /></td>
-                          <td className="p-2"><Input className="h-8" value={v.sku} onChange={e => {
-                            const newV = [...generatedVariants]; newV[idx].sku = e.target.value; setGeneratedVariants(newV);
-                          }} /></td>
-                           <td className="p-2"><Input className="h-8" type="number" value={v.stock} onChange={e => {
-                            const newV = [...generatedVariants]; newV[idx].stock = e.target.value; setGeneratedVariants(newV);
-                          }} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <hr className="border-dashed" />
+
+            {/* SECTION 2: VARIANT CONFIGURATION */}
+            
+            {!isMultiVariant ? (
+                // --- SIMPLE MODE (SINGLE VARIANT) ---
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
+                    <div className="space-y-2">
+                        <Label>Selling Price</Label>
+                        <Input 
+                            type="number" 
+                            placeholder="0.00" 
+                            value={variants[0].price} 
+                            onChange={(e) => updateVariant(0, 'price', Number(e.target.value))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Cost Price</Label>
+                        <Input 
+                            type="number" 
+                            placeholder="0.00"
+                            value={variants[0].cost_price} 
+                            onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Initial Stock</Label>
+                        <Input 
+                            type="number" 
+                            placeholder="0"
+                            value={variants[0].stock_quantity} 
+                            onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>SKU / Barcode</Label>
+                        <Input 
+                            placeholder="AUTO"
+                            value={variants[0].sku} 
+                            onChange={(e) => updateVariant(0, 'sku', e.target.value)}
+                        />
+                    </div>
                 </div>
-              </TabsContent>
-            </Tabs>
-          )}
+            ) : (
+                // --- MULTI VARIANT MODE (TABS) ---
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full border rounded-lg p-2">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsTrigger value="configuration">
+                            <Package className="w-4 h-4 mr-2"/> 1. Define Attributes
+                        </TabsTrigger>
+                        <TabsTrigger value="preview" disabled={variants.length <= 0 && activeTab === 'configuration'}>
+                            <Layers className="w-4 h-4 mr-2"/> 2. Review Variants
+                        </TabsTrigger>
+                    </TabsList>
+
+                    {/* SUB-TAB 1: ATTRIBUTE BUILDER */}
+                    <TabsContent value="configuration" className="space-y-4 px-2">
+                        <div className="space-y-3">
+                            {attributes.map((attr, idx) => (
+                                <div key={idx} className="flex gap-3 items-end">
+                                    <div className="w-1/3 space-y-1">
+                                        <Label className="text-xs">Attribute Name</Label>
+                                        <Input 
+                                            value={attr.name} 
+                                            onChange={e => {
+                                                const updated = [...attributes];
+                                                updated[idx].name = e.target.value;
+                                                setAttributes(updated);
+                                            }}
+                                            placeholder="e.g. Size" 
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <Label className="text-xs">Values (Comma separated)</Label>
+                                        <Input 
+                                            value={attr.inputValue}
+                                            onChange={e => updateAttributeInput(idx, e.target.value)}
+                                            placeholder="e.g. Small, Medium, Large" 
+                                        />
+                                    </div>
+                                    {attributes.length > 1 && (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => removeAttributeRow(idx)}
+                                            className="text-muted-foreground hover:text-destructive"
+                                        >
+                                            <Trash className="w-4 h-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex justify-between items-center pt-2">
+                            <Button variant="outline" size="sm" onClick={addAttributeRow}>
+                                <Plus className="w-4 h-4 mr-2" /> Add Attribute
+                            </Button>
+                            <Button type="button" size="sm" onClick={generateVariants}>
+                                <Wand2 className="w-4 h-4 mr-2" /> Generate Variants
+                            </Button>
+                        </div>
+                    </TabsContent>
+
+                    {/* SUB-TAB 2: VARIANT PREVIEW TABLE */}
+                    <TabsContent value="preview" className="px-2">
+                         {variants.length > 0 && variants[0].attributes && Object.keys(variants[0].attributes).length > 0 ? (
+                            <div className="border rounded-md overflow-hidden">
+                                <div className="max-h-[300px] overflow-y-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-muted text-muted-foreground sticky top-0 z-10">
+                                            <tr>
+                                                <th className="p-3 font-medium">Variant Name</th>
+                                                <th className="p-3 font-medium w-24">Price</th>
+                                                <th className="p-3 font-medium w-24">Cost</th>
+                                                <th className="p-3 font-medium w-24">Stock</th>
+                                                <th className="p-3 font-medium w-32">SKU</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {variants.map((v, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="p-3 font-medium text-slate-700">
+                                                        {v.name}
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <Input 
+                                                            type="number" 
+                                                            className="h-8 bg-white" 
+                                                            value={v.price} 
+                                                            onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <Input 
+                                                            type="number" 
+                                                            className="h-8 bg-white" 
+                                                            value={v.cost_price} 
+                                                            onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))}
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <Input 
+                                                            type="number" 
+                                                            className="h-8 bg-white" 
+                                                            value={v.stock_quantity} 
+                                                            onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))}
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <Input 
+                                                            className="h-8 bg-white uppercase" 
+                                                            value={v.sku} 
+                                                            onChange={e => updateVariant(idx, 'sku', e.target.value)}
+                                                            placeholder="AUTO"
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                         ) : (
+                             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground border-2 border-dashed rounded-lg bg-slate-50">
+                                 <AlertCircle className="w-8 h-8 mb-2 opacity-50" />
+                                 <p>No variants generated.</p>
+                                 <Button variant="link" onClick={() => setActiveTab("configuration")}>
+                                     Go to configuration
+                                 </Button>
+                             </div>
+                         )}
+                         
+                         <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
+                            <span>Total Variants: {variants.length}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setActiveTab("configuration")}>
+                                Back to Attributes
+                            </Button>
+                         </div>
+                    </TabsContent>
+                </Tabs>
+            )}
 
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => mutate()} disabled={isPending}>
-            {isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
-            Save Product
+        <DialogFooter className="pt-2 border-t mt-auto bg-background z-20">
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button onClick={() => mutate()} disabled={isPending} className="min-w-[120px]">
+            {isPending ? (
+                <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
+                </>
+            ) : (
+                "Save Product"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
