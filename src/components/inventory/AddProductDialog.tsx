@@ -17,7 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Plus, Trash, Wand2, Loader2, AlertCircle, Package, Layers 
+  Plus, Trash, Wand2, Loader2, AlertCircle, Package, Layers, Save 
 } from 'lucide-react';
 import { Category } from '@/types/dashboard';
 
@@ -70,6 +70,12 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   // --- Reference Data State ---
   const [units, setUnits] = useState<Unit[]>([]);
   
+  // --- Unit Creation State (New Feature) ---
+  const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
+  const [newUnitName, setNewUnitName] = useState('');
+  const [newUnitAbbr, setNewUnitAbbr] = useState('');
+  const [isSavingUnit, setIsSavingUnit] = useState(false);
+
   // --- Product Core State ---
   const [productName, setProductName] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -106,6 +112,54 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       fetchUnits();
     }
   }, [open]);
+
+  // --- Logic: Add New Unit (New Feature) ---
+  const handleAddUnit = async () => {
+    if (!newUnitName.trim() || !newUnitAbbr.trim()) {
+      toast.error("Please provide both a name and an abbreviation.");
+      return;
+    }
+
+    setIsSavingUnit(true);
+    try {
+      // Get current user business context securely
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Unauthorized");
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .single();
+
+      const { data: newUnit, error } = await supabase
+        .from('units_of_measure')
+        .insert({
+          name: newUnitName,
+          abbreviation: newUnitAbbr,
+          business_id: profile?.business_id,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setUnits(prev => [...prev, newUnit]);
+      setUomId(String(newUnit.id)); // Auto-select the new unit
+      toast.success("New unit added successfully!");
+      
+      // Reset and close
+      setNewUnitName('');
+      setNewUnitAbbr('');
+      setIsUnitModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add unit.");
+    } finally {
+      setIsSavingUnit(false);
+    }
+  };
 
   // --- Logic: Variant Generation ---
   
@@ -277,288 +331,343 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
     setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Size', inputValue: '', values: [] }]);
     setActiveTab("configuration");
+    setIsUnitModalOpen(false);
+    setNewUnitName('');
+    setNewUnitAbbr('');
   };
 
   // --- Render ---
 
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-        if (!val) resetForm();
-        setOpen(val);
-    }}>
-      <DialogTrigger asChild>
-        <Button className="shadow-sm">
-            <Plus className="w-4 h-4 mr-2" /> Add New Product
-        </Button>
-      </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Create Product</DialogTitle>
-          <DialogDescription>
-            Configure product details, attributes, and stock information.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 py-4 space-y-6">
-            
-            {/* SECTION 1: IDENTITY */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>Product Name <span className="text-red-500">*</span></Label>
-                    <Input 
-                        value={productName} 
-                        onChange={e => setProductName(e.target.value)} 
-                        placeholder="e.g. Wireless Mouse" 
-                        autoFocus
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Select value={categoryId || ''} onValueChange={setCategoryId}>
-                        <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
-                        <SelectContent>
-                            {categories.map(c => (
-                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                <div className="space-y-2">
-                    <Label>Default Unit of Measure</Label>
-                    <Select value={uomId || ''} onValueChange={setUomId}>
-                        <SelectTrigger><SelectValue placeholder="e.g. Pcs, Kg..." /></SelectTrigger>
-                        <SelectContent>
-                            {units.map(u => (
-                                <SelectItem key={u.id} value={String(u.id)}>
-                                    {u.name} ({u.abbreviation})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                
-                <div className="flex items-center space-x-2 border p-2 rounded-md bg-muted/20 h-10">
-                    <Switch 
-                        id="multi-variant" 
-                        checked={isMultiVariant} 
-                        onCheckedChange={(checked) => {
-                            setIsMultiVariant(checked);
-                            // If turning off, reset to single default variant
-                            if (!checked) setVariants([{ ...DEFAULT_VARIANT }]);
-                            // If turning on, ensure we are on the config tab
-                            if (checked) setActiveTab("configuration");
-                        }} 
-                    />
-                    <Label htmlFor="multi-variant" className="cursor-pointer font-medium">
-                        Enable Variants (Size, Color, etc.)
-                    </Label>
-                </div>
-            </div>
-
-            <hr className="border-dashed" />
-
-            {/* SECTION 2: VARIANT CONFIGURATION */}
-            
-            {!isMultiVariant ? (
-                // --- SIMPLE MODE (SINGLE VARIANT) ---
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
-                    <div className="space-y-2">
-                        <Label>Selling Price</Label>
-                        <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            value={variants[0].price} 
-                            onChange={(e) => updateVariant(0, 'price', Number(e.target.value))}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Cost Price</Label>
-                        <Input 
-                            type="number" 
-                            placeholder="0.00"
-                            value={variants[0].cost_price} 
-                            onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Initial Stock</Label>
-                        <Input 
-                            type="number" 
-                            placeholder="0"
-                            value={variants[0].stock_quantity} 
-                            onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>SKU / Barcode</Label>
-                        <Input 
-                            placeholder="AUTO"
-                            value={variants[0].sku} 
-                            onChange={(e) => updateVariant(0, 'sku', e.target.value)}
-                        />
-                    </div>
-                </div>
-            ) : (
-                // --- MULTI VARIANT MODE (TABS) ---
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full border rounded-lg p-2">
-                    <TabsList className="grid w-full grid-cols-2 mb-4">
-                        <TabsTrigger value="configuration">
-                            <Package className="w-4 h-4 mr-2"/> 1. Define Attributes
-                        </TabsTrigger>
-                        <TabsTrigger value="preview" disabled={variants.length <= 0 && activeTab === 'configuration'}>
-                            <Layers className="w-4 h-4 mr-2"/> 2. Review Variants
-                        </TabsTrigger>
-                    </TabsList>
-
-                    {/* SUB-TAB 1: ATTRIBUTE BUILDER */}
-                    <TabsContent value="configuration" className="space-y-4 px-2">
-                        <div className="space-y-3">
-                            {attributes.map((attr, idx) => (
-                                <div key={idx} className="flex gap-3 items-end">
-                                    <div className="w-1/3 space-y-1">
-                                        <Label className="text-xs">Attribute Name</Label>
-                                        <Input 
-                                            value={attr.name} 
-                                            onChange={e => {
-                                                const updated = [...attributes];
-                                                updated[idx].name = e.target.value;
-                                                setAttributes(updated);
-                                            }}
-                                            placeholder="e.g. Size" 
-                                        />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <Label className="text-xs">Values (Comma separated)</Label>
-                                        <Input 
-                                            value={attr.inputValue}
-                                            onChange={e => updateAttributeInput(idx, e.target.value)}
-                                            placeholder="e.g. Small, Medium, Large" 
-                                        />
-                                    </div>
-                                    {attributes.length > 1 && (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            onClick={() => removeAttributeRow(idx)}
-                                            className="text-muted-foreground hover:text-destructive"
-                                        >
-                                            <Trash className="w-4 h-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex justify-between items-center pt-2">
-                            <Button variant="outline" size="sm" onClick={addAttributeRow}>
-                                <Plus className="w-4 h-4 mr-2" /> Add Attribute
-                            </Button>
-                            <Button type="button" size="sm" onClick={generateVariants}>
-                                <Wand2 className="w-4 h-4 mr-2" /> Generate Variants
-                            </Button>
-                        </div>
-                    </TabsContent>
-
-                    {/* SUB-TAB 2: VARIANT PREVIEW TABLE */}
-                    <TabsContent value="preview" className="px-2">
-                         {variants.length > 0 && variants[0].attributes && Object.keys(variants[0].attributes).length > 0 ? (
-                            <div className="border rounded-md overflow-hidden">
-                                <div className="max-h-[300px] overflow-y-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-muted text-muted-foreground sticky top-0 z-10">
-                                            <tr>
-                                                <th className="p-3 font-medium">Variant Name</th>
-                                                <th className="p-3 font-medium w-24">Price</th>
-                                                <th className="p-3 font-medium w-24">Cost</th>
-                                                <th className="p-3 font-medium w-24">Stock</th>
-                                                <th className="p-3 font-medium w-32">SKU</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {variants.map((v, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="p-3 font-medium text-slate-700">
-                                                        {v.name}
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <Input 
-                                                            type="number" 
-                                                            className="h-8 bg-white" 
-                                                            value={v.price} 
-                                                            onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
-                                                        />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <Input 
-                                                            type="number" 
-                                                            className="h-8 bg-white" 
-                                                            value={v.cost_price} 
-                                                            onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))}
-                                                        />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <Input 
-                                                            type="number" 
-                                                            className="h-8 bg-white" 
-                                                            value={v.stock_quantity} 
-                                                            onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))}
-                                                        />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <Input 
-                                                            className="h-8 bg-white uppercase" 
-                                                            value={v.sku} 
-                                                            onChange={e => updateVariant(idx, 'sku', e.target.value)}
-                                                            placeholder="AUTO"
-                                                        />
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                         ) : (
-                             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground border-2 border-dashed rounded-lg bg-slate-50">
-                                 <AlertCircle className="w-8 h-8 mb-2 opacity-50" />
-                                 <p>No variants generated.</p>
-                                 <Button variant="link" onClick={() => setActiveTab("configuration")}>
-                                     Go to configuration
-                                 </Button>
-                             </div>
-                         )}
-                         
-                         <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-                            <span>Total Variants: {variants.length}</span>
-                            <Button variant="ghost" size="sm" onClick={() => setActiveTab("configuration")}>
-                                Back to Attributes
-                            </Button>
-                         </div>
-                    </TabsContent>
-                </Tabs>
-            )}
-
-        </div>
-
-        <DialogFooter className="pt-2 border-t mt-auto bg-background z-20">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
-            Cancel
+    <>
+      <Dialog open={open} onOpenChange={(val) => {
+          if (!val) resetForm();
+          setOpen(val);
+      }}>
+        <DialogTrigger asChild>
+          <Button className="shadow-sm">
+              <Plus className="w-4 h-4 mr-2" /> Add New Product
           </Button>
-          <Button onClick={() => mutate()} disabled={isPending} className="min-w-[120px]">
-            {isPending ? (
-                <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
-                </>
-            ) : (
-                "Save Product"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogTrigger>
+        
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Create Product</DialogTitle>
+            <DialogDescription>
+              Configure product details, attributes, and stock information.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 py-4 space-y-6">
+              
+              {/* SECTION 1: IDENTITY */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <Label>Product Name <span className="text-red-500">*</span></Label>
+                      <Input 
+                          value={productName} 
+                          onChange={e => setProductName(e.target.value)} 
+                          placeholder="e.g. Wireless Mouse" 
+                          autoFocus
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={categoryId || ''} onValueChange={setCategoryId}>
+                          <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
+                          <SelectContent>
+                              {categories.map(c => (
+                                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  <div className="space-y-2">
+                      <Label>Default Unit of Measure</Label>
+                      <div className="flex gap-2">
+                        <Select value={uomId || ''} onValueChange={setUomId}>
+                            <SelectTrigger className="flex-1"><SelectValue placeholder="e.g. Pcs, Kg..." /></SelectTrigger>
+                            <SelectContent>
+                                {units.map(u => (
+                                    <SelectItem key={u.id} value={String(u.id)}>
+                                        {u.name} ({u.abbreviation})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          title="Add New Unit"
+                          onClick={() => setIsUnitModalOpen(true)}
+                          type="button"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 border p-2 rounded-md bg-muted/20 h-10">
+                      <Switch 
+                          id="multi-variant" 
+                          checked={isMultiVariant} 
+                          onCheckedChange={(checked) => {
+                              setIsMultiVariant(checked);
+                              // If turning off, reset to single default variant
+                              if (!checked) setVariants([{ ...DEFAULT_VARIANT }]);
+                              // If turning on, ensure we are on the config tab
+                              if (checked) setActiveTab("configuration");
+                          }} 
+                      />
+                      <Label htmlFor="multi-variant" className="cursor-pointer font-medium">
+                          Enable Variants (Size, Color, etc.)
+                      </Label>
+                  </div>
+              </div>
+
+              <hr className="border-dashed" />
+
+              {/* SECTION 2: VARIANT CONFIGURATION */}
+              
+              {!isMultiVariant ? (
+                  // --- SIMPLE MODE (SINGLE VARIANT) ---
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
+                      <div className="space-y-2">
+                          <Label>Selling Price</Label>
+                          <Input 
+                              type="number" 
+                              placeholder="0.00" 
+                              value={variants[0].price} 
+                              onChange={(e) => updateVariant(0, 'price', Number(e.target.value))}
+                          />
+                      </div>
+                      <div className="space-y-2">
+                          <Label>Cost Price</Label>
+                          <Input 
+                              type="number" 
+                              placeholder="0.00"
+                              value={variants[0].cost_price} 
+                              onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))}
+                          />
+                      </div>
+                      <div className="space-y-2">
+                          <Label>Initial Stock</Label>
+                          <Input 
+                              type="number" 
+                              placeholder="0"
+                              value={variants[0].stock_quantity} 
+                              onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))}
+                          />
+                      </div>
+                      <div className="space-y-2">
+                          <Label>SKU / Barcode</Label>
+                          <Input 
+                              placeholder="AUTO"
+                              value={variants[0].sku} 
+                              onChange={(e) => updateVariant(0, 'sku', e.target.value)}
+                          />
+                      </div>
+                  </div>
+              ) : (
+                  // --- MULTI VARIANT MODE (TABS) ---
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full border rounded-lg p-2">
+                      <TabsList className="grid w-full grid-cols-2 mb-4">
+                          <TabsTrigger value="configuration">
+                              <Package className="w-4 h-4 mr-2"/> 1. Define Attributes
+                          </TabsTrigger>
+                          <TabsTrigger value="preview" disabled={variants.length <= 0 && activeTab === 'configuration'}>
+                              <Layers className="w-4 h-4 mr-2"/> 2. Review Variants
+                          </TabsTrigger>
+                      </TabsList>
+
+                      {/* SUB-TAB 1: ATTRIBUTE BUILDER */}
+                      <TabsContent value="configuration" className="space-y-4 px-2">
+                          <div className="space-y-3">
+                              {attributes.map((attr, idx) => (
+                                  <div key={idx} className="flex gap-3 items-end">
+                                      <div className="w-1/3 space-y-1">
+                                          <Label className="text-xs">Attribute Name</Label>
+                                          <Input 
+                                              value={attr.name} 
+                                              onChange={e => {
+                                                  const updated = [...attributes];
+                                                  updated[idx].name = e.target.value;
+                                                  setAttributes(updated);
+                                              }}
+                                              placeholder="e.g. Size" 
+                                          />
+                                      </div>
+                                      <div className="flex-1 space-y-1">
+                                          <Label className="text-xs">Values (Comma separated)</Label>
+                                          <Input 
+                                              value={attr.inputValue}
+                                              onChange={e => updateAttributeInput(idx, e.target.value)}
+                                              placeholder="e.g. Small, Medium, Large" 
+                                          />
+                                      </div>
+                                      {attributes.length > 1 && (
+                                          <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              onClick={() => removeAttributeRow(idx)}
+                                              className="text-muted-foreground hover:text-destructive"
+                                          >
+                                              <Trash className="w-4 h-4" />
+                                          </Button>
+                                      )}
+                                  </div>
+                              ))}
+                          </div>
+
+                          <div className="flex justify-between items-center pt-2">
+                              <Button variant="outline" size="sm" onClick={addAttributeRow}>
+                                  <Plus className="w-4 h-4 mr-2" /> Add Attribute
+                              </Button>
+                              <Button type="button" size="sm" onClick={generateVariants}>
+                                  <Wand2 className="w-4 h-4 mr-2" /> Generate Variants
+                              </Button>
+                          </div>
+                      </TabsContent>
+
+                      {/* SUB-TAB 2: VARIANT PREVIEW TABLE */}
+                      <TabsContent value="preview" className="px-2">
+                          {variants.length > 0 && variants[0].attributes && Object.keys(variants[0].attributes).length > 0 ? (
+                              <div className="border rounded-md overflow-hidden">
+                                  <div className="max-h-[300px] overflow-y-auto">
+                                      <table className="w-full text-sm text-left">
+                                          <thead className="bg-muted text-muted-foreground sticky top-0 z-10">
+                                              <tr>
+                                                  <th className="p-3 font-medium">Variant Name</th>
+                                                  <th className="p-3 font-medium w-24">Price</th>
+                                                  <th className="p-3 font-medium w-24">Cost</th>
+                                                  <th className="p-3 font-medium w-24">Stock</th>
+                                                  <th className="p-3 font-medium w-32">SKU</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody className="divide-y">
+                                              {variants.map((v, idx) => (
+                                                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                      <td className="p-3 font-medium text-slate-700">
+                                                          {v.name}
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <Input 
+                                                              type="number" 
+                                                              className="h-8 bg-white" 
+                                                              value={v.price} 
+                                                              onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <Input 
+                                                              type="number" 
+                                                              className="h-8 bg-white" 
+                                                              value={v.cost_price} 
+                                                              onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))}
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <Input 
+                                                              type="number" 
+                                                              className="h-8 bg-white" 
+                                                              value={v.stock_quantity} 
+                                                              onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))}
+                                                          />
+                                                      </td>
+                                                      <td className="p-2">
+                                                          <Input 
+                                                              className="h-8 bg-white uppercase" 
+                                                              value={v.sku} 
+                                                              onChange={e => updateVariant(idx, 'sku', e.target.value)}
+                                                              placeholder="AUTO"
+                                                          />
+                                                      </td>
+                                                  </tr>
+                                              ))}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground border-2 border-dashed rounded-lg bg-slate-50">
+                                  <AlertCircle className="w-8 h-8 mb-2 opacity-50" />
+                                  <p>No variants generated.</p>
+                                  <Button variant="link" onClick={() => setActiveTab("configuration")}>
+                                      Go to configuration
+                                  </Button>
+                              </div>
+                          )}
+                          
+                          <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
+                              <span>Total Variants: {variants.length}</span>
+                              <Button variant="ghost" size="sm" onClick={() => setActiveTab("configuration")}>
+                                  Back to Attributes
+                              </Button>
+                          </div>
+                      </TabsContent>
+                  </Tabs>
+              )}
+
+          </div>
+
+          <DialogFooter className="pt-2 border-t mt-auto bg-background z-20">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={() => mutate()} disabled={isPending} className="min-w-[120px]">
+              {isPending ? (
+                  <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
+                  </>
+              ) : (
+                  "Save Product"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- EXTRA DIALOG: ADD NEW UNIT --- */}
+      <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add New Unit</DialogTitle>
+            <DialogDescription>
+              Create a new unit of measure (e.g., Kilogram, Gallon).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="unit-name">Unit Name</Label>
+              <Input 
+                id="unit-name" 
+                placeholder="e.g. Kilogram" 
+                value={newUnitName}
+                onChange={(e) => setNewUnitName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="unit-abbr">Abbreviation</Label>
+              <Input 
+                id="unit-abbr" 
+                placeholder="e.g. kg" 
+                value={newUnitAbbr}
+                onChange={(e) => setNewUnitAbbr(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUnitModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddUnit} disabled={isSavingUnit}>
+               {isSavingUnit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+               Save Unit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
