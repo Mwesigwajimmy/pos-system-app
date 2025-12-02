@@ -5,6 +5,7 @@ import ExecutiveSummaryReportClient from '@/components/reports/ExecutiveSummaryR
 import { createClient } from '@/lib/supabase/server';
 import { startOfYear, endOfMonth, subMonths } from 'date-fns';
 
+// Ensure the report always fetches fresh data
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
   description: 'C-Level financial dashboard showing real-time KPIs, ratios, and performance trends.',
 };
 
+// --- Enterprise Interfaces ---
 export interface KPIMetrics {
   revenue: number;
   expenses: number;
@@ -32,6 +34,7 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
+  // Default Date Logic
   const today = new Date();
   const defaultFrom = startOfYear(today).toISOString();
   const defaultTo = endOfMonth(today).toISOString();
@@ -40,11 +43,14 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
   const toParam = searchParams.to || defaultTo;
 
   try {
+    // 1. Parallel Data Fetching for Performance
     const [metricsRes, trendsRes] = await Promise.all([
+      // Fetch Headline Metrics
       supabase.rpc('get_real_financial_metrics', {
         p_start_date: fromParam,
         p_end_date: toParam
       }),
+      // Fetch 12-Month Trends
       supabase.rpc('get_monthly_financial_trend', {
         p_start_date: subMonths(new Date(toParam), 11).toISOString(),
         p_end_date: toParam
@@ -54,8 +60,8 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
     if (metricsRes.error) console.error("Metrics RPC Error:", metricsRes.error);
     if (trendsRes.error) console.error("Trends RPC Error:", trendsRes.error);
 
-    // --- FIX: DEFENSIVE CODING ---
-    // Ensure we have an object, even if DB returns null
+    // 2. Data Normalization & Safety Checks
+    // We treat nulls as 0 to prevent the UI from crashing ("Client Side Error")
     const rawMetrics = metricsRes.data || {}; 
     const rawTrends = trendsRes.data || [];
 
@@ -68,6 +74,7 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
       total_equity: Number(rawMetrics?.total_equity ?? 0),
     };
 
+    // Safely map trends, ensuring structure matches what Recharts expects
     const trends: TrendDataPoint[] = Array.isArray(rawTrends) 
       ? rawTrends.map((t: any) => ({
           period_label: t.period_label || 'Unknown',
@@ -77,10 +84,12 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
         }))
       : [];
 
+    // 3. Financial Ratio Calculation
+    // Logic handles division by zero to prevent NaN errors
     const ratios = {
       current_ratio: metrics.total_liabilities > 0 
         ? metrics.total_assets / metrics.total_liabilities 
-        : (metrics.total_assets > 0 ? 999 : 0),
+        : (metrics.total_assets > 0 ? 999 : 0), // 999 indicates high liquidity (no debt)
       
       net_profit_margin: metrics.revenue > 0 
         ? (metrics.net_income / metrics.revenue) * 100 
@@ -95,6 +104,7 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
         : 0
     };
 
+    // 4. Render the Client Component
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-slate-50/30 min-h-screen">
         <ExecutiveSummaryReportClient 
@@ -107,13 +117,15 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
     );
 
   } catch (error: any) {
+    // 5. Enterprise Error Boundary
+    // If anything fails (DB connection, timeout), show this fallback UI
     console.error("Executive Summary Load Failed:", error);
     return (
       <div className="flex items-center justify-center h-[50vh] p-6">
         <div className="max-w-md w-full bg-red-50 border border-red-200 rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-bold text-red-700 mb-2">Report Generation Failed</h2>
             <p className="text-sm text-red-600 mb-4">
-                We couldn't load the Executive Summary.
+                We couldn't load the Executive Summary data.
             </p>
             <div className="bg-white p-3 rounded border border-red-100 font-mono text-xs text-red-500 break-words">
                 {error.message || String(error)}
