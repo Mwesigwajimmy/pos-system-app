@@ -7,11 +7,12 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, Search, Calendar, Scale, Landmark } from "lucide-react";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"; // Enterprise Date Picker
+import { DateRange } from "react-day-picker";
+import { Download, Search, Landmark, CalendarRange, Filter } from "lucide-react";
 import { format } from "date-fns";
 
-// FIX 1: Defined interfaces here and exported them (Removed import from page)
+// --- Enterprise Interfaces (Exported for page.tsx) ---
 export interface TaxLineItem {
   id: string;
   jurisdiction_code: string;
@@ -35,12 +36,21 @@ export interface TaxSummary {
 interface TaxReportProps {
   data: TaxLineItem[];
   summaries: TaxSummary[];
-  currentPeriod: string;
+  dateRange: DateRange; // Now accepts a full range
 }
 
-export default function TaxReportClient({ data, summaries, currentPeriod }: TaxReportProps) {
+export default function TaxReportClient({ data, summaries, dateRange }: TaxReportProps) {
   const router = useRouter();
   const [filter, setFilter] = useState('');
+
+  // --- Date Handler (Enterprise) ---
+  const handleDateChange = (range: DateRange | undefined) => {
+    if (range?.from && range?.to) {
+      const fromStr = format(range.from, 'yyyy-MM-dd');
+      const toStr = format(range.to, 'yyyy-MM-dd');
+      router.push(`?from=${fromStr}&to=${toStr}`);
+    }
+  };
 
   // --- Helpers ---
   const formatMoney = (amount: number, currency: string) => {
@@ -51,19 +61,12 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
     }).format(amount);
   };
 
-  const handlePeriodChange = (monthsToSubtract: string) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - parseInt(monthsToSubtract));
-    const param = date.toISOString().slice(0, 7); // YYYY-MM
-    router.push(`?period=${param}-01`);
-  };
-
   // --- Filtering Logic ---
   const filteredData = useMemo(() => {
     return data.filter(row => 
       row.tax_name.toLowerCase().includes(filter.toLowerCase()) ||
       row.jurisdiction_code.toLowerCase().includes(filter.toLowerCase())
-    ).sort((a,b) => b.type.localeCompare(a.type)); // Sort Output before Input
+    ).sort((a,b) => b.type.localeCompare(a.type)); 
   }, [data, filter]);
 
   // --- Export Logic ---
@@ -90,26 +93,55 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `tax_report_${currentPeriod.slice(0,10)}.csv`;
+    link.download = `tax_report_${format(new Date(), 'yyyy-MM-dd')}.csv`;
     link.click();
   };
 
   return (
     <div className="space-y-6">
       
-      {/* 1. Summary Cards (KPIs per Currency) */}
+      {/* 1. Header & Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Tax Liability Report</h1>
+          <p className="text-slate-500 mt-1">
+            Tax collected vs paid for <span className="font-semibold text-slate-700">{dateRange.from ? format(dateRange.from, "MMM dd, yyyy") : '...'}</span> to <span className="font-semibold text-slate-700">{dateRange.to ? format(dateRange.to, "MMM dd, yyyy") : '...'}</span>
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+           {/* ENTERPRISE DATE PICKER */}
+           <DatePickerWithRange date={dateRange} setDate={handleDateChange} />
+           
+           <div className="relative w-full md:w-48">
+             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
+             <Input 
+               placeholder="Filter taxes..." 
+               value={filter} 
+               onChange={e => setFilter(e.target.value)} 
+               className="pl-8 bg-slate-50"
+             />
+           </div>
+
+           <Button variant="outline" onClick={handleExport}>
+             <Download className="mr-2 h-4 w-4" /> Export
+           </Button>
+        </div>
+      </div>
+      
+      {/* 2. Summary Cards (Multi-Currency Support) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {summaries.length === 0 && (
-          <Card className="col-span-full border-dashed">
-            <CardHeader>
-              <CardTitle>No Tax Data</CardTitle>
-              <CardDescription>No tax-related transactions found for this period.</CardDescription>
+          <Card className="col-span-full border-dashed bg-slate-50/50">
+            <CardHeader className="text-center py-8">
+              <CalendarRange className="mx-auto h-10 w-10 text-slate-300 mb-2"/>
+              <CardTitle className="text-slate-500">No Tax Data Found</CardTitle>
+              <CardDescription>Try selecting a different date range or ensuring transactions have tax applied.</CardDescription>
             </CardHeader>
           </Card>
         )}
         
         {summaries.map((summary) => (
-          <Card key={summary.currency} className={summary.net_liability > 0 ? "border-l-4 border-l-orange-500" : "border-l-4 border-l-green-500"}>
+          <Card key={summary.currency} className={`shadow-sm ${summary.net_liability > 0 ? "border-l-4 border-l-orange-500" : "border-l-4 border-l-green-500"}`}>
             <CardHeader className="pb-2">
               <CardTitle className="flex justify-between items-center text-base">
                 <span>Net Liability ({summary.currency})</span>
@@ -117,7 +149,7 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className={`text-2xl font-bold ${summary.net_liability > 0 ? 'text-orange-700' : 'text-green-700'}`}>
                 {formatMoney(summary.net_liability, summary.currency)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -125,11 +157,11 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
               </p>
               <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground block text-xs">Collected (Sales)</span>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider">Output (Sales)</span>
                   <span className="font-semibold text-slate-700">{formatMoney(summary.total_output_tax, summary.currency)}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-muted-foreground block text-xs">Paid (Expenses)</span>
+                  <span className="text-muted-foreground block text-xs uppercase tracking-wider">Input (Expenses)</span>
                   <span className="font-semibold text-slate-700">{formatMoney(summary.total_input_tax, summary.currency)}</span>
                 </div>
               </div>
@@ -138,50 +170,22 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
         ))}
       </div>
 
-      {/* 2. Controls */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
-            <Input 
-              placeholder="Filter by jurisdiction or tax name..." 
-              value={filter} 
-              onChange={e => setFilter(e.target.value)} 
-              className="pl-8"
-            />
-          </div>
-          
-          <Select onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-[180px]">
-              <Calendar className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Select Period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">Current Month</SelectItem>
-              <SelectItem value="1">Last Month</SelectItem>
-              <SelectItem value="3">Last Quarter</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="mr-2 h-4 w-4" /> Export CSV
-        </Button>
-      </div>
-
       {/* 3. Detailed Data Table */}
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>Detailed Breakdown</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-blue-500"/>
+            Detailed Breakdown
+          </CardTitle>
           <CardDescription>
-            Line-item aggregation by tax authority and type.
+            Line-item aggregation by tax authority and transaction type.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-slate-50">
                   <TableHead>Jurisdiction</TableHead>
                   <TableHead>Tax Name</TableHead>
                   <TableHead>Type</TableHead>
@@ -194,35 +198,35 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       No matching records found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredData.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} className="hover:bg-slate-50/50">
                       <TableCell>
                         <div className="flex items-center gap-2">
-                           <Badge variant="outline">{row.jurisdiction_code}</Badge>
+                           <Badge variant="outline" className="font-mono">{row.jurisdiction_code}</Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{row.tax_name}</TableCell>
+                      <TableCell className="font-medium text-slate-700">{row.tax_name}</TableCell>
                       <TableCell>
                         <Badge 
-                          className={row.type === 'Output' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'}
+                          className={row.type === 'Output' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200'}
                           variant="secondary"
                         >
                           {row.type}
                         </Badge>
                       </TableCell>
-                      <TableCell>{row.rate_percentage}%</TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground">
+                      <TableCell className="text-slate-500">{row.rate_percentage}%</TableCell>
+                      <TableCell className="text-right font-mono text-slate-500">
                         {formatMoney(row.taxable_base, row.currency)}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold">
+                      <TableCell className="text-right font-mono font-bold text-slate-900">
                         {formatMoney(row.tax_amount, row.currency)}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground">
+                      <TableCell className="text-right font-mono text-slate-500">
                         {formatMoney(row.gross_amount, row.currency)}
                       </TableCell>
                     </TableRow>
@@ -232,8 +236,9 @@ export default function TaxReportClient({ data, summaries, currentPeriod }: TaxR
             </Table>
           </div>
         </CardContent>
-        <CardFooter className="bg-slate-50 text-xs text-muted-foreground border-t p-4">
-          * Taxable Base excludes the tax amount. "Output" represents tax collected on sales. "Input" represents tax paid on expenses (potentially recoverable).
+        <CardFooter className="bg-slate-50 text-xs text-muted-foreground border-t p-4 flex justify-between">
+            <span>* Taxable Base excludes the tax amount.</span>
+            <span>Generated on {format(new Date(), 'PPP')}</span>
         </CardFooter>
       </Card>
     </div>

@@ -1,10 +1,9 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { cookies } from 'next/headers';
-// FIX 2: Imported the types from the component instead of defining them locally
 import TaxReportClient, { TaxLineItem, TaxSummary } from '@/components/reports/TaxReport';
 import { createClient } from '@/lib/supabase/server';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,55 +12,54 @@ export const metadata: Metadata = {
   description: 'Detailed breakdown of Input and Output taxes by jurisdiction.',
 };
 
-export default async function TaxReportsPage({ searchParams }: { searchParams: { date?: string } }) {
+// FIX: Updated searchParams to accept 'from' and 'to'
+export default async function TaxReportsPage({ searchParams }: { searchParams: { from?: string, to?: string } }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // Handle Date Params (YYYY-MM)
-  const dateStr = searchParams.date || new Date().toISOString();
-  const reportDate = new Date(dateStr);
-  const startDate = startOfMonth(reportDate).toISOString();
-  const endDate = endOfMonth(reportDate).toISOString();
+  // 1. Enterprise Date Range Logic
+  const today = new Date();
+  const defaultFrom = startOfMonth(today).toISOString();
+  const defaultTo = endOfMonth(today).toISOString();
 
-  // 1. Fetch Sales (Output Tax)
+  const startDate = searchParams.from || defaultFrom;
+  const endDate = searchParams.to || defaultTo;
+
+  // 2. Fetch Sales (Output Tax) - Filtered by Date Range
   const { data: sales, error: salesError } = await supabase
     .from('sales')
     .select(`total_amount, tax_amount, currency_code, tax_rates(name, country_code, rate)`)
     .gte('created_at', startDate)
     .lte('created_at', endDate);
 
-  if (salesError) {
-    console.error("Sales Fetch Error:", salesError);
-  }
+  if (salesError) console.error("Sales Fetch Error:", salesError);
 
-  // 2. Fetch Expenses (Input Tax)
+  // 3. Fetch Expenses (Input Tax) - Filtered by Date Range
   const { data: expenses, error: expensesError } = await supabase
     .from('expenses')
     .select(`amount, tax_amount, currency_code, tax_rates(name, country_code, rate)`)
     .gte('created_at', startDate)
     .lte('created_at', endDate);
 
-  if (expensesError) {
-    console.error("Expenses Fetch Error:", expensesError);
-  }
+  if (expensesError) console.error("Expenses Fetch Error:", expensesError);
 
-  // 3. Data Aggregation Logic
+  // 4. Data Aggregation Logic (Unchanged but robust)
   const aggregationMap = new Map<string, TaxLineItem>();
 
   const processTransaction = (
     items: any[] | null, 
     type: 'Output' | 'Input', 
-    amountKey: string // 'total_amount' for sales, 'amount' for expenses
+    amountKey: string 
   ) => {
     items?.forEach((item) => {
+      // Enterprise check: Only process if tax exists
       if (!item.tax_amount || Number(item.tax_amount) === 0) return;
 
-      const currency = item.currency_code || 'UGX';
+      const currency = item.currency_code || 'UGX'; // Multi-currency fallback
       const taxName = item.tax_rates?.name || 'Standard Tax';
       const jurisdiction = item.tax_rates?.country_code || 'Global';
       const rate = item.tax_rates?.rate || 0;
 
-      // Create a unique key for grouping
       const key = `${jurisdiction}-${taxName}-${rate}-${currency}-${type}`;
 
       if (!aggregationMap.has(key)) {
@@ -96,7 +94,7 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
   const taxData = Array.from(aggregationMap.values());
 
-  // 4. Calculate Summaries per Currency
+  // 5. Summaries per Currency
   const summaryMap = new Map<string, TaxSummary>();
 
   taxData.forEach(row => {
@@ -115,19 +113,17 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     } else {
       summary.total_input_tax += row.tax_amount;
     }
-    
-    // Net Liability = Output (Owed) - Input (Recoverable)
     summary.net_liability = summary.total_output_tax - summary.total_input_tax;
   });
 
   const summaries = Array.from(summaryMap.values());
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-slate-50/30 min-h-screen">
       <TaxReportClient 
         data={taxData} 
         summaries={summaries} 
-        currentPeriod={dateStr} 
+        dateRange={{ from: new Date(startDate), to: new Date(endDate) }} 
       />
     </div>
   );
