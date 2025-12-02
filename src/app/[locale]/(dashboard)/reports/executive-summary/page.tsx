@@ -51,27 +51,31 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
       })
     ]);
 
-    if (metricsRes.error) throw new Error(`Metrics Error: ${metricsRes.error.message}`);
-    if (trendsRes.error) throw new Error(`Trend Error: ${trendsRes.error.message}`);
+    if (metricsRes.error) console.error("Metrics RPC Error:", metricsRes.error);
+    if (trendsRes.error) console.error("Trends RPC Error:", trendsRes.error);
 
-    const rawMetrics = metricsRes.data;
+    // --- FIX: DEFENSIVE CODING ---
+    // Ensure we have an object, even if DB returns null
+    const rawMetrics = metricsRes.data || {}; 
     const rawTrends = trendsRes.data || [];
 
     const metrics: KPIMetrics = {
-      revenue: Number(rawMetrics.revenue),
-      expenses: Number(rawMetrics.expenses),
-      net_income: Number(rawMetrics.net_income),
-      total_assets: Number(rawMetrics.total_assets),
-      total_liabilities: Number(rawMetrics.total_liabilities),
-      total_equity: Number(rawMetrics.total_equity),
+      revenue: Number(rawMetrics?.revenue ?? 0),
+      expenses: Number(rawMetrics?.expenses ?? 0),
+      net_income: Number(rawMetrics?.net_income ?? 0),
+      total_assets: Number(rawMetrics?.total_assets ?? 0),
+      total_liabilities: Number(rawMetrics?.total_liabilities ?? 0),
+      total_equity: Number(rawMetrics?.total_equity ?? 0),
     };
 
-    const trends: TrendDataPoint[] = rawTrends.map((t: any) => ({
-      period_label: t.period_label,
-      revenue: Number(t.revenue),
-      expenses: Number(t.expenses),
-      net_income: Number(t.net_income)
-    }));
+    const trends: TrendDataPoint[] = Array.isArray(rawTrends) 
+      ? rawTrends.map((t: any) => ({
+          period_label: t.period_label || 'Unknown',
+          revenue: Number(t.revenue ?? 0),
+          expenses: Number(t.expenses ?? 0),
+          net_income: Number(t.net_income ?? 0)
+        }))
+      : [];
 
     const ratios = {
       current_ratio: metrics.total_liabilities > 0 
@@ -109,7 +113,7 @@ export default async function ExecutiveSummaryPage({ searchParams }: { searchPar
         <div className="max-w-md w-full bg-red-50 border border-red-200 rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-bold text-red-700 mb-2">Report Generation Failed</h2>
             <p className="text-sm text-red-600 mb-4">
-                Unable to retrieve financial data. Please verify database connectivity and RPC configuration.
+                We couldn't load the Executive Summary.
             </p>
             <div className="bg-white p-3 rounded border border-red-100 font-mono text-xs text-red-500 break-words">
                 {error.message || String(error)}
