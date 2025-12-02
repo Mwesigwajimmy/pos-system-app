@@ -8,14 +8,11 @@ import {
   CardContent, 
   CardTitle, 
   CardDescription, 
-  CardFooter 
 } from "@/components/ui/card";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { 
-  TrendingUp, 
-  TrendingDown, 
   DollarSign, 
   PieChart, 
   Activity, 
@@ -25,19 +22,17 @@ import {
   Info
 } from "lucide-react";
 import { 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
+  Tooltip, // This is for Recharts
   Legend, 
   ResponsiveContainer,
   AreaChart,
   Area
 } from 'recharts';
 import { 
-  Tooltip as UiTooltip, 
+  Tooltip as UiTooltip, // This is for the UI Icons
   TooltipContent, 
   TooltipProvider, 
   TooltipTrigger 
@@ -98,11 +93,9 @@ export default function ExecutiveSummaryReportClient({ metrics, ratios, trends, 
   const formatPercent = (val: number) => 
     `${val.toFixed(2)}%`;
 
-  // --- Insight Logic (Real-time Analysis) ---
+  // --- Insight Logic ---
   const generateInsights = () => {
     const insights = [];
-    
-    // Profitability Check
     if (ratios.net_profit_margin > 15) {
         insights.push({ type: 'good', msg: "Strong profitability margin exceeding 15%." });
     } else if (ratios.net_profit_margin < 0) {
@@ -110,19 +103,14 @@ export default function ExecutiveSummaryReportClient({ metrics, ratios, trends, 
     } else {
         insights.push({ type: 'neutral', msg: "Profit margins are tight (0-15%). Monitor expenses." });
     }
-
-    // Liquidity Check
     if (ratios.current_ratio > 1.5) {
         insights.push({ type: 'good', msg: "Healthy liquidity. Sufficient assets to cover short-term debts." });
     } else if (ratios.current_ratio < 1.0) {
         insights.push({ type: 'bad', msg: "Liquidity Warning: Current assets are less than liabilities." });
     }
-
-    // Leverage Check
     if (ratios.debt_to_equity > 2.0) {
         insights.push({ type: 'bad', msg: "High leverage detected. Debt is more than 2x equity." });
     }
-
     return insights;
   };
 
@@ -200,7 +188,7 @@ export default function ExecutiveSummaryReportClient({ metrics, ratios, trends, 
       {/* 3. Charts & Detailed Analysis */}
       <div className="grid gap-6 md:grid-cols-7">
         
-        {/* Trend Chart (Takes up 4 columns) */}
+        {/* Trend Chart */}
         <Card className="md:col-span-4 shadow-sm">
             <CardHeader>
                 <CardTitle>Financial Performance Trend</CardTitle>
@@ -227,31 +215,17 @@ export default function ExecutiveSummaryReportClient({ metrics, ratios, trends, 
                             formatter={(value: number) => formatMoney(value)}
                         />
                         <Legend />
-                        <Area 
-                            type="monotone" 
-                            dataKey="revenue" 
-                            name="Revenue" 
-                            stroke="#3b82f6" 
-                            fillOpacity={1} 
-                            fill="url(#colorRev)" 
-                        />
-                        <Area 
-                            type="monotone" 
-                            dataKey="expenses" 
-                            name="Expenses" 
-                            stroke="#f97316" 
-                            fillOpacity={1} 
-                            fill="url(#colorExp)" 
-                        />
+                        <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#3b82f6" fillOpacity={1} fill="url(#colorRev)" />
+                        <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#f97316" fillOpacity={1} fill="url(#colorExp)" />
                     </AreaChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
 
-        {/* Ratios & Insights (Takes up 3 columns) */}
+        {/* Ratios & Insights */}
         <div className="md:col-span-3 space-y-6">
             
-            {/* Financial Ratios Table */}
+            {/* Financial Ratios Table - FIXED TOOLTIPS */}
             <Card className="shadow-sm">
                 <CardHeader>
                     <CardTitle>Key Financial Ratios</CardTitle>
@@ -259,44 +233,61 @@ export default function ExecutiveSummaryReportClient({ metrics, ratios, trends, 
                 </CardHeader>
                 <CardContent className="grid gap-4">
                     <TooltipProvider>
+                        
+                        {/* Net Profit Margin */}
                         <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm text-slate-700">Net Profit Margin</span>
-                                <TooltipTrigger>
-                                    <Info className="h-3 w-3 text-slate-400 cursor-help"/>
-                                </TooltipTrigger>
-                                <TooltipContent><p>Percentage of revenue retained as profit.</p></TooltipContent>
+                                <UiTooltip>
+                                    <TooltipTrigger>
+                                        <Info className="h-3 w-3 text-slate-400 cursor-help"/>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Percentage of revenue retained as profit.</p>
+                                    </TooltipContent>
+                                </UiTooltip>
                             </div>
                             <span className={`font-mono font-bold ${ratios.net_profit_margin > 15 ? 'text-green-600' : 'text-slate-800'}`}>
                                 {formatPercent(ratios.net_profit_margin)}
                             </span>
                         </div>
 
+                        {/* Current Ratio */}
                         <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm text-slate-700">Current Ratio</span>
-                                <TooltipTrigger>
-                                    <Info className="h-3 w-3 text-slate-400 cursor-help"/>
-                                </TooltipTrigger>
-                                <TooltipContent><p>Ability to pay short-term debts (Assets/Liabilities).</p></TooltipContent>
+                                <UiTooltip>
+                                    <TooltipTrigger>
+                                        <Info className="h-3 w-3 text-slate-400 cursor-help"/>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Ability to pay short-term debts (Assets/Liabilities).</p>
+                                    </TooltipContent>
+                                </UiTooltip>
                             </div>
                             <span className={`font-mono font-bold ${ratios.current_ratio > 1.5 ? 'text-green-600' : ratios.current_ratio < 1 ? 'text-red-600' : 'text-slate-800'}`}>
                                 {ratios.current_ratio.toFixed(2)}
                             </span>
                         </div>
 
+                        {/* Debt-to-Equity */}
                         <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm text-slate-700">Debt-to-Equity</span>
-                                <TooltipTrigger>
-                                    <Info className="h-3 w-3 text-slate-400 cursor-help"/>
-                                </TooltipTrigger>
-                                <TooltipContent><p>Degree of leverage used to finance the company.</p></TooltipContent>
+                                <UiTooltip>
+                                    <TooltipTrigger>
+                                        <Info className="h-3 w-3 text-slate-400 cursor-help"/>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Degree of leverage used to finance the company.</p>
+                                    </TooltipContent>
+                                </UiTooltip>
                             </div>
                             <span className={`font-mono font-bold ${ratios.debt_to_equity > 2 ? 'text-red-600' : 'text-slate-800'}`}>
                                 {ratios.debt_to_equity.toFixed(2)}
                             </span>
                         </div>
+
                     </TooltipProvider>
                 </CardContent>
             </Card>
