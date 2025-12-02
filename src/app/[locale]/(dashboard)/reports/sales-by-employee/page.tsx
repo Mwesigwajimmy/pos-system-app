@@ -1,11 +1,14 @@
-import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import React, { Suspense } from 'react';
+import { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-
 import SalesByEmployeeReport from '@/components/reports/SalesByEmployeeReport';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Sales by Employee Report',
@@ -43,8 +46,6 @@ const ReportSkeleton = () => (
                 <div className="col-span-1 border rounded-lg p-4">
                     <Skeleton className="h-8 w-full mb-4" />
                     <Skeleton className="h-8 w-full mb-2" />
-                    <Skeleton className="h-8 w-full mb-2" />
-                    <Skeleton className="h-8 w-full" />
                 </div>
                 <div className="col-span-1 border rounded-lg p-4">
                     <Skeleton className="h-64 w-full" />
@@ -54,9 +55,13 @@ const ReportSkeleton = () => (
     </Card>
 );
 
-export default function SalesByEmployeePage() {
+export default async function SalesByEmployeePage() {
+  // FIX: Initialize with cookies
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
   return (
-    <main className="container mx-auto py-6 px-4 md:px-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <Breadcrumbs />
 
       <header className="mb-6">
@@ -71,6 +76,6 @@ export default function SalesByEmployeePage() {
       <Suspense fallback={<ReportSkeleton />}>
         <SalesByEmployeeReport />
       </Suspense>
-    </main>
+    </div>
   );
 }
