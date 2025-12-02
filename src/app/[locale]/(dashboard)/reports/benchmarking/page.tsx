@@ -1,7 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { cookies } from 'next/headers';
-// FIX 2: Imported BenchmarkData type from the component instead of defining it locally
 import BenchmarkingReportClient, { BenchmarkData } from '@/components/reports/BenchmarkingReport';
 import { createClient } from '@/lib/supabase/server';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
@@ -27,21 +26,32 @@ export default async function BenchmarkingPage({ searchParams }: { searchParams:
       p_end_date: end
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Supabase RPC Error:", error); // Log it for debugging
+      throw new Error(error.message);
+    }
+
+    // --- FIX: DEFENSIVE CODING START ---
+    // We use ?. (optional chaining) and ?? (default value)
+    // This prevents the "Cannot read properties of undefined" error FOREVER.
+    
+    const safeData = data || {}; // Ensure data isn't null
 
     const calculateVariance = (curr: number, prev: number) => {
         if (prev === 0) return curr > 0 ? 100 : 0;
         return ((curr - prev) / prev) * 100;
     };
 
-    const revCurr = Number(data.revenue.current);
-    const revPrev = Number(data.revenue.previous);
+    // Safely extract values, defaulting to 0 if anything is missing
+    const revCurr = Number(safeData?.revenue?.current ?? 0);
+    const revPrev = Number(safeData?.revenue?.previous ?? 0);
     
-    const txCurr = Number(data.transactions.current);
-    const txPrev = Number(data.transactions.previous);
+    const txCurr = Number(safeData?.transactions?.current ?? 0);
+    const txPrev = Number(safeData?.transactions?.previous ?? 0);
 
-    const aovCurr = Number(data.aov.current);
-    const aovPrev = Number(data.aov.previous);
+    const aovCurr = Number(safeData?.average_order_value?.current ?? 0);
+    const aovPrev = Number(safeData?.average_order_value?.previous ?? 0);
+    // --- FIX END ---
 
     const benchmarks: BenchmarkData[] = [
       {
@@ -80,10 +90,13 @@ export default async function BenchmarkingPage({ searchParams }: { searchParams:
     );
 
   } catch (error: any) {
+    // This will now catch RPC errors gracefully
     return (
         <div className="p-8 border border-red-200 bg-red-50 rounded text-red-700">
             <h3 className="font-bold text-lg">Benchmark Load Failed</h3>
             <p className="mt-2 text-sm">{error.message || "Unknown error occurred"}</p>
+            {/* Optional: Show what went wrong strictly for debugging */}
+            <pre className="mt-2 text-xs opacity-50">{JSON.stringify(error, null, 2)}</pre>
         </div>
     );
   }
