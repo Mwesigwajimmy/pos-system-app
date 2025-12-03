@@ -119,7 +119,7 @@ const navSections: NavItem[] = [
             { href: '/inventory/categories', label: 'Categories', icon: Tags }, 
             { href: '/inventory/composites', label: 'Manufacturing / Composites', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
             { href: '/inventory/manufacturing-orders', label: 'Manufacturing Orders', icon: Wrench, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
-            { href: '/inventory/work-centers', label: 'Work Center Schedule', icon: CalendarDays, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
+            { href: '/inventory/work-center', label: 'Work Center Schedule', icon: CalendarDays, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
             { href: '/purchases', label: 'Purchase Orders', icon: Truck },
             { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck }, 
             { href: '/inventory/transfers', label: 'Stock Transfers', icon: ArrowRightLeft }, 
