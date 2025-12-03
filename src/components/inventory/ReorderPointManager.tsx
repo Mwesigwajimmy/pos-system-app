@@ -1,84 +1,102 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { useFormState, useFormStatus } from 'react-dom';
-import { useEffect } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import { updateProductReorderSettings, FormState } from '@/lib/inventory/actions/inventory';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import React, { useState, useTransition } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart3, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { updateReorderSettings } from "@/lib/actions/inventory"; // Ensure you have this action
 
-interface Vendor { id: string, name: string; }
-interface Product { id: string; reorder_point: number | null; reorder_quantity: number | null; preferred_vendor_id: string | null; }
-interface Props { product: Product, vendors: Vendor[] }
-
-function SubmitButton() {
-    const { pending } = useFormStatus();
-    return <Button type="submit" disabled={pending}>{pending ? 'Saving...' : 'Save Settings'}</Button>;
+export interface ProductConfig {
+  id: string;
+  name: string;
+  reorder_point: number | null;
+  reorder_quantity: number | null;
+  preferred_vendor_id: string | null;
 }
 
-export function ReorderPointManager({ product, vendors }: Props) {
-    const { toast } = useToast();
-    const { register, handleSubmit } = useForm({ defaultValues: {
-        reorder_point: product.reorder_point,
-        reorder_quantity: product.reorder_quantity,
-        preferred_vendor_id: product.preferred_vendor_id
-    }});
+export interface Vendor {
+  id: string;
+  name: string;
+}
 
-    const initialState: FormState = { success: false, message: '' };
-    const [formState, formAction] = useFormState(updateProductReorderSettings, initialState);
+interface ReorderPointManagerProps {
+  product: ProductConfig;
+  vendors: Vendor[];
+}
 
-    useEffect(() => {
-        if (formState.success) toast({ title: "Success!", description: formState.message });
-        else if (formState.message) toast({ title: "Error", description: formState.message, variant: 'destructive' });
-    }, [formState, toast]);
+export function ReorderPointManager({ product, vendors }: ReorderPointManagerProps) {
+  const [isPending, startTransition] = useTransition();
+  const [reorderPoint, setReorderPoint] = useState<number>(product.reorder_point || 0);
+  const [reorderQty, setReorderQty] = useState<number>(product.reorder_quantity || 0);
+  const [vendorId, setVendorId] = useState<string>(product.preferred_vendor_id || "");
 
-    const processSubmit = (data: any) => {
-        const formData = new FormData();
-        formData.append('productId', product.id);
-        Object.keys(data).forEach(key => formData.append(key, data[key]));
-        formAction(formData);
-    };
+  const handleSave = () => {
+    startTransition(async () => {
+      // Calls the real server action
+      const result = await updateReorderSettings(product.id, reorderPoint, reorderQty, vendorId);
+      if (result.success) {
+        toast.success("Settings saved");
+      } else {
+        toast.error("Failed to save settings");
+      }
+    });
+  };
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Automated Procurement</CardTitle>
-                <CardDescription>Set reorder points to automatically generate draft purchase orders when stock is low.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit(processSubmit)} className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="reorder_point">Reorder Point</Label>
-                            <Input id="reorder_point" type="number" {...register('reorder_point')} placeholder="e.g., 10" />
-                            <p className="text-xs text-muted-foreground">Trigger a reorder when stock reaches this quantity.</p>
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="reorder_quantity">Reorder Quantity</Label>
-                            <Input id="reorder_quantity" type="number" {...register('reorder_quantity')} placeholder="e.g., 50" />
-                            <p className="text-xs text-muted-foreground">Order this many units when reordering.</p>
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="preferred_vendor_id">Preferred Vendor</Label>
-                        <Select {...register('preferred_vendor_id')}>
-                            <SelectTrigger><SelectValue placeholder="Select a preferred vendor..." /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
-                                {vendors.map(vendor => (
-                                    <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">The default vendor for automated purchase orders.</p>
-                    </div>
-                    <SubmitButton />
-                </form>
-            </CardContent>
-        </Card>
-    );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          Replenishment Settings
+        </CardTitle>
+        <CardDescription>Configure alerts and EOQ.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-2">
+          <Label htmlFor="rop">Reorder Point</Label>
+          <Input 
+            id="rop" 
+            type="number" 
+            value={reorderPoint} 
+            onChange={(e) => setReorderPoint(Number(e.target.value))}
+            disabled={isPending}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="eoq">Reorder Qty</Label>
+          <Input 
+            id="eoq" 
+            type="number" 
+            value={reorderQty} 
+            onChange={(e) => setReorderQty(Number(e.target.value))}
+            disabled={isPending}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label>Preferred Vendor</Label>
+          <Select value={vendorId} onValueChange={setVendorId} disabled={isPending}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select vendor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Preference</SelectItem>
+              {vendors.map(v => (
+                <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+      <CardFooter className="border-t bg-muted/50 px-6 py-4">
+        <Button onClick={handleSave} disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Changes
+        </Button>
+      </CardFooter>
+    </Card>
+  );
 }

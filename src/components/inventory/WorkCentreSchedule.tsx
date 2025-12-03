@@ -1,126 +1,146 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Loader2, Search, X } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent
+} from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Search, X, Clock, User, Monitor } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-interface WorkCenterEntry {
+// 1. Define the Data Interface
+export interface WorkCenterScheduleEntry {
   id: string;
   workCenter: string;
   session: string;
   product: string;
-  scheduledStart: string;
-  scheduledEnd: string;
-  status: "planned" | "running" | "stopped" | "finished";
+  scheduledStart: string; // ISO string
+  scheduledEnd: string;   // ISO string
+  status: "planned" | "running" | "stopped" | "finished" | string;
   machineOperator: string;
   entity: string;
   country: string;
   tenantId: string;
 }
 
-export default function WorkCenterSchedule() {
-  const [schedule, setSchedule] = useState<WorkCenterEntry[]>([]);
+// 2. Define Props Interface
+interface WorkCenterScheduleProps {
+  initialData: WorkCenterScheduleEntry[];
+}
+
+export default function WorkCenterSchedule({ initialData }: WorkCenterScheduleProps) {
+  const [schedule] = useState<WorkCenterScheduleEntry[]>(initialData || []);
   const [filter, setFilter] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setSchedule([
-        {
-          id: "wc-001",
-          workCenter: "Plant A",
-          session: "Morning Shift (MS-91)",
-          product: "ACME Widget",
-          scheduledStart: "2025-12-01T08:00",
-          scheduledEnd: "2025-12-01T16:00",
-          status: "planned",
-          machineOperator: "Peter John",
-          entity: "Main Comp Ltd.",
-          country: "UG",
-          tenantId: "tenant-001"
-        },
-        {
-          id: "wc-002",
-          workCenter: "Sydney Plant",
-          session: "Afternoon Shift (MS-31)",
-          product: "UltraWidget",
-          scheduledStart: "2025-11-16T12:00",
-          scheduledEnd: "2025-11-16T20:00",
-          status: "finished",
-          machineOperator: "Alice Thomson",
-          entity: "Global Branch AU",
-          country: "AU",
-          tenantId: "tenant-002"
-        }
-      ]);
-      setLoading(false);
-    }, 355);
-  }, []);
-
-  const filtered = useMemo(
-    () => schedule.filter(
-      s =>
-        s.workCenter.toLowerCase().includes(filter.toLowerCase()) ||
-        s.product.toLowerCase().includes(filter.toLowerCase()) ||
-        s.entity.toLowerCase().includes(filter.toLowerCase())
+  const filtered = useMemo(() =>
+    schedule.filter(s =>
+      s.workCenter.toLowerCase().includes(filter.toLowerCase()) ||
+      s.product.toLowerCase().includes(filter.toLowerCase()) ||
+      s.machineOperator.toLowerCase().includes(filter.toLowerCase())
     ),
     [schedule, filter]
   );
 
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "running":
+        return <Badge className="bg-green-600 hover:bg-green-700">Running</Badge>;
+      case "stopped":
+        return <Badge variant="destructive">Stopped</Badge>;
+      case "finished":
+        return <Badge variant="secondary">Finished</Badge>;
+      default:
+        return <Badge variant="outline" className="text-muted-foreground">Planned</Badge>;
+    }
+  };
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Work Center Schedule</CardTitle>
         <CardDescription>
-          Organize & supervise all production/operations sessions per plant/machine globally.
+          Machine allocation, operator assignments, and runtime status.
         </CardDescription>
-        <div className="relative mt-3 max-w-xs">
+        <div className="relative mt-3 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Filter by center/product..." value={filter} onChange={e=>setFilter(e.target.value)} className="pl-8"/>
-          {filter && <X className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer" onClick={()=>setFilter("")}/>}
+          <Input 
+            placeholder="Filter machine, product, or operator..." 
+            value={filter} 
+            onChange={e => setFilter(e.target.value)} 
+            className="pl-8"
+          />
+          {filter && (
+            <X 
+              className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
+              onClick={() => setFilter("")}
+            />
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        {loading
-          ? <div className="flex justify-center py-9"><Loader2 className="h-7 w-7 animate-spin" /></div>
-          : <ScrollArea className="h-56">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Work Center</TableHead>
-                    <TableHead>Session</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Operator</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Country</TableHead>
+        <ScrollArea className="h-[600px]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead>Work Center</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Session</TableHead>
+                <TableHead>Operator</TableHead>
+                <TableHead>Start Time</TableHead>
+                <TableHead>End Time</TableHead>
+                <TableHead>Entity</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    No scheduled sessions found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                    <TableCell className="font-medium flex items-center gap-2">
+                      <Monitor className="w-4 h-4 text-muted-foreground" />
+                      {item.workCenter}
+                    </TableCell>
+                    <TableCell>{item.product}</TableCell>
+                    <TableCell>{item.session}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3 text-muted-foreground" />
+                        {item.machineOperator}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(item.scheduledStart).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(item.scheduledEnd).toLocaleString()}
+                    </TableCell>
+                    <TableCell>{item.entity}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0
-                    ? <TableRow><TableCell colSpan={9}>No scheduled production found.</TableCell></TableRow>
-                    : filtered.map(s => (
-                        <TableRow key={s.id}>
-                          <TableCell>{s.workCenter}</TableCell>
-                          <TableCell>{s.session}</TableCell>
-                          <TableCell>{s.product}</TableCell>
-                          <TableCell>{s.status}</TableCell>
-                          <TableCell>{s.machineOperator}</TableCell>
-                          <TableCell>{s.scheduledStart.replace("T"," ")}</TableCell>
-                          <TableCell>{s.scheduledEnd.replace("T"," ")}</TableCell>
-                          <TableCell>{s.entity}</TableCell>
-                          <TableCell>{s.country}</TableCell>
-                        </TableRow>
-                      ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-        }
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
       </CardContent>
     </Card>
   );
