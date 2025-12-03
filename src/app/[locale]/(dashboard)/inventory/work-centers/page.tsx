@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-// ✅ CORRECT PATH: Imports the file 'WorkCentreSchedule.tsx'
-import WorkCenterSchedule from "@/components/inventory/WorkCentreSchedule"; 
+// ✅ CORRECT PATH: Imports the file 'WorkCenterSchedule.tsx'
+import WorkCenterSchedule from "@/components/inventory/WorkCenterSchedule"; 
 
 export default async function WorkCentersPage({ params }: { params: { locale: string } }) {
   const cookieStore = cookies();

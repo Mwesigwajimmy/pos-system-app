@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ManufacturingOrderManager from "@/components/inventory/ManufacturingOrderManager";
-import WorkCenterSchedule from "@/components/inventory/WorkCentreSchedule";
+import WorkCenterSchedule from "@/components/inventory/WorkCenterSchedule";
 
 export default async function ManufacturingPage() {
   const cookieStore = cookies();
