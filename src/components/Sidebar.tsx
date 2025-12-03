@@ -99,6 +99,7 @@ const navSections: NavItem[] = [
             { href: '/reports/profit-loss', label: 'Profit & Loss', icon: FileText },
             { href: '/reports/balance-sheet', label: 'Balance Sheet', icon: Scale },
             { href: '/reports/trial-balance', label: 'Trial Balance', icon: Scale },
+            { href: '/reports/fiscal', label: 'Fiscal Report', icon: FileCheck },
             { href: '/reports/cash-flow', label: 'Cash Flow', icon: Banknote },
             { href: '/reports/aging', label: 'Aged Payables/Receivables', icon: History },
             { href: '/reports/sales', label: 'Sales Reports', icon: BarChart3 },
