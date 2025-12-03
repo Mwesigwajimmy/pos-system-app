@@ -1,160 +1,296 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { 
+  Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter 
+} from '@/components/ui/card';
+import { 
+  Table, TableHeader, TableRow, TableHead, TableBody, TableCell 
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Download, Calendar } from 'lucide-react';
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { 
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger 
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { 
+  ChevronLeft, ChevronRight, Download, Calendar, Globe, Building2, 
+  Printer, RefreshCw, Search, Info, ShieldCheck, FileText 
+} from 'lucide-react';
 import { toast } from 'sonner';
 
-// FIX: Enhanced Interface to support 'Period' strings (e.g. "January 2025")
+// --- Enterprise Types ---
 export interface FiscalRow {
+  id: string;
   label: string;
+  description: string;
   value: number;
   currency: string;
   entity: string;
   country: string;
-  period: string; // Updated from 'year' to 'period'
+  period: string;
+  isTotal: boolean;
 }
 
 interface Props {
   data: FiscalRow[];
   year: number;
-  month: number; // 0 = Full Year, 1-12 = Specific Month
+  month: number;
+  country: string;
+  availableCountries: string[];
 }
 
-export default function FiscalReportClient({ data, year, month }: Props) {
+export default function FiscalReportClient({ data, year, month, country, availableCountries }: Props) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // --- Enterprise Navigation Logic ---
-  // Updates URL params without full page reload friction
-  const updateParams = (newYear: number, newMonth: number) => {
-    router.push(`?year=${newYear}&month=${newMonth}`, { scroll: false });
+  // --- Navigation Logic with Loading State ---
+  const updateParams = (newYear: number, newMonth: number, newCountry: string) => {
+    startTransition(() => {
+        router.push(`?year=${newYear}&month=${newMonth}&country=${newCountry}`, { scroll: false });
+    });
   };
 
   const handleYearChange = (delta: number) => {
-    updateParams(year + delta, month);
+    updateParams(year + delta, month, country);
   };
 
-  const handleMonthChange = (val: string) => {
-    updateParams(year, parseInt(val));
+  const handleRefresh = () => {
+    startTransition(() => {
+        router.refresh();
+        toast.success("Data refreshed successfully");
+    });
   };
 
-  // --- Export Logic (Professional) ---
+  // --- Formatting Helpers ---
+  const formatMoney = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const currentDate = new Date().toLocaleDateString('en-GB', { 
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+  });
+
+  // --- Filter Logic ---
+  const filteredData = data.filter(row => 
+    row.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // --- Export Logic ---
   const handleExport = () => {
     try {
-        const headers = ["Label", "Entity", "Country", "Period", "Currency", "Value"];
+        const headers = ["ID", "Label", "Entity", "Jurisdiction", "Period", "Currency", "Value"];
         const csvRows = data.map(r => 
-            `"${r.label}","${r.entity}","${r.country}","${r.period}","${r.currency}",${r.value}`
+            `"${r.id}","${r.label}","${r.entity}","${r.country}","${r.period}","${r.currency}",${r.value}`
         );
         const csvContent = [headers.join(","), ...csvRows].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        
-        // Smart Filename Generation (e.g. Fiscal_Report_2025_01.csv)
         const periodSuffix = month === 0 ? `${year}` : `${year}_${month.toString().padStart(2, '0')}`;
-        link.download = `Fiscal_Report_${periodSuffix}.csv`;
-        
+        link.download = `Fiscal_Report_${country.replace(/\s+/g, '_')}_${periodSuffix}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Fiscal report exported successfully.");
+        toast.success("Export successful.");
     } catch (e) {
         toast.error("Export failed. Please try again.");
     }
   };
 
+  // --- Print Logic ---
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <Card className="shadow-md border-slate-200">
-      <CardHeader>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <TooltipProvider>
+      <div className="space-y-6 print:space-y-0">
+        
+        {/* HEADER SECTION (Hidden in Print) */}
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm print:hidden">
             <div>
-                <CardTitle className="text-xl font-bold text-slate-900">Fiscal Position Report</CardTitle>
-                <CardDescription>
-                  Equity and Profit analysis for <span className="font-semibold text-slate-800">{data[0]?.period || year}</span>
-                </CardDescription>
+                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <FileText className="h-6 w-6 text-blue-600"/>
+                    Fiscal Position Report
+                </h1>
+                <p className="text-slate-500 mt-1">
+                    Equity & Profit Analysis • <span className="font-semibold text-slate-800">{data[0]?.period || year}</span>
+                </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                {/* YEAR CONTROLS */}
-                <div className="flex items-center bg-slate-100 rounded-md border border-slate-200">
-                    <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-white transition-colors" onClick={() => handleYearChange(-1)}>
-                        <ChevronLeft className="h-4 w-4 text-slate-600"/>
-                    </Button>
-                    <span className="font-mono text-sm font-bold w-16 text-center text-slate-700">{year}</span>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-white transition-colors" onClick={() => handleYearChange(1)}>
-                        <ChevronRight className="h-4 w-4 text-slate-600"/>
-                    </Button>
-                </div>
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 w-full xl:w-auto">
+                
+                {/* REFRESH */}
+                <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isPending} title="Refresh Data">
+                    <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
+                </Button>
 
-                {/* MONTH SELECTOR (Enterprise Addition) */}
-                <Select value={month.toString()} onValueChange={handleMonthChange}>
-                  <SelectTrigger className="w-[180px] h-9 bg-white">
+                {/* COUNTRY SELECTOR */}
+                <Select value={country} onValueChange={(val) => updateParams(year, month, val)} disabled={isPending}>
+                  <SelectTrigger className="w-[180px] h-10 bg-white">
+                    <Globe className="mr-2 h-4 w-4 text-blue-600" />
+                    <SelectValue placeholder="Jurisdiction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All" className="font-bold">Global Consolidated</SelectItem>
+                    <div className="h-px bg-slate-100 my-1" />
+                    {availableCountries.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* MONTH SELECTOR */}
+                <Select value={month.toString()} onValueChange={(val) => updateParams(year, parseInt(val), country)} disabled={isPending}>
+                  <SelectTrigger className="w-[160px] h-10 bg-white">
                     <Calendar className="mr-2 h-4 w-4 text-slate-500" />
-                    <SelectValue placeholder="Select Period" />
+                    <SelectValue placeholder="Period" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0" className="font-bold">Full Year {year}</SelectItem>
                     <div className="h-px bg-slate-100 my-1" />
-                    <SelectItem value="1">January</SelectItem>
-                    <SelectItem value="2">February</SelectItem>
-                    <SelectItem value="3">March</SelectItem>
-                    <SelectItem value="4">April</SelectItem>
-                    <SelectItem value="5">May</SelectItem>
-                    <SelectItem value="6">June</SelectItem>
-                    <SelectItem value="7">July</SelectItem>
-                    <SelectItem value="8">August</SelectItem>
-                    <SelectItem value="9">September</SelectItem>
-                    <SelectItem value="10">October</SelectItem>
-                    <SelectItem value="11">November</SelectItem>
-                    <SelectItem value="12">December</SelectItem>
+                    {[
+                      "January", "February", "March", "April", "May", "June", 
+                      "July", "August", "September", "October", "November", "December"
+                    ].map((m, idx) => (
+                      <SelectItem key={idx} value={(idx + 1).toString()}>{m}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
-                <Button variant="default" className="ml-2 h-9" onClick={handleExport}>
-                    <Download className="mr-2 h-4 w-4"/> Export CSV
+                {/* YEAR NAV */}
+                <div className="flex items-center bg-slate-100 rounded-md border border-slate-200 h-10">
+                    <Button variant="ghost" size="icon" className="h-full w-9 hover:bg-white" onClick={() => handleYearChange(-1)} disabled={isPending}>
+                        <ChevronLeft className="h-4 w-4 text-slate-600"/>
+                    </Button>
+                    <span className="font-mono text-sm font-bold w-14 text-center text-slate-700">{year}</span>
+                    <Button variant="ghost" size="icon" className="h-full w-9 hover:bg-white" onClick={() => handleYearChange(1)} disabled={isPending}>
+                        <ChevronRight className="h-4 w-4 text-slate-600"/>
+                    </Button>
+                </div>
+
+                <div className="h-6 w-px bg-slate-300 mx-2 hidden sm:block" />
+
+                <Button variant="outline" onClick={handlePrint}>
+                    <Printer className="mr-2 h-4 w-4"/> Print
+                </Button>
+
+                <Button variant="default" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4"/> Export
                 </Button>
             </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-              <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50">
-                  <TableHead className="w-[300px]">Label</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Country</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Currency</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-              </TableHeader>
-              <TableBody>
-              {data.map((row, idx) => (
-                  <TableRow key={idx} className={row.label === 'Closing Equity' ? 'bg-slate-50 font-bold border-t-2 border-slate-300' : 'hover:bg-slate-50/50 transition-colors'}>
-                  <TableCell className="font-medium text-slate-700">{row.label}</TableCell>
-                  <TableCell>{row.entity}</TableCell>
-                  <TableCell>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                          {row.country}
-                      </span>
-                  </TableCell>
-                  <TableCell className="text-slate-500">{row.period}</TableCell>
-                  <TableCell className="text-slate-500">{row.currency}</TableCell>
-                  <TableCell className="text-right font-mono text-base text-slate-900">
-                      {row.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </TableCell>
-                  </TableRow>
-              ))}
-              </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+
+        {/* REPORT CARD */}
+        <Card className="shadow-lg border-slate-200 print:shadow-none print:border-none">
+          <CardHeader className="border-b bg-slate-50/50 pb-4 print:pb-2">
+            <div className="flex justify-between items-center">
+                <div className="space-y-1">
+                    <CardTitle className="text-xl font-bold flex items-center gap-2 text-slate-900">
+                        <Building2 className="h-5 w-5 text-blue-600"/>
+                        {data[0]?.entity}
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-normal text-slate-600 bg-white">
+                            {data[0]?.country}
+                        </Badge>
+                        <span className="text-slate-400">•</span>
+                        <span>{data[0]?.currency} Reporting</span>
+                    </CardDescription>
+                </div>
+                {/* Search (Client Side) */}
+                <div className="relative w-64 hidden md:block print:hidden">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400"/>
+                    <Input 
+                        placeholder="Search line items..." 
+                        className="pl-8 bg-white"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="p-0">
+            <Table>
+                <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="w-[400px] pl-6">Line Item</TableHead>
+                    <TableHead>Jurisdiction</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead className="text-right pr-6">Amount ({data[0]?.currency})</TableHead>
+                </TableRow>
+                </TableHeader>
+                <TableBody>
+                {filteredData.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center text-slate-500">
+                            No matching records found.
+                        </TableCell>
+                    </TableRow>
+                ) : (
+                    filteredData.map((row) => (
+                        <TableRow 
+                            key={row.id} 
+                            className={row.isTotal ? 'bg-blue-50/50 font-bold border-t-2 border-blue-100 hover:bg-blue-50' : 'hover:bg-slate-50/50'}
+                        >
+                            <TableCell className="pl-6">
+                                <div className="flex items-center gap-2">
+                                    <span className={row.isTotal ? "text-slate-900 text-lg" : "text-slate-700 font-medium"}>
+                                        {row.label}
+                                    </span>
+                                    {/* Tooltip for Description */}
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="h-3.5 w-3.5 text-slate-400 cursor-help print:hidden"/>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="max-w-xs">
+                                            <p>{row.description}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${row.country === 'Global Consolidated' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                                    {row.country}
+                                </span>
+                            </TableCell>
+                            <TableCell className="text-slate-500 font-mono text-sm">
+                                {row.period}
+                            </TableCell>
+                            <TableCell className={`text-right pr-6 font-mono ${row.isTotal ? 'text-lg text-blue-700' : 'text-base text-slate-900'}`}>
+                                {formatMoney(row.value, row.currency)}
+                            </TableCell>
+                        </TableRow>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+          </CardContent>
+
+          {/* Legal Footer */}
+          <CardFooter className="bg-slate-50 border-t p-6 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 print:text-[10px]">
+            <div className="flex items-center gap-2 mb-2 md:mb-0">
+                <ShieldCheck className="h-4 w-4 text-slate-400"/>
+                <span>Generated via Enterprise ERP System. Valid for internal board review.</span>
+            </div>
+            <div className="font-mono">
+                Report Generated: {currentDate}
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+    </TooltipProvider>
   );
 }
