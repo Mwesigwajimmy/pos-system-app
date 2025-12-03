@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import WorkCenterSchedule from "@/components/inventory/WorkCentreSchedule"; // Ensure filename matches your component
+// NOTE: Your file in screenshot 3 is named 'WorkCentreSchedule.tsx' (British 're')
+import WorkCenterSchedule from "@/components/inventory/WorkCentreSchedule"; 
 
 export default async function WorkCentersPage({ params }: { params: { locale: string } }) {
   const cookieStore = cookies();
@@ -19,10 +20,10 @@ export default async function WorkCentersPage({ params }: { params: { locale: st
   const { data: scheduleData } = await supabase
     .from("work_center_schedule")
     .select("*")
-    .eq("entity", entitySlug) // Filter by Entity
+    .eq("entity", entitySlug) 
     .order("start_time", { ascending: true });
 
-  const schedule = (scheduleData || []).map((s) => ({
+  const schedule = (scheduleData || []).map((s: any) => ({
     id: s.id,
     workCenter: s.work_center_name,
     session: s.session_name,
