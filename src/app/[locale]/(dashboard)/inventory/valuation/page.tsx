@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import InventoryValuationReport from "@/components/inventory/InventoryValuationReport";
 
-// Define the type locally to ensure type safety during build
 interface ValuationRow {
   id: string;
   productName: string;
@@ -17,10 +16,8 @@ export default async function ValuationPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. Authentication
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 2. Multi-tenant Context
   let activeSlug = null;
   if (user) {
     const { data: userProfile } = await supabase
@@ -31,31 +28,33 @@ export default async function ValuationPage() {
     activeSlug = userProfile?.active_entity_slug;
   }
 
-  // 3. Initialize Variables (Safe defaults)
-  let reportRows: ValuationRow[] = []; // Typed array to prevent build error
+  let reportRows: ValuationRow[] = [];
   let currencyCode = 'USD';
   let locale = 'en-US';
+  let entityName = 'System';
 
   if (activeSlug) {
-    // 4. Fetch Entity Config (Currency/Locale)
-    const { data: entityConfig } = await supabase
-      .from("entities")
-      .select("name, currency_code, locale")
-      .eq("slug", activeSlug)
-      .single();
-    
+    const [entityResult, valuationResult] = await Promise.all([
+      supabase
+        .from("entities")
+        .select("name, currency_code, locale")
+        .eq("slug", activeSlug)
+        .single(),
+      supabase.rpc("get_inventory_valuation", {
+        target_entity_slug: activeSlug,
+      })
+    ]);
+
+    const entityConfig = entityResult.data;
+    const valuationData = valuationResult.data;
+
     if (entityConfig) {
       currencyCode = entityConfig.currency_code || 'USD';
       locale = entityConfig.locale || 'en-US';
+      entityName = entityConfig.name || activeSlug;
     }
 
-    // 5. Fetch Valuation Data via RPC
-    const { data: valuationData, error } = await supabase.rpc("get_inventory_valuation", {
-      target_entity_slug: activeSlug,
-    });
-
-    if (!error && valuationData) {
-      // 6. Map Data strictly
+    if (valuationData) {
       reportRows = valuationData.map((row: any, index: number) => ({
         id: `val-${row.sku}-${index}`,
         productName: row.product_name || "Unknown Item",
@@ -74,7 +73,7 @@ export default async function ValuationPage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Inventory Valuation</h2>
           <p className="text-muted-foreground">
-            Financial reporting for <span className="font-semibold text-foreground">{activeSlug || 'System'}</span>
+            Financial reporting for <span className="font-semibold text-foreground">{entityName}</span>
           </p>
         </div>
       </div>

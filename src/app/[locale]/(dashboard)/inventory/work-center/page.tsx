@@ -2,15 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import WorkCenterSchedule, { WorkCenterScheduleEntry } from "@/components/inventory/WorkCenterSchedule";
 
-// Enterprise Grade: Explicitly define the logic
 export default async function WorkCentersPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. Secure Authentication
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 2. Multi-tenant Context: Fetch active entity
   let entitySlug = null;
   if (user) {
     const { data: profile } = await supabase
@@ -21,19 +18,29 @@ export default async function WorkCentersPage() {
     entitySlug = profile?.active_entity_slug;
   }
 
-  // 3. Initialize as a typed array (FIXES THE BUILD ERROR)
-  // Even if no data exists, this is now a valid empty array of the correct type.
   let schedule: WorkCenterScheduleEntry[] = [];
 
-  // 4. Fetch Data only if we have a valid entity context
   if (entitySlug) {
-    const { data: scheduleData } = await supabase
-      .from("work_center_schedule")
-      .select("*")
-      .eq("entity", entitySlug) 
-      .order("start_time", { ascending: true });
+    const [entityResult, scheduleResult] = await Promise.all([
+      supabase
+        .from("entities")
+        .select("id, country, locale")
+        .eq("slug", entitySlug)
+        .single(),
+      supabase
+        .from("work_center_schedule")
+        .select("*")
+        .eq("entity", entitySlug)
+        .order("start_time", { ascending: true })
+    ]);
 
-    // 5. Professional Mapping: robust handling of null values
+    const entityData = entityResult.data;
+    const scheduleData = scheduleResult.data;
+    
+    // Dynamic Country Logic: Prefer direct country column, fallback to locale suffix
+    const dynamicCountry = entityData?.country || entityData?.locale?.split('-')[1] || "UG";
+    const dynamicTenantId = entityData?.id || "";
+
     if (scheduleData) {
       schedule = scheduleData.map((s: any) => ({
         id: s.id,
@@ -45,13 +52,12 @@ export default async function WorkCentersPage() {
         status: s.status || "planned",
         machineOperator: s.operator_name || "Unassigned",
         entity: s.entity,
-        country: "UG", // Dynamic country logic can be added here later
-        tenantId: "system"
+        country: dynamicCountry,
+        tenantId: dynamicTenantId
       }));
     }
   }
 
-  // 6. Return the UI (Passes empty array if no data, preventing crashes)
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <h2 className="text-3xl font-bold tracking-tight">Work Center Schedule</h2>
