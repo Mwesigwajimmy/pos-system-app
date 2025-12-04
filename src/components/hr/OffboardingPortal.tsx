@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from "react";
+import React, { useTransition } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Search, X, CheckCircle2 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { completeOffboardingStepAction } from "@/lib/hr/actions/offboarding";
 
 export interface OffboardingStep {
   id: string;
@@ -25,81 +25,69 @@ interface OffboardingPortalProps {
 }
 
 export default function OffboardingPortal({ initialSteps }: OffboardingPortalProps) {
-  const [rows, setRows] = useState<OffboardingStep[]>(initialSteps);
-  const [filter, setFilter] = useState('');
+  const [isPending, startTransition] = useTransition();
 
-  const filtered = useMemo(
-    () => rows.filter(
-      row =>
-        row.employee.toLowerCase().includes(filter.toLowerCase()) ||
-        row.entity.toLowerCase().includes(filter.toLowerCase()) ||
-        row.country.toLowerCase().includes(filter.toLowerCase())
-    ),
-    [rows, filter]
-  );
-
-  // In a real app, this should be a Server Action, but for now we update local state
-  const markComplete = (id: string) => {
-    setRows(rs =>
-      rs.map(r =>
-        r.id === id
-          ? { ...r, status: "step complete", completedAt: new Date().toISOString().slice(0, 10) }
-          : r
-      )
-    );
+  const handleComplete = (id: string) => {
+    startTransition(async () => {
+        await completeOffboardingStepAction(id);
+    });
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Offboarding Portal</CardTitle>
         <CardDescription>
-          Track, assign, and complete all exit, clearance and handover steps.
+          Manage employee exit procedures, asset recovery, and compliance checklists.
         </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
-          <Input placeholder="Filter by name/entity..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-8"/>
-          {filter && <X className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer" onClick={()=>setFilter("")}/>}
-        </div>
       </CardHeader>
       <CardContent>
-          <ScrollArea className="h-60">
+          <ScrollArea className="h-[600px] border rounded-md">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-slate-100 sticky top-0">
                   <TableRow>
                     <TableHead>Employee</TableHead>
+                    <TableHead>Task / Step</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Step</TableHead>
-                    <TableHead>Responsible</TableHead>
-                    <TableHead>Due</TableHead>
-                    <TableHead>Completed</TableHead>
+                    <TableHead>Responsible Role</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Completed Date</TableHead>
                     <TableHead>Entity</TableHead>
-                    <TableHead>Country</TableHead>
-                    <TableHead>Mark As Complete</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.length === 0
-                    ? <TableRow><TableCell colSpan={9}>No offboarding steps found.</TableCell></TableRow>
-                    : filtered.map(row => (
+                  {initialSteps.length === 0
+                    ? <TableRow><TableCell colSpan={8} className="text-center p-8 text-muted-foreground">No pending offboarding tasks.</TableCell></TableRow>
+                    : initialSteps.map(row => (
                         <TableRow key={row.id}>
-                          <TableCell>{row.employee}</TableCell>
+                          <TableCell className="font-medium">{row.employee}</TableCell>
+                          <TableCell>{row.step}</TableCell>
                           <TableCell>
                             {row.status === "step complete"
-                              ? <span className="text-green-800 flex items-center gap-1"><CheckCircle2 className="w-4 h-4"/>Done</span>
-                              : <span className="text-yellow-800 capitalize">{row.status}</span>
+                              ? <span className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded text-xs font-bold flex w-fit items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Complete</span>
+                              : row.status === "in review"
+                                ? <span className="text-amber-700 bg-amber-50 px-2 py-1 rounded text-xs font-bold flex w-fit items-center gap-1"><AlertCircle className="w-3 h-3"/> Review</span>
+                                : <span className="text-slate-600 bg-slate-100 px-2 py-1 rounded text-xs font-bold uppercase">Pending</span>
                             }
                           </TableCell>
-                          <TableCell>{row.step}</TableCell>
                           <TableCell>{row.responsible}</TableCell>
-                          <TableCell>{row.due}</TableCell>
-                          <TableCell>{row.completedAt || "-"}</TableCell>
-                          <TableCell>{row.entity}</TableCell>
-                          <TableCell>{row.country}</TableCell>
-                          <TableCell>
-                            {row.status !== "step complete"
-                              ? <Button size="sm" onClick={() => markComplete(row.id)}>Complete</Button>
-                              : null}
+                          <TableCell className={new Date(row.due) < new Date() && row.status !== 'step complete' ? "text-red-600 font-bold" : ""}>
+                            {row.due}
+                          </TableCell>
+                          <TableCell>{row.completedAt ? new Date(row.completedAt).toLocaleDateString() : "-"}</TableCell>
+                          <TableCell>{row.entity} <span className="text-xs text-muted-foreground">({row.country})</span></TableCell>
+                          <TableCell className="text-right">
+                            {row.status !== "step complete" && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                disabled={isPending}
+                                onClick={() => handleComplete(row.id)}
+                              >
+                                {isPending ? <Loader2 className="w-3 h-3 animate-spin"/> : "Mark Done"}
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

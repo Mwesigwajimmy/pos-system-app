@@ -8,30 +8,31 @@ export async function assignVehicleAction(formData: FormData) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. Auth & Tenant Context
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const { data: currentUser } = await supabase
+  const { data: employeeProfile } = await supabase
     .from('employees')
     .select('tenant_id')
     .eq('user_id', user.id)
     .single();
 
-  if (!currentUser) throw new Error("Profile not found");
-  const tenantId = currentUser.tenant_id;
+  if (!employeeProfile) throw new Error("Profile not found");
+  const tenantId = employeeProfile.tenant_id;
 
-  // 2. Parse Data
-  const vehicle = formData.get('vehicle') as string;
-  const plate = formData.get('plate') as string;
+  // Extract Data
+  const vehicleModel = formData.get('vehicle') as string;
+  const plateNumber = formData.get('plate') as string;
   const assignedToName = formData.get('assignedTo') as string;
-  const driverLicense = formData.get('driverLicense') as string;
+  const licenseNumber = formData.get('driverLicense') as string;
   const licenseExpiry = formData.get('licenseExpiry') as string;
   const insuranceExpiry = formData.get('insuranceExpiry') as string;
+  
+  if (!vehicleModel || !plateNumber || !assignedToName) {
+    throw new Error("Missing required fields");
+  }
 
-  if (!vehicle || !plate || !assignedToName) return;
-
-  // 3. Lookup Employee
+  // Resolve Employee
   const nameParts = assignedToName.trim().split(' ');
   const term = nameParts[0];
 
@@ -44,20 +45,21 @@ export async function assignVehicleAction(formData: FormData) {
     .single();
 
   if (empError || !targetEmployee) {
-    throw new Error(`Driver '${assignedToName}' not found.`);
+    throw new Error(`Employee '${assignedToName}' not found.`);
   }
 
-  // 4. Insert Assignment
+  // Insert Assignment
   const { error } = await supabase.from('fleet_assignments').insert({
     tenant_id: tenantId,
-    vehicle_model: vehicle,
-    plate_number: plate,
+    vehicle_model: vehicleModel,
+    plate_number: plateNumber,
     assigned_to_employee_id: targetEmployee.id,
-    license_number: driverLicense,
+    license_number: licenseNumber,
     license_expiry: licenseExpiry || null,
     insurance_expiry: insuranceExpiry || null,
     status: 'active',
-    assigned_date: new Date().toISOString()
+    assigned_date: new Date().toISOString(),
+    notes: formData.get('notes') as string || ''
   });
 
   if (error) throw new Error(error.message);

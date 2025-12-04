@@ -11,7 +11,7 @@ export async function completeOffboardingStepAction(stepId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  // Verify user belongs to the same tenant as the step (security check)
+  // Validate Step Ownership (Tenant Security)
   const { data: step } = await supabase
     .from('offboarding_checklist')
     .select('tenant_id')
@@ -30,6 +30,7 @@ export async function completeOffboardingStepAction(stepId: string) {
     throw new Error("Unauthorized access to this tenant data");
   }
 
+  // Perform Update
   const { error } = await supabase
     .from('offboarding_checklist')
     .update({ 

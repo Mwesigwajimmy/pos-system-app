@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from "react";
+import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import { addBenefitAction } from "@/lib/hr/actions/benefits";
+import { useFormStatus } from "react-dom";
 
 export interface BenefitEntry {
   id: string;
@@ -23,83 +25,88 @@ interface BenefitsManagerProps {
     initialBenefits: BenefitEntry[];
 }
 
-export default function BenefitsManager({ initialBenefits }: BenefitsManagerProps) {
-  const [options, setOptions] = useState<BenefitEntry[]>(initialBenefits);
-  
-  // Local state for the "Add" form
-  const [benefit, setBenefit] = useState('');
-  const [coverage, setCoverage] = useState('');
-  const [availableTo, setAvailableTo] = useState('');
-  const [entity, setEntity] = useState('');
-  const [country, setCountry] = useState('');
-  const [type, setType] = useState("pension");
-
-  const addOption = () => {
-    // In a real system, invoke a Server Action here
-    if (!benefit || !coverage) return;
-    const newItem: BenefitEntry = {
-        id: Math.random().toString(36).slice(2),
-        benefit, coverage, availableTo, entity, country, 
-        type: type as BenefitEntry["type"], 
-        status: "offered"
-    };
-    setOptions([...options, newItem]);
-    setBenefit(""); setCoverage(""); 
-  };
-
+function SubmitButton() {
+  const { pending } = useFormStatus();
   return (
-    <Card>
+    <Button type="submit" variant="secondary" disabled={pending}>
+      {pending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4"/>}
+    </Button>
+  );
+}
+
+export default function BenefitsManager({ initialBenefits }: BenefitsManagerProps) {
+  return (
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle>Benefits/Governance Manager</CardTitle>
+        <CardTitle>Benefits Governance</CardTitle>
         <CardDescription>
-          Pension, health, incentive & allowance programs.
+          Administer pension schemes, insurance policies, and allowances globally.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Simple Add Form */}
-        <div className="flex gap-2 mb-3 flex-wrap">
-          <Input className="w-32" placeholder="Benefit" value={benefit} onChange={e => setBenefit(e.target.value)}/>
-          <Input className="w-32" placeholder="Coverage" value={coverage} onChange={e => setCoverage(e.target.value)}/>
-          <Input className="w-32" placeholder="Eligibility" value={availableTo} onChange={e => setAvailableTo(e.target.value)}/>
-          <Input className="w-24" placeholder="Entity" value={entity} onChange={e => setEntity(e.target.value)}/>
-          <Input className="w-24" placeholder="Country" value={country} onChange={e => setCountry(e.target.value)}/>
-          <select className="border rounded px-2" value={type} onChange={e => setType(e.target.value)}>
-            <option value="pension">Pension</option>
-            <option value="insurance">Insurance</option>
-            <option value="allowance">Allowance</option>
-            <option value="other">Other</option>
-          </select>
-          <Button variant="secondary" onClick={addOption}><Plus className="w-4 h-4"/></Button>
-        </div>
+        <form action={addBenefitAction} className="flex gap-2 mb-4 flex-wrap p-3 bg-slate-50 border rounded-lg items-end">
+          <div className="flex flex-col gap-1">
+             <label className="text-[10px] font-bold text-slate-500 uppercase">Benefit Name</label>
+             <Input required name="benefit" className="w-40 bg-white" placeholder="e.g. Health Insurance" />
+          </div>
+          <div className="flex flex-col gap-1 flex-1">
+             <label className="text-[10px] font-bold text-slate-500 uppercase">Coverage / Details</label>
+             <Input required name="coverage" className="min-w-[200px] bg-white" placeholder="Description of coverage" />
+          </div>
+          <div className="flex flex-col gap-1">
+             <label className="text-[10px] font-bold text-slate-500 uppercase">Eligibility</label>
+             <Input required name="availableTo" className="w-40 bg-white" placeholder="e.g. Full-time Staff" />
+          </div>
+          <div className="flex flex-col gap-1">
+             <label className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
+             <select name="type" className="h-10 border rounded px-2 bg-white text-sm w-32">
+                <option value="pension">Pension</option>
+                <option value="insurance">Insurance</option>
+                <option value="allowance">Allowance</option>
+                <option value="other">Other</option>
+             </select>
+          </div>
+          <div className="flex flex-col gap-1">
+             <label className="text-[10px] font-bold text-slate-500 uppercase">Entity</label>
+             <Input name="entity" className="w-24 bg-white" placeholder="All" />
+          </div>
+          <div className="flex flex-col gap-1">
+             <label className="text-[10px] font-bold text-slate-500 uppercase">Country</label>
+             <Input name="country" className="w-20 bg-white" placeholder="Code" />
+          </div>
+          <div className="pb-1">
+             <SubmitButton />
+          </div>
+        </form>
 
-        <ScrollArea className="h-56">
+        <ScrollArea className="h-[450px] border rounded-md">
             <Table>
-            <TableHeader>
+            <TableHeader className="bg-slate-100 sticky top-0">
                 <TableRow>
                 <TableHead>Benefit</TableHead>
                 <TableHead>Coverage</TableHead>
                 <TableHead>Eligibility</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Entity</TableHead>
                 <TableHead>Country</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {options.length === 0
-                ? <TableRow><TableCell colSpan={7}>No benefit programs listed.</TableCell></TableRow>
-                : options.map(b => (
+                {initialBenefits.length === 0
+                ? <TableRow><TableCell colSpan={7} className="text-center p-8 text-muted-foreground">No benefits configured.</TableCell></TableRow>
+                : initialBenefits.map(b => (
                     <TableRow key={b.id}>
-                        <TableCell>{b.benefit}</TableCell>
-                        <TableCell>{b.coverage}</TableCell>
-                        <TableCell>{b.availableTo}</TableCell>
+                        <TableCell className="font-semibold">{b.benefit}</TableCell>
+                        <TableCell className="text-sm text-slate-600">{b.coverage}</TableCell>
+                        <TableCell className="text-sm">{b.availableTo}</TableCell>
+                        <TableCell className="capitalize text-sm"><span className="bg-slate-100 px-2 py-1 rounded">{b.type}</span></TableCell>
                         <TableCell>{b.entity}</TableCell>
                         <TableCell>{b.country}</TableCell>
-                        <TableCell className="capitalize">{b.type}</TableCell>
                         <TableCell>
                         {b.status === "offered"
-                            ? <span className="text-green-800">Offered</span>
-                            : <span className="text-red-900">Ended</span>}
+                            ? <span className="text-emerald-700 text-xs font-bold uppercase border border-emerald-200 bg-emerald-50 px-2 py-1 rounded">Active</span>
+                            : <span className="text-red-700 text-xs font-bold uppercase border border-red-200 bg-red-50 px-2 py-1 rounded">Ended</span>}
                         </TableCell>
                     </TableRow>
                     ))}
