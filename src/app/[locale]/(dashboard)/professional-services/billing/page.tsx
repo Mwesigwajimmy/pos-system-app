@@ -12,30 +12,23 @@ interface BillingData {
 }
 
 async function getBillingData(supabase: any, tenantId: string): Promise<BillingData> {
-  // 1. Fetch Unbilled Work (Aggregated via RPC for performance)
-  // Ensure your RPC function 'get_unbilled_work_by_client' accepts 'p_tenant_id'
+  // 1. Fetch Unbilled Work
   const { data: unbilled, error: unbilledError } = await supabase
     .rpc('get_unbilled_work_by_client', { p_tenant_id: tenantId });
 
-  // 2. Fetch Recent Time Entries (Raw log)
-  // We strictly filter by tenant_id here for RLS compliance
+  // 2. Fetch Recent Time Entries
   const { data: entries, error: entriesError } = await supabase
     .from('time_entries')
     .select(`
       *,
       customers ( name ) 
     `) 
-    // Note: Adjust 'customers' to 'clients' if your DB schema uses 'clients' table
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
     .limit(100);
 
-  if (unbilledError) {
-    console.error("Error fetching unbilled data:", unbilledError);
-  }
-  if (entriesError) {
-    console.error("Error fetching time entries:", entriesError);
-  }
+  if (unbilledError) console.error("Error fetching unbilled data:", unbilledError);
+  if (entriesError) console.error("Error fetching time entries:", entriesError);
 
   return {
     unbilledClients: (unbilled as UnbilledClient[]) || [],
@@ -54,9 +47,15 @@ export default async function BillingPage() {
     redirect('/auth/login');
   }
 
-  // 2. Extract Tenant Context
-  // In enterprise SaaS, this usually lives in user_metadata
-  const tenantId = user.user_metadata?.tenant_id;
+  // 2. Extract Tenant Context FROM DATABASE (Fixes the error)
+  // We query the profiles table instead of user_metadata
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('business_id')
+    .eq('id', user.id)
+    .single();
+
+  const tenantId = profile?.business_id;
 
   if (!tenantId) {
     return (
@@ -83,13 +82,9 @@ export default async function BillingPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column: Unbilled Clients (Actionable) */}
         <div className="lg:col-span-1">
-          {/* FIX: Passed required tenantId prop here */}
           <UnbilledClients clients={unbilledClients} tenantId={tenantId} />
         </div>
-
-        {/* Right Column: Time Logs (Informational) */}
         <div className="lg:col-span-2">
           <TimeEntryList entries={timeEntries} />
         </div>
