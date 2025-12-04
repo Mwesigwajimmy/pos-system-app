@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,7 +15,6 @@ import { Loader2, FileText, Upload, Download, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { useTenant } from '@/hooks/useTenant';
 import toast from 'react-hot-toast';
 
 // --- 1. Schemas & Types ---
@@ -46,7 +45,7 @@ interface Contract {
 }
 
 interface Props {
-  tenantId?: string;
+  tenantId: string;
 }
 
 // --- 2. Data Fetching ---
@@ -57,7 +56,7 @@ async function fetchContracts(tenantId: string) {
     .from('procurement_contracts')
     .select('*')
     .eq('tenant_id', tenantId)
-    .order('end_date', { ascending: true }); // Show expiring soonest first
+    .order('end_date', { ascending: true });
   
   if (error) throw error;
   return data as Contract[];
@@ -65,10 +64,7 @@ async function fetchContracts(tenantId: string) {
 
 // --- 3. Component ---
 
-export default function ProcurementContractManagement({ tenantId: propTenantId }: Props) {
-  const { data: tenantData } = useTenant(); 
-  const tenantId = propTenantId || tenantData?.id;
-
+export default function ProcurementContractManagement({ tenantId }: Props) {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,12 +73,11 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
   // Queries
   const { data: contracts, isLoading } = useQuery({
     queryKey: ['procurement-contracts', tenantId],
-    queryFn: () => fetchContracts(tenantId!),
+    queryFn: () => fetchContracts(tenantId),
     enabled: !!tenantId
   });
 
   // Form Setup
-  // FIX: Removed explicit <ContractFormValues> to resolve Zod coercion type mismatch
   const form = useForm({
     resolver: zodResolver(contractSchema),
     defaultValues: {
@@ -92,19 +87,17 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
       currency: 'USD',
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date(Date.now() + 31536000000).toISOString().split('T')[0], // +1 Year
-      status: 'active'
+      status: 'active' as const
     }
   });
 
   // Mutation
   const uploadMutation = useMutation({
     mutationFn: async (values: ContractFormValues) => {
-      if (!tenantId) throw new Error("Missing Tenant ID");
       const supabase = createClient();
-      
       let filePath = null;
 
-      // 1. Upload File (if selected)
+      // 1. Upload File
       if (selectedFile) {
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${tenantId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -141,8 +134,6 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
 
   const onSubmit = (data: ContractFormValues) => uploadMutation.mutate(data);
 
-  if (!tenantId) return <div className="p-10 text-center text-muted-foreground">Initializing tenant context...</div>;
-
   return (
     <Card className="h-full border-t-4 border-t-blue-600 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
@@ -178,10 +169,14 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
                     <FormItem className="col-span-2">
                       <FormLabel>Contract Value</FormLabel>
                       <FormControl>
-                        {/* Manual handling for number inputs to ensure safe typing */}
+                        {/* 
+                            FIXED HERE: Explicitly casting field.value to (string | number)
+                            This satisfies TypeScript because Input expects string | number.
+                        */}
                         <Input 
                           type="number" 
-                          {...field} 
+                          placeholder="0.00"
+                          {...field}
                           onChange={(e) => field.onChange(e.target.value)}
                           value={field.value as string | number}
                         />
@@ -203,7 +198,6 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
                   )}/>
                 </div>
 
-                {/* File Upload Area */}
                 <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors">
                   <input 
                     type="file" 
@@ -254,7 +248,7 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
                 <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">No contracts found. Add one above.</TableCell></TableRow>
               ) : (
                 contracts?.map((c) => {
-                  const isExpiringSoon = new Date(c.end_date) < new Date(Date.now() + 7776000000); // 90 days
+                  const isExpiringSoon = new Date(c.end_date) < new Date(Date.now() + 7776000000); 
                   const isExpired = new Date(c.end_date) < new Date();
 
                   return (
@@ -285,9 +279,7 @@ export default function ProcurementContractManagement({ tenantId: propTenantId }
                               <Download className="h-4 w-4 text-slate-600" />
                             </a>
                           </Button>
-                        ) : (
-                          <span className="text-xs text-slate-300 italic">No File</span>
-                        )}
+                        ) : <span className="text-xs text-slate-300 italic">No File</span>}
                       </TableCell>
                     </TableRow>
                   );

@@ -145,6 +145,7 @@ const navSections: NavItem[] = [
             { href: '/procurement/approvals', label: 'Approvals Workflow', icon: CheckSquare },
             { href: '/procurement/spend', label: 'Spend Analysis', icon: PieChart },
             { href: '/procurement/strategy', label: 'Category Strategy', icon: SlidersHorizontal },
+            { href: '/procurement/calendar', label: 'Sourcing Calendar', icon: CalendarDays },
         ]
     },
 
