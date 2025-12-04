@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, X, BadgeCheck, Home, Globe2 } from "lucide-react";
+import { Search, X, BadgeCheck, Home, Globe2 } from "lucide-react";
 
-interface Employee {
+// Shared interface
+export interface Employee {
   id: string;
   name: string;
   email: string;
@@ -19,49 +20,14 @@ interface Employee {
   contractType: "permanent" | "contract" | "remote";
   joined: string;
   avatarUrl: string;
-  tenantId: string;
 }
 
-export default function EmployeeDirectory() {
-  const [staff, setStaff] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
+interface EmployeeDirectoryProps {
+    staff: Employee[];
+}
 
-  useEffect(() => {
-    setTimeout(() => {
-      setStaff([
-        {
-          id: "emp001",
-          name: "Maya Okoth",
-          email: "maya@southmail.com",
-          job: "Senior Accountant",
-          location: "Kampala HQ",
-          country: "UG",
-          entity: "Main Comp Ltd.",
-          status: "active",
-          contractType: "permanent",
-          joined: "2022-05-17",
-          avatarUrl: "https://randomuser.me/api/portraits/women/37.jpg",
-          tenantId: "tenant-001"
-        },
-        {
-          id: "emp002",
-          name: "Liam Smith",
-          email: "liam@ausmail.com",
-          job: "Field Driver",
-          location: "Sydney Depot",
-          country: "AU",
-          entity: "Global Branch AU",
-          status: "on leave",
-          contractType: "remote",
-          joined: "2023-08-08",
-          avatarUrl: "https://randomuser.me/api/portraits/men/82.jpg",
-          tenantId: "tenant-002"
-        }
-      ]);
-      setLoading(false);
-    }, 380);
-  }, []);
+export default function EmployeeDirectory({ staff }: EmployeeDirectoryProps) {
+  const [filter, setFilter] = useState("");
 
   const filtered = useMemo(
     () => staff.filter(
@@ -79,7 +45,7 @@ export default function EmployeeDirectory() {
       <CardHeader>
         <CardTitle>Employee Directory</CardTitle>
         <CardDescription>
-          Search, view and filter all global staff—by contract/location/status/entity.
+          Search, view and filter all global staff.
         </CardDescription>
         <div className="relative mt-3 max-w-xs">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
@@ -88,9 +54,6 @@ export default function EmployeeDirectory() {
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin"/></div>
-        ) : (
           <ScrollArea className="h-80">
             <Table>
               <TableHeader>
@@ -111,7 +74,7 @@ export default function EmployeeDirectory() {
                   : filtered.map(s => (
                       <TableRow key={s.id}>
                         <TableCell className="p-2">
-                          <img src={s.avatarUrl} alt={s.name} className="w-8 h-8 rounded-full"/>
+                          <img src={s.avatarUrl || "https://ui-avatars.com/api/?name=" + s.name} alt={s.name} className="w-8 h-8 rounded-full"/>
                         </TableCell>
                         <TableCell>
                           <div className="font-semibold">{s.name}</div>
@@ -123,25 +86,24 @@ export default function EmployeeDirectory() {
                           {s.contractType === "permanent" ? <BadgeCheck className="w-4 h-4 text-green-700 inline" /> : null}
                           {s.contractType === "contract" ? <Globe2 className="w-4 h-4 text-yellow-600 inline" /> : null}
                           {s.contractType === "remote" ? <Home className="w-4 h-4 text-blue-600 inline" /> : null}
-                          <span className="ml-1">{s.contractType}</span>
+                          <span className="ml-1 capitalize">{s.contractType}</span>
                         </TableCell>
                         <TableCell>
-                          {s.status === "active"
-                            ? <span className="text-green-800">Active</span>
-                            : s.status === "on leave"
-                              ? <span className="text-yellow-800">On Leave</span>
-                              : <span className="text-red-800">Terminated</span>
-                          }
+                          <span className={
+                              s.status === 'active' ? 'text-green-800 capitalize' : 
+                              s.status === 'on leave' ? 'text-yellow-800 capitalize' : 'text-red-800 capitalize'
+                          }>
+                              {s.status}
+                          </span>
                         </TableCell>
                         <TableCell>{s.entity}</TableCell>
                         <TableCell>{s.country}</TableCell>
-                        <TableCell>{s.joined}</TableCell>
+                        <TableCell>{new Date(s.joined).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
               </TableBody>
             </Table>
           </ScrollArea>
-        )}
       </CardContent>
     </Card>
   );

@@ -3,7 +3,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
-interface OrgNode {
+export interface OrgNode {
   id: string;
   name: string;
   title: string;
@@ -12,71 +12,20 @@ interface OrgNode {
   country: string;
 }
 
-const ORG_DATA: OrgNode = {
-  id: "0",
-  name: "Joyce M.",
-  title: "CEO",
-  entity: "Main Comp Ltd.",
-  country: "UG",
-  reports: [
-    {
-      id: "d1",
-      name: "Sam L.",
-      title: "COO",
-      entity: "Main Comp Ltd.",
-      country: "UG",
-      reports: [
-        {
-          id: "fin1",
-          name: "Maya Okoth",
-          title: "Finance Manager",
-          entity: "Main Comp Ltd.",
-          country: "UG"
-        },
-        {
-          id: "dist1",
-          name: "Robert A.",
-          title: "Head of Distribution",
-          entity: "Main Comp Ltd.",
-          country: "UG"
-        }
-      ]
-    },
-    {
-      id: "d2",
-      name: "Lara G.",
-      title: "Head of HR",
-      entity: "Main Comp Ltd.",
-      country: "UG",
-      reports: [
-        {
-          id: "p1",
-          name: "Amos E.",
-          title: "Payroll Officer",
-          entity: "Main Comp Ltd.",
-          country: "UG"
-        }
-      ]
-    },
-    {
-      id: "d3",
-      name: "Tim M.",
-      title: "GM AU",
-      entity: "Global Branch AU",
-      country: "AU"
-    }
-  ]
-};
+interface OrgChartProps {
+    data: OrgNode | null;
+}
 
 function renderNode(node: OrgNode, level=0) {
   return (
-    <li key={node.id} className={`ml-${level*4}`}>
-      <div className="border p-2 mb-2 rounded bg-white">
-        <span className="font-bold">{node.name}</span>{" "}
-        <span className="text-xs text-muted-foreground">— {node.title} ({node.entity}, {node.country})</span>
+    <li key={node.id} className={`ml-${level > 0 ? 4 : 0} mt-2`}>
+      <div className="border p-2 mb-2 rounded bg-white shadow-sm inline-block min-w-[200px]">
+        <div className="font-bold">{node.name}</div>
+        <div className="text-xs text-muted-foreground">{node.title}</div>
+        <div className="text-[10px] text-gray-500">{node.entity}, {node.country}</div>
       </div>
-      {node.reports && (
-        <ul className={`pl-4 border-l ml-2`}>
+      {node.reports && node.reports.length > 0 && (
+        <ul className={`pl-4 border-l-2 border-gray-200 ml-4`}>
           {node.reports.map(n => renderNode(n, level+1))}
         </ul>
       )}
@@ -84,17 +33,17 @@ function renderNode(node: OrgNode, level=0) {
   );
 }
 
-export default function OrgChart() {
+export default function OrgChart({ data }: OrgChartProps) {
   return (
-    <Card>
+    <Card className="min-h-[500px]">
       <CardHeader>
         <CardTitle>Organization Chart</CardTitle>
         <CardDescription>
-          Visual org structure—divisions, departments, teams across companies/entities.
+          Visual org structure.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ul>{renderNode(ORG_DATA)}</ul>
+      <CardContent className="overflow-auto">
+        {data ? <ul>{renderNode(data)}</ul> : <p className="text-muted-foreground">No organizational data found or no CEO defined.</p>}
       </CardContent>
     </Card>
   );

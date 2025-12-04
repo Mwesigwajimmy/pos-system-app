@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, X, CheckCircle2 } from "lucide-react";
+import { Search, X, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 
-interface OffboardingStep {
+export interface OffboardingStep {
   id: string;
   employee: string;
   status: "step complete" | "pending" | "in review";
@@ -18,44 +18,15 @@ interface OffboardingStep {
   completedAt?: string;
   entity: string;
   country: string;
-  tenantId: string;
 }
 
-export default function OffboardingPortal() {
-  const [rows, setRows] = useState<OffboardingStep[]>([]);
-  const [filter, setFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+interface OffboardingPortalProps {
+    initialSteps: OffboardingStep[];
+}
 
-  useEffect(() => {
-    setTimeout(() => {
-      setRows([
-        {
-          id: "off-001",
-          employee: "Liam Smith",
-          status: "step complete",
-          step: "Return delivery vehicle",
-          responsible: "fleet@global.com",
-          due: "2025-11-29",
-          completedAt: "2025-11-21",
-          entity: "Global Branch AU",
-          country: "AU",
-          tenantId: "tenant-002"
-        },
-        {
-          id: "off-002",
-          employee: "Maya Okoth",
-          status: "pending",
-          step: "Exit interview",
-          responsible: "hr@main.co",
-          due: "2025-11-22",
-          entity: "Main Comp Ltd.",
-          country: "UG",
-          tenantId: "tenant-001"
-        }
-      ]);
-      setLoading(false);
-    }, 320);
-  }, []);
+export default function OffboardingPortal({ initialSteps }: OffboardingPortalProps) {
+  const [rows, setRows] = useState<OffboardingStep[]>(initialSteps);
+  const [filter, setFilter] = useState('');
 
   const filtered = useMemo(
     () => rows.filter(
@@ -67,6 +38,7 @@ export default function OffboardingPortal() {
     [rows, filter]
   );
 
+  // In a real app, this should be a Server Action, but for now we update local state
   const markComplete = (id: string) => {
     setRows(rs =>
       rs.map(r =>
@@ -86,14 +58,12 @@ export default function OffboardingPortal() {
         </CardDescription>
         <div className="relative mt-3 max-w-xs">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
-          <Input placeholder="Filter by name/entity/..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-8"/>
+          <Input placeholder="Filter by name/entity..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-8"/>
           {filter && <X className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer" onClick={()=>setFilter("")}/>}
         </div>
       </CardHeader>
       <CardContent>
-        {loading
-          ? <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin"/></div>
-          : <ScrollArea className="h-60">
+          <ScrollArea className="h-60">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -117,13 +87,13 @@ export default function OffboardingPortal() {
                           <TableCell>
                             {row.status === "step complete"
                               ? <span className="text-green-800 flex items-center gap-1"><CheckCircle2 className="w-4 h-4"/>Done</span>
-                              : <span className="text-yellow-800">{row.status}</span>
+                              : <span className="text-yellow-800 capitalize">{row.status}</span>
                             }
                           </TableCell>
                           <TableCell>{row.step}</TableCell>
                           <TableCell>{row.responsible}</TableCell>
                           <TableCell>{row.due}</TableCell>
-                          <TableCell>{row.completedAt || ""}</TableCell>
+                          <TableCell>{row.completedAt || "-"}</TableCell>
                           <TableCell>{row.entity}</TableCell>
                           <TableCell>{row.country}</TableCell>
                           <TableCell>
@@ -136,7 +106,6 @@ export default function OffboardingPortal() {
                 </TableBody>
               </Table>
             </ScrollArea>
-        }
       </CardContent>
     </Card>
   );
