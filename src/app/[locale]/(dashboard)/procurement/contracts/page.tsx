@@ -6,9 +6,11 @@ import ProcurementContractManagement from '@/components/procurement/ProcurementC
 export default async function ContractsPage() {
   const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("organization_id").eq("id", user?.id).single();
+  
+  // FIX: Using 'business_id'
+  const { data: profile } = await supabase.from("profiles").select("business_id").eq("id", user?.id).single();
 
-  if (!profile?.organization_id) return <div>Unauthorized</div>;
+  if (!profile?.business_id) return <div className="p-10 text-center">Unauthorized: No Business ID found.</div>;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -16,7 +18,7 @@ export default async function ContractsPage() {
         <h1 className="text-2xl font-bold tracking-tight">Contract Management</h1>
         <p className="text-muted-foreground">Repository of vendor contracts and expiration alerts.</p>
       </div>
-      <ProcurementContractManagement tenantId={profile.organization_id} />
+      <ProcurementContractManagement tenantId={profile.business_id} />
     </div>
   );
 }

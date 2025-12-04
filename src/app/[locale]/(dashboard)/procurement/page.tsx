@@ -14,15 +14,25 @@ export default async function ProcurementPage({ params: { locale } }: { params: 
 
   if (!user) redirect(`/${locale}/auth/login`);
 
+  // FIX: Changed 'organization_id' to 'business_id' based on your schema
   const { data: profile } = await supabase
     .from("profiles")
-    .select("organization_id")
+    .select("business_id") 
     .eq("id", user.id)
     .single();
 
-  const tenantId = profile?.organization_id;
+  const tenantId = profile?.business_id;
 
-  if (!tenantId) return <div>Access Denied</div>;
+  if (!tenantId) {
+    return (
+      <div className="flex h-[50vh] w-full items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600">Unauthorized</h2>
+          <p className="text-muted-foreground">Your user profile is not linked to a business tenant.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-8 max-w-7xl px-4">

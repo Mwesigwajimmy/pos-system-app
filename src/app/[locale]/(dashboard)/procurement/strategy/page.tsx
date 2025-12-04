@@ -6,9 +6,11 @@ import CategoryStrategyManager from '@/components/procurement/CategoryStrategyMa
 export default async function StrategyPage() {
   const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("organization_id").eq("id", user?.id).single();
+  
+  // FIX: Using 'business_id'
+  const { data: profile } = await supabase.from("profiles").select("business_id").eq("id", user?.id).single();
 
-  if (!profile?.organization_id) return <div>Unauthorized</div>;
+  if (!profile?.business_id) return <div className="p-10 text-center">Unauthorized: No Business ID found.</div>;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -16,7 +18,7 @@ export default async function StrategyPage() {
         <h1 className="text-2xl font-bold tracking-tight">Category Strategy</h1>
         <p className="text-muted-foreground">Define budgets and strategic importance for purchasing categories.</p>
       </div>
-      <CategoryStrategyManager tenantId={profile.organization_id} />
+      <CategoryStrategyManager tenantId={profile.business_id} />
     </div>
   );
 }

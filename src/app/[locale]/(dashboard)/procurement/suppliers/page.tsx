@@ -6,9 +6,11 @@ import SupplierRiskRegister from '@/components/procurement/SupplierRiskRegister'
 export default async function SuppliersPage() {
   const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("organization_id").eq("id", user?.id).single();
+  
+  // FIX: Using 'business_id'
+  const { data: profile } = await supabase.from("profiles").select("business_id").eq("id", user?.id).single();
 
-  if (!profile?.organization_id) return <div>Unauthorized</div>;
+  if (!profile?.business_id) return <div className="p-10 text-center">Unauthorized: No Business ID found.</div>;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -16,7 +18,7 @@ export default async function SuppliersPage() {
         <h1 className="text-2xl font-bold tracking-tight">Supplier Risk & Compliance</h1>
         <p className="text-muted-foreground">Monitor vendor performance, sanctions, and risk levels.</p>
       </div>
-      <SupplierRiskRegister tenantId={profile.organization_id} />
+      <SupplierRiskRegister tenantId={profile.business_id} />
     </div>
   );
 }
