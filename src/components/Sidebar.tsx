@@ -15,7 +15,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 // --- ICONS ---
 import {
     LayoutDashboard, ShoppingCart, Clock, Users, BarChart3, History, Boxes, Truck,
-    ClipboardCheck, Receipt, BookOpen, Banknote, BookCopy, Briefcase, UsersRound,
+    ClipboardCheck, Receipt, BookOpen,ShieldAlert, Banknote, BookCopy, Briefcase, UsersRound,
     ShieldCheck, Settings, Landmark, Home, FileText, Tags, Undo2, LucideIcon,
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
@@ -162,10 +162,16 @@ const navSections: NavItem[] = [
             { href: '/professional-services/documents', label: 'Document Library', icon: Library },
             { href: '/professional-services/reports', label: 'Practice Reports', icon: FileText },
             { href: '/professional-services/trust-accounting', label: 'Trust Accounting', icon: Landmark, businessTypes: ['Professional Services (Accounting, Legal)'] },
-        ]
-    },
-
-    // --- HUMAN RESOURCES ---
+            { href: '/professional-services/expenses', label: 'Expense Mgmt', icon: CreditCard }, 
+            { href: '/professional-services/accounting', label: 'General Ledger', icon: BookOpen }, 
+            { href: '/professional-services/compliance', label: 'Compliance & Audit', icon: ShieldAlert }, 
+            { href: '/professional-services/documents', label: 'Document Library', icon: Library },
+            { href: '/professional-services/reports', label: 'Practice Reports', icon: FileText },
+            { href: '/professional-services/trust-accounting', label: 'Trust Accounting', icon: Landmark, businessTypes: ['Professional Services (Accounting, Legal)'] },
+    ]
+},
+   
+       // --- HUMAN RESOURCES ---
     {
         type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager'], module: 'hcm',
         subItems: [ 

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { CreateBudgetModal } from './CreateBudgetModal'; // <-- FIX: Changed absolute path to relative path
+import { CreateBudgetModal } from './CreateBudgetModal';
 import { formatCurrency } from '@/lib/utils';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useCopilot } from '@/context/CopilotContext';
@@ -29,8 +29,14 @@ interface Budget {
 
 const supabase = createClient();
 
-async function fetchBudgets(): Promise<Budget[]> {
-    const { data, error } = await supabase.from('budgets').select('id, name, year').order('year', { ascending: false });
+// FIX: Updated to filter by tenantId
+async function fetchBudgets(tenantId: string): Promise<Budget[]> {
+    const { data, error } = await supabase
+        .from('budgets')
+        .select('id, name, year')
+        .eq('tenant_id', tenantId) // Ensure we only fetch for this tenant
+        .order('year', { ascending: false });
+    
     if (error) throw new Error(error.message);
     return data || [];
 }
@@ -53,13 +59,20 @@ const VarianceCell = ({ variance, accountType }: { variance: number, accountType
     );
 };
 
-export default function BudgetManager({ initialAccounts }: { initialAccounts: Account[] }) {
+// FIX: Added tenantId to props and made initialAccounts optional to match page usage
+export default function BudgetManager({ 
+    initialAccounts = [], 
+    tenantId 
+}: { 
+    initialAccounts?: Account[], 
+    tenantId: string 
+}) {
     const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null);
     const { openCopilot, setInput: setCopilotInput } = useCopilot();
 
     const { data: budgets, isLoading: isLoadingBudgets } = useQuery<Budget[]>({
-        queryKey: ['allBudgets'],
-        queryFn: fetchBudgets,
+        queryKey: ['allBudgets', tenantId], // Added tenantId to queryKey
+        queryFn: () => fetchBudgets(tenantId),
     });
 
     useEffect(() => {
@@ -107,6 +120,7 @@ export default function BudgetManager({ initialAccounts }: { initialAccounts: Ac
                     <h1 className="text-3xl font-bold">Budget Command Center</h1>
                     <p className="text-muted-foreground">Strategic financial planning and real-time performance analysis.</p>
                 </div>
+                {/* Ensure CreateBudgetModal handles empty accounts gracefully */}
                 <CreateBudgetModal accounts={initialAccounts} />
             </div>
 
