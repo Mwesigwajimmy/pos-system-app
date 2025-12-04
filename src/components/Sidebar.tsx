@@ -161,12 +161,9 @@ const navSections: NavItem[] = [
             { href: '/professional-services/budgets', label: 'Project Budgets', icon: Calculator },
             { href: '/professional-services/documents', label: 'Document Library', icon: Library },
             { href: '/professional-services/reports', label: 'Practice Reports', icon: FileText },
-            { href: '/professional-services/trust-accounting', label: 'Trust Accounting', icon: Landmark, businessTypes: ['Professional Services (Accounting, Legal)'] },
             { href: '/professional-services/expenses', label: 'Expense Mgmt', icon: CreditCard }, 
             { href: '/professional-services/accounting', label: 'General Ledger', icon: BookOpen }, 
             { href: '/professional-services/compliance', label: 'Compliance & Audit', icon: ShieldAlert }, 
-            { href: '/professional-services/documents', label: 'Document Library', icon: Library },
-            { href: '/professional-services/reports', label: 'Practice Reports', icon: FileText },
             { href: '/professional-services/trust-accounting', label: 'Trust Accounting', icon: Landmark, businessTypes: ['Professional Services (Accounting, Legal)'] },
     ]
 },
