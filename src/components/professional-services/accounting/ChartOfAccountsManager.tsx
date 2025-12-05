@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,30 +14,53 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { createClient } from '@/lib/supabase/client';
 import toast from "react-hot-toast";
 import { Loader2, Plus, FolderTree } from "lucide-react";
+import { Badge } from '@/components/ui/badge';
 
 interface TenantContext { tenantId: string; country: string; currency: string; }
-interface Account { id: number; code: string; name: string; type: string; is_active: boolean; parent_id?: number; currency: string; }
+
+// Updated Interface to match 'accounting_accounts'
+interface Account { 
+  id: string; 
+  business_id: string; 
+  code: string; 
+  name: string; 
+  type: string; 
+  subtype: string;
+  is_active: boolean; 
+  currency: string; 
+  current_balance: number;
+}
 
 const accountSchema = z.object({
   code: z.string().min(3, "Code min 3 chars"),
   name: z.string().min(3, "Name required"),
-  type: z.enum(['asset', 'liability', 'equity', 'income', 'expense']),
+  type: z.enum(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']),
 });
 
+// FIX: Pointing to 'accounting_accounts' instead of 'accounts'
 async function fetchAccounts(tenantId: string) {
   const db = createClient();
-  const { data, error } = await db.from('accounts').select('*').eq('tenant_id', tenantId).order('code', { ascending: true });
+  const { data, error } = await db
+    .from('accounting_accounts')
+    .select('*')
+    .eq('business_id', tenantId)
+    .order('code', { ascending: true });
+    
   if (error) throw error;
   return data as Account[];
 }
 
 async function addAccount({ account, tenant }: { account: z.infer<typeof accountSchema>, tenant: TenantContext }) {
   const db = createClient();
-  const { error } = await db.from('accounts').insert([{ 
-    ...account, 
+  const { error } = await db.from('accounting_accounts').insert([{ 
+    code: account.code,
+    name: account.name,
+    type: account.type,
+    // Auto-assign subtype based on type to prevent errors
+    subtype: account.type === 'Asset' ? 'current_asset' : 'other', 
     is_active: true, 
     currency: tenant.currency, 
-    tenant_id: tenant.tenantId 
+    business_id: tenant.tenantId 
   }]);
   if (error) throw error;
 }
@@ -51,7 +74,7 @@ export default function ChartOfAccountsManager({ tenant }: { tenant: TenantConte
 
   const form = useForm({
     resolver: zodResolver(accountSchema),
-    defaultValues: { code: '', name: '', type: 'asset' as const }
+    defaultValues: { code: '', name: '', type: 'Asset' as const }
   });
 
   const mutation = useMutation({ 
@@ -65,14 +88,14 @@ export default function ChartOfAccountsManager({ tenant }: { tenant: TenantConte
   });
 
   return (
-    <Card className="h-full">
-      <CardHeader>
+    <Card className="h-full border-none shadow-none">
+      <CardHeader className="px-0">
         <CardTitle className="flex items-center gap-2"><FolderTree className="w-5 h-5"/> Chart of Accounts</CardTitle>
-        <CardDescription>Configure your general ledger structure.</CardDescription>
+        <CardDescription>Configure your general ledger structure (Unified Finance System).</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0">
         {/* Creation Form */}
-        <div className="bg-slate-50 p-4 rounded-lg mb-6 border">
+        <div className="bg-muted/30 p-4 rounded-lg mb-6 border">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="flex flex-col md:flex-row gap-3 items-start">
               <FormField control={form.control} name="code" render={({field}) => (
@@ -90,11 +113,11 @@ export default function ChartOfAccountsManager({ tenant }: { tenant: TenantConte
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Type"/></SelectTrigger></FormControl>
                     <SelectContent>
-                      <SelectItem value="asset">Asset</SelectItem>
-                      <SelectItem value="liability">Liability</SelectItem>
-                      <SelectItem value="equity">Equity</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
+                      <SelectItem value="Asset">Asset</SelectItem>
+                      <SelectItem value="Liability">Liability</SelectItem>
+                      <SelectItem value="Equity">Equity</SelectItem>
+                      <SelectItem value="Revenue">Income</SelectItem>
+                      <SelectItem value="Expense">Expense</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage/>
@@ -110,13 +133,13 @@ export default function ChartOfAccountsManager({ tenant }: { tenant: TenantConte
         {/* List Table */}
         <div className="border rounded-md">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Currency</TableHead>
+                <TableHead>Balance</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -126,9 +149,17 @@ export default function ChartOfAccountsManager({ tenant }: { tenant: TenantConte
                 <TableRow key={a.id}>
                   <TableCell className="font-mono font-medium">{a.code}</TableCell>
                   <TableCell>{a.name}</TableCell>
-                  <TableCell className="capitalize badge">{a.type}</TableCell>
-                  <TableCell><span className={`px-2 py-1 rounded text-xs font-medium ${a.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}`}>{a.is_active ? 'Active' : 'Inactive'}</span></TableCell>
-                  <TableCell className="text-slate-500">{a.currency}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize">{a.type}</Badge>
+                  </TableCell>
+                  <TableCell>
+                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${a.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {a.is_active ? 'Active' : 'Inactive'}
+                     </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: a.currency || 'USD' }).format(a.current_balance || 0)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
