@@ -23,7 +23,7 @@ import {
     UploadCloud, Plug, Scale, Wallet, FileWarning, Construction, Wrench, FolderKanban, 
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
-    CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Utensils,
+    CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus,Package, Utensils,
     // Icons for Activities
     Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock
 } from 'lucide-react';
@@ -215,10 +215,12 @@ const navSections: NavItem[] = [
             { href: '/distribution/assignments', label: 'Driver Assignments', icon: UserCog },
             { href: '/distribution/loading', label: 'Van Loading', icon: Boxes },
             { href: '/distribution/settlement', label: 'Route Settlements', icon: ClipboardCheck },
+            { href: '/distribution/fulfillment', label: 'Order Fulfillment', icon: Package },
             { href: '/distribution/fleet-maintenance', label: 'Fleet Maintenance', icon: Wrench },
             { href: '/distribution/cold-chain', label: 'Cold Chain Monitor', icon: Thermometer },
             { href: '/distribution/geofencing', label: 'Geofencing', icon: MapPin },
             { href: '/distribution/performance', label: 'Delivery Analytics', icon: BarChart3 },
+            { href: '/distribution/returns', label: 'Returns & Claims', icon: Undo2 },
         ]
     },
 

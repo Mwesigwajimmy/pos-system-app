@@ -1,88 +1,102 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2, MapPin, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, MapPin, AlertCircle, CheckCircle2, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import { addGeofenceAction } from '@/lib/actions/distribution';
 
-interface Fence {
+export interface Fence {
   id: string;
-  routeArea: string;
-  country: string;
-  assignedDriver: string;
-  entity: string;
-  boundaryType: "circle" | "polygon";
-  radiusKm?: number;
-  vertices?: number[][];
-  lastBreach?: string;
+  name: string;
+  country_code: string;
+  driver_name: string;
+  boundary_type: "circle" | "polygon";
+  radius_km?: number;
+  last_breach_at?: string;
   active: boolean;
 }
 
-export default function GeofencingDashboard() {
-  const [fences, setFences] = useState<Fence[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  initialFences: Fence[];
+}
 
-  useEffect(() => {
-    setTimeout(() => {
-      setFences([
-        {
-          id: "fence-001",
-          routeArea: "CBD Kampala",
-          country: "UG",
-          assignedDriver: "James Okello",
-          entity: "Main Comp Ltd.",
-          boundaryType: "circle",
-          radiusKm: 8,
-          lastBreach: "2025-10-28 10:40",
-          active: true
-        },
-        {
-          id: "fence-002",
-          routeArea: "Bondi/Sydney East",
-          country: "AU",
-          assignedDriver: "Sarah Lewis",
-          entity: "Global Branch AU",
-          boundaryType: "polygon",
-          vertices: [[-33.891,151.276],[-33.892,151.278],[-33.900,151.280]],
-          active: true
+export default function GeofencingDashboard({ initialFences }: Props) {
+  const [isPending, startTransition] = useTransition();
+  const [formData, setFormData] = useState({ name: '', driver: '', country: '', radius: '5' });
+
+  const handleAdd = () => {
+    if (!formData.name || !formData.country) {
+        toast.error("Name and Country are required");
+        return;
+    }
+    startTransition(async () => {
+        const form = new FormData();
+        form.append('name', formData.name);
+        form.append('driver', formData.driver);
+        form.append('country', formData.country);
+        form.append('radius', formData.radius);
+        form.append('type', 'circle'); // Defaulting to circle for quick add
+
+        const res = await addGeofenceAction(form);
+        if (res.success) {
+            toast.success(res.message);
+            setFormData({ name: '', driver: '', country: '', radius: '5' });
+        } else {
+            toast.error(res.message);
         }
-      ]);
-      setLoading(false);
-    }, 340);
-  }, []);
+    });
+  };
 
   return (
-    <Card>
+    <Card className="border-t-4 border-t-purple-500 shadow-sm">
       <CardHeader>
-        <CardTitle>Geofencing Dashboard</CardTitle>
-        <CardDescription>
-          Monitor and map delivery boundaries—get breach alerts in real time for any driver or route.
-        </CardDescription>
+        <CardTitle className="flex items-center gap-2"><MapPin className="text-purple-500"/> Geofencing Dashboard</CardTitle>
+        <CardDescription>Monitor delivery boundaries and breaches.</CardDescription>
       </CardHeader>
       <CardContent>
-        {loading
-          ? <div className="flex py-12 justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          : (
-            <div className="flex flex-col gap-4">
-              {fences.length === 0
-                ? <div className="py-8 text-muted-foreground text-center">No geofencing active.</div>
-                : fences.map(f => (
-                    <div key={f.id} className="border rounded px-3 py-2 flex items-center gap-4">
-                      <MapPin className="w-7 h-7 text-primary" />
-                      <div>
-                        <div className="font-bold">{f.routeArea} - {f.country} ({f.entity})</div>
-                        <div className="text-xs text-muted-foreground">Type: {f.boundaryType} {f.radiusKm? `– ${f.radiusKm}km radius`:''} Driver: {f.assignedDriver}</div>
-                        {f.lastBreach &&
-                          <div className="text-xs mt-1 text-yellow-800 flex items-center gap-1"><AlertCircle className="w-4 h-4"/>Last Breach: {f.lastBreach}</div>
-                        }
-                        {f.active && !f.lastBreach &&
-                          <div className="text-xs mt-1 text-green-800 flex items-center gap-1"><CheckCircle2 className="w-4 h-4"/>No Breaches</div>
-                        }
-                      </div>
+        {/* Simple Add */}
+        <div className="flex flex-wrap gap-2 mb-6 p-4 bg-muted/10 rounded-lg border border-dashed items-end">
+            <div className="w-32"><span className="text-xs text-muted-foreground">Zone Name</span><Input value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} className="h-8 bg-white"/></div>
+            <div className="w-32"><span className="text-xs text-muted-foreground">Driver</span><Input value={formData.driver} onChange={e=>setFormData({...formData, driver:e.target.value})} className="h-8 bg-white"/></div>
+            <div className="w-20"><span className="text-xs text-muted-foreground">Country</span><Input value={formData.country} onChange={e=>setFormData({...formData, country:e.target.value})} className="h-8 bg-white"/></div>
+            <div className="w-20"><span className="text-xs text-muted-foreground">Radius (km)</span><Input type="number" value={formData.radius} onChange={e=>setFormData({...formData, radius:e.target.value})} className="h-8 bg-white"/></div>
+            <button onClick={handleAdd} disabled={isPending} className="h-8 px-4 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2">
+                {isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4"/>} Add Zone
+            </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {initialFences.length === 0 ? <div className="col-span-3 text-center text-muted-foreground py-10">No active geofences.</div> : 
+             initialFences.map(f => (
+                <div key={f.id} className="border rounded-lg p-4 flex items-start gap-4 hover:shadow-md transition-shadow bg-card">
+                  <div className={`p-2 rounded-full ${f.last_breach_at ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex justify-between">
+                        <span className="font-bold">{f.name}</span>
+                        <span className="text-xs font-mono bg-muted px-2 rounded">{f.country_code}</span>
                     </div>
-                  ))}
-            </div>
-          )
-        }
+                    <div className="text-sm text-muted-foreground">Driver: {f.driver_name || 'Unassigned'}</div>
+                    <div className="text-xs text-muted-foreground">
+                        Type: {f.boundary_type} {f.radius_km ? `(${f.radius_km} km)` : ''}
+                    </div>
+                    
+                    {f.last_breach_at ? (
+                      <div className="mt-2 text-xs text-red-700 bg-red-50 p-2 rounded flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4"/> Breach: {new Date(f.last_breach_at).toLocaleString()}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-green-700 bg-green-50 p-2 rounded flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4"/> Status: Secure
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,4 +1,9 @@
-// src/app/(dashboard)/distribution/routes/page.tsx
 import RoutesManager from "@/components/distribution/RoutesManager";
-export const metadata = { title: "Manage Routes & Vehicles" };
-export default function RoutesPage() { return <RoutesManager />; }
+
+export default function RoutesPage() {
+  return (
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <RoutesManager />
+    </div>
+  );
+}

@@ -1,128 +1,90 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Loader2, Search, X } from 'lucide-react';
+import { Loader2, Search, X, Package, Truck, CheckCircle, AlertOctagon } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from '@/components/ui/badge';
 
-interface Fulfillment {
-  id: string;
-  orderNumber: string;
-  customer: string;
-  route: string;
-  entity: string;
-  country: string;
-  status: "pending" | "in transit" | "delivered" | "failed";
-  deliveredAt?: string;
-  failedAt?: string;
-  tenantId: string;
+async function fetchFulfillment() {
+  const { data, error } = await createClient().rpc('get_fulfillment_orders');
+  if (error) throw error;
+  return data;
 }
 
 export default function OrderFulfillmentTracking() {
-  const [fulfillments, setFulfillments] = useState<Fulfillment[]>([]);
   const [filter, setFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { data: orders, isLoading } = useQuery({ queryKey: ['fulfillmentOrders'], queryFn: fetchFulfillment });
 
-  useEffect(() => {
-    setTimeout(() => {
-      setFulfillments([
-        {
-          id: "ful-001",
-          orderNumber: "ORD-UG-917",
-          customer: "ABC Stores",
-          route: "Kampala CBD",
-          entity: "Main Comp Ltd.",
-          country: "UG",
-          status: "delivered",
-          deliveredAt: "2025-11-14",
-          tenantId: "tenant-001"
-        },
-        {
-          id: "ful-002",
-          orderNumber: "ORD-AU-1555",
-          customer: "EasternTech",
-          route: "Sydney East",
-          entity: "Global Branch AU",
-          country: "AU",
-          status: "in transit",
-          tenantId: "tenant-002"
-        }
-      ]);
-      setLoading(false);
-    }, 380);
-  }, []);
+  const filtered = useMemo(() => {
+    if (!orders) return [];
+    return orders.filter((f: any) =>
+      (f.customer_name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+      (f.order_number?.toLowerCase() || '').includes(filter.toLowerCase())
+    );
+  }, [orders, filter]);
 
-  const filtered = useMemo(
-    () =>
-      fulfillments.filter(
-        f =>
-          f.customer.toLowerCase().includes(filter.toLowerCase()) ||
-          f.orderNumber.toLowerCase().includes(filter.toLowerCase()) ||
-          f.route.toLowerCase().includes(filter.toLowerCase()) ||
-          f.entity.toLowerCase().includes(filter.toLowerCase())
-      ),
-    [fulfillments, filter]
-  );
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'delivered': return <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-green-200"><CheckCircle className="w-3 h-3 mr-1"/> Delivered</Badge>;
+      case 'in_transit': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200"><Truck className="w-3 h-3 mr-1"/> In Transit</Badge>;
+      case 'failed': return <Badge variant="destructive"><AlertOctagon className="w-3 h-3 mr-1"/> Failed</Badge>;
+      default: return <Badge variant="secondary"><Package className="w-3 h-3 mr-1"/> Pending</Badge>;
+    }
+  };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Order Fulfillment Tracking</CardTitle>
-        <CardDescription>
-          Monitor every order’s status from packing to delivery, per route and entity.
-        </CardDescription>
+        <CardDescription>Live tracking of orders from warehouse to customer.</CardDescription>
         <div className="relative mt-3 max-w-xs">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
-          <Input placeholder="Filter by customer/order/..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-8"/>
-          {filter && (
-            <X className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer"
-              onClick={()=>setFilter("")}/>)
-          }
+          <Input placeholder="Search Order # or Customer..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-8"/>
+          {filter && <X className="absolute right-2 top-2.5 h-4 w-4 cursor-pointer text-muted-foreground" onClick={()=>setFilter("")}/>}
         </div>
       </CardHeader>
       <CardContent>
-        {loading
-          ? <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          : <ScrollArea className="h-64">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Route</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Country</TableHead>
-                    <TableHead>Delivered</TableHead>
-                    <TableHead>Failed</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0
-                    ? <TableRow><TableCell colSpan={8}>No orders found.</TableCell></TableRow>
-                    : filtered.map(f => (
-                        <TableRow key={f.id}>
-                          <TableCell>{f.orderNumber}</TableCell>
-                          <TableCell>{f.customer}</TableCell>
-                          <TableCell>
-                            {f.status === "delivered" && <span className="text-green-800 font-bold">Delivered</span>}
-                            {f.status === "pending" && <span className="text-yellow-700">Pending</span>}
-                            {f.status === "in transit" && <span className="text-blue-600">In Transit</span>}
-                            {f.status === "failed" && <span className="text-red-700">Failed</span>}
-                          </TableCell>
-                          <TableCell>{f.route}</TableCell>
-                          <TableCell>{f.entity}</TableCell>
-                          <TableCell>{f.country}</TableCell>
-                          <TableCell>{f.deliveredAt || ""}</TableCell>
-                          <TableCell>{f.failedAt || ""}</TableCell>
-                        </TableRow>
-                      ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-        }
+        {isLoading ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        ) : (
+          <ScrollArea className="h-[400px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order #</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Driver</TableHead>
+                  <TableHead>Country</TableHead>
+                  <TableHead>Delivered At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center h-24">No orders matching criteria.</TableCell></TableRow>
+                ) : (
+                  filtered.map((f: any) => (
+                    <TableRow key={f.id}>
+                      <TableCell className="font-mono text-xs font-bold">{f.order_number}</TableCell>
+                      <TableCell>{f.customer_name}</TableCell>
+                      <TableCell>{getStatusBadge(f.status)}</TableCell>
+                      <TableCell>{f.driver_name || 'Unassigned'}</TableCell>
+                      <TableCell>{f.country_code}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {f.delivered_at ? new Date(f.delivered_at).toLocaleString() : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        )}
       </CardContent>
     </Card>
   );
