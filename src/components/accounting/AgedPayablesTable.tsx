@@ -1,226 +1,401 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Loader2, Search, X } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format } from 'date-fns';
+import { toast } from 'sonner';
+import { 
+  Card, CardContent, CardHeader, CardTitle, CardDescription 
+} from '@/components/ui/card';
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from '@/components/ui/table';
+import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
+import { 
+  Loader2, Search, Filter, DollarSign 
+} from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from '@/components/ui/badge';
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
-// Data shape from Database (Raw Bills)
-interface Bill {
+// --- Types ---
+// FIX: Made amount_due optional in the base type to accept raw data from parent
+export interface Bill {
   id: string;
   vendor_name: string;
-  amount_due: number;
+  reference_number: string;
+  total_amount: number;
+  amount_paid: number;
   due_date: string;
   currency: string;
   status: string;
+  amount_due?: number; // Optional on input
 }
 
-// Aggregated shape for UI
+// Internal type for calculation with guaranteed amount_due
+interface ProcessedBill extends Bill {
+    amount_due: number;
+}
+
 interface AgedPayable {
   supplier: string;
+  currency: string;
   due_0_30: number;
   due_31_60: number;
   due_61_90: number;
   due_90_plus: number;
   total: number;
-  currency: string;
+  bills: ProcessedBill[];
 }
 
 interface Props {
-  tenantId?: string;
+  initialBills: Bill[]; // Accepts the Bills from the parent component
+  businessId: string;
 }
 
-export default function AgedPayablesTable({ tenantId: propTenantId }: Props) {
-  // 1. Context & Hooks
-  const { data: tenant } = useTenant();
-  const tenantId = propTenantId || tenant?.id;
-  const supabase = createClient();
+// --- API Functions ---
 
-  // 2. State
-  const [payables, setPayables] = useState<AgedPayable[]>([]);
+const fetchBillsClient = async (businessId: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .from('accounting_bills')
+        .select('*')
+        .eq('business_id', businessId)
+        .neq('status', 'paid')
+        .order('due_date', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    
+    // Calculate amount_due on fetch
+    return data.map((bill: any) => ({
+        ...bill,
+        amount_due: bill.total_amount - bill.amount_paid
+    })) as ProcessedBill[];
+};
+
+const fetchPaymentAccounts = async (businessId: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .from('accounting_accounts')
+        .select('id, name, currency, balance')
+        .eq('business_id', businessId)
+        .in('type', ['Bank', 'Cash']) 
+        .eq('is_active', true);
+
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+const payBill = async (payload: { bill_id: string; account_id: string; amount: number; payment_date: string, business_id: string }) => {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('record_bill_payment', {
+        p_bill_id: payload.bill_id,
+        p_account_id: payload.account_id,
+        p_amount: payload.amount,
+        p_date: payload.payment_date,
+        p_business_id: payload.business_id
+    });
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+// --- Sub-Component: Payment Dialog ---
+
+const PayBillDialog = ({ bill, businessId, isOpen, onClose }: { bill: ProcessedBill | null, businessId: string, isOpen: boolean, onClose: () => void }) => {
+    const queryClient = useQueryClient();
+    const [amount, setAmount] = useState<string>('');
+    const [accountId, setAccountId] = useState<string>('');
+
+    const { data: accounts } = useQuery({
+        queryKey: ['payment_accounts', businessId],
+        queryFn: () => fetchPaymentAccounts(businessId),
+        enabled: isOpen
+    });
+
+    React.useEffect(() => {
+        if (bill) {
+            setAmount(bill.amount_due.toString());
+        }
+    }, [bill]);
+
+    const mutation = useMutation({
+        mutationFn: payBill,
+        onSuccess: () => {
+            toast.success("Payment recorded successfully");
+            queryClient.invalidateQueries({ queryKey: ['payables'] });
+            onClose();
+        },
+        onError: (err) => toast.error(err.message)
+    });
+
+    const handleSubmit = () => {
+        if (!bill || !accountId || !amount) return;
+        mutation.mutate({
+            bill_id: bill.id,
+            account_id: accountId,
+            amount: parseFloat(amount),
+            payment_date: new Date().toISOString(),
+            business_id: businessId
+        });
+    };
+
+    if (!bill) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Record Bill Payment</DialogTitle>
+                    <DialogDescription>
+                        Paying <strong>{bill.vendor_name}</strong> (Ref: {bill.reference_number}).
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Balance Due</Label>
+                        <div className="col-span-3 font-mono">
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency }).format(bill.amount_due)}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Pay From</Label>
+                        <Select onValueChange={setAccountId} value={accountId}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Select Account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {accounts?.map((acc: any) => (
+                                    <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency}) - Bal: {acc.balance.toLocaleString()}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Amount</Label>
+                        <Input 
+                            type="number" 
+                            value={amount} 
+                            onChange={(e) => setAmount(e.target.value)} 
+                            className="col-span-3"
+                            max={bill.amount_due}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={mutation.isPending}>
+                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Payment
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+// --- Main Component ---
+
+export default function AgedPayablesTable({ initialBills, businessId }: Props) {
   const [filter, setFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+  
+  // Interaction State
+  const [selectedBill, setSelectedBill] = useState<ProcessedBill | null>(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
-  // 3. Data Fetching & Aggregation
-  useEffect(() => {
-    if (!tenantId) return;
+  // FIX: Pre-process initial data to ensure amount_due exists
+  const processedInitialData: ProcessedBill[] = useMemo(() => {
+      return initialBills.map(b => ({
+          ...b,
+          amount_due: b.amount_due !== undefined ? b.amount_due : (b.total_amount - b.amount_paid)
+      }));
+  }, [initialBills]);
 
-    const fetchAndAggregatePayables = async () => {
-      try {
-        // Fetch all open bills/invoices
-        const { data: bills, error } = await supabase
-          .from('accounting_bills')
-          .select('id, vendor_name, amount_due, due_date, currency, status')
-          .eq('tenant_id', tenantId)
-          .neq('status', 'paid') // Only unpaid or partial
-          .gt('amount_due', 0);  // Ensure there is a balance
+  // TanStack Query
+  const { data: bills, isLoading } = useQuery({
+    queryKey: ['payables', businessId],
+    queryFn: () => fetchBillsClient(businessId),
+    initialData: processedInitialData
+  });
 
-        if (error) throw error;
+  // Aggregation Logic
+  const payables = useMemo(() => {
+    if (!bills) return [];
+    
+    const today = new Date();
+    const aggregation: Record<string, AgedPayable> = {};
 
-        if (bills) {
-          const today = new Date();
-          const aggregation: Record<string, AgedPayable> = {};
+    bills.forEach((bill) => {
+        // Skip fully paid bills if they somehow slipped in
+        if (bill.amount_due <= 0) return;
 
-          bills.forEach((bill: Bill) => {
-            const supplier = bill.vendor_name || 'Unknown Supplier';
-            
-            // Initialize supplier row if not exists
-            if (!aggregation[supplier]) {
-              aggregation[supplier] = {
+        const supplier = bill.vendor_name || 'Unknown';
+        const currency = bill.currency || 'USD';
+        const key = `${supplier}-${currency}`;
+
+        if (!aggregation[key]) {
+            aggregation[key] = {
                 supplier,
+                currency,
                 due_0_30: 0,
                 due_31_60: 0,
                 due_61_90: 0,
                 due_90_plus: 0,
                 total: 0,
-                currency: bill.currency || 'USD' // Default or mixed currency handling strategy needed for prod
-              };
-            }
-
-            // Calculate Age
-            const dueDate = parseISO(bill.due_date);
-            const daysOverdue = differenceInDays(today, dueDate);
-            const amount = bill.amount_due;
-
-            // Bucket Logic
-            if (daysOverdue <= 30) {
-              aggregation[supplier].due_0_30 += amount;
-            } else if (daysOverdue <= 60) {
-              aggregation[supplier].due_31_60 += amount;
-            } else if (daysOverdue <= 90) {
-              aggregation[supplier].due_61_90 += amount;
-            } else {
-              aggregation[supplier].due_90_plus += amount;
-            }
-
-            // Total
-            aggregation[supplier].total += amount;
-          });
-
-          // Convert to array and sort by Total Descending
-          const reportData = Object.values(aggregation).sort((a, b) => b.total - a.total);
-          setPayables(reportData);
+                bills: [] 
+            };
         }
-      } catch (error) {
-        console.error("Error generating aged payables report:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchAndAggregatePayables();
-  }, [tenantId, supabase]);
+        const dueDate = parseISO(bill.due_date);
+        const daysOverdue = differenceInDays(today, dueDate);
+        const amount = bill.amount_due;
 
-  // 4. Filtering
-  const filtered = useMemo(
-    () =>
-      payables.filter(
-        p => p.supplier.toLowerCase().includes(filter.toLowerCase())
-      ),
-    [payables, filter]
-  );
+        if (daysOverdue <= 30) aggregation[key].due_0_30 += amount;
+        else if (daysOverdue <= 60) aggregation[key].due_31_60 += amount;
+        else if (daysOverdue <= 90) aggregation[key].due_61_90 += amount;
+        else aggregation[key].due_90_plus += amount;
 
-  // Helper for currency formatting
+        aggregation[key].total += amount;
+        aggregation[key].bills.push(bill);
+    });
+
+    return Object.values(aggregation).sort((a, b) => b.total - a.total);
+  }, [bills]);
+
+  // Filtering
+  const filtered = useMemo(() => 
+    payables.filter(p => p.supplier.toLowerCase().includes(filter.toLowerCase())), 
+  [payables, filter]);
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      style: 'decimal',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
-  // 5. Loading State
-  if (loading && !payables.length) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Aged Payables</CardTitle>
-          <CardDescription>Loading outstanding liability report...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const openPaymentForOldest = (supplierRow: AgedPayable) => {
+      // Find the oldest bill to prioritize paying off debt
+      const oldest = supplierRow.bills.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+      if (oldest) {
+          setSelectedBill(oldest);
+          setIsPaymentOpen(true);
+      }
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Aged Payables</CardTitle>
-        <CardDescription>
-          Analyze your outstanding liabilities grouped by overdue duration. Proactively clear longest due balances.
-        </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter by supplier..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-8" 
-          />
-          {filter && (
-            <X 
-              className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
-              onClick={() => setFilter('')}
-            />
-          )}
+    <div className="space-y-4">
+        {/* Top Controls */}
+        <div className="flex items-center justify-between">
+            <div className="relative max-w-sm w-full">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Filter by supplier..." 
+                    value={filter} 
+                    onChange={e => setFilter(e.target.value)} 
+                    className="pl-8" 
+                />
+            </div>
+            <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" /> Export Report
+            </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] border rounded-md">
-          <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
-              <TableRow>
-                <TableHead>Supplier</TableHead>
-                <TableHead className="text-right">0-30 Days</TableHead>
-                <TableHead className="text-right">31-60 Days</TableHead>
-                <TableHead className="text-right">61-90 Days</TableHead>
-                <TableHead className="text-right">90+ Days</TableHead>
-                <TableHead className="text-right">Total Outstanding</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+
+        <Card>
+        <CardHeader>
+            <CardTitle>Aging Report (Payables)</CardTitle>
+            <CardDescription>
+                Overview of amounts you owe to vendors by aging period.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ScrollArea className="h-[600px] border rounded-md">
+            <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No outstanding payables found.
-                  </TableCell>
+                    <TableHead className="w-[200px]">Supplier</TableHead>
+                    <TableHead>Currency</TableHead>
+                    <TableHead className="text-right">Current (0-30)</TableHead>
+                    <TableHead className="text-right text-yellow-600">31-60 Days</TableHead>
+                    <TableHead className="text-right text-orange-600">61-90 Days</TableHead>
+                    <TableHead className="text-right text-red-600 font-bold">90+ Days</TableHead>
+                    <TableHead className="text-right font-bold">Total Due</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((p, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell className="font-medium">{p.supplier}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {p.due_0_30 > 0 ? formatCurrency(p.due_0_30, p.currency) : '-'}
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                        </TableCell>
+                    </TableRow>
+                ) : filtered.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No outstanding payables found.
                     </TableCell>
-                    <TableCell className="text-right text-yellow-600">
-                      {p.due_31_60 > 0 ? formatCurrency(p.due_31_60, p.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right text-orange-600">
-                      {p.due_61_90 > 0 ? formatCurrency(p.due_61_90, p.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right text-red-600 font-semibold">
-                      {p.due_90_plus > 0 ? formatCurrency(p.due_90_plus, p.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {formatCurrency(p.total, p.currency)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                    </TableRow>
+                ) : (
+                    filtered.map((p, idx) => (
+                    <TableRow key={`${p.supplier}-${idx}`} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                                <span>{p.supplier}</span>
+                                <span className="text-xs text-muted-foreground">{p.bills.length} bills</span>
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant="secondary">{p.currency}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                            {p.due_0_30 > 0 ? formatCurrency(p.due_0_30, p.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-yellow-700 bg-yellow-50/50">
+                            {p.due_31_60 > 0 ? formatCurrency(p.due_31_60, p.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-orange-700 bg-orange-50/50">
+                            {p.due_61_90 > 0 ? formatCurrency(p.due_61_90, p.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-red-700 bg-red-50/50 font-semibold">
+                            {p.due_90_plus > 0 ? formatCurrency(p.due_90_plus, p.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                            {formatCurrency(p.total, p.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <Button size="sm" variant="ghost" onClick={() => openPaymentForOldest(p)}>
+                                <DollarSign className="h-4 w-4 mr-1 text-red-600" />
+                                <span className="text-xs">Pay</span>
+                            </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+            </ScrollArea>
+        </CardContent>
+        </Card>
+
+        {/* Pay Bill Modal */}
+        <PayBillDialog 
+            bill={selectedBill}
+            businessId={businessId}
+            isOpen={isPaymentOpen}
+            onClose={() => {
+                setIsPaymentOpen(false);
+                setSelectedBill(null);
+            }}
+        />
+    </div>
   );
 }

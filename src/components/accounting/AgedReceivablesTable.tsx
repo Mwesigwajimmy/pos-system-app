@@ -1,140 +1,264 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from "@/components/ui/input";
-import { Loader2, Search, X } from 'lucide-react';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format } from 'date-fns';
+import { toast } from 'sonner';
+import { 
+  Card, CardContent, CardHeader, CardTitle, CardDescription 
+} from '@/components/ui/card';
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from '@/components/ui/table';
+import { Input } from "@/components/ui/input";
+import { Button } from '@/components/ui/button';
+import { 
+  Loader2, Search, X, DollarSign, Filter 
+} from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from '@/components/ui/badge';
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
-// Raw DB Data Shape
-interface Invoice {
+// --- Types ---
+
+export interface Invoice {
   id: string;
   customer_name: string;
-  amount_due: number;
+  invoice_number: string;
+  amount_due: number; // calculated as total - paid
+  total_amount: number;
+  amount_paid: number;
   due_date: string;
   currency: string;
   status: string;
   entity?: string;
-  country?: string; // Optional if not denormalized in invoices table
+  country?: string;
 }
 
-// Aggregated Report Shape
 interface AgedReceivable {
   customer: string;
-  entity: string;
-  country: string;
   currency: string;
   due_0_30: number;
   due_31_60: number;
   due_61_90: number;
   due_90_plus: number;
   total: number;
+  invoices: Invoice[]; // Keep track of the actual invoices for drill-down/payment
 }
 
 interface Props {
-  tenantId?: string;
+  initialInvoices: Invoice[];
+  businessId: string;
 }
 
-export default function AgedReceivablesTable({ tenantId: propTenantId }: Props) {
-  // 1. Context & Hooks
-  const { data: tenant } = useTenant();
-  const tenantId = propTenantId || tenant?.id;
-  const supabase = createClient();
+// --- API Functions ---
 
-  // 2. State
-  const [receivables, setReceivables] = useState<AgedReceivable[]>([]);
+const fetchInvoicesClient = async (businessId: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .from('accounting_invoices')
+        .select('*')
+        .eq('business_id', businessId)
+        .neq('status', 'paid')
+        .order('due_date', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    
+    return data.map((inv: any) => ({
+        ...inv,
+        amount_due: inv.total_amount - inv.amount_paid
+    })) as Invoice[];
+};
+
+const fetchDepositAccounts = async (businessId: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .from('accounting_accounts')
+        .select('id, name, currency, balance')
+        .eq('business_id', businessId)
+        .in('type', ['Bank', 'Cash']) 
+        .eq('is_active', true);
+
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+const receivePayment = async (payload: { invoice_id: string; account_id: string; amount: number; payment_date: string, business_id: string }) => {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('receive_invoice_payment', {
+        p_invoice_id: payload.invoice_id,
+        p_account_id: payload.account_id,
+        p_amount: payload.amount,
+        p_date: payload.payment_date,
+        p_business_id: payload.business_id
+    });
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+// --- Sub-Component: Receive Payment Dialog ---
+
+const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoice: Invoice | null, businessId: string, isOpen: boolean, onClose: () => void }) => {
+    const queryClient = useQueryClient();
+    const [amount, setAmount] = useState<string>('');
+    const [accountId, setAccountId] = useState<string>('');
+
+    const { data: accounts } = useQuery({
+        queryKey: ['deposit_accounts', businessId],
+        queryFn: () => fetchDepositAccounts(businessId),
+        enabled: isOpen
+    });
+
+    React.useEffect(() => {
+        if (invoice) {
+            setAmount(invoice.amount_due.toString());
+        }
+    }, [invoice]);
+
+    const mutation = useMutation({
+        mutationFn: receivePayment,
+        onSuccess: () => {
+            toast.success("Payment received successfully");
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            onClose();
+        },
+        onError: (err) => toast.error(err.message)
+    });
+
+    const handleSubmit = () => {
+        if (!invoice || !accountId || !amount) return;
+        mutation.mutate({
+            invoice_id: invoice.id,
+            account_id: accountId,
+            amount: parseFloat(amount),
+            payment_date: new Date().toISOString(),
+            business_id: businessId
+        });
+    };
+
+    if (!invoice) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Receive Payment</DialogTitle>
+                    <DialogDescription>
+                        Receiving payment for Invoice <strong>{invoice.invoice_number}</strong> from {invoice.customer_name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Amount Due</Label>
+                        <div className="col-span-3 font-mono">
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency }).format(invoice.amount_due)}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Deposit To</Label>
+                        <Select onValueChange={setAccountId} value={accountId}>
+                            <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Select Bank Account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {accounts?.map((acc: any) => (
+                                    <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Amount</Label>
+                        <Input 
+                            type="number" 
+                            value={amount} 
+                            onChange={(e) => setAmount(e.target.value)} 
+                            className="col-span-3"
+                            max={invoice.amount_due}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={mutation.isPending}>
+                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Receipt
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+// --- Main Component ---
+
+export default function AgedReceivablesTable({ initialInvoices, businessId }: Props) {
   const [filter, setFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+  
+  // Interaction State
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
-  // 3. Data Fetching & Aggregation
-  useEffect(() => {
-    if (!tenantId) return;
+  // TanStack Query for live updates
+  const { data: invoices, isLoading } = useQuery({
+    queryKey: ['invoices', businessId],
+    queryFn: () => fetchInvoicesClient(businessId),
+    initialData: initialInvoices
+  });
 
-    const fetchAndAggregateReceivables = async () => {
-      try {
-        // Fetch unpaid invoices
-        const { data: invoices, error } = await supabase
-          .from('accounting_invoices')
-          .select('id, customer_name, amount_due, due_date, currency, status, entity, country')
-          .eq('tenant_id', tenantId)
-          .neq('status', 'paid')
-          .gt('amount_due', 0); // Only positive outstanding balances
+  // Aggregation Logic (Client-Side for flexibility)
+  const receivables = useMemo(() => {
+    if (!invoices) return [];
+    
+    const today = new Date();
+    const aggregation: Record<string, AgedReceivable> = {};
 
-        if (error) throw error;
+    invoices.forEach((inv) => {
+        const customer = inv.customer_name || 'Unknown';
+        const currency = inv.currency || 'USD';
+        const key = `${customer}-${currency}`;
 
-        if (invoices) {
-          const today = new Date();
-          const aggregation: Record<string, AgedReceivable> = {};
-
-          invoices.forEach((inv: Invoice) => {
-            const customer = inv.customer_name || 'Unknown Customer';
-            const currency = inv.currency || 'USD';
-            // Create a unique key for grouping (Customer + Currency) to avoid mixing currencies
-            const key = `${customer}-${currency}`;
-
-            if (!aggregation[key]) {
-              aggregation[key] = {
+        if (!aggregation[key]) {
+            aggregation[key] = {
                 customer,
-                entity: inv.entity || 'N/A',
-                country: inv.country || 'N/A',
                 currency,
                 due_0_30: 0,
                 due_31_60: 0,
                 due_61_90: 0,
                 due_90_plus: 0,
                 total: 0,
-              };
-            }
-
-            const dueDate = parseISO(inv.due_date);
-            const daysOverdue = differenceInDays(today, dueDate);
-            const amount = inv.amount_due;
-
-            // Bucketing Logic
-            if (daysOverdue <= 30) {
-              aggregation[key].due_0_30 += amount;
-            } else if (daysOverdue <= 60) {
-              aggregation[key].due_31_60 += amount;
-            } else if (daysOverdue <= 90) {
-              aggregation[key].due_61_90 += amount;
-            } else {
-              aggregation[key].due_90_plus += amount;
-            }
-
-            aggregation[key].total += amount;
-          });
-
-          // Convert aggregation map to array and sort by Total amount descending
-          const reportData = Object.values(aggregation).sort((a, b) => b.total - a.total);
-          setReceivables(reportData);
+                invoices: [] // Store references
+            };
         }
-      } catch (error) {
-        console.error("Error generating aged receivables report:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchAndAggregateReceivables();
-  }, [tenantId, supabase]);
+        const dueDate = parseISO(inv.due_date);
+        const daysOverdue = differenceInDays(today, dueDate);
+        const amount = inv.amount_due;
 
-  // 4. Filtering
-  const filtered = useMemo(
-    () =>
-      receivables.filter(
-        r =>
-          r.customer.toLowerCase().includes(filter.toLowerCase()) ||
-          r.entity.toLowerCase().includes(filter.toLowerCase()) ||
-          r.country.toLowerCase().includes(filter.toLowerCase())
-      ),
-    [receivables, filter]
-  );
+        if (daysOverdue <= 30) aggregation[key].due_0_30 += amount;
+        else if (daysOverdue <= 60) aggregation[key].due_31_60 += amount;
+        else if (daysOverdue <= 90) aggregation[key].due_61_90 += amount;
+        else aggregation[key].due_90_plus += amount;
 
-  // Helper for currency formatting
+        aggregation[key].total += amount;
+        aggregation[key].invoices.push(inv);
+    });
+
+    return Object.values(aggregation).sort((a, b) => b.total - a.total);
+  }, [invoices]);
+
+  // Filtering
+  const filtered = useMemo(() => 
+    receivables.filter(r => r.customer.toLowerCase().includes(filter.toLowerCase())), 
+  [receivables, filter]);
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'decimal',
@@ -143,100 +267,120 @@ export default function AgedReceivablesTable({ tenantId: propTenantId }: Props) 
     }).format(amount);
   };
 
-  // 5. Loading State
-  if (loading && !receivables.length) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Aged Receivables</CardTitle>
-          <CardDescription>Loading outstanding invoice report...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const openPaymentForOldest = (customerRow: AgedReceivable) => {
+      // Find the oldest invoice for this customer to encourage paying off debt
+      const oldest = customerRow.invoices.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+      if (oldest) {
+          setSelectedInvoice(oldest);
+          setIsPaymentOpen(true);
+      }
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Aged Receivables</CardTitle>
-        <CardDescription>
-          Analyze outstanding receivables per tenant, country, and customer. Multi-currency, global view.
-        </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter by customer/entity..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-8" 
-          />
-          {filter && (
-            <X 
-              className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
-              onClick={() => setFilter('')}
-            />
-          )}
+    <div className="space-y-4">
+        {/* Top Controls */}
+        <div className="flex items-center justify-between">
+            <div className="relative max-w-sm w-full">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Filter by customer..." 
+                    value={filter} 
+                    onChange={e => setFilter(e.target.value)} 
+                    className="pl-8" 
+                />
+            </div>
+            <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" /> Export Report
+            </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] border rounded-md">
-          <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Entity</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead className="text-right">0-30</TableHead>
-                <TableHead className="text-right">31-60</TableHead>
-                <TableHead className="text-right">61-90</TableHead>
-                <TableHead className="text-right">90+</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+
+        <Card>
+        <CardHeader>
+            <CardTitle>Aging Report</CardTitle>
+            <CardDescription>
+                Overview of amounts due by customer and aging period.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ScrollArea className="h-[600px] border rounded-md">
+            <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                    No outstanding receivables found.
-                  </TableCell>
+                    <TableHead className="w-[200px]">Customer</TableHead>
+                    <TableHead>Currency</TableHead>
+                    <TableHead className="text-right">Current (0-30)</TableHead>
+                    <TableHead className="text-right text-yellow-600">31-60 Days</TableHead>
+                    <TableHead className="text-right text-orange-600">61-90 Days</TableHead>
+                    <TableHead className="text-right text-red-600 font-bold">90+ Days</TableHead>
+                    <TableHead className="text-right font-bold">Total Due</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((r, idx) => (
-                  <TableRow key={`${r.customer}-${idx}`}>
-                    <TableCell className="font-medium">{r.customer}</TableCell>
-                    <TableCell>{r.entity}</TableCell>
-                    <TableCell>{r.country}</TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs border px-1 rounded bg-muted">{r.currency}</span>
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                        </TableCell>
+                    </TableRow>
+                ) : filtered.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No outstanding receivables found.
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {r.due_0_30 > 0 ? formatCurrency(r.due_0_30, r.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right text-yellow-600">
-                      {r.due_31_60 > 0 ? formatCurrency(r.due_31_60, r.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right text-orange-600">
-                      {r.due_61_90 > 0 ? formatCurrency(r.due_61_90, r.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right text-red-600 font-semibold">
-                      {r.due_90_plus > 0 ? formatCurrency(r.due_90_plus, r.currency) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {formatCurrency(r.total, r.currency)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                    </TableRow>
+                ) : (
+                    filtered.map((r, idx) => (
+                    <TableRow key={`${r.customer}-${idx}`} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                                <span>{r.customer}</span>
+                                <span className="text-xs text-muted-foreground">{r.invoices.length} inv</span>
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant="secondary">{r.currency}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                            {r.due_0_30 > 0 ? formatCurrency(r.due_0_30, r.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-yellow-700 bg-yellow-50/50">
+                            {r.due_31_60 > 0 ? formatCurrency(r.due_31_60, r.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-orange-700 bg-orange-50/50">
+                            {r.due_61_90 > 0 ? formatCurrency(r.due_61_90, r.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-red-700 bg-red-50/50 font-semibold">
+                            {r.due_90_plus > 0 ? formatCurrency(r.due_90_plus, r.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                            {formatCurrency(r.total, r.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <Button size="sm" variant="ghost" onClick={() => openPaymentForOldest(r)}>
+                                <DollarSign className="h-4 w-4 mr-1 text-green-600" />
+                                <span className="text-xs">Receive</span>
+                            </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+            </ScrollArea>
+        </CardContent>
+        </Card>
+
+        {/* Payment Modal */}
+        <ReceivePaymentDialog 
+            invoice={selectedInvoice}
+            businessId={businessId}
+            isOpen={isPaymentOpen}
+            onClose={() => {
+                setIsPaymentOpen(false);
+                setSelectedInvoice(null);
+            }}
+        />
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-// src/components/accounting/BankReconciliationTable.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -21,7 +20,15 @@ import { CreateTransactionModal } from './CreateTransactionModal';
 interface Transaction { id: string; date: string; description: string; amount: number; }
 interface BankTransaction extends Transaction {}
 interface SystemTransaction extends Transaction {}
-interface ReconciliationTableProps { bankTransactions: BankTransaction[]; systemTransactions: SystemTransaction[]; }
+
+// FIX: Added missing properties to the interface
+interface ReconciliationTableProps { 
+    bankTransactions: BankTransaction[]; 
+    systemTransactions: SystemTransaction[];
+    businessId: string;
+    bankAccountId: string;
+    userId: string;
+}
 
 // --- API ---
 async function matchTransactions(vars: { bankTxIds: string[], systemTxIds: string[] }) {
@@ -84,7 +91,14 @@ const TransactionTable = ({ title, transactions, selected, onSelect, suggestions
 };
 
 // --- MAIN COMPONENT ---
-export function BankReconciliationTable({ bankTransactions, systemTransactions }: ReconciliationTableProps) {
+export function BankReconciliationTable({ 
+    bankTransactions, 
+    systemTransactions,
+    // FIX: Destructure new props
+    businessId,
+    bankAccountId,
+    userId
+}: ReconciliationTableProps) {
     const queryClient = useQueryClient();
     const [selectedBankTxIds, setSelectedBankTxIds] = useState<string[]>([]);
     const [selectedSystemTxIds, setSelectedSystemTxIds] = useState<string[]>([]);
@@ -108,8 +122,8 @@ export function BankReconciliationTable({ bankTransactions, systemTransactions }
     
     const bankTotal = useMemo(() => bankTransactions.filter(tx => selectedBankTxIds.includes(tx.id)).reduce((sum, tx) => sum + tx.amount, 0), [bankTransactions, selectedBankTxIds]);
     const systemTotal = useMemo(() => systemTransactions.filter(tx => selectedSystemTxIds.includes(tx.id)).reduce((sum, tx) => sum + tx.amount, 0), [systemTransactions, selectedSystemTxIds]);
-    const difference = useMemo(() => bankTotal + systemTotal, [bankTotal, systemTotal]); // For accounting, credits and debits should sum to zero.
-    const canMatch = selectedBankTxIds.length > 0 && selectedSystemTxIds.length > 0 && Math.abs(difference) < 0.001; // Use tolerance for floating point
+    const difference = useMemo(() => bankTotal + systemTotal, [bankTotal, systemTotal]); 
+    const canMatch = selectedBankTxIds.length > 0 && selectedSystemTxIds.length > 0 && Math.abs(difference) < 0.001; 
 
     const handleMatch = () => {
         if (canMatch) mutation.mutate({ bankTxIds: selectedBankTxIds, systemTxIds: selectedSystemTxIds });
@@ -143,7 +157,15 @@ export function BankReconciliationTable({ bankTransactions, systemTransactions }
                 )}
             </div>
 
-            <CreateTransactionModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} bankTransaction={transactionForCreation} />
+            <CreateTransactionModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                bankTransaction={transactionForCreation}
+                // FIX: Passed these down as they are likely needed for creation
+                businessId={businessId}
+                bankAccountId={bankAccountId}
+                userId={userId}
+            />
         </div>
     );
 }

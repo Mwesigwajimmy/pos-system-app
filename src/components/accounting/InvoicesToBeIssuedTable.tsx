@@ -9,7 +9,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Search, X, AlertCircle } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
 import { format } from "date-fns";
 
 export interface InvoiceAwaiting {
@@ -22,14 +21,14 @@ export interface InvoiceAwaiting {
   tenant_id: string;
 }
 
+// FIX: Interface matches what BillsPageClient passes
 interface Props {
-  tenantId?: string;
+  businessId: string;
 }
 
-export default function InvoicesToBeIssuedTable({ tenantId: propTenantId }: Props) {
+export default function InvoicesToBeIssuedTable({ businessId }: Props) {
   // 1. Context & Hooks
-  const { data: tenant } = useTenant();
-  const tenantId = propTenantId || tenant?.id;
+  // Note: We use the passed businessId directly, avoiding the need for client-side tenant context hooks
   const supabase = createClient();
 
   // 2. State
@@ -40,18 +39,19 @@ export default function InvoicesToBeIssuedTable({ tenantId: propTenantId }: Prop
 
   // 3. Data Fetching
   useEffect(() => {
-    if (!tenantId) return;
+    if (!businessId) return;
 
     const fetchInvoices = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Fetch pending invoices for the specific tenant
+        // Fetch pending invoices for the specific business
         const { data, error: supabaseError } = await supabase
           .from('accounting_pending_invoices') 
           .select('*')
-          .eq('tenant_id', tenantId)
+          // FIX: Map businessId to tenant_id column in DB
+          .eq('tenant_id', businessId)
           .neq('status', 'paid') 
           .order('due_date', { ascending: true });
 
@@ -70,7 +70,7 @@ export default function InvoicesToBeIssuedTable({ tenantId: propTenantId }: Prop
     };
 
     fetchInvoices();
-  }, [tenantId, supabase]);
+  }, [businessId, supabase]);
 
   // 4. Filtering
   const filtered = useMemo(
@@ -105,30 +105,17 @@ export default function InvoicesToBeIssuedTable({ tenantId: propTenantId }: Prop
   // 7. Loading State
   if (loading && !invoices.length) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Invoices To Be Issued</CardTitle>
-          <CardDescription>Syncing data...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-12">
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+          <p className="text-sm text-muted-foreground">Loading pending invoices...</p>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <CardTitle>Invoices To Be Issued</CardTitle>
-            <CardDescription className="mt-1">
-              Track supplier bills pending formal invoice generation.
-            </CardDescription>
-          </div>
-          
-          <div className="relative w-full sm:w-72">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full max-w-sm">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Filter by supplier..." 
@@ -143,61 +130,58 @@ export default function InvoicesToBeIssuedTable({ tenantId: propTenantId }: Prop
               />
             )}
           </div>
-        </div>
-      </CardHeader>
+      </div>
 
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-        <div className="rounded-md border">
-          <ScrollArea className="h-[400px] w-full">
-            <Table>
-              <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+      <div className="rounded-md border bg-card text-card-foreground shadow-sm">
+        <ScrollArea className="h-[400px] w-full">
+          <Table>
+            <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+              <TableRow>
+                <TableHead className="w-[35%]">Supplier</TableHead>
+                <TableHead>Expected Amount</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
                 <TableRow>
-                  <TableHead className="w-[35%]">Supplier</TableHead>
-                  <TableHead>Expected Amount</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    {filter ? "No matching suppliers found." : "No invoices awaiting issuance."}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                      {filter ? "No matching suppliers found." : "No invoices awaiting issuance."}
+              ) : (
+                filtered.map((inv) => (
+                  <TableRow key={inv.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">
+                      {inv.supplier_name}
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {formatCurrency(inv.expected_amount, inv.currency)}
+                    </TableCell>
+                    <TableCell>
+                      {inv.due_date ? format(new Date(inv.due_date), 'MMM d, yyyy') : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={getBadgeVariant(inv.status)} className="capitalize">
+                        {inv.status}
+                      </Badge>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filtered.map((inv) => (
-                    <TableRow key={inv.id} className="hover:bg-muted/5">
-                      <TableCell className="font-medium">
-                        {inv.supplier_name}
-                      </TableCell>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {formatCurrency(inv.expected_amount, inv.currency)}
-                      </TableCell>
-                      <TableCell>
-                        {inv.due_date ? format(new Date(inv.due_date), 'MMM d, yyyy') : 'N/A'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant={getBadgeVariant(inv.status)} className="capitalize">
-                          {inv.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </div>
-      </CardContent>
-    </Card>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      </div>
+    </div>
   );
 }

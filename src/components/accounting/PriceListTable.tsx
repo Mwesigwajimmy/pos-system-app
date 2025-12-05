@@ -4,10 +4,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, X, TrendingDown, TrendingUp, Minus, AlertCircle } from 'lucide-react';
+import { Loader2, Search, X, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
 import { Badge } from "@/components/ui/badge";
 import { format, isPast, parseISO } from 'date-fns';
 
@@ -22,14 +21,13 @@ interface PriceEntry {
   tenant_id: string;
 }
 
+// FIX: Interface matches the parent component
 interface Props {
-  tenantId?: string;
+  businessId: string;
 }
 
-export default function PriceListTable({ tenantId: propTenantId }: Props) {
-  // 1. Context & Hooks
-  const { data: tenant } = useTenant();
-  const tenantId = propTenantId || tenant?.id;
+// FIX: Destructure businessId directly
+export default function PriceListTable({ businessId }: Props) {
   const supabase = createClient();
 
   // 2. State
@@ -39,14 +37,15 @@ export default function PriceListTable({ tenantId: propTenantId }: Props) {
 
   // 3. Data Fetching
   useEffect(() => {
-    if (!tenantId) return;
+    if (!businessId) return;
 
     const fetchPrices = async () => {
       try {
         const { data, error } = await supabase
           .from('procurement_supplier_prices') // Assuming table name based on context
           .select('*')
-          .eq('tenant_id', tenantId)
+          // FIX: Use businessId to query
+          .eq('tenant_id', businessId)
           .order('item_name', { ascending: true });
 
         if (error) throw error;
@@ -59,7 +58,7 @@ export default function PriceListTable({ tenantId: propTenantId }: Props) {
     };
 
     fetchPrices();
-  }, [tenantId, supabase]);
+  }, [businessId, supabase]);
 
   // 4. Filtering
   const filtered = useMemo(
@@ -106,104 +105,103 @@ export default function PriceListTable({ tenantId: propTenantId }: Props) {
   // 6. Loading State
   if (loading && !prices.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Supplier Price List</CardTitle>
-          <CardDescription>Loading price data...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Supplier Price List</CardTitle>
-        <CardDescription>
-          Compare historical and contracted prices across suppliers to enhance negotiation leverage.
-        </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter by item or supplier..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-8" 
-          />
-          {filter && (
-            <X 
-              className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
-              onClick={() => setFilter('')}
-            />
-          )}
+    <Card className="border-none shadow-none">
+      <CardHeader className="px-0 pt-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <CardTitle>Supplier Price List</CardTitle>
+                <CardDescription>
+                Compare historical and contracted prices across suppliers.
+                </CardDescription>
+            </div>
+            
+            <div className="relative w-full max-w-xs">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Filter by item or supplier..." 
+                    value={filter} 
+                    onChange={e => setFilter(e.target.value)} 
+                    className="pl-8" 
+                />
+                {filter && (
+                    <X 
+                    className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
+                    onClick={() => setFilter('')}
+                    />
+                )}
+            </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] border rounded-md">
-          <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
-              <TableRow>
-                <TableHead>Item Name</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead className="text-right">Last Price</TableHead>
-                <TableHead className="text-right">Current Price</TableHead>
-                <TableHead className="text-right">Trend</TableHead>
-                <TableHead className="text-center">Validity</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+      <CardContent className="px-0">
+        <div className="rounded-md border">
+            <ScrollArea className="h-[400px]">
+            <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No price list entries found.
-                  </TableCell>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead className="text-right">Last Price</TableHead>
+                    <TableHead className="text-right">Current Price</TableHead>
+                    <TableHead className="text-right">Trend</TableHead>
+                    <TableHead className="text-center">Validity</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((p) => {
-                  const isExpired = p.valid_until ? isPast(parseISO(p.valid_until)) : false;
-                  
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.item_name}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.supplier_name}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {p.last_price ? formatCurrency(p.last_price, p.currency) : '-'}
-                      </TableCell>
-                      <TableCell className="text-right font-bold">
-                        {formatCurrency(p.current_price, p.currency)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end">
-                          {getPriceTrend(p.current_price, p.last_price)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {p.valid_until ? (
-                          isExpired ? (
-                            <Badge variant="destructive" className="text-xs">
-                              Expired {format(parseISO(p.valid_until), 'MMM d')}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs text-green-600 border-green-200">
-                              Valid until {format(parseISO(p.valid_until), 'MMM d, yyyy')}
-                            </Badge>
-                          )
-                        ) : (
-                          <span className="text-xs text-muted-foreground">N/A</span>
-                        )}
-                      </TableCell>
+                </TableHeader>
+                <TableBody>
+                {filtered.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                        No price list entries found.
+                    </TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                ) : (
+                    filtered.map((p) => {
+                    const isExpired = p.valid_until ? isPast(parseISO(p.valid_until)) : false;
+                    
+                    return (
+                        <TableRow key={p.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{p.item_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.supplier_name}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                            {p.last_price ? formatCurrency(p.last_price, p.currency) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                            {formatCurrency(p.current_price, p.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <div className="flex justify-end">
+                            {getPriceTrend(p.current_price, p.last_price)}
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                            {p.valid_until ? (
+                            isExpired ? (
+                                <Badge variant="destructive" className="text-xs">
+                                Expired {format(parseISO(p.valid_until), 'MMM d')}
+                                </Badge>
+                            ) : (
+                                <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                                Valid until {format(parseISO(p.valid_until), 'MMM d, yyyy')}
+                                </Badge>
+                            )
+                            ) : (
+                            <span className="text-xs text-muted-foreground">N/A</span>
+                            )}
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })
+                )}
+                </TableBody>
+            </Table>
+            </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );

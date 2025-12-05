@@ -1,11 +1,10 @@
-// src/components/accounting/BillsDataTable.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
-import { toast } from 'sonner'; // Or 'react-hot-toast' depending on your setup
+import { toast } from 'sonner';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -23,7 +22,8 @@ import {
   DollarSign, 
   ArrowUpDown, 
   MoreHorizontal, 
-  Filter 
+  Filter,
+  Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -65,13 +65,13 @@ export interface Bill {
   id: string;
   vendor_name: string;
   reference_number: string;
-  date: string;
+  bill_date: string;
   due_date: string;
   currency: string;
   total_amount: number;
   amount_paid: number;
   status: BillStatus;
-  tenant_id: string;
+  business_id: string;
 }
 
 interface PaymentAccount {
@@ -81,41 +81,48 @@ interface PaymentAccount {
   balance: number;
 }
 
+interface BillsDataTableProps {
+    initialBills: Bill[];
+    businessId: string;
+}
+
 // --- API Functions ---
 
-const fetchBills = async () => {
+const fetchBillsClient = async (businessId: string) => {
   const supabase = createClient();
-  // Using an RPC function is often cleaner for calculated fields like 'amount_paid' 
-  // or joining vendor names, but a standard select works if your view is set up.
   const { data, error } = await supabase
-    .from('accounting_bills_view') // Assuming a view that aggregates payments
+    .from('accounting_bills')
     .select('*')
+    .eq('business_id', businessId)
     .order('due_date', { ascending: true });
 
   if (error) throw new Error(error.message);
   return data as Bill[];
 };
 
-const fetchPaymentAccounts = async () => {
+const fetchPaymentAccounts = async (businessId: string) => {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('accounting_accounts')
     .select('id, name, currency, balance')
-    .in('type', ['Asset', 'Bank', 'Cash']) // Adjust based on your Chart of Accounts
+    .eq('business_id', businessId)
+    .in('type', ['Bank', 'Cash']) // Ensure your DB has these types
     .eq('is_active', true);
 
   if (error) throw new Error(error.message);
   return data as PaymentAccount[];
 };
 
-const recordPayment = async (payload: { bill_id: string; account_id: string; amount: number; payment_date: string }) => {
+const recordPayment = async (payload: { bill_id: string; account_id: string; amount: number; payment_date: string, business_id: string }) => {
   const supabase = createClient();
-  // Using an RPC transaction to update bill balance and create ledger entries safely
+  
+  // Calling the secure RPC function created in Part 1
   const { data, error } = await supabase.rpc('record_bill_payment', {
     p_bill_id: payload.bill_id,
     p_account_id: payload.account_id,
     p_amount: payload.amount,
-    p_date: payload.payment_date
+    p_date: payload.payment_date,
+    p_business_id: payload.business_id
   });
 
   if (error) throw new Error(error.message);
@@ -126,26 +133,28 @@ const recordPayment = async (payload: { bill_id: string; account_id: string; amo
 
 interface PaymentDialogProps {
   bill: Bill | null;
+  businessId: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const PaymentDialog = ({ bill, isOpen, onClose }: PaymentDialogProps) => {
+const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps) => {
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
   
-  // Fetch accounts only when modal is open
+  // Fetch accounts only when modal is open to save resources
   const { data: accounts, isLoading } = useQuery({
-    queryKey: ['payment_accounts'],
-    queryFn: fetchPaymentAccounts,
-    enabled: isOpen
+    queryKey: ['payment_accounts', businessId],
+    queryFn: () => fetchPaymentAccounts(businessId),
+    enabled: isOpen && !!businessId
   });
 
-  useEffect(() => {
+  // Effect to set default amount to "Remaining Balance"
+  React.useEffect(() => {
     if (bill) {
-      // Default to remaining balance
-      setAmount((bill.total_amount - bill.amount_paid).toString());
+      const remaining = bill.total_amount - bill.amount_paid;
+      setAmount(remaining > 0 ? remaining.toString() : '0');
     }
   }, [bill]);
 
@@ -153,7 +162,10 @@ const PaymentDialog = ({ bill, isOpen, onClose }: PaymentDialogProps) => {
     mutationFn: recordPayment,
     onSuccess: () => {
       toast.success("Payment recorded successfully");
+      // Refetch bills to show new status
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      // Refetch accounts to show new bank balance
+      queryClient.invalidateQueries({ queryKey: ['payment_accounts'] });
       onClose();
     },
     onError: (error) => {
@@ -162,13 +174,17 @@ const PaymentDialog = ({ bill, isOpen, onClose }: PaymentDialogProps) => {
   });
 
   const handleSubmit = () => {
-    if (!bill || !accountId || !amount) return;
+    if (!bill || !accountId || !amount) {
+        toast.error("Please fill all fields");
+        return;
+    }
     
     mutation.mutate({
       bill_id: bill.id,
       account_id: accountId,
       amount: parseFloat(amount),
-      payment_date: new Date().toISOString()
+      payment_date: new Date().toISOString(),
+      business_id: businessId
     });
   };
 
@@ -182,30 +198,32 @@ const PaymentDialog = ({ bill, isOpen, onClose }: PaymentDialogProps) => {
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
-            Paying <strong>{bill.vendor_name}</strong> (Ref: {bill.reference_number})
+            Payment for <strong>{bill.vendor_name}</strong> (Ref: {bill.reference_number})
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Balance Due</Label>
+            <Label className="text-right font-semibold">Balance Due</Label>
             <div className="col-span-3 font-mono text-sm">
               {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency }).format(remaining)}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="account" className="text-right">Pay From</Label>
-            <Select onValueChange={setAccountId} value={accountId}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder={isLoading ? "Loading..." : "Select Account"} />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts?.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name} ({acc.currency})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="col-span-3">
+                <Select onValueChange={setAccountId} value={accountId}>
+                <SelectTrigger>
+                    <SelectValue placeholder={isLoading ? "Loading accounts..." : "Select Bank Account"} />
+                </SelectTrigger>
+                <SelectContent>
+                    {accounts?.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name} ({acc.currency}) - Bal: {acc.balance.toLocaleString()}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="amount" className="text-right">Amount</Label>
@@ -233,7 +251,7 @@ const PaymentDialog = ({ bill, isOpen, onClose }: PaymentDialogProps) => {
 
 // --- Main Component ---
 
-export default function BillsDataTable() {
+export default function BillsDataTable({ initialBills, businessId }: BillsDataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -243,9 +261,11 @@ export default function BillsDataTable() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
-  const { data: bills = [], isLoading, isError, error } = useQuery({
-    queryKey: ['bills'],
-    queryFn: fetchBills,
+  // TanStack Query to manage state and refetching
+  const { data: bills, isLoading, isError, error } = useQuery({
+    queryKey: ['bills', businessId],
+    queryFn: () => fetchBillsClient(businessId),
+    initialData: initialBills, // Use server data first
   });
 
   const columns: ColumnDef<Bill>[] = [
@@ -290,7 +310,9 @@ export default function BillsDataTable() {
       accessorKey: "due_date",
       header: "Due Date",
       cell: ({ row }) => {
-        return <div className="text-sm text-muted-foreground">{format(new Date(row.getValue("due_date")), "PP")}</div>
+        const date = row.getValue("due_date");
+        if (!date) return "-";
+        return <div className="text-sm text-muted-foreground">{format(new Date(date as string), "PP")}</div>
       },
     },
     {
@@ -375,7 +397,7 @@ export default function BillsDataTable() {
   });
 
   if (isError) {
-    return <div className="p-4 text-red-500">Error loading bills: {error.message}</div>;
+    return <div className="p-4 text-red-500 bg-red-50 rounded-md">Error loading bills: {error.message}</div>;
   }
 
   return (
@@ -392,6 +414,9 @@ export default function BillsDataTable() {
             className="max-w-sm"
           />
         </div>
+        <Button>
+            <Plus className="mr-2 h-4 w-4" /> Create Bill
+        </Button>
       </div>
       
       <div className="rounded-md border bg-card">
@@ -446,7 +471,7 @@ export default function BillsDataTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  No bills found.
                 </TableCell>
               </TableRow>
             )}
@@ -481,6 +506,7 @@ export default function BillsDataTable() {
 
       <PaymentDialog 
         bill={selectedBill} 
+        businessId={businessId}
         isOpen={paymentModalOpen} 
         onClose={() => {
           setPaymentModalOpen(false);

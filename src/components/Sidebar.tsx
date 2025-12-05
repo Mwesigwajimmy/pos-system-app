@@ -201,6 +201,8 @@ const navSections: NavItem[] = [
             { href: '/finance/tax-returns', label: 'Tax Returns', icon: FileWarning },
             { href: '/finance/fiscal-positions', label: 'Fiscal Positions', icon: Settings },
             { href: '/finance/lock-dates', label: 'Lock Dates', icon: KeyRound },
+            { href: '/finance/chart-of-accounts',label: 'Chart of Accounts',icon: Settings },
+            
         ]
     },
 

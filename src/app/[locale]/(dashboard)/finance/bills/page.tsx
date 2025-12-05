@@ -1,8 +1,8 @@
 import React from 'react';
 import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server'; // Ensure this path is correct for your project
 import { redirect } from 'next/navigation';
-import BillsPageClient from '@/components/accounting/BillsPageClient'; // Import the client file from Step 1
+import BillsDataTable from '@/components/accounting/BillsDataTable';
 
 // Server Action to fetch initial data
 async function getBills(supabase: any, businessId: string) {
@@ -46,11 +46,22 @@ export default async function BillsPage({ params: { locale } }: { params: { loca
     // 3. Fetch Data Server Side
     const bills = await getBills(supabase, profile.business_id);
 
-    // 4. Render the Client Component and pass the data
     return (
-        <BillsPageClient 
-            initialBills={bills} 
-            businessId={profile.business_id} 
-        />
+        <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+            <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                    <h2 className="text-3xl font-bold tracking-tight">Bills & Payables</h2>
+                    <p className="text-muted-foreground">
+                        Manage vendor bills, track payments, and handle accounts payable.
+                    </p>
+                </div>
+            </div>
+            
+            {/* Pass data and businessId to client component */}
+            <BillsDataTable 
+                initialBills={bills} 
+                businessId={profile.business_id} 
+            />
+        </div>
     );
 }

@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle, Search, X, Factory } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
 
 interface ProductionOrder {
   id: string;
@@ -23,14 +22,13 @@ interface ProductionOrder {
   created_at: string;
 }
 
-interface Props {
-  tenantId?: string;
+// Defined Interface
+interface OrdersToMakeTableProps {
+  businessId: string;
 }
 
-export default function OrdersToMakeTable({ tenantId: propTenantId }: Props) {
-  // 1. Context & Hooks
-  const { data: tenant } = useTenant();
-  const tenantId = propTenantId || tenant?.id;
+// FIX: Used the correct interface name and destructured businessId directly
+export default function OrdersToMakeTable({ businessId }: OrdersToMakeTableProps) {
   const supabase = createClient();
 
   // 2. State
@@ -41,7 +39,7 @@ export default function OrdersToMakeTable({ tenantId: propTenantId }: Props) {
 
   // 3. Data Fetching
   useEffect(() => {
-    if (!tenantId) return;
+    if (!businessId) return;
 
     const fetchOrders = async () => {
       try {
@@ -49,7 +47,8 @@ export default function OrdersToMakeTable({ tenantId: propTenantId }: Props) {
         const { data, error } = await supabase
           .from('inventory_production_orders')
           .select('*')
-          .eq('tenant_id', tenantId)
+          // Using businessId passed from parent
+          .eq('tenant_id', businessId)
           .order('due_date', { ascending: true });
 
         if (error) throw error;
@@ -62,7 +61,7 @@ export default function OrdersToMakeTable({ tenantId: propTenantId }: Props) {
     };
 
     fetchOrders();
-  }, [tenantId, supabase]);
+  }, [businessId, supabase]);
 
   // 4. Filtering
   const filtered = useMemo(() =>
@@ -82,7 +81,7 @@ export default function OrdersToMakeTable({ tenantId: propTenantId }: Props) {
         .from('inventory_production_orders')
         .update({ status: 'approved' })
         .eq('id', orderId)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', businessId);
 
       if (error) throw error;
 
@@ -117,102 +116,93 @@ export default function OrdersToMakeTable({ tenantId: propTenantId }: Props) {
   // 7. Loading State
   if (loading && !orders.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Orders To Make</CardTitle>
-          <CardDescription>Loading production queue...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center py-12">
+         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Factory className="h-5 w-5 text-gray-500" />
-          Orders To Make
-        </CardTitle>
-        <CardDescription>
-          Track internal requisitions and production orders requiring approval.
-        </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter orders..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-8" 
-          />
-          {filter && (
-            <X 
-              className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
-              onClick={() => setFilter('')}
+    <div className="space-y-4">
+        {/* Header / Filter Area */}
+        <div className="flex items-center justify-between">
+            <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="Filter orders..." 
+                value={filter} 
+                onChange={e => setFilter(e.target.value)} 
+                className="pl-8" 
             />
-          )}
+            {filter && (
+                <X 
+                className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
+                onClick={() => setFilter('')}
+                />
+            )}
+            </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] border rounded-md">
-          <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
-              <TableRow>
-                <TableHead>Item Name</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Requested By</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+
+        {/* Table Content */}
+        <div className="rounded-md border bg-card text-card-foreground shadow-sm">
+            <ScrollArea className="h-[400px]">
+            <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No production orders found.
-                  </TableCell>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Requested By</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map(o => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.item_name}</TableCell>
-                    <TableCell>{o.quantity}</TableCell>
-                    <TableCell className="text-muted-foreground">{o.requested_by}</TableCell>
-                    <TableCell>{getStatusBadge(o.status)}</TableCell>
-                    <TableCell>
-                      {o.due_date ? format(new Date(o.due_date), "MMM d, yyyy") : '-'}
+                </TableHeader>
+                <TableBody>
+                {filtered.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                            <Factory className="h-8 w-8 opacity-20" />
+                            <p>No production orders found.</p>
+                        </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {o.status === 'pending' && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="text-green-600 border-green-200 hover:bg-green-50"
-                          onClick={() => handleApprove(o.id)}
-                          disabled={processingId === o.id}
-                        >
-                          {processingId === o.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <CheckCircle className="mr-1 h-4 w-4" /> Approve
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                    </TableRow>
+                ) : (
+                    filtered.map(o => (
+                    <TableRow key={o.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{o.item_name}</TableCell>
+                        <TableCell>{o.quantity}</TableCell>
+                        <TableCell className="text-muted-foreground">{o.requested_by}</TableCell>
+                        <TableCell>{getStatusBadge(o.status)}</TableCell>
+                        <TableCell>
+                        {o.due_date ? format(new Date(o.due_date), "MMM d, yyyy") : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                        {o.status === 'pending' && (
+                            <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => handleApprove(o.id)}
+                            disabled={processingId === o.id}
+                            >
+                            {processingId === o.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                                <>
+                                <CheckCircle className="mr-1 h-3 w-3" /> Approve
+                                </>
+                            )}
+                            </Button>
+                        )}
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+            </ScrollArea>
+        </div>
+    </div>
   );
 }

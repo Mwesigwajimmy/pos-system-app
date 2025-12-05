@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from "@/components/ui/badge";
 import { createClient } from '@/lib/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
 import { format } from "date-fns";
 
 interface UpsellOpportunity {
@@ -24,14 +23,13 @@ interface UpsellOpportunity {
   tenant_id: string;
 }
 
+// FIX: Ensure interface matches the props passed by the parent
 interface Props {
-  tenantId?: string;
+  businessId: string;
 }
 
-export default function OrdersToUpsellTable({ tenantId: propTenantId }: Props) {
-  // 1. Context & Hooks
-  const { data: tenant } = useTenant();
-  const tenantId = propTenantId || tenant?.id;
+// FIX: Destructure businessId directly from Props
+export default function OrdersToUpsellTable({ businessId }: Props) {
   const supabase = createClient();
 
   // 2. State
@@ -41,7 +39,7 @@ export default function OrdersToUpsellTable({ tenantId: propTenantId }: Props) {
 
   // 3. Data Fetching
   useEffect(() => {
-    if (!tenantId) return;
+    if (!businessId) return;
 
     const fetchOpportunities = async () => {
       try {
@@ -49,7 +47,8 @@ export default function OrdersToUpsellTable({ tenantId: propTenantId }: Props) {
         const { data, error } = await supabase
           .from('sales_upsell_opportunities') 
           .select('*')
-          .eq('tenant_id', tenantId)
+          // FIX: Use businessId to query tenant_id
+          .eq('tenant_id', businessId)
           .neq('status', 'dismissed') // Usually hide dismissed ones by default
           .order('potential_revenue', { ascending: false }); // High value items first
 
@@ -63,7 +62,7 @@ export default function OrdersToUpsellTable({ tenantId: propTenantId }: Props) {
     };
 
     fetchOpportunities();
-  }, [tenantId, supabase]);
+  }, [businessId, supabase]);
 
   // 4. Filtering
   const filtered = useMemo(
@@ -104,91 +103,93 @@ export default function OrdersToUpsellTable({ tenantId: propTenantId }: Props) {
   // 6. Loading State
   if (loading && !opportunities.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Orders To Upsell</CardTitle>
-          <CardDescription>Loading revenue opportunities...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-green-600" />
-          Orders To Upsell
-        </CardTitle>
-        <CardDescription>
-          Proactive revenue opportunities based on sales history, inventory levels, and AI signals.
-        </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Filter opportunities..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-8" 
-          />
-          {filter && (
-            <X 
-              className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
-              onClick={() => setFilter('')}
-            />
-          )}
+    <Card className="border-none shadow-none">
+      <CardHeader className="px-0 pt-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                <div>
+                    <CardTitle>Orders To Upsell</CardTitle>
+                    <CardDescription>
+                    Proactive revenue opportunities.
+                    </CardDescription>
+                </div>
+            </div>
+            
+            <div className="relative w-full max-w-xs">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Filter opportunities..." 
+                    value={filter} 
+                    onChange={e => setFilter(e.target.value)} 
+                    className="pl-8" 
+                />
+                {filter && (
+                    <X 
+                    className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
+                    onClick={() => setFilter('')}
+                    />
+                )}
+            </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[400px] border rounded-md">
-          <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
-              <TableRow>
-                <TableHead>Suggested Item</TableHead>
-                <TableHead>Context / Target</TableHead>
-                <TableHead>Trigger Reason</TableHead>
-                <TableHead className="text-right">Potential Rev.</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Date Identified</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+      <CardContent className="px-0">
+        <div className="rounded-md border">
+            <ScrollArea className="h-[400px]">
+            <Table>
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No upsell opportunities found at this time.
-                  </TableCell>
+                    <TableHead>Suggested Item</TableHead>
+                    <TableHead>Context / Target</TableHead>
+                    <TableHead>Trigger Reason</TableHead>
+                    <TableHead className="text-right">Potential Rev.</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Date Identified</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map(o => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.item_name}</TableCell>
-                    <TableCell className="text-muted-foreground">{o.target_context}</TableCell>
-                    <TableCell className="max-w-[200px] truncate" title={o.reason}>
-                      {o.reason}
+                </TableHeader>
+                <TableBody>
+                {filtered.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                            <TrendingUp className="h-8 w-8 opacity-20" />
+                            <p>No upsell opportunities found at this time.</p>
+                        </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-green-700">
-                      {formatCurrency(o.potential_revenue, o.currency)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(o.status)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {o.recommendation_source}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {o.created_at ? format(new Date(o.created_at), 'MMM d, yyyy') : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                    </TableRow>
+                ) : (
+                    filtered.map(o => (
+                    <TableRow key={o.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{o.item_name}</TableCell>
+                        <TableCell className="text-muted-foreground">{o.target_context}</TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={o.reason}>
+                        {o.reason}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold text-green-700">
+                        {formatCurrency(o.potential_revenue, o.currency)}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(o.status)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                        {o.recommendation_source}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                        {o.created_at ? format(new Date(o.created_at), 'MMM d, yyyy') : '-'}
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+                </TableBody>
+            </Table>
+            </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
