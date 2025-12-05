@@ -1,230 +1,372 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Landmark, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import React, { useState, useMemo } from 'react';
+import { format } from 'date-fns';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { 
+  AlertCircle, 
+  Plus, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  Wallet,
+  CheckCircle2,
+  Building2,
+  Search,
+  ArrowUpDown,
+  Filter
+} from 'lucide-react';
+import Link from 'next/link';
+import { cn } from "@/lib/utils";
 
-// --- Enterprise Types ---
-// In a real system, we map the GL line to a readable transaction
+// --- Types ---
+
+interface TrustAccountConfig {
+  id: string;
+  name: string;
+  type: string;
+  current_balance: number;
+  currency: string;
+}
+
 interface TrustTransaction {
   id: string;
   transaction_date: string;
-  reference_no: string;
-  description: string;
-  transaction_type: 'deposit' | 'withdrawal';
+  type: 'deposit' | 'withdrawal' | 'retainer_usage';
   amount: number;
-  entity_name: string; // The Client or Payee
+  description: string;
+  client: {
+    first_name: string;
+    last_name: string;
+    company_name: string;
+  } | null;
 }
 
-interface Props {
+interface TrustAccountingManagerProps {
   tenantId: string;
-  initialTransactions?: TrustTransaction[];
+  currency: string;
+  trustAccountConfig: TrustAccountConfig | null;
+  initialTransactions: TrustTransaction[];
 }
 
-export default function TrustAccountingManager({ tenantId, initialTransactions = [] }: Props) {
-  const [transactions, setTransactions] = useState<TrustTransaction[]>(initialTransactions);
-  const [loading, setLoading] = useState(initialTransactions.length === 0);
-  const [trustBalance, setTrustBalance] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  
-  const supabase = createClient();
+type SortConfig = {
+  key: keyof TrustTransaction | 'client_name';
+  direction: 'asc' | 'desc';
+};
 
-  useEffect(() => {
-    // If we have initial data (SSR), calculate balance and skip fetch
-    if (initialTransactions.length > 0) {
-      const balance = initialTransactions.reduce((acc, curr) => {
-        return curr.transaction_type === 'deposit' ? acc + curr.amount : acc - curr.amount;
-      }, 0);
-      setTrustBalance(balance);
-      setLoading(false);
-      return;
-    }
+export default function TrustAccountingManager({ 
+  tenantId, 
+  currency, 
+  trustAccountConfig, 
+  initialTransactions 
+}: TrustAccountingManagerProps) {
 
-    const fetchRealGLData = async () => {
-      try {
-        setLoading(true);
+  // --- State for Data Grid ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'transaction_date', direction: 'desc' });
 
-        // STEP 1: Find the "Trust Liability" Account ID from the Chart of Accounts
-        // In a real app, this might be stored in a 'system_settings' table or found by code/type
-        const { data: accountData, error: accountError } = await supabase
-          .from('accounts')
-          .select('id')
-          .eq('tenant_id', tenantId)
-          .ilike('name', '%Trust%') // Searching for "Client Trust Funds" or similar
-          .in('type', ['liability', 'LIABILITY']) // Trust funds are a Liability (we owe them to the client)
-          .limit(1)
-          .single();
-
-        if (accountError || !accountData) {
-          throw new Error("Trust Liability Account not configured in Chart of Accounts.");
-        }
-
-        const trustAccountId = accountData.id;
-
-        // STEP 2: Query the General Ledger (Journal Entry Lines) for this Account
-        // This is the "Single Source of Truth" in enterprise accounting
-        const { data: glLines, error: glError } = await supabase
-          .from('journal_entry_lines')
-          .select(`
-            id,
-            debit,
-            credit,
-            description,
-            journal_entries!inner (
-              date,
-              reference,
-              description,
-              entity_name 
-            )
-          `)
-          .eq('tenant_id', tenantId)
-          .eq('account_id', trustAccountId)
-          .order('journal_entries(date)', { ascending: false });
-
-        if (glError) throw glError;
-
-        // STEP 3: Transform GL Lines into Trust Transactions
-        // Accounting Rule: For Liability Accounts:
-        // CREDIT = Increase (Deposit/Inflow)
-        // DEBIT  = Decrease (Withdrawal/Outflow)
-        const mappedTransactions: TrustTransaction[] = glLines.map((line: any) => {
-          const isDeposit = line.credit > 0;
-          
-          return {
-            id: line.id,
-            transaction_date: line.journal_entries.date,
-            reference_no: line.journal_entries.reference,
-            // Prefer line description, fallback to header description
-            description: line.description || line.journal_entries.description, 
-            // In a real schema, 'entity_name' (Client) is usually on the Journal Header
-            entity_name: line.journal_entries.entity_name || 'Unknown Client',
-            transaction_type: isDeposit ? 'deposit' : 'withdrawal',
-            amount: isDeposit ? line.credit : line.debit
-          };
-        });
-
-        // Calculate running balance
-        const totalBalance = mappedTransactions.reduce((acc, curr) => {
-          return curr.transaction_type === 'deposit' ? acc + curr.amount : acc - curr.amount;
-        }, 0);
-
-        setTransactions(mappedTransactions);
-        setTrustBalance(totalBalance);
-      } catch (err: any) {
-        console.error("Trust Accounting Error:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRealGLData();
-  }, [tenantId, supabase, initialTransactions]);
-
-  if (error) {
+  // --- Configuration Check ---
+  if (!trustAccountConfig) {
     return (
-      <Card className="border-red-500">
-        <CardContent className="pt-6 flex items-center gap-4 text-red-600">
-          <AlertCircle className="h-8 w-8" />
-          <div>
-            <h3 className="font-bold">Configuration Error</h3>
-            <p>{error}</p>
-            <p className="text-sm text-slate-500 mt-1">Please ensure a Liability account named "Client Trust Funds" exists in the Chart of Accounts.</p>
+      <div className="space-y-6">
+        <Alert variant="destructive" className="bg-white border-red-200 shadow-sm">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <div className="ml-2">
+            <AlertTitle className="text-red-700 font-semibold">Configuration Error</AlertTitle>
+            <AlertDescription className="text-red-600 mt-1">
+              Trust Liability Account not configured in Chart of Accounts.
+              <br />
+              Please ensure a Liability account named <strong>"Client Trust Funds"</strong> exists.
+            </AlertDescription>
+            <div className="mt-3">
+               <Link href="/accounting/chart-of-accounts">
+                 <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-50">
+                   Go to Chart of Accounts
+                 </Button>
+               </Link>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Alert>
+      </div>
     );
   }
 
+  // --- Helper: Format Currency ---
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  });
+
+  // --- Data Processing Engine (Memoized) ---
+  const processedData = useMemo(() => {
+    let data = [...initialTransactions];
+
+    // 1. Filter by Search Term
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      data = data.filter((t) => {
+        const clientName = t.client?.company_name || `${t.client?.first_name} ${t.client?.last_name}`;
+        return (
+          t.description?.toLowerCase().includes(lowerTerm) ||
+          clientName.toLowerCase().includes(lowerTerm) ||
+          t.amount.toString().includes(lowerTerm)
+        );
+      });
+    }
+
+    // 2. Filter by Type
+    if (typeFilter !== 'all') {
+      data = data.filter((t) => t.type === typeFilter);
+    }
+
+    // 3. Sorting
+    data.sort((a, b) => {
+      let aValue: any = a[sortConfig.key as keyof TrustTransaction];
+      let bValue: any = b[sortConfig.key as keyof TrustTransaction];
+
+      // Special handling for nested client name
+      if (sortConfig.key === 'client_name') {
+        aValue = a.client?.company_name || `${a.client?.first_name} ${a.client?.last_name}`;
+        bValue = b.client?.company_name || `${b.client?.first_name} ${b.client?.last_name}`;
+      }
+      
+      // Special handling for Date comparisons
+      if (sortConfig.key === 'transaction_date') {
+        aValue = new Date(a.transaction_date).getTime();
+        bValue = new Date(b.transaction_date).getTime();
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return data;
+  }, [initialTransactions, searchTerm, typeFilter, sortConfig]);
+
+  // --- Sorting Handler ---
+  const handleSort = (key: SortConfig['key']) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
+  // --- Render Sort Icon ---
+  const SortIcon = ({ columnKey }: { columnKey: SortConfig['key'] }) => {
+    if (sortConfig.key !== columnKey) return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground opacity-50" />;
+    return <ArrowUpDown className={cn("ml-2 h-4 w-4", sortConfig.direction === 'asc' ? "text-primary" : "text-primary rotate-180 transition-transform")} />;
+  };
+
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-slate-900 text-white border-slate-800 shadow-md">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Trust Liability</CardTitle>
+      {/* Top Status Bar */}
+      <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between bg-green-50/50 p-4 rounded-lg border border-green-100">
+        <div className="flex items-center gap-2 text-green-700">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="font-medium">Trust Accounting System Active</span>
+        </div>
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Linked Account: <span className="font-mono text-green-700">{trustAccountConfig.name}</span>
+        </div>
+      </div>
+
+      {/* KPI Cards (Always showing totals based on FULL dataset for overview) */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Trust Balance</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? (
-               <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold flex items-center gap-2 font-mono">
-                  <Landmark className="h-5 w-5 text-emerald-400" />
-                  ${trustBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">Funds currently held in escrow</p>
-              </>
-            )}
+            <div className="text-2xl font-bold">
+                {formatter.format(trustAccountConfig.current_balance || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Available funds held for clients
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Deposits</CardTitle>
+            <ArrowDownLeft className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+                {formatter.format(initialTransactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + Number(t.amount), 0))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total active deposits loaded
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Withdrawals / Usage</CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+             <div className="text-2xl font-bold text-blue-600">
+                {formatter.format(initialTransactions.filter(t => t.type !== 'deposit').reduce((sum, t) => sum + Number(t.amount), 0))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Funds utilized or refunded
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Ledger Table */}
-      <Card className="border-t-4 border-t-emerald-600">
+      {/* Transactions Data Grid */}
+      <Card>
         <CardHeader>
-          <CardTitle>Trust Ledger</CardTitle>
-          <CardDescription>Real-time view of the General Ledger (GL) for Client Trust Funds.</CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <CardTitle>Trust Transactions</CardTitle>
+                    <CardDescription>History of all client deposits and retainer usage.</CardDescription>
+                </div>
+                <Button>
+                    <Plus className="mr-2 h-4 w-4" /> Record Transaction
+                </Button>
+            </div>
+            
+            {/* --- Filter Toolbar --- */}
+            <div className="flex flex-col md:flex-row gap-3 mt-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search clients, description, or amount..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="w-full md:w-[200px]">
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <SelectTrigger>
+                            <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                            <SelectValue placeholder="Filter by Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="deposit">Deposits</SelectItem>
+                            <SelectItem value="withdrawal">Withdrawals</SelectItem>
+                            <SelectItem value="retainer_usage">Retainer Usage</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-slate-400" /></div>
-          ) : (
             <div className="rounded-md border">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Client / Entity</TableHead>
-                    <TableHead>Transaction</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Credit (In)</TableHead>
-                    <TableHead className="text-right">Debit (Out)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center h-24 text-muted-foreground">No GL entries found for Trust Accounts.</TableCell></TableRow>
-                  ) : (
-                    transactions.map((tx) => (
-                      <TableRow key={tx.id} className="hover:bg-slate-50">
-                        <TableCell className="text-xs font-medium">{new Date(tx.transaction_date).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium text-slate-700">{tx.entity_name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={tx.transaction_type === 'deposit' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-700 border-slate-200'}>
-                            {tx.transaction_type === 'deposit' ? <ArrowDownLeft className="w-3 h-3 mr-1"/> : <ArrowUpRight className="w-3 h-3 mr-1"/>}
-                            {tx.transaction_type === 'deposit' ? 'DEPOSIT' : 'DISBURSEMENT'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">{tx.reference_no}</TableCell>
-                        <TableCell className="text-xs text-slate-500 max-w-[200px] truncate">{tx.description}</TableCell>
-                        
-                        {/* Accounting View: Credit Column */}
-                        <TableCell className="text-right font-mono text-sm">
-                          {tx.transaction_type === 'deposit' 
-                            ? <span className="text-green-700 font-bold">{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            : <span className="text-slate-200">-</span>
-                          }
-                        </TableCell>
-                        
-                        {/* Accounting View: Debit Column */}
-                        <TableCell className="text-right font-mono text-sm">
-                          {tx.transaction_type === 'withdrawal' 
-                            ? <span className="text-red-600 font-bold">{tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            : <span className="text-slate-200">-</span>
-                          }
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                            {/* Sortable Header: Date */}
+                            <TableHead className="w-[150px]">
+                                <Button variant="ghost" className="p-0 hover:bg-transparent font-medium" onClick={() => handleSort('transaction_date')}>
+                                    Date <SortIcon columnKey="transaction_date" />
+                                </Button>
+                            </TableHead>
+                            
+                            {/* Sortable Header: Client */}
+                            <TableHead>
+                                <Button variant="ghost" className="p-0 hover:bg-transparent font-medium" onClick={() => handleSort('client_name')}>
+                                    Client <SortIcon columnKey="client_name" />
+                                </Button>
+                            </TableHead>
+                            
+                            <TableHead>Description</TableHead>
+                            
+                            {/* Sortable Header: Type */}
+                            <TableHead>
+                                <Button variant="ghost" className="p-0 hover:bg-transparent font-medium" onClick={() => handleSort('type')}>
+                                    Type <SortIcon columnKey="type" />
+                                </Button>
+                            </TableHead>
+                            
+                            {/* Sortable Header: Amount */}
+                            <TableHead className="text-right">
+                                <Button variant="ghost" className="p-0 hover:bg-transparent font-medium" onClick={() => handleSort('amount')}>
+                                    Amount <SortIcon columnKey="amount" />
+                                </Button>
+                            </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {processedData.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
+                                    {searchTerm || typeFilter !== 'all' 
+                                        ? "No transactions match your filters." 
+                                        : "No transactions found."}
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            processedData.map((t) => (
+                                <TableRow key={t.id}>
+                                    <TableCell className="font-medium text-muted-foreground">
+                                        {format(new Date(t.transaction_date), 'MMM d, yyyy')}
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                        {t.client?.company_name || `${t.client?.first_name || ''} ${t.client?.last_name || ''}`}
+                                    </TableCell>
+                                    <TableCell className="max-w-[300px] truncate" title={t.description}>
+                                        {t.description}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline" className={cn(
+                                            "capitalize font-normal",
+                                            t.type === 'deposit' 
+                                                ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
+                                                : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                        )}>
+                                            {t.type.replace('_', ' ')}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className={cn(
+                                        "text-right font-mono font-medium",
+                                        t.type === 'deposit' ? "text-green-600" : "text-slate-600"
+                                    )}>
+                                        {t.type === 'deposit' ? '+' : '-'}{formatter.format(Math.abs(t.amount))}
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </div>
-          )}
+            <div className="mt-4 text-xs text-muted-foreground text-center">
+                Showing {processedData.length} of {initialTransactions.length} transaction(s)
+            </div>
         </CardContent>
       </Card>
     </div>
