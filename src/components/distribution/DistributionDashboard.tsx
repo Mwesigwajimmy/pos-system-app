@@ -115,7 +115,7 @@ export default function DistributionDashboard() {
         { 
             title: "Analytics", 
             description: "Performance reports and insights.", 
-            href: "/distribution/analytics", 
+            href: "/distribution/performance", 
             icon: TrendingUp,
             color: "text-purple-600",
             bg: "bg-purple-50"
@@ -132,7 +132,7 @@ export default function DistributionDashboard() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild>
-                         <Link href="/distribution/maintenance">Fleet Maintenance</Link>
+                         <Link href="/distribution/fleet-maintenance">Fleet Maintenance</Link>
                     </Button>
                     <Button asChild>
                          <Link href="/distribution/loading">New Load Out</Link>
