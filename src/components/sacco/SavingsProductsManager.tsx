@@ -9,34 +9,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle, Loader2, PiggyBank } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 
 interface SavingsProduct {
     id: number;
     product_name: string;
     interest_rate: number;
-    min_balance: number;
+    currency: string;
+    is_active: boolean;
 }
 
-// REAL RPC FUNCTION CALLS
 async function getSavingsProducts(tenantId: string) {
     const supabase = createClient();
     const { data, error } = await supabase
         .from('savings_products')
         .select('*')
-        .eq('tenant_id', tenantId);
-        
+        .eq('tenant_id', tenantId); // Strict tenant scoping
     if (error) throw new Error(error.message);
     return data as SavingsProduct[];
 }
 
-async function createSavingsProduct(newProduct: { name: string, interest_rate: number, tenant_id: string }) {
+async function createSavingsProduct(input: any) {
     const supabase = createClient();
     const { error } = await supabase.from('savings_products').insert([{
-        product_name: newProduct.name,
-        interest_rate: newProduct.interest_rate,
-        tenant_id: newProduct.tenant_id,
+        product_name: input.name,
+        interest_rate: input.interest_rate,
+        currency: input.currency,
+        tenant_id: input.tenantId,
         is_active: true
     }]);
     if (error) throw error;
@@ -44,8 +45,7 @@ async function createSavingsProduct(newProduct: { name: string, interest_rate: n
 
 export default function SavingsProductsManager({ tenantId }: { tenantId: string }) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [name, setName] = useState('');
-    const [interestRate, setInterestRate] = useState<string>('');
+    const [form, setForm] = useState({ name: '', interest: '', currency: 'UGX' });
     const queryClient = useQueryClient();
 
     const { data: products, isLoading } = useQuery({
@@ -56,105 +56,89 @@ export default function SavingsProductsManager({ tenantId }: { tenantId: string 
     const createMutation = useMutation({
         mutationFn: createSavingsProduct,
         onSuccess: () => {
-            toast.success('Savings Product created successfully!');
+            toast.success('Product created!');
             queryClient.invalidateQueries({ queryKey: ['saccoSavingsProducts', tenantId] });
             setIsDialogOpen(false);
-            setName('');
-            setInterestRate('');
+            setForm({ name: '', interest: '', currency: 'UGX' });
         },
-        onError: (error: any) => {
-            toast.error(`Failed to create product: ${error.message}`);
-        },
+        onError: (e: any) => toast.error(e.message),
     });
 
     const handleSubmit = () => {
-        if (!name || !interestRate) {
-            return toast.error('Please fill all fields.');
-        }
+        if (!form.name || !form.interest) return toast.error('Fill all fields');
         createMutation.mutate({
-            name,
-            interest_rate: parseFloat(interestRate),
-            tenant_id: tenantId
+            name: form.name,
+            interest_rate: parseFloat(form.interest),
+            currency: form.currency,
+            tenantId
         });
     };
 
     return (
-        <div className="space-y-6">
-            <Card className="border-t-4 border-t-green-600 shadow-sm">
-                <CardHeader className="flex flex-row justify-between items-start">
-                    <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <PiggyBank className="w-5 h-5 text-green-600"/> Savings Products
-                        </CardTitle>
-                        <CardDescription>Manage interest rates and types of savings accounts.</CardDescription>
-                    </div>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-green-600 hover:bg-green-700 text-white">
-                                <PlusCircle className="mr-2 h-4 w-4" /> New Product
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Create Savings Product</DialogTitle>
-                                <DialogDescription>Define a new type of savings account.</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
+        <Card className="border-t-4 border-t-green-600 shadow-sm">
+            <CardHeader className="flex flex-row justify-between items-start">
+                <div>
+                    <CardTitle className="flex items-center gap-2"><PiggyBank className="w-5 h-5 text-green-600"/> Savings Products</CardTitle>
+                    <CardDescription>Configure saving accounts and interest rates.</CardDescription>
+                </div>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-green-600 hover:bg-green-700 text-white"><PlusCircle className="mr-2 h-4 w-4" /> New Product</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Create Savings Product</DialogTitle>
+                            <DialogDescription>Define currency and interest for this product.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Product Name</Label>
+                                <Input placeholder="e.g., Fixed Deposit" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Product Name</Label>
-                                    <Input id="name" placeholder="e.g., Holiday Savings" value={name} onChange={(e) => setName(e.target.value)} />
+                                    <Label>Currency</Label>
+                                    <Select value={form.currency} onValueChange={v => setForm({...form, currency: v})}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="UGX">UGX (Uganda)</SelectItem>
+                                            <SelectItem value="KES">KES (Kenya)</SelectItem>
+                                            <SelectItem value="USD">USD (Dollar)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="interestRate">Annual Interest Rate (%)</Label>
-                                    <Input 
-                                        id="interestRate" 
-                                        type="number" 
-                                        step="0.1" 
-                                        placeholder="5.0" 
-                                        value={interestRate} 
-                                        onChange={(e) => setInterestRate(e.target.value)} 
-                                    />
+                                    <Label>Interest Rate (% p.a)</Label>
+                                    <Input type="number" step="0.1" placeholder="5.0" value={form.interest} onChange={e => setForm({...form, interest: e.target.value})} />
                                 </div>
                             </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                                <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-                                    {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Create Product
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader className="bg-slate-50">
-                                <TableRow>
-                                    <TableHead>Product Name</TableHead>
-                                    <TableHead className="text-right">Annual Interest Rate</TableHead>
-                                    <TableHead className="text-right">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
-                                    <TableRow><TableCell colSpan={3} className="text-center h-24"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow>
-                                ) : products && products.length > 0 ? (
-                                    products.map((product) => (
-                                        <TableRow key={product.id}>
-                                            <TableCell className="font-medium">{product.product_name}</TableCell>
-                                            <TableCell className="text-right">{product.interest_rate}%</TableCell>
-                                            <TableCell className="text-right"><span className="text-green-600 text-xs bg-green-50 px-2 py-1 rounded-full">Active</span></TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow><TableCell colSpan={3} className="text-center h-24 text-muted-foreground">No savings products configured.</TableCell></TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handleSubmit} disabled={createMutation.isPending}>
+                                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader className="bg-slate-50">
+                        <TableRow><TableHead>Product</TableHead><TableHead>Currency</TableHead><TableHead className="text-right">Interest Rate</TableHead><TableHead className="text-right">Status</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={4} className="text-center h-24"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> :
+                        products?.map((p) => (
+                            <TableRow key={p.id}>
+                                <TableCell className="font-medium">{p.product_name}</TableCell>
+                                <TableCell>{p.currency}</TableCell>
+                                <TableCell className="text-right">{p.interest_rate}%</TableCell>
+                                <TableCell className="text-right"><span className="text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs">Active</span></TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
     );
 }

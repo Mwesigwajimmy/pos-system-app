@@ -106,3 +106,63 @@ export type Budget = {
   end_date: string; // ISO 8601 date string
   created_at: string; // ISO 8601 timestamp
 };
+export interface SaccoMember {
+  member_id: string;
+  user_id: string; // Link to auth.users
+  full_name: string;
+  member_no: string;
+  status: 'Active' | 'Pending' | 'Suspended';
+  phone_number: string;
+  email: string;
+  total_shares: number;
+  total_savings: number;
+  joined_at: string;
+}
+
+export interface SaccoShare {
+  id: string;
+  member_id: string;
+  share_amount: number;
+  share_price: number;
+  total_value: number;
+  purchase_date: string;
+  certificate_no: string;
+}
+
+export interface SaccoDividend {
+  id: string;
+  period_year: number;
+  declared_rate: number;
+  total_payout: number;
+  status: 'Draft' | 'Approved' | 'Paid';
+  created_at: string;
+}
+
+export interface SaccoTransaction {
+  id: string;
+  transaction_ref: string;
+  member_id: string;
+  amount: number;
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'LOAN_DISBURSEMENT' | 'LOAN_REPAYMENT' | 'SHARE_PURCHASE';
+  status: 'COMPLETED' | 'PENDING' | 'FAILED';
+  channel: 'MOBILE' | 'COUNTER' | 'AGENT';
+  created_at: string;
+}
+
+export interface SaccoContribution {
+  id: string;
+  group_id?: string;
+  member_id: string;
+  period: string; // e.g., "JAN-2025"
+  amount: number;
+  is_remitted: boolean;
+  remitted_at: string;
+}
+
+export interface SaccoStats {
+  totalAssets: number;
+  activeMembers: number;
+  loanPortfolio: number;
+  monthlyRevenue: number;
+  liquidityRatio: number;
+};
