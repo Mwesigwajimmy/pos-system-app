@@ -1,6 +1,7 @@
 // src/components/sacco/MemberAccountsTable.tsx
 
 'use client';
+
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
@@ -12,42 +13,60 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import toast from 'react-hot-toast';
-// --- FINAL FEATURE IMPORTS ---
 import { UserPlus, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 
-// --- Type Definitions (Unchanged) ---
-interface MemberAccount { member_id: bigint; member_name: string; member_status: string; total_shares: number; total_loans: number; savings_balances: { product_name: string; balance: number }[]; }
-interface SavingsProduct { id: bigint; product_name: string; }
+// --- Type Definitions ---
+interface MemberAccount { 
+    member_id: bigint; 
+    member_name: string; 
+    member_status: string; 
+    total_shares: number; 
+    total_loans: number; 
+    savings_balances: { product_name: string; balance: number }[]; 
+}
+interface SavingsProduct { 
+    id: bigint; 
+    product_name: string; 
+}
 
-// --- Data Fetching & Mutations (Unchanged) ---
-async function fetchMemberAccounts() {
+// --- Data Fetching ---
+// UPDATED: Now accepts tenantId to filter data correctly
+async function fetchMemberAccounts(tenantId: string) {
     const supabase = createClient();
-    const { data, error } = await supabase.rpc('get_sacco_member_accounts');
+    // Assuming the RPC accepts a tenant_id parameter for security
+    // If your RPC doesn't accept it yet, you might need to update the RPC or 
+    // rely on RLS (Row Level Security) if supabase.auth.user() is set correctly.
+    const { data, error } = await supabase.rpc('get_sacco_member_accounts', { p_tenant_id: tenantId });
     if (error) throw error;
     return data as MemberAccount[];
 }
 
-async function fetchSavingsProducts() {
+async function fetchSavingsProducts(tenantId: string) {
     const supabase = createClient();
-    const { data, error } = await supabase.from('sacco_savings_products').select('id, product_name');
+    // UPDATED: Filter by tenant_id
+    const { data, error } = await supabase
+        .from('sacco_savings_products')
+        .select('id, product_name')
+        .eq('tenant_id', tenantId); 
     if (error) throw error;
     return data as SavingsProduct[];
 }
 
-async function processTransaction(data: { memberId: bigint; type: 'DEPOSIT' | 'WITHDRAWAL'; amount: number; accountType: 'Shares' | bigint; }) {
+// --- Mutations ---
+async function processTransaction(data: { memberId: bigint; type: 'DEPOSIT' | 'WITHDRAWAL'; amount: number; accountType: 'Shares' | bigint; tenantId: string }) {
     const supabase = createClient();
     let rpcName = '';
-    let params: any = {};
+    let params: any = { p_tenant_id: data.tenantId }; // Pass tenantId to RPCs
 
     if (data.accountType === 'Shares') {
         if (data.type === 'WITHDRAWAL') throw new Error("Shares cannot be withdrawn directly.");
         rpcName = 'process_share_purchase';
-        params = { p_member_id: data.memberId, p_amount: data.amount };
+        params = { ...params, p_member_id: data.memberId, p_amount: data.amount };
     } else {
         rpcName = data.type === 'DEPOSIT' ? 'process_savings_deposit' : 'process_savings_withdrawal';
-        params = { p_member_id: data.memberId, p_savings_product_id: data.accountType, p_amount: data.amount };
+        params = { ...params, p_member_id: data.memberId, p_savings_product_id: data.accountType, p_amount: data.amount };
     }
     
     const { error } = await supabase.rpc(rpcName, params);
@@ -62,29 +81,47 @@ async function registerMember(data: any) {
 
 const formatCurrency = (value: number) => `UGX ${new Intl.NumberFormat('en-US').format(value)}`;
 
-// --- Main Component (with Final Edits) ---
-export default function MemberAccountsTable() {
+// --- Main Component ---
+// UPDATED: Destructure tenantId from props
+export default function MemberAccountsTable({ tenantId }: { tenantId: string }) {
     const [isTxDialogOpen, setIsTxDialogOpen] = useState(false);
     const [isRegDialogOpen, setIsRegDialogOpen] = useState(false);
     const [transactionType, setTransactionType] = useState<'DEPOSIT' | 'WITHDRAWAL'>('DEPOSIT');
     const [selectedMember, setSelectedMember] = useState<MemberAccount | null>(null);
     const queryClient = useQueryClient();
 
-    const { data: members, isLoading } = useQuery({ queryKey: ['saccoMemberAccounts'], queryFn: fetchMemberAccounts });
-    const { data: savingsProducts } = useQuery({ queryKey: ['saccoSavingsProducts'], queryFn: fetchSavingsProducts });
+    // UPDATED: Pass tenantId to fetch functions and query keys
+    const { data: members, isLoading } = useQuery({ 
+        queryKey: ['saccoMemberAccounts', tenantId], 
+        queryFn: () => fetchMemberAccounts(tenantId) 
+    });
+    
+    const { data: savingsProducts } = useQuery({ 
+        queryKey: ['saccoSavingsProducts', tenantId], 
+        queryFn: () => fetchSavingsProducts(tenantId) 
+    });
 
     const handleMutationSuccess = (message: string) => {
         toast.success(message);
-        queryClient.invalidateQueries({ queryKey: ['saccoMemberAccounts'] });
-        queryClient.invalidateQueries({ queryKey: ['saccoDashboardKPIs'] });
+        queryClient.invalidateQueries({ queryKey: ['saccoMemberAccounts', tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['saccoDashboardKPIs', tenantId] });
         setIsTxDialogOpen(false);
         setIsRegDialogOpen(false);
     };
 
     const handleMutationError = (error: any) => toast.error(`Transaction failed: ${error.message}`);
 
-    const transactionMutation = useMutation({ mutationFn: processTransaction, onSuccess: () => handleMutationSuccess(`${transactionType} successful!`), onError: handleMutationError });
-    const registrationMutation = useMutation({ mutationFn: registerMember, onSuccess: () => handleMutationSuccess("Member registered successfully!"), onError: handleMutationError });
+    const transactionMutation = useMutation({ 
+        mutationFn: processTransaction, 
+        onSuccess: () => handleMutationSuccess(`${transactionType} successful!`), 
+        onError: handleMutationError 
+    });
+    
+    const registrationMutation = useMutation({ 
+        mutationFn: registerMember, 
+        onSuccess: () => handleMutationSuccess("Member registered successfully!"), 
+        onError: handleMutationError 
+    });
 
     const handleOpenTxDialog = (member: MemberAccount, type: 'DEPOSIT' | 'WITHDRAWAL') => {
         setSelectedMember(member);
@@ -96,7 +133,9 @@ export default function MemberAccountsTable() {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const accountType = formData.get('accountType') as 'Shares' | string;
+        
         transactionMutation.mutate({
+            tenantId, // Pass tenantId here
             memberId: selectedMember!.member_id,
             type: transactionType,
             amount: Number(formData.get('amount')),
@@ -108,6 +147,7 @@ export default function MemberAccountsTable() {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         registrationMutation.mutate({
+            p_tenant_id: tenantId, // Pass tenantId here
             p_full_name: formData.get('fullName'),
             p_phone: formData.get('phone'),
             p_email: formData.get('email'),
@@ -151,9 +191,6 @@ export default function MemberAccountsTable() {
                                 {member.savings_balances?.map(s => <div key={s.product_name} className="text-xs">{s.product_name}: <span className="font-semibold">{formatCurrency(s.balance)}</span></div>)}
                             </TableCell>
                             <TableCell className="text-right">
-                                {/* ================================================================== */}
-                                {/* >> FINAL FEATURE EDIT: Cleaner Dropdown Menu for all actions << */}
-                                {/* ================================================================== */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -190,9 +227,6 @@ export default function MemberAccountsTable() {
                             <SelectTrigger><SelectValue placeholder="Select account..." /></SelectTrigger>
                             <SelectContent>
                                 {accountOptions.map(opt => (
-                                    // ==================================================================
-                                    // >> FINAL FEATURE EDIT: Adds logic to prevent withdrawing shares <<
-                                    // ==================================================================
                                     <SelectItem key={opt.value} value={opt.value} disabled={transactionType === 'WITHDRAWAL' && opt.value === 'Shares'}>
                                         {opt.label}
                                     </SelectItem>
