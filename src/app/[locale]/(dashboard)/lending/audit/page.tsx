@@ -3,9 +3,10 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { NewApplicationForm } from '@/components/lending/NewApplicationForm';
-import { Loader2 } from 'lucide-react';
+import { StatAuditPanel } from '@/components/lending/StatAuditPanel';
+import { Loader2, Landmark } from 'lucide-react';
 
+// --- Context Fetcher ---
 async function fetchUserContext() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -14,7 +15,7 @@ async function fetchUserContext() {
     return data?.business_id;
 }
 
-export default function NewLoanPage() {
+export default function AuditPage() {
     const { data: tenantId, isLoading } = useQuery({
         queryKey: ['tenantId'],
         queryFn: fetchUserContext
@@ -24,8 +25,16 @@ export default function NewLoanPage() {
     if (!tenantId) return <div className="p-8 text-red-600">Error: Configuration Missing.</div>;
 
     return (
-        <div className="p-8">
-            <NewApplicationForm tenantId={tenantId} />
+        <div className="p-8 space-y-6">
+             <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                        <Landmark className="h-8 w-8 text-primary" /> Statutory Audit
+                    </h2>
+                    <p className="text-muted-foreground">Generate, download, and track regulatory compliance reports.</p>
+                </div>
+            </div>
+            <StatAuditPanel tenantId={tenantId} />
         </div>
     );
 }

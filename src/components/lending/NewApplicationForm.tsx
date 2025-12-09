@@ -1,208 +1,335 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { createClient } from '@/lib/supabase/client';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+    Loader2, CheckCircle2, XCircle, ArrowRight, ArrowLeft, Search, User, CreditCard, AlertTriangle 
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Loader2, CheckCircle2, XCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
-// --- Types ---
-interface Prereqs {
-  customers: { id: number; name: string; national_id: string }[];
-  products: { id: number; name: string; max_amount: number; interest_rate: number }[];
+// --- Enterprise Types ---
+
+interface BorrowerSearchResult {
+  id: string;
+  full_name: string;
+  national_id: string;
+  phone_number: string;
 }
 
-interface CreditResult {
+interface LoanProduct {
+  id: string;
+  name: string;
+  min_amount: number;
+  max_amount: number;
+  interest_rate: number;
+  interest_type: string;
+  currency: string;
+}
+
+interface CreditCheckResult {
   is_eligible: boolean;
-  score: number;
-  reason?: string;
+  risk_score: number; // 0-100
+  risk_rating: 'Low' | 'Medium' | 'High' | 'Critical';
   max_eligible_amount: number;
+  allowed_products: string[]; // IDs of products they qualify for
+  disqualification_reason?: string;
 }
 
 // --- Schemas ---
-const step1Schema = z.object({
-  customerId: z.string().min(1, "Customer is required"),
-  productId: z.string().optional(), // Defined optional to satisfy type overlap
-  amount: z.number().optional(),    // Defined optional to satisfy type overlap
+
+// Step 1: Select Customer
+const borrowerSchema = z.object({
+  borrowerId: z.string().min(1, "Customer selection is required"),
 });
 
-const step2Schema = z.object({
-  customerId: z.string().optional(), // Optional here as it's already set
+// Step 2: Configure Loan
+const loanConfigSchema = z.object({
   productId: z.string().min(1, "Product is required"),
-  amount: z.coerce.number().min(1000, "Minimum amount is 1000"),
+  amount: z.coerce.number().positive("Amount must be positive"),
+  term: z.coerce.number().min(1, "Term is required"),
+  term_period: z.enum(["MONTHS", "WEEKS", "DAYS"]),
+  purpose: z.string().min(5, "Loan purpose is required"),
 });
 
-// Combined schema for the full form state type definition
-const combinedSchema = z.object({
-  customerId: z.string(),
-  productId: z.string(),
-  amount: z.number(),
-});
+// Combined for final submission
+const submissionSchema = borrowerSchema.merge(loanConfigSchema);
+type ApplicationFormValues = z.infer<typeof submissionSchema>;
 
-type ApplicationFormValues = z.infer<typeof combinedSchema>;
+// --- Fetchers ---
 
-// --- Data Fetching ---
-async function fetchFormPrerequisites() {
+async function searchBorrowers(searchTerm: string, tenantId: string) {
     const supabase = createClient();
-    const { data: customers, error: cErr } = await supabase.from('customers').select('id, name, national_id').eq('status', 'ACTIVE');
-    const { data: products, error: pErr } = await supabase.from('loan_products').select('id, name, max_amount, interest_rate').eq('active', true);
-    
-    if(cErr) console.warn("Error fetching customers:", cErr);
-    if(pErr) console.warn("Error fetching products:", pErr);
-    
-    return { customers: customers || [], products: products || [] };
-}
+    if (!searchTerm || searchTerm.length < 2) return [];
 
-async function runCreditCheck(customerId: number) {
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc('perform_credit_check', { p_customer_id: customerId });
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, national_id, phone_number')
+        .eq('business_id', tenantId)
+        .or(`full_name.ilike.%${searchTerm}%,national_id.ilike.%${searchTerm}%`)
+        .limit(10);
+    
     if (error) throw error;
-    return data as CreditResult;
+    return data as BorrowerSearchResult[];
 }
 
-async function createLoanApplication(data: ApplicationFormValues) {
+async function fetchActiveProducts(tenantId: string) {
+    const supabase = createClient();
+    const { data, error } = await supabase
+        .from('loan_products')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'ACTIVE');
+    
+    if (error) throw error;
+    return data as LoanProduct[]; // mapped to interface
+}
+
+async function runCreditCheck({ borrowerId, tenantId }: { borrowerId: string, tenantId: string }) {
+    const supabase = createClient();
+    // RPC call to Risk Engine (calculates debt-to-income, credit history, etc.)
+    const { data, error } = await supabase.rpc('perform_credit_check', { 
+        p_borrower_id: borrowerId,
+        p_tenant_id: tenantId 
+    });
+    
+    if (error) throw new Error(error.message);
+    return data as CreditCheckResult;
+}
+
+async function submitApplication({ tenantId, data }: { tenantId: string, data: ApplicationFormValues }) {
     const supabase = createClient();
     const { error } = await supabase.from('loan_applications').insert({
-      customer_id: parseInt(data.customerId),
-      loan_product_id: parseInt(data.productId),
-      principal_amount: data.amount,
-      application_date: new Date().toISOString(),
-      status: 'Pending'
+        business_id: tenantId,
+        borrower_id: data.borrowerId,
+        product_id: data.productId,
+        principal_amount: data.amount,
+        loan_term: data.term,
+        term_period: data.term_period,
+        purpose: data.purpose,
+        status: 'Pending', // Initial status
+        // created_at handled by DB default
     });
-    if (error) throw error;
+    
+    if (error) throw new Error(error.message);
 }
 
-export default function NewApplicationForm() {
+// --- Component ---
+
+export function NewApplicationForm({ tenantId }: { tenantId: string }) {
     const router = useRouter();
     const queryClient = useQueryClient();
-    const [step, setStep] = useState(1);
-    const [creditResult, setCreditResult] = useState<CreditResult | null>(null);
+    const [step, setStep] = React.useState(1);
+    
+    // Borrower Search State
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [selectedBorrower, setSelectedBorrower] = React.useState<BorrowerSearchResult | null>(null);
 
-    // Queries
-    const { data: prereqs, isLoading: loadingPrereqs } = useQuery({ 
-        queryKey: ['loanFormPrereqs'], 
-        queryFn: fetchFormPrerequisites 
+    // React Query
+    const { data: searchResults, isLoading: searching } = useQuery({
+        queryKey: ['borrower-search', searchTerm, tenantId],
+        queryFn: () => searchBorrowers(searchTerm, tenantId),
+        enabled: searchTerm.length >= 2,
+    });
+
+    const { data: products } = useQuery({
+        queryKey: ['active-products', tenantId],
+        queryFn: () => fetchActiveProducts(tenantId),
+        staleTime: 1000 * 60 * 5 // 5 mins
     });
 
     // Mutations
-    const creditMutation = useMutation({ 
-        mutationFn: runCreditCheck, 
-        onSuccess: (data) => setCreditResult(data),
-        onError: (e: Error) => toast.error(e.message)
+    const creditCheckMutation = useMutation({
+        mutationFn: runCreditCheck,
+        onError: (e: Error) => toast.error(`Credit Check Failed: ${e.message}`)
     });
 
     const submitMutation = useMutation({
-        mutationFn: createLoanApplication,
+        mutationFn: (data: ApplicationFormValues) => submitApplication({ tenantId, data }),
         onSuccess: () => {
-            toast.success("Application submitted!");
-            queryClient.invalidateQueries({ queryKey: ['loanApplications'] });
+            toast.success("Application Submitted Successfully");
+            queryClient.invalidateQueries({ queryKey: ['applications-list'] });
             router.push('/lending/applications');
         },
         onError: (e: Error) => toast.error(e.message)
     });
 
-    // Form Management
-    const { control, watch, trigger, getValues, formState: { errors } } = useForm<ApplicationFormValues>({
-        // FIX: Cast resolver to any to allow dynamic schema switching while keeping useForm strict
-        resolver: zodResolver(step === 1 ? step1Schema : step2Schema) as any,
-        defaultValues: { customerId: '', productId: '', amount: 0 },
-        mode: 'onBlur'
+    const creditResult = creditCheckMutation.data;
+
+    // Form
+    const { control, register, handleSubmit, watch, formState: { errors }, setValue, trigger } = useForm<ApplicationFormValues>({
+        // FIX: Cast to 'any' to handle dynamic step schemas. 
+        // Also used 'submissionSchema' in step 2 to ensure borrowerId is preserved in the output.
+        resolver: zodResolver(step === 1 ? borrowerSchema : submissionSchema) as any,
+        defaultValues: {
+            term: 1,
+            term_period: 'MONTHS'
+        }
     });
 
-    const selectedCustomerId = watch('customerId');
+    // Watchers for dynamic validation
     const selectedProductId = watch('productId');
-    const selectedProduct = prereqs?.products.find(p => p.id.toString() === selectedProductId);
+    const enteredAmount = watch('amount');
+    const activeProduct = products?.find(p => p.id === selectedProductId);
 
     // Handlers
+    const handleSelectBorrower = (borrower: BorrowerSearchResult) => {
+        setSelectedBorrower(borrower);
+        setValue('borrowerId', borrower.id);
+        setSearchTerm(""); // Clear search to hide dropdown
+    };
+
     const handleNext = async () => {
         const isValid = await trigger();
         if (!isValid) return;
 
         if (step === 1) {
-            creditMutation.mutate(parseInt(selectedCustomerId));
-            setStep(2);
-        } else if (step === 2) {
-            submitMutation.mutate(getValues());
+            // Run credit check before moving to config
+            if (selectedBorrower) {
+                creditCheckMutation.mutate({ borrowerId: selectedBorrower.id, tenantId });
+                setStep(2);
+            }
+        } else {
+            // Final submission
+            // Enterprise Validation: Double Check Amount vs Limits
+            if (creditResult && enteredAmount > creditResult.max_eligible_amount) {
+                toast.error(`Amount exceeds customer's credit limit of ${formatCurrency(creditResult.max_eligible_amount)}`);
+                return;
+            }
+            if (activeProduct && (enteredAmount < activeProduct.min_amount || enteredAmount > activeProduct.max_amount)) {
+                toast.error(`Amount is outside product limits`);
+                return;
+            }
+            
+            handleSubmit((data) => submitMutation.mutate(data))();
         }
     };
 
-    if (loadingPrereqs) return <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8 text-primary"/> Loading Form...</div>;
-
     return (
-        <Card className="max-w-2xl mx-auto border-t-4 border-t-blue-600 shadow-lg">
+        <Card className="max-w-3xl mx-auto shadow-lg border-t-4 border-t-blue-600">
             <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                    New Loan Application
-                    <Badge variant="outline">Step {step} of 2</Badge>
-                </CardTitle>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>New Loan Application</CardTitle>
+                        <CardDescription>Originate a new facility for an existing borrower.</CardDescription>
+                    </div>
+                    <Badge variant="outline" className="px-3 py-1">Step {step} of 2</Badge>
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
-                
-                {/* STEP 1: Customer Selection & Credit Check */}
+
+                {/* --- STEP 1: Borrower & Credit Check --- */}
                 {step === 1 && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-left-4">
-                        <div className="space-y-2">
-                            <Label>Select Customer</Label>
-                            <Controller
-                                name="customerId"
-                                control={control}
-                                render={({ field }) => (
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Search customer..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {prereqs?.customers.map(c => (
-                                                <SelectItem key={c.id} value={c.id.toString()}>
-                                                    {c.name} ({c.national_id})
-                                                </SelectItem>
+                    <div className="space-y-6 animate-in fade-in slide-in-from-left-4">
+                        {/* Borrower Search */}
+                        <div className="space-y-2 relative">
+                            <Label>Find Borrower</Label>
+                            {!selectedBorrower ? (
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                    <Input 
+                                        placeholder="Search by Name or National ID..." 
+                                        className="pl-9 h-12"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                    {searching && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-blue-600"/>}
+                                    
+                                    {/* Dropdown Results */}
+                                    {searchResults && searchResults.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {searchResults.map((b) => (
+                                                <div 
+                                                    key={b.id}
+                                                    className="p-3 hover:bg-slate-50 cursor-pointer border-b last:border-0 flex justify-between items-center"
+                                                    onClick={() => handleSelectBorrower(b)}
+                                                >
+                                                    <div>
+                                                        <p className="font-medium">{b.full_name}</p>
+                                                        <p className="text-xs text-muted-foreground">{b.national_id}</p>
+                                                    </div>
+                                                    <Badge variant="secondary" className="text-xs">Select</Badge>
+                                                </div>
                                             ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            />
-                            {errors.customerId && <p className="text-sm text-red-500">{errors.customerId.message}</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-4 border rounded-md bg-blue-50/50 border-blue-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                                            {selectedBorrower.full_name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-blue-900">{selectedBorrower.full_name}</p>
+                                            <p className="text-xs text-blue-600 flex items-center gap-2">
+                                                <span>ID: {selectedBorrower.national_id}</span>
+                                                <span>•</span>
+                                                <span>{selectedBorrower.phone_number}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={() => setSelectedBorrower(null)}>Change</Button>
+                                </div>
+                            )}
+                            <input type="hidden" {...register('borrowerId')} />
+                            {errors.borrowerId && <p className="text-sm text-red-500">{errors.borrowerId.message}</p>}
                         </div>
                     </div>
                 )}
 
-                {/* STEP 2: Product & Amount (Only if Credit Check Passed) */}
+                {/* --- STEP 2: Product & Terms --- */}
                 {step === 2 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                        {/* Credit Result Display */}
-                        {creditMutation.isPending ? (
-                            <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-lg">
-                                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2"/>
-                                <p className="text-sm text-muted-foreground">Analyzing credit worthiness...</p>
-                            </div>
+                        
+                        {/* Credit Check Result Panel */}
+                        {creditCheckMutation.isPending ? (
+                             <div className="p-8 text-center border rounded-lg bg-slate-50">
+                                <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600 mb-2" />
+                                <p className="text-sm text-muted-foreground">Running automated risk assessment...</p>
+                             </div>
                         ) : creditResult ? (
-                            <div className={`p-4 rounded-lg border ${creditResult.is_eligible ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                                <div className="flex items-center gap-3 mb-2">
-                                    {creditResult.is_eligible ? <CheckCircle2 className="text-green-600 h-6 w-6"/> : <XCircle className="text-red-600 h-6 w-6"/>}
-                                    <h3 className="font-semibold text-lg">{creditResult.is_eligible ? "Credit Check Passed" : "Credit Check Failed"}</h3>
+                            <div className={`p-4 rounded-lg border flex flex-col md:flex-row gap-4 justify-between items-start ${creditResult.is_eligible ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                <div className="flex gap-3">
+                                    {creditResult.is_eligible ? <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0"/> : <XCircle className="h-6 w-6 text-red-600 shrink-0"/>}
+                                    <div>
+                                        <h4 className={`font-bold ${creditResult.is_eligible ? 'text-green-800' : 'text-red-800'}`}>
+                                            {creditResult.is_eligible ? 'Credit Check Passed' : 'Not Eligible'}
+                                        </h4>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            {creditResult.is_eligible 
+                                                ? `Approved for financing up to limit.` 
+                                                : `Reason: ${creditResult.disqualification_reason}`}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="text-sm space-y-1 ml-9">
-                                    <p>Credit Score: <b>{creditResult.score}</b></p>
-                                    <p>Max Eligible Amount: <b>UGX {new Intl.NumberFormat().format(creditResult.max_eligible_amount)}</b></p>
-                                    {!creditResult.is_eligible && <p className="text-red-600">Reason: {creditResult.reason}</p>}
-                                </div>
+                                {creditResult.is_eligible && (
+                                    <div className="text-right">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Credit Limit</p>
+                                        <p className="text-xl font-bold text-green-700">{formatCurrency(creditResult.max_eligible_amount)}</p>
+                                        <Badge variant="outline" className="mt-1 bg-white">Score: {creditResult.risk_score}/100</Badge>
+                                    </div>
+                                )}
                             </div>
                         ) : null}
 
+                        {/* Config Form (Only if Eligible) */}
                         {creditResult?.is_eligible && (
-                            <>
-                                <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label>Loan Product</Label>
                                         <Controller
@@ -211,52 +338,94 @@ export default function NewApplicationForm() {
                                             render={({ field }) => (
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select Product" />
+                                                        <SelectValue placeholder="Select Product..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {prereqs?.products.map(p => (
-                                                            <SelectItem key={p.id} value={p.id.toString()}>
-                                                                {p.name} ({p.interest_rate}%)
+                                                        {products?.filter(p => creditResult.allowed_products.includes(p.id)).map(p => (
+                                                            <SelectItem key={p.id} value={p.id}>
+                                                                {p.name} ({p.interest_rate}% {p.interest_type})
                                                             </SelectItem>
                                                         ))}
+                                                        {(!products || products.length === 0) && <div className="p-2 text-sm text-gray-500">No products available</div>}
                                                     </SelectContent>
                                                 </Select>
                                             )}
                                         />
-                                        {errors.productId && <p className="text-sm text-red-500">{errors.productId.message}</p>}
+                                        {errors.productId && <p className="text-xs text-red-500">{errors.productId.message}</p>}
+                                        
+                                        {activeProduct && (
+                                            <div className="text-xs text-slate-500 bg-slate-100 p-2 rounded mt-1">
+                                                Limits: {formatCurrency(activeProduct.min_amount)} - {formatCurrency(activeProduct.max_amount)}
+                                            </div>
+                                        )}
                                     </div>
+
                                     <div className="space-y-2">
-                                        <Label>Amount (UGX)</Label>
-                                        <Controller
-                                            name="amount"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Input 
-                                                    type="number" 
-                                                    {...field} 
-                                                    onChange={e => field.onChange(parseFloat(e.target.value))}
-                                                />
-                                            )}
-                                        />
-                                        {selectedProduct && <p className="text-xs text-muted-foreground">Max: {selectedProduct.max_amount.toLocaleString()}</p>}
-                                        {errors.amount && <p className="text-sm text-red-500">{errors.amount.message}</p>}
+                                        <Label>Principal Amount</Label>
+                                        <div className="relative">
+                                            <Input type="number" {...register('amount')} className="pl-8" />
+                                            <CreditCard className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                        </div>
+                                        {/* Real-time validation message */}
+                                        {enteredAmount > creditResult.max_eligible_amount && (
+                                            <p className="text-xs text-red-600 flex items-center mt-1">
+                                                <AlertTriangle className="h-3 w-3 mr-1"/> Exceeds credit limit
+                                            </p>
+                                        )}
+                                        {errors.amount && <p className="text-xs text-red-500">{errors.amount.message}</p>}
                                     </div>
                                 </div>
-                            </>
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Term</Label>
+                                            <Input type="number" {...register('term')} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Period</Label>
+                                            <Controller
+                                                name="term_period"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="WEEKS">Weeks</SelectItem>
+                                                            <SelectItem value="MONTHS">Months</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Purpose of Loan</Label>
+                                        <Input placeholder="e.g. Business Inventory Restock" {...register('purpose')} />
+                                        {errors.purpose && <p className="text-xs text-red-500">{errors.purpose.message}</p>}
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}
-
             </CardContent>
-            <CardFooter className="flex justify-between">
+            
+            <CardFooter className="flex justify-between bg-slate-50 p-6 rounded-b-lg">
                 {step === 2 && (
                     <Button variant="outline" onClick={() => setStep(1)} disabled={submitMutation.isPending}>
-                        <ArrowLeft className="mr-2 h-4 w-4"/> Back
+                        <ArrowLeft className="mr-2 h-4 w-4"/> Change Borrower
                     </Button>
                 )}
+                
                 {step === 1 ? (
-                    <Button className="ml-auto" onClick={handleNext}>
-                        Next: Check Credit <ArrowRight className="ml-2 h-4 w-4"/>
+                    <Button 
+                        className="ml-auto" 
+                        onClick={handleNext}
+                        disabled={!selectedBorrower}
+                    >
+                        Check Eligibility <ArrowRight className="ml-2 h-4 w-4"/>
                     </Button>
                 ) : (
                     <Button 

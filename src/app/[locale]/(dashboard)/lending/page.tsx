@@ -1,39 +1,44 @@
 'use client';
+
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { LendingDashboard } from '@/components/lending/LendingDashboard';
+import { Loader2, Landmark } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-async function fetchLendingKpis() {
+async function fetchUserContext() {
     const supabase = createClient();
-    const { data, error } = await supabase.rpc('get_lending_dashboard_kpis');
-    if (error) throw new Error(error.message);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthenticated');
+    const { data } = await supabase.from('profiles').select('business_id, full_name').eq('id', user.id).single();
     return data;
 }
 
-const formatCurrency = (value: number) => `UGX ${new Intl.NumberFormat('en-US').format(value)}`;
+export default function LendingPage() {
+    const router = useRouter();
+    const { data, isLoading } = useQuery({
+        queryKey: ['userContext'],
+        queryFn: fetchUserContext
+    });
 
-export default function LendingDashboardPage() {
-    const { data: kpis, isLoading } = useQuery({ queryKey: ['lendingKpis'], queryFn: fetchLendingKpis });
+    if (isLoading) return <div className="h-[calc(100vh-4rem)] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+    
+    if (!data?.business_id) return <div className="p-8 text-red-600">Error: Configuration Missing.</div>;
 
     return (
-        <div className="container mx-auto py-6 space-y-6">
-            <h1 className="text-3xl font-bold">Lending & Microfinance Center</h1>
-            
-            <div className="grid gap-6 md:grid-cols-3">
-                <Card><CardHeader><CardTitle>Active Loans</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{isLoading ? '...' : kpis.active_loans_count}</CardContent></Card>
-                <Card><CardHeader><CardTitle>Total Disbursed</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{isLoading ? '...' : formatCurrency(kpis.total_disbursed)}</CardContent></Card>
-                <Card><CardHeader><CardTitle>Total Repaid</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{isLoading ? '...' : formatCurrency(kpis.total_repaid)}</CardContent></Card>
+        <div className="p-8 space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                        <Landmark className="h-8 w-8 text-blue-600" /> Lending Center
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        Welcome back, {data.full_name}. Here is your portfolio overview.
+                    </p>
+                </div>
             </div>
-
-            <Card>
-                <CardHeader><CardTitle>Key Lending Tasks</CardTitle></CardHeader>
-                <CardContent className="flex gap-4">
-                    <Button asChild><Link href="/lending/applications">Manage Applications</Link></Button>
-                    <Button asChild variant="secondary"><Link href="/lending/products">Manage Loan Products</Link></Button>
-                </CardContent>
-            </Card>
+            <LendingDashboard tenantId={data.business_id} />
         </div>
     );
 }
