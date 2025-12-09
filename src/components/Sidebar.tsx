@@ -303,7 +303,8 @@ const navSections: NavItem[] = [
             { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant'] }, 
             { href: '/telecom/compliance', label: 'Regulatory Compliance', icon: ShieldCheck }, 
             { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier'] }, 
-            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] }, 
+            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] },
+            { href: '/telecom/bi', label: 'BI Analytics', icon: BarChart3, roles: ['admin', 'manager'] }
         ]
     },
 
