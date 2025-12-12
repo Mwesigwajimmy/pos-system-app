@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
-interface PaymentProvider {
+export interface PaymentProvider {
   id: string;
   name: string;
   type: "Mobile Money" | "Credit Card" | "Bank" | "Voucher" | "Other";
@@ -17,42 +17,25 @@ interface PaymentProvider {
   tenantId: string;
 }
 
-export default function PaymentProviderManager() {
-  const [providers, setProviders] = useState<PaymentProvider[]>([]);
-  const [loading, setLoading] = useState(true);
+// 1. Define the props interface
+interface PaymentProviderManagerProps {
+  providers: PaymentProvider[];
+}
+
+// 2. Accept the props in the component function
+export function PaymentProviderManager({ providers: initialData }: PaymentProviderManagerProps) {
+  // 3. Initialize state with the passed data
+  const [providers, setProviders] = useState<PaymentProvider[]>(initialData || []);
+  const [loading, setLoading] = useState(false); // Set to false since data is passed immediately
+  
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('Mobile Money');
   const [newRegion, setNewRegion] = useState('');
   const [newEntity, setNewEntity] = useState('');
   const [newCurrency, setNewCurrency] = useState('');
 
-  useEffect(() => {
-    setTimeout(() => {
-      setProviders([
-        {
-          id: "pay-001",
-          name: "MTN Mobile Money",
-          type: "Mobile Money",
-          region: "UG",
-          entity: "Main Comp Ltd.",
-          active: true,
-          currency: "UGX",
-          tenantId: "tenant-001"
-        },
-        {
-          id: "pay-002",
-          name: "Stripe Credit Card",
-          type: "Credit Card",
-          region: "AU",
-          entity: "Global Branch AU",
-          active: true,
-          currency: "AUD",
-          tenantId: "tenant-002"
-        }
-      ]);
-      setLoading(false);
-    }, 340);
-  }, []);
+  // REMOVED: The useEffect with setTimeout and mock data was removed 
+  // because it would overwrite your real database data coming from the server.
 
   const addProvider = () => {
     if (!newName || !newType || !newRegion || !newEntity || !newCurrency) return;
@@ -71,6 +54,7 @@ export default function PaymentProviderManager() {
     ]);
     setNewName(""); setNewType("Mobile Money"); setNewRegion(""); setNewEntity(""); setNewCurrency("");
   };
+  
   const removeProvider = (id: string) => setProviders(ps => ps.filter(p => p.id !== id));
 
   return (

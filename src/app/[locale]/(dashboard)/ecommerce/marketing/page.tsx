@@ -2,8 +2,8 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
-// Import the client component and type
-import { OnlineProductManager, ManagedProduct } from '@/components/ecommerce/OnlineProductManager';
+// Import Client Component
+import { PromotionsManager, Promotion } from '@/components/ecommerce/PromotionsManager';
 
 // ----------------------------------------------------------------------
 // 1. AUTH UTILITY
@@ -17,59 +17,70 @@ async function getCurrentUser(supabase: any) {
 }
 
 // ----------------------------------------------------------------------
-// 2. DATA FETCHING SERVICE
+// 2. DATA FETCHING
 // ----------------------------------------------------------------------
-async function getOnlineProducts(supabase: any): Promise<ManagedProduct[]> {
-    // Real query to 'products' table.
+async function getPromotions(supabase: any): Promise<Promotion[]> {
     const { data, error } = await supabase
-        .from('products')
+        .from('promotions')
         .select(`
             id,
-            name,
-            sku,
-            price,
-            stock_quantity,
-            is_online,
-            is_visible,
-            category
+            code,
+            label,
+            promo_type,
+            discount_value,
+            currency_code,
+            region_code,
+            is_active,
+            valid_from,
+            valid_to,
+            tenant_id
         `)
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error("Error fetching online products:", error.message);
+        console.error("Promotions fetch error:", error);
         return [];
     }
 
-    return data as ManagedProduct[];
+    // Mapping DB snake_case -> UI camelCase
+    return data.map((p: any) => ({
+        id: p.id,
+        code: p.code,
+        label: p.label,
+        type: p.promo_type,
+        value: p.discount_value,
+        currency: p.currency_code,
+        region: p.region_code,
+        active: p.is_active,
+        validFrom: p.valid_from,
+        validTo: p.valid_to,
+        tenantId: p.tenant_id
+    }));
 }
 
 // ----------------------------------------------------------------------
-// 3. MAIN PAGE COMPONENT
+// 3. MAIN PAGE
 // ----------------------------------------------------------------------
-export default async function OnlineProductManagerPage() {
+export default async function MarketingPage() {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. Security Check
     await getCurrentUser(supabase);
     
-    // 2. Fetch Data
-    const products = await getOnlineProducts(supabase);
+    const promotions = await getPromotions(supabase);
 
-    // 3. Render
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
             <div className="flex items-center justify-between">
                  <div className="space-y-1">
-                    <h2 className="text-3xl font-bold tracking-tight">Online Products</h2>
+                    <h2 className="text-3xl font-bold tracking-tight">Marketing & Promotions</h2>
                     <p className="text-muted-foreground">
-                        Control which items are visible on your public storefront.
+                        Drive sales with coupons, discounts, and regional campaigns.
                     </p>
                 </div>
-                {/* Placeholder for 'Create Product' button */}
             </div>
 
-            <OnlineProductManager products={products} />
+            <PromotionsManager initialPromotions={promotions} />
         </div>
     );
 }

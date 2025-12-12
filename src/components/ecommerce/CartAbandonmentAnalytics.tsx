@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertCircle } from "lucide-react";
 
-interface CartAbandonmentEntry {
+// Defined Interface for Type Safety
+export interface CartAbandonmentEntry {
   id: string;
   sessionId: string;
-  user: string;
+  user: string; // Email or Customer Name
   timestamp: string;
   items: number;
   value: number;
@@ -18,85 +19,71 @@ interface CartAbandonmentEntry {
   tenantId: string;
 }
 
-export default function CartAbandonmentAnalytics() {
-  const [entries, setEntries] = useState<CartAbandonmentEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+interface CartAbandonmentAnalyticsProps {
+  entries: CartAbandonmentEntry[];
+}
 
-  useEffect(() => {
-    setTimeout(() => {
-      setEntries([
-        {
-          id: "cart-001",
-          sessionId: "sess-99821",
-          user: "maya@southmail.com",
-          timestamp: "2025-11-17 15:22",
-          items: 3,
-          value: 42000,
-          notified: false,
-          region: "UG",
-          tenantId: "tenant-001"
-        },
-        {
-          id: "cart-002",
-          sessionId: "sess-13111",
-          user: "liam@ausmail.com",
-          timestamp: "2025-11-12 09:34",
-          items: 5,
-          value: 1975,
-          notified: true,
-          region: "AU",
-          tenantId: "tenant-002"
-        }
-      ]);
-      setLoading(false);
-    }, 380);
-  }, []);
+export function CartAbandonmentAnalytics({ entries }: CartAbandonmentAnalyticsProps) {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle>Cart Abandonment Analytics</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-orange-500" />
+          Cart Abandonment Analytics
+        </CardTitle>
         <CardDescription>
-          View incomplete sessions—trigger reminder workflows—isolate patterns by region.
+          View incomplete sessions, trigger reminder workflows, and isolate patterns by region.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? <div className="py-14 flex justify-center"><Loader2 className="w-7 h-7 animate-spin"/></div>
-        : <ScrollArea className="h-56">
-            <Table>
-              <TableHeader>
+        <ScrollArea className="h-[400px] w-full rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Session ID</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Date/Time</TableHead>
+                <TableHead className="text-right">Items</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead className="text-center">Reminder Sent</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.length === 0 ? (
                 <TableRow>
-                  <TableHead>Session</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Date/Time</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Region</TableHead>
-                  <TableHead>Reminder Sent</TableHead>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    No abandoned carts found.
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.length === 0
-                  ? <TableRow><TableCell colSpan={7}>No abandoned carts found.</TableCell></TableRow>
-                  : entries.map(c => (
-                      <TableRow key={c.id}>
-                        <TableCell>{c.sessionId}</TableCell>
-                        <TableCell>{c.user}</TableCell>
-                        <TableCell>{c.timestamp}</TableCell>
-                        <TableCell>{c.items}</TableCell>
-                        <TableCell>{c.value.toLocaleString()}</TableCell>
-                        <TableCell>{c.region}</TableCell>
-                        <TableCell>
-                          {c.notified
-                            ? <span className="text-green-800">Yes</span>
-                            : <span className="text-red-800">No</span>
-                          }
-                        </TableCell>
-                      </TableRow>
-                    ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        }
+              ) : (
+                entries.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-mono text-xs">{c.sessionId}</TableCell>
+                    <TableCell>{c.user}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.timestamp}</TableCell>
+                    <TableCell className="text-right">{c.items}</TableCell>
+                    <TableCell className="text-right">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(c.value)}
+                    </TableCell>
+                    <TableCell>{c.region}</TableCell>
+                    <TableCell className="text-center">
+                      {c.notified ? (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                          No
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

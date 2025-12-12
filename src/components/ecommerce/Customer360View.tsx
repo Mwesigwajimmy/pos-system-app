@@ -1,121 +1,145 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Loader2, Search, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, X, Users, MapPin, Building2 } from "lucide-react";
 
-interface CustomerProfile {
+// 1. Types Definition (Exported for use in Server Page)
+export interface CustomerProfile {
   id: string;
   name: string;
   email: string;
-  segment: string;
+  segment: 'VIP' | 'Regular' | 'New' | 'Inactive';
   ordersCount: number;
-  lastOrder: string;
+  lastOrder: string; // ISO String or Formatted Date
   totalSpent: number;
   region: string;
   entity: string;
   tenantId: string;
 }
 
-export default function Customer360View() {
-  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+interface Customer360ViewProps {
+  initialCustomers: CustomerProfile[];
+}
+
+export function Customer360View({ initialCustomers }: Customer360ViewProps) {
   const [filter, setFilter] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setCustomers([
-        {
-          id: "cust-001",
-          name: "Maya Okoth",
-          email: "maya@southmail.com",
-          segment: "VIP",
-          ordersCount: 22,
-          lastOrder: "2025-11-17",
-          totalSpent: 432000,
-          region: "UG",
-          entity: "Main Comp Ltd.",
-          tenantId: "tenant-001"
-        },
-        {
-          id: "cust-002",
-          name: "Liam Smith",
-          email: "liam@ausmail.com",
-          segment: "Regular",
-          ordersCount: 6,
-          lastOrder: "2025-11-10",
-          totalSpent: 12000,
-          region: "AU",
-          entity: "Global Branch AU",
-          tenantId: "tenant-002"
-        }
-      ]);
-      setLoading(false);
-    }, 380);
-  }, []);
+  // 2. High-Performance Filtering using useMemo
+  const filtered = useMemo(() => {
+    if (!filter) return initialCustomers;
+    
+    const lowerFilter = filter.toLowerCase();
+    return initialCustomers.filter(c =>
+        c.name.toLowerCase().includes(lowerFilter) ||
+        c.email.toLowerCase().includes(lowerFilter) ||
+        c.region.toLowerCase().includes(lowerFilter) ||
+        c.entity.toLowerCase().includes(lowerFilter)
+    );
+  }, [initialCustomers, filter]);
 
-  const filtered = useMemo(
-    () => customers.filter(
-      c =>
-        c.name.toLowerCase().includes(filter.toLowerCase()) ||
-        c.email.toLowerCase().includes(filter.toLowerCase()) ||
-        c.region.toLowerCase().includes(filter.toLowerCase())
-    ),
-    [customers, filter]
-  );
+  // Utility for currency formatting
+  const formatCurrency = (amount: number) => 
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+  // Utility for Segment Badge Color
+  const getSegmentBadge = (segment: string) => {
+    switch(segment) {
+      case 'VIP': return "bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300";
+      case 'New': return "bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300";
+      case 'Inactive': return "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300";
+      default: return "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300";
+    }
+  };
 
   return (
-    <Card>
+    <Card className="h-full border-zinc-200 dark:border-zinc-800">
       <CardHeader>
-        <CardTitle>Customer 360° View</CardTitle>
-        <CardDescription>
-          Analyze every customer: orders, spend, status, and region/segment assignment.
-        </CardDescription>
-        <div className="relative mt-3 max-w-xs">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
-          <Input placeholder="Filter by name/email/region..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-8"/>
-          {filter && <X className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer" onClick={() => setFilter("")}/>}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                    <Users className="h-5 w-5 text-primary" />
+                    Customer 360° View
+                </CardTitle>
+                <CardDescription>
+                Analyze every customer: orders, spend, status, and region assignments.
+                </CardDescription>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative w-full max-w-xs">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search by name, email, region..." 
+                    value={filter} 
+                    onChange={e => setFilter(e.target.value)} 
+                    className="pl-8 h-9"
+                />
+                {filter && (
+                    <X 
+                        className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground" 
+                        onClick={() => setFilter("")}
+                    />
+                )}
+            </div>
         </div>
       </CardHeader>
       <CardContent>
-        {loading
-          ? <div className="flex py-10 justify-center"><Loader2 className="h-8 w-8 animate-spin"/></div>
-          : <ScrollArea className="h-80">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Segment</TableHead>
-                    <TableHead>Orders</TableHead>
-                    <TableHead>Last Order</TableHead>
-                    <TableHead>Total Spent</TableHead>
-                    <TableHead>Region</TableHead>
-                    <TableHead>Entity</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0
-                    ? <TableRow><TableCell colSpan={8}>No customers found.</TableCell></TableRow>
-                    : filtered.map(c => (
-                        <TableRow key={c.id}>
-                          <TableCell>{c.name}</TableCell>
-                          <TableCell>{c.email}</TableCell>
-                          <TableCell>{c.segment}</TableCell>
-                          <TableCell>{c.ordersCount}</TableCell>
-                          <TableCell>{c.lastOrder}</TableCell>
-                          <TableCell>{c.totalSpent.toLocaleString()}</TableCell>
-                          <TableCell>{c.region}</TableCell>
-                          <TableCell>{c.entity}</TableCell>
-                        </TableRow>
-                      ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-        }
+        <ScrollArea className="h-[500px] rounded-md border">
+            <Table>
+            <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50 sticky top-0 z-10">
+                <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Segment</TableHead>
+                <TableHead className="text-right">Orders</TableHead>
+                <TableHead className="text-right">Total Spent</TableHead>
+                <TableHead>Last Activity</TableHead>
+                <TableHead>Region & Entity</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {filtered.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    No customers found matching "{filter}".
+                    </TableCell>
+                </TableRow>
+                ) : (
+                filtered.map(c => (
+                    <TableRow key={c.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50">
+                        <TableCell className="font-medium">{c.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{c.email}</TableCell>
+                        <TableCell>
+                            <Badge variant="outline" className={`border-0 ${getSegmentBadge(c.segment)}`}>
+                                {c.segment}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{c.ordersCount}</TableCell>
+                        <TableCell className="text-right font-medium text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(c.totalSpent)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{c.lastOrder}</TableCell>
+                        <TableCell>
+                            <div className="flex flex-col gap-1 text-xs">
+                                <div className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3 opacity-50"/> {c.region}
+                                </div>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Building2 className="h-3 w-3 opacity-50"/> {c.entity}
+                                </div>
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                ))
+                )}
+            </TableBody>
+            </Table>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

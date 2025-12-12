@@ -12,7 +12,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Edit } from "lucide-react";
+import { ArrowUpDown, Edit, Search, PackageOpen, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 import { Badge } from "@/components/ui/badge";
@@ -27,68 +27,97 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+
 // Import the real server action
 import { updateProductVisibility } from '@/lib/ecommerce/actions/products';
 
-
 // --- TYPES ---
+// Aligned with DB structure for seamless prop passing
 export interface ManagedProduct {
     id: string;
     name: string;
     sku: string | null;
     price: number;
     stock_quantity: number;
-    is_online: boolean;
-    is_visible: boolean;
-    online_title: string | null;
+    is_online: boolean; // Is it technically allowed on the store?
+    is_visible: boolean; // Is it currently shown to customers?
+    category: string | null;
 }
 
-// --- SUB-COMPONENTS for the Table ---
+// --- SUB-COMPONENTS ---
+
 const VisibilityToggle = ({ row }: { row: any }) => {
     const { toast } = useToast();
     const product: ManagedProduct = row.original;
-    const [isLoading, setIsLoading] = React.useState(false);
+    // useTransition prevents the UI from freezing during the server action
+    const [isPending, startTransition] = React.useTransition();
 
-    const handleToggle = async (checked: boolean) => {
-        setIsLoading(true);
-        
-        const result = await updateProductVisibility(product.id, checked, product.is_online);
+    const handleToggle = (checked: boolean) => {
+        // Optimistic toggle could be added here, but revalidatePath is usually fast enough
+        startTransition(async () => {
+            const result = await updateProductVisibility(product.id, checked, product.is_online);
 
-        if (!result.success) {
-            toast({ title: "Error", description: result.message, variant: 'destructive' });
-        } else {
-             toast({ title: "Success", description: "Product visibility updated." });
-        }
-
-        setIsLoading(false);
+            if (!result.success) {
+                toast({ 
+                    title: "Update Failed", 
+                    description: result.message, 
+                    variant: 'destructive' 
+                });
+            } else {
+                 toast({ 
+                     title: checked ? "Product Visible" : "Product Hidden", 
+                     description: `${product.name} is now ${checked ? 'live' : 'hidden'} on the storefront.` 
+                });
+            }
+        });
     };
 
     return (
-        <Switch
-            checked={product.is_visible}
-            onCheckedChange={handleToggle}
-            disabled={!product.is_online || isLoading}
-            aria-label="Toggle product visibility"
-        />
+        <div className="flex items-center gap-2">
+            <Switch
+                checked={product.is_visible}
+                onCheckedChange={handleToggle}
+                disabled={!product.is_online || isPending}
+                aria-label="Toggle product visibility"
+            />
+            {isPending && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+        </div>
     );
 };
-
 
 // --- COLUMN DEFINITIONS ---
 export const columns: ColumnDef<ManagedProduct>[] = [
     {
         accessorKey: "name",
         header: ({ column }) => (
-            <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            <Button variant="ghost" className="pl-0 hover:bg-transparent" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
                 Product Name <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
         ),
-        cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+        cell: ({ row }) => (
+            <div className="flex flex-col">
+                <span className="font-medium">{row.getValue("name")}</span>
+                <span className="text-xs text-muted-foreground">{row.original.category || 'Uncategorized'}</span>
+            </div>
+        ),
     },
     {
         accessorKey: "sku",
         header: "SKU",
+        cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("sku") || 'N/A'}</span>,
+    },
+    {
+        accessorKey: "stock_quantity",
+        header: ({ column }) => (
+             <div className="text-right">Stock</div>
+        ),
+        cell: ({ row }) => {
+            const qty = row.original.stock_quantity;
+            // Stock Logic: Red if 0, Yellow if < 10, else Default
+            const colorClass = qty === 0 ? "text-red-600 font-bold" : qty < 10 ? "text-amber-600" : "";
+            return <div className={`text-right ${colorClass}`}>{qty}</div>
+        }
     },
     {
         accessorKey: "price",
@@ -101,25 +130,25 @@ export const columns: ColumnDef<ManagedProduct>[] = [
     },
     {
         accessorKey: "is_online",
-        header: "Online Status",
-        // --- THIS IS THE FIXED BLOCK ---
+        header: "Setup Status",
         cell: ({ row }) => (
-            <Badge variant={row.getValue("is_online") ? "default" : "secondary"}>
-                {row.getValue("is_online") ? "On Storefront" : "Not Online"}
+            <Badge variant={row.getValue("is_online") ? "outline" : "secondary"} className={row.getValue("is_online") ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-zinc-100 text-zinc-500"}>
+                {row.getValue("is_online") ? "Store Ready" : "Draft"}
             </Badge>
         ),
     },
     {
         accessorKey: "is_visible",
-        header: "Visible",
+        header: "Live on Store",
         cell: VisibilityToggle,
     },
     {
         id: "actions",
         cell: ({ row }) => (
             <div className="text-right">
-                <Button variant="ghost" size="sm" disabled={!row.original.is_online}>
-                    <Edit className="mr-2 h-4 w-4" /> Edit Online Details
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Edit className="h-4 w-4" />
+                    <span className="sr-only">Edit</span>
                 </Button>
             </div>
         ),
@@ -144,19 +173,37 @@ export function OnlineProductManager({ products }: { products: ManagedProduct[] 
     });
 
     return (
-        <Card>
-            <CardContent className="p-4">
-                <div className="flex items-center py-4">
-                    <Input
-                        placeholder="Filter by product name..."
-                        value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-                        onChange={(event) => table.getColumn("name")?.setFilterValue(event.target.value)}
-                        className="max-w-sm"
-                    />
+        <Card className="h-full border-zinc-200 dark:border-zinc-800">
+             <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                        <PackageOpen className="h-5 w-5 text-primary" />
+                        Product Manager
+                        </CardTitle>
+                        <CardDescription>
+                        Manage pricing, visibility, and catalog details for your online store.
+                        </CardDescription>
+                    </div>
                 </div>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between py-4">
+                    <div className="relative w-full max-w-sm">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Filter by product name..."
+                            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+                            onChange={(event) => table.getColumn("name")?.setFilterValue(event.target.value)}
+                            className="pl-8"
+                        />
+                    </div>
+                    {/* Optional: Add 'Export' or 'Add Product' buttons here */}
+                </div>
+                
                 <div className="rounded-md border">
                     <Table>
-                        <TableHeader>
+                        <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map((header) => (
@@ -170,7 +217,7 @@ export function OnlineProductManager({ products }: { products: ManagedProduct[] 
                         <TableBody>
                             {table.getRowModel().rows?.length ? (
                                 table.getRowModel().rows.map((row) => (
-                                    <TableRow key={row.id}>
+                                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50">
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                                         ))}
@@ -178,8 +225,11 @@ export function OnlineProductManager({ products }: { products: ManagedProduct[] 
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                        No products found.
+                                    <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                                        <div className="flex flex-col items-center justify-center py-6">
+                                            <AlertCircle className="h-8 w-8 mb-2 opacity-20" />
+                                            No products found matching your filter.
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -187,6 +237,9 @@ export function OnlineProductManager({ products }: { products: ManagedProduct[] 
                     </Table>
                 </div>
                 <div className="flex items-center justify-end space-x-2 py-4">
+                    <div className="flex-1 text-sm text-muted-foreground">
+                        Showing {table.getRowModel().rows.length} of {products.length} products.
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
                         Previous
                     </Button>

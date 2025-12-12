@@ -37,9 +37,30 @@ interface FeatureDetail {
     details: { name: string; detail: string; }[];
     backgroundImage: string;
 }
-interface IndustryItem { name: string; icon: LucideIcon; description: string; category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; backgroundImage: string; }
+
+// Updated IndustryItem with full details
+interface IndustryItem { 
+    name: string; 
+    icon: LucideIcon; 
+    description: string; 
+    fullDescription: string; // Detailed description for dialog
+    keyFeatures: string[]; // List of specific features/benefits
+    category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; 
+    backgroundImage: string; 
+}
+
 interface FaqItem { q: string; a: ReactNode; }
-interface PlatformPillar { icon: LucideIcon; title: string; description: string; backgroundImage: string; }
+
+// Updated PlatformPillar with full details
+interface PlatformPillar { 
+    icon: LucideIcon; 
+    title: string; 
+    description: string; 
+    fullDescription: string; // Detailed description for dialog
+    technicalSpecs: string[]; // Technical specifications list
+    backgroundImage: string; 
+}
+
 type CookieCategoryKey = 'essential' | 'analytics' | 'marketing';
 interface CookieCategoryInfo { id: CookieCategoryKey; name: string; description: string; isRequired: boolean; defaultChecked: boolean; }
 type CookiePreferences = { [key in CookieCategoryKey]: boolean; };
@@ -177,32 +198,247 @@ const siteConfig = {
             ]
         },
     ] as FeatureDetail[],
+    
+    // --- UPDATED PLATFORM PILLARS ---
     platformPillars: [
-        { icon: TrendingUp, title: "Built for Growth", description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", backgroundImage: "/images/showcase/future-of-business-tech.jpg" },
-        { icon: BrainCircuit, title: "AI Does The Work", description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
-        { icon: WifiOff, title: "Unbreakable Offline Mode", description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online, ensuring continuous operation.", backgroundImage: "/images/showcase/education-dashboard.jpg" },
-        { icon: Globe, title: "Truly Global & Localized", description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world, making global expansion seamless.", backgroundImage: "/images/showcase/community-group-meeting.jpg" },
-        { icon: ShieldHalf, title: "Bank-Level Security", description: "Your data is protected with end-to-end encryption, multi-factor authentication, and a multi-tenant architecture, ensuring complete isolation and security.", backgroundImage: "/images/showcase/cattle-market-records.jpg" },
-        { icon: Settings, title: "Deep Customization & Integration", description: "Tailor the system with custom fields, workflows, and robust API integrations to match your unique business processes and connect with existing tools.", backgroundImage: "/images/showcase/creative-agency-pm.jpg" },
+        { 
+            icon: TrendingUp, 
+            title: "Built for Growth", 
+            description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", 
+            fullDescription: "BBU1 is engineered on a cloud-native, microservices architecture designed to handle hyper-growth. Whether you are processing 10 transactions a day or 10 million, our infrastructure auto-scales to meet demand without performance degradation. We utilize sharded databases and global CDNs to ensure that as you expand into new regions or open new branches, your system remains lightning-fast.",
+            technicalSpecs: [
+                "Elastic Scalability: Auto-scaling server clusters handle peak loads instantly.",
+                "Multi-Branch Architecture: Add unlimited locations with centralized HQ control.",
+                "High Availability: 99.99% uptime guarantee with redundant failover systems.",
+                "Performance Benchmarks: Sub-100ms response times even with large datasets."
+            ],
+            backgroundImage: "/images/showcase/future-of-business-tech.jpg" 
+        },
+        { 
+            icon: BrainCircuit, 
+            title: "AI Does The Work", 
+            description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", 
+            fullDescription: "Aura isn't just a chatbot; it's an integrated intelligence layer running across your entire operation. Aura continuously scans your general ledger for errors, predicts cash flow gaps before they happen, and automates mundane tasks like invoice matching and expense categorization. It turns your historical data into a roadmap for future profitability.",
+            technicalSpecs: [
+                "Automated Bookkeeping: AI categorizes 90% of transactions automatically.",
+                "Anomaly Detection: Flags duplicate payments or unusual spending in real-time.",
+                "Predictive Forecasting: Projects revenue and inventory needs using machine learning.",
+                "Natural Language Queries: Ask 'What were my best selling items last Tuesday?' and get instant answers."
+            ],
+            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" 
+        },
+        { 
+            icon: WifiOff, 
+            title: "Unbreakable Offline Mode", 
+            description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online, ensuring continuous operation.", 
+            fullDescription: "In many regions, internet connectivity can be unpredictable. BBU1 utilizes a 'Local-First' database architecture. This means your Point of Sale, Inventory scanners, and Field Service apps run primarily on the device's local storage. You can continue to sell, receive stock, and manage operations for days without internet. The second a connection is detected, data synchronizes securely to the cloud in the background.",
+            technicalSpecs: [
+                "Local-First DB: PouchDB/CouchDB protocol for robust local data storage.",
+                "Conflict Resolution: Intelligent merging algorithms handle data changes from multiple offline devices.",
+                "Background Sync: Data uploads automatically without interrupting user workflows.",
+                "Zero Data Loss: Transactions are encrypted and stored locally until confirmed by the server."
+            ],
+            backgroundImage: "/images/showcase/education-dashboard.jpg" 
+        },
+        { 
+            icon: Globe, 
+            title: "Truly Global & Localized", 
+            description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world.", 
+            fullDescription: "Going global requires more than just translating text. BBU1 handles the complexities of international business natively. We support multi-currency transactions with real-time exchange rate updates, distinct tax rules for different regions (e.g., VAT, GST, Sales Tax), and compliance with local statutory reporting requirements across Africa, Asia, and the Americas.",
+            technicalSpecs: [
+                "Multi-Currency Core: Transact, report, and consolidate in over 160 currencies.",
+                "Tax Engine: Configurable tax layers for complex regional requirements.",
+                "Language Support: Interface available in English, French, Swahili, and Arabic.",
+                "Regulatory Compliance: GAAP and IFRS compliant reporting standards."
+            ],
+            backgroundImage: "/images/showcase/community-group-meeting.jpg" 
+        },
+        { 
+            icon: ShieldHalf, 
+            title: "Bank-Level Security", 
+            description: "Your data is protected with end-to-end encryption, multi-factor authentication, and a multi-tenant architecture.", 
+            fullDescription: "Security is the bedrock of BBU1. We employ defense-in-depth strategies to protect your proprietary data. Every enterprise tenant is logically isolated using Row-Level Security (RLS), ensuring your data is never accessible to others. We utilize AES-256 encryption for data at rest and TLS 1.3 for data in transit, matching the security standards of leading financial institutions.",
+            technicalSpecs: [
+                "End-to-End Encryption: Data is encrypted from your device to our servers.",
+                "Role-Based Access Control (RBAC): Granular permissions down to the specific field level.",
+                "Audit Logs: Immutable records of every action taken by every user.",
+                "Compliance: GDPR and POPIA compliant data handling processes."
+            ],
+            backgroundImage: "/images/showcase/cattle-market-records.jpg" 
+        },
+        { 
+            icon: Settings, 
+            title: "Deep Customization & Integration", 
+            description: "Tailor the system with custom fields, workflows, and robust API integrations to match your unique business processes.", 
+            fullDescription: "No two businesses are exactly alike. BBU1 provides a low-code environment allowing you to add custom fields to any form, design custom approval workflows, and build unique reports. For developers, our REST and GraphQL APIs provide full programmatic access to the platform, enabling deep integration with your legacy systems or third-party tools.",
+            technicalSpecs: [
+                "Custom Fields & Forms: Add data points specific to your industry without coding.",
+                "Workflow Engine: Automate approvals based on value, department, or custom logic.",
+                "API First: Comprehensive documentation for connecting external apps.",
+                "Webhooks: Real-time notifications to trigger actions in other systems."
+            ],
+            backgroundImage: "/images/showcase/creative-agency-pm.jpg" 
+        },
     ] as PlatformPillar[],
+
+    // --- UPDATED INDUSTRY ITEMS ---
     industryItems: [
-        { name: "Retail / Wholesale", icon: Store, description: "Unified POS, inventory, and CRM for single or multi-location retail operations and wholesale distribution.", category: 'Common', backgroundImage: "/images/showcase/grocery-store-bbu1.jpg" },
-        { name: "Restaurant / Cafe", icon: Utensils, description: "Complete management with KDS, table management, recipe costing, and ingredient-level inventory control.", category: 'Common', backgroundImage: "/images/showcase/restaurant-kitchen-orders.jpg" },
-        { name: "Professional Services", icon: Briefcase, description: "Project tracking, time billing, client management, and expense tracking for agencies, consultants, and legal firms.", category: 'Common', backgroundImage: "/images/showcase/modern-office-team.jpg" },
-        { name: "Manufacturing", icon: Wrench, description: "Bill of materials, production planning, work orders, and raw material inventory management.", category: 'Specialized', backgroundImage: "/images/showcase/produce-inspection.jpg" },
-        { name: "Construction & Engineering", icon: Building, description: "Job costing, project management, progress billing, and equipment tracking for contractors and construction companies.", category: 'Trades & Services', backgroundImage: "/images/showcase/construction-site.jpg" },
-        { name: "Field Service Management", icon: Car, description: "Scheduling, dispatch, mobile invoicing, and technician tracking for HVAC, plumbing, and other field service businesses.", category: 'Trades & Services', backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg" },
-        { name: "Distribution & Logistics", icon: Package, description: "End-to-end warehouse management, logistics planning, fleet management, and supply chain optimization.", category: 'Specialized', backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" },
-        { name: "Lending / Microfinance", icon: Banknote, description: "Loan origination, portfolio management, automated collections, and compliance for microfinance institutions.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
-        { name: "Real Estate & Property Management", icon: KeyRound, description: "Property management, tenant billing, lease tracking, maintenance requests, and facilities management.", category: 'Specialized', backgroundImage: "/images/showcase/office-admin-bbu1.jpg" },
-        { name: "SACCO / Co-operative", icon: Users, description: "Member management, savings, loans, dividend calculation, and governance tools for cooperative societies.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
-        { name: "Telecom Services", icon: Signal, description: "The premier solution for managing mobile money, airtime, and extensive agent networks, including commission management.", category: 'Specialized', backgroundImage: "/images/showcase/mobile-money-agent.jpg" },
-        { name: "Nonprofit & NGOs", icon: HeartHandshake, description: "Donor management, grant tracking, fund accounting, project impact reporting, and volunteer management for NGOs.", category: 'Specialized', backgroundImage: "/images/showcase/community-group-meeting.jpg" },
-        { name: "Healthcare & Clinics", icon: ClipboardList, description: "Patient management, appointment scheduling, electronic health records (EHR), and medical inventory control.", category: 'Specialized', backgroundImage: "/images/showcase/healthcare-team.jpg" },
-        { name: "Education & Institutions", icon: Book, description: "Student information systems, fee management, academic scheduling, and faculty portal for schools and colleges.", category: 'Specialized', backgroundImage: "/images/showcase/education-dashboard.jpg" },
-        { name: "Agriculture & Agribusiness", icon: Leaf, description: "Farm management, crop tracking, livestock management, harvest planning, and supply chain for agribusinesses.", category: 'Specialized', backgroundImage: "/images/showcase/agriculture-tech.jpg" },
-        { name: "Creative Agencies", icon: Palette, description: "Project management, client billing, resource allocation, and portfolio tracking for marketing and design agencies.", category: 'Creative & Digital', backgroundImage: "/images/showcase/creative-agency-pm.jpg" },
-        { name: "Tech & Software", icon: Cloud, description: "Subscription billing, project management, issue tracking, and client support for SaaS companies and IT service providers.", category: 'Creative & Digital', backgroundImage: "/images/showcase/future-of-business-tech.jpg" },
+        // --- Common ---
+        { 
+            name: "Retail / Wholesale", 
+            icon: Store, 
+            description: "Unified POS, inventory, and CRM for retail operations.", 
+            fullDescription: "Transform your retail business with a unified commerce platform that connects your physical stores, e-commerce, and warehouse in real-time. Say goodbye to stock discrepancies and disconnected customer data.",
+            keyFeatures: ["Integrated POS with offline capability", "Real-time inventory synchronization", "Customer loyalty & gift card management", "Matrix inventory for size/color variants"],
+            category: 'Common', 
+            backgroundImage: "/images/showcase/grocery-store-bbu1.jpg" 
+        },
+        { 
+            name: "Restaurant / Cafe", 
+            icon: Utensils, 
+            description: "Complete management with KDS, tables, and recipes.", 
+            fullDescription: "Run a tighter kitchen and a happier front-of-house. From table reservations to ingredient-level inventory tracking, BBU1 gives you the control to minimize food waste and maximize table turnover.",
+            keyFeatures: ["Kitchen Display System (KDS) integration", "Recipe costing & margin analysis", "Table management & split billing", "Ingredient-level stock deduction"],
+            category: 'Common', 
+            backgroundImage: "/images/showcase/restaurant-kitchen-orders.jpg" 
+        },
+        { 
+            name: "Professional Services", 
+            icon: Briefcase, 
+            description: "Project tracking and time billing for agencies.", 
+            fullDescription: "For consultancies, law firms, and agencies, time is money. BBU1 integrates project management with billing, ensuring every billable hour is captured and invoiced accurately.",
+            keyFeatures: ["Automated time tracking & timesheets", "Project profitability analysis", "Retainer management & recurring billing", "Client portal for approvals"],
+            category: 'Common', 
+            backgroundImage: "/images/showcase/modern-office-team.jpg" 
+        },
+
+        // --- Specialized ---
+        { 
+            name: "Manufacturing", 
+            icon: Wrench, 
+            description: "BOM, production planning, and work orders.", 
+            fullDescription: "Streamline your production line with comprehensive manufacturing resource planning. Manage complex Bills of Materials (BOM), track work-in-progress, and calculate the exact cost of finished goods.",
+            keyFeatures: ["Multi-level Bill of Materials (BOM)", "Production scheduling & Work Orders", "Raw material demand forecasting", "Waste & scrap tracking"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/produce-inspection.jpg" 
+        },
+        { 
+            name: "Construction & Engineering", 
+            icon: Building, 
+            description: "Job costing and project management.", 
+            fullDescription: "Build with confidence. BBU1 offers specialized tools for contractors to manage job costing, track equipment on site, and handle progress billing, ensuring projects stay on budget.",
+            keyFeatures: ["Project job costing", "AIA style progress billing", "Subcontractor management", "Equipment & tool tracking"],
+            category: 'Trades & Services', 
+            backgroundImage: "/images/showcase/construction-site.jpg" 
+        },
+        { 
+            name: "Field Service Management", 
+            icon: Car, 
+            description: "Scheduling and technician tracking.", 
+            fullDescription: "Optimize your mobile workforce. Dispatch jobs to technicians, track their location, and allow them to invoice and collect payment on-site via the mobile app.",
+            keyFeatures: ["Visual dispatch board", "Mobile app for field technicians", "On-site invoicing & signature capture", "Maintenance contracts"],
+            category: 'Trades & Services', 
+            backgroundImage: "/images/showcase/logistics-handheld-scanner.jpg" 
+        },
+        { 
+            name: "Distribution & Logistics", 
+            icon: Package, 
+            description: "Warehouse management and fleet optimization.", 
+            fullDescription: "Master your supply chain with advanced warehouse management tools. Optimize pick-and-pack routes, track fleet maintenance, and ensure on-time delivery with integrated logistics features.",
+            keyFeatures: ["Bin location & warehouse mapping", "Barcode/QR scanning mobile app", "Fleet maintenance tracking", "Delivery route optimization"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/ai-warehouse-logistics.jpg" 
+        },
+        { 
+            name: "Lending / Microfinance", 
+            icon: Banknote, 
+            description: "Loan origination and portfolio management.", 
+            fullDescription: "A specialized core banking module designed for Microfinance Institutions and lenders. Manage the entire loan lifecycle from application and credit scoring to disbursement and repayment tracking.",
+            keyFeatures: ["Loan origination & credit scoring", "Automated penalty & interest calculation", "Portfolio at Risk (PAR) reporting", "SMS repayment reminders"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/mobile-money-agent.jpg" 
+        },
+        { 
+            name: "Real Estate & Property Management", 
+            icon: KeyRound, 
+            description: "Property management and tenant billing.", 
+            fullDescription: "Centralize your property portfolio. Manage residential or commercial leases, automate rent invoicing, track maintenance requests, and view occupancy reports in one dashboard.",
+            keyFeatures: ["Lease contract management", "Automated rent invoicing & collection", "Maintenance ticket tracking", "Landlord & owner statements"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/office-admin-bbu1.jpg" 
+        },
+        { 
+            name: "SACCO / Co-operative", 
+            icon: Users, 
+            description: "Member management and dividend calculation.", 
+            fullDescription: "Empower your cooperative with transparency and efficiency. Manage member shares, savings accounts, and loan products while automating dividend calculations and regulatory reporting.",
+            keyFeatures: ["Member registry & KYC", "Share capital management", "Savings & deposit tracking", "Dividend calculation engine"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/community-group-meeting.jpg" 
+        },
+        { 
+            name: "Telecom Services", 
+            icon: Signal, 
+            description: "Mobile money, airtime, and agent networks.", 
+            fullDescription: "The backbone for telecom dealers and aggregators. Manage vast networks of agents, reconcile float in real-time, and handle high-volume airtime and data bundle transactions securely.",
+            keyFeatures: ["Agent hierarchy & commission structures", "Real-time float monitoring", "Bulk airtime/data distribution", "Fraud detection algorithms"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/mobile-money-agent.jpg" 
+        },
+        { 
+            name: "Nonprofit & NGOs", 
+            icon: HeartHandshake, 
+            description: "Donor management and fund accounting.", 
+            fullDescription: "Drive impact with transparency. BBU1 helps NGOs manage donor relationships, track restricted funds, and report on program outcomes, ensuring compliance with international grant standards.",
+            keyFeatures: ["Grant & fund accounting", "Donor CRM & pledge tracking", "Program budget vs. actuals", "Impact reporting metrics"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/community-group-meeting.jpg" 
+        },
+        { 
+            name: "Healthcare & Clinics", 
+            icon: ClipboardList, 
+            description: "Patient management and medical inventory.", 
+            fullDescription: "Modernize your clinic with an integrated practice management system. Handle patient registration, appointments, electronic medical records, and pharmacy inventory seamlessly.",
+            keyFeatures: ["Patient EMR/EHR", "Appointment scheduling & reminders", "Pharmacy inventory & expiry tracking", "Insurance billing integration"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/healthcare-team.jpg" 
+        },
+        { 
+            name: "Education & Institutions", 
+            icon: Book, 
+            description: "Student systems and fee management.", 
+            fullDescription: "Run your educational institution efficiently. Manage student admissions, academic records, and automate fee billing and collection, giving administrators and parents peace of mind.",
+            keyFeatures: ["Student Information System (SIS)", "Fee structure management & billing", "Academic grading & reports", "Parent & Teacher portals"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/education-dashboard.jpg" 
+        },
+        { 
+            name: "Agriculture & Agribusiness", 
+            icon: Leaf, 
+            description: "Farm management and crop tracking.", 
+            fullDescription: "Bring digital precision to agribusiness. Track inputs (fertilizer, seeds), manage livestock records, monitor crop cycles, and analyze harvest yields to maximize farm profitability.",
+            keyFeatures: ["Crop cycle & harvest tracking", "Livestock genealogy & health records", "Farm input inventory control", "Field mapping & labor tracking"],
+            category: 'Specialized', 
+            backgroundImage: "/images/showcase/agriculture-tech.jpg" 
+        },
+        { 
+            name: "Creative Agencies", 
+            icon: Palette, 
+            description: "Portfolio tracking and client billing.", 
+            fullDescription: "Manage the business side of creativity. Track time against creative briefs, manage freelancer costs, and ensure client billing accurately reflects the value you deliver.",
+            keyFeatures: ["Digital asset management", "Retainer & milestone billing", "Freelancer portal", "Project collaboration tools"],
+            category: 'Creative & Digital', 
+            backgroundImage: "/images/showcase/creative-agency-pm.jpg" 
+        },
+        { 
+            name: "Tech & Software", 
+            icon: Cloud, 
+            description: "Subscription billing and issue tracking.", 
+            fullDescription: "Scale your SaaS or IT business. Manage recurring subscription revenue (MRR), track customer churn, and handle support tickets in one integrated platform.",
+            keyFeatures: ["Subscription & recurring billing", "Churn & MRR analytics", "Helpdesk & issue tracking", "SLA management"],
+            category: 'Creative & Digital', 
+            backgroundImage: "/images/showcase/future-of-business-tech.jpg" 
+        },
     ] as IndustryItem[],
     faqItems: [
         { q: 'What is BBU1?', a: 'BBU1 (Big Business Unified) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform, designed for growth.' },
@@ -270,8 +506,6 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
 );
 
 // --- FullScreenDialog Component (FIXED FOR ALL DEVICES) ---
-// CRITICAL FIX: Added !fixed !inset-0 !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0
-// This ensures the modal ignores all parent positioning and covers the screen perfectly on every device.
 interface FullScreenDialogProps {
     children: ReactNode;
     title: string;
@@ -394,11 +628,10 @@ const MegaMenuHeader = () => {
                             </NavigationMenuContent>
                         </NavigationMenuItem>
 
-                        {/* Industries Menu Item */}
+                        {/* Industries Menu Item - Desktop */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                {/* FIXED: Responsive widths */}
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[700px] lg:w-[800px] max-w-[94vw] rounded-md">
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
                                         {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
@@ -417,15 +650,23 @@ const MegaMenuHeader = () => {
                                                             backgroundImage={item.backgroundImage}
                                                             icon={item.icon}
                                                         >
-                                                            <div className="text-lg text-muted-foreground p-4">
-                                                                <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                                <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
-                                                                <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                                    <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
-                                                                    <li>Industry-specific reporting and analytics.</li>
-                                                                    <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                                    <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
-                                                                </ul>
+                                                            <div className="p-4 space-y-6">
+                                                                <p className="text-lg text-muted-foreground leading-relaxed">
+                                                                    {item.fullDescription}
+                                                                </p>
+                                                                <div className="bg-accent/50 p-6 rounded-xl border">
+                                                                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                                                        <Sparkles className="h-5 w-5 text-primary" /> Key Capabilities
+                                                                    </h4>
+                                                                    <ul className="grid gap-3">
+                                                                        {item.keyFeatures.map((feature, idx) => (
+                                                                            <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
+                                                                                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                                                                <span>{feature}</span>
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
                                                             </div>
                                                         </FullScreenDialog>
                                                     </Dialog>
@@ -437,11 +678,10 @@ const MegaMenuHeader = () => {
                             </NavigationMenuContent>
                         </NavigationMenuItem>
 
-                        {/* Platform Menu Item */}
+                        {/* Platform Menu Item - Desktop */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
                             <NavigationMenuContent>
-                                {/* FIXED: Responsive widths */}
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[500px] lg:w-[600px] max-w-[94vw] rounded-md">
                                     <ul className="grid gap-3 p-4 md:grid-cols-2">
                                         {siteConfig.platformPillars.map((pillar) => (
@@ -458,15 +698,23 @@ const MegaMenuHeader = () => {
                                                         backgroundImage={pillar.backgroundImage}
                                                         icon={pillar.icon}
                                                     >
-                                                        <div className="text-lg text-muted-foreground p-4">
-                                                            <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                            <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
-                                                            <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                                <li>Key architectural components.</li>
-                                                                <li>Performance and scalability benchmarks.</li>
-                                                                <li>Integration capabilities and standards.</li>
-                                                                <li>Future roadmap and innovation.</li>
-                                                            </ul>
+                                                        <div className="p-4 space-y-6">
+                                                            <p className="text-lg text-muted-foreground leading-relaxed">
+                                                                {pillar.fullDescription}
+                                                            </p>
+                                                            <div className="bg-primary/5 p-6 rounded-xl border border-primary/20">
+                                                                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                                                    <Wrench className="h-5 w-5 text-primary" /> Technical Specifications
+                                                                </h4>
+                                                                <ul className="grid gap-3">
+                                                                    {pillar.technicalSpecs.map((spec, idx) => (
+                                                                        <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
+                                                                            <BadgeCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                                                                            <span>{spec}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
                                                         </div>
                                                     </FullScreenDialog>
                                                 </Dialog>
@@ -579,7 +827,7 @@ const MegaMenuHeader = () => {
                                 </FullScreenDialog>
                             </Dialog>
 
-                            {/* Industries */}
+                            {/* Industries - Mobile */}
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Industries</button>
@@ -604,15 +852,23 @@ const MegaMenuHeader = () => {
                                                     icon={item.icon}
                                                     onClose={() => setIsMobileMenuOpen(false)}
                                                 >
-                                                    <div className="text-lg text-muted-foreground p-4">
-                                                        <p>More detailed information about {item.name} solutions will be displayed here.</p>
-                                                        <p className="mt-4">This could include specific use cases, benefits, and how BBU1 adapts to this industry's unique needs.</p>
-                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                            <li>Tailored modules for {item.name.toLowerCase()} operations.</li>
-                                                            <li>Industry-specific reporting and analytics.</li>
-                                                            <li>Compliance with relevant {item.name.toLowerCase()} regulations.</li>
-                                                            <li>Case studies or testimonials from {item.name.toLowerCase()} clients.</li>
-                                                        </ul>
+                                                    <div className="p-4 space-y-6">
+                                                        <p className="text-lg text-muted-foreground leading-relaxed">
+                                                            {item.fullDescription}
+                                                        </p>
+                                                        <div className="bg-accent/50 p-6 rounded-xl border">
+                                                            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                                                <Sparkles className="h-5 w-5 text-primary" /> Key Capabilities
+                                                            </h4>
+                                                            <ul className="grid gap-3">
+                                                                {item.keyFeatures.map((feature, idx) => (
+                                                                    <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
+                                                                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                                                                        <span>{feature}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     </div>
                                                 </FullScreenDialog>
                                             </Dialog>
@@ -621,7 +877,7 @@ const MegaMenuHeader = () => {
                                 </FullScreenDialog>
                             </Dialog>
 
-                            {/* Platform */}
+                            {/* Platform - Mobile */}
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Platform</button>
@@ -646,15 +902,23 @@ const MegaMenuHeader = () => {
                                                     icon={pillar.icon}
                                                     onClose={() => setIsMobileMenuOpen(false)}
                                                 >
-                                                    <div className="text-lg text-muted-foreground p-4">
-                                                        <p>Detailed explanation of the "{pillar.title}" pillar and its technical underpinnings.</p>
-                                                        <p className="mt-4">This section would elaborate on the specific technologies, methodologies, and benefits that make this pillar foundational to the BBU1 platform.</p>
-                                                        <ul className="list-disc pl-5 mt-4 space-y-2">
-                                                            <li>Key architectural components.</li>
-                                                            <li>Performance and scalability benchmarks.</li>
-                                                            <li>Integration capabilities and standards.</li>
-                                                            <li>Future roadmap and innovation.</li>
-                                                        </ul>
+                                                    <div className="p-4 space-y-6">
+                                                        <p className="text-lg text-muted-foreground leading-relaxed">
+                                                            {pillar.fullDescription}
+                                                        </p>
+                                                        <div className="bg-primary/5 p-6 rounded-xl border border-primary/20">
+                                                            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                                                <Wrench className="h-5 w-5 text-primary" /> Technical Specifications
+                                                            </h4>
+                                                            <ul className="grid gap-3">
+                                                                {pillar.technicalSpecs.map((spec, idx) => (
+                                                                    <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
+                                                                        <BadgeCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                                                                        <span>{spec}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     </div>
                                                 </FullScreenDialog>
                                             </Dialog>
