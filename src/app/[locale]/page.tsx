@@ -86,7 +86,7 @@ const setCookie = (name: string, value: string, days: number) => {
 // --- Site Configuration ---
 const siteConfig = {
     name: "BBU1",
-    shortDescription: "Your all-in-one OS for global business. Unify accounting, CRM, inventory, and AI insights. Built in Africa, for the world.",
+    shortDescription: "Your all-in-one OS for your business. Unify cloud accounting, cloud Auditing, Advanced reports, invoicing, cloud finance, CRM, advanced inventory, Enterprise intergrations, HR, Aura AI insights. Built for the world.",
     url: "https://www.bbu1.com/",
     contactInfo: {
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
@@ -204,7 +204,7 @@ const siteConfig = {
         { 
             icon: TrendingUp, 
             title: "Built for Growth", 
-            description: "Growth is not an option; it's guaranteed. BBU1 scales from a single user to a global enterprise without compromise.", 
+            description: "We don't pass through your business; We are part of it. BBU1 scales from a single user, business startup, to a global enterprise where growth is Automated .", 
             fullDescription: "BBU1 is engineered on a cloud-native, microservices architecture designed to handle hyper-growth. Whether you are processing 10 transactions a day or 10 million, our infrastructure auto-scales to meet demand without performance degradation. We utilize sharded databases and global CDNs to ensure that as you expand into new regions or open new branches, your system remains lightning-fast.",
             technicalSpecs: [
                 "Elastic Scalability: Auto-scaling server clusters handle peak loads instantly.",
@@ -217,8 +217,8 @@ const siteConfig = {
         { 
             icon: BrainCircuit, 
             title: "AI Does The Work", 
-            description: "Our AI, Aura, automates bookkeeping, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", 
-            fullDescription: "Aura isn't just a chatbot; it's an integrated intelligence layer running across your entire operation. Aura continuously scans your general ledger for errors, predicts cash flow gaps before they happen, and automates mundane tasks like invoice matching and expense categorization. It turns your historical data into a roadmap for future profitability.",
+            description: "Our AI, Aura, automates bookkeeping, automates tax returns, automates reports, executive reports, invoices, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", 
+            fullDescription: "Aura isn't just a chatbot; Aura is a customly built Ai that fully grows with your business, it's an integrated intelligence layer running across your entire operation. Aura continuously scans your general ledger for errors, predicts cash flow gaps before they happen, and automates mundane tasks like invoice matching and expense categorization. It turns your historical data into a roadmap for future profitability.",
             technicalSpecs: [
                 "Automated Bookkeeping: AI categorizes 90% of transactions automatically.",
                 "Anomaly Detection: Flags duplicate payments or unusual spending in real-time.",
@@ -441,7 +441,7 @@ const siteConfig = {
         },
     ] as IndustryItem[],
     faqItems: [
-        { q: 'What is BBU1?', a: 'BBU1 (Big Business Unified) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform, designed for growth.' },
+        { q: 'What is BBU1?', a: 'BBU1 (Business Bae Universe) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform, designed for growth.' },
         { q: 'How does the AI Copilot Aura work?', a: 'Aura, our AI Copilot, securely analyzes your company-wide data in real-time to find patterns, automate routine tasks, and provide simple, actionable insights. For example, it can suggest "Consider bundling Product A and B" or alert you to a "Cash flow projected to be low in 3 weeks," helping you make proactive, data-driven decisions.' },
         { q: 'Is my enterprise data secure with BBU1?', a: 'Absolutely. BBU1 employs a robust multi-tenant architecture with PostgreSQL\'s Row-Level Security, ensuring your data is completely isolated from other clients. We use bank-level, end-to-end encryption for all data in transit and at rest, along with multi-factor authentication and continuous security monitoring to protect your information.' },
         { q: 'Can BBU1 be customized to fit my specific business workflows?', a: 'Yes, BBU1 is designed for extensive customization. While powerful out-of-the-box, we offer comprehensive customization services including custom fields, tailored workflows, and robust API access for enterprise clients. This allows you to integrate BBU1 seamlessly with your existing tools and adapt it precisely to your unique operational processes.' },
@@ -1102,7 +1102,7 @@ const GEO_CURRENCIES: Record<string, { code: string; symbol: string; rate: numbe
 const ALL_INCLUDED_MODULES = [
     {
         title: "Finance & Accounting",
-        features: ["General Ledger & Journal", "Banking & Reconciliation", "Tax Returns & Fiscal Positions", "Accounts Payable/Receivable", "Asset Management & Depreciation", "Budgeting & Cost Centers", "Multi-Currency Support"]
+        features: ["General Ledger & Journal", "Banking & Reconciliation", "Tax Returns & Fiscal Positions", "Accounts Payable/Receivable", "Asset Management & Depreciation", "Budgeting & Cost Centers", "Multi-Currency Support", "lock dates", "chart of accounts"]
     },
     {
         title: "Human Resources (HRM)",
@@ -1110,7 +1110,7 @@ const ALL_INCLUDED_MODULES = [
     },
     {
         title: "Inventory & Supply Chain",
-        features: ["Multi-Warehouse Mgmt", "Manufacturing Orders (BOM)", "Serial & Lot Tracking", "Landed Cost Valuation", "Stock Adjustments & Transfers", "Barcode Scanning", "Reorder Points & Replenishment"]
+        features: ["Multi-Warehouse Mgmt", "Manufacturing Orders (BOM)", "composites", "purchase orders", "cycle counts", "asset maintenance", "Serial & Lot Tracking", "Landed Cost Valuation", "Stock Adjustments & Transfers", "Barcode Scanning", "Reorder Points & Replenishment"]
     },
     {
         title: "Sales & CRM",
@@ -1170,7 +1170,7 @@ const DynamicPricingSection = () => {
             idealFor: "Small Shops & Solo Founders",
             highlight: false,
             btnText: "Start Free Trial",
-            features: ["Full ERP Core", "Mobile App", "Basic Reports"]
+            features: ["Full ERP Core", "Mobile App", "Enterprise Reports", "invoicing system", "cloud accounting", "cloud auditing", "complete tax filling system"]
         },
         {
             name: "Growth",
@@ -1179,7 +1179,7 @@ const DynamicPricingSection = () => {
             idealFor: "Growing SMEs & Teams",
             highlight: true,
             btnText: "Start Free Trial",
-            features: ["All Industry Modules", "HR & Payroll", "Inventory Tracking"]
+            features: ["All Industry Modules", "custom branding", "HR & Payroll", "Inventory Tracking", "Mobile App", "Enterprise Reports", "invoicing system", "cloud accounting", "cloud auditing", "complete tax filling system"]
         },
         {
             name: "Scale",
@@ -1188,7 +1188,7 @@ const DynamicPricingSection = () => {
             idealFor: "Large Enterprises",
             highlight: false,
             btnText: "Contact Sales",
-            features: ["API Access", "Dedicated Support", "On-Premise Option"]
+            features: ["API Access", "Dedicated Support", "On-Premise Option", "Mobile App", "custom branding", "Enterprise Reports", "invoicing system", "cloud accounting", "cloud auditing", "complete tax filling system"]
         }
     ];
 
@@ -1347,7 +1347,7 @@ const DynamicPricingSection = () => {
 
 // --- HomePage Component ---
 export default function HomePage() {
-    const rotatingTexts = ["Automation where it counts. Human when it matters.", "From startup to enterprise.", "For every ambition."];
+    const rotatingTexts = ["We don't pass through your business. We are part of it.", "From startup to enterprise.", "For every ambition."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers using BBU1 on a tablet." },
