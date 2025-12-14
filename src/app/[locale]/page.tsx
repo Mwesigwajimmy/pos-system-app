@@ -144,17 +144,17 @@ const siteConfig = {
             backgroundImage: "/images/showcase/bakery-pos-system.jpg",
             details: [
                 { name: "Point of Sale (POS)", detail: "Intuitive and fast POS system for retail operations, supporting multiple payment methods and integrated with inventory." },
-                { name: "E-commerce Integration", detail: "Seamlessly connect with popular e-commerce platforms to sync products, orders, and customer data in real-time." },
-                { name: "Order Management", detail: "Process sales orders efficiently, from creation to fulfillment, with status tracking and automated workflows." },
+                { name: "E-commerce Integration", detail: "Seamlessly connect with popular e-commerce platforms to sync products, orders, autoate sales and boost growth, and customer data in real-time." },
+                { name: "Order Management", detail: "Process sales orders efficiently, from creation to fulfillment, smart delivery fully automated, with status tracking and automated workflows." },
                 { name: "Pricing & Discounts", detail: "Manage complex pricing strategies, promotional discounts, and customer-specific pricing rules." },
-                { name: "Sales Analytics", detail: "Gain insights into sales performance, popular products, and customer buying patterns with powerful dashboards." },
+                { name: "Sales Analytics", detail: "Gain insights into sales performance, popular products, BI Analytics, and customer buying patterns with powerful dashboards fully automated." },
             ]
         },
         {
             icon: Briefcase, title: "Project Management", description: "Plan, execute, and track projects with collaborative tools.",
             backgroundImage: "/images/showcase/creative-agency-pm.jpg",
             details: [
-                { name: "Task & Workflow Management", detail: "Organize projects into tasks, assign responsibilities, set deadlines, and track progress with Kanban boards or Gantt charts." },
+                { name: "Task & Workflow Management", detail: "Organize projects into tasks, assign responsibilities, set deadlines, and track project progress, monitor expenses and insights." },
                 { name: "Time Tracking", detail: "Accurately track time spent on tasks and projects for precise billing and resource allocation." },
                 { name: "Resource Management", detail: "Allocate team members and resources effectively across projects, avoiding overloads and ensuring optimal utilization." },
                 { name: "Budgeting & Cost Tracking", detail: "Set project budgets, track actual expenses against them, and monitor profitability in real-time." },
@@ -165,11 +165,11 @@ const siteConfig = {
             icon: Scale, title: "Compliance & Governance", description: "Ensure regulatory adherence and maintain strong internal controls.",
             backgroundImage: "/images/showcase/office-presentation-dashboard.jpg",
             details: [
-                { name: "Audit Trails & Logs", detail: "Maintain a complete, tamper-proof audit trail of every action taken in the system for ultimate security and compliance." },
+                { name: "Audit Trails & Logs", detail: "Maintain a complete, tamper-proof audit trail of every action being done in the system for ultimate security and compliance." },
                 { name: "Role-Based Access Control", detail: "Granular control over user permissions and access rights, ensuring data security and adherence to internal policies." },
                 { name: "Document Management", detail: "Securely store, organize, and manage all business documents with version control and access permissions." },
-                { name: "Multi-Currency & Tax Localization", detail: "Handle transactions in multiple currencies and comply with local tax regulations across different regions." },
-                { name: "Data Privacy & GDPR Compliance", detail: "Tools and features to help your business comply with data protection regulations like GDPR and other local privacy laws." },
+                { name: "Multi-Currency & Tax Localization", detail: "Handle transactions in multiple currencies and comply with local tax regulations across different regions, set custom tax calculations automatically and the rest of the work is automated." },
+                { name: "Data Privacy & GDPR Compliance", detail: "Tools and features to help your business comply with data protection regulations like GDPR and other local privacy laws and this is completly compliant." },
             ]
         },
         {
@@ -214,7 +214,7 @@ const siteConfig = {
         },
         { 
             icon: BrainCircuit, 
-            title: "AI Does The Work", 
+            title: "Aura Does The Work", 
             description: "Our AI, Aura, automates bookkeeping, automates tax returns, automates reports, executive reports, invoices, detects anomalies, and provides strategic insights to reduce manual work and drive smart decisions.", 
             fullDescription: "Aura isn't just a chatbot; Aura is a customly built Ai that fully grows with your business, it's an integrated intelligence layer running across your entire operation. Aura continuously scans your general ledger for errors, predicts cash flow gaps before they happen, and automates mundane tasks like invoice matching and expense categorization. It turns your historical data into a roadmap for future profitability.",
             technicalSpecs: [
@@ -228,7 +228,7 @@ const siteConfig = {
         { 
             icon: WifiOff, 
             title: "Unbreakable Offline Mode", 
-            description: "Your business never stops. Core functions work perfectly offline, syncing instantly when you're back online, ensuring continuous operation.", 
+            description: "Your business is always ahead of time. Core functions work perfectly offline, syncing instantly when you're back online, ensuring continuous operation.", 
             fullDescription: "In many regions, internet connectivity can be unpredictable. BBU1 utilizes a 'Local-First' database architecture. This means your Point of Sale, Inventory scanners, and Field Service apps run primarily on the device's local storage. You can continue to sell, receive stock, and manage operations for days without internet. The second a connection is detected, data synchronizes securely to the cloud in the background.",
             technicalSpecs: [
                 "Local-First DB: PouchDB/CouchDB protocol for robust local data storage.",
@@ -241,13 +241,13 @@ const siteConfig = {
         { 
             icon: Globe, 
             title: "Truly Global & Localized", 
-            description: "Full multi-currency support, adaptable tax systems, and localized compliance for any country in Africa and across the world.", 
-            fullDescription: "Going global requires more than just translating text. BBU1 handles the complexities of international business natively. We support multi-currency transactions with real-time exchange rate updates, distinct tax rules for different regions (e.g., VAT, GST, Sales Tax), and compliance with local statutory reporting requirements across Africa, Asia, and the Americas.",
+            description: "Full multi-currency support, adaptable tax systems, dynamic tax setings, and localized compliance for any country in Africa and across the world.", 
+            fullDescription: "Going global requires more than just translating text. BBU1 handles the complexities of international business natively and localy. We support multi-currency transactions with real-time exchange rate updates, distinct tax rules for different regions (e.g., VAT, GST, Sales Tax), and compliance with local statutory reporting requirements across Africa, Asia, and the Americas worldwide.",
             technicalSpecs: [
                 "Multi-Currency Core: Transact, report, and consolidate in over 160 currencies.",
                 "Tax Engine: Configurable tax layers for complex regional requirements.",
                 "Language Support: Interface available in English, French, Swahili, and Arabic.",
-                "Regulatory Compliance: GAAP and IFRS compliant reporting standards."
+                "Regulatory Compliance: GAAP, IFRS compliant reporting standards, among others automaticaly, And your country, state is fully covered."
             ],
             backgroundImage: "/images/showcase/community-group-meeting.jpg" 
         },
@@ -267,7 +267,7 @@ const siteConfig = {
         { 
             icon: Settings, 
             title: "Deep Customization & Integration", 
-            description: "Tailor the system with custom fields, workflows, and robust API integrations to match your unique business processes.", 
+            description: "With bbu1 every business has the privilage to Tailor the system with custom fields, workflows, and robust custom API integrations to match your unique business processes.", 
             fullDescription: "No two businesses are exactly alike. BBU1 provides a low-code environment allowing you to add custom fields to any form, design custom approval workflows, and build unique reports. For developers, our REST and GraphQL APIs provide full programmatic access to the platform, enabling deep integration with your legacy systems or third-party tools.",
             technicalSpecs: [
                 "Custom Fields & Forms: Add data points specific to your industry without coding.",
@@ -350,7 +350,7 @@ const siteConfig = {
         { 
             name: "Lending / Microfinance", 
             icon: Banknote, 
-            description: "Loan origination and portfolio management.", 
+            description: "Loan accounts,disbursments,client management, KYC,among others and portfolio management.", 
             fullDescription: "A specialized core banking module designed for Microfinance Institutions and lenders. Manage the entire loan lifecycle from application and credit scoring to disbursement and repayment tracking.",
             keyFeatures: ["Loan origination & credit scoring", "Automated penalty & interest calculation", "Portfolio at Risk (PAR) reporting", "SMS repayment reminders"],
             category: 'Specialized', 
@@ -368,7 +368,7 @@ const siteConfig = {
         { 
             name: "SACCO / Co-operative", 
             icon: Users, 
-            description: "Member management and dividend calculation.", 
+            description: "Member management and dividend calculation, smart sacco and co-oparative initiative.", 
             fullDescription: "Empower your cooperative with transparency and efficiency. Manage member shares, savings accounts, and loan products while automating dividend calculations and regulatory reporting.",
             keyFeatures: ["Member registry & KYC", "Share capital management", "Savings & deposit tracking", "Dividend calculation engine"],
             category: 'Specialized', 
@@ -386,7 +386,7 @@ const siteConfig = {
         { 
             name: "Nonprofit & NGOs", 
             icon: HeartHandshake, 
-            description: "Donor management and fund accounting.", 
+            description: "Donor management and fund accounting, pojectfunds managemnt, grants and donors automation, campaigns.", 
             fullDescription: "Drive impact with transparency. BBU1 helps NGOs manage donor relationships, track restricted funds, and report on program outcomes, ensuring compliance with international grant standards.",
             keyFeatures: ["Grant & fund accounting", "Donor CRM & pledge tracking", "Program budget vs. actuals", "Impact reporting metrics"],
             category: 'Specialized', 
@@ -439,7 +439,7 @@ const siteConfig = {
         },
     ] as IndustryItem[],
     faqItems: [
-        { q: 'What is BBU1?', a: 'BBU1 (Business Bae Universe) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform, designed for growth.' },
+        { q: 'What is BBU1?', a: 'BBU1 (Business Base Universe) is an all-in-one operating system for businesses, unifying accounting, CRM, inventory, HR, project management, and AI-powered insights into a single, intelligent platform, designed for growth.' },
         { q: 'How does the AI Copilot Aura work?', a: 'Aura, our AI Copilot, securely analyzes your company-wide data in real-time to find patterns, automate routine tasks, and provide simple, actionable insights. For example, it can suggest "Consider bundling Product A and B" or alert you to a "Cash flow projected to be low in 3 weeks," helping you make proactive, data-driven decisions.' },
         { q: 'Is my enterprise data secure with BBU1?', a: 'Absolutely. BBU1 employs a robust multi-tenant architecture with PostgreSQL\'s Row-Level Security, ensuring your data is completely isolated from other clients. We use bank-level, end-to-end encryption for all data in transit and at rest, along with multi-factor authentication and continuous security monitoring to protect your information.' },
         { q: 'Can BBU1 be customized to fit my specific business workflows?', a: 'Yes, BBU1 is designed for extensive customization. While powerful out-of-the-box, we offer comprehensive customization services including custom fields, tailored workflows, and robust API access for enterprise clients. This allows you to integrate BBU1 seamlessly with your existing tools and adapt it precisely to your unique operational processes.' },
@@ -1787,7 +1787,7 @@ export default function HomePage() {
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers using BBU1 on a tablet." },
         { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast, secure system for transactions.", alt: "A mobile money agent serving customers." },
-        { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A simple yet powerful POS and inventory system to manage sales and stock.", alt: "A local shop owner managing his store." },
+        { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A complete enterprise powerful POS and inventory system to manage sales and stock.", alt: "A local shop owner managing his store." },
         { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track medical supplies.", alt: "Medical professionals using BBU1 on tablets." },
         { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field to track crops and connect with markets.", alt: "Farmers collaborating with BBU1 on mobile devices." },
     ];
@@ -2004,7 +2004,7 @@ export default function HomePage() {
                     </div>
                     <div className="relative z-10 text-center mb-12">
                         <motion.h2 className="text-3xl sm:text-4xl font-bold text-white" variants={itemVariants}>
-                            The Engine For Every African Enterprise
+                            The Engine For Every business from strartup to  Enterprise, and from enterprise to generational wealth.
                         </motion.h2>
                         <motion.p className="mt-4 text-lg text-gray-300" variants={itemVariants}>
                             From bustling city markets to the digital frontier, BBU1 is built for the continent's ambition.
