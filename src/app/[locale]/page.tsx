@@ -1240,190 +1240,200 @@ const DynamicPricingSection = () => {
     };
 
     return (
-        <section id="pricing" className="py-24 bg-background relative overflow-hidden">
-            {/* Background Gradient */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-            
-            <div className="container mx-auto px-4 relative z-10">
-                <div className="text-center max-w-4xl mx-auto mb-16">
-                    <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl mb-6">
-                        Fair Pricing for Every Business
-                    </h2>
-                    <p className="text-xl text-muted-foreground mb-8">
-                        We believe in fair access to technology. Whether you are a local shop or a global enterprise, 
-                        you get the full power of the BBU1 Operating System.
-                    </p>
+        <>
+            {/* SECTION 1: Standard Pricing (Light Background) */}
+            <section id="pricing" className="py-24 bg-background relative overflow-hidden">
+                {/* Background Gradient */}
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                
+                <div className="container mx-auto px-4 relative z-10">
+                    <div className="text-center max-w-4xl mx-auto mb-16">
+                        <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl mb-6">
+                            Fair Pricing for Every Business
+                        </h2>
+                        <p className="text-xl text-muted-foreground mb-8">
+                            We believe in fair access to technology. Whether you are a local shop or a global enterprise, 
+                            you get the full power of the BBU1 Operating System.
+                        </p>
 
-                    {/* Billing Toggle */}
-                    <div className="flex items-center justify-center gap-4">
-                        <span className={cn("text-sm font-medium transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
-                        <button 
-                            onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
-                            className="relative w-14 h-7 bg-primary/20 rounded-full p-1 transition-colors hover:bg-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        >
-                            <motion.div 
-                                className="h-5 w-5 bg-primary rounded-full shadow-sm"
-                                animate={{ x: billingCycle === 'yearly' ? 28 : 0 }}
-                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            />
-                        </button>
-                        <span className={cn("text-sm font-medium transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
-                            Yearly <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
-                        </span>
+                        {/* Billing Toggle */}
+                        <div className="flex items-center justify-center gap-4">
+                            <span className={cn("text-sm font-medium transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
+                            <button 
+                                onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
+                                className="relative w-14 h-7 bg-primary/20 rounded-full p-1 transition-colors hover:bg-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                            >
+                                <motion.div 
+                                    className="h-5 w-5 bg-primary rounded-full shadow-sm"
+                                    animate={{ x: billingCycle === 'yearly' ? 28 : 0 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                />
+                            </button>
+                            <span className={cn("text-sm font-medium transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
+                                Yearly <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
+                            </span>
+                        </div>
+                        
+                        {loading && <p className="text-xs text-muted-foreground mt-4 animate-pulse">Detecting your local currency...</p>}
+                    </div>
+
+                    {/* Pricing Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
+                        {PLANS.map((plan, index) => (
+                            <Card key={index} className={cn("flex flex-col relative transition-all duration-300", plan.highlight ? "border-primary shadow-2xl scale-105 z-10" : "border-border hover:border-primary/50")}>
+                                {plan.highlight && (
+                                    <div className="absolute top-0 inset-x-0 h-1 bg-primary rounded-t-xl" />
+                                )}
+                                <CardHeader>
+                                    {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
+                                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                                    <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
+                                    <div className="mt-6 flex items-baseline">
+                                        <span className="text-4xl font-extrabold tracking-tight">
+                                            {currency.symbol} {formatPrice(plan.basePrice)}
+                                        </span>
+                                        <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="flex-grow space-y-6">
+                                    <div className="p-4 bg-muted/50 rounded-lg border">
+                                        <p className="font-semibold flex items-center gap-2">
+                                            <Users className="h-5 w-5 text-primary" /> {plan.userLimit}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-wider">What's Included:</p>
+                                        <ul className="space-y-3">
+                                            <li className="flex items-start gap-3 text-sm">
+                                                <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                                                <span className="font-semibold">Full System Access</span>
+                                            </li>
+                                            {plan.features.map((feature, idx) => (
+                                                <li key={idx} className="flex items-start gap-3 text-sm">
+                                                    <CheckCircle className="h-5 w-5 text-primary/60 shrink-0" />
+                                                    <span>{feature}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button className="w-full h-11 font-semibold" variant={plan.highlight ? "default" : "outline"} asChild>
+                                        <Link href="/signup">{plan.btnText}</Link>
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* SECTION 2: Enterprise/Included Modules (Deep Navy Background) */}
+            <section className="py-24 bg-slate-900 relative overflow-hidden">
+                 {/* Decorative background element */}
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
+                
+                <div className="container mx-auto px-4 relative z-10">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-12">
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 text-xs font-bold uppercase tracking-widest mb-4 border border-blue-500/20">
+                                <Sparkles className="h-3 w-3" /> Unlocked Potential
+                            </span>
+                            <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4 text-white">
+                                The "No-Addons" Promise
+                            </h3>
+                            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+                                Stop paying for "Extra Modules." With BBU1, the moment you sign up, 
+                                <span className="text-white font-semibold"> every single enterprise engine is unlocked</span> tailored to your industry.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {ALL_INCLUDED_MODULES.map((module, i) => {
+                                // Dynamic Icon Mapping based on Title
+                                let ModuleIcon = BadgeCheck;
+                                if (module.title.includes("Finance")) ModuleIcon = Landmark;
+                                if (module.title.includes("Human")) ModuleIcon = Users;
+                                if (module.title.includes("Inventory")) ModuleIcon = Warehouse;
+                                if (module.title.includes("Sales")) ModuleIcon = Handshake;
+                                if (module.title.includes("Specialized")) ModuleIcon = Briefcase;
+
+                                return (
+                                    <motion.div 
+                                        key={i}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1 }}
+                                        // MODIFIED: White bg, Slate-900 text for high contrast pop
+                                        className="group relative overflow-hidden rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-sm transition-all hover:shadow-xl hover:border-blue-500"
+                                    >
+                                        {/* Subtle gradient background on hover */}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                                        <div className="p-6 relative z-10 h-full flex flex-col">
+                                            <div className="flex items-center gap-3 mb-5">
+                                                {/* MODIFIED: Icon colors for white background */}
+                                                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 group-hover:scale-110 transition-transform duration-300">
+                                                    <ModuleIcon className="h-6 w-6" />
+                                                </div>
+                                                <h4 className="font-bold text-xl leading-tight text-slate-900">
+                                                    {module.title}
+                                                </h4>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2 content-start">
+                                                {module.features.map((feature, j) => (
+                                                    <span 
+                                                        key={j} 
+                                                        // MODIFIED: Badge styling for white background
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-[13px] font-medium text-slate-600 transition-colors group-hover:border-blue-200 group-hover:text-slate-900"
+                                                    >
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        {feature}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Trust Banner at bottom of features */}
+                        {/* MODIFIED: Adjusted for dark background */}
+                        <div className="mt-12 p-6 bg-white/5 rounded-xl border border-dashed border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                                    <ShieldCheck className="h-6 w-6 text-green-400" />
+                                </div>
+                                <div>
+                                    <h5 className="font-bold text-lg text-white">Enterprise Security Included</h5>
+                                    <p className="text-sm text-slate-400">We don't charge extra for security. SSO, 2FA, and Audit Logs are standard.</p>
+                                </div>
+                            </div>
+                            <div className="h-px w-full md:w-px md:h-12 bg-white/10" />
+                             <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                    <Bot className="h-6 w-6 text-blue-400" />
+                                </div>
+                                <div>
+                                    <h5 className="font-bold text-lg text-white">Aura AI Built-In</h5>
+                                    <p className="text-sm text-slate-400">Artificial Intelligence is not an upgrade. It's the core of the system.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    {loading && <p className="text-xs text-muted-foreground mt-4 animate-pulse">Detecting your local currency...</p>}
-                </div>
-
-                {/* Pricing Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
-                    {PLANS.map((plan, index) => (
-                        <Card key={index} className={cn("flex flex-col relative transition-all duration-300", plan.highlight ? "border-primary shadow-2xl scale-105 z-10" : "border-border hover:border-primary/50")}>
-                            {plan.highlight && (
-                                <div className="absolute top-0 inset-x-0 h-1 bg-primary rounded-t-xl" />
-                            )}
-                            <CardHeader>
-                                {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
-                                <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                                <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
-                                <div className="mt-6 flex items-baseline">
-                                    <span className="text-4xl font-extrabold tracking-tight">
-                                        {currency.symbol} {formatPrice(plan.basePrice)}
-                                    </span>
-                                    <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="flex-grow space-y-6">
-                                <div className="p-4 bg-muted/50 rounded-lg border">
-                                    <p className="font-semibold flex items-center gap-2">
-                                        <Users className="h-5 w-5 text-primary" /> {plan.userLimit}
-                                    </p>
-                                </div>
-                                <div className="space-y-3">
-                                    <p className="text-sm font-bold uppercase text-muted-foreground tracking-wider">What's Included:</p>
-                                    <ul className="space-y-3">
-                                        <li className="flex items-start gap-3 text-sm">
-                                            <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
-                                            <span className="font-semibold">Full System Access</span>
-                                        </li>
-                                        {plan.features.map((feature, idx) => (
-                                            <li key={idx} className="flex items-start gap-3 text-sm">
-                                                <CheckCircle className="h-5 w-5 text-primary/60 shrink-0" />
-                                                <span>{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </CardContent>
-                            <CardFooter>
-                                <Button className="w-full h-11 font-semibold" variant={plan.highlight ? "default" : "outline"} asChild>
-                                    <Link href="/signup">{plan.btnText}</Link>
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
-
-                {/* --- ENTERPRISE GRADE ALL-INCLUSIVE SECTION --- */}
-                <div className="max-w-7xl mx-auto mt-24 pt-16 border-t relative">
-                    
-                    {/* Background decoration */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
-
-                    <div className="text-center mb-12">
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4 border border-primary/20">
-                            <Sparkles className="h-3 w-3" /> Unlocked Potential
-                        </span>
-                        <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
-                            The "No-Addons" Promise
-                        </h3>
-                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                            Stop paying for "Extra Modules." With BBU1, the moment you sign up, 
-                            <span className="text-foreground font-semibold"> every single enterprise engine is unlocked</span> tailored to your industry.
+                    <div className="mt-16 text-center">
+                        <p className="text-slate-500 text-sm">
+                            * Prices exclude local VAT/GST where applicable. 
+                            Need On-Premise hosting or White-Label solutions? <a href={siteConfig.contactInfo.whatsappLink} className="text-blue-400 hover:underline font-medium">Contact Enterprise Sales</a>.
                         </p>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {ALL_INCLUDED_MODULES.map((module, i) => {
-                            // Dynamic Icon Mapping based on Title
-                            let ModuleIcon = BadgeCheck;
-                            if (module.title.includes("Finance")) ModuleIcon = Landmark;
-                            if (module.title.includes("Human")) ModuleIcon = Users;
-                            if (module.title.includes("Inventory")) ModuleIcon = Warehouse;
-                            if (module.title.includes("Sales")) ModuleIcon = Handshake;
-                            if (module.title.includes("Specialized")) ModuleIcon = Briefcase;
-
-                            return (
-                                <motion.div 
-                                    key={i}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="group relative overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40"
-                                >
-                                    {/* Subtle gradient background on hover */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                                    <div className="p-6 relative z-10 h-full flex flex-col">
-                                        <div className="flex items-center gap-3 mb-5">
-                                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
-                                                <ModuleIcon className="h-6 w-6" />
-                                            </div>
-                                            <h4 className="font-bold text-xl leading-tight">
-                                                {module.title}
-                                            </h4>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-2 content-start">
-                                            {module.features.map((feature, j) => (
-                                                <span 
-                                                    key={j} 
-                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 border border-border text-[13px] font-medium text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-foreground"
-                                                >
-                                                    <CheckCircle className="h-3 w-3 text-green-500/80" />
-                                                    {feature}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Trust Banner at bottom of features */}
-                    <div className="mt-12 p-6 bg-muted/30 rounded-xl border border-dashed border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center shrink-0">
-                                <ShieldCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div>
-                                <h5 className="font-bold text-lg">Enterprise Security Included</h5>
-                                <p className="text-sm text-muted-foreground">We don't charge extra for security. SSO, 2FA, and Audit Logs are standard.</p>
-                            </div>
-                        </div>
-                        <div className="h-px w-full md:w-px md:h-12 bg-border" />
-                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-                                <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div>
-                                <h5 className="font-bold text-lg">Aura AI Built-In</h5>
-                                <p className="text-sm text-muted-foreground">Artificial Intelligence is not an upgrade. It's the core of the system.</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-                
-                <div className="mt-16 text-center">
-                    <p className="text-muted-foreground text-sm">
-                        * Prices exclude local VAT/GST where applicable. 
-                        Need On-Premise hosting or White-Label solutions? <a href={siteConfig.contactInfo.whatsappLink} className="text-primary hover:underline font-medium">Contact Enterprise Sales</a>.
-                    </p>
-                </div>
-            </div>
-        </section>
+            </section>
+        </>
     );
 };
 
