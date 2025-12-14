@@ -958,15 +958,79 @@ const MegaMenuHeader = () => {
 
 // --- LandingFooter Component ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
-    <footer className="relative border-t bg-background/90 backdrop-blur-sm z-10">
-        <div className="container mx-auto px-4 pt-12 pb-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-                <div className="col-span-2"><h3 className="text-xl font-bold text-primary flex items-center gap-2"><Rocket className="h-6 w-6" /> {siteConfig.name}</h3><p className="text-sm text-muted-foreground mt-4 max-w-xs">{siteConfig.shortDescription}</p><div className="flex items-center gap-5 mt-6"><a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={20} /></a><a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="text-muted-foreground hover:text-primary transition-colors"><Twitter size={20} /></a><a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a></div></div>
-                <div><h4 className="font-semibold text-base mb-3">Product</h4><ul className="space-y-2 text-sm"><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Features</Link></li><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Industries</Link></li><li><Link href="#" className="text-muted-foreground hover:text-primary transition-colors">Platform</Link></li></ul></div>
-                <div><h4 className="font-semibold text-base mb-3">Company</h4><ul className="space-y-2 text-sm"><li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Contact Sales</a></li><li><Link href="/support" className="text-muted-foreground hover:text-primary transition-colors">Support</Link></li></ul></div>
-                <div><h4 className="font-semibold text-base mb-3">Legal</h4><ul className="space-y-2 text-sm"><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Terms of Service</button></DialogTrigger><FullScreenDialog title="Terms of Service" icon={FileText} backgroundImage="/images/showcase/office-admin-bbU1.jpg"><ScrollArea className="h-[60vh] pr-4">{siteConfig.termsOfService}</ScrollArea></FullScreenDialog></Dialog></li><li><Dialog><DialogTrigger asChild><button className="text-muted-foreground hover:text-primary text-left transition-colors">Privacy Policy</button></DialogTrigger><FullScreenDialog title="Privacy Policy" icon={ShieldCheck} backgroundImage="/images/showcase/office-presentation-dashboard.jpg"><ScrollArea className="h-[60vh] pr-4">{siteConfig.privacyPolicy}</ScrollArea></FullScreenDialog></Dialog></li><li><button onClick={onManageCookies} className="text-muted-foreground hover:text-primary text-left transition-colors">Manage Cookies</button></li></ul></div>
+    <footer className="relative bg-slate-950 text-slate-200 pt-16 pb-8 border-t border-slate-800 z-10">
+        <div className="container mx-auto px-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+                <div className="col-span-2 pr-8">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
+                        <Rocket className="h-6 w-6 text-blue-500" /> {siteConfig.name}
+                    </h3>
+                    <p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">
+                        {siteConfig.shortDescription}
+                    </p>
+                    <div className="flex items-center gap-4">
+                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300">
+                            <Linkedin size={18} />
+                        </a>
+                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-400 hover:text-white transition-all duration-300">
+                            <Twitter size={18} />
+                        </a>
+                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-700 hover:text-white transition-all duration-300">
+                            <Facebook size={18} />
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 className="font-bold text-white mb-6">Product</h4>
+                    <ul className="space-y-4 text-sm">
+                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Features</Link></li>
+                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Industries</Link></li>
+                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Platform</Link></li>
+                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Mobile App</Link></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 className="font-bold text-white mb-6">Company</h4>
+                    <ul className="space-y-4 text-sm">
+                        <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">Contact Sales</a></li>
+                        <li><Link href="/support" className="text-slate-400 hover:text-blue-400 transition-colors">Support Center</Link></li>
+                        <li><Link href="/about" className="text-slate-400 hover:text-blue-400 transition-colors">About Us</Link></li>
+                        <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers</Link></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 className="font-bold text-white mb-6">Legal</h4>
+                    <ul className="space-y-4 text-sm">
+                        <li>
+                            <Dialog>
+                                <DialogTrigger asChild><button className="text-slate-400 hover:text-blue-400 text-left transition-colors">Terms of Service</button></DialogTrigger>
+                                <FullScreenDialog title="Terms of Service" icon={FileText} backgroundImage="/images/showcase/office-admin-bbU1.jpg">
+                                    <ScrollArea className="h-[60vh] pr-4">{siteConfig.termsOfService}</ScrollArea>
+                                </FullScreenDialog>
+                            </Dialog>
+                        </li>
+                        <li>
+                            <Dialog>
+                                <DialogTrigger asChild><button className="text-slate-400 hover:text-blue-400 text-left transition-colors">Privacy Policy</button></DialogTrigger>
+                                <FullScreenDialog title="Privacy Policy" icon={ShieldCheck} backgroundImage="/images/showcase/office-presentation-dashboard.jpg">
+                                    <ScrollArea className="h-[60vh] pr-4">{siteConfig.privacyPolicy}</ScrollArea>
+                                </FullScreenDialog>
+                            </Dialog>
+                        </li>
+                        <li><button onClick={onManageCookies} className="text-slate-400 hover:text-blue-400 text-left transition-colors">Manage Cookies</button></li>
+                    </ul>
+                </div>
             </div>
-            <div className="border-t mt-6 pt-4 flex flex-col sm:flex-row justify-between items-center text-xs text-muted-foreground"><p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p><p className="mt-3 sm:mt-0">Made with <Leaf className="inline h-3 w-3 text-green-500" /> MJ.</p></div>
+
+            <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500">
+                <p>© {new Date().getFullYear()} {siteConfig.name} International. All rights reserved.</p>
+                <div className="flex items-center gap-6 mt-4 md:mt-0">
+                    <p className="flex items-center gap-1">Made with <Leaf className="h-3 w-3 text-green-500" /> for the World.</p>
+                </div>
+            </div>
         </div>
     </footer>
 );
