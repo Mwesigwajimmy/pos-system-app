@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck
+    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck, Mail, Globe2, Target
 } from 'lucide-react';
 
 // --- Constants ---
@@ -1427,6 +1427,250 @@ const DynamicPricingSection = () => {
     );
 };
 
+// --- PARTNER WITH US SECTION (NEW ENTERPRISE GRADE ADDITION) ---
+const PartnerWithUsSection = () => {
+    const [activeTab, setActiveTab] = useState<'affiliate' | 'investor' | 'solution'>('affiliate');
+    
+    // Form States
+    const [formData, setFormData] = useState({ name: '', org: '', email: '', phone: '', details: '' });
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    // Handler for Email Partners (Investor & Solution)
+    const handleEmailSubmit = (e: React.FormEvent, type: string) => {
+        e.preventDefault();
+        const subject = `BBU1 ${type} Partnership Inquiry: ${formData.name}`;
+        const body = `Name: ${formData.name}%0D%0AOrganization: ${formData.org}%0D%0AEmail: ${formData.email}%0D%0APhone: ${formData.phone}%0D%0A%0D%0AMessage/Details:%0D%0A${formData.details}`;
+        
+        // Open Mail Client
+        window.location.href = `mailto:mwesigwajimmy123@gmail.com?subject=${subject}&body=${body}`;
+    };
+
+    // Handler for WhatsApp Affiliate
+    const handleWhatsAppSubmit = () => {
+        const text = `Hello BBU1 Team, I am interested in becoming an Affiliate Partner. I would like to discuss commission structures and promoting the OS.`;
+        window.open(`https://wa.me/256703572503?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    return (
+        <AnimatedSection id="partner" className="bg-slate-50 dark:bg-slate-900/50 border-y relative overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-10 right-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-10 left-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
+            </div>
+
+            <div className="container mx-auto px-4 relative z-10">
+                <div className="text-center max-w-3xl mx-auto mb-12">
+                    <span className="text-sm font-bold tracking-widest text-primary uppercase mb-2 block">Ecosystem Growth</span>
+                    <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">Partner with BBU1</h2>
+                    <p className="text-lg text-muted-foreground">
+                        We are building the operating system for the future of African commerce. 
+                        Whether you want to earn, invest, or build—there is a place for you in our ecosystem.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                    
+                    {/* 1. Affiliate Card */}
+                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-500">
+                        <CardHeader>
+                            <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
+                                <Megaphone className="h-7 w-7" />
+                            </div>
+                            <CardTitle className="text-2xl">Affiliate Partner</CardTitle>
+                            <CardDescription>For Marketers & Influencers</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                Monetize your network. Refer businesses to BBU1 and earn recurring commissions for the lifetime of the customer.
+                            </p>
+                            <ul className="space-y-2 text-sm">
+                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Up to 20% Recurring Commission</span></li>
+                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Marketing Assets Provided</span></li>
+                            </ul>
+                            
+                            {/* Dialog Trigger */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button className="w-full mt-4" variant="outline" onClick={() => setActiveTab('affiliate')}>
+                                        Start Earning <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+                                    <div className="bg-blue-600 p-6 text-white text-center">
+                                        <Megaphone className="h-12 w-12 mx-auto mb-2 opacity-90" />
+                                        <DialogTitle className="text-2xl font-bold text-white">Affiliate Program</DialogTitle>
+                                        <DialogDescription className="text-blue-100">Join the fastest growing B2B affiliate network.</DialogDescription>
+                                    </div>
+                                    <div className="p-6 space-y-6">
+                                        <div className="bg-muted/50 p-4 rounded-lg border space-y-2">
+                                            <h4 className="font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-green-600"/> How it works:</h4>
+                                            <p className="text-sm text-muted-foreground">1. You get a unique referral code.</p>
+                                            <p className="text-sm text-muted-foreground">2. A business signs up using your code.</p>
+                                            <p className="text-sm text-muted-foreground">3. You receive a commission payout every month they remain a subscriber.</p>
+                                        </div>
+                                        <div className="text-center space-y-4">
+                                            <p className="text-sm text-muted-foreground">Click below to chat with our Affiliate Manager on WhatsApp to get your code immediately.</p>
+                                            <Button size="lg" className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold" onClick={handleWhatsAppSubmit}>
+                                                <MessageSquareText className="mr-2 h-5 w-5" /> Chat on WhatsApp (+256 703 572 503)
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        </CardContent>
+                    </Card>
+
+                    {/* 2. Investor Card */}
+                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500">
+                        <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm">
+                            OPEN ROUND
+                        </div>
+                        <CardHeader>
+                            <div className="h-14 w-14 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition-transform">
+                                <TrendingUp className="h-7 w-7" />
+                            </div>
+                            <CardTitle className="text-2xl">Strategic Investor</CardTitle>
+                            <CardDescription>For VCs & Angel Investors</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                Own a piece of the infrastructure powering African commerce. Access our data room and view our growth metrics.
+                            </p>
+                            <ul className="space-y-2 text-sm">
+                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>High-Growth SaaS Metrics</span></li>
+                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Scalable Tech Stack</span></li>
+                            </ul>
+
+                            {/* Dialog Trigger */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button className="w-full mt-4" variant="outline" onClick={() => setActiveTab('investor')}>
+                                        Investor Relations <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+                                    <div className="bg-green-600 p-6 text-white text-center">
+                                        <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-90" />
+                                        <DialogTitle className="text-2xl font-bold text-white">Investor Inquiry</DialogTitle>
+                                        <DialogDescription className="text-green-100">Connect with our founders directly.</DialogDescription>
+                                    </div>
+                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Investor')} className="p-6 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Full Name</label>
+                                                <Input required name="name" placeholder="John Doe" onChange={handleInputChange} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Firm / Entity</label>
+                                                <Input required name="org" placeholder="Capital Partners Ltd" onChange={handleInputChange} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Email Address</label>
+                                                <Input required type="email" name="email" placeholder="john@example.com" onChange={handleInputChange} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Phone / WhatsApp</label>
+                                                <Input name="phone" placeholder="+256..." onChange={handleInputChange} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Investment Interest / Details</label>
+                                            <textarea 
+                                                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                name="details" 
+                                                placeholder="We are interested in Series A opportunities..." 
+                                                required
+                                                onChange={handleInputChange}
+                                            />
+                                        </div>
+                                        <Button type="submit" className="w-full h-11 text-lg">Send Inquiry via Email</Button>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </CardContent>
+                    </Card>
+
+                    {/* 3. Solution Partner Card */}
+                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500">
+                        <CardHeader>
+                            <div className="h-14 w-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
+                                <GitBranch className="h-7 w-7" />
+                            </div>
+                            <CardTitle className="text-2xl">Solution Partner</CardTitle>
+                            <CardDescription>For Developers & Agencies</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                Build on top of BBU1. Implement our OS for your clients, build custom integrations, or white-label our technology.
+                            </p>
+                            <ul className="space-y-2 text-sm">
+                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Developer API Access</span></li>
+                                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Implementation Revenue Share</span></li>
+                            </ul>
+
+                            {/* Dialog Trigger */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button className="w-full mt-4" variant="outline" onClick={() => setActiveTab('solution')}>
+                                        Build With Us <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+                                    <div className="bg-purple-600 p-6 text-white text-center">
+                                        <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-90" />
+                                        <DialogTitle className="text-2xl font-bold text-white">Solution Partnership</DialogTitle>
+                                        <DialogDescription className="text-purple-100">Integrate, Resell, or Build.</DialogDescription>
+                                    </div>
+                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Solution Partner')} className="p-6 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Contact Name</label>
+                                                <Input required name="name" placeholder="Jane Smith" onChange={handleInputChange} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Agency / Company</label>
+                                                <Input required name="org" placeholder="Tech Solutions Ltd" onChange={handleInputChange} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Email Address</label>
+                                                <Input required type="email" name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium">Phone</label>
+                                                <Input name="phone" placeholder="+256..." onChange={handleInputChange} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Technical Capabilities / Proposal</label>
+                                            <textarea 
+                                                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                name="details" 
+                                                placeholder="We want to integrate BBU1 for our retail clients..." 
+                                                required
+                                                onChange={handleInputChange}
+                                            />
+                                        </div>
+                                        <Button type="submit" className="w-full h-11 text-lg">Submit Proposal via Email</Button>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </CardContent>
+                    </Card>
+
+                </div>
+            </div>
+        </AnimatedSection>
+    );
+};
+
 // --- HomePage Component ---
 export default function HomePage() {
     const rotatingTexts = ["We don't pass through your business. We are part of it.", "From startup to enterprise.", "For every ambition."];
@@ -1713,6 +1957,9 @@ export default function HomePage() {
                 </AnimatedSection>
                 
                 <DynamicPricingSection />
+
+                {/* --- PARTNER WITH US SECTION --- */}
+                <PartnerWithUsSection />
 
                 <AnimatedSection className="text-center">
                     <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden">
