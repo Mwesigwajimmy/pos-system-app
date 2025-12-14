@@ -1491,7 +1491,7 @@ const DynamicPricingSection = () => {
                     
                     <div className="mt-16 text-center">
                         <p className="text-slate-500 text-sm">
-                            * Prices exclude local VAT/GST where applicable. 
+                             PLEASE NOTE: Prices exclude local  VAT/GST where applicable. 
                             Need On-Premise hosting or White-Label solutions? <a href={siteConfig.contactInfo.whatsappLink} className="text-blue-400 hover:underline font-medium">Contact Enterprise Sales</a>.
                         </p>
                     </div>
@@ -1560,7 +1560,7 @@ const PartnerWithUsSection = () => {
                     <span className="text-sm font-bold tracking-widest text-primary uppercase mb-2 block">Ecosystem Growth</span>
                     <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">Partner with BBU1</h2>
                     <p className="text-lg text-muted-foreground">
-                        We are building the operating system for the future of African commerce. 
+                        We are building the operating system for the future of your smart business commerce. 
                         Whether you want to earn, invest, or build—there is a place for you in our ecosystem.
                     </p>
                 </div>
@@ -1631,7 +1631,7 @@ const PartnerWithUsSection = () => {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-sm text-muted-foreground leading-relaxed">
-                                Own a piece of the infrastructure powering African commerce. Access our data room and view our growth metrics.
+                                Own a piece of the infrastructure powering global commerce. Access our data room and view our growth metrics.
                             </p>
                             <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>High-Growth SaaS Metrics</span></li>
@@ -1782,7 +1782,7 @@ const PartnerWithUsSection = () => {
 
 // --- HomePage Component ---
 export default function HomePage() {
-    const rotatingTexts = ["We don't pass through your business. We are part of it.", "From startup to enterprise.", "For every ambition."];
+    const rotatingTexts = ["We are part of your business.", "From startup to enterprise.", "For every ambition."];
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers using BBU1 on a tablet." },
