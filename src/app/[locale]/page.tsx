@@ -38,26 +38,24 @@ interface FeatureDetail {
     backgroundImage: string;
 }
 
-// Updated IndustryItem with full details
 interface IndustryItem { 
     name: string; 
     icon: LucideIcon; 
     description: string; 
-    fullDescription: string; // Detailed description for dialog
-    keyFeatures: string[]; // List of specific features/benefits
+    fullDescription: string; 
+    keyFeatures: string[]; 
     category: 'Common' | 'Trades & Services' | 'Specialized' | 'Creative & Digital'; 
     backgroundImage: string; 
 }
 
 interface FaqItem { q: string; a: ReactNode; }
 
-// Updated PlatformPillar with full details
 interface PlatformPillar { 
     icon: LucideIcon; 
     title: string; 
     description: string; 
-    fullDescription: string; // Detailed description for dialog
-    technicalSpecs: string[]; // Technical specifications list
+    fullDescription: string; 
+    technicalSpecs: string[]; 
     backgroundImage: string; 
 }
 
@@ -199,7 +197,7 @@ const siteConfig = {
         },
     ] as FeatureDetail[],
     
-    // --- UPDATED PLATFORM PILLARS ---
+    // --- PLATFORM PILLARS ---
     platformPillars: [
         { 
             icon: TrendingUp, 
@@ -281,7 +279,7 @@ const siteConfig = {
         },
     ] as PlatformPillar[],
 
-    // --- UPDATED INDUSTRY ITEMS ---
+    // --- INDUSTRY ITEMS ---
     industryItems: [
         // --- Common ---
         { 
@@ -505,7 +503,7 @@ const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) 
     </AnimatePresence>
 );
 
-// --- FullScreenDialog Component (FIXED FOR ALL DEVICES) ---
+// --- FullScreenDialog Component ---
 interface FullScreenDialogProps {
     children: ReactNode;
     title: string;
@@ -1080,7 +1078,7 @@ const AdvancedChatWidget = () => {
     );
 };
 
-// --- REAL-TIME PRICING CONFIGURATION ---
+// --- REAL-TIME PRICING CONFIGURATION (UPDATED FOR EUROPE & WORLD) ---
 
 // Real-time currency rates (Approximate to base USD)
 const GEO_CURRENCIES: Record<string, { code: string; symbol: string; rate: number }> = {
@@ -1093,12 +1091,15 @@ const GEO_CURRENCIES: Record<string, { code: string; symbol: string; rate: numbe
     'GH': { code: 'GHS', symbol: 'GH₵', rate: 16 },    // Ghana
     'ZM': { code: 'ZMW', symbol: 'ZK', rate: 27 },     // Zambia
     'GB': { code: 'GBP', symbol: '£', rate: 0.79 },    // UK
-    'EU': { code: 'EUR', symbol: '€', rate: 0.92 },    // Europe
+    'EU': { code: 'EUR', symbol: '€', rate: 0.92 },    // Europe (Base)
     'US': { code: 'USD', symbol: '$', rate: 1 },       // USA
     'DEFAULT': { code: 'USD', symbol: '$', rate: 1 }   // Rest of World
 };
 
-// Full System Capabilities (Transcribed from your Sidebars)
+// Major Eurozone countries to map to 'EU' currency
+const EUROZONE_COUNTRIES = ['AT', 'BE', 'HR', 'CY', 'EE', 'FI', 'FR', 'DE', 'GR', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PT', 'SK', 'SI', 'ES'];
+
+// Full System Capabilities
 const ALL_INCLUDED_MODULES = [
     {
         title: "Finance & Accounting",
@@ -1199,7 +1200,16 @@ const DynamicPricingSection = () => {
                 const response = await fetch('https://ipapi.co/json/');
                 if (response.ok) {
                     const data = await response.json();
-                    const detectedCurrency = GEO_CURRENCIES[data.country_code] || GEO_CURRENCIES['DEFAULT'];
+                    const countryCode = data.country_code;
+                    
+                    // --- OPTIMIZED DETECTION LOGIC ---
+                    let detectedCurrency;
+                    if (EUROZONE_COUNTRIES.includes(countryCode)) {
+                        detectedCurrency = GEO_CURRENCIES['EU'];
+                    } else {
+                        detectedCurrency = GEO_CURRENCIES[countryCode] || GEO_CURRENCIES['DEFAULT'];
+                    }
+                    
                     setCurrency(detectedCurrency);
                 }
             } catch (error) {
@@ -1217,11 +1227,11 @@ const DynamicPricingSection = () => {
         
         // Smart Rounding for cleaner numbers
         if (currency.code === 'UGX' || currency.code === 'TZS' || currency.code === 'RWF') {
-            price = Math.floor(price / 1000) * 1000; // Round to nearest 1000
+            price = Math.floor(price / 1000) * 1000; // Round to nearest 1000 for high-denom currencies
         } else if (currency.code === 'NGN' || currency.code === 'KES') {
             price = Math.floor(price / 100) * 100; // Round to nearest 100
         } else {
-            price = Math.floor(price); // Round to nearest integer
+            price = Math.floor(price); // Round to nearest integer for USD, EUR, GBP
         }
 
         return new Intl.NumberFormat('en-US').format(price);
@@ -1312,7 +1322,7 @@ const DynamicPricingSection = () => {
                     ))}
                 </div>
 
-                {/* DETAILED FEATURES LIST (Based on your Sidebar) */}
+                {/* DETAILED FEATURES LIST */}
                 <div className="max-w-6xl mx-auto mt-16 pt-16 border-t">
                     <h3 className="text-2xl font-bold text-center mb-10">Every Plan Includes Every Module</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
