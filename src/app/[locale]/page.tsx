@@ -1501,7 +1501,7 @@ const DynamicPricingSection = () => {
     );
 };
 
-// --- PARTNER WITH US SECTION (Instant & Real Data) ---
+// --- PARTNER WITH US SECTION (Fixed: Direct Action Buttons) ---
 const PartnerWithUsSection = () => {
     const [activeTab, setActiveTab] = useState<'affiliate' | 'investor' | 'solution'>('affiliate');
     
@@ -1513,14 +1513,17 @@ const PartnerWithUsSection = () => {
     };
 
     // Handler for Email Partners (Investor & Solution)
-    const handleEmailSubmit = (e: React.FormEvent, type: string) => {
-        e.preventDefault();
+    const handleEmailTrigger = (type: string) => {
+        // 1. Validate - simple check to ensure they typed something
+        if (!formData.name || !formData.email) {
+            alert("Please fill in your Name and Email.");
+            return;
+        }
+
+        // 2. Prepare Data
+        const subject = `BBU1 ${type} Partnership Inquiry: ${formData.name}`;
         
-        // 1. Capture Real Data Immediately
-        const subject = encodeURIComponent(`BBU1 ${type} Partnership Inquiry: ${formData.name}`);
-        
-        // 2. Format Body with Real Line Breaks for Professional Email Clients
-        const body = encodeURIComponent(
+        const body = 
             `Dear BBU1 Team,\n\n` +
             `I am submitting a partnership inquiry with the following details:\n\n` +
             `--- CONTACT DETAILS ---\n` +
@@ -1530,11 +1533,12 @@ const PartnerWithUsSection = () => {
             `Phone: ${formData.phone}\n\n` +
             `--- PROPOSAL / MESSAGE ---\n` +
             `${formData.details}\n\n` +
-            `Looking forward to your response.`
-        );
+            `Looking forward to your response.`;
         
-        // 3. Instant Trigger (No Simulation)
-        window.location.href = `mailto:mwesigwajimmy123@gmail.com?subject=${subject}&body=${body}`;
+        // 3. Force Open Email Client
+        // We use window.open for better compatibility in Modals, 
+        // targeting '_self' acts just like a standard link click.
+        window.open(`mailto:mwesigwajimmy123@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
     };
 
     // Handler for WhatsApp Affiliate
@@ -1647,21 +1651,22 @@ const PartnerWithUsSection = () => {
                                         <DialogTitle className="text-2xl font-bold text-white">Investor Inquiry</DialogTitle>
                                         <DialogDescription className="text-green-100">Connect with our founders directly.</DialogDescription>
                                     </div>
-                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Investor')} className="p-6 space-y-4 bg-background">
+                                    {/* CHANGED: Removed form tag to prevent submit blocking, using simple div container */}
+                                    <div className="p-6 space-y-4 bg-background">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Full Name</label>
-                                                <Input required name="name" value={formData.name} placeholder="John Doe" onChange={handleInputChange} className="bg-background border-input" />
+                                                <Input name="name" value={formData.name} placeholder="John Doe" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Firm / Entity</label>
-                                                <Input required name="org" value={formData.org} placeholder="Capital Partners Ltd" onChange={handleInputChange} className="bg-background border-input" />
+                                                <Input name="org" value={formData.org} placeholder="Capital Partners Ltd" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Email Address</label>
-                                                <Input required type="email" value={formData.email} name="email" placeholder="john@example.com" onChange={handleInputChange} className="bg-background border-input" />
+                                                <Input type="email" value={formData.email} name="email" placeholder="john@example.com" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Phone / WhatsApp</label>
@@ -1675,14 +1680,18 @@ const PartnerWithUsSection = () => {
                                                 name="details"
                                                 value={formData.details}
                                                 placeholder="We are interested in Series A opportunities..." 
-                                                required
                                                 onChange={handleInputChange}
                                             />
                                         </div>
-                                        <Button type="submit" className="w-full h-11 text-lg bg-green-600 hover:bg-green-700 font-semibold shadow-md active:scale-[0.98] transition-all">
+                                        {/* CHANGED: Button type="button" and onClick={handleEmailTrigger} */}
+                                        <Button 
+                                            type="button" 
+                                            onClick={() => handleEmailTrigger('Investor')} 
+                                            className="w-full h-11 text-lg bg-green-600 hover:bg-green-700 font-semibold shadow-md active:scale-[0.98] transition-all"
+                                        >
                                             Send Inquiry via Email
                                         </Button>
-                                    </form>
+                                    </div>
                                 </DialogContent>
                             </Dialog>
                         </CardContent>
@@ -1719,21 +1728,22 @@ const PartnerWithUsSection = () => {
                                         <DialogTitle className="text-2xl font-bold text-white">Solution Partnership</DialogTitle>
                                         <DialogDescription className="text-purple-100">Integrate, Resell, or Build.</DialogDescription>
                                     </div>
-                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Solution Partner')} className="p-6 space-y-4 bg-background">
+                                    {/* CHANGED: Removed form tag to prevent submit blocking, using simple div container */}
+                                    <div className="p-6 space-y-4 bg-background">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Contact Name</label>
-                                                <Input required name="name" value={formData.name} placeholder="Jane Smith" onChange={handleInputChange} className="bg-background border-input" />
+                                                <Input name="name" value={formData.name} placeholder="Jane Smith" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Agency / Company</label>
-                                                <Input required name="org" value={formData.org} placeholder="Tech Solutions Ltd" onChange={handleInputChange} className="bg-background border-input" />
+                                                <Input name="org" value={formData.org} placeholder="Tech Solutions Ltd" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Email Address</label>
-                                                <Input required type="email" value={formData.email} name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} className="bg-background border-input" />
+                                                <Input type="email" value={formData.email} name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Phone</label>
@@ -1747,14 +1757,18 @@ const PartnerWithUsSection = () => {
                                                 name="details" 
                                                 value={formData.details}
                                                 placeholder="We want to integrate BBU1 for our retail clients..." 
-                                                required
                                                 onChange={handleInputChange}
                                             />
                                         </div>
-                                        <Button type="submit" className="w-full h-11 text-lg bg-purple-600 hover:bg-purple-700 font-semibold shadow-md active:scale-[0.98] transition-all">
+                                        {/* CHANGED: Button type="button" and onClick={handleEmailTrigger} */}
+                                        <Button 
+                                            type="button" 
+                                            onClick={() => handleEmailTrigger('Solution Partner')} 
+                                            className="w-full h-11 text-lg bg-purple-600 hover:bg-purple-700 font-semibold shadow-md active:scale-[0.98] transition-all"
+                                        >
                                             Submit Proposal via Email
                                         </Button>
-                                    </form>
+                                    </div>
                                 </DialogContent>
                             </Dialog>
                         </CardContent>
