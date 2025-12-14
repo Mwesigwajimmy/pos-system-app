@@ -1501,7 +1501,7 @@ const DynamicPricingSection = () => {
     );
 };
 
-// --- PARTNER WITH US SECTION (NEW ENTERPRISE GRADE ADDITION) ---
+// --- PARTNER WITH US SECTION (Instant & Real Data) ---
 const PartnerWithUsSection = () => {
     const [activeTab, setActiveTab] = useState<'affiliate' | 'investor' | 'solution'>('affiliate');
     
@@ -1515,10 +1515,25 @@ const PartnerWithUsSection = () => {
     // Handler for Email Partners (Investor & Solution)
     const handleEmailSubmit = (e: React.FormEvent, type: string) => {
         e.preventDefault();
-        const subject = `BBU1 ${type} Partnership Inquiry: ${formData.name}`;
-        const body = `Name: ${formData.name}%0D%0AOrganization: ${formData.org}%0D%0AEmail: ${formData.email}%0D%0APhone: ${formData.phone}%0D%0A%0D%0AMessage/Details:%0D%0A${formData.details}`;
         
-        // Open Mail Client
+        // 1. Capture Real Data Immediately
+        const subject = encodeURIComponent(`BBU1 ${type} Partnership Inquiry: ${formData.name}`);
+        
+        // 2. Format Body with Real Line Breaks for Professional Email Clients
+        const body = encodeURIComponent(
+            `Dear BBU1 Team,\n\n` +
+            `I am submitting a partnership inquiry with the following details:\n\n` +
+            `--- CONTACT DETAILS ---\n` +
+            `Name: ${formData.name}\n` +
+            `Organization: ${formData.org}\n` +
+            `Email: ${formData.email}\n` +
+            `Phone: ${formData.phone}\n\n` +
+            `--- PROPOSAL / MESSAGE ---\n` +
+            `${formData.details}\n\n` +
+            `Looking forward to your response.`
+        );
+        
+        // 3. Instant Trigger (No Simulation)
         window.location.href = `mailto:mwesigwajimmy123@gmail.com?subject=${subject}&body=${body}`;
     };
 
@@ -1549,7 +1564,7 @@ const PartnerWithUsSection = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
                     
                     {/* 1. Affiliate Card */}
-                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-500">
+                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-500 bg-white dark:bg-slate-950">
                         <CardHeader>
                             <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
                                 <Megaphone className="h-7 w-7" />
@@ -1561,7 +1576,7 @@ const PartnerWithUsSection = () => {
                             <p className="text-sm text-muted-foreground leading-relaxed">
                                 Monetize your network. Refer businesses to BBU1 and earn recurring commissions for the lifetime of the customer.
                             </p>
-                            <ul className="space-y-2 text-sm">
+                            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Up to 20% Recurring Commission</span></li>
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Marketing Assets Provided</span></li>
                             </ul>
@@ -1599,7 +1614,7 @@ const PartnerWithUsSection = () => {
                     </Card>
 
                     {/* 2. Investor Card */}
-                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500">
+                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500 bg-white dark:bg-slate-950">
                         <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm">
                             OPEN ROUND
                         </div>
@@ -1614,7 +1629,7 @@ const PartnerWithUsSection = () => {
                             <p className="text-sm text-muted-foreground leading-relaxed">
                                 Own a piece of the infrastructure powering African commerce. Access our data room and view our growth metrics.
                             </p>
-                            <ul className="space-y-2 text-sm">
+                            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>High-Growth SaaS Metrics</span></li>
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Scalable Tech Stack</span></li>
                             </ul>
@@ -1622,7 +1637,7 @@ const PartnerWithUsSection = () => {
                             {/* Dialog Trigger */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button className="w-full mt-4" variant="outline" onClick={() => setActiveTab('investor')}>
+                                    <Button className="w-full mt-4" variant="outline" onClick={() => { setActiveTab('investor'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); }}>
                                         Investor Relations <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
@@ -1632,38 +1647,41 @@ const PartnerWithUsSection = () => {
                                         <DialogTitle className="text-2xl font-bold text-white">Investor Inquiry</DialogTitle>
                                         <DialogDescription className="text-green-100">Connect with our founders directly.</DialogDescription>
                                     </div>
-                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Investor')} className="p-6 space-y-4">
+                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Investor')} className="p-6 space-y-4 bg-background">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Full Name</label>
-                                                <Input required name="name" placeholder="John Doe" onChange={handleInputChange} />
+                                                <Input required name="name" value={formData.name} placeholder="John Doe" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Firm / Entity</label>
-                                                <Input required name="org" placeholder="Capital Partners Ltd" onChange={handleInputChange} />
+                                                <Input required name="org" value={formData.org} placeholder="Capital Partners Ltd" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Email Address</label>
-                                                <Input required type="email" name="email" placeholder="john@example.com" onChange={handleInputChange} />
+                                                <Input required type="email" value={formData.email} name="email" placeholder="john@example.com" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Phone / WhatsApp</label>
-                                                <Input name="phone" placeholder="+256..." onChange={handleInputChange} />
+                                                <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Investment Interest / Details</label>
                                             <textarea 
-                                                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                name="details" 
+                                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                                                name="details"
+                                                value={formData.details}
                                                 placeholder="We are interested in Series A opportunities..." 
                                                 required
                                                 onChange={handleInputChange}
                                             />
                                         </div>
-                                        <Button type="submit" className="w-full h-11 text-lg">Send Inquiry via Email</Button>
+                                        <Button type="submit" className="w-full h-11 text-lg bg-green-600 hover:bg-green-700 font-semibold shadow-md active:scale-[0.98] transition-all">
+                                            Send Inquiry via Email
+                                        </Button>
                                     </form>
                                 </DialogContent>
                             </Dialog>
@@ -1671,7 +1689,7 @@ const PartnerWithUsSection = () => {
                     </Card>
 
                     {/* 3. Solution Partner Card */}
-                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500">
+                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500 bg-white dark:bg-slate-950">
                         <CardHeader>
                             <div className="h-14 w-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
                                 <GitBranch className="h-7 w-7" />
@@ -1683,7 +1701,7 @@ const PartnerWithUsSection = () => {
                             <p className="text-sm text-muted-foreground leading-relaxed">
                                 Build on top of BBU1. Implement our OS for your clients, build custom integrations, or white-label our technology.
                             </p>
-                            <ul className="space-y-2 text-sm">
+                            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Developer API Access</span></li>
                                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/> <span>Implementation Revenue Share</span></li>
                             </ul>
@@ -1691,7 +1709,7 @@ const PartnerWithUsSection = () => {
                             {/* Dialog Trigger */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button className="w-full mt-4" variant="outline" onClick={() => setActiveTab('solution')}>
+                                    <Button className="w-full mt-4" variant="outline" onClick={() => { setActiveTab('solution'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); }}>
                                         Build With Us <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
@@ -1701,38 +1719,41 @@ const PartnerWithUsSection = () => {
                                         <DialogTitle className="text-2xl font-bold text-white">Solution Partnership</DialogTitle>
                                         <DialogDescription className="text-purple-100">Integrate, Resell, or Build.</DialogDescription>
                                     </div>
-                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Solution Partner')} className="p-6 space-y-4">
+                                    <form onSubmit={(e) => handleEmailSubmit(e, 'Solution Partner')} className="p-6 space-y-4 bg-background">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Contact Name</label>
-                                                <Input required name="name" placeholder="Jane Smith" onChange={handleInputChange} />
+                                                <Input required name="name" value={formData.name} placeholder="Jane Smith" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Agency / Company</label>
-                                                <Input required name="org" placeholder="Tech Solutions Ltd" onChange={handleInputChange} />
+                                                <Input required name="org" value={formData.org} placeholder="Tech Solutions Ltd" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Email Address</label>
-                                                <Input required type="email" name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} />
+                                                <Input required type="email" value={formData.email} name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-medium">Phone</label>
-                                                <Input name="phone" placeholder="+256..." onChange={handleInputChange} />
+                                                <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Technical Capabilities / Proposal</label>
                                             <textarea 
-                                                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
                                                 name="details" 
+                                                value={formData.details}
                                                 placeholder="We want to integrate BBU1 for our retail clients..." 
                                                 required
                                                 onChange={handleInputChange}
                                             />
                                         </div>
-                                        <Button type="submit" className="w-full h-11 text-lg">Submit Proposal via Email</Button>
+                                        <Button type="submit" className="w-full h-11 text-lg bg-purple-600 hover:bg-purple-700 font-semibold shadow-md active:scale-[0.98] transition-all">
+                                            Submit Proposal via Email
+                                        </Button>
                                     </form>
                                 </DialogContent>
                             </Dialog>
