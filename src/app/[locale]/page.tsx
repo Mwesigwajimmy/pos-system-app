@@ -1078,7 +1078,7 @@ const AdvancedChatWidget = () => {
     );
 };
 
-// --- REAL-TIME PRICING CONFIGURATION (UPDATED FOR EUROPE & WORLD) ---
+// --- REAL-TIME PRICING CONFIGURATION (UPDATED FOR EUROPE, CHINA, WORLD) ---
 
 // Real-time currency rates (Approximate to base USD)
 const GEO_CURRENCIES: Record<string, { code: string; symbol: string; rate: number }> = {
@@ -1092,6 +1092,8 @@ const GEO_CURRENCIES: Record<string, { code: string; symbol: string; rate: numbe
     'ZM': { code: 'ZMW', symbol: 'ZK', rate: 27 },     // Zambia
     'GB': { code: 'GBP', symbol: '£', rate: 0.79 },    // UK
     'EU': { code: 'EUR', symbol: '€', rate: 0.92 },    // Europe (Base)
+    'CN': { code: 'CNY', symbol: '¥', rate: 7.25 },    // China
+    'AE': { code: 'AED', symbol: 'Dh', rate: 3.67 },   // UAE/Dubai
     'US': { code: 'USD', symbol: '$', rate: 1 },       // USA
     'DEFAULT': { code: 'USD', symbol: '$', rate: 1 }   // Rest of World
 };
@@ -1322,25 +1324,95 @@ const DynamicPricingSection = () => {
                     ))}
                 </div>
 
-                {/* DETAILED FEATURES LIST */}
-                <div className="max-w-6xl mx-auto mt-16 pt-16 border-t">
-                    <h3 className="text-2xl font-bold text-center mb-10">Every Plan Includes Every Module</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {ALL_INCLUDED_MODULES.map((module, i) => (
-                            <div key={i} className="space-y-4">
-                                <h4 className="font-bold text-lg flex items-center gap-2 text-primary">
-                                    <BadgeCheck className="h-5 w-5" /> {module.title}
-                                </h4>
-                                <ul className="space-y-2">
-                                    {module.features.map((feature, j) => (
-                                        <li key={j} className="text-sm text-muted-foreground flex items-start gap-2">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-primary/40 mt-1.5 shrink-0" />
-                                            {feature}
-                                        </li>
-                                    ))}
-                                </ul>
+                {/* --- ENTERPRISE GRADE ALL-INCLUSIVE SECTION --- */}
+                <div className="max-w-7xl mx-auto mt-24 pt-16 border-t relative">
+                    
+                    {/* Background decoration */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
+
+                    <div className="text-center mb-12">
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4 border border-primary/20">
+                            <Sparkles className="h-3 w-3" /> Unlocked Potential
+                        </span>
+                        <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+                            The "No-Addons" Promise
+                        </h3>
+                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            Stop paying for "Extra Modules." With BBU1, the moment you sign up, 
+                            <span className="text-foreground font-semibold"> every single enterprise engine is unlocked</span> tailored to your industry.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {ALL_INCLUDED_MODULES.map((module, i) => {
+                            // Dynamic Icon Mapping based on Title
+                            let ModuleIcon = BadgeCheck;
+                            if (module.title.includes("Finance")) ModuleIcon = Landmark;
+                            if (module.title.includes("Human")) ModuleIcon = Users;
+                            if (module.title.includes("Inventory")) ModuleIcon = Warehouse;
+                            if (module.title.includes("Sales")) ModuleIcon = Handshake;
+                            if (module.title.includes("Specialized")) ModuleIcon = Briefcase;
+
+                            return (
+                                <motion.div 
+                                    key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="group relative overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/40"
+                                >
+                                    {/* Subtle gradient background on hover */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                                    <div className="p-6 relative z-10 h-full flex flex-col">
+                                        <div className="flex items-center gap-3 mb-5">
+                                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
+                                                <ModuleIcon className="h-6 w-6" />
+                                            </div>
+                                            <h4 className="font-bold text-xl leading-tight">
+                                                {module.title}
+                                            </h4>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 content-start">
+                                            {module.features.map((feature, j) => (
+                                                <span 
+                                                    key={j} 
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 border border-border text-[13px] font-medium text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-foreground"
+                                                >
+                                                    <CheckCircle className="h-3 w-3 text-green-500/80" />
+                                                    {feature}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Trust Banner at bottom of features */}
+                    <div className="mt-12 p-6 bg-muted/30 rounded-xl border border-dashed border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center shrink-0">
+                                <ShieldCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
                             </div>
-                        ))}
+                            <div>
+                                <h5 className="font-bold text-lg">Enterprise Security Included</h5>
+                                <p className="text-sm text-muted-foreground">We don't charge extra for security. SSO, 2FA, and Audit Logs are standard.</p>
+                            </div>
+                        </div>
+                        <div className="h-px w-full md:w-px md:h-12 bg-border" />
+                         <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                                <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <h5 className="font-bold text-lg">Aura AI Built-In</h5>
+                                <p className="text-sm text-muted-foreground">Artificial Intelligence is not an upgrade. It's the core of the system.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
