@@ -16,9 +16,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
-import { createWorkOrder, FormState } from '@/lib/actions/work-orders'; // Import Server Action
+import { createWorkOrder, FormState } from '@/lib/actions/work-orders';
 
 interface Customer { id: string; name: string; }
+
+// FIX 1: Define Tenant Interface
+interface TenantContext {
+    tenantId: string;
+    currency: string;
+}
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -29,7 +35,8 @@ function SubmitButton() {
     );
 }
 
-export function CreateWorkOrderModal() {
+// FIX 2: Accept 'tenant' prop
+export function CreateWorkOrderModal({ tenant }: { tenant: TenantContext }) {
     const router = useRouter();
     const { toast } = useToast();
     const supabase = createClient();
@@ -39,15 +46,12 @@ export function CreateWorkOrderModal() {
     const [selectedCustomer, setSelectedCustomer] = useState('');
     const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date());
     
-    // Server Action State Hook
     const initialState: FormState = { success: false, message: '', errors: null };
     const [formState, formAction] = useFormState(createWorkOrder, initialState);
 
-    // Fetch customers dynamically on modal open
     useEffect(() => {
         if (isOpen) {
             const fetchCustomers = async () => {
-                // Enterprise: This uses RLS policies on the 'customers' table to ensure data isolation
                 const { data, error } = await supabase
                     .from('customers')
                     .select('id, name')
@@ -60,12 +64,10 @@ export function CreateWorkOrderModal() {
         }
     }, [isOpen, supabase]);
     
-    // Handle form submission response
     useEffect(() => {
         if (formState.success) {
             toast({ title: "Success!", description: formState.message });
             setIsOpen(false);
-            // Reset form locally if needed
             setSelectedCustomer('');
             router.refresh(); 
         } else if (formState.message && !formState.errors) {
@@ -86,6 +88,12 @@ export function CreateWorkOrderModal() {
                     </DialogHeader>
                     
                     <div className="grid gap-4 py-6">
+                        {/* 
+                           FIX 3: Pass tenant_id securely via hidden input 
+                           This ensures the Server Action assigns the WO to the correct organization.
+                        */}
+                        <input type="hidden" name="tenant_id" value={tenant.tenantId} />
+
                         {/* Summary */}
                         <div className="space-y-1">
                             <Label htmlFor="summary">Summary / Title</Label>

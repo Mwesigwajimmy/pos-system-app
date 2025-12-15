@@ -13,7 +13,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { createEquipment, FormState } from '@/lib/actions/equipment'; // Import from new action file
+import { createEquipment, FormState } from '@/lib/actions/equipment';
+
+// FIX 1: Define the Interface for the Props
+interface TenantContext {
+    tenantId: string;
+    currency: string;
+}
+
+interface CreateEquipmentModalProps {
+    tenant: TenantContext;
+}
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -24,7 +34,8 @@ function SubmitButton() {
     );
 }
 
-export function CreateEquipmentModal() {
+// FIX 2: Accept the props in the function signature
+export function CreateEquipmentModal({ tenant }: CreateEquipmentModalProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
@@ -38,7 +49,7 @@ export function CreateEquipmentModal() {
             toast({ title: "Success!", description: formState.message });
             setIsOpen(false);
             setNextMaintenanceDate(undefined);
-            router.refresh(); // Refresh Server Components to show new data
+            router.refresh(); 
         } else if (formState.message && !formState.errors) {
             toast({ title: "Error", description: formState.message, variant: "destructive" });
         }
@@ -57,6 +68,13 @@ export function CreateEquipmentModal() {
                     </DialogHeader>
                     
                     <div className="grid gap-4 py-6">
+                        {/* 
+                           FIX 3: Enterprise Security 
+                           Pass the tenant_id as a hidden input so the Server Action knows 
+                           which organization this equipment belongs to.
+                        */}
+                        <input type="hidden" name="tenant_id" value={tenant.tenantId} />
+
                         {/* Name Field */}
                         <div className="space-y-1">
                             <Label htmlFor="name">Equipment Name</Label>

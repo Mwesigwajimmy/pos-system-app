@@ -14,15 +14,20 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { ArrowUpDown, Eye, Search, Filter } from "lucide-react";
+import { ArrowUpDown, Eye, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { WorkOrder, WorkOrderStatus } from "@/lib/actions/work-orders"; // Import shared types
+import { WorkOrder, WorkOrderStatus } from "@/lib/actions/work-orders";
 
-// Status Badge Styling Helper
+// FIX 1: Define Tenant Interface
+interface TenantContext {
+    tenantId: string;
+    currency: string;
+}
+
 const getStatusClasses = (status: WorkOrderStatus): string => {
     switch (status) {
         case 'completed': return 'bg-green-100 text-green-700 border-green-200 hover:bg-green-100';
@@ -97,7 +102,8 @@ export const columns: ColumnDef<WorkOrder>[] = [
     },
 ];
 
-export function WorkOrderList({ workOrders }: { workOrders: WorkOrder[] }) {
+// FIX 2: Accept 'tenant' prop in component signature
+export function WorkOrderList({ workOrders, tenant }: { workOrders: WorkOrder[], tenant: TenantContext }) {
     const [sorting, setSorting] = React.useState<SortingState>([{ id: 'scheduled_at', desc: true }]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
 
@@ -126,7 +132,6 @@ export function WorkOrderList({ workOrders }: { workOrders: WorkOrder[] }) {
                             className="pl-8 h-9"
                         />
                     </div>
-                    {/* Add more filter components here if needed */}
                 </div>
                 <div className="rounded-md border">
                     <Table>
