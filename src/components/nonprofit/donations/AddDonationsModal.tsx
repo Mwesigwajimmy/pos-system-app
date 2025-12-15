@@ -4,13 +4,15 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
+  DialogDescription,
   DialogFooter,
-  DialogDescription
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { 
   Form, 
@@ -32,11 +34,23 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
-import { Loader2, DollarSign, CreditCard } from 'lucide-react';
+import { Loader2, DollarSign, CreditCard, Plus } from 'lucide-react';
 
-// --- Validation Schema ---
+// --- TYPES ---
+interface TenantContext {
+  tenantId: string;
+  currency: string;
+}
+
+interface AddDonationsModalProps {
+  tenant: TenantContext;
+  userId?: string;
+}
+
+// --- VALIDATION SCHEMA ---
 const donationSchema = z.object({
   donorId: z.string().min(1, "Please select a donor"),
+  // z.coerce handles string->number conversion automatically
   amount: z.coerce.number().min(1, "Amount must be greater than 0"),
   currency: z.string().default("USD"),
   method: z.enum(["CARD", "CASH", "BANK_TRANSFER", "MOBILE_MONEY", "CHECK"]),
@@ -46,68 +60,73 @@ const donationSchema = z.object({
 
 type DonationFormValues = z.infer<typeof donationSchema>;
 
-// --- Helper: Fetch Donors for Select ---
+// --- DATA FETCHING HELPERS ---
 async function getDonors(tenantId: string) {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('donors')
-    .select('id, name')
+    .select('id, first_name, last_name, organization_name')
     .eq('tenant_id', tenantId)
-    .order('name');
-  return data || [];
+    .eq('status', 'Active')
+    .order('last_name');
+  
+  if (error) console.error("Error fetching donors:", error);
+  
+  return (data || []).map(d => ({
+    id: d.id,
+    name: d.organization_name || `${d.first_name} ${d.last_name}`.trim()
+  }));
 }
 
 async function getCampaigns(tenantId: string) {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('communication_campaigns')
     .select('id, name')
     .eq('tenant_id', tenantId)
-    .eq('status', 'Scheduled'); 
+    .eq('status', 'Scheduled');
+  
+  if (error) console.error("Error fetching campaigns:", error);
   return data || [];
 }
 
-export function AddDonationModal({ 
-  open, 
-  onClose, 
-  tenantId, 
-  currentUser, 
-  onComplete 
-}: { 
-  open: boolean; 
-  onClose: () => void; 
-  tenantId: string; 
-  currentUser: string; 
-  onComplete: () => void; 
-}) {
+// --- COMPONENT ---
+export default function AddDonationsModal({ tenant, userId }: AddDonationsModalProps) {
+  const [open, setOpen] = React.useState(false);
   const [donors, setDonors] = React.useState<{id: string, name: string}[]>([]);
   const [campaigns, setCampaigns] = React.useState<{id: string, name: string}[]>([]);
-  const [isLoadingData, setIsLoadingData] = React.useState(true);
+  const [isLoadingData, setIsLoadingData] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const router = useRouter();
 
+  // Reset form and load data when modal opens
   React.useEffect(() => {
     if (open) {
+      setIsLoadingData(true);
       const loadData = async () => {
         try {
-          const [d, c] = await Promise.all([getDonors(tenantId), getCampaigns(tenantId)]);
+          const [d, c] = await Promise.all([
+            getDonors(tenant.tenantId), 
+            getCampaigns(tenant.tenantId)
+          ]);
           setDonors(d);
           setCampaigns(c);
         } catch (error) {
-          console.error("Failed to load form data", error);
+          toast.error("Failed to load donor data");
         } finally {
           setIsLoadingData(false);
         }
       };
       loadData();
     }
-  }, [open, tenantId]);
+  }, [open, tenant.tenantId]);
 
   const form = useForm({
     resolver: zodResolver(donationSchema),
     defaultValues: {
       amount: 0,
-      currency: 'USD',
-      method: 'CARD',
+      currency: tenant.currency || 'USD',
+      method: 'CARD' as const,
       notes: '',
       donorId: '',
       campaignId: 'none' 
@@ -116,9 +135,16 @@ export function AddDonationModal({
 
   const onSubmit = async (data: DonationFormValues) => {
     setIsSaving(true);
+    const supabase = createClient();
+
     try {
-      const db = createClient();
-      const { error } = await db.from("donations").insert([{
+      let creatorId = userId;
+      if (!creatorId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        creatorId = user?.id;
+      }
+
+      const { error } = await supabase.from("donations").insert([{
         donor_id: data.donorId, 
         amount: data.amount, 
         currency: data.currency, 
@@ -126,17 +152,18 @@ export function AddDonationModal({
         campaign_id: data.campaignId === 'none' ? null : data.campaignId,
         date: new Date().toISOString(),
         notes: data.notes, 
-        created_by: currentUser, 
-        tenant_id: tenantId
+        created_by: creatorId, 
+        tenant_id: tenant.tenantId
       }]);
 
       if (error) throw error;
 
       toast.success("Donation recorded successfully!");
       form.reset();
-      onComplete();
-      onClose();
+      setOpen(false);
+      router.refresh(); 
     } catch (e: any) { 
+      console.error(e);
       toast.error(e.message || "Failed to record donation"); 
     } finally {
       setIsSaving(false);
@@ -144,7 +171,12 @@ export function AddDonationModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="w-4 h-4 mr-2" /> Record Donation
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -152,27 +184,29 @@ export function AddDonationModal({
             Record Donation
           </DialogTitle>
           <DialogDescription>
-            Log a new financial contribution from a donor.
+            Log a new financial contribution from a donor manually.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             
-            {/* Donor Select */}
             <FormField
               control={form.control}
               name="donorId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Donor</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value as string} disabled={isLoadingData}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingData}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={isLoadingData ? "Loading..." : "Select Donor"} />
+                        <SelectValue placeholder={isLoadingData ? "Loading donors..." : "Select Donor"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      {donors.length === 0 && !isLoadingData && (
+                        <SelectItem value="none" disabled>No donors found</SelectItem>
+                      )}
                       {donors.map(d => (
                         <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                       ))}
@@ -193,15 +227,13 @@ export function AddDonationModal({
                     <FormControl>
                       <div className="relative">
                         <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                        {/* FIX: Explicit cast to number for value */}
                         <Input 
                           type="number" 
                           className="pl-8" 
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          value={field.value as number}
-                          name={field.name}
-                          ref={field.ref}
+                          placeholder="0.00"
+                          {...field}
+                          // FIX: Explicitly cast the value to fix the "unknown is not assignable" error
+                          value={field.value as string | number}
                         />
                       </div>
                     </FormControl>
@@ -216,7 +248,7 @@ export function AddDonationModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Currency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value as string}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -225,6 +257,7 @@ export function AddDonationModal({
                       <SelectContent>
                         <SelectItem value="USD">USD ($)</SelectItem>
                         <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
                         <SelectItem value="UGX">UGX (USh)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -241,14 +274,14 @@ export function AddDonationModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Payment Method</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value as string}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="CARD">Card</SelectItem>
+                        <SelectItem value="CARD">Credit/Debit Card</SelectItem>
                         <SelectItem value="CASH">Cash</SelectItem>
                         <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
                         <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
@@ -266,14 +299,14 @@ export function AddDonationModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Campaign (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value as string} disabled={isLoadingData}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingData}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="None" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="none">General Fund</SelectItem>
                         {campaigns.map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
@@ -291,15 +324,10 @@ export function AddDonationModal({
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    {/* FIX: Explicit cast to string for value */}
                     <Textarea 
-                        placeholder="Reference number, remarks, etc." 
+                        placeholder="Reference number, check number, or remarks..." 
                         className="min-h-[80px]" 
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        value={field.value as string}
-                        name={field.name}
-                        ref={field.ref}
+                        {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -308,10 +336,10 @@ export function AddDonationModal({
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>Cancel</Button>
               <Button type="submit" disabled={isSaving || isLoadingData}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-                Add Donation
+                Record Donation
               </Button>
             </DialogFooter>
           </form>

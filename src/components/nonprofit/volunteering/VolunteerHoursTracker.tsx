@@ -9,56 +9,66 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { Clock, Plus, Loader2 } from "lucide-react";
 
-// Schema for hours
+// Schema includes volunteer_id selection now
 const hoursSchema = z.object({
+  volunteer_id: z.string().min(1, "Select a volunteer"),
   desc: z.string().min(3, "Description required"),
   hours: z.coerce.number().min(0.5, "Min 0.5 hours"),
 });
 
-interface VolunteerHour {
+interface VolunteerHourLog {
   id: string;
   desc: string;
   hours: number;
   date: string;
+  volunteers: { name: string } | null; // Join relation
 }
 
-async function fetchHours(tenantId: string, volunteerId: string) {
-  const db = createClient();
-  const { data, error } = await db
-    .from('volunteer_hours')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('volunteer_id', volunteerId)
-    .order('date', {ascending:false});
-  
-  if (error) throw error; 
-  return data as VolunteerHour[];
-}
-
-export function VolunteerHoursTracker({ tenantId, volunteerId }: { tenantId: string; volunteerId: string }) {
+// Named Export
+export function VolunteerHoursTracker({ tenantId }: { tenantId: string }) {
   const queryClient = useQueryClient();
-  const { data: hours, isLoading } = useQuery({ 
-    queryKey: ['vol-hours', tenantId, volunteerId], 
-    queryFn: () => fetchHours(tenantId, volunteerId) 
+  const db = createClient();
+
+  // 1. Fetch recent global logs for the tenant
+  const { data: logs, isLoading: loadingLogs } = useQuery({ 
+    queryKey: ['vol-hours-logs', tenantId], 
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('volunteer_hours')
+        .select('*, volunteers(name)')
+        .eq('tenant_id', tenantId)
+        .order('date', {ascending:false})
+        .limit(10);
+      if (error) throw error; 
+      return data as unknown as VolunteerHourLog[];
+    }
   });
 
-  // Removed explicit generic to allow flexible coercion types
+  // 2. Fetch volunteers for the dropdown
+  const { data: volunteers } = useQuery({
+    queryKey: ['volunteers-list', tenantId],
+    queryFn: async () => {
+      const { data } = await db.from('volunteers').select('id, name').eq('tenant_id', tenantId);
+      return data || [];
+    }
+  });
+
   const form = useForm({
     resolver: zodResolver(hoursSchema),
-    defaultValues: { desc: '', hours: 0 }
+    defaultValues: { volunteer_id: '', desc: '', hours: 0 }
   });
 
   const mutation = useMutation({
     mutationFn: async (val: z.infer<typeof hoursSchema>) => {
-      const db = createClient();
       const { error } = await db.from('volunteer_hours').insert([{ 
         tenant_id: tenantId, 
-        volunteer_id: volunteerId, 
+        volunteer_id: val.volunteer_id, 
         hours: val.hours, 
         desc: val.desc, 
         date: new Date().toISOString()
@@ -67,103 +77,130 @@ export function VolunteerHoursTracker({ tenantId, volunteerId }: { tenantId: str
     },
     onSuccess: () => {
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ['vol-hours', tenantId, volunteerId] });
+      queryClient.invalidateQueries({ queryKey: ['vol-hours-logs', tenantId] });
       toast.success("Hours logged successfully");
     },
-    onError: () => toast.error("Failed to log hours")
+    onError: (err) => toast.error("Failed to log hours: " + err.message)
   });
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-blue-600"/> Hours Tracker
         </CardTitle>
-        <CardDescription>Log and view volunteer activity history.</CardDescription>
+        <CardDescription>Log activity for volunteers and view recent history.</CardDescription>
       </CardHeader>
-      <CardContent>
-        {/* Inline Form */}
-        <div className="mb-6 p-4 bg-slate-50 rounded-lg border">
+      <CardContent className="flex-1 flex flex-col gap-6">
+        
+        {/* Log Form */}
+        <div className="p-4 bg-slate-50/80 rounded-lg border border-slate-100">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="flex gap-3 items-start">
-              <FormField 
-                control={form.control} 
-                name="desc" 
-                render={({field}) => (
-                  <FormItem className="flex-1">
-                    <FormControl>
-                      <Input 
-                        placeholder="Activity Description (e.g. Food Bank Sorting)" 
-                        {...field} 
-                        value={field.value as string} 
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs mt-1"/>
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="space-y-3">
+              <div className="flex gap-3">
+                <FormField 
+                    control={form.control} 
+                    name="volunteer_id" 
+                    render={({field}) => (
+                    <FormItem className="w-[180px]">
+                        {/* Explicit cast to string for Select value */}
+                        <Select onValueChange={field.onChange} value={field.value as string}>
+                            <FormControl>
+                                <SelectTrigger className="bg-white">
+                                    <SelectValue placeholder="Select Volunteer" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {volunteers?.map(v => (
+                                    <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage className="text-[10px]"/>
+                    </FormItem>
+                    )}
+                />
+                
+                <FormField 
+                    control={form.control} 
+                    name="desc" 
+                    render={({field}) => (
+                    <FormItem className="flex-1">
+                        <FormControl>
+                        {/* Explicit cast to string for Input value */}
+                        <Input 
+                            className="bg-white" 
+                            placeholder="Activity (e.g. Sorting)" 
+                            {...field} 
+                            value={field.value as string}
+                        />
+                        </FormControl>
+                        <FormMessage className="text-[10px]"/>
+                    </FormItem>
+                    )}
+                />
+                
+                <FormField 
+                    control={form.control} 
+                    name="hours" 
+                    render={({field}) => (
+                    <FormItem className="w-20">
+                        <FormControl>
+                        {/* Explicit cast to number and safe parsing for onChange */}
+                        <Input 
+                            className="bg-white" 
+                            type="number" 
+                            step="0.5" 
+                            placeholder="Hrs" 
+                            {...field}
+                            value={field.value as number}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                field.onChange(isNaN(val) ? 0 : val);
+                            }}
+                        />
+                        </FormControl>
+                        <FormMessage className="text-[10px]"/>
+                    </FormItem>
+                    )}
+                />
+              </div>
               
-              <FormField 
-                control={form.control} 
-                name="hours" 
-                render={({field}) => (
-                  <FormItem className="w-24">
-                    <FormControl>
-                      {/* FIX: Manually handle number input props */}
-                      <Input 
-                        type="number" 
-                        step="0.5" 
-                        placeholder="Hrs" 
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        value={field.value as number}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs mt-1"/>
-                  </FormItem>
-                )}
-              />
-              
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4 mr-1"/>}
-                Log
+              <Button type="submit" className="w-full" disabled={mutation.isPending} size="sm">
+                {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4 mr-2"/>}
+                Log Activity
               </Button>
             </form>
           </Form>
         </div>
 
         {/* History Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border flex-1">
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead>Date</TableHead>
+                <TableHead>Volunteer</TableHead>
                 <TableHead>Activity</TableHead>
-                <TableHead className="text-right">Hours</TableHead>
+                <TableHead className="text-right">Hrs</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {loadingLogs ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400"/>
-                  </TableCell>
+                  <TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto animate-spin text-slate-400"/></TableCell>
                 </TableRow>
-              ) : hours?.length === 0 ? (
+              ) : logs?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                    No hours logged yet.
-                  </TableCell>
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground text-sm">No recent activity.</TableCell>
                 </TableRow>
               ) : (
-                hours?.map((h) => (
+                logs?.map((h) => (
                   <TableRow key={h.id}>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(h.date).toLocaleDateString()}
+                    <TableCell className="font-medium text-sm">
+                      {h.volunteers?.name || "Unknown"}
+                      <div className="text-[10px] text-muted-foreground">{new Date(h.date).toLocaleDateString()}</div>
                     </TableCell>
-                    <TableCell className="font-medium">{h.desc}</TableCell>
+                    <TableCell className="text-sm">{h.desc}</TableCell>
                     <TableCell className="text-right font-bold text-slate-700">
                       {h.hours}
                     </TableCell>

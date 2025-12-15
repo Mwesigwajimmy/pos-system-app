@@ -7,7 +7,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
-import { Loader2, Hand, Phone, Mail } from "lucide-react";
+import { Loader2, Hand, Phone, Mail, Users } from "lucide-react";
 
 interface Volunteer { 
   id: string; 
@@ -16,69 +16,69 @@ interface Volunteer {
   phone: string; 
   type: 'General' | 'Skilled' | 'Pro-bono'; 
   status: 'ACTIVE' | 'PENDING' | 'INACTIVE'; 
-  joined_date: string 
+  joined_date: string;
 }
 
-async function fetchVolunteers(tenantId: string) {
-  const db = createClient();
-  const { data, error } = await db
-    .from('volunteers')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .order('name', { ascending: true });
-  
-  if (error) throw error; 
-  return data as Volunteer[];
-}
-
-export function VolunteerList({ tenantId }: { tenantId: string}) {
+// Named Export
+export function VolunteerList({ tenantId }: { tenantId: string }) {
   const { data, isLoading } = useQuery({ 
     queryKey: ['volunteers', tenantId], 
-    queryFn: () => fetchVolunteers(tenantId) 
+    queryFn: async () => {
+      const db = createClient();
+      const { data, error } = await db
+        .from('volunteers')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data as Volunteer[];
+    }
   });
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Hand className="w-5 h-5 text-orange-500"/> Volunteer Force
+          <Users className="w-5 h-5 text-indigo-600"/> Volunteer Roster
         </CardTitle>
-        <CardDescription>Manage your volunteer database and availability.</CardDescription>
+        <CardDescription>Active volunteers and their current status.</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="rounded-md border-t">
+        <div className="border-t">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-slate-50/50">
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Skill Type</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Joined</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto animate-spin"/></TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400"/></TableCell></TableRow>
               ) : data?.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No volunteers registered.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground">No volunteers found.</TableCell></TableRow>
               ) : (
                 data?.map((v) => (
                   <TableRow key={v.id}>
-                    <TableCell className="font-medium">{v.name}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1 text-xs">
-                        <span className="flex items-center gap-1"><Mail className="w-3 h-3"/> {v.email}</span>
-                        <span className="flex items-center gap-1 text-slate-500"><Phone className="w-3 h-3"/> {v.phone}</span>
+                      <div className="font-medium">{v.name}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                         <Mail className="w-3 h-3"/> {v.email}
                       </div>
                     </TableCell>
-                    <TableCell>{v.type}</TableCell>
                     <TableCell>
-                      <Badge variant={v.status === 'ACTIVE' ? 'default' : 'secondary'} className={v.status === 'ACTIVE' ? 'bg-green-600' : ''}>
+                      <Badge variant="outline" className="text-xs font-normal">
+                        {v.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={v.status === 'ACTIVE' ? 'default' : 'secondary'} className={v.status === 'ACTIVE' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}>
                         {v.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500">
+                    <TableCell className="text-right text-xs text-muted-foreground">
                       {v.joined_date ? format(new Date(v.joined_date), "MMM yyyy") : "-"}
                     </TableCell>
                   </TableRow>

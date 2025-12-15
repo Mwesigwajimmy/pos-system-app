@@ -365,6 +365,7 @@ const navSections: NavItem[] = [
     {
         type: 'accordion', title: 'Non-Profit', icon: HeartHandshake, roles: ['admin', 'manager'], module: 'nonprofit',
         subItems: [ 
+            { href: '/nonprofit', label: 'Overview', icon: LayoutDashboard },
             { href: '/nonprofit/donors', label: 'Donor Management', icon: Users },
             { href: '/nonprofit/donations', label: 'Donations', icon: Banknote },
             { href: '/nonprofit/grants', label: 'Grants Mgmt', icon: FileText },
