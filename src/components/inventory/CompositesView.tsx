@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Combobox } from '@/components/ui/combobox';
 import { Badge } from '@/components/ui/badge';
 
-// --- ENHANCED TYPES ---
+// --- TYPES ---
 interface Component {
   component_variant_id: number;
   component_name: string;
@@ -45,24 +45,26 @@ interface LocationOption {
     label: string;
 }
 
-
-// --- API FUNCTIONS ---
+// --- API FUNCTIONS (V2) ---
 const supabase = createClient();
 
 async function fetchComposites(): Promise<CompositeProduct[]> {
-    const { data, error } = await supabase.rpc('get_composite_products_with_stock');
+    // CONNECT TO V2
+    const { data, error } = await supabase.rpc('get_composite_recipes_v2');
     if (error) throw new Error(error.message);
     return data || [];
 }
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
+    // Only fetch non-composite items as ingredients
     const { data, error } = await supabase.from('product_variants').select('id, name').eq('is_composite', false);
     if (error) throw new Error(error.message);
     return data.map(v => ({ value: v.id, label: v.name })) || [];
 }
 
 async function fetchCompositeDetails(id: number): Promise<CompositeProductDetails> {
-    const { data, error } = await supabase.rpc('get_composite_details', { p_variant_id: id });
+    // CONNECT TO V2
+    const { data, error } = await supabase.rpc('get_composite_details_v2', { p_variant_id: id });
     if (error) throw new Error(error.message);
     return data;
 }
@@ -74,7 +76,8 @@ async function fetchLocations(): Promise<LocationOption[]> {
 }
 
 async function upsertComposite(compositeData: { id: number | null, name: string, sku: string, components: { component_variant_id: number, quantity: number }[] }) {
-    const { error } = await supabase.rpc('upsert_composite_product', {
+    // CONNECT TO V2
+    const { error } = await supabase.rpc('upsert_composite_product_v2', {
         p_variant_id: compositeData.id,
         p_name: compositeData.name,
         p_sku: compositeData.sku,
@@ -84,12 +87,14 @@ async function upsertComposite(compositeData: { id: number | null, name: string,
 }
 
 async function deleteComposite(id: number) {
-    const { error } = await supabase.rpc('delete_composite_product', { p_variant_id: id });
+    // CONNECT TO V2
+    const { error } = await supabase.rpc('delete_composite_product_v2', { p_variant_id: id });
     if (error) throw error;
 }
 
 async function processAssembly(payload: { p_composite_variant_id: number, p_quantity_to_assemble: number, p_source_location_id: number }) {
-    const { error } = await supabase.rpc('process_assembly', payload);
+    // CONNECT TO V2
+    const { error } = await supabase.rpc('process_assembly_v2', payload);
     if (error) throw error;
 }
 
@@ -163,7 +168,7 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     );
 }
 
-// --- NEW: AssemblyDialog Component ---
+// --- ASSEMBLY DIALOG ---
 function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClose: () => void; }) {
     const queryClient = useQueryClient();
     const [quantity, setQuantity] = useState(1);
@@ -172,7 +177,8 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
     const { data: recipe, isLoading: isLoadingRecipe } = useQuery({
         queryKey: ['compositeDetailsWithStock', product.id, sourceLocationId],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_composite_details_with_stock', {
+            // CONNECT TO V2
+            const { data, error } = await supabase.rpc('get_composite_details_with_stock_v2', {
                 p_variant_id: product.id,
                 p_location_id: sourceLocationId ? parseInt(sourceLocationId) : null
             });
@@ -220,7 +226,7 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
                             <Input type="number" value={quantity} onChange={e => setQuantity(Math.max(1, parseInt(e.target.value)))} />
                         </div>
                         <div>
-                            <Label>Source Location (for components)</Label>
+                            <Label>Source Location</Label>
                             <Select onValueChange={setSourceLocationId}>
                                 <SelectTrigger><SelectValue placeholder="Select warehouse..." /></SelectTrigger>
                                 <SelectContent>
@@ -251,7 +257,7 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
                                                 <TableRow key={c.component_variant_id} className={!hasEnough ? 'bg-destructive/10' : ''}>
                                                     <TableCell>{c.component_name}</TableCell>
                                                     <TableCell>{required}</TableCell>
-                                                    <TableCell className={!hasEnough ? 'font-bold text-destructive' : ''}>{available}</TableCell>
+                                                    <TableCell className={!hasEnough ? 'font-bold text-destructive' : 'font-mono'}>{available}</TableCell>
                                                 </TableRow>
                                             );
                                         })}
