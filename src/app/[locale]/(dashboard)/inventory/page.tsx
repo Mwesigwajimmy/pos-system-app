@@ -28,7 +28,7 @@ export default async function InventoryPage() {
       p_page: 1,
       p_page_size: 15, // A reasonable default page size for initial load.
       p_search_text: null,
-      p_category_id: null,
+      p_business_entity_id: null,
     }),
     // FIX: Must select 'description' to match Category interface!
     supabase.from('categories').select('id, name, description'),
