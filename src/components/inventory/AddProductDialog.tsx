@@ -294,17 +294,18 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       if (prodError) throw prodError;
 
       // 4. Prepare Variants Payload
-      // We map our unified 'variants' state to the DB schema
-      const variantsPayload = variants.map(v => ({
-        product_id: product.id,
-        sku: v.sku,
-        price: v.price,
-        cost_price: v.cost_price,
-        stock_quantity: v.stock_quantity,
-        attributes: v.attributes, // JSONB
-        uom_id: v.uom_id ? v.uom_id : (uomId ? parseInt(uomId) : null) // Fallback to parent UOM
-      }));
-
+// We map our unified 'variants' state to the DB schema
+const variantsPayload = variants.map(v => ({
+  product_id: product.id,
+  sku: v.sku,
+  price: v.price,
+  cost_price: v.cost_price,
+  stock_quantity: v.stock_quantity,
+  attributes: v.attributes, // JSONB
+  uom_id: v.uom_id ? v.uom_id : (uomId ? parseInt(uomId) : null), // Fallback to parent UOM
+  business_id: businessId, // <--- THIS WAS MISSING
+  tenant_id: businessId    // <--- Added for safety as your schema uses both
+}));
       // 5. Insert Variants
       const { error: varError } = await supabase.from('product_variants').insert(variantsPayload);
       if (varError) throw varError;
