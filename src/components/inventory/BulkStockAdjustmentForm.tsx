@@ -63,7 +63,7 @@ export default function BulkStockAdjustmentForm() {
       toast.error("This product is already in the adjustment list.");
       return;
     }
-    setItems([...items, { variant_id: selectedProduct.value, name: selectedProduct.label, quantity_change: 0 }]);
+    setItems([...items, { variant_id: selectedProduct.value, name: selectedProduct.label, quantity_change: 1 }]);
     setSelectedProduct(null);
   };
 
