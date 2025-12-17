@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { MoreHorizontal, Edit, Trash2, AlertCircle, Layers, Package, Tag, ClipboardList, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox"; // <--- NEW: Required for Selection
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,6 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { ProductRow } from "@/types/dashboard";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Recommended for better UI
 
 // Advanced TanStack Table meta for enterprise actions
 declare module '@tanstack/react-table' {
@@ -34,6 +34,33 @@ const getStockStatus = (product: ProductRow) => {
 };
 
 export const columns: ColumnDef<ProductRow>[] = [
+  // --- 1. ENTERPRISE SELECTION COLUMN (New) ---
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        className="translate-y-[2px]"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        className="translate-y-[2px]"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+    size: 40, 
+  },
+  // --------------------------------------------
   {
     accessorKey: "name",
     header: ({ column }) => (
@@ -75,8 +102,7 @@ export const columns: ColumnDef<ProductRow>[] = [
         <div className="flex items-center gap-2">
           <span>{row.original.total_stock}</span>
           {/* 
-            FIX: Wrap the icon in a span (or a Tooltip component) 
-            and apply the title attribute to the wrapper.
+             Enterprise Logic: Visual Indicator for Low Stock
           */}
           {status.warning && (
             <span title={status.message}>
@@ -110,6 +136,7 @@ export const columns: ColumnDef<ProductRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
+      // Enterprise: Shows which branch owns this item
       <span className="text-xs text-muted-foreground">{row.original.business_entity_name || "Main"}</span>
     ),
     enableSorting: true,
@@ -120,7 +147,9 @@ export const columns: ColumnDef<ProductRow>[] = [
     header: "",
     cell: ({ row, table }) => {
       const product = row.original;
+      // Enterprise: Role-Based Access Control (RBAC) Check
       const isManager = table.options.meta?.userRole === "manager" || table.options.meta?.userRole === "admin";
+      
       return (
         <div className="text-right">
           <DropdownMenu>
