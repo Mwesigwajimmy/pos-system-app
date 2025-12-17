@@ -169,7 +169,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
     // 1. Parse and Validate Attributes
     const validAttributes = attributes
       .map(attr => ({
-        ...attr,
+        name: attr.name.trim(),
         values: attr.inputValue.split(',').map(s => s.trim()).filter(Boolean)
       }))
       .filter(attr => attr.values.length > 0 && attr.name.trim() !== '');
@@ -304,7 +304,6 @@ const variantsPayload = variants.map(v => ({
   attributes: v.attributes, // JSONB
   uom_id: v.uom_id ? v.uom_id : (uomId ? parseInt(uomId) : null), // Fallback to parent UOM
   business_id: businessId, // <--- THIS WAS MISSING
-  tenant_id: businessId    // <--- Added for safety as your schema uses both
 }));
       // 5. Insert Variants
       const { error: varError } = await supabase.from('product_variants').insert(variantsPayload);
