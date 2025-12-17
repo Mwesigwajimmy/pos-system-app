@@ -24,7 +24,7 @@ import { Category } from '@/types/dashboard';
 // --- Enterprise Interfaces ---
 
 interface Unit {
-  id: number;
+  id: string;
   name: string;
   abbreviation: string;
 }
@@ -37,7 +37,7 @@ interface VariantDraft {
   cost_price: number;
   stock_quantity: number;
   attributes: Record<string, string>;
-  uom_id: number | null;
+  uom_id: string | null;
 }
 
 interface AttributeBuilder {
@@ -272,10 +272,16 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       if (!productName.trim()) throw new Error("Product Name is required.");
       if (isMultiVariant && variants.length === 0) throw new Error("Multi-variant mode enabled but no variants generated.");
 
-      // 2. Auth Context
+     // 2. Auth Context
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Unauthorized.");
-      const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .single();
+      
       const businessId = profile?.business_id;
 
       // 3. Create Parent Product
@@ -283,8 +289,8 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
         .from('products')
         .insert({
           name: productName,
-          category_id: categoryId ? parseInt(categoryId) : null,
-          uom_id: uomId ? parseInt(uomId) : null,
+          category_id: categoryId ? parseInt(categoryId) : null, // Keep parseInt for Category
+          uom_id: uomId ? uomId : null, // <--- FIXED: Removed parseInt() (UUID is a string)
           business_id: businessId,
           is_active: true
         })
@@ -294,17 +300,18 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       if (prodError) throw prodError;
 
       // 4. Prepare Variants Payload
-// We map our unified 'variants' state to the DB schema
-const variantsPayload = variants.map(v => ({
-  product_id: product.id,
-  sku: v.sku,
-  price: v.price,
-  cost_price: v.cost_price,
-  stock_quantity: v.stock_quantity,
-  attributes: v.attributes, // JSONB
-  uom_id: v.uom_id ? v.uom_id : (uomId ? parseInt(uomId) : null), // Fallback to parent UOM
-  business_id: businessId, // <--- THIS WAS MISSING
-}));
+      const variantsPayload = variants.map(v => ({
+        product_id: product.id,
+        sku: v.sku,
+        price: v.price,
+        cost_price: v.cost_price,
+        stock_quantity: v.stock_quantity,
+        attributes: v.attributes,
+        // FIXED: Removed parseInt() here as well. Uses variant specific UOM or falls back to parent UOM
+        uom_id: v.uom_id ? v.uom_id : (uomId ? uomId : null), 
+        business_id: businessId,
+      }));
+
       // 5. Insert Variants
       const { error: varError } = await supabase.from('product_variants').insert(variantsPayload);
       if (varError) throw varError;
