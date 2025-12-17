@@ -4,10 +4,10 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Hammer } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Hammer, Check } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox';
+import { Combobox } from '@/components/ui/combobox'; // Ensure this component handles {value, label} objects correctly
 import { Badge } from '@/components/ui/badge';
 
 // --- TYPES ---
@@ -45,25 +45,37 @@ interface LocationOption {
     label: string;
 }
 
-// --- API FUNCTIONS (V2) ---
+// --- API FUNCTIONS ---
 const supabase = createClient();
 
 async function fetchComposites(): Promise<CompositeProduct[]> {
-    // CONNECT TO V2
     const { data, error } = await supabase.rpc('get_composite_recipes_v2');
     if (error) throw new Error(error.message);
     return data || [];
 }
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
-    // Only fetch non-composite items as ingredients
-    const { data, error } = await supabase.from('product_variants').select('id, name').eq('is_composite', false);
+    // FIX: Join with parent 'products' table to get the real name
+    // e.g. "Goat" (Product) + "Standard" (Variant) -> "Goat - Standard"
+    const { data, error } = await supabase
+        .from('product_variants')
+        .select(`
+            id, 
+            name, 
+            products ( name )
+        `)
+        .eq('is_composite', false);
+    
     if (error) throw new Error(error.message);
-    return data.map(v => ({ value: v.id, label: v.name })) || [];
+    
+    // Safely map the result
+    return data.map((v: any) => ({ 
+        value: v.id, 
+        label: `${v.products?.name || 'Unknown Product'} - ${v.name}` 
+    })) || [];
 }
 
 async function fetchCompositeDetails(id: number): Promise<CompositeProductDetails> {
-    // CONNECT TO V2
     const { data, error } = await supabase.rpc('get_composite_details_v2', { p_variant_id: id });
     if (error) throw new Error(error.message);
     return data;
@@ -76,7 +88,6 @@ async function fetchLocations(): Promise<LocationOption[]> {
 }
 
 async function upsertComposite(compositeData: { id: number | null, name: string, sku: string, components: { component_variant_id: number, quantity: number }[] }) {
-    // CONNECT TO V2
     const { error } = await supabase.rpc('upsert_composite_product_v2', {
         p_variant_id: compositeData.id,
         p_name: compositeData.name,
@@ -87,13 +98,11 @@ async function upsertComposite(compositeData: { id: number | null, name: string,
 }
 
 async function deleteComposite(id: number) {
-    // CONNECT TO V2
     const { error } = await supabase.rpc('delete_composite_product_v2', { p_variant_id: id });
     if (error) throw error;
 }
 
 async function processAssembly(payload: { p_composite_variant_id: number, p_quantity_to_assemble: number, p_source_location_id: number }) {
-    // CONNECT TO V2
     const { error } = await supabase.rpc('process_assembly_v2', payload);
     if (error) throw error;
 }
@@ -109,16 +118,36 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     
     const handleAddComponent = () => {
         if (!selectedComponent) return;
-        if (components.some(c => c.component_variant_id === selectedComponent.value)) return toast.warning("Component already added.");
-        setComponents(prev => [...prev, { component_variant_id: selectedComponent.value, component_name: selectedComponent.label, quantity: 1 }]);
+        
+        // Prevent duplicates
+        if (components.some(c => c.component_variant_id === selectedComponent.value)) {
+            toast.warning("This component is already in the recipe.");
+            return;
+        }
+
+        setComponents(prev => [
+            ...prev, 
+            { 
+                component_variant_id: selectedComponent.value, 
+                component_name: selectedComponent.label, 
+                quantity: 1 
+            }
+        ]);
+        
+        // Reset selection
         setSelectedComponent(null);
     };
     
-    const handleUpdateQuantity = (variantId: number, qty: number) => setComponents(prev => prev.map(c => c.component_variant_id === variantId ? { ...c, quantity: Math.max(1, qty) } : c));
-    const handleRemoveComponent = (variantId: number) => setComponents(prev => prev.filter(c => c.component_variant_id !== variantId));
+    const handleUpdateQuantity = (variantId: number, qty: number) => {
+        setComponents(prev => prev.map(c => c.component_variant_id === variantId ? { ...c, quantity: Math.max(1, qty) } : c));
+    };
+
+    const handleRemoveComponent = (variantId: number) => {
+        setComponents(prev => prev.filter(c => c.component_variant_id !== variantId));
+    };
 
     const handleSubmit = () => {
-        if (!name) return toast.error("Composite product name is required.");
+        if (!name.trim()) return toast.error("Composite product name is required.");
         if (components.length === 0) return toast.error("Please add at least one component.");
         
         const payload = {
@@ -130,39 +159,91 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
         onSave(payload);
     };
     
-    const componentOptions = useMemo(() => standardVariants?.filter(v => !components.some(c => c.component_variant_id === v.value)) || [], [standardVariants, components]);
+    // Filter out already added components from the dropdown
+    const componentOptions = useMemo(() => {
+        return standardVariants?.filter(v => !components.some(c => c.component_variant_id === v.value)) || [];
+    }, [standardVariants, components]);
 
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label htmlFor="name">Product Name</Label><Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Gift Basket"/></div>
-                <div className="space-y-2"><Label htmlFor="sku">SKU</Label><Input id="sku" value={sku} onChange={e => setSku(e.target.value)} placeholder="e.g., GB-001" /></div>
-            </div>
-
-            <div className="space-y-2 pt-4 border-t"><Label>Components</Label>
-                <div className="flex gap-2">
-                    <div className="flex-1"><Combobox options={componentOptions} value={selectedComponent} onChange={setSelectedComponent} placeholder="Search for a component to add..."/></div>
-                    <Button onClick={handleAddComponent} disabled={!selectedComponent}><PlusCircle className="mr-2 h-4 w-4"/>Add</Button>
+                <div className="space-y-2">
+                    <Label htmlFor="name">Product Name</Label>
+                    <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Gift Basket"/>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input id="sku" value={sku} onChange={e => setSku(e.target.value)} placeholder="e.g., GB-001" />
                 </div>
             </div>
 
-            <div className="max-h-64 overflow-y-auto border rounded-md"><Table>
-                <TableHeader><TableRow><TableHead>Component</TableHead><TableHead className="w-[100px]">Quantity</TableHead><TableHead className="w-[50px]"></TableHead></TableRow></TableHeader>
-                <TableBody>
-                    {components.length === 0 ? <TableRow><TableCell colSpan={3} className="text-center h-24">No components added.</TableCell></TableRow> :
-                    components.map(comp => (
-                        <TableRow key={comp.component_variant_id}>
-                            <TableCell>{comp.component_name}</TableCell>
-                            <TableCell><Input type="number" value={comp.quantity} onChange={e => handleUpdateQuantity(comp.component_variant_id, parseInt(e.target.value))} className="max-w-[80px]"/> </TableCell>
-                            <TableCell><Button variant="ghost" size="icon" onClick={() => handleRemoveComponent(comp.component_variant_id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+            <div className="space-y-2 pt-4 border-t">
+                <Label>Components</Label>
+                <div className="flex gap-2">
+                    <div className="flex-1">
+                        <Combobox 
+                            options={componentOptions} 
+                            value={selectedComponent} 
+                            onChange={setSelectedComponent} 
+                            placeholder="Search for a component to add..."
+                        />
+                    </div>
+                    <Button 
+                        onClick={handleAddComponent} 
+                        disabled={!selectedComponent}
+                        type="button" // Prevent form submission
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4"/> Add
+                    </Button>
+                </div>
+            </div>
+
+            <div className="border rounded-md overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-muted/50">
+                            <TableHead>Component</TableHead>
+                            <TableHead className="w-[100px]">Quantity</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table></div>
+                    </TableHeader>
+                    <TableBody>
+                        {components.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">
+                                    No components added. Use the search above to build your recipe.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            components.map(comp => (
+                                <TableRow key={comp.component_variant_id}>
+                                    <TableCell className="font-medium">{comp.component_name}</TableCell>
+                                    <TableCell>
+                                        <Input 
+                                            type="number" 
+                                            value={comp.quantity} 
+                                            onChange={e => handleUpdateQuantity(comp.component_variant_id, parseInt(e.target.value) || 1)} 
+                                            className="max-w-[80px]"
+                                            min={1}
+                                        /> 
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveComponent(comp.component_variant_id)}>
+                                            <Trash2 className="h-4 w-4 text-destructive"/>
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
             
-            <DialogFooter>
+            <DialogFooter className="pt-4">
                 <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={isSaving}>{isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : 'Save Composite Product'}</Button>
+                <Button onClick={handleSubmit} disabled={isSaving}>
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Saving...</> : 'Save Composite Product'}
+                </Button>
             </DialogFooter>
         </div>
     );
@@ -177,7 +258,6 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
     const { data: recipe, isLoading: isLoadingRecipe } = useQuery({
         queryKey: ['compositeDetailsWithStock', product.id, sourceLocationId],
         queryFn: async () => {
-            // CONNECT TO V2
             const { data, error } = await supabase.rpc('get_composite_details_with_stock_v2', {
                 p_variant_id: product.id,
                 p_location_id: sourceLocationId ? parseInt(sourceLocationId) : null
