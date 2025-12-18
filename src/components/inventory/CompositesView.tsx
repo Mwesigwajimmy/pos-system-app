@@ -52,13 +52,13 @@ const supabase = createClient();
 
 // UPDATED TO V3
 async function fetchComposites(): Promise<CompositeProduct[]> {
-    const { data, error } = await supabase.rpc('get_composite_recipes_v4');
+    const { data, error } = await supabase.rpc('get_composite_recipes_v5');
     if (error) throw new Error(error.message);
     return data?.map((item: any) => ({ ...item, id: item.recipe_id })) || [];
 }
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
-    const { data, error } = await supabase.rpc('get_standard_variants_for_dropdown_v4');
+    const { data, error } = await supabase.rpc('get_standard_variants_for_dropdown_v5');
     if (error) {
         // Fallback for safety
         const { data: fallback } = await supabase
@@ -72,7 +72,7 @@ async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
 
 // UPDATED TO V4
 async function fetchCompositeDetails(id: number): Promise<CompositeProductDetails> {
-    const { data, error } = await supabase.rpc('get_composite_details_v4', { p_variant_id: id });
+    const { data, error } = await supabase.rpc('get_composite_details_v5', { p_variant_id: id });
     if (error) throw new Error(error.message);
     return data;
 }
@@ -85,7 +85,7 @@ async function fetchLocations(): Promise<LocationOption[]> {
 
 // UPDATED TO V3
 async function upsertComposite(compositeData: { id: number | null, name: string, sku: string, components: { component_variant_id: number, quantity: number }[] }) {
-    const { error } = await supabase.rpc('upsert_composite_product_v3', {
+    const { error } = await supabase.rpc('upsert_composite_product_v5', {
         p_variant_id: compositeData.id,
         p_name: compositeData.name,
         p_sku: compositeData.sku,
@@ -99,9 +99,9 @@ async function deleteComposite(id: number) {
     if (error) throw error;
 }
 
-// UPDATED TO V3
+// UPDATED TO V5
 async function processAssembly(payload: { p_composite_variant_id: number, p_quantity_to_assemble: number, p_source_location_id: number }) {
-    const { error } = await supabase.rpc('process_assembly_v3', payload);
+    const { error } = await supabase.rpc('process_assembly_v5', payload);
     if (error) throw error;
 }
 
