@@ -52,13 +52,13 @@ const supabase = createClient();
 
 // UPDATED TO V3
 async function fetchComposites(): Promise<CompositeProduct[]> {
-    const { data, error } = await supabase.rpc('get_composite_recipes_v3');
+    const { data, error } = await supabase.rpc('get_composite_recipes_v4');
     if (error) throw new Error(error.message);
-    return data || [];
+    return data?.map((item: any) => ({ ...item, id: item.recipe_id })) || [];
 }
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
-    const { data, error } = await supabase.rpc('get_standard_variants_for_dropdown');
+    const { data, error } = await supabase.rpc('get_standard_variants_for_dropdown_v4');
     if (error) {
         // Fallback for safety
         const { data: fallback } = await supabase
@@ -70,9 +70,9 @@ async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
     return data.map((v: any) => ({ value: v.id, label: v.full_name })) || [];
 }
 
-// UPDATED TO V3
+// UPDATED TO V4
 async function fetchCompositeDetails(id: number): Promise<CompositeProductDetails> {
-    const { data, error } = await supabase.rpc('get_composite_details_v3', { p_variant_id: id });
+    const { data, error } = await supabase.rpc('get_composite_details_v4', { p_variant_id: id });
     if (error) throw new Error(error.message);
     return data;
 }
