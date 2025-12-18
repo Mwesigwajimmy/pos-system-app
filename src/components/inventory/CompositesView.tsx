@@ -50,8 +50,9 @@ interface LocationOption {
 // --- API FUNCTIONS ---
 const supabase = createClient();
 
+// UPDATED TO V3
 async function fetchComposites(): Promise<CompositeProduct[]> {
-    const { data, error } = await supabase.rpc('get_composite_recipes_v2');
+    const { data, error } = await supabase.rpc('get_composite_recipes_v3');
     if (error) throw new Error(error.message);
     return data || [];
 }
@@ -69,8 +70,9 @@ async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
     return data.map((v: any) => ({ value: v.id, label: v.full_name })) || [];
 }
 
+// UPDATED TO V3
 async function fetchCompositeDetails(id: number): Promise<CompositeProductDetails> {
-    const { data, error } = await supabase.rpc('get_composite_details_v2', { p_variant_id: id });
+    const { data, error } = await supabase.rpc('get_composite_details_v3', { p_variant_id: id });
     if (error) throw new Error(error.message);
     return data;
 }
@@ -81,8 +83,9 @@ async function fetchLocations(): Promise<LocationOption[]> {
     return data.map(l => ({ value: l.id, label: l.name })) || [];
 }
 
+// UPDATED TO V3
 async function upsertComposite(compositeData: { id: number | null, name: string, sku: string, components: { component_variant_id: number, quantity: number }[] }) {
-    const { error } = await supabase.rpc('upsert_composite_product_v2', {
+    const { error } = await supabase.rpc('upsert_composite_product_v3', {
         p_variant_id: compositeData.id,
         p_name: compositeData.name,
         p_sku: compositeData.sku,
@@ -96,8 +99,9 @@ async function deleteComposite(id: number) {
     if (error) throw error;
 }
 
+// UPDATED TO V3
 async function processAssembly(payload: { p_composite_variant_id: number, p_quantity_to_assemble: number, p_source_location_id: number }) {
-    const { error } = await supabase.rpc('process_assembly_v2', payload);
+    const { error } = await supabase.rpc('process_assembly_v3', payload);
     if (error) throw error;
 }
 
@@ -294,6 +298,7 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
     const [quantity, setQuantity] = useState(1);
     const [sourceLocationId, setSourceLocationId] = useState<string | null>(null);
     
+    // Kept at v2 or updated if you have a specific v3 endpoint for location-aware stock
     const { data: recipe, isLoading: isLoadingRecipe } = useQuery({
         queryKey: ['compositeDetailsWithStock', product.id, sourceLocationId],
         queryFn: async () => {
