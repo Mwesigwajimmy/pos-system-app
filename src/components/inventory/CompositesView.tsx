@@ -57,8 +57,7 @@ async function fetchComposites(): Promise<CompositeProduct[]> {
 }
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
-    // FIX: Join with parent 'products' table to get the real name
-    // Also use .not('is_composite', 'is', true) to handle NULLs safely
+    // Join with products table to get names
     const { data, error } = await supabase
         .from('product_variants')
         .select(`
@@ -66,7 +65,7 @@ async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
             name, 
             products ( name )
         `)
-        .not('is_composite', 'is', true);
+        .not('is_composite', 'is', true); // Exclude composites
     
     if (error) throw new Error(error.message);
     
@@ -118,7 +117,10 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     const [open, setOpen] = useState(false);
     const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
 
-    const { data: standardVariants } = useQuery({ queryKey: ['standardVariants'], queryFn: fetchStandardVariants });
+    const { data: standardVariants, isLoading: isLoadingVariants } = useQuery({ 
+        queryKey: ['standardVariants'], 
+        queryFn: fetchStandardVariants 
+    });
     
     const handleAddComponent = () => {
         if (!selectedVariantId) return;
@@ -143,7 +145,7 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
         
         // Reset selection
         setSelectedVariantId(null);
-        toast.success("Component added to list");
+        toast.success("Component added.");
     };
     
     const handleUpdateQuantity = (variantId: number, qty: number) => {
@@ -200,20 +202,22 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
                                 >
                                     {selectedVariantId
                                         ? standardVariants?.find((v) => v.value === selectedVariantId)?.label
-                                        : "Search for a component to add..."}
+                                        : isLoadingVariants ? "Loading items..." : "Search for a component..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[400px] p-0" align="start">
                                 <Command>
-                                    <CommandInput placeholder="Search items..." />
+                                    <CommandInput placeholder="Type to search..." />
                                     <CommandList>
-                                        <CommandEmpty>No item found.</CommandEmpty>
+                                        <CommandEmpty>
+                                            {isLoadingVariants ? "Loading..." : "No item found."}
+                                        </CommandEmpty>
                                         <CommandGroup>
                                             {availableOptions.map((variant) => (
                                                 <CommandItem
                                                     key={variant.value}
-                                                    value={variant.label} // Search by label
+                                                    value={variant.label} 
                                                     onSelect={() => {
                                                         setSelectedVariantId(variant.value);
                                                         setOpen(false);
