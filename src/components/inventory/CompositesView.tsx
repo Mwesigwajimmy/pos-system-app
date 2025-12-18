@@ -4,7 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Hammer, Check } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Hammer, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,8 +17,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Combobox } from '@/components/ui/combobox'; // Ensure this component handles {value, label} objects correctly
 import { Badge } from '@/components/ui/badge';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // --- TYPES ---
 interface Component {
@@ -56,7 +58,7 @@ async function fetchComposites(): Promise<CompositeProduct[]> {
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
     // FIX: Join with parent 'products' table to get the real name
-    // e.g. "Goat" (Product) + "Standard" (Variant) -> "Goat - Standard"
+    // Also use .not('is_composite', 'is', true) to handle NULLs safely
     const { data, error } = await supabase
         .from('product_variants')
         .select(`
@@ -64,14 +66,13 @@ async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
             name, 
             products ( name )
         `)
-        .eq('is_composite', false);
+        .not('is_composite', 'is', true);
     
     if (error) throw new Error(error.message);
     
-    // Safely map the result
     return data.map((v: any) => ({ 
         value: v.id, 
-        label: `${v.products?.name || 'Unknown Product'} - ${v.name}` 
+        label: `${v.products?.name || 'Unknown'} - ${v.name}` 
     })) || [];
 }
 
@@ -112,15 +113,21 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     const [name, setName] = useState(initialData?.name || '');
     const [sku, setSku] = useState(initialData?.sku || '');
     const [components, setComponents] = useState<Component[]>(initialData?.components || []);
-    const [selectedComponent, setSelectedComponent] = useState<StandardVariantOption | null>(null);
+    
+    // Combobox State
+    const [open, setOpen] = useState(false);
+    const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
 
     const { data: standardVariants } = useQuery({ queryKey: ['standardVariants'], queryFn: fetchStandardVariants });
     
     const handleAddComponent = () => {
-        if (!selectedComponent) return;
+        if (!selectedVariantId) return;
         
+        const variant = standardVariants?.find(v => v.value === selectedVariantId);
+        if (!variant) return;
+
         // Prevent duplicates
-        if (components.some(c => c.component_variant_id === selectedComponent.value)) {
+        if (components.some(c => c.component_variant_id === selectedVariantId)) {
             toast.warning("This component is already in the recipe.");
             return;
         }
@@ -128,14 +135,15 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
         setComponents(prev => [
             ...prev, 
             { 
-                component_variant_id: selectedComponent.value, 
-                component_name: selectedComponent.label, 
+                component_variant_id: variant.value, 
+                component_name: variant.label, 
                 quantity: 1 
             }
         ]);
         
         // Reset selection
-        setSelectedComponent(null);
+        setSelectedVariantId(null);
+        toast.success("Component added to list");
     };
     
     const handleUpdateQuantity = (variantId: number, qty: number) => {
@@ -160,7 +168,7 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     };
     
     // Filter out already added components from the dropdown
-    const componentOptions = useMemo(() => {
+    const availableOptions = useMemo(() => {
         return standardVariants?.filter(v => !components.some(c => c.component_variant_id === v.value)) || [];
     }, [standardVariants, components]);
 
@@ -181,17 +189,55 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
                 <Label>Components</Label>
                 <div className="flex gap-2">
                     <div className="flex-1">
-                        <Combobox 
-                            options={componentOptions} 
-                            value={selectedComponent} 
-                            onChange={setSelectedComponent} 
-                            placeholder="Search for a component to add..."
-                        />
+                        {/* EMBEDDED COMBOBOX */}
+                        <Popover open={open} onOpenChange={setOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={open}
+                                    className="w-full justify-between"
+                                >
+                                    {selectedVariantId
+                                        ? standardVariants?.find((v) => v.value === selectedVariantId)?.label
+                                        : "Search for a component to add..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0" align="start">
+                                <Command>
+                                    <CommandInput placeholder="Search items..." />
+                                    <CommandList>
+                                        <CommandEmpty>No item found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {availableOptions.map((variant) => (
+                                                <CommandItem
+                                                    key={variant.value}
+                                                    value={variant.label} // Search by label
+                                                    onSelect={() => {
+                                                        setSelectedVariantId(variant.value);
+                                                        setOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            selectedVariantId === variant.value ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {variant.label}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                     <Button 
                         onClick={handleAddComponent} 
-                        disabled={!selectedComponent}
-                        type="button" // Prevent form submission
+                        disabled={!selectedVariantId}
+                        type="button" 
                     >
                         <PlusCircle className="mr-2 h-4 w-4"/> Add
                     </Button>
