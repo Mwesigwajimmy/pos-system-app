@@ -3,9 +3,9 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MoreHorizontal, ArrowUpDown, Eye, CheckCircle, Truck } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-// Matches DB View structure
 export type PurchaseOrderRow = {
   id: number;
   status: 'Draft' | 'Ordered' | 'Partially Received' | 'Received' | 'Billed' | 'Cancelled';
@@ -27,7 +26,6 @@ export type PurchaseOrderRow = {
   total_cost_ugx: number; 
 };
 
-// Safe currency formatter
 const formatMoney = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', { 
         style: 'currency', 
@@ -45,6 +43,25 @@ const statusStyles: Record<string, string> = {
 };
 
 export const poColumns: ColumnDef<PurchaseOrderRow>[] = [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   { 
     accessorKey: "id", 
     header: "PO #", 
