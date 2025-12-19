@@ -41,9 +41,9 @@ async function fetchAllVariants(): Promise<ProductOption[]> {
     }));
 }
 
-// 2. Fetch Existing Recipe using V2 RPC
+// 2. Fetch Existing Recipe using V5 RPC
 async function fetchRecipe(compositeVariantId: number): Promise<Ingredient[]> {
-    const { data, error } = await supabase.rpc('get_composite_details_v2', { p_variant_id: compositeVariantId });
+    const { data, error } = await supabase.rpc('get_composite_details_v5', { p_variant_id: compositeVariantId });
     if (error) throw new Error(error.message);
     
     // Map the RPC response structure to our UI Ingredient type
@@ -57,7 +57,7 @@ async function fetchRecipe(compositeVariantId: number): Promise<Ingredient[]> {
     }));
 }
 
-// 3. Save Recipe using V2 RPC (Transactional)
+// 3. Save Recipe using V5 RPC (Transactional)
 async function saveRecipe({ compositeVariantId, ingredients }: SaveRecipePayload) {
     // A. First, fetch the current details of the parent (Name/SKU) 
     // because the upsert function requires them to maintain data integrity.
@@ -67,19 +67,19 @@ async function saveRecipe({ compositeVariantId, ingredients }: SaveRecipePayload
         .eq('id', compositeVariantId)
         .single();
 
-    if (parentError) throw new Error("Could not verify parent product details.");
+    if (parentError) throw new Error("Verification failed.");
 
     const parentName = (parentData.products as any)?.name || 'Composite Product';
     const parentSku = parentData.sku || '';
 
-    // B. Prepare components for JSONB
+    // 2. Prepare payload for the V5 Enterprise RPC
     const componentsPayload = ingredients.map(ing => ({
         component_variant_id: ing.variant_id,
         quantity: ing.quantity_used
     }));
 
-    // C. Call the Enterprise V2 Upsert
-    const { error } = await supabase.rpc('upsert_composite_product_v2', {
+    // 3. Call V5 (Matched with your viewing function)
+    const { error } = await supabase.rpc('upsert_composite_product_v5', {
         p_variant_id: compositeVariantId,
         p_name: parentName, // Keep existing name
         p_sku: parentSku,   // Keep existing SKU
