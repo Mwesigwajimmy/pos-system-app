@@ -59,15 +59,28 @@ async function fetchComposites(): Promise<CompositeProduct[]> {
 
 async function fetchStandardVariants(): Promise<StandardVariantOption[]> {
     const { data, error } = await supabase.rpc('get_standard_variants_for_dropdown_v5');
+    
     if (error) {
-        // Fallback for safety
+        console.error("RPC Error:", error);
+        // Fallback with Tenant Filter added for safety
+        const tid = await supabase.rpc('get_safe_tenant_id');
         const { data: fallback } = await supabase
             .from('product_variants')
             .select(`id, name, products(name)`)
-            .not('is_composite', 'is', true);
-        return fallback?.map((v: any) => ({ value: v.id, label: `${v.products?.name} - ${v.name}` })) || [];
+            .eq('is_composite', false)
+            .or(`business_id.eq.${tid.data},tenant_id.eq.${tid.data}`);
+            
+        return fallback?.map((v: any) => ({ 
+            value: Number(v.id), 
+            label: `${v.products?.name} - ${v.name}` 
+        })) || [];
     }
-    return data.map((v: any) => ({ value: v.id, label: v.full_name })) || [];
+    
+    // Explicitly convert value to Number to match your interface
+    return data.map((v: any) => ({ 
+        value: Number(v.value), 
+        label: v.label 
+    })) || [];
 }
 
 // UPDATED TO V4
