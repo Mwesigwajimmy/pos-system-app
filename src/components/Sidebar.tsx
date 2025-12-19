@@ -400,6 +400,7 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin'] },
             { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager'] },
+            { href: '/settings/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
             { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager'] },
             { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'], businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
