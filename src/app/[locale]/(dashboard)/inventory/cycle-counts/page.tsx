@@ -6,10 +6,14 @@ export default async function CycleCountsPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  const { data } = await supabase
+  const { data,error } = await supabase
     .from("cycle_counts")
     .select("*")
     .order("scheduled_date", { ascending: false });
+  if (error) {
+    console.error("Error fetching cycle counts:", error);
+    return <div>Error loading data.</div>;
+  }
 
   const counts = (data || []).map(c => ({
     id: c.id,
@@ -23,8 +27,8 @@ export default async function CycleCountsPage() {
     variance: (c.counted_qty || 0) - (c.system_qty || 0),
     status: c.status as "scheduled" | "done" | "reconciled",
     entity: c.entity,
-    country: "UG",
-    tenantId: "system"
+    country: c.country ||"UG",
+    tenantId: c.tenant_id // Use actual ID from database
   }));
 
   return (
