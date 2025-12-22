@@ -38,7 +38,7 @@ export default async function ValuationPage() {
     // Using v2 for enterprise-grade multi-currency and live inventory linking
     const [entityResult, valuationResult] = await Promise.all([
       supabase
-        .from("entities")
+        .from("organizations")
         .select("name, currency_code, locale")
         .eq("slug", activeSlug)
         .single(),
