@@ -34,29 +34,33 @@ export default async function ValuationPage() {
   let entityName = 'System';
 
   if (activeSlug) {
+    // 1. Fetch Entity Configuration and live Valuation Data in parallel
+    // Using v2 for enterprise-grade multi-currency and live inventory linking
     const [entityResult, valuationResult] = await Promise.all([
       supabase
         .from("entities")
         .select("name, currency_code, locale")
         .eq("slug", activeSlug)
         .single(),
-      supabase.rpc("get_inventory_valuation", {
+      supabase.rpc("get_inventory_valuation_v2", {
         target_entity_slug: activeSlug,
       })
     ]);
 
     const entityConfig = entityResult.data;
-    const valuationData = valuationResult.data;
+    const valuationData = valuationResult.data; // Conflict resolved: only defined once here
 
     if (entityConfig) {
+      // 2. Dynamic multi-currency and locale configuration from DB
       currencyCode = entityConfig.currency_code || 'USD';
       locale = entityConfig.locale || 'en-US';
       entityName = entityConfig.name || activeSlug;
     }
 
     if (valuationData) {
+      // 3. Map live data to the UI rows automatically
       reportRows = valuationData.map((row: any, index: number) => ({
-        id: `val-${row.sku}-${index}`,
+        id: `val-${row.sku || index}-${index}`,
         productName: row.product_name || "Unknown Item",
         sku: row.sku || "N/A",
         warehouseName: row.warehouse || "Main",
