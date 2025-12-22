@@ -22,10 +22,10 @@ export default async function ValuationPage() {
   if (user) {
     const { data: userProfile } = await supabase
       .from("user_profiles")
-      .select("active_entity_slug")
+      .select("active_organization_slug")
       .eq("user_id", user.id)
       .single();
-    activeSlug = userProfile?.active_entity_slug;
+    activeSlug = userProfile?.active_organization_slug;
   }
 
   let reportRows: ValuationRow[] = [];
