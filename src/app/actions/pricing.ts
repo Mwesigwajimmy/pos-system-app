@@ -3,48 +3,46 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 
 export type RuleFormState = {
     success: boolean;
     message: string;
 };
 
+/**
+ * Enterprise Pricing Engine - Logic Deployment Action
+ */
 export async function createOrUpdatePricingRule(prevState: RuleFormState, formData: FormData): Promise<RuleFormState> {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. Get current user's tenant
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: 'Unauthorized' };
-
-    // Fetch tenant_id (Assuming linked via profiles)
-    const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
-    const tenant_id = profile?.business_id; // OR tenant_id depending on your schema
-
-    if (!tenant_id) return { success: false, message: 'No tenant found.' };
-
-    // 2. Parse Data
-    const rawRuleData = formData.get('ruleData') as string;
-    const rawConditions = formData.get('conditions') as string;
-    const rawActions = formData.get('actions') as string;
-
-    const ruleData = JSON.parse(rawRuleData);
-    const conditions = JSON.parse(rawConditions);
-    const actions = JSON.parse(rawActions);
-
-    let ruleId = ruleData.id;
-
     try {
-        // 3. Upsert Rule
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) return { success: false, message: 'Identity verification failed.' };
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('business_id')
+            .eq('id', user.id)
+            .single();
+
+        const businessId = profile?.business_id;
+        if (!businessId) return { success: false, message: 'Tenant security context missing.' };
+
+        const ruleData = JSON.parse(formData.get('ruleData') as string);
+        const conditions = JSON.parse(formData.get('conditions') as string);
+        const actions = JSON.parse(formData.get('actions') as string);
+
         const { data: rule, error: ruleError } = await supabase
             .from('pricing_rules')
             .upsert({
-                id: ruleId || undefined,
-                tenant_id: tenant_id,
+                id: ruleData.id || undefined,
+                tenant_id: businessId, 
                 name: ruleData.name,
-                priority: ruleData.priority || 0,
+                description: ruleData.description,
+                priority: parseInt(ruleData.priority) || 0,
                 is_active: ruleData.is_active,
+                is_stackable: ruleData.is_stackable,
                 start_date: ruleData.start_date || null,
                 end_date: ruleData.end_date || null,
             })
@@ -52,51 +50,67 @@ export async function createOrUpdatePricingRule(prevState: RuleFormState, formDa
             .single();
 
         if (ruleError) throw new Error(ruleError.message);
-        ruleId = rule.id;
+        const activeRuleId = rule.id;
 
-        // 4. Update Children (Wipe and Recreate strategy is safest for lists)
         if (ruleData.id) {
-            await supabase.from('pricing_rule_conditions').delete().eq('rule_id', ruleId);
-            await supabase.from('pricing_rule_actions').delete().eq('rule_id', ruleId);
+            await supabase.from('pricing_rule_conditions').delete().eq('rule_id', activeRuleId);
+            await supabase.from('pricing_rule_actions').delete().eq('rule_id', activeRuleId);
         }
 
         if (conditions.length > 0) {
-            const { error: cErr } = await supabase.from('pricing_rule_conditions').insert(
+            await supabase.from('pricing_rule_conditions').insert(
                 conditions.map((c: any) => ({
-                    rule_id: ruleId,
-                    business_id: tenant_id, // Ensure this is set
+                    rule_id: activeRuleId,
+                    business_id: businessId,
                     type: c.type,
-                    target_id: c.target_id?.toString() || null,
-                    quantity_min: c.quantity_min || 0
+                    target_id: c.target_id || "GLOBAL",
+                    quantity_min: parseInt(c.quantity_min) || 0
                 }))
             );
-            if (cErr) throw new Error(cErr.message);
         }
 
         if (actions.length > 0) {
-            const { error: aErr } = await supabase.from('pricing_rule_actions').insert(
+            await supabase.from('pricing_rule_actions').insert(
                 actions.map((a: any) => ({
-                    rule_id: ruleId,
-                    business_id: tenant_id, // Ensure this is set
+                    rule_id: activeRuleId,
+                    business_id: businessId,
                     type: a.type,
-                    value: a.value
+                    value: parseFloat(a.value) || 0
                 }))
             );
-            if (aErr) throw new Error(aErr.message);
         }
 
+        revalidatePath('/[locale]/(dashboard)/sales/pricing-rules', 'layout');
+        return { success: true, message: 'Logic successfully deployed.' };
+
     } catch (error: any) {
-        console.error('Save Error:', error);
         return { success: false, message: error.message };
     }
-
-    revalidatePath('/sales/pricing-rules');
-    return { success: true, message: 'Saved successfully' };
 }
 
+/**
+ * Atomic Rule Deletion (Multi-Tenant Secured)
+ */
 export async function deletePricingRule(id: string) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
-    await supabase.from('pricing_rules').delete().eq('id', id);
-    revalidatePath('/sales/pricing-rules');
+
+    // 1. Identity Check
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 2. Tenant Context Fetch
+    const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+    if (!profile?.business_id) return;
+
+    // 3. Secured Deletion (Matches SQL: pricing_rules table, id + tenant_id columns)
+    const { error } = await supabase
+        .from('pricing_rules')
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', profile.business_id);
+
+    if (!error) {
+        revalidatePath('/[locale]/(dashboard)/sales/pricing-rules', 'layout');
+    }
 }
