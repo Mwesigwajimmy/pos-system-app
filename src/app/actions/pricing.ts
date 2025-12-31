@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
 /**
- * ENTERPRISE TELEMETRY TYPES
+ * TYPE DEFINITIONS
+ * Standardized response format for server-to-client communication.
  */
 export type RuleFormState = {
     success: boolean;
@@ -14,7 +15,6 @@ export type RuleFormState = {
     timestamp?: string;
 };
 
-// Internal Interfaces for Strict Type Safety
 interface ConditionPayload {
     type: string;
     target_id?: string;
@@ -27,10 +27,10 @@ interface ActionPayload {
 }
 
 /**
- * PRICING ENGINE - GLOBAL LOGIC DEPLOYMENT
+ * PRICING ENGINE - RULE DEPLOYMENT
  * 
- * Performs a multi-stage atomic upsert of pricing logic. 
- * Designed for high-concurrency enterprise environments with strict tenant isolation.
+ * Orchestrates a multi-stage atomic upsert for pricing logic.
+ * Ensures strict tenant isolation and data integrity across related tables.
  */
 export async function createOrUpdatePricingRule(
     prevState: RuleFormState, 
@@ -41,10 +41,14 @@ export async function createOrUpdatePricingRule(
     const syncTimestamp = new Date().toISOString();
 
     try {
-        // 1. SECURITY: Identity & Multi-Tenant Verification
+        // 1. SECURITY: Authentication and Tenant Validation
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
-            return { success: false, message: 'CRITICAL_AUTH_FAILURE: Identity could not be verified.', timestamp: syncTimestamp };
+            return { 
+                success: false, 
+                message: 'Authentication failed. Please re-authenticate to continue.', 
+                timestamp: syncTimestamp 
+            };
         }
 
         const { data: profile, error: profileError } = await supabase
@@ -54,31 +58,32 @@ export async function createOrUpdatePricingRule(
             .single();
 
         if (profileError || !profile?.business_id) {
-            return { success: false, message: 'TENANT_ISOLATION_ERROR: Access denied to local cluster nodes.', timestamp: syncTimestamp };
+            return { 
+                success: false, 
+                message: 'Security context error: Tenant identity could not be verified.', 
+                timestamp: syncTimestamp 
+            };
         }
         
         const businessId = profile.business_id;
 
-        // 2. DATA HYDRATION & SANITIZATION
+        // 2. DATA HYDRATION: Parse and Sanitize Payload
         const rawRuleData = formData.get('ruleData');
         const rawConditions = formData.get('conditions');
         const rawActions = formData.get('actions');
 
         if (!rawRuleData || !rawConditions || !rawActions) {
-            throw new Error("MALFORMED_PAYLOAD: Missing required engine configuration components.");
+            throw new Error("Invalid payload: Missing configuration components.");
         }
 
         const ruleData = JSON.parse(rawRuleData as string);
         const conditions: ConditionPayload[] = JSON.parse(rawConditions as string);
         const actions: ActionPayload[] = JSON.parse(rawActions as string);
 
-        // UUID Sanitization Protocol
+        // Sanitize Target ID for Upsert
         const targetId = ruleData.id && ruleData.id.length > 10 ? ruleData.id : undefined;
 
-        console.log(`[PRICING_ENGINE] Syncing Logic Node: ${targetId || 'NEW_NODE'} for Tenant: ${businessId}`);
-
-        // 3. ATOMIC STEP 1: Rule Configuration Upsert
-        // We include tenant_id in the upsert to satisfy RLS (Row Level Security) and prevent cross-tenant writes
+        // 3. STEP 1: Main Pricing Rule Configuration
         const { data: rule, error: ruleError } = await supabase
             .from('pricing_rules')
             .upsert({
@@ -86,7 +91,7 @@ export async function createOrUpdatePricingRule(
                 tenant_id: businessId, 
                 name: ruleData.name,
                 description: ruleData.description,
-                priority: Math.min(Math.max(Number(ruleData.priority) || 0, 0), 100), // Clamp priority 0-100
+                priority: Math.min(Math.max(Number(ruleData.priority) || 0, 0), 100),
                 is_active: ruleData.is_active,
                 is_stackable: ruleData.is_stackable,
                 start_date: ruleData.start_date || null,
@@ -96,19 +101,19 @@ export async function createOrUpdatePricingRule(
             .select('id')
             .single();
 
-        if (ruleError) throw new Error(`RULE_SYNC_FAILED: ${ruleError.message}`);
+        if (ruleError) throw new Error(`Configuration update failed: ${ruleError.message}`);
         const activeRuleId = rule.id;
 
-        // 4. ATOMIC STEP 2: Logic Branch Cleanup (Only on Updates)
-        // This ensures the "Logic Execution Stack" is clean before re-injecting predicates.
+        // 4. STEP 2: Logic Branch Cleanup
+        // Clears existing conditions and actions to ensure a clean state for the new logic.
         if (targetId) {
             const { error: delError } = await supabase
                 .from('pricing_rule_conditions')
                 .delete()
                 .eq('rule_id', activeRuleId)
-                .eq('business_id', businessId); // Double-verify tenant for security
+                .eq('business_id', businessId);
             
-            if (delError) throw new Error(`CLEANUP_FAILED_CONDITIONS: ${delError.message}`);
+            if (delError) throw new Error(`Failed to clear existing conditions: ${delError.message}`);
 
             const { error: delActError } = await supabase
                 .from('pricing_rule_actions')
@@ -116,11 +121,11 @@ export async function createOrUpdatePricingRule(
                 .eq('rule_id', activeRuleId)
                 .eq('business_id', businessId);
 
-            if (delActError) throw new Error(`CLEANUP_FAILED_ACTIONS: ${delActError.message}`);
+            if (delActError) throw new Error(`Failed to clear existing actions: ${delActError.message}`);
         }
 
-        // 5. ATOMIC STEP 3: Predicate Logic & Mutation Injection
-        // Parallel injection for performance
+        // 5. STEP 3: Condition and Action Insertion
+        // Parallelized insertion to optimize total request time.
         const conditionInjections = conditions.length > 0 ? supabase.from('pricing_rule_conditions').insert(
             conditions.map(c => ({
                 rule_id: activeRuleId,
@@ -142,34 +147,32 @@ export async function createOrUpdatePricingRule(
 
         const [cRes, aRes] = await Promise.all([conditionInjections, actionInjections]);
 
-        if (cRes.error) throw new Error(`PREDICATE_SYNC_ERROR: ${cRes.error.message}`);
-        if (aRes.error) throw new Error(`MUTATION_SYNC_ERROR: ${aRes.error.message}`);
+        if (cRes.error) throw new Error(`Condition synchronization error: ${cRes.error.message}`);
+        if (aRes.error) throw new Error(`Action synchronization error: ${aRes.error.message}`);
 
-        // 6. CACHE PROPAGATION
+        // 6. CACHE REVALIDATION
         revalidatePath('/[locale]/(dashboard)/sales/pricing-rules', 'layout');
         
         return { 
             success: true, 
-            message: `LOGIC_PROPAGATED: Node ${activeRuleId.split('-')[0]} successfully integrated into the global stack.`,
+            message: `Success: Node ${activeRuleId.split('-')[0]} has been updated and deployed.`,
             nodeId: activeRuleId,
             timestamp: syncTimestamp
         };
 
     } catch (error: any) {
-        // Structured Enterprise Error Logging
-        console.error(`[CRITICAL_ENGINE_ERROR][${syncTimestamp}]:`, error.message);
-        
+        console.error(`[SYSTEM_ERROR][${syncTimestamp}]:`, error.message);
         return { 
             success: false, 
-            message: `ENGINE_FAULT: ${error.message || 'Unknown system synchronization error.'}`,
+            message: `System fault: ${error.message || 'An unknown error occurred during synchronization.'}`,
             timestamp: syncTimestamp 
         };
     }
 }
 
 /**
- * ATOMIC RULE DECOMMISSIONING
- * Implements a strict "Check-then-Delete" protocol to ensure multi-tenant integrity.
+ * PRICING RULE DELETION
+ * Strictly verified deletion protocol utilizing tenant isolation.
  */
 export async function deletePricingRule(id: string) {
     const cookieStore = cookies();
@@ -178,7 +181,7 @@ export async function deletePricingRule(id: string) {
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("AUTH_REQUIRED");
+        if (!user) throw new Error("Authentication required.");
 
         const { data: profile } = await supabase
             .from('profiles')
@@ -186,9 +189,9 @@ export async function deletePricingRule(id: string) {
             .eq('id', user.id)
             .single();
             
-        if (!profile?.business_id) throw new Error("SECURITY_CONTEXT_MISSING");
+        if (!profile?.business_id) throw new Error("Security verification failed.");
 
-        // Secured Deletion: The 'eq' on tenant_id is the primary defense against ID-guessing attacks
+        // Secure Delete: Verified via ID and tenant_id to prevent cross-tenant operations.
         const { error, count } = await supabase
             .from('pricing_rules')
             .delete({ count: 'exact' })
@@ -196,13 +199,13 @@ export async function deletePricingRule(id: string) {
             .eq('tenant_id', profile.business_id);
 
         if (error) throw error;
-        if (count === 0) throw new Error("NODE_NOT_FOUND: Record may have already been decommissioned.");
+        if (count === 0) throw new Error("Record not found or already deleted.");
 
         revalidatePath('/[locale]/(dashboard)/sales/pricing-rules', 'layout');
         
         return { success: true, timestamp: opTimestamp };
     } catch (error: any) {
-        console.error(`[DECOMMISSION_ERROR][${opTimestamp}]:`, error.message);
+        console.error(`[DELETE_ERROR][${opTimestamp}]:`, error.message);
         return { success: false, message: error.message };
     }
 }

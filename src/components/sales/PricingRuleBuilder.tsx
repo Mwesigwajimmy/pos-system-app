@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useRouter } from 'next/navigation';
 import { useFormState } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     CheckCircle2, Zap, ShieldCheck, Layers, Percent, 
-    ArrowRight, Database, Globe, AlertCircle,
-    Trash2, Plus, Server, Activity, ShieldAlert,
-    ChevronRight, Cpu, Box, Users, CreditCard,Target
+    ArrowRight, Globe, Trash2, Plus, Activity, ShieldAlert,
+    Cpu, Box, Users, CreditCard, Target, ChevronRight,
+    Search, LayoutGrid, Settings2
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,28 +25,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { createOrUpdatePricingRule } from '@/app/actions/pricing';
 import { cn } from '@/lib/utils';
 
-// --- ENTERPRISE TYPES ---
-export interface PricingRule {
-    id?: string;
-    tenant_id: string;
-    name: string;
-    description: string;
-    priority: number;
-    is_active: boolean;
-    is_stackable: boolean;
-    conditions: {
-        type: string;
-        target_id: string;
-        quantity_min: number;
-        branch_id?: string; 
-    }[];
-    actions: {
-        type: string;
-        value: number;
-        currency_code: string; 
-    }[];
-}
-
 interface BuilderProps {
     initialData?: any;
     customers: { id: string; name: string }[];
@@ -57,10 +34,6 @@ interface BuilderProps {
     tenantId: string;
 }
 
-/**
- * ENTERPRISE PRICING RULE BUILDER
- * A high-integrity interface for deploying complex revenue logic.
- */
 export function PricingRuleBuilder({ 
     initialData, 
     customers, 
@@ -73,8 +46,7 @@ export function PricingRuleBuilder({
     const [activeTab, setActiveTab] = useState("config");
     const [stagedTabs, setStagedTabs] = useState<string[]>([]);
     
-    // 1. FORM ORCHESTRATION
-    const { control, handleSubmit, register, watch, trigger, formState: { errors } } = useForm<PricingRule>({
+    const { control, handleSubmit, register, watch, trigger, formState: { errors } } = useForm({
         defaultValues: {
             tenant_id: tenantId,
             name: initialData?.name || '',
@@ -90,468 +62,343 @@ export function PricingRuleBuilder({
     const { fields: condFields, append: addCond, remove: remCond } = useFieldArray({ control, name: "conditions" });
     const { fields: actFields, append: addAct, remove: remAct } = useFieldArray({ control, name: "actions" });
 
-    // 2. SERVER ACTION STATE
     const [state, formAction] = useFormState(createOrUpdatePricingRule, { success: false, message: '' });
 
-    // 3. LOGIC STAGING ENGINE
     const stageSection = async (tab: string, nextTab?: string) => {
         const fieldsToValidate: any = tab === 'config' ? ['name', 'priority'] : tab === 'logic' ? ['conditions'] : ['actions'];
         const isValid = await trigger(fieldsToValidate);
 
         if (isValid) {
             setStagedTabs(prev => Array.from(new Set([...prev, tab])));
-            toast({
-                title: "Section Verified",
-                description: `Node ${tab.toUpperCase()} logic has been validated and staged.`,
-                className: "bg-emerald-600 text-white border-none",
-            });
             if (nextTab) setActiveTab(nextTab);
         } else {
-            toast({
-                title: "Logic Error",
-                description: "Critical fields are missing in this section.",
-                variant: "destructive"
-            });
+            toast({ title: "Validation Error", description: "Please complete required fields.", variant: "destructive" });
         }
     };
 
     const isFullyStaged = stagedTabs.length >= 3;
     const watchedData = watch();
 
-    // 4. DEPLOYMENT PROTOCOL
-    const processSubmit = (data: PricingRule) => {
-        if (!isFullyStaged) {
-            toast({ title: "Deployment Blocked", description: "You must verify all three logic nodes before production push.", variant: "destructive" });
-            return;
-        }
-        const formData = new FormData();
-        formData.append('ruleData', JSON.stringify({ ...data, id: initialData?.id }));
-        formData.append('conditions', JSON.stringify(data.conditions));
-        formData.append('actions', JSON.stringify(data.actions));
-        
-        formAction(formData);
-    };
-
     return (
-        <form onSubmit={handleSubmit(processSubmit)} className="space-y-10 max-w-full mx-auto pb-40 selection:bg-primary selection:text-white">
+        <form onSubmit={handleSubmit((data) => {
+            const formData = new FormData();
+            formData.append('ruleData', JSON.stringify({ ...data, id: initialData?.id }));
+            formAction(formData);
+        })} className="w-full max-w-[1600px] mx-auto p-4 md:p-8 lg:p-12 space-y-8 bg-[#f8fafc]">
             
-            {/* --- GLOBAL DEPLOYMENT STATUS BAR --- */}
-            <motion.div 
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl sticky top-6 z-[60] border border-slate-700/50 backdrop-blur-xl bg-slate-900/95"
-            >
+            {/* TOP ENGINE STATUS BAR */}
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all duration-300">
                 <div className="flex items-center gap-5">
-                    <div className="p-3.5 bg-primary shadow-xl shadow-primary/20 rounded-2xl border border-primary/30">
-                        <Cpu className="w-7 h-7 text-white" />
+                    <div className="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg">
+                        <Cpu className="text-white w-7 h-7" />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <Badge className="bg-emerald-500/20 text-emerald-400 border-none text-[8px] font-black tracking-[0.2em] px-1.5 py-0 h-4">
-                                LIVE_CLUSTER_V4
+                        <div className="flex items-center gap-2 mb-1">
+                            <Badge className="bg-blue-50 text-blue-600 border-blue-100 font-semibold px-2 py-0 text-[10px] uppercase tracking-wider">
+                                System Node
                             </Badge>
-                            <span className="text-[10px] text-slate-500 font-mono tracking-widest font-bold">MULTI_TENANT_NODE</span>
+                            <span className="text-xs text-slate-400 font-medium tracking-tight">V4.0.2 Deployment</span>
                         </div>
-                        <h1 className="text-2xl font-black tracking-tighter uppercase italic leading-none">
-                            {initialData?.id ? 'Patching Logic Node' : 'Deploying New Logic'}
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            {initialData?.id ? 'Edit Configuration' : 'Deploy Pricing Engine'}
                         </h1>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <div className="hidden xl:flex flex-col items-end mr-2">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Integrity Check</span>
-                        <div className="flex gap-1.5">
-                            {[1, 2, 3].map(i => (
-                                <motion.div 
-                                    key={i} 
-                                    animate={{ scale: stagedTabs.length >= i ? 1.1 : 1 }}
-                                    className={cn(
-                                        "h-1.5 w-10 rounded-full transition-colors duration-500",
-                                        stagedTabs.length >= i ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'
-                                    )} 
-                                />
-                            ))}
-                        </div>
+                <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg border border-slate-100">
+                        <Activity className="w-4 h-4 text-emerald-500" />
+                        <span className="text-xs font-semibold text-slate-600">Integrity: {stagedTabs.length}/3 Verified</span>
                     </div>
                     <Button 
                         type="submit" 
                         disabled={!isFullyStaged}
                         className={cn(
-                            "min-w-[240px] h-14 font-black text-xs uppercase tracking-[0.2em] transition-all rounded-2xl border-b-4",
+                            "flex-1 lg:flex-none h-12 px-8 font-bold text-sm uppercase tracking-wide transition-all rounded-xl",
                             isFullyStaged 
-                                ? 'bg-primary hover:bg-primary/90 hover:scale-[1.02] active:scale-95 shadow-2xl shadow-primary/30 border-primary-foreground/20' 
-                                : 'bg-slate-800 text-slate-500 cursor-not-allowed border-transparent'
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 shadow-lg hover:-translate-y-0.5" 
+                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                         )}
                     >
-                        {isFullyStaged ? <Zap className="w-4 h-4 mr-3 fill-current animate-pulse" /> : <ShieldCheck className="w-4 h-4 mr-3" />}
-                        Execute Production Push
+                        {isFullyStaged ? <Zap className="w-4 h-4 mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                        Push to Production
                     </Button>
                 </div>
-            </motion.div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 px-2">
-                
-                {/* --- MAIN CONFIGURATION WORKSPACE --- */}
-                <div className="lg:col-span-8 space-y-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* PRIMARY WORKSPACE */}
+                <div className="lg:col-span-8 space-y-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 h-24 p-3 bg-white/50 backdrop-blur-md rounded-[2.5rem] mb-10 border border-slate-200/60 shadow-inner">
+                        <TabsList className="grid grid-cols-3 w-full bg-white border border-slate-200 p-1.5 rounded-2xl h-16 shadow-sm">
                             {[
-                                { id: 'config', label: '01. Context', icon: ShieldCheck, color: 'text-blue-500' },
-                                { id: 'logic', label: '02. Conditions', icon: Layers, color: 'text-indigo-500' },
-                                { id: 'outcomes', label: '03. Outcomes', icon: Percent, color: 'text-emerald-500' },
+                                { id: 'config', label: '1. Context', icon: Settings2 },
+                                { id: 'logic', label: '2. Conditions', icon: Layers },
+                                { id: 'outcomes', label: '3. Outcomes', icon: Percent },
                             ].map(tab => (
                                 <TabsTrigger 
                                     key={tab.id} 
                                     value={tab.id} 
-                                    className="rounded-3xl font-black uppercase text-[10px] tracking-widest transition-all data-[state=active]:bg-white data-[state=active]:shadow-2xl data-[state=active]:text-slate-900 relative group"
+                                    className="rounded-xl font-semibold text-sm transition-all hover:bg-slate-50 data-[state=active]:bg-slate-900 data-[state=active]:text-white flex items-center justify-center gap-2"
                                 >
-                                    <tab.icon className={cn("w-4 h-4 mr-2 transition-transform group-hover:scale-110", tab.color)} />
+                                    <tab.icon className="w-4 h-4" />
                                     {tab.label}
-                                    {stagedTabs.includes(tab.id) && (
-                                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                                            <CheckCircle2 className="w-5 h-5 text-emerald-500 absolute -top-1.5 -right-1.5 fill-white shadow-xl" />
-                                        </motion.div>
-                                    )}
+                                    {stagedTabs.includes(tab.id) && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
 
-                        {/* --- TAB 1: CONTEXT --- */}
-                        <TabsContent value="config" className="focus-visible:outline-none outline-none ring-0">
-                            <Card className="border-none shadow-2xl shadow-slate-200/50 rounded-[2.5rem] overflow-hidden bg-white ring-1 ring-slate-100">
-                                <div className="h-3 bg-gradient-to-r from-blue-500 to-indigo-600" />
-                                <CardHeader className="p-10 pb-0">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <Badge variant="outline" className="font-mono text-[9px] border-blue-200 text-blue-600 uppercase">Step_01</Badge>
-                                        <div className="h-px flex-1 bg-slate-100" />
-                                    </div>
-                                    <CardTitle className="text-3xl font-black uppercase italic text-slate-800">Namespace Parameters</CardTitle>
-                                    <CardDescription className="text-slate-400 font-medium italic">Define the logic cluster identity and execution priority weight.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="p-10 space-y-10">
-                                    <div className="grid md:grid-cols-2 gap-10">
-                                        <div className="space-y-3">
-                                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Logic Identifier</Label>
-                                            <Input 
-                                                {...register('name', { required: true })} 
-                                                placeholder="e.g. HIGH_LOAD_REBATE_2025" 
-                                                className="h-16 px-6 font-black text-xl bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-slate-300" 
-                                            />
-                                            {errors.name && <p className="text-[10px] font-bold text-red-500 ml-1 uppercase">Identifier is required for trace logs</p>}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Priority Weight (0-100)</Label>
-                                            <div className="relative">
-                                                <Input 
-                                                    type="number" 
-                                                    {...register('priority', { valueAsNumber: true, min: 1, max: 100 })} 
-                                                    className="h-16 px-6 font-mono font-black text-2xl bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all text-center" 
-                                                />
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">RANK</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <Separator className="opacity-50" />
-
-                                    <div className="p-8 bg-slate-50 rounded-[2rem] flex items-center justify-between border border-slate-100 group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200">
-                                                <Zap className={cn("w-5 h-5 transition-colors", watchedData.is_active ? "text-yellow-500 fill-yellow-500" : "text-slate-300")} />
-                                            </div>
-                                            <div>
-                                                <p className="font-black uppercase text-xs tracking-tight text-slate-800">Production Injection</p>
-                                                <p className="text-[10px] text-slate-400 font-medium">When enabled, logic will propagate to active transaction nodes immediately.</p>
-                                            </div>
-                                        </div>
-                                        <Controller control={control} name="is_active" render={({ field }) => (
-                                            <Switch 
-                                                checked={field.value} 
-                                                onCheckedChange={field.onChange} 
-                                                className="data-[state=checked]:bg-emerald-500"
-                                            />
-                                        )} />
-                                    </div>
-                                    
-                                    <div className="flex justify-end">
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => stageSection('config', 'logic')} 
-                                            className="h-16 px-10 bg-slate-900 text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-black transition-all shadow-xl shadow-slate-900/10"
-                                        >
-                                            Verify Context <ArrowRight className="ml-3 w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        {/* --- TAB 2: CONDITIONS (IF) --- */}
-                        <TabsContent value="logic" className="focus-visible:outline-none">
-                            <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-slate-100 overflow-hidden">
-                                <div className="h-3 bg-gradient-to-r from-indigo-500 to-purple-600" />
-                                <CardHeader className="p-10 flex flex-row items-center justify-between bg-white">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <Badge variant="outline" className="font-mono text-[9px] border-indigo-200 text-indigo-600 uppercase">Step_02</Badge>
-                                            <div className="h-px flex-1 bg-slate-100" />
-                                        </div>
-                                        <CardTitle className="text-3xl font-black uppercase italic text-slate-800">Predicate Matrix (IF)</CardTitle>
-                                        <CardDescription className="text-slate-400 font-medium italic">Define the conditional triggers required for logic activation.</CardDescription>
-                                    </div>
-                                    <Button 
-                                        type="button" 
-                                        onClick={() => addCond({ type: 'PRODUCT', target_id: '', quantity_min: 1 })} 
-                                        className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl px-6 shadow-lg shadow-indigo-600/20"
-                                    >
-                                        <Plus className="w-3 h-3 mr-2" /> New Predicate
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="p-10 space-y-8">
-                                    {condFields.length === 0 && (
-                                        <div className="py-20 border-4 border-dashed border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center">
-                                            <Layers className="w-12 h-12 text-slate-200 mb-4" />
-                                            <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">Global scope active: No specific triggers defined.</p>
-                                        </div>
-                                    )}
-                                    <AnimatePresence mode="popLayout">
-                                        {condFields.map((field, index) => (
-                                            <motion.div 
-                                                key={field.id} 
-                                                initial={{ x: -20, opacity: 0 }} 
-                                                animate={{ x: 0, opacity: 1 }} 
-                                                className="p-8 rounded-[2rem] bg-slate-50 border border-slate-200/50 flex flex-col xl:flex-row gap-8 items-end relative shadow-sm hover:shadow-md transition-shadow group"
-                                            >
-                                                <div className="flex-1 space-y-3 w-full">
-                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-2">
-                                                        <Globe className="w-3 h-3" /> Regional Constraint
-                                                    </Label>
-                                                    <Controller control={control} name={`conditions.${index}.branch_id`} render={({ field }) => (
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <SelectTrigger className="h-14 border-none bg-white font-black rounded-xl shadow-sm text-slate-700">
-                                                                <SelectValue placeholder="GLOBAL_NETWORK" />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-xl border-slate-200 shadow-2xl">
-                                                                <SelectItem value="global_all">ALL_LOCATIONS</SelectItem>
-                                                                {locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name.toUpperCase()}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}/>
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeTab}
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="mt-8"
+                            >
+                                {/* TAB 1: CONFIG */}
+                                <TabsContent value="config" className="focus-visible:outline-none">
+                                    <Card className="border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
+                                        <CardHeader className="p-8 border-b border-slate-50">
+                                            <CardTitle className="text-xl font-bold text-slate-900">Logic Parameters</CardTitle>
+                                            <CardDescription className="text-slate-500 font-medium">Set the primary identifiers and execution order for this node.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-8 space-y-10">
+                                            <div className="grid md:grid-cols-2 gap-8">
+                                                <div className="space-y-3">
+                                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Logic Identifier</Label>
+                                                    <Input {...register('name')} placeholder="e.g. CORE_REVENUE_2025" className="h-14 border-slate-200 focus:ring-4 focus:ring-blue-500/10 rounded-xl font-medium" />
                                                 </div>
-                                                <div className="flex-1 space-y-3 w-full">
-                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-2">
-                                                        <Target className="w-3 h-3" /> Logical Scope
-                                                    </Label>
-                                                    <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <SelectTrigger className="h-14 border-none bg-white font-black rounded-xl shadow-sm text-slate-700">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-xl border-slate-200 shadow-2xl">
-                                                                <SelectItem value="PRODUCT">
-                                                                    <div className="flex items-center gap-2 font-bold"><Box className="w-3.5 h-3.5 text-blue-500"/> PRODUCT_GROUP</div>
-                                                                </SelectItem>
-                                                                <SelectItem value="CUSTOMER">
-                                                                     <div className="flex items-center gap-2 font-bold"><Users className="w-3.5 h-3.5 text-purple-500"/> CUSTOMER_SEGMENT</div>
-                                                                </SelectItem>
-                                                                <SelectItem value="MIN_ORDER_VALUE">
-                                                                    <div className="flex items-center gap-2 font-bold"><CreditCard className="w-3.5 h-3.5 text-emerald-500"/> CART_THRESHOLD</div>
-                                                                </SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}/>
+                                                <div className="space-y-3">
+                                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Priority Weight</Label>
+                                                    <Input type="number" {...register('priority')} className="h-14 border-slate-200 rounded-xl font-medium" />
                                                 </div>
-                                                <div className="w-full xl:w-32 space-y-3">
-                                                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Threshold</Label>
-                                                    <Input type="number" {...register(`conditions.${index}.quantity_min`)} className="h-14 border-none bg-white font-mono font-black text-xl rounded-xl shadow-sm text-center" />
+                                            </div>
+                                            <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-100">
+                                                        <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 text-sm">Active Deployment State</p>
+                                                        <p className="text-xs text-slate-500 font-medium">Allow this rule to influence live checkout calculations.</p>
+                                                    </div>
                                                 </div>
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => remCond(index)} className="h-14 w-14 rounded-xl text-slate-200 hover:text-red-600 hover:bg-red-50 transition-all border border-transparent hover:border-red-100">
-                                                    <Trash2 className="w-5 h-5" />
+                                                <Controller control={control} name="is_active" render={({ field }) => (
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                )} />
+                                            </div>
+                                            <div className="flex justify-end pt-4">
+                                                <Button type="button" onClick={() => stageSection('config', 'logic')} className="h-14 px-10 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-all group">
+                                                    Validate Context <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                                 </Button>
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                    
-                                    <Separator className="opacity-50" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
 
-                                    <div className="flex justify-between pt-4">
-                                        <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="h-14 px-8 rounded-xl font-black uppercase text-slate-400 hover:text-slate-900 transition-all">Back</Button>
-                                        <Button type="button" onClick={() => stageSection('logic', 'outcomes')} className="h-14 px-10 bg-slate-900 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl">
-                                            Verify Triggers <ArrowRight className="ml-3 w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        {/* --- TAB 3: OUTCOMES (THEN) --- */}
-                        <TabsContent value="outcomes" className="focus-visible:outline-none">
-                            <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-slate-100 overflow-hidden">
-                                <div className="h-3 bg-gradient-to-r from-emerald-500 to-teal-600" />
-                                <CardHeader className="p-10 flex flex-row items-center justify-between">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <Badge variant="outline" className="font-mono text-[9px] border-emerald-200 text-emerald-600 uppercase">Step_03</Badge>
-                                            <div className="h-px flex-1 bg-slate-100" />
-                                        </div>
-                                        <CardTitle className="text-3xl font-black uppercase italic text-emerald-900">Revenue Mutations (THEN)</CardTitle>
-                                        <CardDescription className="text-slate-400 font-medium italic">Define the resulting price adjustments applied to the transaction cluster.</CardDescription>
-                                    </div>
-                                    <Button 
-                                        type="button" 
-                                        onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] })} 
-                                        className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl px-6 shadow-lg shadow-emerald-600/20"
-                                    >
-                                        <Plus className="w-3 h-3 mr-2" /> New Mutation
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="p-10 space-y-8">
-                                    {actFields.map((field, index) => (
-                                        <motion.div 
-                                            key={field.id} 
-                                            initial={{ scale: 0.98, opacity: 0 }} 
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            className="p-10 rounded-[2.5rem] bg-emerald-50/20 border border-emerald-100 flex flex-col xl:flex-row gap-10 items-center shadow-sm relative group"
-                                        >
-                                            <div className="flex-1 space-y-3 w-full">
-                                                <Label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] ml-1">Adjustment Logic</Label>
-                                                <Controller control={control} name={`actions.${index}.type`} render={({ field }) => (
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger className="h-16 border-none bg-white font-black rounded-2xl shadow-sm text-emerald-900 text-lg">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="rounded-2xl border-emerald-100 shadow-2xl">
-                                                            <SelectItem value="FIXED_PRICE" className="font-bold">PRICE_OVERRIDE</SelectItem>
-                                                            <SelectItem value="PERCENTAGE_DISCOUNT" className="font-bold">PERCENTAGE_REBATE</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}/>
+                                {/* TAB 2: CONDITIONS */}
+                                <TabsContent value="logic" className="focus-visible:outline-none">
+                                    <Card className="border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
+                                        <CardHeader className="p-8 flex flex-row items-center justify-between gap-4 border-b border-slate-50">
+                                            <div>
+                                                <CardTitle className="text-xl font-bold text-slate-900">Condition Matrix</CardTitle>
+                                                <CardDescription className="text-slate-500 font-medium">Logic triggers required to activate pricing mutations.</CardDescription>
                                             </div>
-                                            <div className="w-full xl:w-40 space-y-3">
-                                                <Label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] ml-1 text-center block">Currency Node</Label>
-                                                <Controller control={control} name={`actions.${index}.currency_code`} render={({ field }) => (
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger className="h-16 border-none bg-white font-mono font-black text-xl rounded-2xl shadow-sm text-center">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="rounded-xl">{currencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                )}/>
-                                            </div>
-                                            <div className="w-full xl:w-52 space-y-3">
-                                                <Label className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] ml-1 text-center block">Mutation Intensity</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    {...register(`actions.${index}.value`)} 
-                                                    className="h-16 border-none bg-white font-black text-3xl text-center rounded-2xl shadow-sm text-emerald-600 focus:ring-emerald-500/20" 
-                                                />
-                                            </div>
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => remAct(index)} className="h-16 w-16 text-emerald-200 hover:text-red-500 hover:bg-red-50 transition-all rounded-2xl mt-6">
-                                                <Trash2 className="w-6 h-6" />
+                                            <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', quantity_min: 1 })} className="rounded-xl border-slate-200 hover:bg-slate-50 font-bold h-11 px-5">
+                                                <Plus className="w-4 h-4 mr-2" /> New Trigger
                                             </Button>
-                                        </motion.div>
-                                    ))}
-                                    
-                                    <Separator className="opacity-50" />
+                                        </CardHeader>
+                                        <CardContent className="p-8 space-y-6">
+                                            {condFields.length === 0 && (
+                                                <div className="py-16 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                                                    <Layers className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                                    <p className="text-slate-400 font-bold text-sm tracking-wide">NO CONDITIONS DEFINED (GLOBAL SCOPE)</p>
+                                                </div>
+                                            )}
+                                            {condFields.map((field, index) => (
+                                                <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all">
+                                                    <div className="md:col-span-5 space-y-2">
+                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Logic Group</Label>
+                                                        <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger className="h-11 border-slate-200 rounded-lg hover:bg-slate-50 font-semibold transition-colors">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="PRODUCT" className="font-medium">Product Group</SelectItem>
+                                                                    <SelectItem value="CUSTOMER" className="font-medium">Customer Profile</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}/>
+                                                    </div>
+                                                    <div className="md:col-span-5 space-y-2">
+                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Location Filter</Label>
+                                                        <Controller control={control} name={`conditions.${index}.branch_id`} render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger className="h-11 border-slate-200 rounded-lg font-semibold">
+                                                                    <SelectValue placeholder="All Branches" />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    {locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}/>
+                                                    </div>
+                                                    <div className="md:col-span-2 flex justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-11 w-11 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between pt-6">
+                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-bold text-slate-500 hover:text-slate-900 h-12 rounded-xl">Back</Button>
+                                                <Button type="button" onClick={() => stageSection('logic', 'outcomes')} className="h-12 px-8 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-200">
+                                                    Stage Conditions <ChevronRight className="ml-2 w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
 
-                                    <div className="flex justify-between pt-4">
-                                        <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="h-14 px-8 rounded-xl font-black uppercase text-slate-400 hover:text-slate-900 transition-all">Back</Button>
-                                        <Button type="button" onClick={() => stageSection('outcomes')} className="h-16 px-12 bg-emerald-600 text-white font-black uppercase tracking-[0.2em] rounded-[1.25rem] shadow-2xl shadow-emerald-500/30 hover:bg-emerald-700 transition-all">
-                                            Stage Final Mutation <CheckCircle2 className="ml-3 w-5 h-5" />
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
+                                {/* TAB 3: OUTCOMES */}
+                                <TabsContent value="outcomes" className="focus-visible:outline-none">
+                                    <Card className="border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
+                                        <CardHeader className="p-8 flex flex-row items-center justify-between gap-4 border-b border-slate-50">
+                                            <div>
+                                                <CardTitle className="text-xl font-bold text-slate-900">Revenue Mutations</CardTitle>
+                                                <CardDescription className="text-slate-500 font-medium">Resulting price adjustments for this logic node.</CardDescription>
+                                            </div>
+                                            <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] })} className="rounded-xl border-slate-200 hover:bg-slate-50 font-bold h-11 px-5">
+                                                <Plus className="w-4 h-4 mr-2" /> New Mutation
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="p-8 space-y-6">
+                                            {actFields.map((field, index) => (
+                                                <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end bg-slate-50 p-6 rounded-2xl border border-slate-100 hover:border-emerald-200 transition-all">
+                                                    <div className="md:col-span-4 space-y-2">
+                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Adjustment Mode</Label>
+                                                        <Controller control={control} name={`actions.${index}.type`} render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-bold">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="FIXED_PRICE">Fixed Price</SelectItem>
+                                                                    <SelectItem value="PERCENTAGE_DISCOUNT">Percentage Rebate</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}/>
+                                                    </div>
+                                                    <div className="md:col-span-5 space-y-2">
+                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mutation Value</Label>
+                                                        <div className="relative">
+                                                            <Input type="number" step="0.01" {...register(`actions.${index}.value`)} className="h-12 border-slate-200 bg-white rounded-xl font-bold pl-12" />
+                                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">VAL</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="md:col-span-3 flex justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-12 w-12 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between pt-6">
+                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-bold text-slate-500 h-12 px-6 rounded-xl">Back</Button>
+                                                <Button type="button" onClick={() => stageSection('outcomes')} className="h-14 px-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-100 transition-all">
+                                                    Finalize Deployment <CheckCircle2 className="ml-2 w-5 h-5" />
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            </motion.div>
+                        </AnimatePresence>
                     </Tabs>
                 </div>
 
-                {/* --- SIDEBAR TELEMETRY & PREVIEW --- */}
-                <div className="lg:col-span-4 space-y-8">
-                    <motion.div 
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="sticky top-40 space-y-8"
-                    >
-                        {/* 1. LOGIC SIMULATION PREVIEW */}
-                        <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden border-t-4 border-primary">
-                            <CardHeader className="p-8 pb-4">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <Activity className="w-5 h-5 text-primary animate-pulse" />
-                                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Logic Simulation</span>
-                                    </div>
-                                    <Badge className="bg-white/10 text-white border-none font-mono text-[9px] h-5">{tenantId.split('-')[0]}</Badge>
+                {/* SIDEBAR: TELEMETRY & PREVIEW */}
+                <div className="lg:col-span-4 space-y-6">
+                    <div className="sticky top-12 space-y-6">
+                        <Card className="bg-slate-900 border-none rounded-3xl overflow-hidden shadow-2xl">
+                            <div className="h-2 w-full bg-blue-500" />
+                            <CardHeader className="p-8">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Activity className="w-4 h-4 text-blue-400" />
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Simulation Node</span>
                                 </div>
-                                <h3 className="text-xl font-black italic uppercase tracking-tight truncate leading-none">
-                                    {watchedData.name || 'UNNAMED_NODE'}
-                                </h3>
+                                <CardTitle className="text-xl font-bold text-white tracking-tight">
+                                    {watchedData.name || 'Unnamed_Logic'}
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="p-8 pt-0 space-y-8">
-                                <div className="p-6 bg-white/5 rounded-[2rem] border border-white/10 space-y-4">
-                                    <div className="flex gap-3">
-                                        <span className="text-[10px] font-black text-primary uppercase">Trigger</span>
-                                        <div className="h-px flex-1 bg-white/10 mt-1.5" />
+                                <div className="space-y-4">
+                                    <div className="flex gap-4">
+                                        <div className="w-1 bg-blue-500/20 rounded-full" />
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase mb-1">Trigger Path</p>
+                                            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                                                {condFields.length > 0 ? `Evaluating ${condFields.length} active conditions.` : "Global scope initialization."}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <p className="text-xs font-medium text-slate-400 leading-relaxed italic">
-                                        {condFields.length > 0 ? (
-                                            <>Apply logic IF <span className="text-white font-bold tracking-tight">({condFields.map(c => c.type).join(' ∩ ')})</span> requirements are met.</>
-                                        ) : "Standard global priority override active."}
-                                    </p>
-                                    
-                                    <div className="flex gap-3 pt-2">
-                                        <span className="text-[10px] font-black text-emerald-400 uppercase">Mutation</span>
-                                        <div className="h-px flex-1 bg-white/10 mt-1.5" />
+                                    <div className="flex gap-4">
+                                        <div className="w-1 bg-emerald-500/20 rounded-full" />
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-bold text-emerald-400 uppercase mb-1">Impact Result</p>
+                                            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                                                {actFields.length > 0 ? `${actFields.length} mutations detected.` : "Neutral pricing state."}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <p className="text-xs font-medium text-slate-400 italic">
-                                        {actFields.length > 0 ? (
-                                            <>Execute <span className="text-emerald-400 font-black">{actFields.length} distinct mutation(s)</span> on the pricing cluster.</>
-                                        ) : <span className="text-red-400 font-black">WARNING: NULL_OPERATION_DETECTED</span>}
-                                    </p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10 group hover:bg-white/10 transition-colors">
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Nodes Staged</p>
-                                        <p className="text-2xl font-black text-primary">{stagedTabs.length}<span className="text-xs opacity-30">/3</span></p>
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                                        <p className="text-sm font-bold text-white">{stagedTabs.length}/3 Verified</p>
                                     </div>
-                                    <div className="p-5 bg-white/5 rounded-2xl border border-white/10 group hover:bg-white/10 transition-colors">
-                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Priority Rank</p>
-                                        <p className="text-2xl font-black text-blue-400 italic">{watchedData.priority}</p>
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Priority</p>
+                                        <p className="text-sm font-bold text-blue-400">Rank #{watchedData.priority}</p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span className="text-slate-500">Deployment Pipeline</span>
-                                        <span className={cn(isFullyStaged ? 'text-emerald-400' : 'text-amber-500 animate-pulse')}>
-                                            {isFullyStaged ? 'CLUSTER_READY' : 'VERIFYING_NODES...'}
+                                <div className="pt-4 space-y-3">
+                                    <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        <span>Staging Progress</span>
+                                        <span className={isFullyStaged ? "text-emerald-400" : "text-blue-400"}>
+                                            {isFullyStaged ? "Deployment Ready" : "In Progress"}
                                         </span>
                                     </div>
-                                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/5">
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                                         <motion.div 
                                             initial={{ width: 0 }} 
                                             animate={{ width: `${(stagedTabs.length / 3) * 100}%` }} 
-                                            className="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" 
+                                            className="h-full bg-blue-500 rounded-full" 
                                         />
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* 2. SECURITY ADVISORY */}
-                        {!isFullyStaged && (
-                            <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-700 rounded-[1.5rem] p-6">
-                                <ShieldAlert className="h-5 w-5 text-amber-600" />
-                                <AlertTitle className="font-black uppercase text-[10px] tracking-widest mb-2">Security Protocol</AlertTitle>
-                                <AlertDescription className="text-xs font-medium leading-relaxed opacity-80 italic">
-                                    All logic nodes must be individually verified and staged before the production cluster allows a global push.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                    </motion.div>
+                        <AnimatePresence>
+                            {!isFullyStaged && (
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                                    <Alert className="bg-blue-50 border-blue-100 rounded-2xl p-5">
+                                        <ShieldAlert className="h-5 w-5 text-blue-600" />
+                                        <AlertTitle className="text-xs font-bold text-blue-900 uppercase tracking-widest mb-1">Protocol Lock</AlertTitle>
+                                        <AlertDescription className="text-xs text-blue-700/80 font-medium">
+                                            Please verify all three logic nodes to unlock production deployment capabilities.
+                                        </AlertDescription>
+                                    </Alert>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </form>
