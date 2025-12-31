@@ -64,6 +64,7 @@ export async function createOrUpdatePricingRule(prevState: RuleFormState, formDa
             const { error: cErr } = await supabase.from('pricing_rule_conditions').insert(
                 conditions.map((c: any) => ({
                     rule_id: ruleId,
+                    business_id: tenant_id, // Ensure this is set
                     type: c.type,
                     target_id: c.target_id?.toString() || null,
                     quantity_min: c.quantity_min || 0
@@ -76,6 +77,7 @@ export async function createOrUpdatePricingRule(prevState: RuleFormState, formDa
             const { error: aErr } = await supabase.from('pricing_rule_actions').insert(
                 actions.map((a: any) => ({
                     rule_id: ruleId,
+                    business_id: tenant_id, // Ensure this is set
                     type: a.type,
                     value: a.value
                 }))
