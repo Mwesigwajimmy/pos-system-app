@@ -28,14 +28,18 @@ export default async function RuleBuilderPage({ params }: PageProps) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect(`/${params.locale}/login`);
 
+    // Fetch business_id and primary currency for the tenant
     const { data: profile } = await supabase
         .from('profiles')
-        .select('business_id')
+        .select('business_id, currency')
         .eq('id', user.id)
         .single();
 
     if (!profile?.business_id) redirect(`/${params.locale}/setup`);
+    
     const businessId = profile.business_id;
+    // Provide a robust list of currencies for the enterprise selector
+    const supportedCurrencies = ['USD', 'UGX', 'EUR', 'GBP', 'KES', 'TZS', 'ZAR'];
 
     // 2. DATA FETCHING (DEEP TREE FETCH)
     let ruleData = null;
@@ -106,11 +110,14 @@ export default async function RuleBuilderPage({ params }: PageProps) {
             </div>
 
             {/* --- Fully Synchronized Enterprise Builder --- */}
+            {/* FIXED: Passing missing props 'currencies' and 'tenantId' */}
             <PricingRuleBuilder 
                 initialData={ruleData} 
                 customers={customersRes.data || []} 
                 products={productsRes.data || []} 
                 locations={locationsRes.data || []} 
+                currencies={supportedCurrencies}
+                tenantId={businessId}
             />
             
             {/* Enterprise Audit Footer */}
