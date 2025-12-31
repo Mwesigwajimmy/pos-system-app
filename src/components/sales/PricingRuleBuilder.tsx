@@ -2,12 +2,12 @@
 
 import React, { useEffect, useMemo } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation'; // Added useParams for locale safety
 import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 
 // --- UI Components ---
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,50 +15,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // --- Icons ---
 import { 
-    Trash, PlusCircle, Save, ArrowLeft, AlertCircle, 
-    Zap, ShieldCheck, Layers, Calendar, Globe, 
+    Trash, PlusCircle, Zap, ArrowLeft, AlertCircle, 
+    ShieldCheck, Layers, Calendar, Globe, 
     UserCheck, Package, Percent, Calculator, Info
 } from 'lucide-react';
 
 // --- Server Action ---
-import { createOrUpdatePricingRule, RuleFormState } from '@/app/actions/pricing';
+import { createOrUpdatePricingRule } from '@/app/actions/pricing';
 
-// --- Types ---
-interface Condition {
+// --- Interfaces (Enterprise Typed) ---
+export interface PricingRuleCondition {
+    id?: string;
     type: 'CUSTOMER' | 'PRODUCT' | 'LOCATION' | 'CURRENCY' | 'MIN_ORDER_VALUE' | 'LOYALTY_TIER';
     target_id: string;
     quantity_min: number;
 }
 
-interface Action {
+export interface PricingRuleAction {
+    id?: string;
     type: 'FIXED_PRICE' | 'PERCENTAGE_DISCOUNT' | 'BUY_X_GET_Y' | 'TIERED_PRICING';
     value: number;
-    metadata?: any; // For complex enterprise rules like Buy X Get Y
+    metadata?: any;
 }
 
-interface PricingRuleFormData {
+export interface PricingRule {
+    id: string;
     name: string;
     description: string;
     priority: number;
     is_active: boolean;
-    is_stackable: boolean; // Enterprise feature: Can multiple rules apply?
+    is_stackable: boolean;
     start_date: string | null;
     end_date: string | null;
-    conditions: Condition[];
-    actions: Action[];
+    conditions: PricingRuleCondition[];
+    actions: PricingRuleAction[];
 }
 
 interface BuilderProps {
-    initialData?: any; 
+    initialData?: PricingRule | null; // Removed 'any'
     customers: { id: string; name: string }[];
     products: { id: string; name: string }[];
-    locations: { id: string; name: string }[]; // Added Location Support
+    locations: { id: string; name: string }[];
 }
 
 function SubmitButton({ isNew }: { isNew: boolean }) {
@@ -82,9 +84,11 @@ function SubmitButton({ isNew }: { isNew: boolean }) {
 
 export function PricingRuleBuilder({ initialData, customers, products, locations }: BuilderProps) {
     const router = useRouter();
+    const params = useParams(); // Get locale for safe routing
     const { toast } = useToast();
+    const locale = params.locale as string;
 
-    const { control, handleSubmit, register, watch, trigger, formState: { errors } } = useForm<PricingRuleFormData>({
+    const { control, handleSubmit, register, watch, trigger, formState: { errors } } = useForm<PricingRule>({
         defaultValues: {
             name: initialData?.name || '',
             description: initialData?.description || '',
@@ -106,14 +110,14 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
     useEffect(() => {
         if (state.success) {
             toast({ title: "Rule Optimized", description: state.message });
-            router.push('/sales/pricing-rules');
+            router.push(`/${locale}/sales/pricing-rules`); // FIXED: Locale-safe routing
             router.refresh();
         } else if (state.message) {
             toast({ title: "Deployment Error", description: state.message, variant: "destructive" });
         }
-    }, [state, toast, router]);
+    }, [state, toast, router, locale]);
 
-    const processSubmit = (data: PricingRuleFormData) => {
+    const processSubmit = (data: PricingRule) => {
         const formData = new FormData();
         formData.append('ruleData', JSON.stringify({ ...data, id: initialData?.id }));
         formData.append('conditions', JSON.stringify(data.conditions));
@@ -125,7 +129,6 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
 
     return (
         <form onSubmit={handleSubmit(processSubmit)} className="space-y-10 max-w-7xl mx-auto pb-24">
-            {/* --- Enterprise Header --- */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 px-1">
                 <div className="space-y-2">
                     <div className="flex items-center gap-3">
@@ -140,7 +143,7 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                 </div>
                 <div className="flex items-center gap-3">
                     <Button variant="outline" asChild className="border-slate-300">
-                        <Link href="/sales/pricing-rules"><ArrowLeft className="mr-2 h-4 w-4" /> Discard Changes</Link>
+                        <Link href={`/${locale}/sales/pricing-rules`}><ArrowLeft className="mr-2 h-4 w-4" /> Discard Changes</Link>
                     </Button>
                     <SubmitButton isNew={!initialData} />
                 </div>
@@ -153,7 +156,6 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                     <TabsTrigger value="outcomes" className="rounded-lg font-bold uppercase text-xs tracking-widest"><Percent className="w-4 h-4 mr-2 text-emerald-500" /> Revenue Action</TabsTrigger>
                 </TabsList>
 
-                {/* --- Tab 1: Parameters --- */}
                 <TabsContent value="config">
                     <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white ring-1 ring-slate-100">
                         <CardHeader>
@@ -162,12 +164,12 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                         <CardContent className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
                             <div className="md:col-span-2 space-y-3">
                                 <Label htmlFor="name" className="text-xs font-black uppercase tracking-tighter text-slate-500">Master Rule Name</Label>
-                                <Input id="name" {...register('name', { required: "Master identifier required" })} className="h-12 text-lg font-bold border-slate-200 focus:ring-primary" onBlur={() => trigger('name')} />
-                                {errors.name && <p className="text-xs font-bold text-red-500 italic uppercase">System Alert: {errors.name.message}</p>}
+                                <Input id="name" {...register('name', { required: "Master identifier required" })} className="h-12 text-lg font-bold border-slate-200 focus:ring-primary" />
+                                {errors.name && <p className="text-xs font-bold text-red-500 italic uppercase">Alert: {errors.name.message}</p>}
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-xs font-black uppercase tracking-tighter text-slate-500">Calculated Priority</Label>
+                                <Label className="text-xs font-black uppercase tracking-tighter text-slate-500">Execution Priority</Label>
                                 <Input type="number" {...register('priority')} className="h-12 font-mono text-lg border-slate-200" />
                             </div>
 
@@ -177,14 +179,14 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                                     <Controller control={control} name="is_active" render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
                                 </div>
                                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                    <Label className="text-xs font-black uppercase flex items-center gap-1">Stackable <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3" /></TooltipTrigger><TooltipContent>Can this apply alongside other rules?</TooltipContent></Tooltip></TooltipProvider></Label>
+                                    <Label className="text-xs font-black uppercase flex items-center gap-1">Stackable <TooltipProvider><Tooltip><TooltipTrigger><Info className="w-3 h-3" /></TooltipTrigger><TooltipContent>Can multiple rules apply to one checkout?</TooltipContent></Tooltip></TooltipProvider></Label>
                                     <Controller control={control} name="is_stackable" render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
                                 </div>
                             </div>
 
                             <div className="md:col-span-4 space-y-3">
-                                <Label className="text-xs font-black uppercase tracking-tighter text-slate-500">Internal Audit Description</Label>
-                                <Input {...register('description')} placeholder="Detail the business purpose of this rule for reporting..." className="h-12 border-slate-200" />
+                                <Label className="text-xs font-black uppercase tracking-tighter text-slate-500">Audit Description</Label>
+                                <Input {...register('description')} placeholder="Detail the business logic purpose..." className="h-12 border-slate-200" />
                             </div>
 
                             <div className="space-y-3">
@@ -192,14 +194,13 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                                 <Input type="date" {...register('start_date')} className="h-11 border-slate-200" />
                             </div>
                             <div className="space-y-3">
-                                <Label className="text-xs font-black uppercase text-slate-500"><Calendar className="w-3 h-3 inline mr-1" /> Expiration Date</Label>
+                                <Label className="text-xs font-black uppercase text-slate-500"><Calendar className="w-3 h-3 inline mr-1" /> Expiration</Label>
                                 <Input type="date" {...register('end_date')} className="h-11 border-slate-200" />
                             </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
 
-                {/* --- Tab 2: Triggers (IF) --- */}
                 <TabsContent value="logic">
                     <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white ring-1 ring-slate-100">
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -210,7 +211,7 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                             {condFields.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center p-20 border-4 border-dotted rounded-2xl bg-slate-50 opacity-40">
                                     <Globe className="w-16 h-16 mb-4" />
-                                    <p className="font-black uppercase tracking-tighter text-slate-500">Global Coverage: Rule applies to all system transactions</p>
+                                    <p className="font-black uppercase tracking-tighter text-slate-500 text-center">Global Logic: Rule applies to all system nodes</p>
                                 </div>
                             ) : (
                                 condFields.map((field, index) => (
@@ -218,37 +219,39 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                                         <div className="absolute -left-3 -top-3 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shadow-lg">0{index + 1}</div>
                                         
                                         <div className="w-full md:w-1/4 space-y-2">
-                                            <Label className="text-[10px] font-black uppercase opacity-60 flex items-center gap-1"><Zap className="w-3 h-3" /> Trigger Scope</Label>
+                                            <Label className="text-[10px] font-black uppercase opacity-60">Scope</Label>
                                             <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <SelectTrigger className="h-11 font-bold border-slate-300"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="PRODUCT"><Package className="w-3 h-3 inline mr-1" /> Product Match</SelectItem>
-                                                        <SelectItem value="CUSTOMER"><UserCheck className="w-3 h-3 inline mr-1" /> Customer Tier</SelectItem>
-                                                        <SelectItem value="LOCATION"><Globe className="w-3 h-3 inline mr-1" /> Multi-Location</SelectItem>
-                                                        <SelectItem value="LOYALTY_TIER">Loyalty Milestone</SelectItem>
+                                                        <SelectItem value="PRODUCT">Product Group</SelectItem>
+                                                        <SelectItem value="CUSTOMER">Customer Segment</SelectItem>
+                                                        <SelectItem value="LOCATION">Branch/Location</SelectItem>
                                                         <SelectItem value="MIN_ORDER_VALUE">Min Spend Threshold</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}/>
                                         </div>
 
-                                        <div className="w-full md:flex-1 space-y-2">
-                                            <Label className="text-[10px] font-black uppercase opacity-60 italic">Context Target</Label>
-                                            <Controller control={control} name={`conditions.${index}.target_id`} render={({ field }) => (
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <SelectTrigger className="h-11 font-bold border-slate-300"><SelectValue placeholder="System Lookup..." /></SelectTrigger>
-                                                    <SelectContent>
-                                                        {watchedConditions[index]?.type === 'CUSTOMER' ? customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>) :
-                                                         watchedConditions[index]?.type === 'LOCATION' ? locations.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>) :
-                                                         products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            )}/>
-                                        </div>
+                                        {/* FIXED: Conditional UI Rendering - Only show target list if scope requires it */}
+                                        {watchedConditions[index]?.type !== 'MIN_ORDER_VALUE' && (
+                                            <div className="w-full md:flex-1 space-y-2">
+                                                <Label className="text-[10px] font-black uppercase opacity-60 italic">Context Target</Label>
+                                                <Controller control={control} name={`conditions.${index}.target_id`} render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <SelectTrigger className="h-11 font-bold border-slate-300"><SelectValue placeholder="System Lookup..." /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {watchedConditions[index]?.type === 'CUSTOMER' ? customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) :
+                                                            watchedConditions[index]?.type === 'LOCATION' ? locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>) :
+                                                            products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}/>
+                                            </div>
+                                        )}
 
                                         <div className="w-full md:w-32 space-y-2">
-                                            <Label className="text-[10px] font-black uppercase opacity-60">Threshold</Label>
+                                            <Label className="text-[10px] font-black uppercase opacity-60">Value Min</Label>
                                             <Input type="number" {...register(`conditions.${index}.quantity_min`)} className="h-11 font-mono text-center border-slate-300" />
                                         </div>
 
@@ -260,22 +263,21 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                     </Card>
                 </TabsContent>
 
-                {/* --- Tab 3: Actions (THEN) --- */}
                 <TabsContent value="outcomes">
                     <Card className="border-none shadow-2xl shadow-slate-200/50 bg-white ring-1 ring-slate-100 border-l-8 border-l-emerald-500">
                         <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-xl font-black text-emerald-900">Revenue Logic (THEN)</CardTitle>
+                            <CardTitle className="text-xl font-black text-emerald-900">Revenue Action (THEN)</CardTitle>
                             <Button type="button" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0 })} className="bg-emerald-600 text-white hover:bg-emerald-700 font-black uppercase text-xs tracking-widest"><PlusCircle className="w-4 h-4 mr-2" /> Add Logic Action</Button>
                         </CardHeader>
                         <CardContent className="space-y-6 min-h-[300px]">
                             {actFields.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center p-20 border-4 border-dotted rounded-2xl bg-red-50 border-red-100 animate-pulse">
+                                <div className="flex flex-col items-center justify-center p-20 border-4 border-dotted rounded-2xl bg-red-50 border-red-100">
                                     <AlertCircle className="w-16 h-16 mb-4 text-red-300" />
-                                    <p className="font-black uppercase tracking-tighter text-red-400">Zero-Action State: Rule will calculate but not adjust price</p>
+                                    <p className="font-black uppercase tracking-tighter text-red-400">Alert: Zero-Outcome Logic</p>
                                 </div>
                             ) : (
                                 actFields.map((field, index) => (
-                                    <div key={field.id} className="group flex flex-col md:flex-row gap-6 p-8 border-2 border-emerald-50 rounded-3xl items-center bg-emerald-50/10 hover:bg-white hover:border-emerald-200 hover:shadow-2xl transition-all relative">
+                                    <div key={field.id} className="group flex flex-col md:flex-row gap-6 p-8 border-2 border-emerald-50 rounded-3xl items-center bg-emerald-50/10 hover:bg-white transition-all relative">
                                         <div className="absolute -left-3 -top-3 w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm font-black shadow-lg transform -rotate-12">RESULT</div>
                                         
                                         <div className="w-full md:flex-1 space-y-2">
@@ -284,10 +286,9 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <SelectTrigger className="h-12 font-black border-emerald-100 text-emerald-900 bg-white"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="FIXED_PRICE"><Calculator className="w-3 h-3 inline mr-2 text-emerald-500" /> Override: Fixed UGX Price</SelectItem>
-                                                        <SelectItem value="PERCENTAGE_DISCOUNT"><Percent className="w-3 h-3 inline mr-2 text-emerald-500" /> Rebate: Percentage Off</SelectItem>
-                                                        <SelectItem value="BUY_X_GET_Y">Enterprise: Bundle Promo (X+Y)</SelectItem>
-                                                        <SelectItem value="TIERED_PRICING">Enterprise: Scaled Volume Tier</SelectItem>
+                                                        <SelectItem value="FIXED_PRICE"><Calculator className="w-3 h-3 inline mr-2 text-emerald-500" /> Override Price</SelectItem>
+                                                        <SelectItem value="PERCENTAGE_DISCOUNT"><Percent className="w-3 h-3 inline mr-2 text-emerald-500" /> Percentage Rebate</SelectItem>
+                                                        <SelectItem value="BUY_X_GET_Y">Bulk Promotion (X+Y)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}/>
@@ -307,18 +308,17 @@ export function PricingRuleBuilder({ initialData, customers, products, locations
                 </TabsContent>
             </Tabs>
             
-            {/* System Node Footer */}
             <div className="fixed bottom-0 left-0 right-0 p-3 bg-slate-900 text-white border-t border-slate-800 flex justify-between items-center z-50">
                 <div className="flex items-center gap-6 px-4">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Engine Connected</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Pricing Engine Connected</span>
                     </div>
                     <Separator orientation="vertical" className="h-4 bg-slate-700" />
-                    <span className="text-[10px] font-mono opacity-50 uppercase">Tenant Node: Active</span>
+                    <span className="text-[10px] font-mono opacity-50 uppercase">Tenant Security Active</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 opacity-30 pointer-events-none italic text-[10px] uppercase font-black">
-                    Proprietary Pricing Matrix v4.2.1
+                <div className="flex items-center gap-2 px-4 opacity-30 italic text-[10px] uppercase font-black">
+                    Logic Matrix v4.2.1
                 </div>
             </div>
         </form>

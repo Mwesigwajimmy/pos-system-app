@@ -1,6 +1,5 @@
-'use server';
-
 import React from 'react';
+import { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -8,22 +7,24 @@ import { PricingRuleBuilder } from '@/components/sales/PricingRuleBuilder';
 import { ChevronLeft, ShieldCheck, Database } from 'lucide-react';
 import Link from 'next/link';
 
+// Added Enterprise Metadata
+export const metadata: Metadata = {
+  title: 'Rule Configuration | Pricing Intelligence Builder',
+  description: 'Design and deploy automated pricing logic for multi-tenant retail operations.',
+};
+
+interface PageProps {
+    params: { locale: string, ruleId: string } 
+}
+
 /**
  * Enterprise Rule Builder Page
- * 
- * FULLY CONNECTED: Links Sales Pricing logic to Multi-Tenant Business Profiles,
- * Customer segments, Product catalogs, and Inventory Locations.
  */
-export default async function RuleBuilderPage({ 
-    params 
-}: { 
-    params: { locale: string, ruleId: string } 
-}) {
+export default async function RuleBuilderPage({ params }: PageProps) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. AUTH & TENANT RESOLUTION (SYSTEM-WIDE CONNECTIVITY)
-    // Ensures strict data isolation - users only access data belonging to their Business Node.
+    // 1. AUTH & TENANT RESOLUTION
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect(`/${params.locale}/login`);
 
@@ -36,8 +37,7 @@ export default async function RuleBuilderPage({
     if (!profile?.business_id) redirect(`/${params.locale}/setup`);
     const businessId = profile.business_id;
 
-    // 2. DATA FETCHING (INTEGRATED & SECURE)
-    // For existing rules, we fetch the deep tree (Conditions + Actions) in one trip.
+    // 2. DATA FETCHING (DEEP TREE FETCH)
     let ruleData = null;
     
     if (params.ruleId !== 'new') {
@@ -59,9 +59,7 @@ export default async function RuleBuilderPage({
         ruleData = data;
     }
 
-    // 3. FULL SYSTEM SYNCHRONIZATION (Parallel Data Load)
-    // Fetches essential metadata to populate the builder's dynamic logic triggers.
-    // Includes LOCATIONS to enable Location-based pricing logic.
+    // 3. FULL SYSTEM SYNCHRONIZATION (Parallel Data Load for Performance)
     const [customersRes, productsRes, locationsRes] = await Promise.all([
         supabase
             .from('customers')
@@ -76,7 +74,7 @@ export default async function RuleBuilderPage({
             .eq('is_active', true)
             .order('name'),
         supabase
-            .from('locations') // Connection to the Inventory Locations table
+            .from('locations')
             .select('id, name')
             .eq('business_id', businessId)
             .order('name')
@@ -108,7 +106,6 @@ export default async function RuleBuilderPage({
             </div>
 
             {/* --- Fully Synchronized Enterprise Builder --- */}
-            {/* We pass Initial Data, Customers, Products, and LOCATIONS to enable multi-scope rules */}
             <PricingRuleBuilder 
                 initialData={ruleData} 
                 customers={customersRes.data || []} 

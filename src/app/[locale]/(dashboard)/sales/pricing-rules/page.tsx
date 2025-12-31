@@ -1,6 +1,5 @@
-'use server';
-
 import React from 'react';
+import { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
@@ -28,12 +27,32 @@ import {
 } from "@/components/ui/tooltip";
 import { deletePricingRule } from '@/app/actions/pricing';
 
-export default async function PricingRulesPage() {
+export const metadata: Metadata = {
+  title: 'Pricing Engine | Enterprise Revenue Management',
+  description: 'Manage automated pricing logic, discounts, and wholesale rates.',
+};
+
+// 1. Defined strict interface for Enterprise data consistency
+export interface PricingRule {
+  id: string;
+  name: string;
+  is_active: boolean;
+  priority: number;
+  start_date: string | null;
+  end_date: string | null;
+  conditions: { count: number }[];
+  actions: { count: number }[];
+}
+
+interface PageProps {
+  params: { locale: string };
+}
+
+export default async function PricingRulesPage({ params: { locale } }: PageProps) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. AUTH & TENANT ISOLATION (SYSTEM-WIDE CONNECTIVITY)
-    // Ensures users only see rules for their specific business
+    // 2. AUTH & TENANT ISOLATION
     const { data: { user } } = await supabase.auth.getUser();
     const { data: profile } = await supabase
         .from('profiles')
@@ -42,11 +61,18 @@ export default async function PricingRulesPage() {
         .single();
 
     if (!profile?.business_id) {
-        return <div className="p-8 text-center text-muted-foreground">Tenant context error.</div>;
+        return (
+            <div className="p-8">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Tenant Context Error</AlertTitle>
+                    <AlertDescription>Your account is not linked to a valid business tenant.</AlertDescription>
+                </Alert>
+            </div>
+        );
     }
 
-    // 2. DATA FETCHING (INTEGRATED JOIN)
-    // Fetches rules with count aggregates and filters by current tenant
+    // 3. DATA FETCHING (STRICT ISOLATION)
     const { data: rules, error } = await supabase
         .from('pricing_rules')
         .select(`
@@ -54,7 +80,7 @@ export default async function PricingRulesPage() {
             conditions:pricing_rule_conditions(count), 
             actions:pricing_rule_actions(count)
         `)
-        .eq('tenant_id', profile.business_id) // Strict Multi-tenant Filter
+        .eq('tenant_id', profile.business_id) 
         .order('priority', { ascending: false });
 
     if (error) {
@@ -62,8 +88,8 @@ export default async function PricingRulesPage() {
             <div className="p-8">
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>System Error</AlertTitle>
-                    <AlertDescription>Failed to synchronize pricing engine: {error.message}</AlertDescription>
+                    <AlertTitle>Synchronization Error</AlertTitle>
+                    <AlertDescription>The Pricing Engine could not be synchronized: {error.message}</AlertDescription>
                 </Alert>
             </div>
         );
@@ -83,7 +109,7 @@ export default async function PricingRulesPage() {
                     <p className="text-slate-500">Configure automated logic for discounts, wholesale rates, and promotional campaigns.</p>
                 </div>
                 <Button asChild className="shadow-lg shadow-primary/20">
-                    <Link href="/sales/pricing-rules/new">
+                    <Link href={`/${locale}/sales/pricing-rules/new`}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Deploy New Rule
                     </Link>
                 </Button>
@@ -97,7 +123,7 @@ export default async function PricingRulesPage() {
                             <CardTitle className="text-lg">Rule Execution Stack</CardTitle>
                             <CardDescription>Rules are processed top-to-bottom based on Priority level.</CardDescription>
                         </div>
-                        <Badge variant="secondary" className="font-mono">{rules?.length || 0} Total Rules</Badge>
+                        <Badge variant="secondary" className="font-mono">{(rules as PricingRule[])?.length || 0} Total Rules</Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -106,9 +132,9 @@ export default async function PricingRulesPage() {
                             <div className="p-4 bg-slate-100 rounded-full"><Zap className="w-8 h-8 text-slate-400" /></div>
                             <div className="space-y-1">
                                 <p className="font-semibold text-slate-900">No Pricing Rules Detected</p>
-                                <p className="text-sm text-slate-500 max-w-xs">Your system is currently using default catalog pricing. Create a rule to automate discounts.</p>
+                                <p className="text-sm text-slate-500 max-w-xs">Your system is currently using default catalog pricing.</p>
                             </div>
-                            <Button variant="outline" asChild><Link href="/sales/pricing-rules/new">Create First Rule</Link></Button>
+                            <Button variant="outline" asChild><Link href={`/${locale}/sales/pricing-rules/new`}>Create First Rule</Link></Button>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -123,7 +149,7 @@ export default async function PricingRulesPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rules.map((rule: any) => (
+                                    {(rules as PricingRule[]).map((rule) => (
                                         <tr key={rule.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors group">
                                             <td className="p-4">
                                                 <div className={`flex items-center justify-center w-10 h-10 rounded-lg font-black text-lg ${rule.priority > 50 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'}`}>
@@ -178,7 +204,7 @@ export default async function PricingRulesPage() {
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end items-center gap-1">
                                                     <Button variant="ghost" size="icon" asChild className="hover:bg-blue-50 hover:text-blue-600">
-                                                        <Link href={`/sales/pricing-rules/${rule.id}`}><Edit className="h-4 w-4" /></Link>
+                                                        <Link href={`/${locale}/sales/pricing-rules/${rule.id}`}><Edit className="h-4 w-4" /></Link>
                                                     </Button>
                                                     <form action={deletePricingRule.bind(null, rule.id)}>
                                                         <Button variant="ghost" size="icon" className="text-slate-300 hover:text-red-600 hover:bg-red-50">
