@@ -219,7 +219,7 @@ export function PricingRuleBuilder({
                                             )}
                                             {condFields.map((field, index) => (
                                                 <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-200 transition-all">
-                                                    <div className="md:col-span-5 space-y-2">
+                                                    <div className="md:col-span-3 space-y-2">
                                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Logic Group</Label>
                                                         <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
                                                             <Select onValueChange={field.onChange} value={field.value}>
@@ -233,7 +233,28 @@ export function PricingRuleBuilder({
                                                             </Select>
                                                         )}/>
                                                     </div>
-                                                    <div className="md:col-span-5 space-y-2">
+                                                    
+                                                    {/* TARGET SELECTOR (INVENTORY LINK) */}
+                                                    <div className="md:col-span-4 space-y-2">
+                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                                            Select {watch(`conditions.${index}.type`) === 'PRODUCT' ? 'Product' : 'Customer'}
+                                                        </Label>
+                                                        <Controller control={control} name={`conditions.${index}.target_id`} render={({ field: targetField }) => (
+                                                            <Select onValueChange={targetField.onChange} value={targetField.value}>
+                                                                <SelectTrigger className="h-11 border-blue-200 bg-blue-50/20 rounded-lg font-semibold">
+                                                                    <SelectValue placeholder="Search target..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl max-h-[300px]">
+                                                                    {watch(`conditions.${index}.type`) === 'PRODUCT' 
+                                                                        ? products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
+                                                                        : customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+                                                                    }
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}/>
+                                                    </div>
+
+                                                    <div className="md:col-span-3 space-y-2">
                                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Location Filter</Label>
                                                         <Controller control={control} name={`conditions.${index}.branch_id`} render={({ field }) => (
                                                             <Select onValueChange={field.onChange} value={field.value}>
