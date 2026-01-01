@@ -46,7 +46,7 @@ export function PricingRuleBuilder({
     const [activeTab, setActiveTab] = useState("config");
     const [stagedTabs, setStagedTabs] = useState<string[]>([]);
     
-    const { control, handleSubmit, register, watch, trigger, formState: { errors } } = useForm({
+    const { control, handleSubmit, register, watch, trigger, setValue, formState: { errors } } = useForm({
         defaultValues: {
             tenant_id: tenantId,
             name: initialData?.name || '',
@@ -222,7 +222,13 @@ export function PricingRuleBuilder({
                                                     <div className="md:col-span-3 space-y-2">
                                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Logic Group</Label>
                                                         <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                            <Select 
+                                                                onValueChange={(val) => { 
+                                                                    field.onChange(val); 
+                                                                    setValue(`conditions.${index}.target_id`, ''); 
+                                                                }} 
+                                                                value={field.value}
+                                                            >
                                                                 <SelectTrigger className="h-11 border-slate-200 rounded-lg hover:bg-slate-50 font-semibold transition-colors">
                                                                     <SelectValue />
                                                                 </SelectTrigger>
@@ -234,17 +240,16 @@ export function PricingRuleBuilder({
                                                         )}/>
                                                     </div>
 
-                                                    {/* TARGET ID SELECTOR (MANDATORY INVENTORY LINK) */}
                                                     <div className="md:col-span-4 space-y-2">
                                                         <Label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest ml-1">
                                                             Select {watch(`conditions.${index}.type`) === 'PRODUCT' ? 'Product' : 'Customer'}
                                                         </Label>
                                                         <Controller control={control} name={`conditions.${index}.target_id`} render={({ field: targetField }) => (
                                                             <Select onValueChange={targetField.onChange} value={targetField.value}>
-                                                                <SelectTrigger className="h-11 border-blue-200 bg-blue-50/20 rounded-lg font-bold">
-                                                                    <SelectValue placeholder="Link system nodes..." />
+                                                                <SelectTrigger className="h-11 border-blue-200 bg-blue-50/10 rounded-lg font-bold">
+                                                                    <SelectValue placeholder="Choose inventory item..." />
                                                                 </SelectTrigger>
-                                                                <SelectContent className="rounded-xl max-h-[300px]">
+                                                                <SelectContent className="rounded-xl max-h-[250px]">
                                                                     {watch(`conditions.${index}.type`) === 'PRODUCT' 
                                                                         ? products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
                                                                         : customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
