@@ -233,16 +233,16 @@ export function PricingRuleBuilder({
                                                             </Select>
                                                         )}/>
                                                     </div>
-                                                    
-                                                    {/* TARGET SELECTOR (INVENTORY LINK) */}
+
+                                                    {/* TARGET ID SELECTOR (MANDATORY INVENTORY LINK) */}
                                                     <div className="md:col-span-4 space-y-2">
-                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                                                        <Label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest ml-1">
                                                             Select {watch(`conditions.${index}.type`) === 'PRODUCT' ? 'Product' : 'Customer'}
                                                         </Label>
                                                         <Controller control={control} name={`conditions.${index}.target_id`} render={({ field: targetField }) => (
                                                             <Select onValueChange={targetField.onChange} value={targetField.value}>
-                                                                <SelectTrigger className="h-11 border-blue-200 bg-blue-50/20 rounded-lg font-semibold">
-                                                                    <SelectValue placeholder="Search target..." />
+                                                                <SelectTrigger className="h-11 border-blue-200 bg-blue-50/20 rounded-lg font-bold">
+                                                                    <SelectValue placeholder="Link system nodes..." />
                                                                 </SelectTrigger>
                                                                 <SelectContent className="rounded-xl max-h-[300px]">
                                                                     {watch(`conditions.${index}.type`) === 'PRODUCT' 
