@@ -104,17 +104,25 @@ export function PricingRuleBuilder({
     const { fields: actFields, append: addAct, remove: remAct } = useFieldArray({ control, name: "actions" });
     const [state, formAction] = useFormState(createOrUpdatePricingRule, { success: false, message: '' });
 
-    // FORM STATUS OBSERVER
+    // --- FIXED VALIDATION OBSERVER (Ensures 3/3 status) ---
     useEffect(() => {
         const subscription = watch((value) => {
             const verified = [];
+            // Step 1 check
             if (value.name && value.name.trim().length >= 3) verified.push('config');
-            if (value.conditions?.length && value.conditions.every(c => c?.target_id)) verified.push('logic');
+            
+            // Step 2 check
+            if (value.conditions?.length && value.conditions.every(c => !!c?.target_id)) verified.push('logic');
+            
+            // Step 3 check (Fixed logic to ensure string vs number handling)
             if (value.actions?.length) {
                 const actsValid = value.actions.every(a => {
                     if (a?.type === 'FORMULA') return !!a.formula_string;
                     if (a?.type === 'VOLUME_TIER') return (a.tiers?.length ?? 0) > 0;
-                    return (a?.value ?? 0) >= 0;
+                    // Check if value is a valid number and exists
+                    const numVal = Number(a?.value);
+                    // FIXED: Cast a?.value to any to avoid "no overlap" error between number and string
+                    return !isNaN(numVal) && numVal >= 0 && (a?.value as any) !== "" && a?.value !== undefined;
                 });
                 if (actsValid) verified.push('outcomes');
             }
@@ -125,8 +133,8 @@ export function PricingRuleBuilder({
 
     // PRICING SIMULATION ENGINE
     const telemetry = useMemo(() => {
-        const conditions = watch('conditions') || [];
-        const actions = watch('actions') || [];
+        const conditions = watchedData.conditions || [];
+        const actions = watchedData.actions || [];
         const firstProduct = products.find(p => p.id.toString() === conditions.find(c => c.type === 'PRODUCT')?.target_id);
         
         const basePrice = firstProduct?.price || 1000;
@@ -134,13 +142,14 @@ export function PricingRuleBuilder({
         let discountTotal = 0;
 
         actions.forEach(action => {
+            const actionVal = Number(action.value) || 0;
             if (action.type === 'PERCENTAGE_DISCOUNT') {
-                const d = (basePrice * (action.value || 0)) / 100;
+                const d = (basePrice * actionVal) / 100;
                 discountTotal += d;
                 finalPrice -= d;
             } else if (action.type === 'FIXED_PRICE') {
-                discountTotal = basePrice - (action.value || 0);
-                finalPrice = (action.value || 0);
+                discountTotal = basePrice - actionVal;
+                finalPrice = actionVal;
             } else if (action.type === 'VOLUME_TIER') {
                 const tier = action.tiers?.find(t => simulatedQty >= t.min_qty && (!t.max_qty || simulatedQty <= t.max_qty));
                 if (tier) {
@@ -195,7 +204,7 @@ export function PricingRuleBuilder({
                         <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                             {initialData?.id ? 'Edit Pricing Logic' : 'Pricing Logic Deployment'}
                         </h1>
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tenant: {tenantId}</p>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tenant ID: {tenantId}</p>
                     </div>
                 </div>
 
@@ -231,9 +240,9 @@ export function PricingRuleBuilder({
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="flex w-full bg-white border border-slate-200 p-1.5 rounded-xl h-auto shadow-sm mb-6 overflow-x-auto no-scrollbar">
                             {[
-                                { id: 'config', label: 'Strategy Context', icon: Settings2 },
-                                { id: 'logic', label: 'Activation Gates', icon: Layers },
-                                { id: 'outcomes', label: 'Logic Definition', icon: Percent },
+                                { id: 'config', label: '1. Strategy Context', icon: Settings2 },
+                                { id: 'logic', label: '2. Activation Gates', icon: Layers },
+                                { id: 'outcomes', label: '3. Logic Mutation', icon: Percent },
                             ].map(tab => (
                                 <TabsTrigger 
                                     key={tab.id} 
@@ -242,7 +251,7 @@ export function PricingRuleBuilder({
                                 >
                                     <tab.icon className="w-3.5 h-3.5" />
                                     <span>{tab.label}</span>
-                                    {stagedTabs.includes(tab.id) && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                                    {stagedTabs.includes(tab.id) && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 ml-2" />}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
@@ -266,7 +275,7 @@ export function PricingRuleBuilder({
                                                 </div>
                                                 <div className="space-y-2.5">
                                                     <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Priority Rank (1-1000)</Label>
-                                                    <Input type="number" {...register('priority')} className="h-12 border-slate-200 rounded-lg font-bold text-base" />
+                                                    <Input type="number" {...register('priority', { valueAsNumber: true })} className="h-12 border-slate-200 rounded-lg font-bold text-base" />
                                                 </div>
                                             </div>
 
@@ -418,8 +427,10 @@ export function PricingRuleBuilder({
                                                                     <div className="h-10 flex items-center px-4 bg-white rounded-lg border border-slate-200"><p className="text-[10px] font-bold text-slate-400 uppercase">Quantity brackets active below</p></div>
                                                                 ) : (
                                                                     <div className="relative">
-                                                                        <Input type="number" step="0.01" {...register(`actions.${index}.value`)} className="h-10 border-slate-200 bg-white rounded-lg font-bold text-sm px-4" />
-                                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-[9px] uppercase">VAL</div>
+                                                                        <Input type="number" step="0.01" {...register(`actions.${index}.value`, { valueAsNumber: true })} className="h-10 border-slate-200 bg-white rounded-lg font-bold text-sm px-4 pr-12" />
+                                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-[9px] uppercase pointer-events-none">
+                                                                            {actionType === 'PERCENTAGE_DISCOUNT' ? '%' : '$'}
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -441,10 +452,10 @@ export function PricingRuleBuilder({
                                                                     {(watch(`actions.${index}.tiers`) || []).map((_, tIdx) => (
                                                                         <div key={tIdx} className="bg-white p-4 rounded-xl border border-slate-200 relative group">
                                                                             <div className="grid grid-cols-2 gap-3 mb-2">
-                                                                                <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`)} placeholder="Min" className="h-8 rounded-md text-xs font-bold" />
-                                                                                <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`)} placeholder="Max" className="h-8 rounded-md text-xs font-bold" />
+                                                                                <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} placeholder="Min" className="h-8 rounded-md text-xs font-bold" />
+                                                                                <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="Max" className="h-8 rounded-md text-xs font-bold" />
                                                                             </div>
-                                                                            <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`)} placeholder="Disc %" className="h-8 rounded-md text-xs font-bold bg-slate-50 border-slate-100" />
+                                                                            <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} placeholder="Disc %" className="h-8 rounded-md text-xs font-bold bg-slate-50 border-slate-100" />
                                                                             <button type="button" onClick={() => {
                                                                                 const cur = watch(`actions.${index}.tiers`) || [];
                                                                                 setValue(`actions.${index}.tiers`, cur.filter((__, i) => i !== tIdx));
@@ -481,7 +492,7 @@ export function PricingRuleBuilder({
                                 </div>
                                 <CardTitle className="text-xl font-bold uppercase tracking-tight truncate">{watchedData.name || 'UNNAMED_RULE'}</CardTitle>
                                 <div className="flex items-center gap-2 mt-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Active Preview</span>
                                 </div>
                             </CardHeader>
