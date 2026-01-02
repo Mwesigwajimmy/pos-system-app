@@ -7,13 +7,13 @@ import { cookies } from 'next/headers';
 export type RuleFormState = {
     success: boolean;
     message: string;
-    nodeId?: string;
+    ruleId?: string;
     timestamp?: string;
 };
 
 /**
- * ENTERPRISE DEPLOYMENT ENGINE
- * Atomic upsert for pricing logic with strict tenant isolation and type safety.
+ * PRICING RULE PERSISTENCE ENGINE
+ * Handles atomic upsert of pricing logic with strict multi-tenant isolation.
  */
 export async function createOrUpdatePricingRule(
     prevState: RuleFormState, 
@@ -25,16 +25,16 @@ export async function createOrUpdatePricingRule(
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Authentication session expired.");
+        if (!user) throw new Error("Your session has expired. Please log in again.");
 
-        // Pulling business_id AND currency to ensure multi-currency autonomy
+        // Resolve business context
         const { data: profile } = await supabase
             .from('profiles')
             .select('business_id, currency')
             .eq('id', user.id)
             .single();
 
-        if (!profile?.business_id) throw new Error("Security Context: Business ID not found.");
+        if (!profile?.business_id) throw new Error("Business profile not resolved.");
         
         const businessId = profile.business_id;
         const ruleData = JSON.parse(formData.get('ruleData') as string);
@@ -43,7 +43,7 @@ export async function createOrUpdatePricingRule(
 
         const targetId = (ruleData.id && ruleData.id !== "") ? ruleData.id : undefined;
 
-        // 1. Core Rule Upsert (Multi-Tenant tenant_id)
+        // 1. Core Rule Persistence
         const { data: rule, error: ruleError } = await supabase
             .from('pricing_rules')
             .upsert({
@@ -51,24 +51,25 @@ export async function createOrUpdatePricingRule(
                 tenant_id: businessId, 
                 name: ruleData.name,
                 description: ruleData.description || '',
-                priority: Math.min(100, Math.max(0, Number(ruleData.priority) || 0)),
+                priority: Number(ruleData.priority) || 0,
                 is_active: ruleData.is_active,
-                is_stackable: ruleData.is_stackable || false,
+                is_exclusive: ruleData.is_exclusive || false,
+                tax_strategy: ruleData.tax_strategy || 'GROSS',
                 updated_at: syncTimestamp
             })
             .select('id')
             .single();
 
-        if (ruleError) throw new Error(`Engine Configuration Error: ${ruleError.message}`);
+        if (ruleError) throw new Error(`Database Error: ${ruleError.message}`);
         const activeRuleId = rule.id;
 
-        // 2. Logic Reset (Ensures no "Ghost Nodes" remain from old configurations)
+        // 2. Clear Existing Logic (Atomic Reset)
         if (targetId) {
             await supabase.from('pricing_rule_conditions').delete().eq('rule_id', activeRuleId);
             await supabase.from('pricing_rule_actions').delete().eq('rule_id', activeRuleId);
         }
 
-        // 3. Batch Logic Deployment: Conditions
+        // 3. Deploy Activation Gates (Conditions)
         if (conditions.length > 0) {
             const { error: cError } = await supabase
                 .from('pricing_rule_conditions')
@@ -76,16 +77,14 @@ export async function createOrUpdatePricingRule(
                     rule_id: activeRuleId,
                     business_id: businessId,
                     type: c.type,
-                    // FIX: Convert BigInt IDs to string explicitly for target_id (Text column)
-                    target_id: (c.target_id && c.target_id.toString().trim() !== "") ? c.target_id.toString() : "GLOBAL",
-                    // FIX: Column is 'location_id' (UUID). 'GLOBAL' string is replaced with NULL for UUID compatibility.
-                    location_id: (c.branch_id && c.branch_id !== "GLOBAL") ? c.branch_id : null,
-                    quantity_min: 1
+                    target_id: c.target_id?.toString() || "GLOBAL",
+                    // Map 'GLOBAL' to null for UUID column compatibility
+                    location_id: (c.location_id && c.location_id !== "GLOBAL") ? c.location_id : null,
                 })));
-            if (cError) throw new Error(`Condition Deployment Error: ${cError.message}`);
+            if (cError) throw new Error(`Failed to save activation gates: ${cError.message}`);
         }
 
-        // 4. Batch Logic Deployment: Actions
+        // 4. Deploy Logic Mutations (Actions)
         if (actions.length > 0) {
             const { error: aError } = await supabase
                 .from('pricing_rule_actions')
@@ -94,28 +93,35 @@ export async function createOrUpdatePricingRule(
                     business_id: businessId,
                     type: a.type,
                     value: Number(a.value) || 0,
-                    // FIX: Uses profile currency fallback for global enterprise support
-                    currency_code: a.currency_code || profile.currency || 'USD'
+                    formula_string: a.formula_string || null,
+                    currency_code: a.currency_code || profile.currency || 'USD',
+                    // Handling tiers if present
+                    configuration: a.tiers ? { tiers: a.tiers } : null
                 })));
-            if (aError) throw new Error(`Action Deployment Error: ${aError.message}`);
+            if (aError) throw new Error(`Failed to save logic outcomes: ${aError.message}`);
         }
 
         revalidatePath('/sales/pricing-rules');
+        
         return { 
             success: true, 
-            message: `Node ${activeRuleId.split('-')[0]} committed to production across all clusters.`,
-            nodeId: activeRuleId,
+            message: `Pricing rule "${ruleData.name}" has been successfully deployed.`,
+            ruleId: activeRuleId,
             timestamp: syncTimestamp
         };
 
     } catch (error: any) {
-        return { success: false, message: `Deployment Failed: ${error.message}`, timestamp: syncTimestamp };
+        console.error("Pricing Deployment Failure:", error);
+        return { 
+            success: false, 
+            message: error.message || "An unexpected error occurred during deployment.", 
+            timestamp: syncTimestamp 
+        };
     }
 }
 
 /**
- * PRICING RULE DELETION
- * Atomic removal with tenant-isolation check.
+ * ATOMIC RULE DELETION
  */
 export async function deletePricingRule(id: string) {
     const cookieStore = cookies();
@@ -126,7 +132,7 @@ export async function deletePricingRule(id: string) {
         if (!user) throw new Error("Authentication required.");
 
         const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
-        if (!profile?.business_id) throw new Error("Security check failed.");
+        if (!profile?.business_id) throw new Error("Unauthorized access.");
 
         const { error } = await supabase
             .from('pricing_rules')
