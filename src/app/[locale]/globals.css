@@ -157,3 +157,25 @@
 .dark .bg-cta-gradient {
   background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
 }
+/* --- ENTERPRISE RESPONSIVE STACK HACK --- */
+/* Prevents Logic Group, Product, and Location from overlapping on any device */
+@media (max-width: 1400px) {
+  .grid-cols-12.items-end {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1.25rem !important;
+    padding: 1.5rem !important;
+  }
+
+  .grid-cols-12.items-end > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensures the trash icon stays aligned */
+  .grid-cols-12.items-end > div:last-child {
+    align-self: flex-end;
+    width: auto !important;
+  }
+}
