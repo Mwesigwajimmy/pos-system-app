@@ -13,7 +13,7 @@ export type RuleFormState = {
 
 /**
  * ENTERPRISE DEPLOYMENT ENGINE
- * Atomic upsert for pricing logic with strict tenant isolation.
+ * Atomic upsert for pricing logic with strict tenant isolation and type safety.
  */
 export async function createOrUpdatePricingRule(
     prevState: RuleFormState, 
@@ -27,7 +27,13 @@ export async function createOrUpdatePricingRule(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Authentication session expired.");
 
-        const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+        // Pulling business_id AND currency to ensure multi-currency autonomy
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('business_id, currency')
+            .eq('id', user.id)
+            .single();
+
         if (!profile?.business_id) throw new Error("Security Context: Business ID not found.");
         
         const businessId = profile.business_id;
@@ -37,7 +43,7 @@ export async function createOrUpdatePricingRule(
 
         const targetId = (ruleData.id && ruleData.id !== "") ? ruleData.id : undefined;
 
-        // 1. Core Rule Upsert
+        // 1. Core Rule Upsert (Multi-Tenant tenant_id)
         const { data: rule, error: ruleError } = await supabase
             .from('pricing_rules')
             .upsert({
@@ -56,13 +62,13 @@ export async function createOrUpdatePricingRule(
         if (ruleError) throw new Error(`Engine Configuration Error: ${ruleError.message}`);
         const activeRuleId = rule.id;
 
-        // 2. Logic Reset (Clears old nodes for clean re-deployment)
+        // 2. Logic Reset (Ensures no "Ghost Nodes" remain from old configurations)
         if (targetId) {
             await supabase.from('pricing_rule_conditions').delete().eq('rule_id', activeRuleId);
             await supabase.from('pricing_rule_actions').delete().eq('rule_id', activeRuleId);
         }
 
-        // 3. Batch Logic Deployment
+        // 3. Batch Logic Deployment: Conditions
         if (conditions.length > 0) {
             const { error: cError } = await supabase
                 .from('pricing_rule_conditions')
@@ -70,13 +76,16 @@ export async function createOrUpdatePricingRule(
                     rule_id: activeRuleId,
                     business_id: businessId,
                     type: c.type,
-                    target_id: (c.target_id && c.target_id.trim() !== "") ? c.target_id : "GLOBAL",
-                    branch_id: c.branch_id || "GLOBAL",
+                    // FIX: Convert BigInt IDs to string explicitly for target_id (Text column)
+                    target_id: (c.target_id && c.target_id.toString().trim() !== "") ? c.target_id.toString() : "GLOBAL",
+                    // FIX: Column is 'location_id' (UUID). 'GLOBAL' string is replaced with NULL for UUID compatibility.
+                    location_id: (c.branch_id && c.branch_id !== "GLOBAL") ? c.branch_id : null,
                     quantity_min: 1
                 })));
             if (cError) throw new Error(`Condition Deployment Error: ${cError.message}`);
         }
 
+        // 4. Batch Logic Deployment: Actions
         if (actions.length > 0) {
             const { error: aError } = await supabase
                 .from('pricing_rule_actions')
@@ -85,7 +94,8 @@ export async function createOrUpdatePricingRule(
                     business_id: businessId,
                     type: a.type,
                     value: Number(a.value) || 0,
-                    currency_code: a.currency_code || 'USD'
+                    // FIX: Uses profile currency fallback for global enterprise support
+                    currency_code: a.currency_code || profile.currency || 'USD'
                 })));
             if (aError) throw new Error(`Action Deployment Error: ${aError.message}`);
         }
@@ -93,7 +103,7 @@ export async function createOrUpdatePricingRule(
         revalidatePath('/sales/pricing-rules');
         return { 
             success: true, 
-            message: `Enterprise Node ${activeRuleId.split('-')[0]} successfully committed to production.`,
+            message: `Node ${activeRuleId.split('-')[0]} committed to production across all clusters.`,
             nodeId: activeRuleId,
             timestamp: syncTimestamp
         };
@@ -105,7 +115,7 @@ export async function createOrUpdatePricingRule(
 
 /**
  * PRICING RULE DELETION
- * Restored function to fix build errors.
+ * Atomic removal with tenant-isolation check.
  */
 export async function deletePricingRule(id: string) {
     const cookieStore = cookies();
