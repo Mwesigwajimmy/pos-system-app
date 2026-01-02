@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useFormState } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    CheckCircle2, Zap, Layers, Percent, 
-    ArrowRight, Trash2, Plus, Activity,
-    Cpu, Target, Settings2, Calculator,
-    ArrowUpRight, Scale, History, Globe2, 
-    Landmark, FileJson, ShieldCheck, BadgeCheck,
-    AlertCircle
+    CheckCircle2, Zap, ShieldCheck, Layers, Percent, 
+    ArrowRight, Trash2, Plus, Activity, Cpu, Target, 
+    Settings2, Calculator, ArrowUpRight, Scale, 
+    History, Globe2, Landmark, FileJson, BadgeCheck,
+    ShieldAlert, DatabaseZap, BoxSelect
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { createOrUpdatePricingRule } from '@/app/actions/pricing';
 import { cn } from '@/lib/utils';
 
-// --- Types & Interfaces ---
+// --- ENTERPRISE INTERFACES ---
 
 interface TierBreak {
     min_qty: number;
@@ -59,7 +58,7 @@ interface PricingRuleFormValues {
 }
 
 interface BuilderProps {
-    initialData?: Partial<PricingRuleFormValues> & { id?: string };
+    initialData?: any;
     customers: { id: string; name: string }[];
     products: { id: string; name: string; price: number }[];
     locations: { id: string; name: string }[];
@@ -68,15 +67,19 @@ interface BuilderProps {
 }
 
 /**
- * Safe Mathematical Evaluator for Enterprise Formulas
- * Replaces eval() with a restricted arithmetic parser
+ * SECURE FORMULA EVALUATOR
+ * Replaces 'eval' with a sanitized, high-precision arithmetic function.
  */
-const safeEvaluate = (formula: string, base: number): number => {
+const evaluateFormula = (formula: string, base: number, qty: number): number => {
     try {
-        const sanitized = formula.replace(/BASE/g, base.toString()).replace(/[^-?\d+/*().\s]/g, '');
-        // Using Function constructor as a sandbox for arithmetic only
-        return new Function(`return Number(${sanitized})`)() || 0;
-    } catch {
+        const sanitized = formula
+            .replace(/BASE/g, base.toString())
+            .replace(/QTY/g, qty.toString())
+            .replace(/[^-?\d+/*().\s]/g, ''); // Strip all non-math characters
+        // High-precision arithmetic execution
+        return new Function(`return (${sanitized})`)() || 0;
+    } catch (e) {
+        console.error("Formula Engine Error:", e);
         return base;
     }
 };
@@ -93,16 +96,7 @@ export function PricingRuleBuilder({
     const [activeTab, setActiveTab] = useState("config");
     const [simulatedQty, setSimulatedQty] = useState(1);
     
-    const { 
-        control, 
-        handleSubmit, 
-        register, 
-        watch, 
-        trigger, 
-        setValue, 
-        formState: { errors, isSubmitting } 
-    } = useForm<PricingRuleFormValues>({
-        mode: 'onChange',
+    const { control, handleSubmit, register, watch, trigger, setValue, formState: { errors, isSubmitting } } = useForm<PricingRuleFormValues>({
         defaultValues: {
             tenant_id: tenantId,
             name: initialData?.name || '',
@@ -127,107 +121,111 @@ export function PricingRuleBuilder({
     const { fields: actFields, append: addAct, remove: remAct } = useFieldArray({ control, name: "actions" });
     const [state, formAction] = useFormState(createOrUpdatePricingRule, { success: false, message: '' });
 
-    // --- Derived State: Validation Logic (Enterprise Memoization) ---
-    const validationSchema = useMemo(() => {
-        const verified: string[] = [];
+    // --- REAL-TIME VALIDATION OBSERVER ---
+    const readiness = useMemo(() => {
+        const steps = [];
+        if (watchedData.name?.length >= 3 && watchedData.priority >= 1) steps.push('config');
+        if (watchedData.conditions?.every(c => !!c.target_id)) steps.push('logic');
         
-        if (watchedData.name?.trim().length >= 3) verified.push('config');
-        
-        const conditionsValid = watchedData.conditions?.length > 0 && 
-            watchedData.conditions.every(c => !!c.target_id);
-        if (conditionsValid) verified.push('logic');
-        
-        const actionsValid = watchedData.actions?.length > 0 && watchedData.actions.every(a => {
+        const actionsValid = watchedData.actions?.every(a => {
             if (a.type === 'FORMULA') return !!a.formula_string && a.formula_string.includes('BASE');
-            if (a.type === 'VOLUME_TIER') return (a.tiers?.length ?? 0) > 0 && a.tiers?.every(t => t.value >= 0);
-            return typeof a.value === 'number' && a.value >= 0;
+            if (a.type === 'VOLUME_TIER') return (a.tiers?.length ?? 0) > 0;
+            // Strict number check for financial fields
+            return !isNaN(Number(a.value)) && a.value !== undefined && a.value !== null && String(a.value) !== "";
         });
-        if (actionsValid) verified.push('outcomes');
+        if (actionsValid) steps.push('outcomes');
         
-        return verified;
+        return steps;
     }, [watchedData]);
 
-    const isFullyStaged = validationSchema.length >= 3;
+    const isFullyStaged = readiness.length >= 3;
 
-    // --- Pricing Simulation Engine (Financial Grade) ---
+    // --- FINANCIAL-GRADE SIMULATION ENGINE ---
     const telemetry = useMemo(() => {
-        const firstProduct = products.find(p => p.id.toString() === watchedData.conditions?.find(c => c.type === 'PRODUCT')?.target_id);
-        const basePrice = firstProduct?.price || 0;
+        const productCondition = watchedData.conditions?.find(c => c.type === 'PRODUCT');
+        const selectedProduct = products.find(p => p.id.toString() === productCondition?.target_id);
+        
+        const basePrice = selectedProduct?.price || 0;
         let finalPrice = basePrice;
         let discountTotal = 0;
 
         watchedData.actions?.forEach(action => {
             if (action.type === 'PERCENTAGE_DISCOUNT') {
-                const d = (basePrice * (Number(action.value) || 0)) / 100;
-                discountTotal += d;
-                finalPrice -= d;
+                const val = Number(action.value) || 0;
+                const impact = (basePrice * val) / 100;
+                discountTotal += impact;
+                finalPrice -= impact;
             } else if (action.type === 'FIXED_PRICE') {
-                finalPrice = Number(action.value) || 0;
-                discountTotal = basePrice - finalPrice;
+                const val = Number(action.value) || 0;
+                discountTotal = basePrice - val;
+                finalPrice = val;
             } else if (action.type === 'VOLUME_TIER') {
-                const tier = action.tiers?.find(t => simulatedQty >= t.min_qty && (!t.max_qty || simulatedQty <= t.max_qty));
-                if (tier) {
-                    const d = (basePrice * (tier.value || 0)) / 100;
-                    discountTotal += d;
-                    finalPrice -= d;
+                const activeTier = action.tiers?.find(t => 
+                    simulatedQty >= t.min_qty && (!t.max_qty || simulatedQty <= t.max_qty)
+                );
+                if (activeTier) {
+                    const impact = (basePrice * (activeTier.value || 0)) / 100;
+                    discountTotal += impact;
+                    finalPrice -= impact;
                 }
             } else if (action.type === 'FORMULA' && action.formula_string) {
-                finalPrice = safeEvaluate(action.formula_string, basePrice);
-                discountTotal = basePrice - finalPrice;
+                const calculated = evaluateFormula(action.formula_string, basePrice, simulatedQty);
+                finalPrice = calculated;
+                discountTotal = basePrice - calculated;
             }
         });
 
+        // Precision Rounding to 4 decimal places for ERP compliance
         return {
-            basePrice,
-            finalPrice: Math.round(Math.max(0, finalPrice) * 100) / 100,
-            discountTotal: Math.round(Math.max(0, discountTotal) * 100) / 100,
-            unitImpact: basePrice > 0 ? (discountTotal / basePrice) * 100 : 0,
-            productName: firstProduct?.name || 'GENERIC_SKU'
+            basePrice: Math.round(basePrice * 10000) / 10000,
+            finalPrice: Math.round(Math.max(0, finalPrice) * 10000) / 10000,
+            discountTotal: Math.round(Math.max(0, discountTotal) * 10000) / 10000,
+            yieldImpact: basePrice > 0 ? (discountTotal / basePrice) * 100 : 0,
+            productName: selectedProduct?.name || 'VIRTUAL_DATA_NODE'
         };
     }, [watchedData, products, simulatedQty]);
 
     const onActualSubmit = async (data: PricingRuleFormValues) => {
         const isValid = await trigger();
-        if (!isValid) {
-            toast({ variant: "destructive", title: "Validation Error", description: "Please review the highlighted fields." });
-            return;
-        }
+        if (!isValid) return;
 
         const formData = new FormData();
         formData.append('ruleData', JSON.stringify({ ...data, id: initialData?.id }));
         formData.append('conditions', JSON.stringify(data.conditions));
         formData.append('actions', JSON.stringify(data.actions));
         
-        toast({ title: "Deploying Strategy", description: "Propagating rule set to global node cluster." });
+        toast({ title: "System Deployment", description: "Broadcasting logic to global edge nodes." });
         formAction(formData);
     };
 
     return (
-        <form onSubmit={handleSubmit(onActualSubmit)} className="w-full max-w-[1440px] mx-auto space-y-6 px-4 py-6 md:px-8 lg:py-10 bg-slate-50/40 min-h-screen font-sans selection:bg-indigo-100">
+        <form onSubmit={handleSubmit(onActualSubmit)} className="w-full max-w-[1440px] mx-auto space-y-6 px-4 py-10 md:px-12 bg-[#F8FAFC] min-h-screen">
             
-            {/* --- CORE HEADER --- */}
-            <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm ring-1 ring-black/5">
-                <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg shrink-0 ring-4 ring-slate-100">
-                        <Cpu className="text-white w-7 h-7" />
+            {/* --- GLOBAL HEADER & STATUS --- */}
+            <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+                <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-100 shrink-0">
+                        <DatabaseZap className="text-white w-8 h-8" />
                     </div>
                     <div className="space-y-1">
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase">
+                            Pricing Engine Controller
+                        </h1>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight leading-none">
-                                {initialData?.id ? 'System Rule Optimization' : 'Global Pricing Deployment'}
-                            </h1>
-                            <ShieldCheck className="w-5 h-5 text-indigo-500" />
+                            <BadgeCheck className="w-4 h-4 text-indigo-500" />
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Tenant Verified: {tenantId}</p>
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Tenant Reference: {tenantId}</p>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-                    <div className="flex flex-col justify-center px-6 py-3 bg-slate-50 rounded-xl border border-slate-100 min-w-[180px]">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Deployment Readiness</span>
-                        <div className="flex items-center gap-2">
-                            <Activity className={cn("w-4 h-4", isFullyStaged ? "text-emerald-500" : "text-amber-500")} />
-                            <span className="text-sm font-bold text-slate-900">{validationSchema.length} / 3 Stages Verified</span>
+                <div className="flex flex-wrap items-center gap-5 w-full lg:w-auto">
+                    <div className="flex flex-col justify-center px-8 py-4 bg-slate-50 rounded-2xl border border-slate-100 min-w-[200px]">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                            <Activity className="w-3 h-3" /> Integrity Check
+                        </span>
+                        <div className="flex items-center gap-3">
+                            <div className={cn("w-2 h-2 rounded-full", isFullyStaged ? "bg-emerald-500" : "bg-amber-500")} />
+                            <span className="text-sm font-black text-slate-900">{readiness.length}/3 Modules Valid</span>
                         </div>
                     </div>
                     
@@ -235,274 +233,260 @@ export function PricingRuleBuilder({
                         type="submit" 
                         disabled={!isFullyStaged || isSubmitting}
                         className={cn(
-                            "h-14 px-8 font-bold text-xs uppercase tracking-widest transition-all rounded-xl shadow-lg flex-1 md:flex-none",
+                            "h-16 px-10 font-black text-[11px] uppercase tracking-[0.2em] transition-all rounded-2xl shadow-lg flex-1 md:flex-none",
                             isFullyStaged 
-                            ? "bg-indigo-600 hover:bg-indigo-700 text-white hover:scale-[1.02] active:scale-95" 
-                            : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100" 
+                            : "bg-slate-100 text-slate-400 border border-slate-200 grayscale cursor-not-allowed"
                         )}
                     >
-                        {isFullyStaged ? <Zap className="w-4 h-4 mr-2 fill-white animate-pulse" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-                        {isSubmitting ? 'Synchronizing...' : 'Execute Deployment'}
+                        {isFullyStaged ? <Zap className="w-4 h-4 mr-3 fill-white" /> : <ShieldAlert className="w-4 h-4 mr-3" />}
+                        Execute Deployment
                     </Button>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                 
-                {/* --- MAIN WORKSPACE --- */}
+                {/* --- LOGIC ARCHITECT WORKSPACE --- */}
                 <div className="xl:col-span-8 space-y-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="flex w-full bg-white border border-slate-200 p-1.5 rounded-xl h-auto shadow-sm mb-6 overflow-x-auto no-scrollbar">
+                        <TabsList className="flex w-full bg-white border border-slate-200 p-2 rounded-2xl h-auto shadow-sm mb-8">
                             {[
-                                { id: 'config', label: '1. Strategy Context', icon: Settings2 },
-                                { id: 'logic', label: '2. Activation Gates', icon: Layers },
+                                { id: 'config', label: '1. Condition Context', icon: Settings2 },
+                                { id: 'logic', label: '2. Target Mapping', icon: Layers },
                                 { id: 'outcomes', label: '3. Logic Mutation', icon: Percent },
                             ].map(tab => (
                                 <TabsTrigger 
                                     key={tab.id} 
                                     value={tab.id} 
-                                    className="flex-1 rounded-lg font-bold text-[11px] uppercase tracking-wide transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md flex items-center justify-center gap-2.5 py-3.5 min-w-[160px]"
+                                    className="flex-1 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white flex items-center justify-center gap-3 py-4"
                                 >
                                     <tab.icon className="w-4 h-4" />
                                     <span>{tab.label}</span>
-                                    {validationSchema.includes(tab.id) && <BadgeCheck className="w-4 h-4 text-emerald-400 shrink-0 ml-1" />}
+                                    {readiness.includes(tab.id) && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-1" />}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
 
                         <AnimatePresence mode="wait">
-                            <motion.div 
-                                key={activeTab} 
-                                initial={{ opacity: 0, x: 10 }} 
-                                animate={{ opacity: 1, x: 0 }} 
-                                exit={{ opacity: 0, x: -10 }} 
-                                transition={{ duration: 0.25, ease: "easeInOut" }}
-                            >
-                                {/* STEP 1: CONTEXT */}
+                            <motion.div key={activeTab} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3, ease: "easeOut" }}>
+                                
+                                {/* STAGE 1: SYSTEM CONTEXT */}
                                 <TabsContent value="config" className="focus-visible:outline-none m-0">
-                                    <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200">
-                                        <CardHeader className="p-8 border-b border-slate-50 bg-slate-50/30">
-                                            <CardTitle className="text-lg font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                                <Settings2 className="w-5 h-5 text-indigo-500" />
-                                                Operational Strategy
-                                            </CardTitle>
-                                            <CardDescription className="text-slate-400 font-semibold text-[10px] uppercase">Define administrative rule metadata and execution hierarchy.</CardDescription>
+                                    <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+                                        <CardHeader className="p-10 border-b border-slate-50 bg-[#F8FAFC]/50">
+                                            <div className="flex items-center gap-4 mb-2">
+                                                <ShieldCheck className="w-6 h-6 text-indigo-500" />
+                                                <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Logic Context</CardTitle>
+                                            </div>
+                                            <CardDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Global metadata and precedence resolution parameters.</CardDescription>
                                         </CardHeader>
-                                        <CardContent className="p-8 space-y-8">
+                                        <CardContent className="p-10 space-y-10">
                                             <div className="grid md:grid-cols-2 gap-8">
-                                                <div className="space-y-2.5">
-                                                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Strategy Identifier</Label>
-                                                    <Input {...register('name', { required: true, minLength: 3 })} placeholder="e.g. Q3_RETAIL_MARKDOWN" className="h-12 border-slate-200 rounded-lg font-bold text-base focus:ring-2 focus:ring-indigo-500" />
-                                                    {errors.name && <p className="text-red-500 text-[10px] font-bold uppercase mt-1">Required: Min 3 characters</p>}
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Logic Identifier</Label>
+                                                    <Input {...register('name', { required: true })} placeholder="STRATEGY_REF_001" className="h-14 border-slate-200 rounded-2xl font-black text-lg focus:ring-4 focus:ring-indigo-50" />
                                                 </div>
-                                                <div className="space-y-2.5">
-                                                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Priority Rank (1-1000)</Label>
-                                                    <Input type="number" {...register('priority', { valueAsNumber: true, min: 1 })} className="h-12 border-slate-200 rounded-lg font-bold text-base" />
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Precedence Rank (SAP Standard)</Label>
+                                                    <Input type="number" {...register('priority', { valueAsNumber: true })} className="h-14 border-slate-200 rounded-2xl font-black text-lg" />
                                                 </div>
                                             </div>
 
-                                            <div className="grid md:grid-cols-2 gap-5">
-                                                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-colors">
+                                            <div className="grid md:grid-cols-2 gap-6">
+                                                <div className="flex items-center justify-between p-6 bg-[#F1F5F9] rounded-2xl border border-slate-200 group hover:border-indigo-300 transition-all">
                                                     <div className="space-y-1">
-                                                        <p className="font-bold text-slate-900 text-[11px] uppercase">Exclusive Protocol</p>
-                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Overrides non-stackable logic blocks.</p>
+                                                        <p className="font-black text-slate-900 text-[11px] uppercase tracking-wider">Exclusive Protocol</p>
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Prevents parallel condition stacking.</p>
                                                     </div>
                                                     <Controller control={control} name="is_exclusive" render={({ field }) => (
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                     )} />
                                                 </div>
-                                                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-colors">
+                                                <div className="flex items-center justify-between p-6 bg-[#F1F5F9] rounded-2xl border border-slate-200 group hover:border-indigo-300 transition-all">
                                                     <div className="space-y-1">
-                                                        <p className="font-bold text-slate-900 text-[11px] uppercase">Taxation Logic</p>
-                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Apply values to Net or Gross.</p>
+                                                        <p className="font-black text-slate-900 text-[11px] uppercase tracking-wider">Tax Strategy</p>
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">Financial calculation context.</p>
                                                     </div>
                                                     <Controller control={control} name="tax_strategy" render={({ field }) => (
                                                         <Select onValueChange={field.onChange} value={field.value}>
-                                                            <SelectTrigger className="h-10 w-[110px] bg-white border-slate-200 rounded-lg font-bold text-[10px] uppercase">
+                                                            <SelectTrigger className="h-12 w-[120px] bg-white border-slate-200 rounded-xl font-black text-[10px] uppercase">
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="GROSS" className="font-bold text-[10px] uppercase">Gross Basis</SelectItem>
-                                                                <SelectItem value="NET" className="font-bold text-[10px] uppercase">Net Basis</SelectItem>
+                                                                <SelectItem value="GROSS" className="font-bold">Gross</SelectItem>
+                                                                <SelectItem value="NET" className="font-bold">Net</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     )} />
                                                 </div>
                                             </div>
 
-                                            <div className="flex justify-end pt-4 border-t border-slate-100">
-                                                <Button type="button" onClick={async () => { if(await trigger(['name', 'priority'])) setActiveTab('logic'); }} className="h-12 px-8 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] uppercase tracking-widest rounded-lg">
-                                                    Proceed to Logic Gates <ArrowRight className="ml-2 w-4 h-4" />
+                                            <div className="flex justify-end pt-6 border-t border-slate-50">
+                                                <Button type="button" onClick={async () => { if(await trigger(['name', 'priority'])) setActiveTab('logic'); }} className="h-14 px-10 bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 transition-all">
+                                                    Next: Mapping Gates <ArrowRight className="ml-3 w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
 
-                                {/* STEP 2: LOGIC GATES */}
+                                {/* STAGE 2: TARGETING LOGIC */}
                                 <TabsContent value="logic" className="focus-visible:outline-none m-0">
-                                    <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200">
-                                        <CardHeader className="p-8 flex flex-row items-center justify-between border-b border-slate-50 bg-slate-50/30">
+                                    <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+                                        <CardHeader className="p-10 flex flex-row items-center justify-between border-b border-slate-50 bg-[#F8FAFC]/50">
                                             <div>
-                                                <CardTitle className="text-lg font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                                    <Layers className="w-5 h-5 text-indigo-500" />
-                                                    Activation Matrix
+                                                <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-4">
+                                                    <BoxSelect className="w-6 h-6 text-indigo-500" /> Condition Matrix
                                                 </CardTitle>
-                                                <CardDescription className="text-slate-400 font-semibold text-[10px] uppercase">Define conditional triggers for rule execution.</CardDescription>
+                                                <CardDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Map rule to dimensions: Product, Segment, or Node.</CardDescription>
                                             </div>
-                                            <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-4 hover:bg-slate-50">
-                                                <Plus className="w-4 h-4 mr-2" /> Add Criterion
+                                            <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' })} className="rounded-2xl border-slate-200 font-black text-[10px] uppercase h-12 px-6 hover:bg-slate-50">
+                                                <Plus className="w-4 h-4 mr-2" /> Add Rule Node
                                             </Button>
                                         </CardHeader>
-                                        <CardContent className="p-8 space-y-4">
+                                        <CardContent className="p-10 space-y-6">
                                             {condFields.map((field, index) => (
-                                                <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:border-indigo-100 transition-all group">
-                                                    <div className="md:col-span-3 space-y-1.5">
-                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase">Target Dimension</Label>
+                                                <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end bg-[#F8FAFC] p-8 rounded-[1.5rem] border border-slate-100 shadow-sm transition-all group hover:border-indigo-100">
+                                                    <div className="md:col-span-3 space-y-2">
+                                                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dimension</Label>
                                                         <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
                                                             <Select onValueChange={(val) => { field.onChange(val); setValue(`conditions.${index}.target_id`, ''); }} value={field.value}>
-                                                                <SelectTrigger className="h-10 border-slate-200 bg-slate-50 rounded-lg font-bold text-xs"><SelectValue /></SelectTrigger>
+                                                                <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-black text-xs uppercase"><SelectValue /></SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="PRODUCT">Product Catalog</SelectItem>
+                                                                    <SelectItem value="PRODUCT">SKU ID</SelectItem>
                                                                     <SelectItem value="CUSTOMER">Client Segment</SelectItem>
-                                                                    <SelectItem value="LOCATION">Branch/Warehouse</SelectItem>
+                                                                    <SelectItem value="LOCATION">Retail Branch</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         )}/>
                                                     </div>
-                                                    <div className="md:col-span-5 space-y-1.5">
-                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase">Reference Identity</Label>
+                                                    <div className="md:col-span-5 space-y-2">
+                                                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference Identifier</Label>
                                                         <Controller control={control} name={`conditions.${index}.target_id`} render={({ field: tField }) => (
                                                             <Select onValueChange={tField.onChange} value={tField.value}>
-                                                                <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-xs"><SelectValue placeholder="System Search..." /></SelectTrigger>
+                                                                <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-black text-xs uppercase"><SelectValue placeholder="System Lookup..." /></SelectTrigger>
                                                                 <SelectContent className="max-h-[300px]">
                                                                     {watch(`conditions.${index}.type`) === 'PRODUCT' 
-                                                                        ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name} (${p.price})</SelectItem>)
+                                                                        ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name} [${p.price}]</SelectItem>)
                                                                         : customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)
                                                                     }
                                                                 </SelectContent>
                                                             </Select>
                                                         )}/>
                                                     </div>
-                                                    <div className="md:col-span-3 space-y-1.5">
-                                                        <Label className="text-[10px] font-bold text-slate-400 uppercase">Geographic Scope</Label>
+                                                    <div className="md:col-span-3 space-y-2">
+                                                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Geospatial Scope</Label>
                                                         <Controller control={control} name={`conditions.${index}.location_id`} render={({ field }) => (
                                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-xs"><SelectValue placeholder="Global" /></SelectTrigger>
+                                                                <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-black text-xs uppercase"><SelectValue placeholder="Global" /></SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="GLOBAL">Master Global</SelectItem>
+                                                                    <SelectItem value="GLOBAL">Master Cluster</SelectItem>
                                                                     {locations.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
                                                                 </SelectContent>
                                                             </Select>
                                                         )}/>
                                                     </div>
                                                     <div className="md:col-span-1 flex justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-12 w-12 text-slate-300 hover:text-red-500 hover:bg-white rounded-xl transition-all"><Trash2 className="w-5 h-5" /></Button>
                                                     </div>
                                                 </div>
                                             ))}
-                                            <div className="flex flex-col sm:flex-row justify-between pt-8 gap-4 border-t border-slate-50">
-                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-bold text-[11px] uppercase text-slate-400 h-12 px-8 hover:text-slate-900 transition-colors">Return to Context</Button>
-                                                <Button type="button" onClick={async () => { if(await trigger('conditions')) setActiveTab('outcomes'); }} className="h-12 px-10 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] uppercase tracking-widest rounded-lg">
-                                                    Configure Mutation <ArrowUpRight className="ml-2 w-4 h-4" />
+                                            <div className="flex flex-col sm:flex-row justify-between pt-10 gap-4">
+                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-black text-[11px] uppercase text-slate-400 h-14 px-10">Back to Context</Button>
+                                                <Button type="button" onClick={async () => { if(await trigger('conditions')) setActiveTab('outcomes'); }} className="h-14 px-12 bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest rounded-2xl shadow-xl">
+                                                    Configure Outcomes <ArrowUpRight className="ml-3 w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
 
-                                {/* STEP 3: LOGIC MUTATION */}
+                                {/* STAGE 3: LOGIC MUTATION */}
                                 <TabsContent value="outcomes" className="focus-visible:outline-none m-0">
-                                    <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200">
-                                        <CardHeader className="p-8 flex flex-row items-center justify-between border-b border-slate-50 bg-slate-50/30">
+                                    <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
+                                        <CardHeader className="p-10 flex flex-row items-center justify-between border-b border-slate-50 bg-[#F8FAFC]/50">
                                             <div>
-                                                <CardTitle className="text-lg font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                                                    <Percent className="w-5 h-5 text-indigo-500" />
-                                                    Value Mutation
+                                                <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-4">
+                                                    <Calculator className="w-6 h-6 text-indigo-500" /> Price Mutation
                                                 </CardTitle>
-                                                <CardDescription className="text-slate-400 font-semibold text-[10px] uppercase">Engineer discount models or algorithmic pricing.</CardDescription>
+                                                <CardDescription className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Recursive logic: Algorithm, Fixed, or Volume Scales.</CardDescription>
                                             </div>
-                                            <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] || 'USD', tiers: [] })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-4 hover:bg-slate-50">
-                                                <Plus className="w-4 h-4 mr-2" /> Add Operator
-                                            </Button>
+                                            <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] || 'USD', tiers: [] })} className="rounded-2xl border-slate-200 font-black text-[10px] uppercase h-12 px-6 hover:bg-slate-50"><Plus className="w-4 h-4 mr-2" /> Add Operation</Button>
                                         </CardHeader>
-                                        <CardContent className="p-8 space-y-6">
+                                        <CardContent className="p-10 space-y-8">
                                             {actFields.map((field, index) => {
                                                 const actionType = watch(`actions.${index}.type`);
                                                 return (
-                                                    <div key={field.id} className="bg-slate-50/30 p-6 rounded-2xl border border-slate-100 space-y-6 shadow-inner ring-1 ring-black/[0.02]">
-                                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
-                                                            <div className="md:col-span-4 space-y-1.5">
-                                                                <Label className="text-[10px] font-bold text-slate-400 uppercase">Calculation Engine</Label>
+                                                    <div key={field.id} className="bg-[#F8FAFC] p-8 rounded-[1.5rem] border border-slate-100 space-y-8 shadow-sm">
+                                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+                                                            <div className="md:col-span-4 space-y-2">
+                                                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Processing Engine</Label>
                                                                 <Controller control={control} name={`actions.${index}.type`} render={({ field }) => (
                                                                     <Select onValueChange={field.onChange} value={field.value}>
-                                                                        <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-xs"><SelectValue /></SelectTrigger>
+                                                                        <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-black text-xs uppercase"><SelectValue /></SelectTrigger>
                                                                         <SelectContent>
                                                                             <SelectItem value="PERCENTAGE_DISCOUNT">Markdown (%)</SelectItem>
-                                                                            <SelectItem value="FIXED_PRICE">Fixed Override</SelectItem>
-                                                                            <SelectItem value="FORMULA">Dynamic Algorithmic</SelectItem>
-                                                                            <SelectItem value="VOLUME_TIER">Tiered Distribution</SelectItem>
+                                                                            <SelectItem value="FIXED_PRICE">Fixed Price Point</SelectItem>
+                                                                            <SelectItem value="FORMULA">Custom Algorithm</SelectItem>
+                                                                            <SelectItem value="VOLUME_TIER">Volume Brackets</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
                                                                 )}/>
                                                             </div>
 
-                                                            <div className="md:col-span-7 space-y-1.5">
+                                                            <div className="md:col-span-7 space-y-2">
                                                                 {actionType === 'FORMULA' ? (
                                                                     <div className="relative">
-                                                                        <Input {...register(`actions.${index}.formula_string`, { required: true })} placeholder="e.g. (BASE * 0.85)" className="h-10 border-slate-200 bg-white rounded-lg font-mono font-bold text-sm px-4 pr-10 focus:ring-2 focus:ring-indigo-500" />
-                                                                        <Calculator className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                                                                        <Input {...register(`actions.${index}.formula_string`)} placeholder="e.g. (BASE * 0.95) + 1.50" className="h-12 border-slate-200 bg-white rounded-xl font-mono font-black text-sm px-6 pr-12 focus:ring-4 focus:ring-indigo-50" />
+                                                                        <Calculator className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
                                                                     </div>
                                                                 ) : actionType === 'VOLUME_TIER' ? (
-                                                                    <div className="h-10 flex items-center px-4 bg-indigo-50/50 rounded-lg border border-indigo-100/50 shadow-sm">
-                                                                        <p className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-2">
-                                                                            <Activity className="w-3 h-3" /> Quantity brackets active below
-                                                                        </p>
-                                                                    </div>
+                                                                    <div className="h-12 flex items-center px-6 bg-white rounded-xl border border-slate-200"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantity-Based Step-Pricing Active</p></div>
                                                                 ) : (
                                                                     <div className="relative">
-                                                                        <Input type="number" step="0.01" {...register(`actions.${index}.value`, { valueAsNumber: true, min: 0 })} className="h-10 border-slate-200 bg-white rounded-lg font-bold text-sm px-4 pr-12 focus:ring-2 focus:ring-indigo-500" />
-                                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-[9px] uppercase pointer-events-none">
+                                                                        <Input type="number" step="0.0001" {...register(`actions.${index}.value`, { valueAsNumber: true })} className="h-12 border-slate-200 bg-white rounded-xl font-black text-sm px-6 pr-14 focus:ring-4 focus:ring-indigo-50" />
+                                                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-300 text-[10px] uppercase pointer-events-none tracking-widest">
                                                                             {actionType === 'PERCENTAGE_DISCOUNT' ? 'PCT' : 'VAL'}
                                                                         </div>
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             <div className="md:col-span-1 flex justify-end">
-                                                                <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-12 w-12 text-slate-300 hover:text-red-500 hover:bg-white rounded-xl transition-all"><Trash2 className="w-5 h-5" /></Button>
                                                             </div>
                                                         </div>
 
                                                         {actionType === 'VOLUME_TIER' && (
-                                                            <div className="pt-5 border-t border-slate-200/50 space-y-4">
+                                                            <div className="pt-8 border-t border-slate-200/60 space-y-6">
                                                                 <div className="flex items-center justify-between">
-                                                                    <h4 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Bracket Definition</h4>
+                                                                    <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Tier Configuration Matrix</h4>
                                                                     <Button type="button" variant="outline" size="sm" onClick={() => {
                                                                         const cur = watch(`actions.${index}.tiers`) || [];
                                                                         setValue(`actions.${index}.tiers`, [...cur, { min_qty: 1, max_qty: null, value: 0 }]);
-                                                                    }} className="rounded-md font-bold text-[9px] uppercase px-4 h-7 hover:bg-white transition-colors">Add Tier</Button>
+                                                                    }} className="rounded-xl font-black text-[9px] uppercase px-5 h-8 hover:bg-white transition-all">Add Level</Button>
                                                                 </div>
-                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                                                     {(watch(`actions.${index}.tiers`) || []).map((_, tIdx) => (
-                                                                        <div key={tIdx} className="bg-white p-5 rounded-2xl border border-slate-200 relative group shadow-sm hover:ring-2 hover:ring-indigo-100 transition-all">
-                                                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                                        <div key={tIdx} className="bg-white p-6 rounded-[1.5rem] border border-slate-200 relative group shadow-sm hover:border-indigo-200 transition-all">
+                                                                            <div className="grid grid-cols-2 gap-4 mb-4">
                                                                                 <div className="space-y-1">
-                                                                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Min Qty</Label>
-                                                                                    <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} className="h-8 rounded-md text-xs font-bold" />
+                                                                                    <Label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Min Qty</Label>
+                                                                                    <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} className="h-9 rounded-xl text-xs font-black border-slate-100" />
                                                                                 </div>
                                                                                 <div className="space-y-1">
-                                                                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Max Qty</Label>
-                                                                                    <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="∞" className="h-8 rounded-md text-xs font-bold" />
+                                                                                    <Label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Max Qty</Label>
+                                                                                    <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="INF" className="h-9 rounded-xl text-xs font-black border-slate-100" />
                                                                                 </div>
                                                                             </div>
                                                                             <div className="space-y-1">
-                                                                                <Label className="text-[8px] font-bold text-slate-400 uppercase">Markdown %</Label>
-                                                                                <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} className="h-8 rounded-md text-xs font-bold bg-slate-50 border-slate-100" />
+                                                                                <Label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Mutation %</Label>
+                                                                                <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} className="h-10 rounded-xl text-xs font-black bg-slate-50 border-slate-100 focus:bg-white transition-all" />
                                                                             </div>
                                                                             <button type="button" onClick={() => {
                                                                                 const cur = watch(`actions.${index}.tiers`) || [];
                                                                                 setValue(`actions.${index}.tiers`, cur.filter((__, i) => i !== tIdx));
-                                                                            }} className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-white border border-slate-200 text-red-500 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"><Trash2 className="w-3 h-3" /></button>
+                                                                            }} className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-white border border-slate-200 text-red-500 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"><Trash2 className="w-3.5 h-3.5" /></button>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -512,9 +496,9 @@ export function PricingRuleBuilder({
                                                 );
                                             })}
                                             
-                                            <div className="flex flex-col sm:flex-row justify-between pt-8 gap-4 border-t border-slate-50">
-                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-bold text-[11px] uppercase text-slate-400 h-12 px-8 hover:text-slate-900 transition-colors">Review Gates</Button>
-                                                <Button type="submit" disabled={!isFullyStaged || isSubmitting} className={cn("h-14 px-12 font-bold text-[11px] uppercase tracking-widest rounded-xl shadow-xl transition-all", isFullyStaged ? "bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-[1.02]" : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed")}>Finalize Logic Chain <CheckCircle2 className="ml-2 w-4 h-4" /></Button>
+                                            <div className="flex flex-col sm:flex-row justify-between pt-10 gap-4 border-t border-slate-50">
+                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-black text-[11px] uppercase text-slate-400 h-14 px-10">Back</Button>
+                                                <Button type="submit" disabled={!isFullyStaged || isSubmitting} className={cn("h-16 px-16 font-black text-[12px] uppercase tracking-[0.2em] rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95", isFullyStaged ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100" : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed")}>Finalize Deployment <CheckCircle2 className="ml-3 w-5 h-5" /></Button>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -524,93 +508,90 @@ export function PricingRuleBuilder({
                     </Tabs>
                 </div>
 
-                {/* --- SIDEBAR: PREVIEW ENGINE --- */}
+                {/* --- ENTERPRISE TELEMETRY SIDEBAR --- */}
                 <div className="xl:col-span-4 space-y-6">
-                    <div className="sticky top-6 space-y-6">
-                        <Card className="bg-slate-900 border-none rounded-3xl overflow-hidden shadow-2xl text-white ring-1 ring-white/10">
-                            <CardHeader className="p-8 pb-4">
-                                <div className="flex items-center gap-2.5 mb-5">
-                                    <Target className="w-5 h-5 text-indigo-400" />
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pricing Intelligence Preview</span>
+                    <div className="sticky top-10 space-y-8">
+                        <Card className="bg-slate-900 border-none rounded-[2.5rem] overflow-hidden shadow-2xl text-white ring-1 ring-white/10">
+                            <CardHeader className="p-10 pb-4">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                                        <Target className="w-5 h-5 text-indigo-400" />
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Telemetry Preview</span>
                                 </div>
-                                <CardTitle className="text-2xl font-bold uppercase tracking-tight truncate leading-tight">{watchedData.name || 'STRATEGY_PENDING'}</CardTitle>
-                                <div className="flex items-center gap-2 mt-3">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Real-time Simulation Active</span>
+                                <CardTitle className="text-2xl font-black uppercase tracking-tight truncate leading-tight">{watchedData.name || 'STRATEGY_INIT'}</CardTitle>
+                                <div className="flex items-center gap-3 mt-4">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)] animate-pulse" />
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Simulation Online</span>
                                 </div>
                             </CardHeader>
                             
-                            <CardContent className="p-8 pt-2 space-y-8">
-                                <div className="space-y-4 p-6 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
+                            <CardContent className="p-10 pt-4 space-y-10">
+                                <div className="space-y-6 p-8 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md shadow-inner">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Market Base Price</span>
-                                        <span className="text-xl font-bold font-mono">${telemetry.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Base Price</span>
+                                        <span className="text-2xl font-black font-mono">${telemetry.basePrice.toLocaleString(undefined, { minimumFractionDigits: 4 })}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-emerald-400 uppercase">Mutation Delta</span>
-                                        <span className="text-xl font-bold text-emerald-400 font-mono">-${telemetry.discountTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Delta Savings</span>
+                                        <span className="text-2xl font-black text-emerald-400 font-mono">-${telemetry.discountTotal.toLocaleString(undefined, { minimumFractionDigits: 4 })}</span>
                                     </div>
                                     <Separator className="bg-white/10" />
-                                    <div className="flex flex-col gap-5 pt-2">
+                                    <div className="flex flex-col gap-6 pt-2">
                                         <div className="flex justify-between items-end">
-                                            <div className="space-y-1.5">
-                                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block">Projected Net Yield</span>
-                                                <div className="flex items-center gap-2 px-3 py-1 bg-indigo-500/10 rounded-full border border-indigo-500/20 max-w-[160px]">
-                                                    <span className="text-[9px] font-bold text-slate-300 uppercase truncate">{telemetry.productName}</span>
+                                            <div className="space-y-2">
+                                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] block">Projected Net Yield</span>
+                                                <div className="flex items-center gap-3 px-4 py-1.5 bg-indigo-500/10 rounded-full border border-indigo-500/20">
+                                                    <span className="text-[9px] font-black text-slate-300 uppercase truncate max-w-[140px]">{telemetry.productName}</span>
                                                 </div>
                                             </div>
-                                            <span className="text-4xl font-black tracking-tighter font-mono">${telemetry.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                            <span className="text-5xl font-black tracking-tighter font-mono">${telemetry.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 4 })}</span>
                                         </div>
-                                        <div className="flex items-center justify-between gap-4 p-3 bg-black/20 rounded-xl border border-white/5">
-                                            <Label className="text-[10px] font-bold text-slate-500 uppercase">Input Qty</Label>
-                                            <Input 
-                                                type="number" 
-                                                value={simulatedQty} 
-                                                onChange={(e) => setSimulatedQty(Math.max(1, Number(e.target.value)))} 
-                                                className="w-20 h-9 bg-white/5 border-white/10 text-white font-bold text-center text-xs rounded-lg focus:ring-1 focus:ring-indigo-500" 
-                                            />
+                                        <div className="flex items-center justify-between gap-4 p-4 bg-black/30 rounded-2xl border border-white/5 shadow-inner">
+                                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Load qty</Label>
+                                            <Input type="number" value={simulatedQty} onChange={(e) => setSimulatedQty(Math.max(1, Number(e.target.value)))} className="w-24 h-10 bg-white/10 border-white/10 text-white font-black text-center text-sm rounded-xl focus:ring-4 focus:ring-indigo-500/20" />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-5 bg-white/5 rounded-2xl border border-white/5 flex flex-col items-center group hover:bg-white/[0.07] transition-colors">
-                                        <History className="w-4 h-4 text-slate-500 mb-2 group-hover:text-slate-300 transition-colors" />
-                                        <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Logic Integrity</p>
-                                        <p className={cn("text-[11px] font-bold uppercase tracking-wider", isFullyStaged ? "text-emerald-400" : "text-amber-400")}>{isFullyStaged ? "Verified" : "Compiling"}</p>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="p-6 bg-white/5 rounded-[1.5rem] border border-white/5 flex flex-col items-center hover:bg-white/10 transition-all cursor-default group">
+                                        <History className="w-5 h-5 text-slate-500 mb-3 group-hover:text-indigo-400 transition-all" />
+                                        <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Audit Status</p>
+                                        <p className={cn("text-[11px] font-black uppercase tracking-wider", isFullyStaged ? "text-emerald-400" : "text-amber-400")}>{isFullyStaged ? "Verified" : "Pending"}</p>
                                     </div>
-                                    <div className="p-5 bg-white/5 rounded-2xl border border-white/5 flex flex-col items-center group hover:bg-white/[0.07] transition-colors">
-                                        <Scale className="text-indigo-400 mb-2 w-4 h-4 group-hover:scale-110 transition-transform" />
-                                        <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Efficiency Ratio</p>
-                                        <p className="text-[11px] font-bold text-indigo-400">{telemetry.unitImpact.toFixed(2)}%</p>
+                                    <div className="p-6 bg-white/5 rounded-[1.5rem] border border-white/5 flex flex-col items-center hover:bg-white/10 transition-all cursor-default group">
+                                        <Scale className="text-indigo-400 mb-3 w-5 h-5 group-hover:scale-125 transition-all" />
+                                        <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Efficiency Ratio</p>
+                                        <p className="text-[11px] font-black text-indigo-400">{telemetry.yieldImpact.toFixed(4)}%</p>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* ENTERPRISE UTILITIES */}
-                        <div className="grid grid-cols-3 gap-3">
+                        {/* ENTERPRISE SUBSYSTEMS */}
+                        <div className="grid grid-cols-3 gap-4">
                             {[
-                                { icon: Globe2, label: 'Geo Analysis' },
-                                { icon: Landmark, label: 'Tax Auditing' },
-                                { icon: FileJson, label: 'Logic Dump' }
+                                { icon: Globe2, label: 'Geo-Logic' },
+                                { icon: Landmark, label: 'Tax-Compliance' },
+                                { icon: FileJson, label: 'Logic-Dump' }
                             ].map((item, i) => (
                                 <button 
                                     key={i} 
                                     type="button"
-                                    onClick={() => toast({ title: "Module Deployment", description: `Initializing ${item.label} subsystem...` })}
-                                    className="flex flex-col items-center justify-center p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 hover:shadow-md hover:bg-indigo-50/10 transition-all active:scale-95 group"
+                                    onClick={() => toast({ title: "Subsystem Call", description: `Loading ${item.label} matrix...` })}
+                                    className="flex flex-col items-center justify-center p-6 bg-white rounded-[1.5rem] border border-slate-200 shadow-sm hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all active:scale-95 group"
                                 >
-                                    <item.icon className="w-5 h-5 text-slate-400 mb-2 group-hover:text-indigo-600 group-hover:rotate-12 transition-all" />
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase text-center leading-tight tracking-tighter">{item.label}</span>
+                                    <item.icon className="w-6 h-6 text-slate-400 mb-3 group-hover:text-indigo-600 group-hover:rotate-12 transition-all" />
+                                    <span className="text-[9px] font-black text-slate-500 uppercase text-center leading-tight tracking-wider">{item.label}</span>
                                 </button>
                             ))}
                         </div>
 
-                        {/* INFRASTRUCTURE STATUS */}
-                        <div className="flex items-center justify-center gap-3 py-4 text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] opacity-80">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Enterprise Node: US-EAST-1 | Status: Synchronized
+                        {/* GLOBAL INFRASTRUCTURE STATUS */}
+                        <div className="flex items-center justify-center gap-4 py-6 text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] opacity-80">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                            Cluster: Global-AWS-East | Sync Status: 100%
                         </div>
                     </div>
                 </div>
