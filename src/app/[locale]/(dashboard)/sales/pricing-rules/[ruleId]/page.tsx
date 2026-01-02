@@ -5,14 +5,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PricingRuleBuilder } from '@/components/sales/PricingRuleBuilder';
 import { 
-    ChevronLeft, 
-    Cpu, 
-    Globe,
-    Zap,
-    Lock,
-    Activity,
-    Database,
-    ShieldCheck
+    ChevronLeft, Cpu, Globe, Zap, Lock, Activity, Database, ShieldCheck 
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -54,11 +47,16 @@ export default async function RuleBuilderPage({ params }: PageProps) {
             .single()
         : Promise.resolve({ data: null, error: null });
 
+    // ENTERPRISE DATA AGGREGATION
+    // We fetch products and JOIN with product_variants to get the real catalog price
     const [ruleResult, customersRes, productsRes, locationsRes] = await Promise.all([
         rulePromise,
         supabase.from('customers').select('id, name').eq('business_id', businessId).eq('is_active', true).order('name'),
-        // FIXED: Added 'price' to the selection to satisfy the TypeScript interface
-        supabase.from('products').select('id, name, price').eq('business_id', businessId).eq('is_active', true).order('name'),
+        supabase.from('products')
+            .select('id, name, is_active, product_variants(price)')
+            .eq('business_id', businessId)
+            .eq('is_active', true)
+            .order('name'),
         supabase.from('locations').select('id, name').eq('business_id', businessId).order('name')
     ]);
 
@@ -66,7 +64,13 @@ export default async function RuleBuilderPage({ params }: PageProps) {
         return notFound();
     }
 
-    const ruleData = ruleResult.data;
+    // MAP DATA TO BUILDER INTERFACE (Deduplicating and flattening variants)
+    const mappedProducts = (productsRes.data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        // Fallback to 0 if variant price is missing
+        price: (p.product_variants as any)?.[0]?.price || 0
+    }));
 
     return (
         <div className="flex-1 space-y-6 md:space-y-8 p-4 md:p-8 lg:p-10 bg-[#f8fafc] min-h-screen">
@@ -137,9 +141,9 @@ export default async function RuleBuilderPage({ params }: PageProps) {
                 
                 <div className="p-4 md:p-10">
                     <PricingRuleBuilder 
-                        initialData={ruleData} 
+                        initialData={ruleResult.data} 
                         customers={customersRes.data || []} 
-                        products={productsRes.data || []} 
+                        products={mappedProducts} 
                         locations={locationsRes.data || []} 
                         currencies={supportedCurrencies}
                         tenantId={businessId}
