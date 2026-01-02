@@ -6,18 +6,17 @@ import { createClient } from '@/lib/supabase/server';
 import { PricingRuleBuilder } from '@/components/sales/PricingRuleBuilder';
 import { 
     ChevronLeft, 
-    ShieldCheck, 
-    Database, 
     Cpu, 
-    Activity, 
-    Lock,
     Globe,
-    Zap
+    Zap,
+    Lock,
+    Activity,
+    Database,
+    ShieldCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'Rule Configuration | Pricing Intelligence Builder',
@@ -32,7 +31,6 @@ export default async function RuleBuilderPage({ params }: PageProps) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. SECURITY & IDENTITY (Advanced Logic Preserved)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect(`/${params.locale}/login`);
 
@@ -47,7 +45,6 @@ export default async function RuleBuilderPage({ params }: PageProps) {
     const businessId = profile.business_id;
     const supportedCurrencies = ['USD', 'UGX', 'EUR', 'GBP', 'KES', 'TZS', 'ZAR'];
 
-    // 2. PARALLEL DATA SYNCHRONIZATION (Performance Logic Preserved)
     const rulePromise = params.ruleId !== 'new' 
         ? supabase
             .from('pricing_rules')
@@ -60,7 +57,8 @@ export default async function RuleBuilderPage({ params }: PageProps) {
     const [ruleResult, customersRes, productsRes, locationsRes] = await Promise.all([
         rulePromise,
         supabase.from('customers').select('id, name').eq('business_id', businessId).eq('is_active', true).order('name'),
-        supabase.from('products').select('id, name').eq('business_id', businessId).eq('is_active', true).order('name'),
+        // FIXED: Added 'price' to the selection to satisfy the TypeScript interface
+        supabase.from('products').select('id, name, price').eq('business_id', businessId).eq('is_active', true).order('name'),
         supabase.from('locations').select('id, name').eq('business_id', businessId).order('name')
     ]);
 
@@ -72,8 +70,6 @@ export default async function RuleBuilderPage({ params }: PageProps) {
 
     return (
         <div className="flex-1 space-y-6 md:space-y-8 p-4 md:p-8 lg:p-10 bg-[#f8fafc] min-h-screen">
-            
-            {/* HEADER: Clean, non-tilted, professional hierarchy */}
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                 <div className="space-y-3">
                     <Link 
@@ -107,7 +103,6 @@ export default async function RuleBuilderPage({ params }: PageProps) {
                     </div>
                 </div>
 
-                {/* TELEMETRY: Professional badge styling */}
                 <div className="hidden xl:flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="flex flex-col items-end px-4 border-r border-slate-100">
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Zone</span>
@@ -129,7 +124,6 @@ export default async function RuleBuilderPage({ params }: PageProps) {
 
             <Separator className="bg-slate-200" />
 
-            {/* INTERFACE: High-end shadow-based container (no neon blur) */}
             <div className="bg-white border border-slate-200 shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden">
                 <div className="bg-slate-50 border-b border-slate-200 flex items-center justify-between px-6 py-3.5">
                     <div className="flex items-center gap-2">
@@ -153,23 +147,7 @@ export default async function RuleBuilderPage({ params }: PageProps) {
                 </div>
             </div>
             
-            {/* FOOTER: Atomic replication stats */}
             <footer className="mt-12 py-8 flex flex-col items-center gap-6">
-                <div className="flex flex-wrap items-center justify-center gap-8 px-4 opacity-50 grayscale">
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-slate-900" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">End-to-End Secure</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Database className="w-4 h-4 text-slate-900" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Atomic Sync</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-slate-900" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Active Telemetry</span>
-                    </div>
-                </div>
-
                 <div className="bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm max-w-xl w-full">
                     <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest text-center leading-relaxed">
                         Authorized Identity: <span className="text-slate-800">{user.email}</span> <br />
