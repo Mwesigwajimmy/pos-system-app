@@ -52,8 +52,8 @@ export function PricingRuleBuilder({
             priority: initialData?.priority || 1,
             is_active: initialData?.is_active ?? true,
             is_stackable: initialData?.is_stackable ?? false,
-            conditions: initialData?.conditions || [],
-            actions: initialData?.actions || [],
+            conditions: initialData?.conditions || [{ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' }],
+            actions: initialData?.actions || [{ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] }],
         },
     });
 
@@ -62,14 +62,18 @@ export function PricingRuleBuilder({
 
     const [state, formAction] = useFormState(createOrUpdatePricingRule, { success: false, message: '' });
 
-    // --- AUTONOMOUS INTEGRITY SYNC ---
-    // Verifies the "Health" of the deployment nodes automatically as you type.
+    // --- AUTONOMOUS INTEGRITY ENGINE ---
+    // Watches every keystroke and automatically records activity for each node
     useEffect(() => {
         const subscription = watch((value) => {
             const verified = [];
+            // Step 1 Check
             if (value.name?.trim() && Number(value.priority) >= 0) verified.push('config');
+            // Step 2 Check (Must have a product target)
             if (value.conditions?.some((c: any) => c.target_id && c.target_id !== "")) verified.push('logic');
+            // Step 3 Check (Must have a value > 0)
             if (value.actions?.some((a: any) => Number(a.value) > 0)) verified.push('outcomes');
+            
             setStagedTabs(verified);
         });
         return () => subscription.unsubscribe();
@@ -110,16 +114,17 @@ export function PricingRuleBuilder({
     const onActualSubmit = (data: any) => {
         const formData = new FormData();
         const { conditions, actions, ...ruleDetails } = data;
-        
         formData.append('ruleData', JSON.stringify({ ...ruleDetails, id: initialData?.id }));
         formData.append('conditions', JSON.stringify(conditions || []));
         formData.append('actions', JSON.stringify(actions || []));
-        
         formAction(formData);
     };
 
     const isFullyStaged = stagedTabs.length >= 3;
     const watchedData = watch();
+
+    // Helper to check if a specific tab is ready to proceed
+    const isTabVerified = (tab: string) => stagedTabs.includes(tab);
 
     return (
         <form onSubmit={handleSubmit(onActualSubmit)} className="w-full space-y-8">
@@ -144,8 +149,8 @@ export function PricingRuleBuilder({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <Activity className={cn("w-4 h-4", stagedTabs.length === 3 ? "text-emerald-500" : "text-amber-500")} />
+                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 transition-all">
+                        <Activity className={cn("w-4 h-4 transition-colors", isFullyStaged ? "text-emerald-500 animate-pulse" : "text-amber-500")} />
                         <span className="text-xs font-bold text-slate-600">Integrity: {stagedTabs.length}/3 Verified</span>
                     </div>
                     <Button 
@@ -154,7 +159,7 @@ export function PricingRuleBuilder({
                         className={cn(
                             "flex-1 lg:flex-none h-12 px-8 font-black text-xs uppercase tracking-widest transition-all rounded-xl",
                             isFullyStaged 
-                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100" 
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100 hover:-translate-y-0.5" 
                             : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                         )}
                     >
@@ -168,21 +173,18 @@ export function PricingRuleBuilder({
                 <div className="lg:col-span-8 space-y-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="grid grid-cols-3 w-full bg-white border border-slate-200 p-1.5 rounded-2xl h-16 shadow-sm">
-                            {[
-                                { id: 'config', label: '1. Context', icon: Settings2 },
-                                { id: 'logic', label: '2. Conditions', icon: Layers },
-                                { id: 'outcomes', label: '3. Outcomes', icon: Percent },
-                            ].map(tab => (
-                                <TabsTrigger 
-                                    key={tab.id} 
-                                    value={tab.id} 
-                                    className="rounded-xl font-bold text-xs uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white flex items-center justify-center gap-2"
-                                >
-                                    <tab.icon className="w-4 h-4" />
-                                    {tab.label}
-                                    {stagedTabs.includes(tab.id) && <CheckCircle2 className="w-4 h-4 text-emerald-400 ml-1" />}
-                                </TabsTrigger>
-                            ))}
+                            <TabsTrigger value="config" className="rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
+                                {isTabVerified('config') ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Settings2 className="w-3.5 h-3.5" />}
+                                1. Context
+                            </TabsTrigger>
+                            <TabsTrigger value="logic" className="rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
+                                {isTabVerified('logic') ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Layers className="w-3.5 h-3.5" />}
+                                2. Logic
+                            </TabsTrigger>
+                            <TabsTrigger value="outcomes" className="rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
+                                {isTabVerified('outcomes') ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Percent className="w-3.5 h-3.5" />}
+                                3. Outcomes
+                            </TabsTrigger>
                         </TabsList>
 
                         <AnimatePresence mode="wait">
@@ -211,7 +213,7 @@ export function PricingRuleBuilder({
                                                     <ShieldCheck className="w-5 h-5 text-blue-600" />
                                                     <div>
                                                         <p className="font-black text-slate-900 text-xs uppercase">Live Deployment</p>
-                                                        <p className="text-[10px] text-slate-500 font-bold uppercase">Activate pricing mutations in real-time checkout.</p>
+                                                        <p className="text-[10px] text-slate-500 font-bold uppercase">Activate mutations in real-time checkout.</p>
                                                     </div>
                                                 </div>
                                                 <Controller control={control} name="is_active" render={({ field }) => (
@@ -219,7 +221,14 @@ export function PricingRuleBuilder({
                                                 )} />
                                             </div>
                                             <div className="flex justify-end pt-4">
-                                                <Button type="button" onClick={() => setActiveTab('logic')} className="h-14 px-10 bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-black group">
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={() => setActiveTab('logic')}
+                                                    className={cn(
+                                                        "h-14 px-10 font-black text-xs uppercase tracking-widest rounded-xl transition-all group",
+                                                        isTabVerified('config') ? "bg-slate-900 text-white hover:bg-black" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                    )}
+                                                >
                                                     Proceed to Logic <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                                 </Button>
                                             </div>
@@ -245,29 +254,19 @@ export function PricingRuleBuilder({
                                                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Category</Label>
                                                             <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
                                                                 <Select onValueChange={(val) => { field.onChange(val); setValue(`conditions.${index}.target_id`, ''); }} value={field.value}>
-                                                                    <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
-                                                                        <SelectItem value="PRODUCT">Product Catalog</SelectItem>
-                                                                        <SelectItem value="CUSTOMER">Customer Segment</SelectItem>
-                                                                    </SelectContent>
+                                                                    <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                                                                    <SelectContent className="rounded-xl"><SelectItem value="PRODUCT">Product Catalog</SelectItem></SelectContent>
                                                                 </Select>
                                                             )}/>
                                                         </div>
 
                                                         <div className="lg:col-span-4 space-y-2">
-                                                            <Label className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Select {currentType}</Label>
+                                                            <Label className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Select Product</Label>
                                                             <Controller control={control} name={`conditions.${index}.target_id`} render={({ field }) => (
                                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <SelectTrigger className="h-12 border-blue-200 bg-blue-50/10 rounded-xl font-black text-xs">
-                                                                        <SelectValue placeholder="Choose Target..." />
-                                                                    </SelectTrigger>
+                                                                    <SelectTrigger className="h-12 border-blue-200 bg-blue-50/10 rounded-xl font-black text-xs"><SelectValue placeholder="Choose Target..." /></SelectTrigger>
                                                                     <SelectContent className="rounded-xl max-h-60">
-                                                                        {currentType === 'PRODUCT' 
-                                                                            ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name} — ${p.price}</SelectItem>)
-                                                                            : customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)
-                                                                        }
+                                                                        {products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name} — ${p.price}</SelectItem>)}
                                                                     </SelectContent>
                                                                 </Select>
                                                             )}/>
@@ -277,27 +276,27 @@ export function PricingRuleBuilder({
                                                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Branch Context</Label>
                                                             <Controller control={control} name={`conditions.${index}.location_id`} render={({ field }) => (
                                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold">
-                                                                        <SelectValue placeholder="Global Scope" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
-                                                                        <SelectItem value="GLOBAL">All Branches</SelectItem>
-                                                                        {locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-                                                                    </SelectContent>
+                                                                    <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold"><SelectValue placeholder="Global Scope" /></SelectTrigger>
+                                                                    <SelectContent className="rounded-xl"><SelectItem value="GLOBAL">All Branches</SelectItem>{locations.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
                                                                 </Select>
                                                             )}/>
                                                         </div>
                                                         <div className="lg:col-span-2 flex justify-end">
-                                                            <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-12 w-12 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                                                <Trash2 className="w-5 h-5" />
-                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-12 w-12 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-5 h-5" /></Button>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                             <div className="flex justify-between pt-6">
-                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-black text-[10px] uppercase text-slate-400 hover:text-slate-900">Back</Button>
-                                                <Button type="button" onClick={() => setActiveTab('outcomes')} className="h-12 px-8 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg">
+                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-black text-[10px] uppercase text-slate-400 hover:text-slate-900 transition-colors">Back</Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={() => setActiveTab('outcomes')} 
+                                                    className={cn(
+                                                        "h-12 px-8 font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg transition-all",
+                                                        isTabVerified('logic') ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                    )}
+                                                >
                                                     Deploy Conditions <ChevronRight className="ml-2 w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -305,7 +304,7 @@ export function PricingRuleBuilder({
                                     </Card>
                                 </TabsContent>
 
-                                {/* TAB 3: OUTCOMES (ACTIONS) */}
+                                {/* TAB 3: OUTCOMES */}
                                 <TabsContent value="outcomes">
                                     <Card className="border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
                                         <CardHeader className="p-8 flex flex-row items-center justify-between border-b border-slate-50">
@@ -321,9 +320,7 @@ export function PricingRuleBuilder({
                                                         <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mode</Label>
                                                         <Controller control={control} name={`actions.${index}.type`} render={({ field }) => (
                                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-black text-xs uppercase">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
+                                                                <SelectTrigger className="h-12 border-slate-200 bg-white rounded-xl font-black text-xs uppercase"><SelectValue /></SelectTrigger>
                                                                 <SelectContent className="rounded-xl">
                                                                     <SelectItem value="FIXED_PRICE">Fixed Price</SelectItem>
                                                                     <SelectItem value="PERCENTAGE_DISCOUNT">Percentage Rebate</SelectItem>
@@ -339,15 +336,20 @@ export function PricingRuleBuilder({
                                                         </div>
                                                     </div>
                                                     <div className="lg:col-span-3 flex justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-12 w-12 rounded-xl text-slate-300 hover:text-red-600 hover:bg-red-50 transition-all">
-                                                            <Trash2 className="w-5 h-5" />
-                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-12 w-12 rounded-xl text-slate-300 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 className="w-5 h-5" /></Button>
                                                     </div>
                                                 </div>
                                             ))}
                                             <div className="flex justify-between pt-6">
-                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-black text-[10px] uppercase text-slate-400">Back</Button>
-                                                <Button type="submit" disabled={!isFullyStaged} className="h-14 px-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-xl shadow-emerald-50">
+                                                <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-black text-[10px] uppercase text-slate-400 transition-colors">Back</Button>
+                                                <Button 
+                                                    type="submit" 
+                                                    disabled={!isFullyStaged} 
+                                                    className={cn(
+                                                        "h-14 px-10 font-black text-[10px] uppercase tracking-widest rounded-xl shadow-xl transition-all",
+                                                        isTabVerified('outcomes') ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-50" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                    )}
+                                                >
                                                     Finalize Deployment <CheckCircle2 className="ml-2 w-5 h-5" />
                                                 </Button>
                                             </div>
@@ -389,21 +391,12 @@ export function PricingRuleBuilder({
                                             <span className="text-3xl font-black text-white tracking-tighter">${pricingCalculation.finalPrice.toLocaleString()}</span>
                                         </div>
                                     </div>
-
-                                    {!pricingCalculation.hasRealProduct && (
-                                        <div className="flex items-start gap-3 p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20">
-                                            <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                                            <p className="text-[9px] text-amber-200/70 font-black leading-relaxed uppercase tracking-tighter">
-                                                Awaiting Product Catalog Target. Projections currently calculated using BASE_0 initialization.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                                        <p className="text-sm font-black text-white">{stagedTabs.length}/3 Verified</p>
+                                        <p className={cn("text-sm font-black", isFullyStaged ? "text-emerald-400" : "text-white")}>{stagedTabs.length}/3 Verified</p>
                                     </div>
                                     <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Priority</p>
@@ -419,7 +412,7 @@ export function PricingRuleBuilder({
                                         </span>
                                     </div>
                                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <motion.div initial={{ width: 0 }} animate={{ width: `${(stagedTabs.length / 3) * 100}%` }} className="h-full bg-blue-500 rounded-full" />
+                                        <motion.div initial={{ width: 0 }} animate={{ width: `${(stagedTabs.length / 3) * 100}%` }} className="h-full bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -427,7 +420,7 @@ export function PricingRuleBuilder({
 
                         <AnimatePresence>
                             {!isFullyStaged && (
-                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                                     <Alert className="bg-blue-50 border-blue-100 rounded-2xl p-5 shadow-sm">
                                         <ShieldAlert className="h-5 w-5 text-blue-600" />
                                         <AlertTitle className="text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1">System Lock Active</AlertTitle>
