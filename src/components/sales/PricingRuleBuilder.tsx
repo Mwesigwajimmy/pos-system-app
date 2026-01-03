@@ -64,6 +64,7 @@ interface BuilderProps {
     locations: { id: string; name: string }[];
     currencies: string[];
     tenantId: string;
+    locale: string;
 }
 
 /**
@@ -93,7 +94,8 @@ export function PricingRuleBuilder({
     products, 
     locations, 
     currencies, 
-    tenantId 
+    tenantId,
+    locale
 }: BuilderProps) {
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState("config");
@@ -191,6 +193,8 @@ export function PricingRuleBuilder({
 
         const formData = new FormData();
         formData.append('ruleData', JSON.stringify({ ...data, id: initialData?.id }));
+
+        formData.append('locale', locale);
         
         toast({ title: "ERP Master Synchronizing", description: "Committing logical parameters to Master Pricing Database." });
         formAction(formData);
