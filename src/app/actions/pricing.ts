@@ -5,9 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
 /**
- * ENTERPRISE SYSTEM OF RECORD: PRICING SCHEMA
+ * --- ENTERPRISE SYSTEM OF RECORD: PRICING SCHEMA ---
  * This module governs the atomic deployment of commercial logic.
- * Security: Strict Multi-Tenant Isolation (RLS + Metadata Filtering)
+ * Security Protocol: Strict Multi-Tenant Isolation (RLS + Metadata Filtering)
  */
 
 export type RuleFormState = {
@@ -19,8 +19,9 @@ export type RuleFormState = {
 };
 
 /**
- * COMMERCIAL LOGIC DEPLOYMENT ENGINE
+ * --- COMMERCIAL LOGIC DEPLOYMENT ENGINE ---
  * Handles the transactional persistence of pricing strategies.
+ * High-Integrity committing of metadata, gates, and mutations.
  */
 export async function createOrUpdatePricingRule(
     prevState: RuleFormState, 
@@ -31,7 +32,7 @@ export async function createOrUpdatePricingRule(
     const syncTimestamp = new Date().toISOString();
 
     try {
-        // 1. IDENTITY & AUTHORITY VERIFICATION
+        // STEP 1: IDENTITY & AUTHORITY VERIFICATION
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
             return {
@@ -42,7 +43,7 @@ export async function createOrUpdatePricingRule(
             };
         }
 
-        // 2. RESOLVE ORGANIZATIONAL CONTEXT
+        // STEP 2: RESOLVE ORGANIZATIONAL CONTEXT (TENANT ISOLATION)
         const { data: profile } = await supabase
             .from('profiles')
             .select('business_id, currency')
@@ -50,23 +51,21 @@ export async function createOrUpdatePricingRule(
             .single();
 
         if (!profile?.business_id) {
-            throw new Error("ORG_CONTEXT_NOT_RESOLVED: Business ID is missing from user profile.");
+            throw new Error("ORG_CONTEXT_NOT_RESOLVED: Business ID missing from Master Profile.");
         }
         
         const businessId = profile.business_id;
 
-        // 3. DATA PARSING & SCHEMA SYNCHRONIZATION
-        // Extracting locale from formData to resolve the build error
+        // STEP 3: DATA PARSING & SCHEMA SYNCHRONIZATION
         const locale = (formData.get('locale') as string) || 'en';
-        
-        // Client sends a single 'ruleData' string containing nested conditions/actions
         const rawPayload = formData.get('ruleData') as string;
+        
         if (!rawPayload) throw new Error("PAYLOAD_EMPTY: No deployment data received.");
         
         const parsedData = JSON.parse(rawPayload);
         const { conditions, actions, ...ruleMeta } = parsedData;
 
-        // 4. TRANSACTIONAL ATOMICITY: CORE RULE
+        // STEP 4: TRANSACTIONAL ATOMICITY: CORE RULE COMMIT
         const targetId = (ruleMeta.id && ruleMeta.id !== "") ? ruleMeta.id : undefined;
 
         const { data: rule, error: ruleError } = await supabase
@@ -89,15 +88,14 @@ export async function createOrUpdatePricingRule(
         if (ruleError) throw new Error(`MASTER_RECORD_FAILURE: ${ruleError.message}`);
         const activeRuleId = rule.id;
 
-        // 5. ATOMIC RECONCILIATION
-        // Clear old logic segments to prevent 'ghost data' in existing rules.
+        // STEP 5: ATOMIC RECONCILIATION (CLEARING RESIDUAL LOGIC)
         if (targetId) {
             const clearConditions = supabase.from('pricing_rule_conditions').delete().eq('rule_id', activeRuleId);
             const clearActions = supabase.from('pricing_rule_actions').delete().eq('rule_id', activeRuleId);
             await Promise.all([clearConditions, clearActions]);
         }
 
-        // 6. DEPLOY ACTIVATION GATES (CONDITIONS)
+        // STEP 6: DEPLOY ACTIVATION GATES (DIMENSIONAL CONDITIONS)
         if (conditions && conditions.length > 0) {
             const mappedConditions = conditions.map((c: any) => ({
                 rule_id: activeRuleId,
@@ -114,7 +112,7 @@ export async function createOrUpdatePricingRule(
             if (cError) throw new Error(`CONDITION_GATE_FAILURE: ${cError.message}`);
         }
 
-        // 7. DEPLOY LOGIC MUTATIONS (ACTIONS)
+        // STEP 7: DEPLOY LOGIC MUTATIONS (PRICE OPERATIONS)
         if (actions && actions.length > 0) {
             const mappedActions = actions.map((a: any) => ({
                 rule_id: activeRuleId,
@@ -133,23 +131,22 @@ export async function createOrUpdatePricingRule(
             if (aError) throw new Error(`ACTION_MUTATION_FAILURE: ${aError.message}`);
         }
 
-        // 8. GLOBAL CACHE INVALIDATION
-        // Localized paths are now correctly resolved via the 'locale' variable
+        // STEP 8: GLOBAL CACHE INVALIDATION & REVALIDATION
         revalidatePath(`/${locale}/sales/pricing-rules`);
         revalidatePath(`/${locale}/sales/pricing-rules/${activeRuleId}`);
         
         return { 
             success: true, 
-            message: `COMMERCIAL_POLICY_DEPLOYED: Strategy "${ruleMeta.name}" successfully committed to Master Data.`,
+            message: `STRATEGY_COMMITTED: Logic "${ruleMeta.name}" successfully deployed to Master Database.`,
             ruleId: activeRuleId,
             timestamp: syncTimestamp
         };
 
     } catch (error: any) {
-        console.error("[SYSTEM_ERROR] Pricing Deployment Critical Failure:", error);
+        console.error("[CRITICAL_FAULT] Logic Deployment Failure:", error);
         return { 
             success: false, 
-            message: error.message || "UNEXPECTED_SYSTEM_FAULT: Contact infrastructure support.", 
+            message: error.message || "SYSTEM_FAULT: Contact Infrastructure Support.", 
             errorCode: "DEPLOY_ERR_500",
             timestamp: syncTimestamp 
         };
@@ -157,7 +154,9 @@ export async function createOrUpdatePricingRule(
 }
 
 /**
- * ATOMIC POLICY DELETION
+ * --- ATOMIC POLICY PURGE ---
+ * Removes commercial logic from the Master Record.
+ * High-Security: Verification of ownership required prior to deletion.
  */
 export async function deletePricingRule(id: string) {
     const cookieStore = cookies();
@@ -165,7 +164,7 @@ export async function deletePricingRule(id: string) {
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHORIZED: Session invalid.");
+        if (!user) throw new Error("UNAUTHORIZED: Master Session Invalid.");
 
         const { data: profile } = await supabase
             .from('profiles')
@@ -183,7 +182,7 @@ export async function deletePricingRule(id: string) {
 
         if (error) throw error;
 
-        // Path is generalized for broad revalidation on delete
+        // Broadcast change to global catalog
         revalidatePath(`/sales/pricing-rules`, 'layout');
         return { success: true };
     } catch (error: any) {
