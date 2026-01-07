@@ -1,57 +1,69 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { format, subMonths, endOfMonth } from 'date-fns';
+import { format, subMonths, endOfMonth, startOfMonth, parseISO } from 'date-fns';
 import { FinanceHub } from '@/components/reports/FinanceHub';
-import type { ProfitAndLossRecord, BalanceSheetRecord } from '@/components/reports/FinanceHub';
-
-async function getReportData(supabase: any, from: string, to: string): Promise<{ pnl: ProfitAndLossRecord[], bs: BalanceSheetRecord[] }> {
-    const [pnlResult, bsResult] = await Promise.all([
-        supabase.rpc('generate_profit_and_loss', { start_date: from, end_date: to }),
-        supabase.rpc('generate_balance_sheet', { as_of_date: to })
-    ]);
-
-    if (pnlResult.error) {
-        console.error("Profit & Loss RPC Error:", pnlResult.error.message);
-    }
-    if (bsResult.error) {
-        console.error("Balance Sheet RPC Error:", bsResult.error.message);
-    }
-
-    const pnl: ProfitAndLossRecord[] = pnlResult.data || [];
-    const bs: BalanceSheetRecord[] = bsResult.data || [];
-    
-    return {
-        pnl,
-        bs
-    };
-}
 
 export default async function FinancialReportsPage({
     searchParams
 }: {
-    searchParams: { from?: string, to?: string }
+    searchParams: { from?: string, to?: string, locationId?: string, projectId?: string }
 }) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    const toDate = searchParams.to ? new Date(searchParams.to) : endOfMonth(new Date());
-    const fromDate = searchParams.from ? new Date(searchParams.from) : subMonths(toDate, 1);
+    // 1. Setup Date Ranges
+    const from = searchParams.from || format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd');
+    const to = searchParams.to || format(endOfMonth(new Date()), 'yyyy-MM-dd');
+    
+    const locationId = searchParams.locationId && searchParams.locationId !== 'all' ? searchParams.locationId : null;
+    const projectId = searchParams.projectId && searchParams.projectId !== 'all' ? searchParams.projectId : null;
 
-    const to = format(toDate, 'yyyy-MM-dd');
-    const from = format(fromDate, 'yyyy-MM-dd');
+    /**
+     * 2. ENTERPRISE DATA FETCHING:
+     * We fetch everything in parallel to satisfy the FinanceHub requirements 
+     * and ensure real-time connectivity to POS and Inventory.
+     */
+    const [analyticsRes, bsRes, locationsRes, projectsRes] = await Promise.all([
+        supabase.rpc('get_enterprise_financial_hub_v2', {
+            p_from: from,
+            p_to: to,
+            p_location_id: locationId,
+            p_project_id: projectId
+        }),
+        supabase.rpc('get_enterprise_balance_sheet', {
+            p_as_of_date: to,
+            p_location_id: locationId,
+            p_project_id: projectId
+        }),
+        supabase.from('locations').select('id, name').order('name'),
+        supabase.from('projects').select('id, name').order('name')
+    ]);
 
-    const { pnl, bs } = await getReportData(supabase, from, to);
+    // Error safety for production builds
+    if (analyticsRes.error || bsRes.error) {
+        console.error("Ledger Fetch Error:", analyticsRes.error || bsRes.error);
+        return <div className="p-10 text-red-500 bg-red-50 rounded-xl border border-red-200 font-bold">
+            Critical Error: Financial Ledger Synchronization Failed.
+        </div>;
+    }
 
-    const pnlPeriod = `${format(fromDate, 'PPP')} - ${format(toDate, 'PPP')}`;
-    const bsDate = format(toDate, 'PPP');
+    const { current_pnl, prev_pnl, trends } = analyticsRes.data;
+
+    // Formatting for display
+    const pnlPeriod = `${format(parseISO(from), 'MMM dd, yyyy')} - ${format(parseISO(to), 'MMM dd, yyyy')}`;
+    const bsDate = format(parseISO(to), 'MMMM dd, yyyy');
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
             <FinanceHub 
-                pnl={pnl}
-                bs={bs}
+                pnl={current_pnl.map((i: any) => ({ category: i.cat, account_name: i.acc, amount: i.val }))}
+                prevPnl={prev_pnl.map((i: any) => ({ category: i.cat, amount: i.val }))}
+                bs={bsRes.data || []}
+                trends={trends || []}
                 pnlPeriod={pnlPeriod}
                 bsDate={bsDate}
+                locations={locationsRes.data || []}
+                projects={projectsRes.data || []}
             />
         </div>
     );
