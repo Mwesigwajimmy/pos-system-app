@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useFormState } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,7 @@ import {
   ArrowRight, Trash2, Plus, Activity, Cpu, Target,
   Settings2, BarChart3, ArrowUpRight, Scale,
   History, Globe, Landmark, FileCode, BadgeCheck,
-  ShieldAlert, Database, BoxSelect, RefreshCw, Search, ChevronRight, Info
+  ShieldAlert, Database, BoxSelect, RefreshCw, Search, ChevronRight
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { createOrUpdatePricingRule } from '@/app/actions/pricing';
 import { cn } from '@/lib/utils';
 
-// --- ENTERPRISE BUSINESS INTERFACES (RESTORED) ---
+// --- ENTERPRISE BUSINESS INTERFACES ---
 interface TierBreak {
   min_qty: number;
   max_qty: number | null;
@@ -67,7 +67,7 @@ interface BuilderProps {
 }
 
 /**
- * HIGH-SECURITY FINANCIAL CALCULATION ENGINE (RESTORED)
+ * HIGH-SECURITY FINANCIAL CALCULATION ENGINE
  * Uses a strict white-list character parser to prevent Code Injection.
  */
 const evaluateEnterpriseFormula = (formula: string, base: number, qty: number): number => {
@@ -78,7 +78,6 @@ const evaluateEnterpriseFormula = (formula: string, base: number, qty: number): 
       .replace(/QTY/g, qty.toString())
       .replace(/[^-?\d+/*().\s]/g, ''); // High-security filter
     
-    // Execute only sanitized arithmetic strings
     const compute = new Function(`return (${sanitized})`);
     return Number(compute()) || 0;
   } catch (e) {
@@ -102,21 +101,21 @@ export function PricingRuleBuilder({
 
   const { control, handleSubmit, register, watch, trigger, setValue, formState: { errors, isSubmitting } } = useForm<PricingRuleFormValues>({
     defaultValues: {
-        tenant_id: tenantId,
-        name: initialData?.name || '',
-        description: initialData?.description || '',
-        priority: initialData?.priority || 1,
-        is_active: initialData?.is_active ?? true,
-        is_stackable: initialData?.is_stackable ?? false,
-        is_exclusive: initialData?.is_exclusive ?? false,
-        tax_strategy: initialData?.tax_strategy ?? 'GROSS',
-        conditions: initialData?.conditions || [{ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' }],
-        actions: initialData?.actions || [{ 
-            type: 'PERCENTAGE_DISCOUNT', 
-            value: 0, 
-            currency_code: currencies[0] || 'USD',
-            tiers: [{ min_qty: 1, max_qty: null, value: 0 }] 
-        }],
+      tenant_id: tenantId,
+      name: initialData?.name || '',
+      description: initialData?.description || '',
+      priority: initialData?.priority || 1,
+      is_active: initialData?.is_active ?? true,
+      is_stackable: initialData?.is_stackable ?? false,
+      is_exclusive: initialData?.is_exclusive ?? false,
+      tax_strategy: initialData?.tax_strategy ?? 'GROSS',
+      conditions: initialData?.conditions || [{ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' }],
+      actions: initialData?.actions || [{ 
+          type: 'PERCENTAGE_DISCOUNT', 
+          value: 0, 
+          currency_code: currencies[0] || 'USD',
+          tiers: [{ min_qty: 1, max_qty: null, value: 0 }] 
+      }],
     },
   });
 
@@ -125,7 +124,7 @@ export function PricingRuleBuilder({
   const { fields: actFields, append: addAct, remove: remAct } = useFieldArray({ control, name: "actions" });
   const [state, formAction] = useFormState(createOrUpdatePricingRule, { success: false, message: '' });
 
-  // --- ERP INTEGRITY MONITOR (RESTORED) ---
+  // --- ERP INTEGRITY MONITOR ---
   const systemReadiness = useMemo(() => {
     const steps = [];
     if (watchedData.name?.length >= 3) steps.push('config');
@@ -143,7 +142,7 @@ export function PricingRuleBuilder({
 
   const isAuthorizedForCommit = systemReadiness.length >= 3;
 
-  // --- REAL-TIME YIELD IMPACT ANALYTICS (RESTORED) ---
+  // --- REAL-TIME YIELD IMPACT ANALYTICS ---
   const yieldAnalytics = useMemo(() => {
     const productMapping = watchedData.conditions?.find(c => c.type === 'PRODUCT');
     const resolvedProduct = products.find(p => p.id.toString() === productMapping?.target_id);
@@ -199,39 +198,34 @@ export function PricingRuleBuilder({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] antialiased">
-      <form onSubmit={handleSubmit(onExecuteCommit)} className="w-full max-w-[1440px] mx-auto space-y-8 px-4 py-8 md:px-10 md:py-12">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-blue-100">
+      <form onSubmit={handleSubmit(onExecuteCommit)} className="w-full max-w-[1440px] mx-auto space-y-6 px-4 py-6 md:px-8 md:py-10">
           
-          {/* --- CLEAN PROFESSIONAL HEADER (MATCHING REF 3) --- */}
-          <header className="space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <ChevronRight className="w-3 h-3 rotate-180" /> Back to Pricing Logic Inventory
-            </div>
-            
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shrink-0 shadow-sm border border-slate-200">
-                    <Database className="text-slate-900 w-6 h-6" />
-                </div>
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                        Pricing Logic Controller
-                    </h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <BadgeCheck className="w-4 h-4 text-blue-500" />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Tenant ID: {tenantId}</p>
-                    </div>
-                </div>
+          {/* --- GLOBAL ERP HEADER --- */}
+          <header className="flex flex-col lg:flex-row items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-5 w-full lg:w-auto">
+                  <div className="w-12 h-12 md:w-14 md:h-14 bg-slate-900 rounded-lg flex items-center justify-center shrink-0 shadow-lg">
+                      <Database className="text-white w-6 h-6 md:w-7 md:h-7" />
+                  </div>
+                  <div>
+                      <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                          PRICING CONTROLLER
+                      </h1>
+                      <div className="flex items-center gap-2">
+                          <BadgeCheck className="w-4 h-4 text-blue-500" />
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Tenant ID: {tenantId}</p>
+                      </div>
+                  </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-                  <div className="hidden md:flex flex-col justify-center px-6 py-2 bg-white rounded-lg border border-slate-200 min-w-[180px]">
+              <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-end">
+                  <div className="hidden md:flex flex-col justify-center px-5 py-2.5 bg-slate-50 rounded-lg border border-slate-100 min-w-[180px]">
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
                           <Activity className="w-3 h-3" /> System Integrity
                       </span>
                       <div className="flex items-center gap-2">
                           <div className={cn("w-2 h-2 rounded-full", isAuthorizedForCommit ? "bg-emerald-500" : "bg-amber-500")} />
-                          <span className="text-xs font-bold text-slate-700">{systemReadiness.length}/3 Modules Validated</span>
+                          <span className="text-xs font-bold text-slate-700">{systemReadiness.length}/3 Validated</span>
                       </div>
                   </div>
                   
@@ -239,85 +233,84 @@ export function PricingRuleBuilder({
                       type="submit" 
                       disabled={!isAuthorizedForCommit || isSubmitting}
                       className={cn(
-                          "h-12 px-10 font-bold text-xs uppercase tracking-widest transition-all rounded-lg shadow-sm border",
+                          "h-12 px-8 font-bold text-xs uppercase tracking-widest transition-all rounded-lg w-full sm:w-auto shadow-md",
                           isAuthorizedForCommit 
-                          ? "bg-[#0F172A] hover:bg-slate-800 text-white border-[#0F172A]" 
-                          : "bg-white text-slate-300 border-slate-200 cursor-not-allowed"
+                          ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                          : "bg-slate-100 text-slate-400 border border-slate-200"
                       )}
                   >
                       {isAuthorizedForCommit ? <Save className="w-4 h-4 mr-3" /> : <ShieldAlert className="w-4 h-4 mr-3" />}
                       Execute Deployment
                   </Button>
               </div>
-            </div>
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
               
-              {/* --- MAIN WORKSPACE --- */}
+              {/* --- BUSINESS LOGIC WORKSPACE --- */}
               <div className="xl:col-span-8 space-y-6">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                      <TabsList className="flex w-full bg-transparent border-b border-slate-200 rounded-none h-14 p-0 gap-8 mb-8 overflow-x-auto">
+                      <TabsList className="grid grid-cols-3 w-full bg-white border border-slate-200 p-1 rounded-xl h-14 md:h-16 shadow-sm mb-6">
                           {[
-                              { id: 'config', label: '1. Strategy Setup', icon: Settings2 },
-                              { id: 'logic', label: '2. Targeting Criteria', icon: Layers },
-                              { id: 'outcomes', label: '3. Logic Engine', icon: Calculator },
+                              { id: 'config', label: '1. Strategy Context', icon: Settings2 },
+                              { id: 'logic', label: '2. Dimension Map', icon: Layers },
+                              { id: 'outcomes', label: '3. Calculations', icon: Calculator },
                           ].map(tab => (
                               <TabsTrigger 
                                   key={tab.id} 
                                   value={tab.id} 
-                                  className="rounded-none border-b-2 border-transparent bg-transparent px-1 pb-4 pt-2 font-bold text-[11px] uppercase tracking-wider transition-all data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:shadow-none text-slate-400 shrink-0"
+                                  className="rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white flex items-center justify-center gap-2 md:gap-3"
                               >
-                                  <tab.icon className="w-4 h-4 mr-2" />
-                                  {tab.label}
-                                  {systemReadiness.includes(tab.id) && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 ml-2" />}
+                                  <tab.icon className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">{tab.label}</span>
+                                  {systemReadiness.includes(tab.id) && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 ml-1" />}
                               </TabsTrigger>
                           ))}
                       </TabsList>
 
                       <AnimatePresence mode="wait">
-                          <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }}>
                               
                               {/* SECTION 1: SYSTEM PARAMETERS */}
                               <TabsContent value="config" className="m-0">
                                   <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                                      <CardHeader className="p-8 border-b border-slate-50 bg-[#F9FAFB]">
+                                      <CardHeader className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/50">
                                           <div className="flex items-center gap-3">
                                               <ShieldCheck className="w-5 h-5 text-slate-700" />
-                                              <CardTitle className="text-base font-bold text-slate-800 uppercase tracking-tight">Logic Context</CardTitle>
+                                              <CardTitle className="text-lg font-bold text-slate-900 uppercase">Logic Context</CardTitle>
                                           </div>
-                                          <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Master record metadata and precedence parameters.</CardDescription>
+                                          <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Define precedence and master metadata.</CardDescription>
                                       </CardHeader>
-                                      <CardContent className="p-8 space-y-8">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                      <CardContent className="p-6 md:p-8 space-y-8">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                                               <div className="space-y-2">
                                                   <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Strategy Identifier</Label>
-                                                  <Input {...register('name', { required: true })} placeholder="STRATEGY_REF_001" className="h-11 border-slate-200 rounded-lg font-semibold bg-white focus:ring-1 focus:ring-slate-900" />
+                                                  <Input {...register('name', { required: true })} placeholder="STRATEGY_REF_001" className="h-12 border-slate-200 rounded-lg font-semibold bg-white" />
                                               </div>
                                               <div className="space-y-2">
                                                   <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Precedence Rank</Label>
-                                                  <Input type="number" {...register('priority', { valueAsNumber: true })} className="h-11 border-slate-200 rounded-lg font-semibold bg-white focus:ring-1 focus:ring-slate-900" />
+                                                  <Input type="number" {...register('priority', { valueAsNumber: true })} className="h-12 border-slate-200 rounded-lg font-semibold bg-white" />
                                               </div>
                                           </div>
 
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                              <div className="flex items-center justify-between p-6 bg-[#F9FAFB] rounded-xl border border-slate-200">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                              <div className="flex items-center justify-between p-5 bg-white rounded-lg border border-slate-200 hover:border-blue-200 transition-colors">
                                                   <div className="space-y-1">
-                                                      <p className="font-bold text-slate-900 text-xs uppercase">Exclusive Protocol</p>
-                                                      <p className="text-[9px] text-slate-400 font-semibold uppercase">Restricts parallel condition application.</p>
+                                                      <p className="font-bold text-slate-900 text-xs uppercase">Exclusive Application</p>
+                                                      <p className="text-[9px] text-slate-400 font-semibold uppercase">Blocks subsequent rule logic.</p>
                                                   </div>
                                                   <Controller control={control} name="is_exclusive" render={({ field }) => (
                                                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                   )} />
                                               </div>
-                                              <div className="flex items-center justify-between p-6 bg-[#F9FAFB] rounded-xl border border-slate-200">
+                                              <div className="flex items-center justify-between p-5 bg-white rounded-lg border border-slate-200">
                                                   <div className="space-y-1">
-                                                      <p className="font-bold text-slate-900 text-xs uppercase">Tax Strategy</p>
-                                                      <p className="text-[9px] text-slate-400 font-semibold uppercase">Financial calculation context.</p>
+                                                      <p className="font-bold text-slate-900 text-xs uppercase">Tax Context</p>
+                                                      <p className="text-[9px] text-slate-400 font-semibold uppercase">Financial Calculation Protocol.</p>
                                                   </div>
                                                   <Controller control={control} name="tax_strategy" render={({ field }) => (
                                                       <Select onValueChange={field.onChange} value={field.value}>
-                                                          <SelectTrigger className="h-10 w-[110px] bg-white border-slate-200 rounded-lg font-bold text-[10px] uppercase">
+                                                          <SelectTrigger className="h-10 w-[110px] bg-slate-50 border-slate-200 rounded-lg font-bold text-[10px] uppercase">
                                                               <SelectValue />
                                                           </SelectTrigger>
                                                           <SelectContent>
@@ -328,6 +321,12 @@ export function PricingRuleBuilder({
                                                   )} />
                                               </div>
                                           </div>
+
+                                          <div className="flex justify-end pt-6 border-t border-slate-50">
+                                              <Button type="button" onClick={async () => { if(await trigger(['name', 'priority'])) setActiveTab('logic'); }} className="h-12 px-8 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-lg">
+                                                  Continue to Logic Map <ArrowRight className="ml-2 w-4 h-4" />
+                                              </Button>
+                                          </div>
                                       </CardContent>
                                   </Card>
                               </TabsContent>
@@ -335,39 +334,39 @@ export function PricingRuleBuilder({
                               {/* SECTION 2: DIMENSION MAPPING */}
                               <TabsContent value="logic" className="m-0">
                                   <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                                      <CardHeader className="p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 bg-[#F9FAFB]">
+                                      <CardHeader className="p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/50">
                                           <div>
-                                              <CardTitle className="text-base font-bold text-slate-800 uppercase tracking-tight">Targeting Criteria</CardTitle>
-                                              <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Assign rule logic to products, client segments, or warehouses.</CardDescription>
+                                              <CardTitle className="text-lg font-bold text-slate-900 uppercase">Targeting Criteria</CardTitle>
+                                              <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Assign rule logic to dimensional nodes.</CardDescription>
                                           </div>
-                                          <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-6 bg-white hover:bg-slate-50 shadow-sm">
+                                          <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-6 bg-white shadow-sm">
                                               <Plus className="w-4 h-4 mr-2" /> Add Rule Node
                                           </Button>
                                       </CardHeader>
-                                      <CardContent className="p-8 space-y-4">
+                                      <CardContent className="p-6 md:p-8 space-y-4">
                                           {condFields.map((field, index) => (
-                                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group animate-in slide-in-from-top-1">
+                                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm relative group">
                                                   <div className="md:col-span-3 space-y-2">
                                                       <Label className="text-[10px] font-bold text-slate-400 uppercase">Dimension</Label>
                                                       <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
                                                           <Select onValueChange={(val) => { field.onChange(val); setValue(`conditions.${index}.target_id`, ''); }} value={field.value}>
-                                                              <SelectTrigger className="h-10 border-slate-200 bg-slate-50/50 rounded-lg font-bold text-[10px] uppercase focus:ring-1 focus:ring-slate-900"><SelectValue /></SelectTrigger>
+                                                              <SelectTrigger className="h-10 border-slate-200 bg-slate-50 rounded-lg font-bold text-[10px] uppercase"><SelectValue /></SelectTrigger>
                                                               <SelectContent>
                                                                   <SelectItem value="PRODUCT">SKU Code</SelectItem>
-                                                                  <SelectItem value="CUSTOMER">Client Segment</SelectItem>
+                                                                  <SelectItem value="CUSTOMER">Client Seg</SelectItem>
                                                                   <SelectItem value="LOCATION">Retail Hub</SelectItem>
                                                               </SelectContent>
                                                           </Select>
                                                       )}/>
                                                   </div>
                                                   <div className="md:col-span-5 space-y-2">
-                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">System ID</Label>
+                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">System Identifier</Label>
                                                       <Controller control={control} name={`conditions.${index}.target_id`} render={({ field: tField }) => (
                                                           <Select onValueChange={tField.onChange} value={tField.value}>
-                                                              <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase focus:ring-1 focus:ring-slate-900"><SelectValue placeholder="Select Entity..." /></SelectTrigger>
+                                                              <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase"><SelectValue placeholder="System Lookup..." /></SelectTrigger>
                                                               <SelectContent className="max-h-[300px]">
                                                                   {watch(`conditions.${index}.type`) === 'PRODUCT' 
-                                                                      ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)
+                                                                      ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name} [${p.price}]</SelectItem>)
                                                                       : customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)
                                                                   }
                                                               </SelectContent>
@@ -375,10 +374,10 @@ export function PricingRuleBuilder({
                                                       )}/>
                                                   </div>
                                                   <div className="md:col-span-3 space-y-2">
-                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Scope</Label>
+                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Regional Scope</Label>
                                                       <Controller control={control} name={`conditions.${index}.location_id`} render={({ field }) => (
                                                           <Select onValueChange={field.onChange} value={field.value}>
-                                                              <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase focus:ring-1 focus:ring-slate-900"><SelectValue placeholder="Global" /></SelectTrigger>
+                                                              <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase"><SelectValue placeholder="Global" /></SelectTrigger>
                                                               <SelectContent>
                                                                   <SelectItem value="GLOBAL">Master Cluster</SelectItem>
                                                                   {locations.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
@@ -386,11 +385,17 @@ export function PricingRuleBuilder({
                                                           </Select>
                                                       )}/>
                                                   </div>
-                                                  <div className="md:col-span-1 flex justify-center pb-1">
-                                                      <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></Button>
+                                                  <div className="md:col-span-1 flex justify-center items-end pb-1">
+                                                      <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></Button>
                                                   </div>
                                               </div>
                                           ))}
+                                          <div className="flex flex-col sm:flex-row justify-between gap-4 pt-10">
+                                              <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-bold text-[10px] uppercase text-slate-400 h-12 px-8">Back to Parameters</Button>
+                                              <Button type="button" onClick={async () => { if(await trigger('conditions')) setActiveTab('outcomes'); }} className="h-12 px-10 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-lg">
+                                                  Configure Adjustments <ArrowUpRight className="ml-2 w-4 h-4" />
+                                              </Button>
+                                          </div>
                                       </CardContent>
                                   </Card>
                               </TabsContent>
@@ -398,14 +403,14 @@ export function PricingRuleBuilder({
                               {/* SECTION 3: CALCULATION ADJUSTMENTS */}
                               <TabsContent value="outcomes" className="m-0">
                                   <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                                      <CardHeader className="p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 bg-[#F9FAFB]">
+                                      <CardHeader className="p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/50">
                                           <div>
-                                              <CardTitle className="text-base font-bold text-slate-800 uppercase tracking-tight">Price Adjustments</CardTitle>
-                                              <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Master calculation logic: Algorithms, Fixed Points, or Scaling.</CardDescription>
+                                              <CardTitle className="text-lg font-bold text-slate-900 uppercase">Price Adjustments</CardTitle>
+                                              <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Master calculation logic: Formulas or Scaling.</CardDescription>
                                           </div>
-                                          <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] || 'USD', tiers: [] })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-6 bg-white hover:bg-slate-50 shadow-sm"><Plus className="w-4 h-4 mr-2" /> Add Operation</Button>
+                                          <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] || 'USD', tiers: [] })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-6 bg-white shadow-sm"><Plus className="w-4 h-4 mr-2" /> Add Operation</Button>
                                       </CardHeader>
-                                      <CardContent className="p-8 space-y-6">
+                                      <CardContent className="p-6 md:p-8 space-y-6">
                                           {actFields.map((field, index) => {
                                               const actionType = watch(`actions.${index}.type`);
                                               return (
@@ -415,12 +420,12 @@ export function PricingRuleBuilder({
                                                               <Label className="text-[10px] font-bold text-slate-400 uppercase">Processor</Label>
                                                               <Controller control={control} name={`actions.${index}.type`} render={({ field }) => (
                                                                   <Select onValueChange={field.onChange} value={field.value}>
-                                                                      <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase focus:ring-1 focus:ring-slate-900"><SelectValue /></SelectTrigger>
+                                                                      <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase"><SelectValue /></SelectTrigger>
                                                                       <SelectContent>
                                                                           <SelectItem value="PERCENTAGE_DISCOUNT">Markdown (%)</SelectItem>
-                                                                          <SelectItem value="FIXED_PRICE">Fixed Price Point</SelectItem>
-                                                                          <SelectItem value="FORMULA">Custom Algorithm</SelectItem>
-                                                                          <SelectItem value="VOLUME_TIER">Volume Brackets</SelectItem>
+                                                                          <SelectItem value="FIXED_PRICE">Fixed Price</SelectItem>
+                                                                          <SelectItem value="FORMULA">Algorithm</SelectItem>
+                                                                          <SelectItem value="VOLUME_TIER">Scaling Tiers</SelectItem>
                                                                       </SelectContent>
                                                                   </Select>
                                                               )}/>
@@ -429,16 +434,16 @@ export function PricingRuleBuilder({
                                                           <div className="md:col-span-7 space-y-2">
                                                               {actionType === 'FORMULA' ? (
                                                                   <div className="relative">
-                                                                      <Input {...register(`actions.${index}.formula_string`)} placeholder="e.g. (BASE * 0.95)" className="h-10 border-slate-200 bg-white rounded-lg font-mono font-bold text-xs px-4 pr-10 focus:ring-1 focus:ring-slate-900" />
+                                                                      <Input {...register(`actions.${index}.formula_string`)} placeholder="e.g. (BASE * 0.95)" className="h-10 border-slate-200 bg-white rounded-lg font-mono font-bold text-xs px-4 pr-10" />
                                                                       <Calculator className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
                                                                   </div>
                                                               ) : actionType === 'VOLUME_TIER' ? (
-                                                                  <div className="h-10 flex items-center px-4 bg-white rounded-lg border border-slate-100 shadow-inner"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Scaling Matrix Active</p></div>
+                                                                  <div className="h-10 flex items-center px-4 bg-white rounded-lg border border-slate-100"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tier Mapping Active</p></div>
                                                               ) : (
-                                                                  <Input type="number" step="0.0001" {...register(`actions.${index}.value`, { valueAsNumber: true })} className="h-10 border-slate-200 bg-white rounded-lg font-bold text-xs px-4 focus:ring-1 focus:ring-slate-900" />
+                                                                  <Input type="number" step="0.0001" {...register(`actions.${index}.value`, { valueAsNumber: true })} className="h-10 border-slate-200 bg-white rounded-lg font-bold text-xs px-4" />
                                                               )}
                                                           </div>
-                                                          <div className="md:col-span-1 flex justify-center pb-1">
+                                                          <div className="md:col-span-1 flex justify-center items-end pb-1">
                                                               <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-white rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></Button>
                                                           </div>
                                                       </div>
@@ -450,24 +455,24 @@ export function PricingRuleBuilder({
                                                                   <Button type="button" variant="outline" size="sm" onClick={() => {
                                                                       const cur = watch(`actions.${index}.tiers`) || [];
                                                                       setValue(`actions.${index}.tiers`, [...cur, { min_qty: 1, max_qty: null, value: 0 }]);
-                                                                  }} className="rounded-md font-bold text-[9px] uppercase px-4 h-8 bg-white border-slate-200 shadow-sm">Add Threshold</Button>
+                                                                  }} className="rounded-md font-bold text-[9px] uppercase px-4 h-8 bg-white border-slate-200">Add Threshold</Button>
                                                               </div>
                                                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                                                   {(watch(`actions.${index}.tiers`) || []).map((_, tIdx) => (
-                                                                      <div key={tIdx} className="bg-white p-5 rounded-xl border border-slate-200 relative group shadow-sm animate-in zoom-in-95">
+                                                                      <div key={tIdx} className="bg-white p-4 rounded-lg border border-slate-200 relative group shadow-sm animate-in zoom-in-95">
                                                                           <div className="grid grid-cols-2 gap-3 mb-3">
                                                                               <div className="space-y-1">
-                                                                                  <Label className="text-[8px] font-bold text-slate-400 uppercase">Min Qty</Label>
-                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} className="h-8 rounded-md text-[10px] font-bold border-slate-100 bg-slate-50/50" />
+                                                                                  <Label className="text-[8px] font-bold text-slate-400 uppercase">Min</Label>
+                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} className="h-8 rounded-md text-[10px] font-bold border-slate-100" />
                                                                               </div>
                                                                               <div className="space-y-1">
-                                                                                  <Label className="text-[8px] font-bold text-slate-400 uppercase">Max Qty</Label>
-                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="INF" className="h-8 rounded-md text-[10px] font-bold border-slate-100 bg-slate-50/50" />
+                                                                                  <Label className="text-[8px] font-bold text-slate-400 uppercase">Max</Label>
+                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="INF" className="h-8 rounded-md text-[10px] font-bold border-slate-100" />
                                                                               </div>
                                                                           </div>
                                                                           <div className="space-y-1">
-                                                                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Discount (%)</Label>
-                                                                              <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} className="h-8 rounded-md text-[10px] font-bold bg-white focus:border-slate-900" />
+                                                                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Mutation (%)</Label>
+                                                                              <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} className="h-8 rounded-md text-[10px] font-bold bg-slate-50" />
                                                                           </div>
                                                                           <button type="button" onClick={() => {
                                                                               const cur = watch(`actions.${index}.tiers`) || [];
@@ -481,6 +486,11 @@ export function PricingRuleBuilder({
                                                   </div>
                                               );
                                           })}
+                                          
+                                          <div className="flex flex-col sm:flex-row justify-between gap-4 pt-10 border-t border-slate-50">
+                                              <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-bold text-[10px] uppercase text-slate-400 h-12 px-8">Back</Button>
+                                              <Button type="submit" disabled={!isAuthorizedForCommit || isSubmitting} className={cn("h-14 px-12 font-bold text-[11px] uppercase tracking-widest rounded-lg transition-all", isAuthorizedForCommit ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100" : "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed")}>Finalize Deployment <CheckCircle2 className="ml-3 w-4 h-4" /></Button>
+                                          </div>
                                       </CardContent>
                                   </Card>
                               </TabsContent>
@@ -489,89 +499,88 @@ export function PricingRuleBuilder({
                   </Tabs>
               </div>
 
-              {/* --- PROFESSIONAL SIDEBAR ANALYTICS (MATCHING REF 3) --- */}
-              <div className="xl:col-span-4 space-y-6 lg:sticky lg:top-8">
-                  <Card className="bg-white border border-slate-200 shadow-xl rounded-2xl overflow-hidden">
-                      <CardHeader className="p-8 pb-4 border-b border-slate-50">
+              {/* --- ENTERPRISE YIELD ANALYTICS SIDEBAR --- */}
+              <div className="xl:col-span-4 space-y-6 lg:sticky lg:top-10">
+                  <Card className="bg-slate-900 border-none rounded-2xl overflow-hidden shadow-2xl text-white">
+                      <CardHeader className="p-8 pb-4">
                           <div className="flex items-center gap-3 mb-4">
-                              <div className="p-2 bg-blue-50 rounded-lg">
-                                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                              <div className="p-2 bg-white/10 rounded-lg">
+                                  <BarChart3 className="w-5 h-5 text-blue-400" />
                               </div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Yield Impact Analytics</span>
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Yield Impact Analytics</span>
                           </div>
-                          <CardTitle className="text-xl font-bold tracking-tight text-slate-900 leading-none truncate">{watchedData.name || 'Untitled Rule Strategy'}</CardTitle>
+                          <CardTitle className="text-xl font-bold uppercase tracking-tight truncate leading-none">{watchedData.name || 'STRATEGY_REF_PENDING'}</CardTitle>
+                          <div className="flex items-center gap-2 mt-4">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Engine Ready</span>
+                          </div>
                       </CardHeader>
                       
-                      <CardContent className="p-8 space-y-8">
-                          <div className="space-y-6">
-                              <div className="flex justify-between items-center text-sm font-medium">
-                                  <span className="text-slate-500">Base Master Price</span>
-                                  <span className="text-slate-900 font-mono font-bold">${yieldAnalytics.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      <CardContent className="p-8 pt-4 space-y-8">
+                          <div className="space-y-6 p-6 bg-white/5 rounded-xl border border-white/5 shadow-inner">
+                              <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">Base Unit Price</span>
+                                  <span className="text-xl font-bold font-mono">${yieldAnalytics.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
-                              <div className="flex justify-between items-center text-sm font-medium">
-                                  <span className="text-blue-600">Calculated Adjustment</span>
-                                  <span className="text-blue-600 font-mono font-bold">-${yieldAnalytics.deltaSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                              <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-blue-400 uppercase">Adjustment Applied</span>
+                                  <span className="text-xl font-bold text-blue-400 font-mono">-${yieldAnalytics.deltaSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                               </div>
-                              <Separator className="bg-slate-100" />
+                              <Separator className="bg-white/10" />
                               <div className="space-y-4 pt-2">
-                                  <div className="flex items-baseline justify-between gap-2">
+                                  <div className="flex justify-between items-end">
                                       <div className="space-y-1">
-                                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Projected Net Yield</span>
-                                          <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-md border border-slate-100 max-w-[140px]">
-                                              <span className="text-[9px] font-bold text-slate-500 uppercase truncate">{yieldAnalytics.targetDescriptor}</span>
+                                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Projected Net Yield</span>
+                                          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-md border border-white/10">
+                                              <span className="text-[9px] font-bold text-slate-400 uppercase truncate max-w-[120px]">{yieldAnalytics.targetDescriptor}</span>
                                           </div>
                                       </div>
-                                      <div className="text-right">
-                                        <span className="text-4xl font-bold tracking-tighter text-slate-900 font-mono">${yieldAnalytics.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                      </div>
+                                      <span className="text-4xl font-bold tracking-tighter font-mono text-white">${yieldAnalytics.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                   </div>
-                                  
-                                  <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Simulate Volume</Label>
-                                      <div className="flex items-center gap-4">
-                                          <Input type="number" value={simulatedQty} onChange={(e) => setSimulatedQty(Math.max(1, Number(e.target.value)))} className="h-10 bg-white border-slate-200 font-bold text-center text-xs rounded-lg shadow-sm" />
-                                          <div className="text-[9px] font-bold text-slate-400 uppercase leading-tight tracking-tight">Test <br/>Scaling</div>
-                                      </div>
+                                  <div className="flex items-center justify-between gap-4 p-4 bg-black/40 rounded-xl border border-white/5">
+                                      <Label className="text-[10px] font-bold text-slate-500 uppercase">Simulation Qty</Label>
+                                      <Input type="number" value={simulatedQty} onChange={(e) => setSimulatedQty(Math.max(1, Number(e.target.value)))} className="w-24 h-10 bg-white/10 border-white/10 text-white font-bold text-center text-xs rounded-lg" />
                                   </div>
                               </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
-                              <div className="p-4 bg-white rounded-xl border border-slate-200 flex flex-col items-center shadow-sm">
-                                  <History className="w-4 h-4 text-slate-400 mb-2" />
-                                  <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Audit State</p>
-                                  <p className={cn("text-[10px] font-bold uppercase tracking-wider", isAuthorizedForCommit ? "text-emerald-600" : "text-amber-500")}>{isAuthorizedForCommit ? "Verified" : "Staged"}</p>
+                              <div className="p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col items-center">
+                                  <History className="w-4 h-4 text-slate-500 mb-2" />
+                                  <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">State</p>
+                                  <p className={cn("text-[10px] font-bold uppercase tracking-wider", isAuthorizedForCommit ? "text-emerald-400" : "text-amber-400")}>{isAuthorizedForCommit ? "Validated" : "Staging"}</p>
                               </div>
-                              <div className="p-4 bg-white rounded-xl border border-slate-200 flex flex-col items-center shadow-sm">
+                              <div className="p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col items-center">
                                   <Scale className="text-slate-400 mb-2 w-4 h-4" />
                                   <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Efficiency</p>
-                                  <p className="text-[10px] font-bold text-slate-900">{yieldAnalytics.efficiencyScore.toFixed(2)}%</p>
+                                  <p className="text-[10px] font-bold text-white">{yieldAnalytics.efficiencyScore.toFixed(2)}%</p>
                               </div>
                           </div>
                       </CardContent>
                   </Card>
 
-                  {/* SUB-MODULE NODES (MATCHING REF 3) */}
+                  {/* LOGISTICS NODES */}
                   <div className="grid grid-cols-3 gap-3">
                       {[
-                          { icon: Globe, label: 'Geo-Map' },
-                          { icon: Landmark, label: 'Tax-Rules' },
+                          { icon: Globe, label: 'Geo-Logic' },
+                          { icon: Landmark, label: 'Compliance' },
                           { icon: FileCode, label: 'Schema' }
                       ].map((item, i) => (
                           <button 
                               key={i} 
                               type="button"
-                              className="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-slate-900 transition-all active:scale-95 group"
+                              onClick={() => toast({ title: "Module Loaded", description: `Accessing ${item.label} subsystem.` })}
+                              className="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-400 transition-all active:scale-95 group"
                           >
-                              <item.icon className="w-5 h-5 text-slate-400 mb-2 group-hover:text-slate-900 transition-colors" />
-                              <span className="text-[9px] font-bold text-slate-500 uppercase text-center leading-tight tracking-tighter">{item.label}</span>
+                              <item.icon className="w-5 h-5 text-slate-400 mb-2 group-hover:text-blue-600 transition-colors" />
+                              <span className="text-[9px] font-bold text-slate-500 uppercase text-center leading-tight tracking-widest">{item.label}</span>
                           </button>
                       ))}
                   </div>
 
-                  <div className="flex items-center justify-center gap-3 py-4 text-[9px] font-bold text-slate-300 uppercase tracking-[0.3em]">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm" />
-                      Master Sync: 100%
+                  <div className="flex items-center justify-center gap-3 py-4 text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] opacity-60">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      ERP SYNC STATUS: 100%
                   </div>
               </div>
           </div>
