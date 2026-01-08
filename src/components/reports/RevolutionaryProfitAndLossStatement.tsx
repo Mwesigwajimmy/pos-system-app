@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableRow, TableHeader, TableHead } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { formatCurrency } from '@/lib/utils';
 import { FileSpreadsheet, Printer, TrendingUp, TrendingDown, ListFilter, ArrowRight } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client'; // Standard Supabase client
 import * as XLSX from 'xlsx';
 
 interface PnlItem {
@@ -22,7 +23,42 @@ interface RevolutionaryProfitAndLossStatementProps {
 }
 
 export function RevolutionaryProfitAndLossStatement({ data, prevData = [], reportPeriod }: RevolutionaryProfitAndLossStatementProps) {
+  const supabase = createClient();
   const [drillDownAccount, setDrillDownAccount] = useState<string | null>(null);
+  const [ledgerDetails, setLedgerDetails] = useState<any[]>([]);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+
+  // Automated Drill-Down Fetcher
+  useEffect(() => {
+    if (!drillDownAccount) {
+        setLedgerDetails([]);
+        return;
+    }
+
+    const fetchLedgerData = async () => {
+      setIsDetailsLoading(true);
+      
+      // Parse dates from "MMM dd - MMM dd, yyyy" format
+      const parts = reportPeriod.split(' - ');
+      const endPart = parts[1]; // e.g. "Jan 31, 2026"
+      const year = endPart.split(', ')[1];
+      const startDate = new Date(`${parts[0]}, ${year}`).toISOString().split('T')[0];
+      const endDate = new Date(endPart).toISOString().split('T')[0];
+
+      const { data: details, error } = await supabase.rpc('get_account_ledger_details', {
+        p_account_name: drillDownAccount,
+        p_from: startDate,
+        p_to: endDate
+      });
+
+      if (error) console.error("Ledger Drilldown Error:", error);
+      else setLedgerDetails(details || []);
+      
+      setIsDetailsLoading(false);
+    };
+
+    fetchLedgerData();
+  }, [drillDownAccount, reportPeriod, supabase]);
 
   const calculateTotal = (category: PnlItem['category']) =>
     data.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);
@@ -137,7 +173,7 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
       </Card>
 
       <Sheet open={!!drillDownAccount} onOpenChange={() => setDrillDownAccount(null)}>
-        <SheetContent side="right" className="sm:max-w-xl border-l-4 border-blue-600">
+        <SheetContent side="right" className="sm:max-w-xl border-l-4 border-blue-600 overflow-y-auto">
           <SheetHeader className="pb-6 border-b">
             <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-widest mb-2">
               <ArrowRight size={14} /> Financial Drill Down
@@ -147,6 +183,7 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
               Detailed Ledger Transaction Analysis for {reportPeriod}.
             </SheetDescription>
           </SheetHeader>
+          
           <div className="py-8 space-y-6">
             <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
               <p className="text-sm font-semibold text-slate-900 mb-1">Audit Traceability Active</p>
@@ -154,12 +191,38 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
                 Scanning multi-tenant POS sales and inventory journal entries for this ledger account. Performance matching 100% against Double-Entry Accounting standards.
               </p>
             </div>
-            <div className="flex items-center justify-center py-20 text-slate-400">
-              <div className="text-center">
-                <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-sm font-bold">Fetching Live Transactions...</p>
+
+            {isDetailsLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mb-4"></div>
+                <p className="text-sm font-bold text-slate-900">Fetching Live Transactions...</p>
               </div>
-            </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 uppercase text-[10px] font-bold">
+                    <TableHead>Date</TableHead>
+                    <TableHead>Ref</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ledgerDetails.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-slate-400 italic">No transactions found for this period.</TableCell></TableRow>
+                  ) : (
+                    ledgerDetails.map((row, i) => (
+                      <TableRow key={i} className="hover:bg-slate-50/50">
+                        <TableCell className="text-xs font-medium text-slate-500">{row.transaction_date}</TableCell>
+                        <TableCell className="text-xs font-bold text-slate-900">{row.reference}</TableCell>
+                        <TableCell className="text-right font-mono text-xs text-blue-600">{row.debit > 0 ? formatCurrency(row.debit, 'USD') : '-'}</TableCell>
+                        <TableCell className="text-right font-mono text-xs text-slate-400">{row.credit > 0 ? formatCurrency(row.credit, 'USD') : '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </SheetContent>
       </Sheet>
