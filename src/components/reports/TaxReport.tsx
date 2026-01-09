@@ -7,12 +7,12 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker"; // Enterprise Date Picker
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"; 
 import { DateRange } from "react-day-picker";
 import { Download, Search, Landmark, CalendarRange, Filter } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns"; // parseISO is required for the fix
 
-// --- Enterprise Interfaces (Exported for page.tsx) ---
+// --- Enterprise Interfaces (Preserved Fully) ---
 export interface TaxLineItem {
   id: string;
   jurisdiction_code: string;
@@ -33,17 +33,24 @@ export interface TaxSummary {
   net_liability: number;
 }
 
+// THE FIX: Changed from Date objects to Serialized Strings to prevent hydration crash
 interface TaxReportProps {
   data: TaxLineItem[];
   summaries: TaxSummary[];
-  dateRange: DateRange; // Now accepts a full range
+  serializedDateRange: { from: string; to: string }; 
 }
 
-export default function TaxReportClient({ data, summaries, dateRange }: TaxReportProps) {
+export default function TaxReportClient({ data, summaries, serializedDateRange }: TaxReportProps) {
   const router = useRouter();
   const [filter, setFilter] = useState('');
 
-  // --- Date Handler (Enterprise) ---
+  // ENTERPRISE LOGIC: Safe re-conversion of strings back to Date objects on the client side
+  const dateRange = useMemo(() => ({
+    from: parseISO(serializedDateRange.from),
+    to: parseISO(serializedDateRange.to)
+  }), [serializedDateRange]);
+
+  // --- Date Handler (Enterprise preserved) ---
   const handleDateChange = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
       const fromStr = format(range.from, 'yyyy-MM-dd');
@@ -52,7 +59,7 @@ export default function TaxReportClient({ data, summaries, dateRange }: TaxRepor
     }
   };
 
-  // --- Helpers ---
+  // --- Helpers (Preserved fully) ---
   const formatMoney = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -61,7 +68,7 @@ export default function TaxReportClient({ data, summaries, dateRange }: TaxRepor
     }).format(amount);
   };
 
-  // --- Filtering Logic ---
+  // --- Filtering Logic (Preserved fully) ---
   const filteredData = useMemo(() => {
     return data.filter(row => 
       row.tax_name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -69,7 +76,7 @@ export default function TaxReportClient({ data, summaries, dateRange }: TaxRepor
     ).sort((a,b) => b.type.localeCompare(a.type)); 
   }, [data, filter]);
 
-  // --- Export Logic ---
+  // --- Export Logic (Enterprise preserved) ---
   const handleExport = () => {
     const headers = [
       "Jurisdiction", "Tax Name", "Type", "Currency", 
@@ -105,7 +112,7 @@ export default function TaxReportClient({ data, summaries, dateRange }: TaxRepor
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Tax Liability Report</h1>
           <p className="text-slate-500 mt-1">
-            Tax collected vs paid for <span className="font-semibold text-slate-700">{dateRange.from ? format(dateRange.from, "MMM dd, yyyy") : '...'}</span> to <span className="font-semibold text-slate-700">{dateRange.to ? format(dateRange.to, "MMM dd, yyyy") : '...'}</span>
+            Tax collected vs paid for <span className="font-semibold text-slate-700">{format(dateRange.from, "MMM dd, yyyy")}</span> to <span className="font-semibold text-slate-700">{format(dateRange.to, "MMM dd, yyyy")}</span>
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
