@@ -3,57 +3,55 @@ import { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import TaxReportClient, { TaxLineItem, TaxSummary } from '@/components/reports/TaxReport';
 import { createClient } from '@/lib/supabase/server';
-import { startOfMonth, endOfMonth, formatISO, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, formatISO } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Global Compliance Tax Reports',
-  description: 'IFRS & VAT compliant multi-jurisdictional tax reporting engine.',
+  title: 'Enterprise Global Tax Reports',
+  description: 'IFRS & VAT compliant multi-jurisdictional reporting hub.',
 };
 
 export default async function TaxReportsPage({ searchParams }: { searchParams: { from?: string, to?: string } }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // 1. SAFE DATE LOGIC (Serialization Proof)
   const today = new Date();
   const startDate = searchParams.from || formatISO(startOfMonth(today));
   const endDate = searchParams.to || formatISO(endOfMonth(today));
 
-  // 2. UNIVERSAL FETCH
-  const { data: taxRecords, error } = await supabase
-    .from('view_global_tax_report')
-    .select('*')
-    .gte('transaction_date', startDate)
-    .lte('transaction_date', endDate);
+  // 1. ENTERPRISE PARALLEL FETCH
+  // We fetch Tax Records and Location Names simultaneously for zero-latency.
+  const [taxRes, locRes] = await Promise.all([
+    supabase.from('view_global_tax_report').select('*').gte('transaction_date', startDate).lte('transaction_date', endDate),
+    supabase.from('locations').select('id, country, name')
+  ]);
 
-  if (error) {
-    console.error("Database Connection Failure:", error);
-    throw new Error(`Tax Hub Connection Error: ${error.message}`);
-  }
+  if (taxRes.error) throw new Error(`Tax Hub Failure: ${taxRes.error.message}`);
+
+  // 2. CREATE JURISDICTION LOOKUP MAP
+  const locationMap = new Map(locRes.data?.map(l => [l.id, l.country || l.name]) || []);
 
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
-  // 3. ROBUST AGGREGATION
-  taxRecords?.forEach((item) => {
-    // Enterprise Safety: Ensure keys are strings, never null/undefined
-    const jurisdiction = item.jurisdiction || 'Global';
-    const taxName = item.tax_name || 'Standard';
-    const taxType = item.tax_type || 'Output';
-    const currency = item.currency || 'UGX';
+  taxRes.data?.forEach((item) => {
+    // RESOLVE JURISDICTION: Convert UUID to real Name (e.g. "Texas" or "Uganda")
+    const jurisdictionName = locationMap.get(item.location_id) || 'Global';
+    const taxName = String(item.tax_category || 'Standard');
+    const taxType = String(item.tax_type || 'Output');
+    const currency = String(item.currency || 'UGX');
 
-    const key = `${jurisdiction}-${taxName}-${taxType}-${currency}`;
+    const key = `${jurisdictionName}-${taxName}-${taxType}-${currency}`;
 
     if (!aggregationMap.has(key)) {
       aggregationMap.set(key, {
         id: key,
-        jurisdiction_code: jurisdiction,
+        jurisdiction_code: jurisdictionName, // Now holds the REAL Name
         tax_name: taxName,
         type: taxType as 'Output' | 'Input',
         currency: currency,
-        rate_percentage: Number(item.applied_rate || 0),
+        rate_percentage: 0, 
         taxable_base: 0,
         tax_amount: 0,
         gross_amount: 0,
@@ -67,38 +65,29 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     entry.gross_amount += Number(item.gross_total || 0);
     entry.transaction_count += 1;
 
-    // 4. MULTI-CURRENCY SUMMARIES
-    const summaryKey = `${currency}-${jurisdiction}`;
+    // 3. MULTI-CURRENCY SUMMARIES
+    const summaryKey = `${currency}-${jurisdictionName}`;
     if (!summaryMap.has(summaryKey)) {
       summaryMap.set(summaryKey, {
-        currency: `${currency} (${jurisdiction})`,
+        currency: `${currency} (${jurisdictionName})`,
         total_output_tax: 0,
         total_input_tax: 0,
         net_liability: 0
       });
     }
     const summary = summaryMap.get(summaryKey)!;
-    if (taxType === 'Output') {
-      summary.total_output_tax += Number(item.tax_amount || 0);
-    } else {
-      summary.total_input_tax += Number(item.tax_amount || 0);
-    }
+    if (taxType === 'Output') summary.total_output_tax += Number(item.tax_amount || 0);
+    else summary.total_input_tax += Number(item.tax_amount || 0);
     summary.net_liability = summary.total_output_tax - summary.total_input_tax;
   });
-
-  // 5. SERIALIZE DATES AS STRINGS (This prevents the client-side crash)
-  const serializableRange = {
-    from: startDate,
-    to: endDate
-  };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-slate-50/30 min-h-screen">
       <TaxReportClient 
         data={Array.from(aggregationMap.values())} 
         summaries={Array.from(summaryMap.values())} 
-        // @ts-ignore - Range is converted to Date inside the Client
-        serializedDateRange={serializableRange} 
+        // SERIALIZATION SHIELD: Prevents Client-side exception crash
+        serializedDateRange={{ from: startDate, to: endDate }} 
       />
     </div>
   );
