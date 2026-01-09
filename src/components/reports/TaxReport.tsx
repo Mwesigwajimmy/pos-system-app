@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"; 
 import { DateRange } from "react-day-picker";
 import { Download, Search, Landmark, CalendarRange, Filter } from "lucide-react";
-import { format, parseISO } from "date-fns"; // parseISO is required for the fix
+import { format, parseISO } from "date-fns";
 
-// --- Enterprise Interfaces (Preserved Fully) ---
+// --- Enterprise Interfaces ---
 export interface TaxLineItem {
   id: string;
   jurisdiction_code: string;
@@ -27,13 +27,13 @@ export interface TaxLineItem {
 }
 
 export interface TaxSummary {
-  currency: string;
+  currency: string;      // Used for Intl formatting
+  displayLabel?: string; // Used for UI display titles
   total_output_tax: number;
   total_input_tax: number;
   net_liability: number;
 }
 
-// THE FIX: Changed from Date objects to Serialized Strings to prevent hydration crash
 interface TaxReportProps {
   data: TaxLineItem[];
   summaries: TaxSummary[];
@@ -44,13 +44,11 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
   const router = useRouter();
   const [filter, setFilter] = useState('');
 
-  // ENTERPRISE LOGIC: Safe re-conversion of strings back to Date objects on the client side
   const dateRange = useMemo(() => ({
     from: parseISO(serializedDateRange.from),
     to: parseISO(serializedDateRange.to)
   }), [serializedDateRange]);
 
-  // --- Date Handler (Enterprise preserved) ---
   const handleDateChange = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
       const fromStr = format(range.from, 'yyyy-MM-dd');
@@ -59,16 +57,22 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
     }
   };
 
-  // --- Helpers (Preserved fully) ---
+  // --- ENTERPRISE DEFENSIVE FORMATTER ---
+  // Prevents RangeError by cleaning the currency code and using a try-catch fallback
   const formatMoney = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2
-    }).format(amount);
+    try {
+      const cleanCode = currency.split(' ')[0].toUpperCase().substring(0, 3);
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: cleanCode,
+        minimumFractionDigits: 2
+      }).format(amount);
+    } catch (e) {
+      // Return a plain formatted string if Intl fails to prevent app-wide crash
+      return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    }
   };
 
-  // --- Filtering Logic (Preserved fully) ---
   const filteredData = useMemo(() => {
     return data.filter(row => 
       row.tax_name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -76,7 +80,6 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
     ).sort((a,b) => b.type.localeCompare(a.type)); 
   }, [data, filter]);
 
-  // --- Export Logic (Enterprise preserved) ---
   const handleExport = () => {
     const headers = [
       "Jurisdiction", "Tax Name", "Type", "Currency", 
@@ -106,8 +109,6 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
 
   return (
     <div className="space-y-6">
-      
-      {/* 1. Header & Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Tax Liability Report</h1>
@@ -116,9 +117,7 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
-           {/* ENTERPRISE DATE PICKER */}
            <DatePickerWithRange date={dateRange} setDate={handleDateChange} />
-           
            <div className="relative w-full md:w-48">
              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"/>
              <Input 
@@ -128,30 +127,28 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
                className="pl-8 bg-slate-50"
              />
            </div>
-
            <Button variant="outline" onClick={handleExport}>
              <Download className="mr-2 h-4 w-4" /> Export
            </Button>
         </div>
       </div>
       
-      {/* 2. Summary Cards (Multi-Currency Support) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {summaries.length === 0 && (
           <Card className="col-span-full border-dashed bg-slate-50/50">
             <CardHeader className="text-center py-8">
               <CalendarRange className="mx-auto h-10 w-10 text-slate-300 mb-2"/>
               <CardTitle className="text-slate-500">No Tax Data Found</CardTitle>
-              <CardDescription>Try selecting a different date range or ensuring transactions have tax applied.</CardDescription>
+              <CardDescription>Try selecting a different date range.</CardDescription>
             </CardHeader>
           </Card>
         )}
         
         {summaries.map((summary) => (
-          <Card key={summary.currency} className={`shadow-sm ${summary.net_liability > 0 ? "border-l-4 border-l-orange-500" : "border-l-4 border-l-green-500"}`}>
+          <Card key={summary.currency + (summary.displayLabel || '')} className={`shadow-sm ${summary.net_liability > 0 ? "border-l-4 border-l-orange-500" : "border-l-4 border-l-green-500"}`}>
             <CardHeader className="pb-2">
               <CardTitle className="flex justify-between items-center text-base">
-                <span>Net Liability ({summary.currency})</span>
+                <span>Net Liability ({summary.displayLabel || summary.currency})</span>
                 <Landmark className="h-4 w-4 text-muted-foreground"/>
               </CardTitle>
             </CardHeader>
@@ -177,16 +174,13 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
         ))}
       </div>
 
-      {/* 3. Detailed Data Table */}
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5 text-blue-500"/>
             Detailed Breakdown
           </CardTitle>
-          <CardDescription>
-            Line-item aggregation by tax authority and transaction type.
-          </CardDescription>
+          <CardDescription>Line-item aggregation by tax authority.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -205,37 +199,23 @@ export default function TaxReportClient({ data, summaries, serializedDateRange }
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      No matching records found.
-                    </TableCell>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No records found.</TableCell>
                   </TableRow>
                 ) : (
                   filteredData.map((row) => (
                     <TableRow key={row.id} className="hover:bg-slate-50/50">
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                           <Badge variant="outline" className="font-mono">{row.jurisdiction_code}</Badge>
-                        </div>
-                      </TableCell>
+                      <TableCell><Badge variant="outline" className="font-mono">{row.jurisdiction_code}</Badge></TableCell>
                       <TableCell className="font-medium text-slate-700">{row.tax_name}</TableCell>
                       <TableCell>
                         <Badge 
                           className={row.type === 'Output' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200'}
                           variant="secondary"
-                        >
-                          {row.type}
-                        </Badge>
+                        >{row.type}</Badge>
                       </TableCell>
                       <TableCell className="text-slate-500">{row.rate_percentage}%</TableCell>
-                      <TableCell className="text-right font-mono text-slate-500">
-                        {formatMoney(row.taxable_base, row.currency)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-slate-900">
-                        {formatMoney(row.tax_amount, row.currency)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-slate-500">
-                        {formatMoney(row.gross_amount, row.currency)}
-                      </TableCell>
+                      <TableCell className="text-right font-mono text-slate-500">{formatMoney(row.taxable_base, row.currency)}</TableCell>
+                      <TableCell className="text-right font-mono font-bold text-slate-900">{formatMoney(row.tax_amount, row.currency)}</TableCell>
+                      <TableCell className="text-right font-mono text-slate-500">{formatMoney(row.gross_amount, row.currency)}</TableCell>
                     </TableRow>
                   ))
                 )}

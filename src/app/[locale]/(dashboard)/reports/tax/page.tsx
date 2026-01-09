@@ -21,7 +21,6 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const endDate = searchParams.to || formatISO(endOfMonth(today));
 
   // 1. ENTERPRISE PARALLEL FETCH
-  // We fetch Tax Records and Location Names simultaneously for zero-latency.
   const [taxRes, locRes] = await Promise.all([
     supabase.from('view_global_tax_report').select('*').gte('transaction_date', startDate).lte('transaction_date', endDate),
     supabase.from('locations').select('id, country, name')
@@ -36,7 +35,7 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const summaryMap = new Map<string, TaxSummary>();
 
   taxRes.data?.forEach((item) => {
-    // RESOLVE JURISDICTION: Convert UUID to real Name (e.g. "Texas" or "Uganda")
+    // RESOLVE JURISDICTION: Convert UUID to real Name
     const jurisdictionName = locationMap.get(item.location_id) || 'Global';
     const taxName = String(item.tax_category || 'Standard');
     const taxType = String(item.tax_type || 'Output');
@@ -47,7 +46,7 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     if (!aggregationMap.has(key)) {
       aggregationMap.set(key, {
         id: key,
-        jurisdiction_code: jurisdictionName, // Now holds the REAL Name
+        jurisdiction_code: jurisdictionName, 
         tax_name: taxName,
         type: taxType as 'Output' | 'Input',
         currency: currency,
@@ -66,10 +65,12 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     entry.transaction_count += 1;
 
     // 3. MULTI-CURRENCY SUMMARIES
+    // FIX: Keep 'currency' clean for the formatter, use 'displayLabel' for the UI text
     const summaryKey = `${currency}-${jurisdictionName}`;
     if (!summaryMap.has(summaryKey)) {
       summaryMap.set(summaryKey, {
-        currency: `${currency} (${jurisdictionName})`,
+        currency: currency, // Clean code (e.g., "UGX")
+        displayLabel: `${currency} (${jurisdictionName})`, // UI string (e.g., "UGX (Uganda)")
         total_output_tax: 0,
         total_input_tax: 0,
         net_liability: 0
