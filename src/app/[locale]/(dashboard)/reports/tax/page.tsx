@@ -16,26 +16,43 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
+  // 1. RESOLVE USER IDENTITY (The "Deep Root" of Tenant Safety)
+  // We extract the business_id directly from the secure session metadata
+  const { data: { user } } = await supabase.auth.getUser();
+  const business_id = user?.user_metadata?.business_id;
+
+  // Security Guard: If a user has no business_id, we block the data fetch entirely
+  if (!business_id) {
+    throw new Error("Access Denied: Business ID not found for current session.");
+  }
+
   const today = new Date();
   const startDate = searchParams.from || formatISO(startOfMonth(today));
   const endDate = searchParams.to || formatISO(endOfMonth(today));
 
-  // 1. ENTERPRISE PARALLEL FETCH
+  // 2. FETCH WITH ISOLATION (The Grass Root Fix)
+  // We add .eq('business_id', business_id) to both calls. 
+  // This physically prevents Account A from ever receiving data from Account B.
   const [taxRes, locRes] = await Promise.all([
-    supabase.from('view_global_tax_report').select('*').gte('transaction_date', startDate).lte('transaction_date', endDate),
-    supabase.from('locations').select('id, country, name')
+    supabase
+      .from('view_global_tax_report')
+      .select('*')
+      .eq('business_id', business_id) // Isolation Filter Added
+      .gte('transaction_date', startDate)
+      .lte('transaction_date', endDate),
+    supabase
+      .from('locations')
+      .select('id, country, name')
+      .eq('business_id', business_id) // Isolation Filter Added
   ]);
 
   if (taxRes.error) throw new Error(`Tax Hub Failure: ${taxRes.error.message}`);
 
-  // 2. CREATE JURISDICTION LOOKUP MAP
   const locationMap = new Map(locRes.data?.map(l => [l.id, l.country || l.name]) || []);
-
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
   taxRes.data?.forEach((item) => {
-    // RESOLVE JURISDICTION: Convert UUID to real Name
     const jurisdictionName = locationMap.get(item.location_id) || 'Global';
     const taxName = String(item.tax_category || 'Standard');
     const taxType = String(item.tax_type || 'Output');
@@ -64,13 +81,11 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     entry.gross_amount += Number(item.gross_total || 0);
     entry.transaction_count += 1;
 
-    // 3. MULTI-CURRENCY SUMMARIES
-    // FIX: Keep 'currency' clean for the formatter, use 'displayLabel' for the UI text
     const summaryKey = `${currency}-${jurisdictionName}`;
     if (!summaryMap.has(summaryKey)) {
       summaryMap.set(summaryKey, {
-        currency: currency, // Clean code (e.g., "UGX")
-        displayLabel: `${currency} (${jurisdictionName})`, // UI string (e.g., "UGX (Uganda)")
+        currency: currency,
+        displayLabel: `${currency} (${jurisdictionName})`,
         total_output_tax: 0,
         total_input_tax: 0,
         net_liability: 0
@@ -87,7 +102,6 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
       <TaxReportClient 
         data={Array.from(aggregationMap.values())} 
         summaries={Array.from(summaryMap.values())} 
-        // SERIALIZATION SHIELD: Prevents Client-side exception crash
         serializedDateRange={{ from: startDate, to: endDate }} 
       />
     </div>
