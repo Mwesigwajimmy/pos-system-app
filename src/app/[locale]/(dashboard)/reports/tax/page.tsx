@@ -3,17 +3,10 @@ import { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import TaxReportClient, { TaxLineItem, TaxSummary } from '@/components/reports/TaxReport';
 import { createClient } from '@/lib/supabase/server';
-import { startOfMonth, endOfMonth, formatISO } from 'date-fns';
+import { subDays, formatISO } from 'date-fns'; // Added subDays
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Enterprise Global Tax Reports',
-  description: 'IFRS & VAT compliant multi-jurisdictional reporting hub.',
-};
-
-// 1. ENTERPRISE TYPE DEFINITION (Fixes the 'any' error)
-// This matches your SQL View 'view_global_tax_report' exactly.
 interface TaxReportRow {
   business_id: string;
   transaction_date: string;
@@ -33,7 +26,6 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // 2. SMART IDENTITY RESOLUTION
   const { data: bIdData, error: bIdError } = await supabase.rpc('get_current_business_id');
   const business_id = bIdData;
 
@@ -47,10 +39,10 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   }
 
   const today = new Date();
-  const startDate = searchParams.from || formatISO(startOfMonth(today));
-  const endDate = searchParams.to || formatISO(endOfMonth(today));
+  // FIX: Default to the last 30 days so users see their recent activity across month boundaries
+  const startDate = searchParams.from || formatISO(subDays(today, 30)); 
+  const endDate = searchParams.to || formatISO(today);
 
-  // 3. SECURED DATA FETCH
   const [taxRes, locRes] = await Promise.all([
     supabase.rpc('get_enterprise_tax_report', {
       p_start_date: startDate,
@@ -64,7 +56,6 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
   if (taxRes.error) throw new Error(`Tax Hub Failure: ${taxRes.error.message}`);
 
-  // Cast the data to our interface so TypeScript knows what 'item' is
   const taxData = (taxRes.data as TaxReportRow[]) || [];
   const locations = locRes.data || [];
   const locationMap = new Map(locations.map(l => [l.id, l.country || l.name]));
@@ -72,7 +63,6 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
-  // 4. AUTOMATED AGGREGATION (Now fully typed)
   taxData.forEach((item: TaxReportRow) => {
     const jurisdictionName = locationMap.get(item.location_id) || 'Global';
     const taxName = String(item.tax_category || 'Standard');
@@ -83,16 +73,9 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
     if (!aggregationMap.has(key)) {
       aggregationMap.set(key, {
-        id: key, 
-        jurisdiction_code: jurisdictionName, 
-        tax_name: taxName,
-        type: taxType as 'Output' | 'Input', 
-        currency: currency,
-        rate_percentage: 0, 
-        taxable_base: 0, 
-        tax_amount: 0, 
-        gross_amount: 0, 
-        transaction_count: 0,
+        id: key, jurisdiction_code: jurisdictionName, tax_name: taxName,
+        type: taxType as 'Output' | 'Input', currency: currency,
+        rate_percentage: 0, taxable_base: 0, tax_amount: 0, gross_amount: 0, transaction_count: 0,
       });
     }
 
@@ -105,11 +88,8 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     const summaryKey = `${currency}-${jurisdictionName}`;
     if (!summaryMap.has(summaryKey)) {
       summaryMap.set(summaryKey, {
-        currency: currency, 
-        displayLabel: `${currency} (${jurisdictionName})`,
-        total_output_tax: 0, 
-        total_input_tax: 0, 
-        net_liability: 0
+        currency: currency, displayLabel: `${currency} (${jurisdictionName})`,
+        total_output_tax: 0, total_input_tax: 0, net_liability: 0
       });
     }
     const summary = summaryMap.get(summaryKey)!;
