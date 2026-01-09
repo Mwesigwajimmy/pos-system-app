@@ -8,42 +8,41 @@ import { startOfMonth, endOfMonth } from 'date-fns';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Enterprise Tax Liability Reports',
-  description: 'Automated universal tax reconciliation across all enterprise modules.',
+  title: 'Global Compliance Tax Reports',
+  description: 'IFRS & VAT compliant multi-jurisdictional tax reporting engine.',
 };
 
 export default async function TaxReportsPage({ searchParams }: { searchParams: { from?: string, to?: string } }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  const today = new Date();
-  const startDate = searchParams.from || startOfMonth(today).toISOString();
-  const endDate = searchParams.to || endOfMonth(today).toISOString();
+  const startDate = searchParams.from || startOfMonth(new Date()).toISOString();
+  const endDate = searchParams.to || endOfMonth(new Date()).toISOString();
 
-  // 1. UNIVERSAL FETCH
-  // We query the Master View that consolidates Sales, SACCO, and Procurement.
-  const { data: rawTaxRecords, error } = await supabase
+  // UNIVERSAL COMPLIANCE FETCH
+  const { data: taxRecords, error } = await supabase
     .from('view_global_tax_report')
     .select('*')
     .gte('transaction_date', startDate)
     .lte('transaction_date', endDate);
 
-  if (error) throw new Error(`Tax Hub Failure: ${error.message}`);
+  if (error) throw new Error(`Global Tax Hub Error: ${error.message}`);
 
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
-  rawTaxRecords?.forEach((item) => {
-    const key = `${item.jurisdiction}-${item.tax_category}-${item.tax_type}-${item.currency}`;
+  taxRecords?.forEach((item) => {
+    // Unique key per Jurisdiction + Tax Name + Currency
+    const key = `${item.jurisdiction}-${item.tax_name}-${item.tax_type}-${item.currency}`;
 
     if (!aggregationMap.has(key)) {
       aggregationMap.set(key, {
         id: key,
-        jurisdiction_code: item.jurisdiction || 'Global',
-        tax_name: item.tax_category,
+        jurisdiction_code: item.jurisdiction,
+        tax_name: item.tax_name,
         type: item.tax_type as 'Output' | 'Input',
         currency: item.currency,
-        rate_percentage: 0, // Rate is calculated in the View
+        rate_percentage: Number(item.applied_rate),
         taxable_base: 0,
         tax_amount: 0,
         gross_amount: 0,
@@ -57,16 +56,17 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     entry.gross_amount += Number(item.gross_total);
     entry.transaction_count += 1;
 
-    // Aggregating Summaries per Currency
-    if (!summaryMap.has(item.currency)) {
-      summaryMap.set(item.currency, {
-        currency: item.currency,
+    // Multi-Currency and Multi-Jurisdiction Summary
+    const summaryKey = `${item.currency}-${item.jurisdiction}`;
+    if (!summaryMap.has(summaryKey)) {
+      summaryMap.set(summaryKey, {
+        currency: `${item.currency} (${item.jurisdiction})`,
         total_output_tax: 0,
         total_input_tax: 0,
         net_liability: 0
       });
     }
-    const summary = summaryMap.get(item.currency)!;
+    const summary = summaryMap.get(summaryKey)!;
     if (item.tax_type === 'Output') summary.total_output_tax += Number(item.tax_amount);
     else summary.total_input_tax += Number(item.tax_amount);
     summary.net_liability = summary.total_output_tax - summary.total_input_tax;
