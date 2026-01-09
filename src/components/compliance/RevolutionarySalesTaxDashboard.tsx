@@ -22,14 +22,24 @@ export interface TaxableTransaction {
   tax_collected: number;
 }
 
+// FIX: Added currency prop to make the dashboard "Smart" and jurisdictional-aware
 interface RevolutionarySalesTaxDashboardProps {
   summary: TaxSummary;
   transactions: TaxableTransaction[];
   reportPeriod: string;
+  currency?: string; // e.g., 'USD', 'UGX', 'EUR'
 }
 
-export function RevolutionarySalesTaxDashboard({ summary, transactions, reportPeriod }: RevolutionarySalesTaxDashboardProps) {
-  const effectiveTaxRate = summary.total_taxable_revenue > 0 ? (summary.total_tax_collected / summary.total_taxable_revenue) * 100 : 0;
+export function RevolutionarySalesTaxDashboard({ 
+  summary, 
+  transactions, 
+  reportPeriod,
+  currency = 'USD' // Default to USD but allows override from parent Hub
+}: RevolutionarySalesTaxDashboardProps) {
+  
+  const effectiveTaxRate = summary.total_taxable_revenue > 0 
+    ? (summary.total_tax_collected / summary.total_taxable_revenue) * 100 
+    : 0;
 
   return (
     <Card className="h-full flex flex-col shadow-lg border-border/60">
@@ -42,12 +52,14 @@ export function RevolutionarySalesTaxDashboard({ summary, transactions, reportPe
           <div className="p-4 bg-muted/50 rounded-lg">
             <Landmark className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-            <p className="text-2xl font-bold">{formatCurrency(summary.total_revenue, 'USD')}</p>
+            {/* FIX: Replaced hardcoded 'USD' with dynamic currency */}
+            <p className="text-2xl font-bold">{formatCurrency(summary.total_revenue, currency)}</p>
           </div>
           <div className="p-4 bg-muted/50 rounded-lg">
             <DollarSign className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm font-medium text-muted-foreground">Tax Collected</p>
-            <p className="text-2xl font-bold text-primary">{formatCurrency(summary.total_tax_collected, 'USD')}</p>
+            {/* FIX: Replaced hardcoded 'USD' with dynamic currency */}
+            <p className="text-2xl font-bold text-primary">{formatCurrency(summary.total_tax_collected, currency)}</p>
           </div>
           <div className="p-4 bg-muted/50 rounded-lg">
             <Percent className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
@@ -73,8 +85,9 @@ export function RevolutionarySalesTaxDashboard({ summary, transactions, reportPe
                     <TableRow key={tx.id}>
                       <TableCell className="font-mono text-xs">{tx.invoice_id}</TableCell>
                       <TableCell className="font-medium truncate max-w-xs">{tx.description}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(tx.taxable_amount, 'USD')}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(tx.tax_collected, 'USD')}</TableCell>
+                      {/* FIX: Replaced hardcoded 'USD' with dynamic currency */}
+                      <TableCell className="text-right">{formatCurrency(tx.taxable_amount, currency)}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(tx.tax_collected, currency)}</TableCell>
                     </TableRow>
                   ))
                 ) : (

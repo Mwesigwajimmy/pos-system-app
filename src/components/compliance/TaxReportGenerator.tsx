@@ -19,23 +19,36 @@ interface TaxReportData {
 }
 
 // Enterprise Grade: Data fetching abstract
-const fetchTaxReport = async (startDate: string, endDate: string) => {
+// FIX: Added businessId to the fetcher to ensure data isolation
+const fetchTaxReport = async (startDate: string, endDate: string, businessId: string) => {
   if (new Date(startDate) > new Date(endDate)) {
       throw new Error("Start date cannot be after end date.");
   }
   
   // Uses a Server-Side Postgres Function for accuracy
+  // FIX: Passing the actual businessId instead of 'ALL' for smart jurisdictional accuracy
   const { data, error } = await supabase.rpc('generate_tax_report', { 
     p_start_date: startDate, 
     p_end_date: endDate,
-    p_entity_id: 'ALL' // extensible for specific entity reporting
+    p_entity_id: businessId 
   });
   
   if (error) throw new Error(error.message);
   return data as TaxReportData;
 };
 
-export default function TaxReportGenerator() {
+// FIX: Added props for businessId, currency, and locale to make the component "Smart"
+interface TaxReportGeneratorProps {
+  businessId: string;
+  currencyCode?: string; // e.g., 'USD' or 'UGX'
+  locale?: string;       // e.g., 'en-US' or 'en-UG'
+}
+
+export default function TaxReportGenerator({ 
+  businessId, 
+  currencyCode = 'UGX', 
+  locale = 'en-UG' 
+}: TaxReportGeneratorProps) {
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -45,14 +58,19 @@ export default function TaxReportGenerator() {
   });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['taxReport', range],
-    queryFn: () => fetchTaxReport(range.start, range.end),
+    queryKey: ['taxReport', range, businessId], // Added businessId to cache key
+    queryFn: () => fetchTaxReport(range.start, range.end, businessId),
     enabled: false, // Wait for explicit user action
     retry: false
   });
 
+  // FIX: Currency formatting is now dynamic based on the user's jurisdiction
   const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(val);
+    new Intl.NumberFormat(locale, { 
+      style: 'currency', 
+      currency: currencyCode, 
+      maximumFractionDigits: 0 
+    }).format(val);
 
   return (
     <Card className="h-full">
