@@ -7,25 +7,21 @@ import { startOfMonth, endOfMonth, formatISO } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Enterprise Global Tax Reports',
-  description: 'IFRS & VAT compliant multi-jurisdictional reporting hub.',
-};
-
 export default async function TaxReportsPage({ searchParams }: { searchParams: { from?: string, to?: string } }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // 1. SAFE IDENTITY RESOLUTION (Prevents null destructuring crash)
-  const { data: authData } = await supabase.auth.getUser();
-  const user = authData?.user;
-  const business_id = user?.user_metadata?.business_id;
+  // 1. SMART IDENTITY RESOLUTION
+  // We use the new database function to find the ID even if metadata is missing.
+  const { data: bIdData, error: bIdError } = await supabase.rpc('get_current_business_id');
+  const business_id = bIdData;
 
-  if (!business_id) {
+  if (bIdError || !business_id) {
     return (
       <div className="p-8 border border-red-200 bg-red-50 rounded text-red-700">
-          <h3 className="font-bold text-lg">Access Denied</h3>
-          <p className="mt-2 text-sm">Security Violation: Business ID not found for this session.</p>
+          <h3 className="font-bold text-lg">Identity Resolution Failure</h3>
+          <p className="mt-2 text-sm">System could not link your account to a Business ID. Please ensure your profile is complete.</p>
+          <pre className="mt-2 text-xs opacity-50">{bIdError?.message}</pre>
       </div>
     );
   }
@@ -50,11 +46,10 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
   if (taxRes.error) throw new Error(`Tax Hub Failure: ${taxRes.error.message}`);
 
-  // 3. SAFE DATA PROCESSING (Ensuring arrays exist before mapping/looping)
   const taxData = taxRes.data || [];
   const locations = locRes.data || [];
-  
   const locationMap = new Map(locations.map(l => [l.id, l.country || l.name]));
+  
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
@@ -68,16 +63,9 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
     if (!aggregationMap.has(key)) {
       aggregationMap.set(key, {
-        id: key,
-        jurisdiction_code: jurisdictionName, 
-        tax_name: taxName,
-        type: taxType as 'Output' | 'Input',
-        currency: currency,
-        rate_percentage: 0, 
-        taxable_base: 0,
-        tax_amount: 0,
-        gross_amount: 0,
-        transaction_count: 0,
+        id: key, jurisdiction_code: jurisdictionName, tax_name: taxName,
+        type: taxType as 'Output' | 'Input', currency: currency,
+        rate_percentage: 0, taxable_base: 0, tax_amount: 0, gross_amount: 0, transaction_count: 0,
       });
     }
 
@@ -90,11 +78,8 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     const summaryKey = `${currency}-${jurisdictionName}`;
     if (!summaryMap.has(summaryKey)) {
       summaryMap.set(summaryKey, {
-        currency: currency,
-        displayLabel: `${currency} (${jurisdictionName})`,
-        total_output_tax: 0,
-        total_input_tax: 0,
-        net_liability: 0
+        currency: currency, displayLabel: `${currency} (${jurisdictionName})`,
+        total_output_tax: 0, total_input_tax: 0, net_liability: 0
       });
     }
     const summary = summaryMap.get(summaryKey)!;
