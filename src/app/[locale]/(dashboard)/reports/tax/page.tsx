@@ -16,43 +16,49 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // 1. RESOLVE USER IDENTITY (The "Deep Root" of Tenant Safety)
-  // We extract the business_id directly from the secure session metadata
-  const { data: { user } } = await supabase.auth.getUser();
+  // 1. SAFE IDENTITY RESOLUTION (Prevents null destructuring crash)
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user;
   const business_id = user?.user_metadata?.business_id;
 
-  // Security Guard: If a user has no business_id, we block the data fetch entirely
   if (!business_id) {
-    throw new Error("Access Denied: Business ID not found for current session.");
+    return (
+      <div className="p-8 border border-red-200 bg-red-50 rounded text-red-700">
+          <h3 className="font-bold text-lg">Access Denied</h3>
+          <p className="mt-2 text-sm">Security Violation: Business ID not found for this session.</p>
+      </div>
+    );
   }
 
   const today = new Date();
   const startDate = searchParams.from || formatISO(startOfMonth(today));
   const endDate = searchParams.to || formatISO(endOfMonth(today));
 
-  // 2. FETCH WITH ISOLATION (The Grass Root Fix)
-  // We add .eq('business_id', business_id) to both calls. 
-  // This physically prevents Account A from ever receiving data from Account B.
+  // 2. FETCH WITH ISOLATION
   const [taxRes, locRes] = await Promise.all([
     supabase
       .from('view_global_tax_report')
       .select('*')
-      .eq('business_id', business_id) // Isolation Filter Added
+      .eq('business_id', business_id)
       .gte('transaction_date', startDate)
       .lte('transaction_date', endDate),
     supabase
       .from('locations')
       .select('id, country, name')
-      .eq('business_id', business_id) // Isolation Filter Added
+      .eq('business_id', business_id)
   ]);
 
   if (taxRes.error) throw new Error(`Tax Hub Failure: ${taxRes.error.message}`);
 
-  const locationMap = new Map(locRes.data?.map(l => [l.id, l.country || l.name]) || []);
+  // 3. SAFE DATA PROCESSING (Ensuring arrays exist before mapping/looping)
+  const taxData = taxRes.data || [];
+  const locations = locRes.data || [];
+  
+  const locationMap = new Map(locations.map(l => [l.id, l.country || l.name]));
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
-  taxRes.data?.forEach((item) => {
+  taxData.forEach((item) => {
     const jurisdictionName = locationMap.get(item.location_id) || 'Global';
     const taxName = String(item.tax_category || 'Standard');
     const taxType = String(item.tax_type || 'Output');
