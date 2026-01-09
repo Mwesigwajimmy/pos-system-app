@@ -7,12 +7,33 @@ import { startOfMonth, endOfMonth, formatISO } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata: Metadata = {
+  title: 'Enterprise Global Tax Reports',
+  description: 'IFRS & VAT compliant multi-jurisdictional reporting hub.',
+};
+
+// 1. ENTERPRISE TYPE DEFINITION (Fixes the 'any' error)
+// This matches your SQL View 'view_global_tax_report' exactly.
+interface TaxReportRow {
+  business_id: string;
+  transaction_date: string;
+  location_id: string;
+  tax_type: 'Output' | 'Input';
+  source_module: string;
+  transaction_ref: string;
+  fiscal_receipt_number: string | null;
+  tax_category: string;
+  currency: string;
+  taxable_base: number;
+  tax_amount: number;
+  gross_total: number;
+}
+
 export default async function TaxReportsPage({ searchParams }: { searchParams: { from?: string, to?: string } }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // 1. SMART IDENTITY RESOLUTION
-  // We use the new database function to find the ID even if metadata is missing.
+  // 2. SMART IDENTITY RESOLUTION
   const { data: bIdData, error: bIdError } = await supabase.rpc('get_current_business_id');
   const business_id = bIdData;
 
@@ -20,8 +41,7 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     return (
       <div className="p-8 border border-red-200 bg-red-50 rounded text-red-700">
           <h3 className="font-bold text-lg">Identity Resolution Failure</h3>
-          <p className="mt-2 text-sm">System could not link your account to a Business ID. Please ensure your profile is complete.</p>
-          <pre className="mt-2 text-xs opacity-50">{bIdError?.message}</pre>
+          <p className="mt-2 text-sm">System could not link your account to a Business ID.</p>
       </div>
     );
   }
@@ -30,14 +50,12 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   const startDate = searchParams.from || formatISO(startOfMonth(today));
   const endDate = searchParams.to || formatISO(endOfMonth(today));
 
-  // 2. FETCH WITH ISOLATION
+  // 3. SECURED DATA FETCH
   const [taxRes, locRes] = await Promise.all([
-    supabase
-      .from('view_global_tax_report')
-      .select('*')
-      .eq('business_id', business_id)
-      .gte('transaction_date', startDate)
-      .lte('transaction_date', endDate),
+    supabase.rpc('get_enterprise_tax_report', {
+      p_start_date: startDate,
+      p_end_date: endDate
+    }),
     supabase
       .from('locations')
       .select('id, country, name')
@@ -46,14 +64,16 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
   if (taxRes.error) throw new Error(`Tax Hub Failure: ${taxRes.error.message}`);
 
-  const taxData = taxRes.data || [];
+  // Cast the data to our interface so TypeScript knows what 'item' is
+  const taxData = (taxRes.data as TaxReportRow[]) || [];
   const locations = locRes.data || [];
   const locationMap = new Map(locations.map(l => [l.id, l.country || l.name]));
   
   const aggregationMap = new Map<string, TaxLineItem>();
   const summaryMap = new Map<string, TaxSummary>();
 
-  taxData.forEach((item) => {
+  // 4. AUTOMATED AGGREGATION (Now fully typed)
+  taxData.forEach((item: TaxReportRow) => {
     const jurisdictionName = locationMap.get(item.location_id) || 'Global';
     const taxName = String(item.tax_category || 'Standard');
     const taxType = String(item.tax_type || 'Output');
@@ -63,9 +83,16 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
 
     if (!aggregationMap.has(key)) {
       aggregationMap.set(key, {
-        id: key, jurisdiction_code: jurisdictionName, tax_name: taxName,
-        type: taxType as 'Output' | 'Input', currency: currency,
-        rate_percentage: 0, taxable_base: 0, tax_amount: 0, gross_amount: 0, transaction_count: 0,
+        id: key, 
+        jurisdiction_code: jurisdictionName, 
+        tax_name: taxName,
+        type: taxType as 'Output' | 'Input', 
+        currency: currency,
+        rate_percentage: 0, 
+        taxable_base: 0, 
+        tax_amount: 0, 
+        gross_amount: 0, 
+        transaction_count: 0,
       });
     }
 
@@ -78,8 +105,11 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
     const summaryKey = `${currency}-${jurisdictionName}`;
     if (!summaryMap.has(summaryKey)) {
       summaryMap.set(summaryKey, {
-        currency: currency, displayLabel: `${currency} (${jurisdictionName})`,
-        total_output_tax: 0, total_input_tax: 0, net_liability: 0
+        currency: currency, 
+        displayLabel: `${currency} (${jurisdictionName})`,
+        total_output_tax: 0, 
+        total_input_tax: 0, 
+        net_liability: 0
       });
     }
     const summary = summaryMap.get(summaryKey)!;
