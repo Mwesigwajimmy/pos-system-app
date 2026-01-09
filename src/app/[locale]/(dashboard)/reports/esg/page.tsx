@@ -29,9 +29,10 @@ export default async function ESGPage() {
 
     if (error) throw new Error(error.message);
 
-    const economicOutput = Number(data.economic_output);
-    const paperlessTxns = Number(data.paperless_transactions);
-    const carbonSaved = Number(data.carbon_saved_kg);
+    // FIX: Using || 0 ensures if the DB value is missing, we don't get NaN
+    const economicOutput = Number(data?.economic_output) || 0;
+    const paperlessTxns = Number(data?.paperless_transactions) || 0;
+    const carbonSaved = Number(data?.carbon_saved_kg) || 0;
     
     const metrics: ESGData[] = [
       {
@@ -54,7 +55,10 @@ export default async function ESGPage() {
       },
       {
         label: "Local Economic Contribution",
-        value: (economicOutput / 1000000).toFixed(1) + "M",
+        // FIX: Added a check to prevent "NaNM". If 0, show 0.0M.
+        value: economicOutput > 0 
+          ? (economicOutput / 1000000).toFixed(1) + "M" 
+          : "0.0M",
         raw_value: economicOutput,
         unit: "UGX",
         category: 'Social',
