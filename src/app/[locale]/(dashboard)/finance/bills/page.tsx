@@ -1,10 +1,17 @@
 import React from 'react';
 import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server'; // Ensure this path is correct for your project
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import BillsDataTable from '@/components/accounting/BillsDataTable';
+// UPGRADE: Use the Client Wrapper that contains all the interconnected reports
+import BillsPageClient from '@/components/accounting/BillsPageClient'; 
 
-// Server Action to fetch initial data
+// Force dynamic ensures we always see live Ledger data
+export const dynamic = 'force-dynamic';
+
+/**
+ * Enterprise Fetch: Scoped to Business ID
+ * This retrieves the bills that will populate the Table AND the Aged Payables report.
+ */
 async function getBills(supabase: any, businessId: string) {
     const { data, error } = await supabase
         .from('accounting_bills')
@@ -13,7 +20,7 @@ async function getBills(supabase: any, businessId: string) {
         .order('due_date', { ascending: true });
         
     if (error) {
-        console.error("Error fetching bills:", error);
+        console.error("System Fetch Error:", error);
         return [];
     }
     return data || [];
@@ -23,11 +30,11 @@ export default async function BillsPage({ params: { locale } }: { params: { loca
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
     
-    // 1. Auth Check
+    // 1. Authentication Handshake
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect(`/${locale}/auth/login`);
 
-    // 2. Tenancy/Profile Check
+    // 2. Multi-Tenant Tenancy Validation
     const { data: profile } = await supabase
         .from("profiles")
         .select("business_id")
@@ -36,32 +43,25 @@ export default async function BillsPage({ params: { locale } }: { params: { loca
 
     if (!profile?.business_id) {
         return (
-            <div className="p-8 text-red-500 border border-red-200 rounded-lg m-4 bg-red-50">
-                <h3 className="font-bold">Access Denied</h3>
-                <p>No business profile associated with this account.</p>
+            <div className="p-8 text-red-500 border border-red-200 rounded-xl m-4 bg-red-50 text-center">
+                <h3 className="font-bold text-xl">Access Restriction</h3>
+                <p>This account is not linked to a valid business entity.</p>
             </div>
         );
     }
 
-    // 3. Fetch Data Server Side
+    // 3. Server-Side Data Loading
     const bills = await getBills(supabase, profile.business_id);
 
+    // 4. THE INTERCONNECT: 
+    // We return the BillsPageClient because it contains:
+    // - The Bills List
+    // - The Aged Payables Report (connected to the same data)
+    // - The Procurement Tabs
     return (
-        <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                    <h2 className="text-3xl font-bold tracking-tight">Bills & Payables</h2>
-                    <p className="text-muted-foreground">
-                        Manage vendor bills, track payments, and handle accounts payable.
-                    </p>
-                </div>
-            </div>
-            
-            {/* Pass data and businessId to client component */}
-            <BillsDataTable 
-                initialBills={bills} 
-                businessId={profile.business_id} 
-            />
-        </div>
+        <BillsPageClient 
+            initialBills={bills} 
+            businessId={profile.business_id} 
+        />
     );
 }

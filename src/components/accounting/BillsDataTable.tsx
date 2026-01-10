@@ -23,7 +23,8 @@ import {
   ArrowUpDown, 
   MoreHorizontal, 
   Filter,
-  Plus
+  Plus,
+  Link as LinkIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -57,21 +58,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// --- Enterprise Interconnect Components & Actions ---
+import CreateBillModal from './CreateBillModal'; 
+import { postBillPayment } from '@/lib/actions/bills';
+
 // --- Types ---
 
-export type BillStatus = 'draft' | 'pending' | 'overdue' | 'paid' | 'partial';
+export type BillStatus = 'draft' | 'posted' | 'overdue' | 'paid' | 'partial';
 
+/** 
+ * Enterprise Bill Interface
+ * Fully interconnected to the General Ledger
+ */
 export interface Bill {
   id: string;
   vendor_name: string;
-  reference_number: string;
+  bill_number: string;     
+  reference_id: string;    
   bill_date: string;
   due_date: string;
-  currency: string;
+  currency_code: string;   
   total_amount: number;
   amount_paid: number;
   status: BillStatus;
   business_id: string;
+  transaction_id: string;  
+  location_id?: string;    
 }
 
 interface PaymentAccount {
@@ -86,7 +98,7 @@ interface BillsDataTableProps {
     businessId: string;
 }
 
-// --- API Functions ---
+// --- API Functions (Interconnected) ---
 
 const fetchBillsClient = async (businessId: string) => {
   const supabase = createClient();
@@ -106,27 +118,27 @@ const fetchPaymentAccounts = async (businessId: string) => {
     .from('accounting_accounts')
     .select('id, name, currency, balance')
     .eq('business_id', businessId)
-    .in('type', ['Bank', 'Cash']) // Ensure your DB has these types
+    .in('subtype', ['bank', 'cash']) 
     .eq('is_active', true);
 
   if (error) throw new Error(error.message);
   return data as PaymentAccount[];
 };
 
+/**
+ * Enterprise Payment Action Handshake
+ */
 const recordPayment = async (payload: { bill_id: string; account_id: string; amount: number; payment_date: string, business_id: string }) => {
-  const supabase = createClient();
-  
-  // Calling the secure RPC function created in Part 1
-  const { data, error } = await supabase.rpc('record_bill_payment', {
-    p_bill_id: payload.bill_id,
-    p_account_id: payload.account_id,
-    p_amount: payload.amount,
-    p_date: payload.payment_date,
-    p_business_id: payload.business_id
+  const result = await postBillPayment({
+      billId: payload.bill_id,
+      accountId: payload.account_id,
+      amount: payload.amount,
+      paymentDate: payload.payment_date,
+      businessId: payload.business_id
   });
 
-  if (error) throw new Error(error.message);
-  return data;
+  if (!result.success) throw new Error(result.message);
+  return result;
 };
 
 // --- Sub-Component: Payment Dialog ---
@@ -143,14 +155,12 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
   const [amount, setAmount] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
   
-  // Fetch accounts only when modal is open to save resources
   const { data: accounts, isLoading } = useQuery({
     queryKey: ['payment_accounts', businessId],
     queryFn: () => fetchPaymentAccounts(businessId),
     enabled: isOpen && !!businessId
   });
 
-  // Effect to set default amount to "Remaining Balance"
   React.useEffect(() => {
     if (bill) {
       const remaining = bill.total_amount - bill.amount_paid;
@@ -161,10 +171,8 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
   const mutation = useMutation({
     mutationFn: recordPayment,
     onSuccess: () => {
-      toast.success("Payment recorded successfully");
-      // Refetch bills to show new status
+      toast.success("Payment recorded & Ledger balanced successfully");
       queryClient.invalidateQueries({ queryKey: ['bills'] });
-      // Refetch accounts to show new bank balance
       queryClient.invalidateQueries({ queryKey: ['payment_accounts'] });
       onClose();
     },
@@ -196,24 +204,24 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>Record Vendor Payment</DialogTitle>
           <DialogDescription>
-            Payment for <strong>{bill.vendor_name}</strong> (Ref: {bill.reference_number})
+            Post payment for <strong>{bill.vendor_name}</strong> (Bill: {bill.bill_number})
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right font-semibold">Balance Due</Label>
             <div className="col-span-3 font-mono text-sm">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency }).format(remaining)}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency_code }).format(remaining)}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="account" className="text-right">Pay From</Label>
+            <Label htmlFor="account" className="text-right">Source Account</Label>
             <div className="col-span-3">
                 <Select onValueChange={setAccountId} value={accountId}>
                 <SelectTrigger>
-                    <SelectValue placeholder={isLoading ? "Loading accounts..." : "Select Bank Account"} />
+                    <SelectValue placeholder={isLoading ? "Loading GL accounts..." : "Select Bank/Cash Account"} />
                 </SelectTrigger>
                 <SelectContent>
                     {accounts?.map((acc) => (
@@ -241,7 +249,7 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm Payment
+            Confirm & Post Ledger
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -252,6 +260,7 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
 // --- Main Component ---
 
 export default function BillsDataTable({ initialBills, businessId }: BillsDataTableProps) {
+  const queryClient = useQueryClient();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -259,13 +268,13 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
   
   // Action State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
-  // TanStack Query to manage state and refetching
   const { data: bills, isLoading, isError, error } = useQuery({
     queryKey: ['bills', businessId],
     queryFn: () => fetchBillsClient(businessId),
-    initialData: initialBills, // Use server data first
+    initialData: initialBills,
   });
 
   const columns: ColumnDef<Bill>[] = [
@@ -275,14 +284,14 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
         const styles = {
-          paid: "bg-green-100 text-green-800 border-green-200 hover:bg-green-100",
-          partial: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
-          overdue: "bg-red-100 text-red-800 border-red-200 hover:bg-red-100",
-          pending: "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100",
-          draft: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100",
+          paid: "bg-green-100 text-green-800 border-green-200",
+          partial: "bg-blue-100 text-blue-800 border-blue-200",
+          overdue: "bg-red-100 text-red-800 border-red-200",
+          posted: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          draft: "bg-gray-100 text-gray-800 border-gray-200",
         };
         return (
-          <Badge variant="outline" className={cn("capitalize", styles[status as keyof typeof styles] || styles.draft)}>
+          <Badge variant="outline" className={cn("capitalize font-semibold", styles[status as keyof typeof styles] || styles.draft)}>
             {status}
           </Badge>
         );
@@ -290,21 +299,21 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
     },
     {
       accessorKey: "vendor_name",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Vendor
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Vendor Partner <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
     },
     {
-      accessorKey: "reference_number",
-      header: "Ref #",
+      accessorKey: "bill_number",
+      header: "Bill #",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <LinkIcon className="w-3 h-3 text-primary" />
+          <span className="font-medium">{row.getValue("bill_number")}</span>
+        </div>
+      )
     },
     {
       accessorKey: "due_date",
@@ -317,26 +326,26 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
     },
     {
       accessorKey: "total_amount",
-      header: () => <div className="text-right">Total</div>,
+      header: () => <div className="text-right">Total Amount</div>,
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("total_amount"));
         const formatted = new Intl.NumberFormat("en-US", {
           style: "currency",
-          currency: row.original.currency,
+          currency: row.original.currency_code || 'USD',
         }).format(amount);
-        return <div className="text-right font-medium">{formatted}</div>;
+        return <div className="text-right font-bold text-primary">{formatted}</div>;
       },
     },
     {
       id: "balance",
-      header: () => <div className="text-right">Balance</div>,
+      header: () => <div className="text-right">Balance Due</div>,
       cell: ({ row }) => {
         const balance = row.original.total_amount - row.original.amount_paid;
         const formatted = new Intl.NumberFormat("en-US", {
           style: "currency",
-          currency: row.original.currency,
+          currency: row.original.currency_code || 'USD',
         }).format(balance);
-        return <div className="text-right font-mono text-xs">{formatted}</div>;
+        return <div className="text-right font-mono text-xs text-red-600">{formatted}</div>;
       },
     },
     {
@@ -354,12 +363,12 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuLabel>ERP Actions</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => navigator.clipboard.writeText(bill.id)}>
-                  Copy Bill ID
+                  Copy Bill UID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>View Details</DropdownMenuItem>
+                <DropdownMenuItem>View Ledger Entries</DropdownMenuItem>
                 {bill.status !== 'paid' && (
                   <DropdownMenuItem onClick={() => {
                     setSelectedBill(bill);
@@ -397,7 +406,12 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
   });
 
   if (isError) {
-    return <div className="p-4 text-red-500 bg-red-50 rounded-md">Error loading bills: {error.message}</div>;
+    return (
+      <div className="p-8 text-center bg-red-50 border border-red-200 rounded-lg">
+        <h3 className="text-red-800 font-bold">System Interconnect Failure</h3>
+        <p className="text-red-600 text-sm">{error.message}</p>
+      </div>
+    );
   }
 
   return (
@@ -406,46 +420,44 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Filter vendors..."
+            placeholder="Search vendor bills..."
             value={(table.getColumn("vendor_name")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
               table.getColumn("vendor_name")?.setFilterValue(event.target.value)
             }
-            className="max-w-sm"
+            className="max-sm:hidden max-w-sm"
           />
         </div>
-        <Button>
+        <Button onClick={() => setCreateModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Create Bill
         </Button>
       </div>
       
-      <div className="rounded-md border bg-card">
+      <div className="rounded-md border bg-card shadow-sm">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                   <div className="flex items-center justify-center gap-2">
-                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                     <span>Loading bills...</span>
+                <TableCell colSpan={columns.length} className="h-48 text-center">
+                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     <span className="text-sm">Synchronizing ledger data...</span>
                    </div>
                 </TableCell>
               </TableRow>
@@ -454,6 +466,7 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="hover:bg-muted/30 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -469,9 +482,9 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center text-muted-foreground italic"
                 >
-                  No bills found.
+                  No active bills found for this business profile.
                 </TableCell>
               </TableRow>
             )}
@@ -479,10 +492,9 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
         </Table>
       </div>
       
-      <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex items-center justify-end space-x-2 py-4 border-t">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+          Showing {table.getFilteredRowModel().rows.length} total vendor records.
         </div>
         <div className="space-x-2">
           <Button
@@ -512,6 +524,15 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
           setPaymentModalOpen(false);
           setSelectedBill(null);
         }} 
+      />
+
+      <CreateBillModal 
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        businessId={businessId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['bills'] });
+        }}
       />
     </div>
   );

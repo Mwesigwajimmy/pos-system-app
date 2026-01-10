@@ -1,18 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from "next/link";
-import { FileDown, FileUp, PlusCircle, MoreHorizontal } from "lucide-react";
+import { 
+  FileDown, 
+  FileUp, 
+  PlusCircle, 
+  MoreHorizontal, 
+  RefreshCcw, 
+  Download, 
+  History 
+} from "lucide-react";
+import { useQueryClient } from '@tanstack/react-query';
 
-// Components
-import BillsDataTable, { Bill } from "@/components/accounting/BillsDataTable";
+// --- Sub-Components ---
+import BillsDataTable from "@/components/accounting/BillsDataTable";
 import OrdersToMakeTable from "@/components/accounting/OrdersToMakeTable";
 import OrdersToUpsellTable from "@/components/accounting/OrdersToUpsellTable";
 import AgedPayablesTable from "@/components/accounting/AgedPayablesTable";
 import PriceListTable from "@/components/accounting/PriceListTable";
 import InvoicesToBeIssuedTable from "@/components/accounting/InvoicesToBeIssuedTable";
+import CreateBillModal from "@/components/accounting/CreateBillModal";
 
-// UI Library
+// --- UI Library ---
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,32 +34,60 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { toast } from 'sonner';
 
-// Define the props this component needs
+// Type definition for the enterprise Bill
+import { Bill } from "@/components/accounting/BillsDataTable";
+
 interface BillsPageClientProps {
     initialBills: Bill[];
     businessId: string;
 }
 
 export default function BillsPageClient({ initialBills, businessId }: BillsPageClientProps) {
+    const queryClient = useQueryClient();
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    /**
+     * Enterprise Refresh Logic
+     * Invalidates all accounting queries to ensure the entire dashboard is in sync.
+     */
+    const refreshSystem = () => {
+        queryClient.invalidateQueries({ queryKey: ['bills', businessId] });
+        queryClient.invalidateQueries({ queryKey: ['payment_accounts', businessId] });
+        toast.success("System synchronized with General Ledger");
+    };
+
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Page Header */}
-            <div className="flex justify-between items-center">
-                <div className="space-y-2">
-                    <h1 className="text-3xl font-bold">Accounts Payable & Supplier Management</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Manage, track, and pay all supplier bills. Streamlined control over payables and supplier relations.
+            {/* Page Header: The Mission Control for Payables */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-6">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-extrabold tracking-tight">Accounts Payable</h1>
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Enterprise Engine v2.0
+                        </Badge>
+                    </div>
+                    <p className="text-muted-foreground max-w-2xl">
+                        Supplier management, real-time ledger synchronization, and aged liability analysis. 
+                        Fully interconnected with the General Ledger and Multi-Tenant Reporting.
                     </p>
                 </div>
-                {/* Actions: Add Bill, Bulk Import/Export */}
-                <div className="flex items-center space-x-2">
-                    <Button asChild>
-                        <Link href="/accounting/bills/create">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Create New Bill
-                        </Link>
+
+                <div className="flex items-center gap-2">
+                    {/* Sync Button: Standard for Enterprise Apps */}
+                    <Button variant="outline" size="icon" onClick={refreshSystem} title="Sync with Ledger">
+                        <RefreshCcw className="h-4 w-4" />
                     </Button>
+
+                    {/* Primary Action: Opens the Interconnected Modal */}
+                    <Button onClick={() => setIsCreateModalOpen(true)} className="shadow-md">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create New Bill
+                    </Button>
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="icon">
@@ -57,46 +95,51 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                                 <span className="sr-only">More Actions</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>More Actions</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>Data Operations</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem>
-                                <FileUp className="mr-2 h-4 w-4" /> Import Bills
+                                <FileUp className="mr-2 h-4 w-4" /> Bulk Import (CSV/Excel)
                             </DropdownMenuItem>
                             <DropdownMenuItem>
-                                <FileDown className="mr-2 h-4 w-4" /> Export All Bills
+                                <FileDown className="mr-2 h-4 w-4" /> Export Current View
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Reporting Shortcuts</DropdownMenuLabel>
                             <DropdownMenuItem>
-                                <Link href="/accounting/aged-payables" className="flex items-center">
-                                    <FileDown className="mr-2 h-4 w-4" /> Download Aged Payables
-                                </Link>
+                                <Download className="mr-2 h-4 w-4 text-green-600" /> Export Aged Payables (PDF)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                                <History className="mr-2 h-4 w-4" /> View Audit Logs
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
             </div>
 
-            {/* Tabs for advanced payable management */}
+            {/* Main Navigation: All tabs are interconnected via the businessId */}
             <Tabs defaultValue="bills" className="space-y-6">
-                <TabsList className="w-full grid grid-cols-6">
-                    <TabsTrigger value="bills">Bills</TabsTrigger>
-                    <TabsTrigger value="orders-to-make">Orders To Make</TabsTrigger>
-                    <TabsTrigger value="orders-to-upsell">Orders To Upsell</TabsTrigger>
-                    <TabsTrigger value="aged-payables">Aged Payables</TabsTrigger>
-                    <TabsTrigger value="price-list">Price List</TabsTrigger>
-                    <TabsTrigger value="invoices-to-be-issued">Invoices To Be Issued</TabsTrigger>
-                </TabsList>
+                <div className="bg-muted/40 p-1 rounded-lg border">
+                    <TabsList className="w-full justify-start overflow-x-auto h-11 bg-transparent">
+                        <TabsTrigger value="bills" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Bills & Items</TabsTrigger>
+                        <TabsTrigger value="aged-payables" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Aged Payables</TabsTrigger>
+                        <TabsTrigger value="orders-to-make" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Purchase Requests</TabsTrigger>
+                        <TabsTrigger value="orders-to-upsell" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Upsell Intel</TabsTrigger>
+                        <TabsTrigger value="price-list" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Supplier Pricing</TabsTrigger>
+                        <TabsTrigger value="invoices-to-be-issued" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Awaiting Invoices</TabsTrigger>
+                    </TabsList>
+                </div>
                 
-                <TabsContent value="bills">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Bills Management</CardTitle>
+                {/* 1. Main Bills Table */}
+                <TabsContent value="bills" className="mt-0">
+                    <Card className="border-none shadow-none bg-transparent">
+                        <CardHeader className="px-0 pt-0">
+                            <CardTitle>Bill Ledger</CardTitle>
                             <CardDescription>
-                                Review, filter, and process all supplier bills. Use advanced filtering tools for vendor, due date, and more.
+                                Central list of all vendor obligations. All transactions here impact the Accounts Payable liability account.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-0">
                             <BillsDataTable 
                                 initialBills={initialBills} 
                                 businessId={businessId} 
@@ -104,43 +147,17 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="orders-to-make">
+
+                {/* 2. Aged Payables Report */}
+                <TabsContent value="aged-payables" className="mt-0">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Orders To Make</CardTitle>
+                            <CardTitle>Payables Aging Analysis</CardTitle>
                             <CardDescription>
-                                Generate and track internal purchase requests to keep your stock and supplies flowing.
+                                Live breakdown of outstanding debts grouped by time buckets. Essential for cash flow planning.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {/* Assuming other tables might need businessId, passing it is safer practice */}
-                            <OrdersToMakeTable businessId={businessId} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="orders-to-upsell">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Orders To Upsell</CardTitle>
-                            <CardDescription>
-                                Review suggested upsell opportunities based on supplier history or new offers.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <OrdersToUpsellTable businessId={businessId} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="aged-payables">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Aged Payables</CardTitle>
-                            <CardDescription>
-                                Analyze your outstanding payables, grouped by due date buckets to assess liquidity risk.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {/* FIX: Passed required props here */}
                             <AgedPayablesTable 
                                 initialBills={initialBills} 
                                 businessId={businessId} 
@@ -148,33 +165,58 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="price-list">
+
+                {/* 3. Procurement Modules */}
+                <TabsContent value="orders-to-make" className="mt-0">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Supplier Price List</CardTitle>
-                            <CardDescription>
-                                Track pricing agreements and negotiate better deals with supplier price intelligence.
-                            </CardDescription>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Purchase Requests</CardTitle></CardHeader>
+                        <CardContent>
+                            <OrdersToMakeTable businessId={businessId} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="orders-to-upsell" className="mt-0">
+                    <Card>
+                        <CardHeader><CardTitle>Supplier Upsell Analytics</CardTitle></CardHeader>
+                        <CardContent>
+                            <OrdersToUpsellTable businessId={businessId} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* 4. Supply Chain Intel */}
+                <TabsContent value="price-list" className="mt-0">
+                    <Card>
+                        <CardHeader><CardTitle>Vendor Price Intelligence</CardTitle></CardHeader>
                         <CardContent>
                             <PriceListTable businessId={businessId} />
                         </CardContent>
                     </Card>
                 </TabsContent>
-                <TabsContent value="invoices-to-be-issued">
+
+                <TabsContent value="invoices-to-be-issued" className="mt-0">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Invoices To Be Issued</CardTitle>
-                            <CardDescription>
-                                Identify bills that are awaiting invoice issuance from suppliers. Manage communications to accelerate processing.
-                            </CardDescription>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Pending Invoice Issuance</CardTitle></CardHeader>
                         <CardContent>
                             <InvoicesToBeIssuedTable businessId={businessId} />
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* 
+                THE ENTERPRISE CONNECTED MODAL
+                This is triggered by the Page Header but refreshes the whole system on success.
+            */}
+            <CreateBillModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                businessId={businessId}
+                onSuccess={() => {
+                    refreshSystem(); // Updates all tabs instantly
+                }}
+            />
         </div>
     );
 }
