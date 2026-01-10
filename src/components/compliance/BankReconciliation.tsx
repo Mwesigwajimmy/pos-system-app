@@ -4,135 +4,187 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-// FIXED: Removed BankTransaction from this import as it's not exported.
-import { Transaction } from '@/types/dashboard';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-const supabase = createClient();
-
-// FIXED: Defined the missing BankTransaction type locally.
-interface BankTransaction {
-  id: number;
+// --- TYPES (Aligned with UUIDs and Absolute Truth Schema) ---
+interface Transaction {
+  id: string; // UUID
   transaction_date: string;
   description: string;
   amount: number;
 }
 
-// This interface now correctly uses the locally defined BankTransaction type.
-interface ReconciliationData {
-  bank_transactions: BankTransaction[];
-  internal_transactions: Transaction[];
+interface BankReconciliationProps {
+  businessId: string; // Passed from the page/auth context
+  accountId: string;  // The specific bank account (e.g., grace Olet ID)
 }
 
-async function fetchReconciliationData(): Promise<ReconciliationData> {
-  const { data, error } = await supabase.rpc('get_unreconciled_data', { p_business_id: 1 });
+// --- API FUNCTIONS (Fully Connected) ---
+async function fetchEnterpriseReconciliation(businessId: string, accountId: string) {
+  const supabase = createClient();
+  // Using the Master RPC we verified earlier
+  const { data, error } = await supabase.rpc('get_reconciliation_data', { 
+    p_business_id: businessId,
+    p_account_id: accountId 
+  });
   if (error) throw new Error(error.message);
-  return data as ReconciliationData;
+  return data;
 }
 
-async function matchTransactions({ bankTxId, internalTxId }: { bankTxId: number, internalTxId: number }) {
-  const { error } = await supabase.rpc('match_transactions', {
-    p_bank_transaction_id: bankTxId,
-    p_internal_transaction_id: internalTxId,
+async function matchTransactionsBulk(vars: { bankIds: string[], systemIds: string[] }) {
+  const supabase = createClient();
+  // Using the bulk matcher we established for enterprise performance
+  const { error } = await supabase.rpc('match_transactions_bulk', {
+    p_bank_transaction_ids: vars.bankIds,
+    p_internal_transaction_ids: vars.systemIds,
   });
   if (error) throw new Error(error.message);
 }
 
-// A single transaction item component for our lists
-const TransactionItem = ({ tx, onSelect, isSelected }: { tx: {id: number, transaction_date: string, description: string, amount: number}, onSelect: () => void, isSelected: boolean }) => (
+// --- SUB-COMPONENT: LIST ITEM ---
+const TransactionItem = ({ tx, onSelect, isSelected }: { tx: Transaction, onSelect: () => void, isSelected: boolean }) => (
   <div 
     onClick={onSelect}
-    className={`p-3 border-b cursor-pointer hover:bg-gray-100 ${isSelected ? 'bg-indigo-100 border-l-4 border-indigo-500' : ''}`}
+    className={`p-4 border-b cursor-pointer transition-all hover:bg-muted/50 ${
+      isSelected ? 'bg-primary/10 border-l-4 border-primary shadow-inner' : ''
+    }`}
   >
-    <div className="flex justify-between items-center">
-      <p className="font-medium text-sm truncate">{tx.description}</p>
-      <p className="font-mono text-sm font-semibold">{tx.amount.toFixed(2)}</p>
+    <div className="flex justify-between items-start">
+      <div className="space-y-1">
+        <p className="font-semibold text-sm leading-none">{tx.description}</p>
+        <p className="text-xs text-muted-foreground">{new Date(tx.transaction_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
+      </div>
+      <p className={`font-mono text-sm font-bold ${tx.amount < 0 ? 'text-destructive' : 'text-green-600'}`}>
+        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'UGX' }).format(tx.amount)}
+      </p>
     </div>
-    <p className="text-xs text-gray-500">{new Date(tx.transaction_date).toLocaleDateString()}</p>
   </div>
 );
 
-export default function BankReconciliation() {
+export default function BankReconciliation({ businessId, accountId }: BankReconciliationProps) {
   const queryClient = useQueryClient();
-  const [selectedBankTx, setSelectedBankTx] = useState<BankTransaction | null>(null);
-  const [selectedInternalTx, setSelectedInternalTx] = useState<Transaction | null>(null);
+  const [selectedBankTxId, setSelectedBankTxId] = useState<string | null>(null);
+  const [selectedSystemTxId, setSelectedSystemTxId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery<ReconciliationData>({
-    queryKey: ['reconciliationData'],
-    queryFn: fetchReconciliationData,
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['reconciliation', businessId, accountId],
+    queryFn: () => fetchEnterpriseReconciliation(businessId, accountId),
+    enabled: !!businessId && !!accountId
   });
   
   const mutation = useMutation({
-    mutationFn: matchTransactions,
+    mutationFn: matchTransactionsBulk,
     onSuccess: () => {
-      toast.success('Transactions Matched!');
-      queryClient.invalidateQueries({ queryKey: ['reconciliationData'] });
-      setSelectedBankTx(null);
-      setSelectedInternalTx(null);
+      toast.success('System and Bank records matched perfectly!');
+      queryClient.invalidateQueries({ queryKey: ['reconciliation'] });
+      setSelectedBankTxId(null);
+      setSelectedSystemTxId(null);
     },
-    onError: (err) => {
-      toast.error(`Matching failed: ${err.message}`);
-    }
+    onError: (err: any) => toast.error(`Matching failed: ${err.message}`)
   });
 
   const handleMatch = () => {
-    if (selectedBankTx && selectedInternalTx) {
-      mutation.mutate({ bankTxId: selectedBankTx.id, internalTxId: selectedInternalTx.id });
+    if (selectedBankTxId && selectedSystemTxId) {
+      mutation.mutate({ 
+        bankIds: [selectedBankTxId], 
+        systemIds: [selectedSystemTxId] 
+      });
     }
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl">Bank Reconciliation</CardTitle>
-        <p className="text-sm text-gray-500">Match imported bank transactions with your internal records.</p>
+    <Card className="shadow-lg border-primary/10">
+      <Toaster position="top-right" />
+      <CardHeader className="border-b bg-muted/20">
+        <CardTitle className="text-2xl flex items-center gap-2">
+          Bank Reconciliation Engine
+          {mutation.isPending && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+        </CardTitle>
+        <CardDescription>
+            Multi-tenant synchronization for business: <span className="font-mono text-xs">{businessId}</span>
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Toaster />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Panel: Bank Transactions */}
-          <div className="border rounded-lg">
-            <h3 className="p-3 font-semibold border-b bg-gray-50">Unreconciled Bank Transactions</h3>
-            <ScrollArea className="h-96">
-              {isLoading ? <p className="p-4 text-center">Loading...</p> : 
-               data?.bank_transactions.map(tx => (
-                <TransactionItem 
-                  key={`bank-${tx.id}`}
-                  tx={tx}
-                  onSelect={() => setSelectedBankTx(tx)}
-                  isSelected={selectedBankTx?.id === tx.id}
-                />
-              ))}
+      
+      <CardContent className="p-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-x">
+          {/* LEFT: Bank Transactions */}
+          <div className="flex flex-col">
+            <header className="p-4 bg-muted/40 font-bold text-xs uppercase tracking-widest border-b flex justify-between">
+              Bank Statement Lines
+              <span className="text-primary">{data?.bank_transactions?.length || 0}</span>
+            </header>
+            <ScrollArea className="h-[500px]">
+              {isLoading ? (
+                <div className="flex justify-center p-12"><Loader2 className="animate-spin opacity-20" /></div>
+              ) : data?.bank_transactions?.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground text-sm italic">No imported bank data found.</div>
+              ) : (
+                data?.bank_transactions.map((tx: Transaction) => (
+                    <TransactionItem 
+                      key={tx.id}
+                      tx={tx}
+                      onSelect={() => setSelectedBankTxId(tx.id)}
+                      isSelected={selectedBankTxId === tx.id}
+                    />
+                  ))
+              )}
             </ScrollArea>
           </div>
 
-          {/* Right Panel: Internal Transactions */}
-          <div className="border rounded-lg">
-            <h3 className="p-3 font-semibold border-b bg-gray-50">Unreconciled Internal Transactions</h3>
-             <ScrollArea className="h-96">
-              {isLoading ? <p className="p-4 text-center">Loading...</p> : 
-               data?.internal_transactions.map(tx => (
-                <TransactionItem 
-                  key={`internal-${tx.id}`}
-                  tx={{...tx, amount: tx.journal_entries.find(je => je.type === 'DEBIT')?.amount || 0}}
-                  onSelect={() => setSelectedInternalTx(tx)}
-                  isSelected={selectedInternalTx?.id === tx.id}
-                />
-              ))}
+          {/* RIGHT: Internal Ledger (Absolute Truth) */}
+          <div className="flex flex-col">
+            <header className="p-4 bg-muted/40 font-bold text-xs uppercase tracking-widest border-b flex justify-between">
+              Internal Ledger Entries
+              <span className="text-green-600">{data?.internal_transactions?.length || 0}</span>
+            </header>
+            <ScrollArea className="h-[500px]">
+              {isLoading ? (
+                 <div className="flex justify-center p-12"><Loader2 className="animate-spin opacity-20" /></div>
+              ) : data?.internal_transactions?.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground text-sm italic">Ledger is fully reconciled.</div>
+              ) : (
+                data?.internal_transactions.map((tx: Transaction) => (
+                    <TransactionItem 
+                      key={tx.id}
+                      tx={tx}
+                      onSelect={() => setSelectedSystemTxId(tx.id)}
+                      isSelected={selectedSystemTxId === tx.id}
+                    />
+                  ))
+              )}
             </ScrollArea>
           </div>
         </div>
-        <div className="mt-6 flex justify-center">
-          <Button 
-            onClick={handleMatch} 
-            disabled={!selectedBankTx || !selectedInternalTx || mutation.isPending}
-            size="lg"
-          >
-            {mutation.isPending ? 'Matching...' : 'Match Selected Transactions'}
-          </Button>
+
+        <div className="p-6 bg-muted/10 border-t flex flex-col items-center gap-4">
+            <div className="flex items-center gap-8 text-sm font-medium">
+                <div className="flex flex-col items-center">
+                    <span className="text-muted-foreground text-[10px] uppercase">Bank Selection</span>
+                    <span className={selectedBankTxId ? 'text-primary' : 'text-muted-foreground/30'}>
+                        {selectedBankTxId ? 'Ready' : 'Pending'}
+                    </span>
+                </div>
+                <CheckCircle2 className={`h-6 w-6 ${selectedBankTxId && selectedSystemTxId ? 'text-green-500' : 'text-muted-foreground/20'}`} />
+                <div className="flex flex-col items-center">
+                    <span className="text-muted-foreground text-[10px] uppercase">Ledger Selection</span>
+                    <span className={selectedSystemTxId ? 'text-green-600' : 'text-muted-foreground/30'}>
+                        {selectedSystemTxId ? 'Ready' : 'Pending'}
+                    </span>
+                </div>
+            </div>
+
+            <Button 
+                onClick={handleMatch} 
+                disabled={!selectedBankTxId || !selectedSystemTxId || mutation.isPending}
+                size="lg"
+                className="w-full max-w-xs shadow-md"
+            >
+                {mutation.isPending ? 'Processing Match...' : 'Authorize Reconciliation'}
+            </Button>
         </div>
       </CardContent>
     </Card>

@@ -9,7 +9,7 @@ import { BankStatementUploadComponent } from "@/components/telecom/financials/Ba
 import { BankReconciliationTable } from "@/components/accounting/BankReconciliationTable";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileUp, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { FileUp, RefreshCw, Loader2, AlertCircle, Database } from 'lucide-react';
 
 // --- TYPES ---
 interface BankTransaction { id: string; date: string; description: string; amount: number; }
@@ -27,14 +27,21 @@ interface ReconciliationClientProps {
     accounts: Account[];
 }
 
-// --- API FUNCTION ---
-async function fetchReconciliationData(): Promise<ReconciliationData> {
+// --- API FUNCTION: FULLY CONNECTED ---
+// This function fetches the Absolute Truth for both sides of the reconciliation
+async function fetchReconciliationData(accountId: string, businessId: string): Promise<ReconciliationData> {
     const supabase = createClient();
-    // Note: In a real scenario, you might want to pass account_id to this RPC
-    const { data, error } = await supabase.rpc('get_reconciliation_data');
+    
+    // ENTERPRISE WIRING: Calling the Master RPC
+    const { data, error } = await supabase.rpc('get_reconciliation_data', {
+        p_account_id: accountId,
+        p_business_id: businessId
+    });
+    
     if (error) throw new Error(error.message);
 
     return {
+        // Map backend keys to frontend interface names
         bank_transactions: (data.bank_transactions || []).map((t: any) => ({
             ...t,
             date: t.transaction_date 
@@ -47,39 +54,44 @@ async function fetchReconciliationData(): Promise<ReconciliationData> {
 }
 
 export default function ReconciliationClient({ userId, businessId, accounts }: ReconciliationClientProps) {
-    const [isStatementUploaded, setIsStatementUploaded] = useState(false);
-    // Automatically select the first account if available
+    // TRACKING STATE: In enterprise systems, we track if the user has triggered a 'Sync' session
+    const [isSessionActive, setIsSessionActive] = useState(false);
     const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
 
+    // THE ENGINE: React Query fetches Absolute Truth from the DB
     const { data, isLoading, isError, error, refetch } = useQuery<ReconciliationData>({
-        queryKey: ['reconciliationData', selectedAccountId],
-        queryFn: fetchReconciliationData,
-        enabled: isStatementUploaded && !!selectedAccountId,
+        queryKey: ['reconciliationData', selectedAccountId, businessId],
+        queryFn: () => fetchReconciliationData(selectedAccountId, businessId),
+        // Enabled immediately if session is active or as a preview
+        enabled: !!selectedAccountId,
+        refetchOnWindowFocus: false
     });
 
+    // FIXED: Handler now matches '() => void' signature to pass build linter
     const handleUploadSuccess = () => {
-        setIsStatementUploaded(true);
+        setIsSessionActive(true);
+        // We trigger a refetch so the bank transactions just uploaded to the DB 
+        // flood into the UI immediately.
         refetch();
     };
 
     const handleReset = () => {
-        setIsStatementUploaded(false);
+        setIsSessionActive(false);
     };
 
     return (
         <div className="container mx-auto py-6 space-y-6">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Bank Reconciliation Center</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Financial Reconciliation Center</h1>
                     <p className="text-muted-foreground mt-1">
-                        Match your bank statements with your internal records.
+                        Enterprise-grade synchronization for internal and external records.
                     </p>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    {/* Account Selector is needed to provide bankAccountId */}
                     <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[250px] shadow-sm">
                             <SelectValue placeholder="Select Bank Account" />
                         </SelectTrigger>
                         <SelectContent>
@@ -89,51 +101,74 @@ export default function ReconciliationClient({ userId, businessId, accounts }: R
                         </SelectContent>
                     </Select>
 
-                    {isStatementUploaded && (
-                        <Button onClick={handleReset} variant="outline">
-                            <RefreshCw className="mr-2 h-4 w-4" /> Reset
+                    {isSessionActive && (
+                        <Button onClick={handleReset} variant="outline" size="sm">
+                            <RefreshCw className="mr-2 h-4 w-4" /> Switch Account
                         </Button>
                     )}
                 </div>
             </header>
 
             {!selectedAccountId ? (
-                <div className="p-8 text-center border rounded-md bg-muted text-muted-foreground">
-                    Please select a Bank Account to proceed with reconciliation.
+                <div className="p-12 text-center border-2 border-dashed rounded-lg bg-muted/30">
+                    <Database className="mx-auto h-12 w-12 text-muted-foreground/20 mb-4" />
+                    <p className="text-lg font-semibold">No Financial Source Selected</p>
+                    <p className="text-sm text-muted-foreground">Select an account from the dashboard to initialize reconciliation.</p>
                 </div>
-            ) : !isStatementUploaded ? (
-                <Card className="max-w-2xl mx-auto">
-                    <CardHeader>
-                        <CardTitle className="flex items-center"><FileUp className="mr-2" /> Step 1: Upload Statement</CardTitle>
-                        <CardDescription>
-                            Upload your bank statement for <strong>{accounts.find(a => a.id === selectedAccountId)?.name}</strong>.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <BankStatementUploadComponent onSuccess={handleUploadSuccess} />
-                    </CardContent>
-                </Card>
+            ) : !isSessionActive ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-1 border-primary/10 shadow-md">
+                        <CardHeader>
+                            <CardTitle className="flex items-center text-primary text-lg">
+                                <FileUp className="mr-2 h-5 w-5" /> 1. Upload Statement
+                            </CardTitle>
+                            <CardDescription>
+                                Import external data for <strong>{accounts.find(a => a.id === selectedAccountId)?.name}</strong>.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {/* onSuccess is now a perfect match for the component signature */}
+                            <BankStatementUploadComponent onSuccess={handleUploadSuccess} />
+                        </CardContent>
+                    </Card>
+
+                    <Card className="lg:col-span-2 bg-muted/10 border-dashed border-2">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Internal Ledger Preview</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? (
+                                <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                            ) : (
+                                <div className="space-y-2">
+                                    <p className="text-4xl font-black font-mono">
+                                        {data?.internal_transactions?.length || 0}
+                                    </p>
+                                    <p className="text-xs font-bold uppercase text-muted-foreground">Unmatched System Transactions</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Step 2: Match Transactions</CardTitle>
+                <Card className="shadow-2xl border-primary/5">
+                    <CardHeader className="bg-muted/40 border-b">
+                        <CardTitle>Step 2: Absolute Truth Matching</CardTitle>
                         <CardDescription>
-                            Review matches for <strong>{accounts.find(a => a.id === selectedAccountId)?.name}</strong>.
+                            Validating external bank records against internal ledger entries.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        {isLoading && <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>}
-                        {isError && (
-                            <div className="text-destructive p-4 bg-destructive/10 rounded-md flex items-center">
-                                <AlertCircle className="mr-2 h-4 w-4"/>
-                                <p>Error loading data: {error.message}</p>
+                    <CardContent className="pt-6">
+                        {isLoading ? (
+                            <div className="py-20 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+                        ) : isError ? (
+                            <div className="p-4 bg-destructive/10 text-destructive rounded-md flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" /> {error.message}
                             </div>
-                        )}
-                        {data && (
-                            /* FIX: Passing all required props here */
+                        ) : (
                             <BankReconciliationTable
-                                bankTransactions={data.bank_transactions}
-                                systemTransactions={data.internal_transactions}
+                                bankTransactions={data?.bank_transactions || []}
+                                systemTransactions={data?.internal_transactions || []}
                                 businessId={businessId}
                                 userId={userId}
                                 bankAccountId={selectedAccountId}
