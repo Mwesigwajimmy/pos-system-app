@@ -29,6 +29,7 @@ export default async function ReconciliationPage({ params: { locale } }: { param
         .select('id, name')
         .eq('business_id', profile.business_id)
         .eq('type', 'Bank')
+        .eq('is_reconcilable', true) 
         .eq('is_active', true)
         .order('name');
 
