@@ -33,13 +33,13 @@ export default function AuditTrailTable({ businessId }: AuditTrailTableProps) {
   });
 
   // 2. Client-side filtering for high-performance searching
+  // UPDATED: Mapped to use real columns: action, table_name, user_email
   const filtered = useMemo(() => {
     if (!logs) return [];
     return logs.filter((l: any) => 
-      l.action_type?.toLowerCase().includes(filter.toLowerCase()) ||
-      l.entity_name?.toLowerCase().includes(filter.toLowerCase()) ||
-      l.profiles?.full_name?.toLowerCase().includes(filter.toLowerCase()) ||
-      l.profiles?.email?.toLowerCase().includes(filter.toLowerCase())
+      l.action?.toLowerCase().includes(filter.toLowerCase()) ||
+      l.table_name?.toLowerCase().includes(filter.toLowerCase()) ||
+      l.user_email?.toLowerCase().includes(filter.toLowerCase())
     );
   }, [logs, filter]);
 
@@ -121,27 +121,32 @@ export default function AuditTrailTable({ businessId }: AuditTrailTableProps) {
                                 {format(new Date(l.created_at), 'yyyy-MM-dd HH:mm:ss')}
                             </TableCell>
                             <TableCell>
-                                <Badge variant="outline" className={cn("uppercase text-[10px] font-bold px-2", getStatusStyles(l.action_type))}>
-                                    {l.action_type.replace('_', ' ')}
+                                {/* UPDATED: Uses real column l.action */}
+                                <Badge variant="outline" className={cn("uppercase text-[10px] font-bold px-2", getStatusStyles(l.action))}>
+                                    {l.action}
                                 </Badge>
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-semibold">{l.profiles?.full_name || 'System'}</span>
-                                    <span className="text-[10px] text-muted-foreground font-mono">{l.profiles?.email || 'automated@erp.internal'}</span>
+                                    {/* UPDATED: Uses real column l.user_email */}
+                                    <span className="text-sm font-semibold">{l.user_email || 'System Account'}</span>
+                                    <span className="text-[10px] text-muted-foreground font-mono">Verified Activity</span>
                                 </div>
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col">
-                                    <span className="text-xs font-bold text-slate-700">{l.entity_name}</span>
-                                    <span className="text-[9px] text-muted-foreground font-mono">ID: {l.entity_id.substring(0, 8)}...</span>
+                                    {/* UPDATED: Uses real column l.table_name */}
+                                    <span className="text-xs font-bold text-slate-700">{l.table_name.replace('accounting_', '')}</span>
+                                    <span className="text-[9px] text-muted-foreground font-mono">REC: {l.record_id.substring(0, 8)}...</span>
                                 </div>
                             </TableCell>
                             <TableCell className="font-mono text-[10px] text-red-600 max-w-[150px] truncate">
-                                {formatChange(l.old_values)}
+                                {/* UPDATED: Uses real column l.old_data */}
+                                {formatChange(l.old_data)}
                             </TableCell>
                             <TableCell className="font-mono text-[10px] text-green-600 max-w-[150px] truncate font-bold">
-                                {formatChange(l.new_values)}
+                                {/* UPDATED: Uses real column l.new_data */}
+                                {formatChange(l.new_data)}
                             </TableCell>
                         </TableRow>
                         ))
@@ -161,8 +166,9 @@ export default function AuditTrailTable({ businessId }: AuditTrailTableProps) {
 
 // Enterprise Helper: Color Coding actions
 function getStatusStyles(type: string) {
-    if (type.includes('CREATE') || type.includes('POST')) return 'bg-blue-50 text-blue-700 border-blue-200';
-    if (type.includes('PAYMENT')) return 'bg-green-50 text-green-700 border-green-200';
-    if (type.includes('DELETE') || type.includes('VOID')) return 'bg-red-50 text-red-700 border-red-200';
+    if (!type) return 'bg-slate-100';
+    if (type.includes('INSERT')) return 'bg-green-50 text-green-700 border-green-200';
+    if (type.includes('UPDATE')) return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (type.includes('DELETE')) return 'bg-red-50 text-red-700 border-red-200';
     return 'bg-slate-100 text-slate-700 border-slate-200';
 }

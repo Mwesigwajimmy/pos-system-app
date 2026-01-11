@@ -6,7 +6,8 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * 1. ENTERPRISE ACTION: Post Vendor Bill
- * Logic: Creates the Bill and initiates the General Ledger math.
+ * Logic: Creates the Bill and initiates the General Ledger math via RPC.
+ * Handshake: Debit Expense / Credit Accounts Payable.
  */
 export async function submitVendorBill(formData: any) {
     const cookieStore = cookies();
@@ -29,13 +30,15 @@ export async function submitVendorBill(formData: any) {
         return { success: false, message: error.message };
     }
 
+    // Enterprise Refresh: Updates the UI and the reports simultaneously
     revalidatePath('/accounting/bills'); 
     return { success: true, billId: data };
 }
 
 /**
  * 2. ENTERPRISE ACTION: Record Bill Payment
- * Logic: Reduces Bank/Cash balance and AP debt atomically.
+ * Logic: Reduces Bank/Cash balance and AP debt atomically via RPC.
+ * Handshake: Debit Accounts Payable / Credit Bank Account.
  */
 export async function postBillPayment(payload: {
     billId: string;
@@ -66,7 +69,8 @@ export async function postBillPayment(payload: {
 
 /**
  * 3. ENTERPRISE ERP ACTION: Authorize & Post Bill Batch
- * Logic: Atomically transitions bills to 'posted' and generates Ledger lines.
+ * Logic: Atomically transitions bills to 'posted' and generates Ledger lines via RPC.
+ * This is the high-performance engine for bulk operations.
  */
 export async function bulkApproveBills(payload: {
     billIds: string[];
@@ -75,11 +79,14 @@ export async function bulkApproveBills(payload: {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
+    // Capture the current user ID for the Audit Trail 'posted_by' field
+    const { data: { user } } = await supabase.auth.getUser();
+
     // Call the ERP Posting Engine RPC
-    const { data, error } = await supabase.rpc('authorize_bill_posting_batch', {
+    const { error } = await supabase.rpc('authorize_bill_posting_batch', {
         p_bill_ids: payload.billIds,
         p_business_id: payload.businessId,
-        p_posted_by: (await supabase.auth.getUser()).data.user?.id
+        p_posted_by: user?.id
     });
 
     if (error) {
@@ -93,21 +100,23 @@ export async function bulkApproveBills(payload: {
 
 /**
  * 4. ENTERPRISE ACTION: Fetch Audit Trail
- * Logic: Retrieves immutable history for compliance reporting.
+ * Logic: Retrieves the IMMUTABLE history from your master compliance table.
+ * UPDATED: Pointed to the REAL 'audit_logs' table confirmed in your schema.
  */
 export async function getAccountingAuditLogs(businessId: string, limit = 50) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
+    // Using your real schema name 'audit_logs' as verified
     const { data, error } = await supabase
-        .from('accounting_audit_logs')
+        .from('audit_logs')
         .select('*')
         .eq('business_id', businessId)
         .order('created_at', { ascending: false })
         .limit(limit);
 
     if (error) {
-        console.error("Audit Trail Fetch Error:", error);
+        console.error("Compliance Sync Error (Audit Trail):", error);
         return [];
     }
 
