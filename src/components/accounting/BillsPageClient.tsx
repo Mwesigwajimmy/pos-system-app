@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from "next/link";
 import { 
   FileDown, 
   FileUp, 
@@ -9,7 +8,9 @@ import {
   MoreHorizontal, 
   RefreshCcw, 
   Download, 
-  History 
+  History,
+  ShieldCheck,
+  Activity
 } from "lucide-react";
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -20,6 +21,7 @@ import OrdersToUpsellTable from "@/components/accounting/OrdersToUpsellTable";
 import AgedPayablesTable from "@/components/accounting/AgedPayablesTable";
 import PriceListTable from "@/components/accounting/PriceListTable";
 import InvoicesToBeIssuedTable from "@/components/accounting/InvoicesToBeIssuedTable";
+import AuditTrailTable from "@/components/accounting/AuditTrailTable"; // New Enterprise Component
 import CreateBillModal from "@/components/accounting/CreateBillModal";
 
 // --- UI Library ---
@@ -48,6 +50,7 @@ interface BillsPageClientProps {
 export default function BillsPageClient({ initialBills, businessId }: BillsPageClientProps) {
     const queryClient = useQueryClient();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState("bills"); // Controlled state for enterprise navigation
 
     /**
      * Enterprise Refresh Logic
@@ -55,8 +58,9 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
      */
     const refreshSystem = () => {
         queryClient.invalidateQueries({ queryKey: ['bills', businessId] });
-        queryClient.invalidateQueries({ queryKey: ['payment_accounts', businessId] });
-        toast.success("System synchronized with General Ledger");
+        queryClient.invalidateQueries({ queryKey: ['payables', businessId] });
+        queryClient.invalidateQueries({ queryKey: ['audit_logs', businessId] });
+        toast.success("General Ledger Synchronized");
     };
 
     return (
@@ -66,8 +70,9 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                 <div className="space-y-1">
                     <div className="flex items-center gap-2">
                         <h1 className="text-3xl font-extrabold tracking-tight">Accounts Payable</h1>
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
-                            Enterprise Engine v2.0
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 flex gap-1 items-center">
+                            <ShieldCheck className="w-3 h-3" />
+                            Enterprise Engine v2.5
                         </Badge>
                     </div>
                     <p className="text-muted-foreground max-w-2xl">
@@ -83,7 +88,7 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                     </Button>
 
                     {/* Primary Action: Opens the Interconnected Modal */}
-                    <Button onClick={() => setIsCreateModalOpen(true)} className="shadow-md">
+                    <Button onClick={() => setIsCreateModalOpen(true)} className="shadow-md bg-primary hover:bg-primary/90">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Create New Bill
                     </Button>
@@ -109,8 +114,8 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                             <DropdownMenuItem>
                                 <Download className="mr-2 h-4 w-4 text-green-600" /> Export Aged Payables (PDF)
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <History className="mr-2 h-4 w-4" /> View Audit Logs
+                            <DropdownMenuItem onClick={() => setActiveTab("audit-trail")}>
+                                <History className="mr-2 h-4 w-4 text-blue-600" /> View Audit Logs
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -118,15 +123,16 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
             </div>
 
             {/* Main Navigation: All tabs are interconnected via the businessId */}
-            <Tabs defaultValue="bills" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <div className="bg-muted/40 p-1 rounded-lg border">
                     <TabsList className="w-full justify-start overflow-x-auto h-11 bg-transparent">
                         <TabsTrigger value="bills" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Bills & Items</TabsTrigger>
                         <TabsTrigger value="aged-payables" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Aged Payables</TabsTrigger>
                         <TabsTrigger value="orders-to-make" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Purchase Requests</TabsTrigger>
-                        <TabsTrigger value="orders-to-upsell" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Upsell Intel</TabsTrigger>
                         <TabsTrigger value="price-list" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Supplier Pricing</TabsTrigger>
-                        <TabsTrigger value="invoices-to-be-issued" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Awaiting Invoices</TabsTrigger>
+                        <TabsTrigger value="audit-trail" className="data-[state=active]:bg-white data-[state=active]:shadow-sm flex gap-2">
+                             <Activity className="w-4 h-4" /> Audit Trail
+                        </TabsTrigger>
                     </TabsList>
                 </div>
                 
@@ -136,7 +142,7 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                         <CardHeader className="px-0 pt-0">
                             <CardTitle>Bill Ledger</CardTitle>
                             <CardDescription>
-                                Central list of all vendor obligations. All transactions here impact the Accounts Payable liability account.
+                                Central list of all vendor obligations and payment workflows.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="px-0">
@@ -150,11 +156,11 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
 
                 {/* 2. Aged Payables Report */}
                 <TabsContent value="aged-payables" className="mt-0">
-                    <Card>
+                    <Card className="border-none shadow-sm">
                         <CardHeader>
                             <CardTitle>Payables Aging Analysis</CardTitle>
                             <CardDescription>
-                                Live breakdown of outstanding debts grouped by time buckets. Essential for cash flow planning.
+                                Live breakdown of outstanding debts grouped by time buckets.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -168,7 +174,7 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
 
                 {/* 3. Procurement Modules */}
                 <TabsContent value="orders-to-make" className="mt-0">
-                    <Card>
+                    <Card className="border-none shadow-sm">
                         <CardHeader><CardTitle>Purchase Requests</CardTitle></CardHeader>
                         <CardContent>
                             <OrdersToMakeTable businessId={businessId} />
@@ -176,18 +182,9 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="orders-to-upsell" className="mt-0">
-                    <Card>
-                        <CardHeader><CardTitle>Supplier Upsell Analytics</CardTitle></CardHeader>
-                        <CardContent>
-                            <OrdersToUpsellTable businessId={businessId} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
                 {/* 4. Supply Chain Intel */}
                 <TabsContent value="price-list" className="mt-0">
-                    <Card>
+                    <Card className="border-none shadow-sm">
                         <CardHeader><CardTitle>Vendor Price Intelligence</CardTitle></CardHeader>
                         <CardContent>
                             <PriceListTable businessId={businessId} />
@@ -195,11 +192,17 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="invoices-to-be-issued" className="mt-0">
-                    <Card>
-                        <CardHeader><CardTitle>Pending Invoice Issuance</CardTitle></CardHeader>
+                {/* 5. Enterprise Audit Trail (Security & Compliance) */}
+                <TabsContent value="audit-trail" className="mt-0">
+                    <Card className="border-none shadow-sm">
+                        <CardHeader>
+                            <CardTitle>Compliance & Audit Logs</CardTitle>
+                            <CardDescription>
+                                Immutable record of every transaction, approval, and adjustment within the payables system.
+                            </CardDescription>
+                        </CardHeader>
                         <CardContent>
-                            <InvoicesToBeIssuedTable businessId={businessId} />
+                            <AuditTrailTable businessId={businessId} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -207,14 +210,13 @@ export default function BillsPageClient({ initialBills, businessId }: BillsPageC
 
             {/* 
                 THE ENTERPRISE CONNECTED MODAL
-                This is triggered by the Page Header but refreshes the whole system on success.
             */}
             <CreateBillModal 
                 isOpen={isCreateModalOpen} 
                 onClose={() => setIsCreateModalOpen(false)} 
                 businessId={businessId}
                 onSuccess={() => {
-                    refreshSystem(); // Updates all tabs instantly
+                    refreshSystem(); 
                 }}
             />
         </div>

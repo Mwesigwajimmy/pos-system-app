@@ -24,7 +24,13 @@ import {
   MoreHorizontal, 
   Filter,
   Plus,
-  Link as LinkIcon
+  Link as LinkIcon,
+  CheckCircle2,
+  ShieldCheck,
+  History,
+  Trash2,
+  X,
+  FileCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +40,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,12 +71,8 @@ import { postBillPayment } from '@/lib/actions/bills';
 
 // --- Types ---
 
-export type BillStatus = 'draft' | 'posted' | 'overdue' | 'paid' | 'partial';
+export type BillStatus = 'draft' | 'awaiting_approval' | 'posted' | 'overdue' | 'paid' | 'partial';
 
-/** 
- * Enterprise Bill Interface
- * Fully interconnected to the General Ledger
- */
 export interface Bill {
   id: string;
   vendor_name: string;
@@ -125,9 +128,19 @@ const fetchPaymentAccounts = async (businessId: string) => {
   return data as PaymentAccount[];
 };
 
-/**
- * Enterprise Payment Action Handshake
- */
+// Enterprise Action: Bulk Approval
+const bulkApproveBills = async (payload: { billIds: string[], businessId: string }) => {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('accounting_bills')
+    .update({ status: 'posted' })
+    .in('id', payload.billIds)
+    .eq('business_id', payload.businessId);
+
+  if (error) throw new Error(error.message);
+  return true;
+};
+
 const recordPayment = async (payload: { bill_id: string; account_id: string; amount: number; payment_date: string, business_id: string }) => {
   const result = await postBillPayment({
       billId: payload.bill_id,
@@ -172,8 +185,7 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
     mutationFn: recordPayment,
     onSuccess: () => {
       toast.success("Payment recorded & Ledger balanced successfully");
-      queryClient.invalidateQueries({ queryKey: ['bills'] });
-      queryClient.invalidateQueries({ queryKey: ['payment_accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bills', businessId] });
       onClose();
     },
     onError: (error) => {
@@ -186,7 +198,6 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
         toast.error("Please fill all fields");
         return;
     }
-    
     mutation.mutate({
       bill_id: bill.id,
       account_id: accountId,
@@ -197,8 +208,6 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
   };
 
   if (!bill) return null;
-
-  const remaining = bill.total_amount - bill.amount_paid;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -213,20 +222,20 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right font-semibold">Balance Due</Label>
             <div className="col-span-3 font-mono text-sm">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency_code }).format(remaining)}
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: bill.currency_code }).format(bill.total_amount - bill.amount_paid)}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="account" className="text-right">Source Account</Label>
+            <Label htmlFor="account" className="text-right">Account</Label>
             <div className="col-span-3">
                 <Select onValueChange={setAccountId} value={accountId}>
                 <SelectTrigger>
-                    <SelectValue placeholder={isLoading ? "Loading GL accounts..." : "Select Bank/Cash Account"} />
+                    <SelectValue placeholder={isLoading ? "Loading..." : "Select Source Account"} />
                 </SelectTrigger>
                 <SelectContent>
                     {accounts?.map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} ({acc.currency}) - Bal: {acc.balance.toLocaleString()}
+                        {acc.name} ({acc.currency})
                     </SelectItem>
                     ))}
                 </SelectContent>
@@ -241,7 +250,6 @@ const PaymentDialog = ({ bill, businessId, isOpen, onClose }: PaymentDialogProps
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="col-span-3"
-              max={remaining}
             />
           </div>
         </div>
@@ -266,21 +274,49 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   
-  // Action State
+  // Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
 
-  const { data: bills, isLoading, isError, error } = useQuery({
+  const { data: bills, isLoading } = useQuery({
     queryKey: ['bills', businessId],
     queryFn: () => fetchBillsClient(businessId),
     initialData: initialBills,
   });
 
+  const bulkApproveMutation = useMutation({
+    mutationFn: bulkApproveBills,
+    onSuccess: () => {
+      toast.success("Batch bills authorized successfully");
+      queryClient.invalidateQueries({ queryKey: ['bills', businessId] });
+      setRowSelection({});
+    }
+  });
+
   const columns: ColumnDef<Bill>[] = [
     {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
       accessorKey: "status",
-      header: "Status",
+      header: "Workflow Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
         const styles = {
@@ -288,96 +324,74 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
           partial: "bg-blue-100 text-blue-800 border-blue-200",
           overdue: "bg-red-100 text-red-800 border-red-200",
           posted: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          awaiting_approval: "bg-orange-100 text-orange-800 border-orange-200 animate-pulse",
           draft: "bg-gray-100 text-gray-800 border-gray-200",
         };
         return (
           <Badge variant="outline" className={cn("capitalize font-semibold", styles[status as keyof typeof styles] || styles.draft)}>
-            {status}
+            {status.replace('_', ' ')}
           </Badge>
         );
       },
     },
     {
       accessorKey: "vendor_name",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Vendor Partner <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
+      header: "Vendor Partner",
     },
     {
       accessorKey: "bill_number",
-      header: "Bill #",
+      header: "Reference",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 font-mono text-xs">
           <LinkIcon className="w-3 h-3 text-primary" />
-          <span className="font-medium">{row.getValue("bill_number")}</span>
+          {row.getValue("bill_number")}
         </div>
       )
     },
     {
       accessorKey: "due_date",
-      header: "Due Date",
-      cell: ({ row }) => {
-        const date = row.getValue("due_date");
-        if (!date) return "-";
-        return <div className="text-sm text-muted-foreground">{format(new Date(date as string), "PP")}</div>
-      },
+      header: "Maturity Date",
+      cell: ({ row }) => format(new Date(row.getValue("due_date")), "MMM dd, yyyy")
     },
     {
       accessorKey: "total_amount",
-      header: () => <div className="text-right">Total Amount</div>,
+      header: () => <div className="text-right">Total</div>,
       cell: ({ row }) => {
-        const amount = parseFloat(row.getValue("total_amount"));
-        const formatted = new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: row.original.currency_code || 'USD',
-        }).format(amount);
+        const formatted = new Intl.NumberFormat("en-US", { style: "currency", currency: row.original.currency_code }).format(row.original.total_amount);
         return <div className="text-right font-bold text-primary">{formatted}</div>;
       },
     },
     {
       id: "balance",
-      header: () => <div className="text-right">Balance Due</div>,
+      header: () => <div className="text-right">Outstanding</div>,
       cell: ({ row }) => {
         const balance = row.original.total_amount - row.original.amount_paid;
-        const formatted = new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: row.original.currency_code || 'USD',
-        }).format(balance);
+        const formatted = new Intl.NumberFormat("en-US", { style: "currency", currency: row.original.currency_code }).format(balance);
         return <div className="text-right font-mono text-xs text-red-600">{formatted}</div>;
       },
     },
     {
       id: "actions",
-      enableHiding: false,
       cell: ({ row }) => {
         const bill = row.original;
         return (
           <div className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>ERP Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigator.clipboard.writeText(bill.id)}>
-                  Copy Bill UID
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Control Panel</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => { setSelectedBill(bill); setPaymentModalOpen(true); }} disabled={bill.status === 'paid'}>
+                  <DollarSign className="mr-2 h-4 w-4 text-green-600" /> Record Payment
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <History className="mr-2 h-4 w-4" /> View Audit Trail
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>View Ledger Entries</DropdownMenuItem>
-                {bill.status !== 'paid' && (
-                  <DropdownMenuItem onClick={() => {
-                    setSelectedBill(bill);
-                    setPaymentModalOpen(true);
-                  }}>
-                    <DollarSign className="mr-2 h-4 w-4 text-green-600" />
-                    Record Payment
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem className="text-red-600">
+                  <Trash2 className="mr-2 h-4 w-4" /> Void Transaction
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -387,7 +401,7 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
   ];
 
   const table = useReactTable({
-    data: bills,
+    data: bills || [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -397,55 +411,33 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
+    state: { sorting, columnFilters, columnVisibility, rowSelection },
   });
 
-  if (isError) {
-    return (
-      <div className="p-8 text-center bg-red-50 border border-red-200 rounded-lg">
-        <h3 className="text-red-800 font-bold">System Interconnect Failure</h3>
-        <p className="text-red-600 text-sm">{error.message}</p>
-      </div>
-    );
-  }
+  const selectedCount = Object.keys(rowSelection).length;
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-4 relative">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search vendor bills..."
-            value={(table.getColumn("vendor_name")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("vendor_name")?.setFilterValue(event.target.value)
-            }
-            className="max-sm:hidden max-w-sm"
-          />
-        </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Bill
+        <Input
+          placeholder="Filter by vendor..."
+          value={(table.getColumn("vendor_name")?.getFilterValue() as string) ?? ""}
+          onChange={(event) => table.getColumn("vendor_name")?.setFilterValue(event.target.value)}
+          className="max-w-sm"
+        />
+        <Button onClick={() => setCreateModalOpen(true)} className="shadow-sm">
+            <Plus className="mr-2 h-4 w-4" /> New Vendor Bill
         </Button>
       </div>
       
-      <div className="rounded-md border bg-card shadow-sm">
+      <div className="rounded-md border bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -453,86 +445,66 @@ export default function BillsDataTable({ initialBills, businessId }: BillsDataTa
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-48 text-center">
-                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                     <span className="text-sm">Synchronizing ledger data...</span>
-                   </div>
-                </TableCell>
-              </TableRow>
+               <TableRow><TableCell colSpan={columns.length} className="h-48 text-center text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />Syncing Ledger...</TableCell></TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/30 transition-colors"
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="transition-colors hover:bg-muted/30">
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground italic"
-                >
-                  No active bills found for this business profile.
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={columns.length} className="h-24 text-center italic">No records found.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      
-      <div className="flex items-center justify-end space-x-2 py-4 border-t">
-        <div className="flex-1 text-sm text-muted-foreground">
-          Showing {table.getFilteredRowModel().rows.length} total vendor records.
+
+      {/* --- ENTERPRISE FLOATING BATCH ACTION BAR --- */}
+      {selectedCount > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
+            <div className="flex items-center gap-2 border-r border-slate-700 pr-6">
+                <ShieldCheck className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-bold">{selectedCount} Bills Selected</span>
+            </div>
+            <div className="flex items-center gap-3">
+                <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="text-white hover:bg-slate-800 hover:text-green-400"
+                    onClick={() => {
+                        const ids = table.getSelectedRowModel().rows.map(r => r.original.id);
+                        bulkApproveMutation.mutate({ billIds: ids, businessId });
+                    }}
+                    disabled={bulkApproveMutation.isPending}
+                >
+                    <FileCheck className="w-4 h-4 mr-2" />
+                    Authorize Batch
+                </Button>
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white font-bold">
+                    <DollarSign className="w-4 h-4 mr-1" />
+                    Batch Payment
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => setRowSelection({})} className="text-slate-400 hover:text-white">
+                    <X className="w-4 h-4" />
+                </Button>
+            </div>
         </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      )}
 
       <PaymentDialog 
         bill={selectedBill} 
         businessId={businessId}
         isOpen={paymentModalOpen} 
-        onClose={() => {
-          setPaymentModalOpen(false);
-          setSelectedBill(null);
-        }} 
+        onClose={() => { setPaymentModalOpen(false); setSelectedBill(null); }} 
       />
 
       <CreateBillModal 
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         businessId={businessId}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['bills'] });
-        }}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['bills', businessId] })}
       />
     </div>
   );

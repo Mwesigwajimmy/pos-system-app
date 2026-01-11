@@ -1,20 +1,17 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers'; // <--- ADD THIS IMPORT
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
 /**
- * ENTERPRISE ACTION: Post Vendor Bill
- * Logic: Creates the Bill, generates the Accounting Transaction, 
- * and posts double-entry lines to the General Ledger (Debit Expense / Credit AP).
+ * 1. ENTERPRISE ACTION: Post Vendor Bill
+ * Logic: Creates the Bill and initiates the General Ledger math.
  */
 export async function submitVendorBill(formData: any) {
-    // Pass cookies() as the required argument to createClient
     const cookieStore = cookies();
     const supabase = createClient(cookieStore); 
 
-    // The frontend sends raw data; the Database RPC (PostgreSQL) handles the financial complexity.
     const { data, error } = await supabase.rpc('post_vendor_bill', {
         p_business_id: formData.businessId,
         p_vendor_id: formData.vendorId,
@@ -32,15 +29,13 @@ export async function submitVendorBill(formData: any) {
         return { success: false, message: error.message };
     }
 
-    // Refresh all accounting views to show the new liability
     revalidatePath('/accounting/bills'); 
     return { success: true, billId: data };
 }
 
 /**
- * ENTERPRISE ACTION: Record Bill Payment
- * Logic: Reduces Bank/Cash balance, reduces the Accounts Payable debt, 
- * and updates the Bill status in one atomic transaction.
+ * 2. ENTERPRISE ACTION: Record Bill Payment
+ * Logic: Reduces Bank/Cash balance and AP debt atomically.
  */
 export async function postBillPayment(payload: {
     billId: string;
@@ -49,11 +44,9 @@ export async function postBillPayment(payload: {
     paymentDate: string;
     businessId: string;
 }) {
-    // Pass cookies() as the required argument to createClient
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // Call the database engine to handle the Ledger update
     const { error } = await supabase.rpc('record_bill_payment', {
         p_bill_id: payload.billId,
         p_account_id: payload.accountId,
@@ -67,7 +60,56 @@ export async function postBillPayment(payload: {
         return { success: false, message: error.message };
     }
 
-    // Revalidate paths to update the Aged Payables and Bills table instantly
     revalidatePath('/accounting/bills');
     return { success: true };
+}
+
+/**
+ * 3. ENTERPRISE ERP ACTION: Authorize & Post Bill Batch
+ * Logic: Atomically transitions bills to 'posted' and generates Ledger lines.
+ */
+export async function bulkApproveBills(payload: {
+    billIds: string[];
+    businessId: string;
+}) {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+
+    // Call the ERP Posting Engine RPC
+    const { data, error } = await supabase.rpc('authorize_bill_posting_batch', {
+        p_bill_ids: payload.billIds,
+        p_business_id: payload.businessId,
+        p_posted_by: (await supabase.auth.getUser()).data.user?.id
+    });
+
+    if (error) {
+        console.error("ERP Posting Engine Failure:", error);
+        return { success: false, message: error.message };
+    }
+
+    revalidatePath('/accounting/bills');
+    return { success: true };
+}
+
+/**
+ * 4. ENTERPRISE ACTION: Fetch Audit Trail
+ * Logic: Retrieves immutable history for compliance reporting.
+ */
+export async function getAccountingAuditLogs(businessId: string, limit = 50) {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+
+    const { data, error } = await supabase
+        .from('accounting_audit_logs')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+    if (error) {
+        console.error("Audit Trail Fetch Error:", error);
+        return [];
+    }
+
+    return data;
 }

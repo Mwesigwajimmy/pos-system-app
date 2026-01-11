@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { 
-  Loader2, Search, X, DollarSign, Filter 
+  Loader2, Search, X, DollarSign, Filter, 
+  CheckSquare, History, CheckCircle2, ShieldAlert,
+  MoreVertical, ArrowRight
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from '@/components/ui/badge';
@@ -25,19 +27,23 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
+import { Checkbox } from "@/components/ui/checkbox"; // Assuming standard shadcn checkbox
+import { cn } from "@/lib/utils";
 
-// --- Types ---
+// --- Enterprise Types ---
+
+export type InvoiceStatus = 'draft' | 'awaiting_approval' | 'approved' | 'partially_paid' | 'paid' | 'overdue';
 
 export interface Invoice {
   id: string;
   customer_name: string;
   invoice_number: string;
-  amount_due: number; // calculated as total - paid
+  amount_due: number; 
   total_amount: number;
   amount_paid: number;
   due_date: string;
   currency: string;
-  status: string;
+  status: InvoiceStatus;
   entity?: string;
   country?: string;
 }
@@ -50,7 +56,7 @@ interface AgedReceivable {
   due_61_90: number;
   due_90_plus: number;
   total: number;
-  invoices: Invoice[]; // Keep track of the actual invoices for drill-down/payment
+  invoices: Invoice[]; 
 }
 
 interface Props {
@@ -90,6 +96,7 @@ const fetchDepositAccounts = async (businessId: string) => {
     return data;
 };
 
+// Enterprise Action: Receive Payment
 const receivePayment = async (payload: { invoice_id: string; account_id: string; amount: number; payment_date: string, business_id: string }) => {
     const supabase = createClient();
     const { data, error } = await supabase.rpc('receive_invoice_payment', {
@@ -101,6 +108,19 @@ const receivePayment = async (payload: { invoice_id: string; account_id: string;
     });
     if (error) throw new Error(error.message);
     return data;
+};
+
+// Enterprise Action: Bulk Approval
+const bulkApproveInvoices = async (payload: { invoice_ids: string[], business_id: string }) => {
+    const supabase = createClient();
+    const { error } = await supabase
+        .from('accounting_invoices')
+        .update({ status: 'approved' })
+        .in('id', payload.invoice_ids)
+        .eq('business_id', payload.business_id);
+    
+    if (error) throw new Error(error.message);
+    return true;
 };
 
 // --- Sub-Component: Receive Payment Dialog ---
@@ -125,7 +145,7 @@ const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoic
     const mutation = useMutation({
         mutationFn: receivePayment,
         onSuccess: () => {
-            toast.success("Payment received successfully");
+            toast.success("Payment received & Ledger updated");
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
             onClose();
         },
@@ -151,13 +171,19 @@ const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoic
                 <DialogHeader>
                     <DialogTitle>Receive Payment</DialogTitle>
                     <DialogDescription>
-                        Receiving payment for Invoice <strong>{invoice.invoice_number}</strong> from {invoice.customer_name}.
+                        Confirm payment for <strong>{invoice.invoice_number}</strong>.
+                        {invoice.status !== 'approved' && (
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-xs flex items-center gap-2">
+                                <ShieldAlert className="w-4 h-4" />
+                                Note: This invoice is pending approval but payment can be forced by authorized users.
+                            </div>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label className="text-right">Amount Due</Label>
-                        <div className="col-span-3 font-mono">
+                        <div className="col-span-3 font-mono font-bold">
                             {new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency }).format(invoice.amount_due)}
                         </div>
                     </div>
@@ -181,7 +207,6 @@ const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoic
                             value={amount} 
                             onChange={(e) => setAmount(e.target.value)} 
                             className="col-span-3"
-                            max={invoice.amount_due}
                         />
                     </div>
                 </div>
@@ -200,9 +225,11 @@ const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoic
 // --- Main Component ---
 
 export default function AgedReceivablesTable({ initialInvoices, businessId }: Props) {
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState('');
   
-  // Interaction State
+  // Enterprise State: Selection & Workflow
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
@@ -213,7 +240,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
     initialData: initialInvoices
   });
 
-  // Aggregation Logic (Client-Side for flexibility)
+  // Aggregation Logic (Aged Buckets)
   const receivables = useMemo(() => {
     if (!invoices) return [];
     
@@ -234,7 +261,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
                 due_61_90: 0,
                 due_90_plus: 0,
                 total: 0,
-                invoices: [] // Store references
+                invoices: [] 
             };
         }
 
@@ -267,8 +294,28 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
     }).format(amount);
   };
 
+  // Bulk Action Mutation
+  const bulkApproveMutation = useMutation({
+      mutationFn: bulkApproveInvoices,
+      onSuccess: () => {
+          toast.success(`Successfully approved ${selectedInvoiceIds.length} invoices`);
+          queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          setSelectedInvoiceIds([]);
+      }
+  });
+
+  const toggleSelectRow = (ids: string[]) => {
+      setSelectedInvoiceIds(prev => {
+          const allSelected = ids.every(id => prev.includes(id));
+          if (allSelected) {
+              return prev.filter(id => !ids.includes(id));
+          } else {
+              return Array.from(new Set([...prev, ...ids]));
+          }
+      });
+  };
+
   const openPaymentForOldest = (customerRow: AgedReceivable) => {
-      // Find the oldest invoice for this customer to encourage paying off debt
       const oldest = customerRow.invoices.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
       if (oldest) {
           setSelectedInvoice(oldest);
@@ -277,93 +324,129 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
   };
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-4">
         {/* Top Controls */}
         <div className="flex items-center justify-between">
-            <div className="relative max-w-sm w-full">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Filter by customer..." 
-                    value={filter} 
-                    onChange={e => setFilter(e.target.value)} 
-                    className="pl-8" 
-                />
+            <div className="flex items-center gap-4 max-w-sm w-full">
+                <div className="relative flex-1">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search customer ledger..." 
+                        value={filter} 
+                        onChange={e => setFilter(e.target.value)} 
+                        className="pl-8" 
+                    />
+                </div>
             </div>
-            <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" /> Export Report
-            </Button>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                    <History className="mr-2 h-4 w-4" /> Audit Trail
+                </Button>
+                <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" /> Advanced Filter
+                </Button>
+            </div>
         </div>
 
-        <Card>
-        <CardHeader>
-            <CardTitle>Aging Report</CardTitle>
-            <CardDescription>
-                Overview of amounts due by customer and aging period.
-            </CardDescription>
+        <Card className="border-none shadow-lg">
+        <CardHeader className="bg-slate-50/50 border-b">
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle className="text-xl">Receivables Aging Analysis</CardTitle>
+                    <CardDescription>
+                        Monitoring liquid assets and customer credit risk exposure.
+                    </CardDescription>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Outstanding</p>
+                    <p className="text-2xl font-black text-primary">
+                        {formatCurrency(receivables.reduce((acc, r) => acc + r.total, 0), 'USD')}
+                    </p>
+                </div>
+            </div>
         </CardHeader>
-        <CardContent>
-            <ScrollArea className="h-[600px] border rounded-md">
+        <CardContent className="p-0">
+            <ScrollArea className="h-[600px]">
             <Table>
-                <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                <TableHeader className="bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
                 <TableRow>
-                    <TableHead className="w-[200px]">Customer</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead className="text-right">Current (0-30)</TableHead>
+                    <TableHead className="w-[50px]">
+                        <Checkbox 
+                            checked={selectedInvoiceIds.length > 0 && selectedInvoiceIds.length === invoices?.length}
+                            onCheckedChange={() => toggleSelectAll(invoices || [])}
+                        />
+                    </TableHead>
+                    <TableHead className="w-[200px]">Customer Entity</TableHead>
+                    <TableHead>Workflow</TableHead>
+                    <TableHead className="text-right">0-30 Days</TableHead>
                     <TableHead className="text-right text-yellow-600">31-60 Days</TableHead>
                     <TableHead className="text-right text-orange-600">61-90 Days</TableHead>
-                    <TableHead className="text-right text-red-600 font-bold">90+ Days</TableHead>
-                    <TableHead className="text-right font-bold">Total Due</TableHead>
+                    <TableHead className="text-right text-red-600 font-bold">90+ Overdue</TableHead>
+                    <TableHead className="text-right font-bold">Total Exposure</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                 {isLoading ? (
-                    <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-                        </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={9} className="h-24 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                    <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No outstanding receivables found.
-                    </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground italic">No receivables detected.</TableCell></TableRow>
                 ) : (
-                    filtered.map((r, idx) => (
-                    <TableRow key={`${r.customer}-${idx}`} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">
-                            <div className="flex flex-col">
-                                <span>{r.customer}</span>
-                                <span className="text-xs text-muted-foreground">{r.invoices.length} inv</span>
-                            </div>
-                        </TableCell>
-                        <TableCell>
-                            <Badge variant="secondary">{r.currency}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                            {r.due_0_30 > 0 ? formatCurrency(r.due_0_30, r.currency) : '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-yellow-700 bg-yellow-50/50">
-                            {r.due_31_60 > 0 ? formatCurrency(r.due_31_60, r.currency) : '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-orange-700 bg-orange-50/50">
-                            {r.due_61_90 > 0 ? formatCurrency(r.due_61_90, r.currency) : '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-red-700 bg-red-50/50 font-semibold">
-                            {r.due_90_plus > 0 ? formatCurrency(r.due_90_plus, r.currency) : '-'}
-                        </TableCell>
-                        <TableCell className="text-right font-bold">
-                            {formatCurrency(r.total, r.currency)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                            <Button size="sm" variant="ghost" onClick={() => openPaymentForOldest(r)}>
-                                <DollarSign className="h-4 w-4 mr-1 text-green-600" />
-                                <span className="text-xs">Receive</span>
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                    ))
+                    filtered.map((r, idx) => {
+                        const rowInvoiceIds = r.invoices.map(i => i.id);
+                        const isPartiallySelected = rowInvoiceIds.some(id => selectedInvoiceIds.includes(id));
+                        
+                        return (
+                            <TableRow key={`${r.customer}-${idx}`} className={cn("hover:bg-blue-50/30 transition-colors", isPartiallySelected && "bg-blue-50/50")}>
+                                <TableCell>
+                                    <Checkbox 
+                                        checked={rowInvoiceIds.every(id => selectedInvoiceIds.includes(id))}
+                                        onCheckedChange={() => toggleSelectRow(rowInvoiceIds)}
+                                    />
+                                </TableCell>
+                                <TableCell className="font-semibold">
+                                    <div className="flex flex-col">
+                                        <span>{r.customer}</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase">{r.invoices.length} Active Documents</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    {r.invoices.some(i => i.status === 'awaiting_approval') ? (
+                                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 gap-1">
+                                            <ShieldAlert className="w-3 h-3" /> Approval Req.
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Verified</Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-sm">
+                                    {r.due_0_30 > 0 ? formatCurrency(r.due_0_30, r.currency) : '-'}
+                                </TableCell>
+                                <TableCell className="text-right text-yellow-700 font-mono text-sm">
+                                    {r.due_31_60 > 0 ? formatCurrency(r.due_31_60, r.currency) : '-'}
+                                </TableCell>
+                                <TableCell className="text-right text-orange-700 font-mono text-sm">
+                                    {r.due_61_90 > 0 ? formatCurrency(r.due_61_90, r.currency) : '-'}
+                                </TableCell>
+                                <TableCell className="text-right text-red-700 font-black font-mono text-sm bg-red-50/20">
+                                    {r.due_90_plus > 0 ? formatCurrency(r.due_90_plus, r.currency) : '-'}
+                                </TableCell>
+                                <TableCell className="text-right font-bold text-primary">
+                                    {formatCurrency(r.total, r.currency)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1">
+                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openPaymentForOldest(r)}>
+                                            <DollarSign className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground">
+                                            <History className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        )
+                    })
                 )}
                 </TableBody>
             </Table>
@@ -371,7 +454,35 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
         </CardContent>
         </Card>
 
-        {/* Payment Modal */}
+        {/* --- FLOATING BULK ACTION BAR --- */}
+        {selectedInvoiceIds.length > 0 && (
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-center gap-2 border-r border-slate-700 pr-6">
+                    <CheckSquare className="w-5 h-5 text-blue-400" />
+                    <span className="text-sm font-bold">{selectedInvoiceIds.length} Items Selected</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-white hover:bg-slate-800 hover:text-green-400"
+                        onClick={() => bulkApproveMutation.mutate({ invoice_ids: selectedInvoiceIds, business_id: businessId })}
+                        disabled={bulkApproveMutation.isPending}
+                    >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Bulk Approve
+                    </Button>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white font-bold">
+                        Process Batch Payments
+                        <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => setSelectedInvoiceIds([])} className="text-slate-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+        )}
+
         <ReceivePaymentDialog 
             invoice={selectedInvoice}
             businessId={businessId}
@@ -383,4 +494,12 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
         />
     </div>
   );
+
+  function toggleSelectAll(allInvoices: Invoice[]) {
+      if (selectedInvoiceIds.length === allInvoices.length) {
+          setSelectedInvoiceIds([]);
+      } else {
+          setSelectedInvoiceIds(allInvoices.map(i => i.id));
+      }
+  }
 }
