@@ -363,7 +363,7 @@ const siteConfig = {
             fullDescription: "Centralize your property portfolio. Manage residential or commercial leases, automate rent invoicing, track maintenance requests, and view occupancy reports in one dashboard.",
             keyFeatures: ["Lease contract management", "Automated rent invoicing & collection", "Maintenance ticket tracking", "Landlord & owner statements"],
             category: 'Specialized', 
-            backgroundImage: "/images/showcase/office-admin-bbu1.jpg" 
+            backgroundImage: "/images/showcase/office-admin-bbU1.jpg" 
         },
         { 
             name: "SACCO / Co-operative", 
@@ -468,13 +468,13 @@ const ListItem = forwardRef<ElementRef<"div">, ComponentPropsWithoutRef<"div"> &
     <div
         ref={ref}
         className={cn(
-            "flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground cursor-pointer",
+            "flex items-start select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-blue-100 hover:text-blue-900 focus:bg-blue-100 focus:text-blue-900 dark:hover:bg-blue-900/30 dark:hover:text-blue-100 dark:focus:bg-blue-900/30 dark:focus:text-blue-100 cursor-pointer",
             className
         )}
         {...props}
     >
-        <div className="p-2 bg-primary/10 rounded-md mr-4 mt-1">
-            <Icon className="h-6 w-6 text-primary" />
+        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md mr-4 mt-1">
+            <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
             <div className="text-sm font-medium leading-none">{title}</div>
@@ -495,7 +495,7 @@ const AnimatedSection = ({ children, className, id }: { children: ReactNode; cla
 const Toast = ({ message, isVisible }: { message: string, isVisible: boolean }) => (
     <AnimatePresence>
         {isVisible && (
-            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[150] flex items-center gap-3 rounded-lg bg-foreground text-background p-4 shadow-2xl">
+            <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }} className="fixed bottom-6 left-6 z-[150] flex items-center gap-3 rounded-lg bg-blue-600 text-white p-4 shadow-2xl">
                 <CheckCircle className="h-6 w-6 text-green-400" />
                 <p className="font-medium">{message}</p>
             </motion.div>
@@ -531,7 +531,7 @@ const FullScreenDialog = ({ children, title, description, backgroundImage, icon:
                 <DialogHeader className="p-6 md:p-8 border-b flex-shrink-0">
                     <div className="flex justify-between items-center">
                         <DialogTitle className="text-3xl font-bold flex items-center gap-3">
-                            {Icon && <Icon className="h-8 w-8 text-primary" />} {title}
+                            {Icon && <Icon className="h-8 w-8 text-blue-600 dark:text-blue-400" />} {title}
                         </DialogTitle>
                         <DialogClose asChild>
                             <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground" onClick={onClose}>
@@ -547,7 +547,7 @@ const FullScreenDialog = ({ children, title, description, backgroundImage, icon:
                 </ScrollArea>
                 <div className="p-6 md:p-8 border-t flex-shrink-0">
                     <DialogClose asChild>
-                        <Button variant="outline" className="w-full" onClick={onClose}>Back to Main Page</Button>
+                        <Button variant="outline" className="w-full hover:border-blue-600 hover:text-blue-600" onClick={onClose}>Back to Main Page</Button>
                     </DialogClose>
                 </div>
             </div>
@@ -579,17 +579,20 @@ const MegaMenuHeader = () => {
     };
 
     return (
-        <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-primary"><Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span></Link>
+                <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-blue-600 hover:text-blue-700 transition-colors">
+                    <Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span>
+                </Link>
 
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
                         {/* Features Menu Item */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Features</NavigationMenuTrigger>
-                            <NavigationMenuContent>
-                                {/* FIXED: Responsive widths using max-w and vw to prevent overflow on laptops */}
+                            <NavigationMenuTrigger className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200">
+                                Features
+                            </NavigationMenuTrigger>
+                            <NavigationMenuContent className="bg-background/80 backdrop-blur-md border border-border/50">
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[600px] lg:w-[800px] max-w-[94vw] rounded-md">
                                     <ul className="grid gap-3 p-4 md:grid-cols-2">
                                         {siteConfig.featureSets.map((feature) => (
@@ -628,8 +631,10 @@ const MegaMenuHeader = () => {
 
                         {/* Industries Menu Item - Desktop */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Industries</NavigationMenuTrigger>
-                            <NavigationMenuContent>
+                            <NavigationMenuTrigger className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200">
+                                Industries
+                            </NavigationMenuTrigger>
+                            <NavigationMenuContent className="bg-background/80 backdrop-blur-md border border-border/50">
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[700px] lg:w-[800px] max-w-[94vw] rounded-md">
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
                                         {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
@@ -654,7 +659,7 @@ const MegaMenuHeader = () => {
                                                                 </p>
                                                                 <div className="bg-accent/50 p-6 rounded-xl border">
                                                                     <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                        <Sparkles className="h-5 w-5 text-primary" /> Key Capabilities
+                                                                        <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Key Capabilities
                                                                     </h4>
                                                                     <ul className="grid gap-3">
                                                                         {item.keyFeatures.map((feature, idx) => (
@@ -678,8 +683,10 @@ const MegaMenuHeader = () => {
 
                         {/* Platform Menu Item - Desktop */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
-                            <NavigationMenuContent>
+                            <NavigationMenuTrigger className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200">
+                                Platform
+                            </NavigationMenuTrigger>
+                            <NavigationMenuContent className="bg-background/80 backdrop-blur-md border border-border/50">
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[500px] lg:w-[600px] max-w-[94vw] rounded-md">
                                     <ul className="grid gap-3 p-4 md:grid-cols-2">
                                         {siteConfig.platformPillars.map((pillar) => (
@@ -700,14 +707,14 @@ const MegaMenuHeader = () => {
                                                             <p className="text-lg text-muted-foreground leading-relaxed">
                                                                 {pillar.fullDescription}
                                                             </p>
-                                                            <div className="bg-primary/5 p-6 rounded-xl border border-primary/20">
+                                                            <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
                                                                 <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                    <Wrench className="h-5 w-5 text-primary" /> Technical Specifications
+                                                                    <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Technical Specifications
                                                                 </h4>
                                                                 <ul className="grid gap-3">
                                                                     {pillar.technicalSpecs.map((spec, idx) => (
                                                                         <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
-                                                                            <BadgeCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                                                                            <BadgeCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                                                                             <span>{spec}</span>
                                                                         </li>
                                                                     ))}
@@ -726,7 +733,12 @@ const MegaMenuHeader = () => {
                         {/* Support Link */}
                         <NavigationMenuItem>
                             <Link href="/support" legacyBehavior passHref>
-                                <NavigationMenuLink className={navigationMenuTriggerStyle()}>Support</NavigationMenuLink>
+                                <NavigationMenuLink className={cn(
+                                    navigationMenuTriggerStyle(),
+                                    "bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
+                                )}>
+                                    Support
+                                </NavigationMenuLink>
                             </Link>
                         </NavigationMenuItem>
 
@@ -734,13 +746,18 @@ const MegaMenuHeader = () => {
                         <NavigationMenuItem>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="ghost" className={navigationMenuTriggerStyle()}>FAQ</Button>
+                                    <Button variant="ghost" className={cn(
+                                        navigationMenuTriggerStyle(),
+                                        "bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
+                                    )}>
+                                        FAQ
+                                    </Button>
                                 </DialogTrigger>
-                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbu1.jpg">
+                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbU1.jpg">
                                     <Accordion type="single" collapsible className="w-full py-4">
                                         {siteConfig.faqItems.map((faq, index) => (
                                             <AccordionItem key={index} value={`item-${index}`}>
-                                                <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                <AccordionTrigger className="text-lg text-left hover:text-blue-600">{faq.q}</AccordionTrigger>
                                                 <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
                                             </AccordionItem>
                                         ))}
@@ -754,13 +771,31 @@ const MegaMenuHeader = () => {
                 {/* Desktop Actions */}
                 <div className="hidden lg:flex items-center gap-2">
                     {deferredPrompt && (
-                        <Button variant="outline" onClick={handleInstallClick} className="flex items-center gap-1">
+                        <Button 
+                            variant="outline" 
+                            onClick={handleInstallClick} 
+                            className="flex items-center gap-1 bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                        >
                             <DownloadCloud className="h-4 w-4" /> Install App
                         </Button>
                     )}
-                    <Button variant="outline" asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
-                    <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
-                    <Button asChild><Link href="/signup">Get Started</Link></Button>
+                    <Button 
+                        variant="outline" 
+                        asChild
+                        className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                    >
+                        <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        asChild
+                        className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
+                    >
+                        <Link href="/login">Log In</Link>
+                    </Button>
+                    <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 transition-all duration-200">
+                        <Link href="/signup">Get Started</Link>
+                    </Button>
                     <ModeToggle />
                 </div>
 
@@ -768,34 +803,38 @@ const MegaMenuHeader = () => {
                 <div className="lg:hidden flex items-center gap-2">
                     <ModeToggle />
                     {deferredPrompt && (
-                        <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App">
+                        <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App" className="hover:bg-accent/20">
                             <DownloadCloud className="h-6 w-6" />
                         </Button>
                     )}
-                    <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu">{isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}</Button>
+                    <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu" className="hover:bg-accent/20">
+                        {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                    </Button>
                 </div>
             </div>
 
             {/* Mobile Menu Overlay */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background border-t absolute w-full top-16 shadow-lg z-30 max-h-[calc(100vh-4rem)] overflow-y-auto">
+                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background/95 backdrop-blur-md border-t absolute w-full top-16 shadow-lg z-30 max-h-[calc(100vh-4rem)] overflow-y-auto">
                         <div className="container mx-auto py-4 px-4 space-y-4">
                             {/* Mobile Menu Items */}
                             {/* Features */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Features</button>
+                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
+                                        Features
+                                    </button>
                                 </DialogTrigger>
                                 <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid} onClose={() => setIsMobileMenuOpen(false)}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.featureSets.map((feature) => (
                                             <Dialog key={feature.title}>
                                                 <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        {React.createElement(feature.icon, { className: "h-7 w-7 text-primary flex-shrink-0" })}
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
+                                                        {React.createElement(feature.icon, { className: "h-7 w-7 text-blue-600 dark:text-blue-400 flex-shrink-0" })}
                                                         <div>
-                                                            <h4 className="font-semibold text-xl">{feature.title}</h4>
+                                                            <h4 className="font-semibold text-xl hover:text-blue-600">{feature.title}</h4>
                                                             <p className="text-sm text-muted-foreground">{feature.description}</p>
                                                         </div>
                                                     </div>
@@ -828,17 +867,19 @@ const MegaMenuHeader = () => {
                             {/* Industries - Mobile */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Industries</button>
+                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
+                                        Industries
+                                    </button>
                                 </DialogTrigger>
                                 <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building} onClose={() => setIsMobileMenuOpen(false)}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.industryItems.map((item) => (
                                             <Dialog key={item.name}>
                                                 <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        {React.createElement(item.icon, { className: "h-7 w-7 text-primary flex-shrink-0" })}
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
+                                                        {React.createElement(item.icon, { className: "h-7 w-7 text-blue-600 dark:text-blue-400 flex-shrink-0" })}
                                                         <div>
-                                                            <h4 className="font-semibold text-xl">{item.name}</h4>
+                                                            <h4 className="font-semibold text-xl hover:text-blue-600">{item.name}</h4>
                                                             <p className="text-sm text-muted-foreground">{item.description}</p>
                                                         </div>
                                                     </div>
@@ -856,7 +897,7 @@ const MegaMenuHeader = () => {
                                                         </p>
                                                         <div className="bg-accent/50 p-6 rounded-xl border">
                                                             <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                <Sparkles className="h-5 w-5 text-primary" /> Key Capabilities
+                                                                <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Key Capabilities
                                                             </h4>
                                                             <ul className="grid gap-3">
                                                                 {item.keyFeatures.map((feature, idx) => (
@@ -878,17 +919,19 @@ const MegaMenuHeader = () => {
                             {/* Platform - Mobile */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">Platform</button>
+                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
+                                        Platform
+                                    </button>
                                 </DialogTrigger>
                                 <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud} onClose={() => setIsMobileMenuOpen(false)}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                                         {siteConfig.platformPillars.map((pillar) => (
                                             <Dialog key={pillar.title}>
                                                 <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-accent cursor-pointer">
-                                                        {React.createElement(pillar.icon, { className: "h-7 w-7 text-primary flex-shrink-0" })}
+                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
+                                                        {React.createElement(pillar.icon, { className: "h-7 w-7 text-blue-600 dark:text-blue-400 flex-shrink-0" })}
                                                         <div>
-                                                            <h4 className="font-semibold text-xl">{pillar.title}</h4>
+                                                            <h4 className="font-semibold text-xl hover:text-blue-600">{pillar.title}</h4>
                                                             <p className="text-sm text-muted-foreground">{pillar.description}</p>
                                                         </div>
                                                     </div>
@@ -904,14 +947,14 @@ const MegaMenuHeader = () => {
                                                         <p className="text-lg text-muted-foreground leading-relaxed">
                                                             {pillar.fullDescription}
                                                         </p>
-                                                        <div className="bg-primary/5 p-6 rounded-xl border border-primary/20">
+                                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
                                                             <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                <Wrench className="h-5 w-5 text-primary" /> Technical Specifications
+                                                                <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Technical Specifications
                                                             </h4>
                                                             <ul className="grid gap-3">
                                                                 {pillar.technicalSpecs.map((spec, idx) => (
                                                                     <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
-                                                                        <BadgeCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                                                                        <BadgeCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                                                                         <span>{spec}</span>
                                                                     </li>
                                                                 ))}
@@ -926,16 +969,20 @@ const MegaMenuHeader = () => {
                             </Dialog>
 
                             {/* Other links */}
-                            <Link href="/support" className="block text-lg font-medium hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Support</Link>
+                            <Link href="/support" className="block text-lg font-medium hover:text-blue-600 py-2 px-2 rounded-md hover:bg-accent/20 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                                Support
+                            </Link>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-primary w-full text-left py-2">FAQ</button>
+                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
+                                        FAQ
+                                    </button>
                                 </DialogTrigger>
-                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbu1.jpg" onClose={() => setIsMobileMenuOpen(false)}>
+                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbU1.jpg" onClose={() => setIsMobileMenuOpen(false)}>
                                     <Accordion type="single" collapsible className="w-full py-4">
                                         {siteConfig.faqItems.map((faq, index) => (
                                             <AccordionItem key={index} value={`item-${index}`}>
-                                                <AccordionTrigger className="text-lg text-left">{faq.q}</AccordionTrigger>
+                                                <AccordionTrigger className="text-lg text-left hover:text-blue-600">{faq.q}</AccordionTrigger>
                                                 <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
                                             </AccordionItem>
                                         ))}
@@ -944,9 +991,15 @@ const MegaMenuHeader = () => {
                             </Dialog>
 
                             <div className="flex flex-col gap-2 pt-4 border-t">
-                                <Button asChild><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a></Button>
-                                <Button variant="ghost" asChild><Link href="/login">Log In</Link></Button>
-                                <Button asChild><Link href="/signup">Get Started</Link></Button>
+                                <Button asChild className="hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/10 dark:hover:text-blue-400">
+                                    <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
+                                </Button>
+                                <Button variant="ghost" asChild className="hover:bg-accent/20">
+                                    <Link href="/login">Log In</Link>
+                                </Button>
+                                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 transition-all">
+                                    <Link href="/signup">Get Started</Link>
+                                </Button>
                             </div>
                         </div>
                     </motion.div>
@@ -1095,8 +1148,8 @@ const AdvancedChatWidget = () => {
                                     <div className="space-y-4">
                                         {messages.map((m: CoreMessage, i: number) => (
                                             <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
-                                                {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>}
-                                                <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background border')}>
+                                                {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" /></AvatarFallback></Avatar>}
+                                                <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-background border')}>
                                                     {m.content as string}
                                                 </div>
                                                 {m.role === 'user' && <Avatar className="h-8 w-8"><AvatarFallback>U</AvatarFallback></Avatar>}
@@ -1104,7 +1157,7 @@ const AdvancedChatWidget = () => {
                                         ))}
                                         {isLoading && (
                                             <div className="flex items-start gap-3 text-sm">
-                                                <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-primary" /></AvatarFallback></Avatar>
+                                                <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" /></AvatarFallback></Avatar>
                                                 <div className="rounded-lg p-3 max-w-[85%] bg-background border">
                                                     Aura is thinking... <Loader2 className="h-4 w-4 animate-spin inline-block ml-1" />
                                                 </div>
@@ -1135,7 +1188,7 @@ const AdvancedChatWidget = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>
+            <Button onClick={() => setIsOpen(!isOpen)} size="icon" className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95" aria-label={isOpen ? "Close AI Copilot" : "Open AI Copilot"}>
                 {isOpen ? <X className="h-7 w-7" /> : <Bot className="h-7 w-7" />}
             </Button>
         </>
@@ -1308,7 +1361,7 @@ const DynamicPricingSection = () => {
             {/* SECTION 1: Standard Pricing (Light Background) */}
             <section id="pricing" className="py-24 bg-background relative overflow-hidden">
                 {/* Background Gradient */}
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-600/30 to-transparent" />
                 
                 <div className="container mx-auto px-4 relative z-10">
                     <div className="text-center max-w-4xl mx-auto mb-16">
@@ -1325,10 +1378,10 @@ const DynamicPricingSection = () => {
                             <span className={cn("text-sm font-medium transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
                             <button 
                                 onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
-                                className="relative w-14 h-7 bg-primary/20 rounded-full p-1 transition-colors hover:bg-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                className="relative w-14 h-7 bg-blue-600/20 rounded-full p-1 transition-colors hover:bg-blue-600/30 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                             >
                                 <motion.div 
-                                    className="h-5 w-5 bg-primary rounded-full shadow-sm"
+                                    className="h-5 w-5 bg-blue-600 rounded-full shadow-sm"
                                     animate={{ x: billingCycle === 'yearly' ? 28 : 0 }}
                                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                                 />
@@ -1344,12 +1397,12 @@ const DynamicPricingSection = () => {
                     {/* Pricing Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
                         {PLANS.map((plan, index) => (
-                            <Card key={index} className={cn("flex flex-col relative transition-all duration-300", plan.highlight ? "border-primary shadow-2xl scale-105 z-10" : "border-border hover:border-primary/50")}>
+                            <Card key={index} className={cn("flex flex-col relative transition-all duration-300 hover:shadow-lg", plan.highlight ? "border-blue-600 shadow-2xl scale-105 z-10" : "border-border hover:border-blue-600/50")}>
                                 {plan.highlight && (
-                                    <div className="absolute top-0 inset-x-0 h-1 bg-primary rounded-t-xl" />
+                                    <div className="absolute top-0 inset-x-0 h-1 bg-blue-600 rounded-t-xl" />
                                 )}
                                 <CardHeader>
-                                    {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
+                                    {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
                                     <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                                     <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
                                     <div className="mt-6 flex items-baseline">
@@ -1362,7 +1415,7 @@ const DynamicPricingSection = () => {
                                 <CardContent className="flex-grow space-y-6">
                                     <div className="p-4 bg-muted/50 rounded-lg border">
                                         <p className="font-semibold flex items-center gap-2">
-                                            <Users className="h-5 w-5 text-primary" /> {plan.userLimit}
+                                            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" /> {plan.userLimit}
                                         </p>
                                     </div>
                                     <div className="space-y-3">
@@ -1374,7 +1427,7 @@ const DynamicPricingSection = () => {
                                             </li>
                                             {plan.features.map((feature, idx) => (
                                                 <li key={idx} className="flex items-start gap-3 text-sm">
-                                                    <CheckCircle className="h-5 w-5 text-primary/60 shrink-0" />
+                                                    <CheckCircle className="h-5 w-5 text-blue-600/60 shrink-0" />
                                                     <span>{feature}</span>
                                                 </li>
                                             ))}
@@ -1382,7 +1435,7 @@ const DynamicPricingSection = () => {
                                     </div>
                                 </CardContent>
                                 <CardFooter>
-                                    <Button className="w-full h-11 font-semibold" variant={plan.highlight ? "default" : "outline"} asChild>
+                                    <Button className="w-full h-11 font-semibold bg-blue-600 hover:bg-blue-700 text-white" variant={plan.highlight ? "default" : "outline"} asChild>
                                         <Link href="/signup">{plan.btnText}</Link>
                                     </Button>
                                 </CardFooter>
@@ -1430,7 +1483,7 @@ const DynamicPricingSection = () => {
                                         viewport={{ once: true }}
                                         transition={{ delay: i * 0.1 }}
                                         // MODIFIED: White bg, Slate-900 text for high contrast pop
-                                        className="group relative overflow-hidden rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-sm transition-all hover:shadow-xl hover:border-blue-500"
+                                        className="group relative overflow-hidden rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-sm transition-all hover:shadow-xl hover:border-blue-600"
                                     >
                                         {/* Subtle gradient background on hover */}
                                         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -1451,7 +1504,7 @@ const DynamicPricingSection = () => {
                                                     <span 
                                                         key={j} 
                                                         // MODIFIED: Badge styling for white background
-                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-[13px] font-medium text-slate-600 transition-colors group-hover:border-blue-200 group-hover:text-slate-900"
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-[13px] font-medium text-blue-700 transition-colors group-hover:border-blue-200 group-hover:text-blue-900"
                                                     >
                                                         <CheckCircle className="h-3 w-3 text-green-600" />
                                                         {feature}
@@ -1551,13 +1604,13 @@ const PartnerWithUsSection = () => {
         <AnimatedSection id="partner" className="bg-slate-50 dark:bg-slate-900/50 border-y relative overflow-hidden">
             {/* Background Decoration */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-10 right-10 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+                <div className="absolute top-10 right-10 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-10 left-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
             </div>
 
             <div className="container mx-auto px-4 relative z-10">
                 <div className="text-center max-w-3xl mx-auto mb-12">
-                    <span className="text-sm font-bold tracking-widest text-primary uppercase mb-2 block">Ecosystem Growth</span>
+                    <span className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-2 block">Ecosystem Growth</span>
                     <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">Partner with BBU1</h2>
                     <p className="text-lg text-muted-foreground">
                         We are building the operating system for the future of your smart business commerce. 
@@ -1568,7 +1621,7 @@ const PartnerWithUsSection = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
                     
                     {/* 1. Affiliate Card */}
-                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-500 bg-white dark:bg-slate-950">
+                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-600 bg-white dark:bg-slate-950">
                         <CardHeader>
                             <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
                                 <Megaphone className="h-7 w-7" />
@@ -1588,7 +1641,7 @@ const PartnerWithUsSection = () => {
                             {/* Dialog Trigger */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button className="w-full mt-4" variant="outline" onClick={() => setActiveTab('affiliate')}>
+                                    <Button className="w-full mt-4 hover:border-blue-600 hover:text-blue-600" variant="outline" onClick={() => setActiveTab('affiliate')}>
                                         Start Earning <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
@@ -1618,7 +1671,7 @@ const PartnerWithUsSection = () => {
                     </Card>
 
                     {/* 2. Investor Card */}
-                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500 bg-white dark:bg-slate-950">
+                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500 bg-white dark:bg-slate-950">
                         <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm">
                             OPEN ROUND
                         </div>
@@ -1641,7 +1694,7 @@ const PartnerWithUsSection = () => {
                             {/* Dialog Trigger */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button className="w-full mt-4" variant="outline" onClick={() => { setActiveTab('investor'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); }}>
+                                    <Button className="w-full mt-4 hover:border-blue-600 hover:text-blue-600" variant="outline" onClick={() => { setActiveTab('investor'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); }}>
                                         Investor Relations <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
@@ -1698,7 +1751,7 @@ const PartnerWithUsSection = () => {
                     </Card>
 
                     {/* 3. Solution Partner Card */}
-                    <Card className="hover:border-primary/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500 bg-white dark:bg-slate-950">
+                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500 bg-white dark:bg-slate-950">
                         <CardHeader>
                             <div className="h-14 w-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
                                 <GitBranch className="h-7 w-7" />
@@ -1718,7 +1771,7 @@ const PartnerWithUsSection = () => {
                             {/* Dialog Trigger */}
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button className="w-full mt-4" variant="outline" onClick={() => { setActiveTab('solution'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); }}>
+                                    <Button className="w-full mt-4 hover:border-blue-600 hover:text-blue-600" variant="outline" onClick={() => { setActiveTab('solution'); setFormData({ name: '', org: '', email: '', phone: '', details: '' }); }}>
                                         Build With Us <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
@@ -1905,7 +1958,14 @@ export default function HomePage() {
                                 </div>
                             </motion.h1>
                             <motion.p className="mt-6 text-xl leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.</motion.p>
-                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}><Button asChild size="lg"><Link href="/signup">Start Free Trial</Link></Button><Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10"><a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a></Button></motion.div>
+                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
+                                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 transition-all duration-200">
+                                    <Link href="/signup">Start Free Trial</Link>
+                                </Button>
+                                <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm hover:scale-105 transition-all duration-200">
+                                    <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a>
+                                </Button>
+                            </motion.div>
                         </motion.div>
                     </div>
                 </section>
@@ -1914,94 +1974,91 @@ export default function HomePage() {
 
                 <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
                      <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
-                    <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                        <div className="text-left">
-                            <h2 className="text-4xl font-extrabold tracking-tight mb-6">
+                    <div className="container mx-auto px-4 relative z-10">
+                        <div className="text-center mb-12 md:mb-16">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
                                 An Operating System <br /> Engineered for Growth
                             </h2>
-                            <p className="text-lg text-muted-foreground mt-2 mb-8">
+                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                                 BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.
                             </p>
-                            <ul className="space-y-6">
-                                {memoizedPlatformPillars.map((pillar, index) => (
-                                    <motion.li
-                                        key={pillar.title}
-                                        className={cn(
-                                            "flex items-center gap-4 cursor-pointer p-3 rounded-lg transition-all",
-                                            activePillarIndex === index ? "bg-primary/10 text-primary font-bold shadow-lg" : "text-muted-foreground hover:bg-accent hover:text-primary"
-                                        )}
-                                        onClick={() => setActivePillarIndex(index)}
-                                        variants={itemVariants}
-                                    >
-                                        <pillar.icon className="h-7 w-7 flex-shrink-0" />
-                                        <span className="text-xl">{pillar.title}</span>
-                                    </motion.li>
-                                ))}
-                            </ul>
                         </div>
 
-                        <div className="relative h-[450px] flex items-center justify-center">
-                            <AnimatePresence mode="wait" initial={false}>
-                                <motion.div
-                                    key={activePillarIndex}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    variants={pillarCardContentVariants}
-                                    className="absolute inset-0 flex items-center justify-center"
-                                >
-                                    <Card className="text-left h-full w-full overflow-hidden relative">
-                                        {memoizedPlatformPillars[activePillarIndex].title === "Built for Growth" ? (
-                                            <div className="relative z-10 p-8 flex flex-col justify-center h-full bg-primary/5">
-                                                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-                                                    <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
-                                                        <TrendingUp className="h-8 w-8 text-primary" />
-                                                    </div>
-                                                    <CardTitle className="text-3xl font-bold">Built for Growth</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="mt-4 flex-grow space-y-4">
-                                                    <p className="text-lg leading-relaxed text-muted-foreground">{memoizedPlatformPillars[activePillarIndex].description}</p>
-                                                    <div className="border-t pt-4 space-y-2">
-                                                        <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Scales infinitely from 1 to 100,000+ users.</p>
-                                                        <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Multi-branch & multi-country architecture.</p>
-                                                        <p className="flex items-center gap-2 font-medium"><CheckCircle className="h-5 w-5 text-green-500" /> Robust APIs for enterprise integration.</p>
-                                                    </div>
-                                                </CardContent>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
+                            <div className="space-y-4 md:space-y-6">
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={activePillarIndex}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        transition={{ duration: 0.5 }}
+                                        className="bg-card border rounded-xl p-6 shadow-sm"
+                                    >
+                                        <div className="flex items-start gap-4 mb-4">
+                                            <div className="p-3 bg-blue-600/10 rounded-lg">
+                                                {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-6 w-6 text-blue-600 dark:text-blue-400" })}
                                             </div>
-                                        ) : (
-                                            <>
-                                                <Image
-                                                    src={memoizedPlatformPillars[activePillarIndex].backgroundImage}
-                                                    alt={memoizedPlatformPillars[activePillarIndex].title}
-                                                    fill
-                                                    style={{ objectFit: 'cover' }}
-                                                    className="absolute inset-0 z-0 filter brightness-[0.3]"
-                                                    sizes="(max-width: 768px) 100vw, 50vw"
-                                                />
-                                                <div className="relative z-10 p-8 text-white flex flex-col justify-center h-full">
-                                                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-4">
-                                                        <div className="p-4 bg-primary/10 rounded-full flex-shrink-0">
-                                                            {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-8 w-8 text-primary" })}
-                                                        </div>
-                                                        <CardTitle className="text-3xl font-bold">{memoizedPlatformPillars[activePillarIndex].title}</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="mt-4 flex-grow">
-                                                        <p className="text-lg leading-relaxed">{memoizedPlatformPillars[activePillarIndex].description}</p>
-                                                    </CardContent>
-                                                </div>
-                                            </>
-                                        )}
-                                    </Card>
-                                </motion.div>
-                            </AnimatePresence>
+                                            <div>
+                                                <h3 className="text-xl font-bold">{memoizedPlatformPillars[activePillarIndex].title}</h3>
+                                                <p className="text-muted-foreground mt-2">{memoizedPlatformPillars[activePillarIndex].description}</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                </AnimatePresence>
+
+                                <div className="flex flex-wrap gap-2 md:gap-3">
+                                    {memoizedPlatformPillars.map((pillar, index) => (
+                                        <button
+                                            key={pillar.title}
+                                            onClick={() => setActivePillarIndex(index)}
+                                            className={cn(
+                                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300",
+                                                activePillarIndex === index 
+                                                    ? "bg-blue-600 text-white shadow-sm" 
+                                                    : "bg-muted hover:bg-accent text-muted-foreground hover:text-accent-foreground"
+                                            )}
+                                        >
+                                            {React.createElement(pillar.icon, { className: "h-4 w-4" })}
+                                            <span className="hidden sm:inline">{pillar.title}</span>
+                                            <span className="sm:hidden">{pillar.title.split(' ')[0]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="relative h-[300px] md:h-[400px] lg:h-[450px] rounded-xl overflow-hidden shadow-xl">
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={activePillarIndex}
+                                        initial={{ opacity: 0, scale: 1.05 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.7 }}
+                                        className="absolute inset-0"
+                                    >
+                                        <Image
+                                            src={memoizedPlatformPillars[activePillarIndex].backgroundImage}
+                                            alt={memoizedPlatformPillars[activePillarIndex].title}
+                                            fill
+                                            style={{ objectFit: 'cover' }}
+                                            className="brightness-90"
+                                            sizes="(max-width: 768px) 100vw, 50vw"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                                            <h3 className="text-xl md:text-2xl font-bold mb-2">{memoizedPlatformPillars[activePillarIndex].title}</h3>
+                                            <p className="text-sm md:text-base opacity-90">{memoizedPlatformPillars[activePillarIndex].description}</p>
+                                        </div>
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </div>
                 </section>
 
                 <AnimatedSection id="in-action" className="bg-gray-900 text-white">
-                    <div className="absolute inset-0 z-0">
-                         <Image src="/images/showcase/future-of-business-tech.jpg" alt="Global Business Technology Network" layout="fill" objectFit="cover" className="opacity-20" sizes="100vw" />
-                    </div>
+                    {/* REMOVED: Background image div */}
                     <div className="relative z-10 text-center mb-12">
                         <motion.h2 className="text-3xl sm:text-4xl font-bold text-white" variants={itemVariants}>
                             The Engine For Every business from strartup to  Enterprise, and from enterprise to generational wealth.
@@ -2043,43 +2100,24 @@ export default function HomePage() {
                         </div>
                     </motion.div>
                 </AnimatedSection>
-
-                <AnimatedSection id="partnership-promise" className="bg-background">
-                     <motion.div
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        transition={{ duration: 1.5, ease: "easeOut" }}
-                        viewport={{ once: true, amount: 0.5 }}
-                        className="text-center max-w-4xl mx-auto p-8 border rounded-2xl relative overflow-hidden"
-                     >
-                        <div className="absolute top-4 right-4">
-                            <div className="flex items-center gap-2 text-xs font-bold text-green-600 border border-green-500 bg-green-500/10 rounded-full px-3 py-1.5">
-                                <BadgeCheck className="h-5 w-5" />
-                                <span>VALUED PARTNER PROMISE</span>
-                            </div>
-                        </div>
-                        <h3 className="text-3xl font-bold tracking-tight text-primary mt-8">Your Success is Our Onboarding Mission</h3>
-                        <p className="mt-4 text-lg text-muted-foreground">
-                            We don't just sell software; we forge partnerships. From your very first day, you receive <strong className="text-foreground">complimentary, dedicated human support</strong> to ensure BBU1 is perfectly tailored to your vision. We succeed only when you do.
-                        </p>
-                     </motion.div>
-                </AnimatedSection>
                 
                 <DynamicPricingSection />
 
                 {/* --- PARTNER WITH US SECTION --- */}
                 <PartnerWithUsSection />
 
-                <AnimatedSection className="text-center">
-                    <div className="relative py-16 bg-primary text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 overflow-hidden">
-                        <h2 className="text-3xl font-bold tracking-tight">Build an Enterprise That Lasts Generations</h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-lg text-primary-foreground/80">
-                            The tools, insights, and platform to not only revolutionize your business today, but to build a durable legacy for tomorrow. Your journey to generational wealth starts here.
-                        </p>
-                        <div className="mt-8">
-                            <Button asChild size="lg" variant="secondary" className="text-primary hover:bg-white/90 scale-105 transition-transform hover:scale-110">
-                                <Link href="/signup">Start Your Free Trial & Build Your Legacy <ArrowRight className="ml-2 h-5 w-5" /></Link>
-                            </Button>
+                <AnimatedSection className="text-center py-16 md:py-20">
+                    <div className="relative py-12 md:py-16 bg-blue-600 text-white rounded-2xl shadow-2xl shadow-blue-600/30 overflow-hidden">
+                        <div className="relative z-10">
+                            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Build an Enterprise That Lasts Generations</h2>
+                            <p className="mt-4 max-w-2xl mx-auto text-lg text-white/90">
+                                The tools, insights, and platform to not only revolutionize your business today, but to build a durable legacy for tomorrow. Your journey to generational wealth starts here.
+                            </p>
+                            <div className="mt-8">
+                                <Button asChild size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100 hover:scale-105 transition-all duration-200">
+                                    <Link href="/signup">Start Your Free Trial & Build Your Legacy <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </AnimatedSection>
@@ -2094,9 +2132,9 @@ export default function HomePage() {
                     {showCookieBanner && (
                         <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
                             <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
-                                <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-primary" /> We value your privacy</CardTitle>{!isCustomizingCookies && <CardDescription>We use cookies to enhance your browsing experience. By clicking "Accept All", you consent to our use of cookies.</CardDescription>}</CardHeader>
+                                <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> We value your privacy</CardTitle>{!isCustomizingCookies && <CardDescription>We use cookies to enhance your browsing experience. By clicking "Accept All", you consent to our use of cookies.</CardDescription>}</CardHeader>
                                 {!isCustomizingCookies ? (
-                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4"><Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button><Button onClick={handleAcceptAllCookies}>Accept All</Button></CardFooter>
+                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4"><Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button><Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAcceptAllCookies}>Accept All</Button></CardFooter>
                                 ) : (
                                     <CardContent className="space-y-4 pt-0">
                                         {siteConfig.cookieCategories.map(category => (
@@ -2105,7 +2143,7 @@ export default function HomePage() {
                                                 <div className="grid gap-1.5 leading-none"><label htmlFor={category.id} className="text-sm font-medium">{category.name} {category.isRequired && <span className="text-muted-foreground text-xs">(Always Active)</span>}</label><p className="text-sm text-muted-foreground">{category.description}</p></div>
                                             </div>
                                         ))}
-                                        <div className="flex justify-end gap-2 pt-4 border-t"><Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>Back</Button><Button onClick={handleSaveCookiePreferences}>Save Preferences</Button></div>
+                                        <div className="flex justify-end gap-2 pt-4 border-t"><Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>Back</Button><Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSaveCookiePreferences}>Save Preferences</Button></div>
                                     </CardContent>
                                 )}
                             </Card>
