@@ -50,7 +50,6 @@ interface AddExpenseDialogProps {
 const expenseSchema = z.object({
   date: z.date(),
   description: z.string().min(2, "Description is required"),
-  // z.coerce allows the string input from the form to be parsed as a number
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   category_id: z.string().min(1, "Please select an expense category"),
   payment_account_id: z.string().min(1, "Please select a payment account"),
@@ -66,7 +65,6 @@ async function fetchExpenseAccounts(businessId: string) {
     .from('accounting_accounts')
     .select('id, name, code')
     .eq('business_id', businessId)
-    // Adjust 'Expense' to match your chart of accounts type strings
     .in('type', ['Expense', 'Cost of Goods Sold', 'Overhead']) 
     .eq('is_active', true)
     .order('name');
@@ -79,7 +77,7 @@ async function fetchPaymentAccounts(businessId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('accounting_accounts')
-    .select('id, name, balance, currency')
+    .select('id, name, current_balance, currency') // Changed 'balance' to 'current_balance' to match your schema results
     .eq('business_id', businessId)
     .in('type', ['Bank', 'Cash']) 
     .eq('is_active', true)
@@ -89,24 +87,26 @@ async function fetchPaymentAccounts(businessId: string) {
   return data || [];
 }
 
-async function createExpense(vars: { values: ExpenseFormValues; businessId: string; userId: string }) {
+/**
+ * ENTERPRISE INTERCONNECT:
+ * This function calls the record_enterprise_expense PostgreSQL function.
+ * It ensures the expense is linked to the General Ledger, updates account balances,
+ * and populates the reports system autonomously.
+ */
+async function createEnterpriseExpense(vars: { values: ExpenseFormValues; businessId: string; userId: string }) {
   const supabase = createClient();
   
-  const { data, error } = await supabase
-    .from('accounting_expenses')
-    .insert({
-      business_id: vars.businessId,
-      created_by: vars.userId,
-      date: format(vars.values.date, 'yyyy-MM-dd'),
-      description: vars.values.description,
-      amount: vars.values.amount,
-      expense_account_id: vars.values.category_id,
-      payment_account_id: vars.values.payment_account_id,
-      vendor_name: vars.values.vendor || null,
-      status: 'paid'
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('record_enterprise_expense', {
+    p_business_id: vars.businessId,
+    p_user_id: vars.userId,
+    p_date: format(vars.values.date, 'yyyy-MM-dd'),
+    p_description: vars.values.description,
+    p_amount: vars.values.amount,
+    p_expense_account_id: vars.values.category_id,
+    p_payment_account_id: vars.values.payment_account_id,
+    p_vendor_name: vars.values.vendor || null,
+    p_currency: 'UGX' // Adjust currency logic here if multi-currency is enabled in UI
+  });
 
   if (error) throw new Error(error.message);
   return data;
@@ -128,7 +128,6 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
     enabled: open,
   });
 
-  // FIX: Removed strict generic <ExpenseFormValues> to allow z.coerce to handle type inference correctly
   const form = useForm({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -142,15 +141,17 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
   });
 
   const mutation = useMutation({
-    mutationFn: createExpense,
+    mutationFn: createEnterpriseExpense,
     onSuccess: () => {
-      toast.success("Expense recorded successfully");
+      toast.success("Enterprise Expense Booked & Ledger Updated");
+      // Invalidate both expenses and accounts so balances refresh in UI
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
       setOpen(false);
       form.reset();
     },
     onError: (error) => {
-      toast.error(`Failed to save expense: ${error.message}`);
+      toast.error(`Accounting Error: ${error.message}`);
     },
   });
 
@@ -163,15 +164,15 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="shadow-md hover:shadow-lg transition-all">
           <Plus className="mr-2 h-4 w-4" /> Add Expense
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Record New Expense</DialogTitle>
+          <DialogTitle>Record New Enterprise Expense</DialogTitle>
           <DialogDescription>
-            Enter details for the expense. This will record the payment and update account balances.
+            Logging this expense will automatically update your General Ledger, Bank Balances, and Financial Reports.
           </DialogDescription>
         </DialogHeader>
 
@@ -184,7 +185,7 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>Transaction Date</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -226,16 +227,14 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount</FormLabel>
+                    <FormLabel>Total Amount</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
                         step="0.01" 
+                        placeholder="0.00"
                         {...field} 
-                        // Override onChange to let React Hook Form handle the raw input
-                        // z.coerce in the schema handles the string -> number conversion
                         onChange={(e) => field.onChange(e.target.value)}
-                        // FIX: Explicitly cast value to string or number to satisfy TypeScript
                         value={field.value as string | number}
                       />
                     </FormControl>
@@ -265,11 +264,11 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
                 name="category_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Expense Category</FormLabel>
+                    <FormLabel>Expense GL Account (Debit)</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger disabled={isLoadingAccounts}>
-                          <SelectValue placeholder={isLoadingAccounts ? "Loading..." : "Select Category"} />
+                          <SelectValue placeholder={isLoadingAccounts ? "Syncing Accounts..." : "Select Category"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -290,17 +289,17 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
                 name="payment_account_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Paid From</FormLabel>
+                    <FormLabel>Payment Source (Credit)</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger disabled={isLoadingAccounts}>
-                          <SelectValue placeholder={isLoadingAccounts ? "Loading..." : "Select Bank/Cash"} />
+                          <SelectValue placeholder={isLoadingAccounts ? "Syncing Banks..." : "Select Bank/Cash"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {paymentAccounts?.map((acc: any) => (
                           <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name} ({new Intl.NumberFormat('en-US', { style: 'currency', currency: acc.currency || 'USD' }).format(acc.balance)})
+                            {acc.name} ({new Intl.NumberFormat('en-US', { style: 'currency', currency: acc.currency || 'UGX' }).format(acc.current_balance || 0)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -325,13 +324,13 @@ export default function AddExpenseDialog({ businessId, userId }: AddExpenseDialo
               )}
             />
 
-            <DialogFooter>
+            <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Expense
+                Post to Ledger
               </Button>
             </DialogFooter>
           </form>
