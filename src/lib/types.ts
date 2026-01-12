@@ -1,114 +1,115 @@
-// src/lib/types.ts
-
 //==============================================================================
-// ACCOUNT TYPES
+// ENTERPRISE CORE: ACCOUNT TYPES
 // Defines the strict classification for all financial accounts in the system.
 //==============================================================================
 
 /**
- * A comprehensive set of specific identifiers for financial account categories.
- * This union type ensures data integrity and consistency across the application.
+ * A comprehensive set of identifiers for financial account categories.
+ * Updated to include professional ERP subtypes required for autonomous logic.
  */
 export type AccountType =
-  // Liquid & Cash Equivalents
+  // Assets
   | 'checking'
   | 'savings'
   | 'cash'
   | 'money_market'
-
-  // Credit Facilities
+  | 'inventory'          // Required for Warehouse interconnect
+  | 'accounts_receivable' // Required for Invoice interconnect
+  
+  // Liabilities
   | 'credit_card'
   | 'line_of_credit'
-
-  // Debt & Loan Obligations
+  | 'accounts_payable'    // Required for Bills interconnect
   | 'mortgage'
   | 'auto_loan'
   | 'student_loan'
   | 'personal_loan'
 
-  // Investment & Retirement Holdings
+  // Equity & Investments
   | 'brokerage'
   | '401k'
   | 'ira'
   | 'roth_ira'
   | 'hsa'
+  | 'equity'
 
-  // Tangible & Other Assets
+  // Revenue & Expense (P&L)
+  | 'revenue'
+  | 'expense'
+
+  // Tangible Assets
   | 'asset_property'
   | 'asset_vehicle'
-
-  // Fallback for uncategorized or miscellaneous accounts
   | 'other';
 
 /**
- * The core data structure for a financial account. It represents a single
- * source of funds or debt within the system.
+ * ENTERPRISE ACCOUNT INTERFACE
+ * Represents a single General Ledger account within a tenant's COA.
  */
-export type Account = {
-  id: string; // Using string for UUID or CUID compatibility is recommended
-  user_id: string;
-  name: string;
-  type: AccountType;
-  balance: number; // Current balance of the account in cents to avoid floating point issues
-  created_at: string; // ISO 8601 timestamp
-};
-
-
-//==============================================================================
-// TRANSACTION TYPES
-// Defines the structure for all financial transactions.
-//==============================================================================
-
-/**
- * Specifies the nature of a transaction, ensuring all financial movements
- * are correctly classified as either an inflow or an outflow.
- */
-export type TransactionType = 'income' | 'expense';
-
-/**
- * Represents a single financial transaction, which is the fundamental unit
- * of financial activity linked to an account.
- */
-export type Transaction = {
+export interface Account {
   id: string;
-  account_id: string; // Foreign key to the Account
-  user_id: string;
-  date: string; // ISO 8601 date string
+  business_id: string; // Multi-tenant isolation (Essential)
+  name: string;
+  code: string;        // FIXED: Added missing code property for ERP compliance
+  type: AccountType | string;
+  balance: number;     // Stored as decimal/numeric in DB
+  is_active: boolean;  // Control logic for UI dropdowns
+  created_at: string;
+  user_id?: string;    // Optional link to specific owner
+}
+
+
+//==============================================================================
+// TRANSACTION & LEDGER TYPES
+// Defines the structure for all financial movements.
+//==============================================================================
+
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'adjustment';
+
+export interface Transaction {
+  id: string;
+  business_id: string;
+  account_id: string;
+  date: string;
   description: string;
-  amount: number; // Stored in cents, always a positive integer
+  amount: number;
   type: TransactionType;
-  category: string; // e.g., 'Groceries', 'Utilities', 'Salary'
-  created_at: string; // ISO 8601 timestamp
-};
+  category: string;
+  reference?: string;   // Link to Invoice or Bill #
+  created_at: string;
+}
 
 
 //==============================================================================
-// BUDGET TYPES
-// Defines the structure for financial budgets.
+// BUDGETING & PERFORMANCE
+// Defines the structure for financial planning vs actuals.
 //==============================================================================
 
-/**
- * Defines the recurring time interval for a budget period.
- */
 export type BudgetPeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
-/**
- * Represents a user-defined budget for a specific spending category over a
- * defined period. It is used for tracking and planning expenses.
- */
-export type Budget = {
+export interface Budget {
   id: string;
-  user_id: string;
-  category: string; // The transaction category this budget applies to
-  amount: number; // The budgeted amount in cents
+  business_id: string;
+  name: string;
+  year: number;
+  category?: string;
+  amount: number;
   period: BudgetPeriod;
-  start_date: string; // ISO 8601 date string
-  end_date: string; // ISO 8601 date string
-  created_at: string; // ISO 8601 timestamp
-};
+  start_date: string;
+  end_date: string;
+  created_at: string;
+}
+
+
+//==============================================================================
+// SACCO MODULE TYPES (Savings and Credit Cooperative)
+// Defines the structure for cooperative financial management.
+//==============================================================================
+
 export interface SaccoMember {
   member_id: string;
-  user_id: string; // Link to auth.users
+  user_id: string;
+  business_id: string; // Linked to the Sacco organization
   full_name: string;
   member_no: string;
   status: 'Active' | 'Pending' | 'Suspended';
@@ -153,7 +154,7 @@ export interface SaccoContribution {
   id: string;
   group_id?: string;
   member_id: string;
-  period: string; // e.g., "JAN-2025"
+  period: string; 
   amount: number;
   is_remitted: boolean;
   remitted_at: string;
@@ -165,4 +166,4 @@ export interface SaccoStats {
   loanPortfolio: number;
   monthlyRevenue: number;
   liquidityRatio: number;
-};
+}

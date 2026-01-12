@@ -1,170 +1,261 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React, { useState, useTransition, useMemo } from "react";
+import { 
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter 
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { createJournalEntry } from "@/app/actions/ledger";
-import { Account } from "@/lib/types"; // Import from the centralized types file
-import { formatCurrency } from "@/lib/utils";
-
-// Re-export the Account type if needed elsewhere, though importing from lib/types is better
-export type { Account };
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
+import { 
+  PlusCircle, Trash2, BookOpen, ShieldCheck, 
+  AlertTriangle, Loader2, Landmark 
+} from 'lucide-react';
+import { submitJournalEntry } from "@/lib/actions/journal"; // The enterprise action
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface JournalLine {
-  id: number; // For React key prop
+  id: string; 
   accountId: string;
-  debit: string;
-  credit: string;
+  description: string;
+  debit: number;
+  credit: number;
 }
 
-interface CreateJournalEntryModalProps {
-  accounts: Account[];
+interface Props {
+  accounts: any[];
+  businessId: string;
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  onClose: () => void;
 }
 
-export function CreateJournalEntryModal({ accounts, isOpen, setIsOpen }: CreateJournalEntryModalProps) {
+export function CreateJournalEntryModal({ accounts, businessId, isOpen, onClose }: Props) {
   const [isPending, startTransition] = useTransition();
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [reference, setReference] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  
+  // Enterprise default: Start with a balanced pair
   const [lines, setLines] = useState<JournalLine[]>([
-    { id: 1, accountId: '', debit: '', credit: '' },
-    { id: 2, accountId: '', debit: '', credit: '' },
+    { id: '1', accountId: '', description: '', debit: 0, credit: 0 },
+    { id: '2', accountId: '', description: '', debit: 0, credit: 0 },
   ]);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleLineChange = (index: number, field: keyof JournalLine, value: string) => {
+  // 1. Double-Entry Validation Logic
+  const totals = useMemo(() => {
+    const dr = lines.reduce((sum, l) => sum + (l.debit || 0), 0);
+    const cr = lines.reduce((sum, l) => sum + (l.credit || 0), 0);
+    return { debit: dr, credit: cr, diff: dr - cr };
+  }, [lines]);
+
+  const isBalanced = Math.abs(totals.diff) < 0.01 && totals.debit > 0;
+
+  // 2. Line Modification Engine
+  const updateLine = (idx: number, field: keyof JournalLine, val: any) => {
     const newLines = [...lines];
-    const line = newLines[index];
+    const line = newLines[idx];
+
+    if (field === 'debit' && val > 0) line.credit = 0;
+    if (field === 'credit' && val > 0) line.debit = 0;
     
-    // Prevent entering both debit and credit on the same line
-    if (field === 'debit' && value) line.credit = '';
-    if (field === 'credit' && value) line.debit = '';
-    
-    (line[field] as string) = value;
+    (line as any)[field] = val;
     setLines(newLines);
   };
 
-  const addLine = () => {
-    setLines([...lines, { id: Date.now(), accountId: '', debit: '', credit: '' }]);
-  };
-
-  const removeLine = (index: number) => {
-    setLines(lines.filter((_, i) => i !== index));
-  };
-  
-  const totalDebits = lines.reduce((sum, line) => sum + Number(line.debit || 0), 0);
-  const totalCredits = lines.reduce((sum, line) => sum + Number(line.credit || 0), 0);
-  const isBalanced = totalDebits === totalCredits && totalDebits > 0;
-
-  const handleSubmit = async () => {
-    setError(null);
-    if (!isBalanced) {
-      setError("Total debits must equal total credits and cannot be zero.");
-      return;
-    }
+  // 3. Enterprise Submission Handshake
+  const handleSubmit = () => {
+    if (!isBalanced) return;
 
     startTransition(async () => {
-      const result = await createJournalEntry({
-        date,
-        description,
-        lines: lines.map(l => ({
-            accountId: l.accountId,
-            debit: Number(l.debit || 0),
-            credit: Number(l.credit || 0)
-        }))
-      });
+      try {
+        const result = await submitJournalEntry({
+          businessId,
+          date,
+          description,
+          reference,
+          lines: lines.map(l => ({
+            account_id: l.accountId,
+            description: l.description || description,
+            debit: l.debit,
+            credit: l.credit
+          }))
+        });
 
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setIsOpen(false);
-        // Reset form for next time
-        setDescription('');
-        setLines([
-            { id: 1, accountId: '', debit: '', credit: '' },
-            { id: 2, accountId: '', debit: '', credit: '' },
-        ]);
+        if (result.success) {
+          toast.success("Journal Entry Posted Successfully");
+          onClose();
+          resetForm();
+        } else {
+          toast.error(result.message);
+        }
+      } catch (err) {
+        toast.error("Critical Ledger Connection Error");
       }
     });
   };
 
+  const resetForm = () => {
+    setDescription('');
+    setReference('');
+    setLines([
+      { id: '1', accountId: '', description: '', debit: 0, credit: 0 },
+      { id: '2', accountId: '', description: '', debit: 0, credit: 0 },
+    ]);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[850px]">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-5xl border-t-8 border-t-blue-600 shadow-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Journal Entry</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-2xl">
+            <Landmark className="w-6 h-6 text-blue-600" />
+            Record General Journal Entry
+          </DialogTitle>
           <DialogDescription>
-            Record a transaction. Ensure that total debits equal total credits.
+            Authorized ledger modification. Every entry must be balanced according to GAAP standards.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            <div className="flex gap-4">
-                <div className="grid w-1/3 items-center gap-1.5">
-                    <Label htmlFor="date">Date</Label>
-                    <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-                </div>
-                <div className="grid w-2/3 items-center gap-1.5">
-                    <Label htmlFor="description">Description</Label>
-                    <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g., Monthly office rent" />
-                </div>
+        {/* Header Metadata */}
+        <div className="grid grid-cols-3 gap-6 py-6 bg-slate-50 border rounded-xl px-4">
+            <div className="space-y-2">
+                <Label className="text-xs font-black uppercase text-slate-500">Posting Date</Label>
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-white" />
             </div>
-            
-            <div className="grid grid-cols-12 gap-2 items-center font-medium text-sm text-muted-foreground px-2">
-                <div className="col-span-5">Account</div>
-                <div className="col-span-3 text-right">Debit</div>
-                <div className="col-span-3 text-right">Credit</div>
+            <div className="space-y-2">
+                <Label className="text-xs font-black uppercase text-slate-500">Document Reference</Label>
+                <Input placeholder="JE-2024-XXXX" value={reference} onChange={(e) => setReference(e.target.value)} className="bg-white" />
+            </div>
+            <div className="space-y-2">
+                <Label className="text-xs font-black uppercase text-slate-500">Master Narrative</Label>
+                <Input placeholder="Reason for entry..." value={description} onChange={(e) => setDescription(e.target.value)} className="bg-white" />
+            </div>
+        </div>
+
+        {/* Lines Entry Table */}
+        <div className="space-y-3 mt-4">
+            <div className="grid grid-cols-12 gap-4 px-2 text-[10px] font-black uppercase text-slate-400">
+                <div className="col-span-4">Account Account</div>
+                <div className="col-span-3">Line Memo</div>
+                <div className="col-span-2 text-right">Debit</div>
+                <div className="col-span-2 text-right">Credit</div>
                 <div className="col-span-1"></div>
             </div>
 
-            {lines.map((line, index) => (
-                <div key={line.id} className="grid grid-cols-12 gap-2 items-center">
-                    <div className="col-span-5">
-                        <Select value={line.accountId} onValueChange={(value) => handleLineChange(index, 'accountId', value)}>
-                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                            <SelectContent>
-                                {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+            <div className="max-h-[350px] overflow-y-auto space-y-2 pr-2">
+                {lines.map((line, index) => (
+                    <div key={line.id} className="grid grid-cols-12 gap-3 items-center group">
+                        <div className="col-span-4">
+                            <Select value={line.accountId} onValueChange={(v) => updateLine(index, 'accountId', v)}>
+                                <SelectTrigger className="bg-white shadow-sm border-slate-200">
+                                    <SelectValue placeholder="Search COA..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {accounts.map(acc => (
+                                        <SelectItem key={acc.id} value={acc.id}>
+                                            <span className="font-mono text-xs text-muted-foreground mr-2">[{acc.code}]</span>
+                                            {acc.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="col-span-3">
+                            <Input 
+                                placeholder={description || "Line detail..."} 
+                                value={line.description} 
+                                onChange={(e) => updateLine(index, 'description', e.target.value)} 
+                                className="bg-white"
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <Input 
+                                type="number" 
+                                step="0.01"
+                                className="text-right font-mono font-bold text-blue-700 bg-white" 
+                                value={line.debit || ''} 
+                                onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value))} 
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <Input 
+                                type="number" 
+                                step="0.01"
+                                className="text-right font-mono font-bold text-red-700 bg-white" 
+                                value={line.credit || ''} 
+                                onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value))} 
+                            />
+                        </div>
+                        <div className="col-span-1 text-right">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setLines(lines.filter((_, i) => i !== index))} 
+                                disabled={lines.length <= 2}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </div>
                     </div>
-                    <div className="col-span-3">
-                        <Input type="number" placeholder="0.00" className="text-right" value={line.debit} onChange={(e) => handleLineChange(index, 'debit', e.target.value)} />
-                    </div>
-                    <div className="col-span-3">
-                        <Input type="number" placeholder="0.00" className="text-right" value={line.credit} onChange={(e) => handleLineChange(index, 'credit', e.target.value)} />
-                    </div>
-                    <div className="col-span-1 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => removeLine(index)} disabled={lines.length <= 2}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    </div>
-                </div>
-            ))}
-             <Button variant="outline" size="sm" onClick={addLine} className="mt-2"><PlusCircle className="mr-2 h-4 w-4"/>Add Line</Button>
+                ))}
+            </div>
+
+             <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLines([...lines, { id: Math.random().toString(), accountId: '', description: '', debit: 0, credit: 0 }])} 
+                className="mt-2 border-dashed"
+             >
+                <PlusCircle className="mr-2 h-4 w-4"/> Add Journal Line
+             </Button>
         </div>
         
-        <div className="flex justify-between items-center pt-4 border-t">
-            <div className="text-sm">
-                <div className="font-bold">Totals</div>
-                <div>Debits: <span className="font-mono">{formatCurrency(totalDebits, 'USD')}</span></div>
-                <div>Credits: <span className="font-mono">{formatCurrency(totalCredits, 'USD')}</span></div>
+        {/* The Enterprise Summary & Balance Bar */}
+        <div className="flex justify-between items-center p-6 bg-slate-900 rounded-2xl mt-6 shadow-xl border border-slate-700">
+            <div className="flex gap-12 text-white">
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-slate-500">Total Debits</p>
+                    <p className="font-mono text-xl font-bold">{totals.debit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-slate-500">Total Credits</p>
+                    <p className="font-mono text-xl font-bold">{totals.credit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
             </div>
-            <div className={`font-bold text-lg p-2 rounded-md ${isBalanced ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'}`}>
-                {isBalanced ? "Balanced" : "Unbalanced"}
+
+            <div className={cn(
+                "flex items-center gap-3 px-6 py-3 rounded-xl border-2 transition-all duration-300",
+                isBalanced ? "bg-green-500/10 border-green-500 text-green-400" : "bg-red-500/10 border-red-500 text-red-400 animate-pulse"
+            )}>
+                {isBalanced ? <ShieldCheck className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                <div className="flex flex-col">
+                    <span className="text-xs font-black uppercase tracking-widest">{isBalanced ? "Balanced" : "Out of Balance"}</span>
+                    {!isBalanced && <span className="text-[10px] font-mono">Offset: {totals.diff.toFixed(2)}</span>}
+                </div>
             </div>
         </div>
 
-        {error && <p className="text-sm text-destructive text-center">{error}</p>}
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!isBalanced || isPending}>
-            {isPending ? "Saving..." : "Save Entry"}
+        <DialogFooter className="bg-slate-50 -mx-6 -mb-6 p-6 rounded-b-2xl border-t mt-4">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={!isBalanced || isPending}
+            className="px-10 bg-blue-700 hover:bg-blue-800 shadow-lg"
+          >
+            {isPending ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Posting to Ledger...
+                </>
+            ) : (
+                "Post Journal Entry"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
