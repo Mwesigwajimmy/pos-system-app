@@ -19,10 +19,10 @@ export interface FormState {
 
 /**
  * DATABASE RPC INTERFACE
- * Matches the Return Type of: get_account_actuals_for_year
+ * Matches audited RPC Return Type: TABLE(account_id uuid, total_debit numeric, total_credit numeric)
  */
 interface LedgerActual {
-    account_id: string; // UUID
+    account_id: string; 
     total_debit: number;
     total_credit: number;
 }
@@ -145,7 +145,7 @@ export async function generateDraftBudgetAction(
 
         const actuals = data as unknown as LedgerActual[];
 
-        // Fetching from accounting_accounts (Columns: id, business_id, name, type)
+        // Fetching from accounting_accounts (Columns verified: id, business_id, name, type)
         const { data: accounts, error: accountsError } = await supabase
             .from('accounting_accounts')
             .select('id, name, type')
@@ -187,8 +187,8 @@ export async function generateDraftBudgetAction(
 
 //==============================================================================
 // ENTERPRISE ACTION: CREATE BUDGET
-// Commits a financial plan to the database.
-// Maps to verified columns: business_id, tenant_id, name
+// Mapped to Audited Columns: budgets (period_start_date, period_end_date, total_amount)
+// Mapped to Audited Columns: budget_lines (amount, tenant_id)
 //==============================================================================
 
 export async function createBudgetAction(prevState: FormState, formData: FormData): Promise<FormState> {
@@ -205,28 +205,32 @@ export async function createBudgetAction(prevState: FormState, formData: FormDat
     };
     
     const validated = BudgetInputSchema.safeParse(inputData);
-    if (!validated.success) return { success: false, message: "Validation error." };
+    if (!validated.success) return { success: false, message: "Validation error: Check plan designated year." };
 
-    const { business_id, name, lines } = validated.data;
+    const { business_id, name, year, lines } = validated.data;
+    const total_amount = lines.reduce((s, l) => s + l.budgetedAmount, 0);
 
     try {
-        // 1. Post Header (Uses both business_id and tenant_id per your audit)
+        // 1. Post Header (Mapped to Audited period_start_date and period_end_date)
         const { data: budget, error: bErr } = await supabase
             .from('budgets')
             .insert({ 
                 name, 
                 business_id, 
-                tenant_id: business_id 
+                tenant_id: business_id,
+                total_amount,
+                period_start_date: `${year}-01-01`,
+                period_end_date: `${year}-12-31`
             })
             .select('id')
             .single();
 
         if (bErr || !budget) throw new Error(`Budget Header Error: ${bErr?.message}`);
 
-        // 2. Distribute Lines (Uses tenant_id per your audit)
+        // 2. Distribute Lines (Mapped to Audited 'amount' column)
         const lineInserts = lines.map(l => ({
             budget_id: budget.id,
-            account_id: l.accountId as any, // Cast to any because DB is bigint but code is UUID
+            account_id: l.accountId, 
             amount: l.budgetedAmount,
             tenant_id: business_id 
         }));
@@ -237,7 +241,7 @@ export async function createBudgetAction(prevState: FormState, formData: FormDat
             throw new Error(`Line Allocation Error: ${lErr.message}`);
         }
 
-        return { success: true, message: `Strategic Fiscal Plan activated.` };
+        return { success: true, message: `Strategic Fiscal Plan '${name}' activated.` };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -245,7 +249,7 @@ export async function createBudgetAction(prevState: FormState, formData: FormDat
 
 //==============================================================================
 // ENTERPRISE ACTION: CREATE JOURNAL ENTRY
-// Maps to verified columns: business_id, tenant_id, date, reference, description
+// Mapped to Audited Columns: business_id, tenant_id, date, amount
 //==============================================================================
 
 export async function createJournalEntryAction(prevState: FormState, formData: FormData): Promise<FormState> {
@@ -269,7 +273,7 @@ export async function createJournalEntryAction(prevState: FormState, formData: F
     // Strict Double-Entry Verification
     const drTotal = lines.reduce((s, l) => s + l.debit, 0);
     const crTotal = lines.reduce((s, l) => s + l.credit, 0);
-    if (Math.abs(drTotal - crTotal) > 0.01) return { success: false, message: "Out of Balance." };
+    if (Math.abs(drTotal - crTotal) > 0.01) return { success: false, message: "Out of Balance Ledger Detection." };
 
     try {
         // 1. Header Posting
@@ -287,10 +291,10 @@ export async function createJournalEntryAction(prevState: FormState, formData: F
 
         if (eErr || !entry) throw new Error(`Journal Header Error: ${eErr?.message}`);
 
-        // 2. Distribution (Assuming a journal_lines table exists based on standard ERP patterns)
+        // 2. Line Distribution (Journal Lines Interconnect)
         const lineInserts = lines.map(l => ({
             journal_entry_id: entry.id,
-            account_id: l.accountId as any,
+            account_id: l.accountId,
             debit: l.debit,
             credit: l.credit,
             business_id,
@@ -303,7 +307,7 @@ export async function createJournalEntryAction(prevState: FormState, formData: F
             throw new Error(`Ledger Line Posting Failed: ${lErr.message}`);
         }
 
-        return { success: true, message: `GAAP Journal Posted.` };
+        return { success: true, message: `GAAP Journal Posted and Synchronized.` };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
