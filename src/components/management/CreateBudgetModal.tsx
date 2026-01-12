@@ -96,7 +96,7 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
     const [isOpen, setIsOpen] = useState(false);
     const [step, setStep] = useState(1);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear() - 1);
+    const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear()); 
     const [growthFactor, setGrowthFactor] = useState(10);
     const formRef = useRef<HTMLFormElement>(null);
 
@@ -144,11 +144,14 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
         }
     }, [formState, reset]);
 
-    // 4. AI Strategic Projection (FIXED ARGUMENT COUNT)
+    // 4. AI Strategic Projection
     const handleGenerateDraft = async () => {
         setIsGenerating(true);
         try {
-            // FIXED: Passing businessId as the 1st argument to satisfy the Enterprise Action signature
+            /**
+             * FIXED: Added businessId as the first argument to satisfy 
+             * the Enterprise Action signature in lib/actions.ts.
+             */
             const result = await generateDraftBudgetAction(businessId, historicalYear, growthFactor);
             
             if (result.success && result.data) {
@@ -237,6 +240,7 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
                                         <Select value={String(historicalYear)} onValueChange={(val) => setHistoricalYear(Number(val))}>
                                             <SelectTrigger className="bg-white h-12 font-bold"><SelectValue /></SelectTrigger>
                                             <SelectContent>
+                                                <SelectItem value={String(new Date().getFullYear())} className="font-bold">{new Date().getFullYear()} Current Ledger History</SelectItem>
                                                 <SelectItem value={String(new Date().getFullYear() - 1)} className="font-bold">{new Date().getFullYear() - 1} Actual Ledger History</SelectItem>
                                                 <SelectItem value={String(new Date().getFullYear() - 2)} className="font-bold">{new Date().getFullYear() - 2} Actual Ledger History</SelectItem>
                                             </SelectContent>

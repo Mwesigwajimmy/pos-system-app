@@ -15,11 +15,11 @@ import { InvoicesDataTable, InvoiceData } from '@/components/invoicing/InvoicesD
 // --- Types ---
 // This ensures we know exactly what we are looking for in the DB
 interface DatabaseInvoice {
-    id: string;
+    id: any; // Using any to handle the transition from bigint to string safely
     invoice_number: string | null;
     customer_name: string | null;
-    total: number | null;
-    balance_due: number | null;
+    total_amount: number | null; // Mapped to the Enterprise View column
+    amount_due: number | null;   // Mapped to the Enterprise View column
     currency: string | null;
     status: string | null;
     issue_date: string | null;
@@ -70,26 +70,14 @@ export default async function InvoicesListPage({ params: { locale } }: { params:
         );
     }
 
-    const tenantId = profile.business_id;
+    const businessId = profile.business_id;
 
     // 4. Enterprise Data Fetching
-    // We fetch EVERYTHING needed for the dashboard in one request.
+    // UPDATED: Now queries the Interconnect View 'accounting_invoices' to close the communication gap.
     const { data: rawData, error: dbError } = await supabase
-        .from('invoices')
-        .select(`
-            id,
-            invoice_number,
-            customer_name,
-            total,
-            balance_due,
-            currency,
-            status,
-            issue_date,
-            due_date,
-            items_data,
-            created_at
-        `)
-        .eq('tenant_id', tenantId) // <--- CRITICAL SECURITY FILTER
+        .from('accounting_invoices') 
+        .select('*')
+        .eq('business_id', businessId) 
         .order('created_at', { ascending: false });
 
     // Handle Database Connection Errors
@@ -113,18 +101,19 @@ export default async function InvoicesListPage({ params: { locale } }: { params:
     // 5. Data Transformation & Normalization
     // Convert raw DB nulls into safe defaults (0, "", etc.) so the UI never crashes.
     const invoices: InvoiceData[] = (rawData || []).map((inv: any) => ({
-        id: inv.id,
-        invoice_number: inv.invoice_number || `DRAFT-${inv.id.slice(0,4)}`,
+        id: String(inv.id),
+        // FIX: Ensured id is converted to string before calling .slice() to prevent server crash
+        invoice_number: inv.invoice_number || `DRAFT-${String(inv.id).slice(0,4)}`,
         customer_name: inv.customer_name || 'Unknown Client',
-        // Convert High Precision Decimals to standard JS Numbers
-        total: Number(inv.total) || 0,
-        balance_due: Number(inv.balance_due) || 0,
+        // Mapped from Enterprise View columns (total_amount and amount_due)
+        total: Number(inv.total_amount) || 0,
+        balance_due: Number(inv.amount_due) || 0,
         currency: inv.currency || 'UGX',
         status: inv.status || 'draft',
         // Handle dates safely
-        issue_date: inv.issue_date || new Date().toISOString(),
+        issue_date: inv.created_at || new Date().toISOString(),
         due_date: inv.due_date || null,
-        // Calculate items count from JSONB
+        // Calculate items count from JSONB if it exists
         items_count: Array.isArray(inv.items_data) ? inv.items_data.length : 0,
     }));
 
@@ -134,16 +123,16 @@ export default async function InvoicesListPage({ params: { locale } }: { params:
             {/* Header Section */}
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        Invoices
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase">
+                        Invoice Registry
                     </h2>
                     <p className="text-sm text-gray-500">
-                        Manage financial records for <span className="font-semibold text-primary">Current Organization</span>
+                        Authorized ledger records for <span className="font-semibold text-primary">Interconnected Tenant</span>
                     </p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm">
-                        <RefreshCw className="mr-2 h-4 w-4" /> Sync
+                        <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                     </Button>
                     <Button asChild className="shadow-lg">
                         <Link href="/invoicing/create">

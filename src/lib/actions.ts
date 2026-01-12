@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { sendSystemEmail } from './email';
+import { revalidatePath } from 'next/cache';
 
 /**
  * ENTERPRISE CORE: FORM STATE
@@ -47,9 +48,9 @@ const BudgetLineSchema = z.object({
 
 const BudgetInputSchema = z.object({
     business_id: z.string().uuid("Invalid Business context."),
-    name: z.string().min(3, "Designation must be at least 3 characters."),
+    name: z.string().min(3, "Strategic designation must be at least 3 characters."),
     year: z.coerce.number().int().min(2020).max(2100),
-    lines: z.array(BudgetLineSchema).min(1, "At least one account mapping is required."),
+    lines: z.array(BudgetLineSchema).min(1, "A budget blueprint must contain at least one account mapping."),
 });
 
 const JournalLineActionSchema = z.object({
@@ -63,7 +64,7 @@ const JournalEntryInputSchema = z.object({
     business_id: z.string().uuid(),
     date: z.string().refine((val) => !isNaN(new Date(val).getTime()), { message: "Invalid GAAP posting date." }),
     description: z.string().min(5, "A descriptive narrative is required for audit trails."),
-    lines: z.array(JournalLineActionSchema).min(2, "Entries require at least two lines (Double-Entry)."), 
+    lines: z.array(JournalLineActionSchema).min(2, "Journal entries require at least two lines for double-entry balance."), 
 });
 
 //==============================================================================
@@ -92,7 +93,7 @@ export async function inviteAuditorAction(prevState: FormState, formData: FormDa
         .eq('id', user.id)
         .single();
 
-    if (!profile?.business_id) return { success: false, message: "Tenant context not found." };
+    if (!profile?.business_id) return { success: false, message: "Tenant context not found. Contact administrator." };
 
     const token = crypto.randomUUID();
     const { error: insertError } = await supabase
@@ -105,7 +106,7 @@ export async function inviteAuditorAction(prevState: FormState, formData: FormDa
             status: 'pending' 
         });
 
-    if (insertError) return { success: false, message: "Database Error: Failed to generate invitation record." };
+    if (insertError) return { success: false, message: "Database Integrity Error: Failed to generate invitation." };
 
     const NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const invitationLink = `${NEXT_PUBLIC_BASE_URL}/auth/accept-auditor?token=${token}&email=${encodeURIComponent(email)}`;
@@ -114,17 +115,18 @@ export async function inviteAuditorAction(prevState: FormState, formData: FormDa
         await sendSystemEmail({ 
             to: email, 
             subject: `Secure Audit Access Request`, 
-            bodyHtml: `<h3>Financial Audit Invitation</h3><p>Access Link: <a href="${invitationLink}">Accept Invitation</a></p>` 
+            bodyHtml: `<h3>Enterprise Financial Audit Invitation</h3><p>Access Link: <a href="${invitationLink}">Accept Invitation</a></p>` 
         });
         return { success: true, message: `Secure invitation dispatched to ${email}.` };
     } catch (e: any) {
-        return { success: true, message: `Invitation recorded, but email failed to send.` };
+        return { success: true, message: `Invitation record created, but SMTP service failed.` };
     }
 }
 
 //==============================================================================
 // ENTERPRISE ACTION: GENERATE STRATEGIC DRAFT
 // High-Precision Forecaster utilizing real-time Ledger actuals via RPC.
+// FIXED: Signature aligned to 3 arguments (businessId, historicalYear, growthFactor).
 //==============================================================================
 
 export async function generateDraftBudgetAction(
@@ -135,7 +137,7 @@ export async function generateDraftBudgetAction(
     const supabase = createClient(cookies());
     
     try {
-        // FIXED: Stable typing for RPC to resolve the "2 type arguments" build error
+        // High-performance RPC call using audited schema signature
         const { data, error: actualsError } = await supabase.rpc('get_account_actuals_for_year', { 
             p_business_id: businessId, 
             p_year: historicalYear 
@@ -145,7 +147,7 @@ export async function generateDraftBudgetAction(
 
         const actuals = data as unknown as LedgerActual[];
 
-        // Fetching from accounting_accounts (Columns verified: id, business_id, name, type)
+        // Sync with verified accounting_accounts table
         const { data: accounts, error: accountsError } = await supabase
             .from('accounting_accounts')
             .select('id, name, type')
@@ -156,7 +158,7 @@ export async function generateDraftBudgetAction(
 
         const multiplier = 1 + (growthFactor / 100);
 
-        // APPLY GAAP-COMPLIANT FORECAST LOGIC
+        // GAAP-COMPLIANT FORECAST LOGIC
         const draftLines = accounts.map(acc => {
             const ledger = actuals?.find(a => a.account_id === acc.id);
             const dr = Number(ledger?.total_debit) || 0;
@@ -165,7 +167,7 @@ export async function generateDraftBudgetAction(
             let baseMovement = 0;
             const type = acc.type.toLowerCase();
             
-            // SIGN LOGIC: Revenue is CR-DR, Expenses are DR-CR
+            // SIGN LOGIC: Revenue/Income is CR-DR, Expenses are DR-CR
             if (type === 'revenue' || type === 'income') baseMovement = cr - dr;
             else baseMovement = dr - cr;
 
@@ -179,22 +181,21 @@ export async function generateDraftBudgetAction(
             };
         });
 
-        return { success: true, message: "Strategic draft projected.", data: draftLines };
+        return { success: true, message: "Strategic draft projected based on actual ledger history.", data: draftLines };
     } catch (e: any) {
-        return { success: false, message: e.message };
+        return { success: false, message: `Strategic Forecast Error: ${e.message}` };
     }
 }
 
 //==============================================================================
 // ENTERPRISE ACTION: CREATE BUDGET
-// Mapped to Audited Columns: budgets (period_start_date, period_end_date, total_amount)
-// Mapped to Audited Columns: budget_lines (amount, tenant_id)
+// Mapped exactly to audited database columns for 'budgets' and 'budget_lines'.
 //==============================================================================
 
 export async function createBudgetAction(prevState: FormState, formData: FormData): Promise<FormState> {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Authorization required." };
+    if (!user) return { success: false, message: "Authentication restricted: Session expired." };
 
     const rawLines = formData.get('lines');
     const inputData = {
@@ -205,13 +206,13 @@ export async function createBudgetAction(prevState: FormState, formData: FormDat
     };
     
     const validated = BudgetInputSchema.safeParse(inputData);
-    if (!validated.success) return { success: false, message: "Validation error: Check plan designated year." };
+    if (!validated.success) return { success: false, message: "Validation error: Check plan designation and lines." };
 
     const { business_id, name, year, lines } = validated.data;
     const total_amount = lines.reduce((s, l) => s + l.budgetedAmount, 0);
 
     try {
-        // 1. Post Header (Mapped to Audited period_start_date and period_end_date)
+        // 1. Post Header: Mapped to audited columns (period_start_date, total_amount, tenant_id)
         const { data: budget, error: bErr } = await supabase
             .from('budgets')
             .insert({ 
@@ -220,28 +221,32 @@ export async function createBudgetAction(prevState: FormState, formData: FormDat
                 tenant_id: business_id,
                 total_amount,
                 period_start_date: `${year}-01-01`,
-                period_end_date: `${year}-12-31`
+                period_end_date: `${year}-12-31`,
+                year: year 
             })
             .select('id')
             .single();
 
         if (bErr || !budget) throw new Error(`Budget Header Error: ${bErr?.message}`);
 
-        // 2. Distribute Lines (Mapped to Audited 'amount' column)
+        // 2. Post Lines: Mapped to audited columns (amount, tenant_id, account_id)
         const lineInserts = lines.map(l => ({
             budget_id: budget.id,
             account_id: l.accountId, 
             amount: l.budgetedAmount,
-            tenant_id: business_id 
+            tenant_id: business_id,
+            business_id: business_id
         }));
 
         const { error: lErr } = await supabase.from('budget_lines').insert(lineInserts);
         if (lErr) {
-            await supabase.from('budgets').delete().eq('id', budget.id);
+            await supabase.from('budgets').delete().eq('id', budget.id); // Rollback
             throw new Error(`Line Allocation Error: ${lErr.message}`);
         }
 
-        return { success: true, message: `Strategic Fiscal Plan '${name}' activated.` };
+        revalidatePath('/management/budgets');
+        revalidatePath('/professional-services/budgets');
+        return { success: true, message: `Strategic budget blueprint '${name}' activated.` };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
@@ -249,13 +254,14 @@ export async function createBudgetAction(prevState: FormState, formData: FormDat
 
 //==============================================================================
 // ENTERPRISE ACTION: CREATE JOURNAL ENTRY
-// Mapped to Audited Columns: business_id, tenant_id, date, amount
+// Points to 'accounting_transactions' and 'accounting_journal_entries' 
+// for total system interconnectivity.
 //==============================================================================
 
 export async function createJournalEntryAction(prevState: FormState, formData: FormData): Promise<FormState> {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Authorization required." };
+    if (!user) return { success: false, message: "Authorization required for ledger posting." };
 
     const rawLines = formData.get('lines');
     const input = {
@@ -266,48 +272,49 @@ export async function createJournalEntryAction(prevState: FormState, formData: F
     };
 
     const validated = JournalEntryInputSchema.safeParse(input);
-    if (!validated.success) return { success: false, message: "Journal entry schema invalid." };
+    if (!validated.success) return { success: false, message: "Journal entry schema validation failed." };
 
     const { business_id, date, description, lines } = validated.data;
 
-    // Strict Double-Entry Verification
+    // GAAP Compliance: Balanced Double-Entry Check
     const drTotal = lines.reduce((s, l) => s + l.debit, 0);
     const crTotal = lines.reduce((s, l) => s + l.credit, 0);
-    if (Math.abs(drTotal - crTotal) > 0.01) return { success: false, message: "Out of Balance Ledger Detection." };
+    if (Math.abs(drTotal - crTotal) > 0.01) return { success: false, message: "Ledger out of balance: Double-entry mismatch detected." };
 
     try {
-        // 1. Header Posting
+        // 1. Post Header: accounting_transactions (Interconnected ERP Table)
         const { data: entry, error: eErr } = await supabase
-            .from('journal_entries')
+            .from('accounting_transactions')
             .insert({ 
                 date, 
                 description, 
                 business_id, 
-                tenant_id: business_id,
-                status: 'POSTED',
-                amount: drTotal
+                state: 'posted',
+                created_by: user.id
             })
             .select('id').single();
 
-        if (eErr || !entry) throw new Error(`Journal Header Error: ${eErr?.message}`);
+        if (eErr || !entry) throw new Error(`Strategic Header Error: ${eErr?.message}`);
 
-        // 2. Line Distribution (Journal Lines Interconnect)
+        // 2. Post Lines: accounting_journal_entries (Distribution Table)
         const lineInserts = lines.map(l => ({
-            journal_entry_id: entry.id,
+            transaction_id: entry.id,
             account_id: l.accountId,
             debit: l.debit,
             credit: l.credit,
             business_id,
-            tenant_id: business_id
+            description: l.description || description
         }));
 
-        const { error: lErr } = await supabase.from('journal_lines').insert(lineInserts);
+        const { error: lErr } = await supabase.from('accounting_journal_entries').insert(lineInserts);
         if (lErr) {
-            await supabase.from('journal_entries').delete().eq('id', entry.id);
-            throw new Error(`Ledger Line Posting Failed: ${lErr.message}`);
+            await supabase.from('accounting_transactions').delete().eq('id', entry.id); // Rollback
+            throw new Error(`Ledger Distribution Error: ${lErr.message}`);
         }
 
-        return { success: true, message: `GAAP Journal Posted and Synchronized.` };
+        revalidatePath('/accounting/ledger');
+        revalidatePath('/accounting/journal');
+        return { success: true, message: `GAAP Journal Posted and Synchronized with Master Ledger.` };
     } catch (e: any) {
         return { success: false, message: e.message };
     }
