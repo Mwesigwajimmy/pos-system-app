@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Card, CardContent } from "@/components/ui/card";
-import { Database, ShieldCheck, Info, Globe, Scale } from 'lucide-react';
+import { Database, ShieldCheck, Info, Globe, Scale, BrainCircuit } from 'lucide-react';
 import AuditIngestionPortal from "@/components/audit/AuditIngestionPortal";
 
 export const metadata: Metadata = {
-  title: "Sovereign Audit Sandbox | Autonomous Global Compliance",
-  description: "High-capacity historical data ingestion with autonomous jurisdictional tax verification and mathematical ledger sealing.",
+  title: "Sovereign Audit Sandbox | Dual-Core Global Compliance",
+  description: "Autonomous smart reconciliation of internal production ledgers and external forensic uploads with jurisdictional tax verification.",
 };
 
 const PageHeader = () => (
@@ -17,7 +17,7 @@ const PageHeader = () => (
         Auditor Sandbox
       </h1>
       <p className="mt-2 text-lg text-muted-foreground">
-        Reconstruct global books with **Multi-Currency DNA** and verify against the Sovereign Kernel.
+        Execute **Dual-Core Audits** across Live Production data and External Forensic files.
       </p>
     </div>
     <div className="flex flex-col items-end">
@@ -25,7 +25,7 @@ const PageHeader = () => (
         <ShieldCheck className="w-4 h-4" /> ENGINE STATUS: MATHEMATICALLY ABSOLUTE
       </div>
       <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-widest text-right">
-        Autonomous Global Integrity Shield
+        Autonomous Global Integrity Shield v9.0
       </p>
     </div>
   </div>
@@ -45,19 +45,18 @@ export default function AuditorSandboxPage() {
           
           <CardContent className="p-6 flex items-start gap-5 relative z-10">
             <div className="p-3 bg-primary/10 rounded-full">
-               <Scale className="w-6 h-6 text-primary" />
+               <BrainCircuit className="w-6 h-6 text-primary" />
             </div>
             <div className="text-sm leading-relaxed">
-              <span className="font-bold text-base block mb-1">Sovereign Auditor Protocol v8.4</span>
-              This autonomous environment supports <strong>Multi-Jurisdictional Tax Verification</strong> across 11 specialized industries and agnostic business DNA. 
-              The <strong>Tax Compliance Shield</strong> empowers business owners to cross-verify consultant filings against jurisdictional standards in real-time, exposing any mathematical or regulatory variance. 
-              All entries are subject to <strong>1:1 Kernel Reconciliation</strong> before being atomically sealed. 
-              Please execute the <strong>Wipe Protocol</strong> to purge the Sandbox of sensitive DNA after a successful ledger seal.
+              <span className="font-bold text-base block mb-1">Sovereign Auditor Protocol v8.4 (Smart Intelligence)</span>
+              This environment supports <strong>Autonomous Dual-Core Auditing</strong>. You can now execute forensic verification on your <strong>Internal Production Ledger</strong>, uploaded <strong>External Sandbox Files</strong>, or a <strong>Hybrid Reconciliation</strong> between both. 
+              The <strong>Tax Compliance Shield</strong> cross-verifies all entries against jurisdictional DNA in real-time, exposing any variance in consultant filings. 
+              All operations are subject to <strong>1:1 Kernel Enforcement</strong>. Please execute the <strong>Wipe Protocol</strong> to purge the Sandbox of sensitive data after a successful historical transition.
             </div>
           </CardContent>
         </Card>
 
-        {/* THE CORE ENGINE: Interconnected Global Audit Portal */}
+        {/* THE CORE ENGINE: Interconnected Global Dual-Core Portal */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Suspense fallback={
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
