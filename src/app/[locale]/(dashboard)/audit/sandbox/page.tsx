@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Card, CardContent } from "@/components/ui/card";
-import { Database, ShieldCheck, Info, Globe, Scale, BrainCircuit } from 'lucide-react';
+import { Database, ShieldCheck, Globe, BrainCircuit, Wand2 } from 'lucide-react';
 import AuditIngestionPortal from "@/components/audit/AuditIngestionPortal";
 
 export const metadata: Metadata = {
-  title: "Sovereign Audit Sandbox | Dual-Core Global Compliance",
-  description: "Autonomous smart reconciliation of internal production ledgers and external forensic uploads with jurisdictional tax verification.",
+  title: "Sovereign Audit Sandbox | Smart-Autonomous Global Engine",
+  description: "Heuristic DNA scanning and autonomous reconciliation of disorganized multi-format ledger files with 1:1 mathematical precision.",
 };
 
 const PageHeader = () => (
@@ -17,7 +17,7 @@ const PageHeader = () => (
         Auditor Sandbox
       </h1>
       <p className="mt-2 text-lg text-muted-foreground">
-        Execute **Dual-Core Audits** across Live Production data and External Forensic files.
+        Ingest **disorganized global books** and execute autonomous forensic verification.
       </p>
     </div>
     <div className="flex flex-col items-end">
@@ -38,29 +38,29 @@ export default function AuditorSandboxPage() {
         
         <PageHeader />
 
-        {/* GUIDANCE ALERT: Professional Instruction for Global Accountants & Business Owners */}
+        {/* GUIDANCE ALERT: High-Level Protocol for Global Enterprises */}
         <Card className="bg-primary/5 border-primary/20 shadow-none overflow-hidden relative border-l-4 border-l-primary">
           {/* Subtle Background Icon for Enterprise Feel */}
           <Globe className="absolute -right-4 -top-4 w-24 h-24 text-primary/5 rotate-12" />
           
           <CardContent className="p-6 flex items-start gap-5 relative z-10">
             <div className="p-3 bg-primary/10 rounded-full">
-               <BrainCircuit className="w-6 h-6 text-primary" />
+               <Wand2 className="w-6 h-6 text-primary" />
             </div>
             <div className="text-sm leading-relaxed">
-              <span className="font-bold text-base block mb-1">Sovereign Auditor Protocol v8.4 (Smart Intelligence)</span>
-              This environment supports <strong>Autonomous Dual-Core Auditing</strong>. You can now execute forensic verification on your <strong>Internal Production Ledger</strong>, uploaded <strong>External Sandbox Files</strong>, or a <strong>Hybrid Reconciliation</strong> between both. 
-              The <strong>Tax Compliance Shield</strong> cross-verifies all entries against jurisdictional DNA in real-time, exposing any variance in consultant filings. 
-              All operations are subject to <strong>1:1 Kernel Enforcement</strong>. Please execute the <strong>Wipe Protocol</strong> to purge the Sandbox of sensitive data after a successful historical transition.
+              <span className="font-bold text-base block mb-1">Sovereign Auditor Protocol v9.0 (Heuristic Intelligence)</span>
+              This environment utilizes <strong>Autonomous DNA Scanning</strong> to recognize and map disorganized or large-scale financial data regardless of format. 
+              The system supports <strong>Dual-Core Forensic Auditing</strong> across internal production records and external uploads. 
+              The <strong>Tax Compliance Shield</strong> cross-verifies all entries against jurisdictional standards in real-time. 
+              All operations are subject to <strong>1:1 Kernel Reconciliation</strong>. Please execute the <strong>Wipe Protocol</strong> to purge the Sandbox of sensitive data after a successful ledger seal.
             </div>
           </CardContent>
         </Card>
 
-        {/* THE CORE ENGINE: Interconnected Global Dual-Core Portal */}
+        {/* THE CORE ENGINE: Interconnected Global Smart Portal */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Suspense fallback={
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Skeleton UI matching the layout of the Ingestion Portal */}
               <div className="lg:col-span-4 h-[600px] bg-muted/50 animate-pulse rounded-xl border border-muted" />
               <div className="lg:col-span-8 h-[600px] bg-muted/50 animate-pulse rounded-xl border border-muted" />
             </div>

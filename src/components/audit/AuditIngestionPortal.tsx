@@ -5,7 +5,7 @@ import {
   UploadCloud, FileSpreadsheet, ShieldCheck, 
   Trash2, Play, AlertCircle, Database, Binary,
   Globe, Scale, Calculator, Coins, Landmark, ShieldAlert,
-  BrainCircuit, Layers
+  BrainCircuit, Layers, Wand2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -35,7 +35,7 @@ export default function AuditIngestionPortal() {
   // -- Global Compliance & Intelligence State --
   const [industry, setIndustry] = useState<string>('');
   const [taxRegime, setTaxRegime] = useState<string>('');
-  const [sourceMode, setSourceMode] = useState<string>('EXTERNAL_ONLY'); // NEW: Smart Mode Selection
+  const [sourceMode, setSourceMode] = useState<string>('EXTERNAL_ONLY'); 
   const [customTaxRate, setCustomTaxRate] = useState<string>('');
   const [taxAuditMode, setTaxAuditMode] = useState(true);
   const [fiscalYear, setFiscalYear] = useState<string>(new Date().getFullYear().toString());
@@ -47,8 +47,36 @@ export default function AuditIngestionPortal() {
   const [auditVerdict, setAuditVerdict] = useState<string | null>(null);
 
   /**
+   * HEURISTIC DNA SCANNER
+   * Automatically identifies columns in disorganized or large datasets
+   */
+  const performSmartAutoMap = (incomingHeaders: string[]) => {
+    const newMappings: Record<string, string> = {};
+    const patterns = [
+      { key: 'date', words: ['date', 'time', 'tx_date', 'period'] },
+      { key: 'account_name', words: ['name', 'account', 'desc', 'particulars', 'ledger'] },
+      { key: 'debit', words: ['debit', 'dr', 'payment', 'in'] },
+      { key: 'credit', words: ['credit', 'cr', 'receipt', 'out'] },
+      { key: 'reported_tax', words: ['tax', 'vat', 'gst', 'levy', 'reported'] },
+      { key: 'currency', words: ['currency', 'curr', 'ccy', 'iso'] },
+    ];
+
+    patterns.forEach(p => {
+      const match = incomingHeaders.find(h => 
+        p.words.some(word => h.toLowerCase().includes(word))
+      );
+      if (match) newMappings[p.key] = match;
+    });
+
+    setMappings(newMappings);
+    if (Object.keys(newMappings).length > 0) {
+      toast.success(`Autonomous DNA Scan: Successfully mapped ${Object.keys(newMappings).length} pillars.`);
+    }
+  };
+
+  /**
    * Agnostic File Ingestion Engine
-   * High-capacity parsing for any global ledger format (CSV/XLSX)
+   * High-capacity parsing for large and disorganized global ledger formats
    */
   const handleFileLoad = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,11 +88,14 @@ export default function AuditIngestionPortal() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      dynamicTyping: true, // Efficiently handles large number conversions
       complete: (results) => {
-        setHeaders(results.meta.fields || []);
+        const foundHeaders = results.meta.fields || [];
+        setHeaders(foundHeaders);
         setFileData(results.data);
+        performSmartAutoMap(foundHeaders); // Trigger Heuristic Scan
         setIsProcessing(false);
-        toast.success(`DNA Ingested: ${results.data.length} records. Ready for Global Mapping.`);
+        toast.success(`Ingested ${results.data.length} records. DNA scanned for auto-mapping.`);
       },
       error: (err) => {
         toast.error("Ingestion engine failure: " + err.message);
@@ -75,10 +106,9 @@ export default function AuditIngestionPortal() {
 
   /**
    * The Sovereign Smart Global Audit Engine
-   * Executes Dual-Core Audit (Internal vs External)
+   * Executes Dual-Core Audit (Internal vs External) with 1:1 Precision
    */
   const executeSovereignSeal = async () => {
-    // Logic Gate for Mandatory Inputs
     if (!industry || !taxRegime || (sourceMode !== 'INTERNAL_ONLY' && fileData.length === 0)) {
       toast.error("Compliance Check: Jurisdiction, Industry, and Data Source are mandatory.");
       return;
@@ -90,20 +120,20 @@ export default function AuditIngestionPortal() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Prepare Sandbox Buffer (Only if auditing external files)
       if (sourceMode !== 'INTERNAL_ONLY') {
+        // Prepare Sandbox Buffer with Scrubbing Logic (removing currency symbols/commas)
         const bufferPayload = fileData.map(row => ({
           tenant_id: user?.id,
           business_id: user?.id,
-          account_name_raw: row[mappings['account_name']] || 'Unclassified',
-          account_code_raw: row[mappings['account_code']] || '0000',
-          debit: parseFloat(row[mappings['debit']] || '0'),
-          credit: parseFloat(row[mappings['credit']] || '0'),
+          account_name_raw: String(row[mappings['account_name']] || 'Unclassified'),
+          account_code_raw: String(row[mappings['account_code']] || '0000'),
+          debit: parseFloat(String(row[mappings['debit']]).replace(/[^0-9.-]+/g,"") || '0'),
+          credit: parseFloat(String(row[mappings['credit']]).replace(/[^0-9.-]+/g,"") || '0'),
           currency_raw: row[mappings['currency']] || 'USD',
           transaction_date: row[mappings['date']] || new Date().toISOString(),
           fiscal_year: parseInt(fiscalYear),
           raw_data: {
-            reported_tax: parseFloat(row[mappings['reported_tax']] || '0'),
+            reported_tax: parseFloat(String(row[mappings['reported_tax']]).replace(/[^0-9.-]+/g,"") || '0'),
             original_row: row
           }
         }));
@@ -128,14 +158,14 @@ export default function AuditIngestionPortal() {
 
       if (rpcError) throw rpcError;
 
-      // Handle Failures from the Kernel (Unbalanced Books)
+      // Logic Gate for Mathematical Violations
       if (data.status === 'BLOCK_SEAL') {
         setVariance(data.variance);
         toast.error(`Sovereign Block: ${data.message}`);
         return;
       }
 
-      // Successful Autonomous Audit
+      // Final Verdicts
       setProgress(100);
       setVariance(0.0000); 
       setAccuracyScore(data.tax_accuracy_score || 100);
@@ -144,7 +174,7 @@ export default function AuditIngestionPortal() {
       toast.success(`Autonomous Audit Result: ${data.verdict}`);
       
     } catch (error: any) {
-      toast.error("Kernel Panic: " + error.message);
+      toast.error("Kernel Violation: " + error.message);
     } finally {
       setIsProcessing(false);
     }
@@ -155,11 +185,7 @@ export default function AuditIngestionPortal() {
     setIsProcessing(true);
     const { error } = await supabase.rpc('proc_audit_sandbox_wipe');
     if (!error) {
-      setFileData([]);
-      setHeaders([]);
-      setVariance(0);
-      setAccuracyScore(null);
-      setAuditVerdict(null);
+      setFileData([]); setHeaders([]); setVariance(0); setAccuracyScore(null); setAuditVerdict(null);
       toast.info("Sandbox Purged.");
     }
     setIsProcessing(false);
@@ -168,52 +194,48 @@ export default function AuditIngestionPortal() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       
-      {/* --- Left Column: Global Compliance Controls --- */}
+      {/* --- Left Column: Configuration & Monitors --- */}
       <div className="lg:col-span-4 flex flex-col gap-6">
         <Card className="border-primary/20 shadow-lg border-t-4 border-t-primary">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-primary" />
+              <BrainCircuit className="w-5 h-5 text-primary" />
               <div>
-                <CardTitle>Sovereign Configuration</CardTitle>
-                <CardDescription>Global Audit Intelligence</CardDescription>
+                <CardTitle>Autonomous Setup</CardTitle>
+                <CardDescription>Agnostic Source Intelligence</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             
-            {/* Audit Mode Selection */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                <BrainCircuit className="w-3 h-3" /> Audit Intelligence Mode
+                <Layers className="w-3 h-3" /> Audit Strategy Mode
               </label>
               <Select defaultValue={sourceMode} onValueChange={setSourceMode}>
                 <SelectTrigger className="border-primary/30"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EXTERNAL_ONLY">External File Audit (Sandbox)</SelectItem>
-                  <SelectItem value="INTERNAL_ONLY">Internal Ledger Audit (Live Ops)</SelectItem>
-                  <SelectItem value="RECONCILED_HYBRID">Reconciled Hybrid (Cross-Reference)</SelectItem>
+                  <SelectItem value="EXTERNAL_ONLY">External Agnostic File (Sandbox)</SelectItem>
+                  <SelectItem value="INTERNAL_ONLY">Production Ledger Audit (Live)</SelectItem>
+                  <SelectItem value="RECONCILED_HYBRID">Hybrid Cross-Reconciliation</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                <Landmark className="w-3 h-3" /> Jurisdiction / Tax Regime
+                <Landmark className="w-3 h-3" /> Target Jurisdiction
               </label>
               <Select onValueChange={setTaxRegime}>
                 <SelectTrigger><SelectValue placeholder="Select Country/Regime" /></SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectLabel>Common Regimes</SelectLabel>
-                    <SelectItem value="UK-VAT">UK (Standard VAT 20%)</SelectItem>
-                    <SelectItem value="US-NY">USA (New York Sales Tax)</SelectItem>
-                    <SelectItem value="KE-VAT">Kenya (Standard VAT 16%)</SelectItem>
-                    <SelectItem value="UAE-GST">UAE (Standard GST 5%)</SelectItem>
-                  </SelectGroup>
-                  <SelectGroup>
-                    <SelectLabel>Other</SelectLabel>
-                    <SelectItem value="OTHER">Agnostic / Custom Jurisdiction</SelectItem>
+                    <SelectLabel>Global Standards</SelectLabel>
+                    <SelectItem value="UK-VAT">UK Standard (20%)</SelectItem>
+                    <SelectItem value="US-NY">USA (New York)</SelectItem>
+                    <SelectItem value="KE-VAT">Kenya (Standard 16%)</SelectItem>
+                    <SelectItem value="UAE-GST">UAE (GST 5%)</SelectItem>
+                    <SelectItem value="OTHER">Agnostic / Custom DNA</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -223,35 +245,22 @@ export default function AuditIngestionPortal() {
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg"><Scale className="w-4 h-4 text-primary" /></div>
                 <div>
-                  <p className="text-sm font-bold">Tax Compliance Shield</p>
-                  <p className="text-[10px] text-muted-foreground italic">Consultant Accuracy Logic</p>
+                  <p className="text-sm font-bold">Tax Accuracy Shield</p>
+                  <p className="text-[10px] text-muted-foreground italic">Consultant Fraud Defense</p>
                 </div>
               </div>
               <Switch checked={taxAuditMode} onCheckedChange={setTaxAuditMode} />
             </div>
 
-            {taxAuditMode && (
-              <div className="space-y-2 animate-in slide-in-from-top-2">
-                <label className="text-[10px] font-bold uppercase text-muted-foreground">Manual Verification Rate (%)</label>
-                <Input 
-                  type="number" 
-                  placeholder="e.g. 16.5" 
-                  value={customTaxRate}
-                  onChange={(e) => setCustomTaxRate(e.target.value)}
-                  className="font-mono text-sm"
-                />
-              </div>
-            )}
-
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase text-muted-foreground">Industry DNA</label>
               <Select onValueChange={setIndustry}>
-                <SelectTrigger><SelectValue placeholder="Select Business DNA" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select Business Vertical" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="retail">Retail / Wholesale</SelectItem>
-                  <SelectItem value="restaurant">Restaurant / Cafe</SelectItem>
-                  <SelectItem value="sacco">SACCO / Co-operative</SelectItem>
-                  <SelectItem value="other">Other / Agnostic Vertical</SelectItem>
+                   <SelectItem value="retail">Retail / Wholesale</SelectItem>
+                   <SelectItem value="sacco">SACCO / Co-operative</SelectItem>
+                   <SelectItem value="telecom">Telecom Services</SelectItem>
+                   <SelectItem value="other">Other / General Vertical</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -259,7 +268,8 @@ export default function AuditIngestionPortal() {
             <div className="relative group border-2 border-dashed border-muted rounded-xl p-8 transition-all hover:bg-primary/5 text-center">
               <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileLoad} accept=".csv,.xlsx" />
               <UploadCloud className="w-10 h-10 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
-              <p className="mt-2 text-sm font-medium font-bold">Upload Historical Books</p>
+              <p className="mt-2 text-sm font-bold">Drop Any Disorganized File</p>
+              <p className="text-[9px] text-muted-foreground uppercase mt-1">Autonomous DNA Scanner Active</p>
             </div>
           </CardContent>
         </Card>
@@ -276,9 +286,7 @@ export default function AuditIngestionPortal() {
               <div className="text-4xl font-mono tracking-tighter text-emerald-500">
                 {variance.toFixed(4)}
               </div>
-              <p className="text-[9px] text-slate-400 mt-2 font-mono uppercase">
-                Mathematical Absolute Reconciliation Target
-              </p>
+              <p className="text-[9px] text-slate-400 mt-2 font-mono uppercase">Mathematical Reconcilliation 1:1 Target</p>
               {isProcessing && <Progress value={progress} className="h-1 mt-4 bg-slate-800" />}
             </CardContent>
           </Card>
@@ -288,11 +296,10 @@ export default function AuditIngestionPortal() {
               <CardContent className="p-6">
                 <p className="text-[10px] font-mono text-emerald-400 mb-1 uppercase">Sovereign Audit Verdict</p>
                 <div className="text-2xl font-bold tracking-tight text-emerald-500">{auditVerdict.replace('_', ' ')}</div>
-                
                 {accuracyScore !== null && (
                   <div className="mt-4 pt-4 border-t border-white/10">
-                     <p className="text-[10px] text-muted-foreground">TAX COMPLIANCE SCORE</p>
-                     <p className="text-3xl font-mono font-bold">{accuracyScore.toFixed(2)}%</p>
+                     <p className="text-[10px] text-muted-foreground uppercase">Compliance Accuracy</p>
+                     <p className="text-3xl font-mono font-bold text-emerald-500">{accuracyScore.toFixed(2)}%</p>
                   </div>
                 )}
               </CardContent>
@@ -304,20 +311,16 @@ export default function AuditIngestionPortal() {
       {/* --- Right Column: Sovereign Mapping Portal --- */}
       <div className="lg:col-span-8 space-y-6">
         <Card className="min-h-[600px] border-muted shadow-sm">
-          <CardHeader className="border-b bg-muted/30">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Calculator className="w-5 h-5 text-muted-foreground" />
-                <CardTitle className="text-lg">Sovereign Mapping Portal</CardTitle>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={executeSandboxWipe} disabled={isProcessing}>
-                  <Trash2 className="w-4 h-4 mr-2" /> Wipe Sandbox
-                </Button>
-                <Button size="sm" onClick={executeSovereignSeal} disabled={isProcessing || (sourceMode !== 'INTERNAL_ONLY' && headers.length === 0)}>
-                  <Play className="w-4 h-4 mr-2" /> Execute Global Seal
-                </Button>
-              </div>
+          <CardHeader className="border-b bg-muted/30 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Wand2 className="w-5 h-5 text-primary animate-pulse" />
+              <CardTitle className="text-lg">Sovereign Mapping Portal</CardTitle>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={executeSandboxWipe} disabled={isProcessing}><Trash2 className="w-4 h-4 mr-2" /> Wipe Sandbox</Button>
+              <Button size="sm" onClick={executeSovereignSeal} disabled={isProcessing || (sourceMode !== 'INTERNAL_ONLY' && headers.length === 0)}>
+                <Play className="w-4 h-4 mr-2" /> Execute Global Seal
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -326,18 +329,18 @@ export default function AuditIngestionPortal() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Compliance Pillar</TableHead>
-                    <TableHead>Source Column</TableHead>
-                    <TableHead>Sample Data</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
+                    <TableHead>Autonomous Mapping</TableHead>
+                    <TableHead>Sample Data (Cleaned)</TableHead>
+                    <TableHead className="text-right">Global Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {[
                     { label: 'Transaction Date', key: 'date', icon: <Database className="w-3 h-3" /> },
                     { label: 'Account Name', key: 'account_name', icon: <Landmark className="w-3 h-3" /> },
-                    { label: 'Debit (Gross)', key: 'debit', icon: <Scale className="w-3 h-3" /> },
+                    { label: 'Debit Amount', key: 'debit', icon: <Scale className="w-3 h-3" /> },
                     { label: 'Credit Amount', key: 'credit', icon: <Scale className="w-3 h-3" /> },
-                    { label: 'Reported Tax (Consultant)', key: 'reported_tax', icon: <Calculator className="w-3 h-3" /> },
+                    { label: 'Reported Tax', key: 'reported_tax', icon: <Calculator className="w-3 h-3" /> },
                     { label: 'Currency', key: 'currency', icon: <Coins className="w-3 h-3" /> },
                   ].map((pillar) => (
                     <TableRow key={pillar.key}>
@@ -345,16 +348,16 @@ export default function AuditIngestionPortal() {
                         <span className="opacity-50">{pillar.icon}</span> {pillar.label}
                       </TableCell>
                       <TableCell>
-                        <Select onValueChange={(val) => setMappings(m => ({ ...m, [pillar.key]: val }))}>
+                        <Select value={mappings[pillar.key] || ''} onValueChange={(val) => setMappings(m => ({ ...m, [pillar.key]: val }))}>
                           <SelectTrigger className="w-[180px] h-8 text-xs font-mono">
-                            <SelectValue placeholder="Map Column" />
+                            <SelectValue placeholder="Map Column..." />
                           </SelectTrigger>
                           <SelectContent>
                             {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-[10px] font-mono max-w-[150px] truncate">
+                      <TableCell className="text-muted-foreground text-[10px] font-mono max-w-[150px] truncate italic">
                         {fileData[0]?.[mappings[pillar.key]] || '---'}
                       </TableCell>
                       <TableCell className="text-right">
@@ -378,8 +381,8 @@ export default function AuditIngestionPortal() {
                     <Layers className="w-12 h-12 text-emerald-600" />
                  </div>
                  <div className="text-center">
-                    <p className="font-bold text-foreground">Operational Ledger Audit Mode</p>
-                    <p className="text-xs max-w-sm">The system will bypass file mapping and perform a deep forensic audit on your existing production ledger records.</p>
+                    <p className="font-bold text-foreground uppercase tracking-widest text-xs">Production Audit Mode Active</p>
+                    <p className="text-xs max-w-sm mt-1 italic">The Sovereign Kernel is currently scanning daily operational records for mathematical integrity and tax accuracy.</p>
                  </div>
               </div>
             ) : (
