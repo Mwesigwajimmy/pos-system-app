@@ -93,7 +93,7 @@ export default function AuditIngestionPortal() {
         const foundHeaders = results.meta.fields || [];
         setHeaders(foundHeaders);
         setFileData(results.data);
-        performSmartAutoMap(foundHeaders); // Heuristic Scan for disorganized data
+        performSmartAutoMap(foundHeaders); 
         setIsProcessing(false);
         toast.success(`Ingested ${results.data.length} records. System analyzing DNA...`);
       },
@@ -110,7 +110,7 @@ export default function AuditIngestionPortal() {
    */
   const executeSovereignSeal = async () => {
     if (!industry || !taxRegime || (sourceMode !== 'INTERNAL_ONLY' && fileData.length === 0)) {
-      toast.error("Compliance Check: Jurisdiction, Industry, and Data Source are required.");
+      toast.error("Compliance Check: Jurisdiction, Industry, and Data Source are mandatory.");
       return;
     }
 
@@ -120,10 +120,8 @@ export default function AuditIngestionPortal() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Prepare Sandbox with Data Scrubbing & Compliance Checks
       if (sourceMode !== 'INTERNAL_ONLY') {
         const bufferPayload = fileData.map(row => {
-          // Autonomous Scrubbing Logic
           const scrub = (val: any) => String(val || '0').replace(/[^0-9.-]+/g,"");
           
           return {
@@ -134,7 +132,7 @@ export default function AuditIngestionPortal() {
             debit: parseFloat(scrub(row[mappings['debit']])),
             credit: parseFloat(scrub(row[mappings['credit']])),
             currency_raw: row[mappings['currency']] || 'USD',
-            transaction_date: row[mappings['date']], // Raw date for Kernel validation
+            transaction_date: row[mappings['date']], 
             fiscal_year: parseInt(fiscalYear),
             raw_data: {
               reported_tax: parseFloat(scrub(row[mappings['reported_tax']])),
@@ -149,8 +147,7 @@ export default function AuditIngestionPortal() {
       
       setProgress(50);
 
-      // 2. RPC CALL: Corrected Parameter Object to match SQL Signature perfectly
-      // Matches: proc_sovereign_dual_audit(p_tenant_id, p_fiscal_year, p_source_mode, p_region_code, p_custom_tax_rate)
+      // RPC CALL: Synchronized with SQL Master Kernel
       const { data, error: rpcError } = await supabase.rpc('proc_sovereign_dual_audit', {
         p_tenant_id: user?.id,
         p_fiscal_year: parseInt(fiscalYear),
@@ -161,14 +158,12 @@ export default function AuditIngestionPortal() {
 
       if (rpcError) throw rpcError;
 
-      // Handle Failures from the Sovereign Safety Gates
       if (data.status === 'BLOCK_SEAL') {
         setVariance(data.variance || 0);
         toast.error(`${data.verdict}: ${data.message}`, { duration: 5000 });
         return;
       }
 
-      // Successful Autonomous Result
       setProgress(100);
       setVariance(0.0000); 
       setAccuracyScore(data.tax_accuracy_score);
@@ -237,7 +232,6 @@ export default function AuditIngestionPortal() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[9px] text-muted-foreground italic">*Kernel will reject data outside this year.</p>
             </div>
 
             <div className="space-y-2">
@@ -247,10 +241,17 @@ export default function AuditIngestionPortal() {
               <Select onValueChange={setTaxRegime}>
                 <SelectTrigger><SelectValue placeholder="Select Country/Regime" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="UK-VAT">UK Standard VAT (20%)</SelectItem>
-                  <SelectItem value="US-NY">USA (New York State)</SelectItem>
-                  <SelectItem value="KE-VAT">Kenya Standard (16%)</SelectItem>
-                  <SelectItem value="OTHER">Agnostic / Custom DNA</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>Global Standards</SelectLabel>
+                    <SelectItem value="UK-VAT">UK Standard VAT (20%)</SelectItem>
+                    <SelectItem value="US-NY">USA (New York State)</SelectItem>
+                    <SelectItem value="KE-VAT">Kenya Standard (16%)</SelectItem>
+                    <SelectItem value="UAE-GST">UAE (Standard GST 5%)</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Custom</SelectLabel>
+                    <SelectItem value="OTHER">Agnostic / Custom DNA</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -266,6 +267,55 @@ export default function AuditIngestionPortal() {
               <Switch checked={taxAuditMode} onCheckedChange={setTaxAuditMode} />
             </div>
 
+            {taxAuditMode && (
+              <div className="space-y-2 animate-in slide-in-from-top-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground">Manual Verification Rate (%)</label>
+                <Input 
+                  type="number" 
+                  placeholder="e.g. 16.5" 
+                  value={customTaxRate}
+                  onChange={(e) => setCustomTaxRate(e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </div>
+            )}
+
+            {/* FULL INDUSTRY DNA LIST INCLUDED */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-muted-foreground">Industry Vertical</label>
+              <Select onValueChange={setIndustry}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Business DNA" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Common</SelectLabel>
+                    <SelectItem value="retail">Retail / Wholesale</SelectItem>
+                    <SelectItem value="restaurant">Restaurant / Cafe</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Trades & Services</SelectLabel>
+                    <SelectItem value="contractor">Contractor (General, Remodeling)</SelectItem>
+                    <SelectItem value="field_service">Field Service (Trades, HVAC, Plumbing)</SelectItem>
+                    <SelectItem value="professional">Professional Services (Accounting, Legal)</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Specialized</SelectLabel>
+                    <SelectItem value="distribution">Distribution</SelectItem>
+                    <SelectItem value="lending">Lending / Microfinance</SelectItem>
+                    <SelectItem value="rentals">Rentals / Real Estate</SelectItem>
+                    <SelectItem value="sacco">SACCO / Co-operative</SelectItem>
+                    <SelectItem value="telecom">Telecom Services</SelectItem>
+                    <SelectItem value="nonprofit">Nonprofit</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>General</SelectLabel>
+                    <SelectItem value="other">Other / Custom Vertical (Agnostic)</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="relative group border-2 border-dashed border-muted rounded-xl p-8 transition-all hover:bg-primary/5 text-center">
               <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileLoad} accept=".csv,.xlsx" />
               <UploadCloud className="w-10 h-10 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
@@ -275,7 +325,7 @@ export default function AuditIngestionPortal() {
           </CardContent>
         </Card>
 
-        {/* --- Variance & Accuracy Metrics --- */}
+        {/* --- Metrics --- */}
         <div className="flex flex-col gap-6">
           <Card className="bg-slate-950 text-white border-none shadow-2xl overflow-hidden">
             <CardHeader className="pb-2 border-b border-white/5">
@@ -339,7 +389,7 @@ export default function AuditIngestionPortal() {
                   {[
                     { label: 'Transaction Date', key: 'date', icon: <Database className="w-3 h-3" /> },
                     { label: 'Account Name', key: 'account_name', icon: <Landmark className="w-3 h-3" /> },
-                    { label: 'Debit (Gross Amount)', key: 'debit', icon: <Scale className="w-3 h-3" /> },
+                    { label: 'Debit Amount', key: 'debit', icon: <Scale className="w-3 h-3" /> },
                     { label: 'Credit Amount', key: 'credit', icon: <Scale className="w-3 h-3" /> },
                     { label: 'Reported Tax (VAT)', key: 'reported_tax', icon: <Calculator className="w-3 h-3" /> },
                     { label: 'Currency ISO', key: 'currency', icon: <Coins className="w-3 h-3" /> },
