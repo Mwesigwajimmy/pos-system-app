@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Card, CardContent } from "@/components/ui/card";
-import { Database, ShieldCheck, Globe, BrainCircuit, Wand2 } from 'lucide-react';
+import { Database, ShieldCheck, Globe, BrainCircuit, Wand2, ShieldPlus } from 'lucide-react';
 import AuditIngestionPortal from "@/components/audit/AuditIngestionPortal";
 
 export const metadata: Metadata = {
@@ -16,8 +16,8 @@ const PageHeader = () => (
         <Database className="w-10 h-10 text-primary" />
         Auditor Sandbox
       </h1>
-      <p className="mt-2 text-lg text-muted-foreground">
-        Ingest **disorganized global books** and execute autonomous forensic verification.
+      <p className="mt-2 text-lg text-muted-foreground max-w-2xl">
+        Ingest **disorganized global books** of any scale and execute autonomous forensic verification via the Sovereign Kernel.
       </p>
     </div>
     <div className="flex flex-col items-end">
@@ -38,7 +38,7 @@ export default function AuditorSandboxPage() {
         
         <PageHeader />
 
-        {/* GUIDANCE ALERT: High-Level Protocol for Global Enterprises */}
+        {/* GUIDANCE ALERT: High-Level Protocol for Global Enterprises & Autonomous Firms */}
         <Card className="bg-primary/5 border-primary/20 shadow-none overflow-hidden relative border-l-4 border-l-primary">
           {/* Subtle Background Icon for Enterprise Feel */}
           <Globe className="absolute -right-4 -top-4 w-24 h-24 text-primary/5 rotate-12" />
@@ -49,10 +49,10 @@ export default function AuditorSandboxPage() {
             </div>
             <div className="text-sm leading-relaxed">
               <span className="font-bold text-base block mb-1">Sovereign Auditor Protocol v9.0 (Heuristic Intelligence)</span>
-              This environment utilizes <strong>Autonomous DNA Scanning</strong> to recognize and map disorganized or large-scale financial data regardless of format. 
-              The system supports <strong>Dual-Core Forensic Auditing</strong> across internal production records and external uploads. 
-              The <strong>Tax Compliance Shield</strong> cross-verifies all entries against jurisdictional standards in real-time. 
-              All operations are subject to <strong>1:1 Kernel Reconciliation</strong>. Please execute the <strong>Wipe Protocol</strong> to purge the Sandbox of sensitive data after a successful ledger seal.
+              This environment utilizes <strong>Autonomous DNA Scanning</strong> to recognize, map, and scrub disorganized financial data regardless of format. 
+              The system supports <strong>Dual-Core Forensic Auditing</strong>, allowing you to cross-verify internal production records against external forensic uploads. 
+              The <strong>Tax Compliance Shield</strong> and <strong>Smart Date Locking</strong> engine ensure all entries meet jurisdictional standards and fiscal period constraints in real-time. 
+              All operations are subject to <strong>1:1 Kernel Reconciliation</strong>. Execute the <strong>Wipe Protocol</strong> to purge the Sandbox of sensitive DNA after a successful transition.
             </div>
           </CardContent>
         </Card>
@@ -61,12 +61,19 @@ export default function AuditorSandboxPage() {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Suspense fallback={
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-4 h-[600px] bg-muted/50 animate-pulse rounded-xl border border-muted" />
-              <div className="lg:col-span-8 h-[600px] bg-muted/50 animate-pulse rounded-xl border border-muted" />
+              {/* Skeleton UI exactly matching the internal grid-cols-12 layout */}
+              <div className="lg:col-span-4 h-[700px] bg-muted/50 animate-pulse rounded-xl border border-muted" />
+              <div className="lg:col-span-8 h-[700px] bg-muted/50 animate-pulse rounded-xl border border-muted" />
             </div>
           }>
             <AuditIngestionPortal />
           </Suspense>
+        </div>
+
+        {/* ENTERPRISE FOOTER: Autonomous Integrity Certification */}
+        <div className="flex items-center justify-center gap-2 opacity-30 pb-10">
+           <ShieldPlus className="w-4 h-4" />
+           <span className="text-[10px] uppercase font-bold tracking-tighter">Sovereign Autonomous Audit Certification Enabled</span>
         </div>
         
       </div>
