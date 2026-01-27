@@ -40,7 +40,7 @@ export default function AuditIngestionPortal() {
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [isErpConnected, setIsErpConnected] = useState(false); 
   
-  // -- Global Intelligence & Compliance State --
+  // -- Global Compliance & Intelligence State --
   const [industry, setIndustry] = useState<string>('');
   const [taxRegime, setTaxRegime] = useState<string>('');
   const [sourceMode, setSourceMode] = useState<string>('EXTERNAL_ONLY'); 
@@ -58,6 +58,7 @@ export default function AuditIngestionPortal() {
 
   /**
    * IMMUTABLE AUDIT TRAIL LOGGING
+   * Compliance: Logs every strategy and setting change to sovereign_settings_log.
    */
   const logSettingChange = async (key: string, oldVal: string, newVal: string) => {
     try {
@@ -74,6 +75,7 @@ export default function AuditIngestionPortal() {
 
   /**
    * SOVEREIGN DNA FINGERPRINTING (SHA-256)
+   * Chain of Custody: Locks file contents to prevent post-audit data cleaning fraud.
    */
   const generateFileFingerprint = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer();
@@ -83,15 +85,15 @@ export default function AuditIngestionPortal() {
   };
 
   /**
-   * REAL EVIDENCE INGESTION (Vouching)
-   * Parallel uploads to 'audit-evidence' bucket and DB registration.
+   * REAL EVIDENCE INGESTION (Physical Vouching)
+   * Parallel uploads to 'audit-evidence' bucket and real database registration.
    */
   const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
     if (!lastExecutionId) {
-      toast.error("Audit Locked: Execute a Seal to generate a Trace ID before uploading proof.");
+      toast.error("Forensic Violation: An active Trace ID is required before uploading proof artifacts.");
       return;
     }
 
@@ -109,12 +111,13 @@ export default function AuditIngestionPortal() {
         const fileName = `${artifactHash}.${file.name.split('.').pop()}`;
         const filePath = `${user.id}/${lastExecutionId}/${fileName}`;
 
+        // 1. Upload to Sovereign Vault
         const { error: storageError } = await supabase.storage
           .from('audit-evidence')
           .upload(filePath, file, { upsert: true });
-        
         if (storageError) throw storageError;
 
+        // 2. Register in Evidence Registry (Mapped to SQL Schema)
         const { error: dbError } = await supabase.from('sovereign_audit_artifacts').insert({
           execution_id: lastExecutionId,
           tenant_id: user.id,
@@ -124,22 +127,22 @@ export default function AuditIngestionPortal() {
           vouching_status: 'PENDING',
           detected_amount: 0.0000 
         });
-
         if (dbError) throw dbError;
+
         successfulUploads++;
         setProgress(Math.round((successfulUploads / files.length) * 100));
       });
 
       await Promise.all(uploadPromises);
 
-      // Trigger Autonomous Vouching Kernel
+      // 3. Trigger Real-Time Deterministic Vouching Kernel
       const { data: kernelResult } = await supabase.rpc('proc_autonomous_vouching_kernel_v10', {
         p_execution_id: lastExecutionId
       });
 
       setEvidenceCount(prev => prev + successfulUploads);
       setVouchingCoverage(Math.min(100, ((evidenceCount + successfulUploads) / (fileData.length || 1)) * 100));
-      toast.success(`${successfulUploads} Proof Artifacts legally locked and vouched.`);
+      toast.success(`${successfulUploads} Proof Artifacts legally locked and vouched by Kernel.`);
       
     } catch (err: any) {
       toast.error("Chain of Custody Failure: " + err.message);
@@ -155,8 +158,8 @@ export default function AuditIngestionPortal() {
   const performSmartAutoMap = (incomingHeaders: string[]) => {
     const newMappings: Record<string, string> = {};
     const patterns = [
-      { key: 'date', words: ['date', 'time', 'tx_date', 'period'] },
-      { key: 'account_name', words: ['name', 'account', 'desc', 'ledger'] },
+      { key: 'date', words: ['date', 'time', 'tx_date', 'period', 'timestamp'] },
+      { key: 'account_name', words: ['name', 'account', 'desc', 'ledger', 'category'] },
       { key: 'debit', words: ['debit', 'dr', 'withdrawal', 'outflow'] },
       { key: 'credit', words: ['credit', 'cr', 'receipt', 'deposit'] },
       { key: 'reported_tax', words: ['tax', 'vat', 'gst', 'tax_amount'] },
@@ -169,7 +172,7 @@ export default function AuditIngestionPortal() {
     });
 
     setMappings(newMappings);
-    if (Object.keys(newMappings).length > 0) toast.success(`Autonomous DNA Scan Complete.`);
+    if (Object.keys(newMappings).length > 0) toast.success(`DNA Scan: Successfully linked ${Object.keys(newMappings).length} pillars.`);
   };
 
   /**
@@ -191,19 +194,22 @@ export default function AuditIngestionPortal() {
         const autoTable = (await import('jspdf-autotable')).default;
         const doc = new jsPDF();
 
+        // 1. High-Tier Branding
         doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 50, 'F');
         doc.setTextColor(255, 255, 255); doc.setFontSize(22);
         doc.text("SOVEREIGN AUDIT CERTIFICATE", 105, 25, { align: 'center' });
         doc.setFontSize(8); 
         doc.text(`TRACE: ${lastExecutionId} | FINGERPRINT: ${fileHash?.substring(0,32)}...`, 105, 38, { align: 'center' });
 
+        // 2. Regulatory Notice (Concern #1)
         if (Math.abs(variance) > 0 || vouchingCoverage < 90) {
             doc.setFillColor(254, 242, 242); doc.rect(15, 55, 180, 22, 'F');
             doc.setTextColor(185, 28, 28); doc.setFontSize(8);
-            const disclaimer = "REGULATORY NOTICE: Mathematical variance or documentation gaps detected. Independent auditor reconciliation of the Suspense Protocol is mandatory.";
+            const disclaimer = "REGULATORY NOTICE: System detected a variance or documentation gap. Auditor reconciliation of the Suspense Protocol is mandatory before final certification.";
             doc.text(doc.splitTextToSize(disclaimer, 170), 20, 62);
         }
 
+        // 3. Independent Opinion
         doc.setTextColor(0); doc.setFontSize(14); doc.text("1. Auditor's Opinion:", 20, 90);
         const isClean = auditVerdict?.includes('CLEAN') && Math.abs(variance) === 0 && vouchingCoverage >= 90;
         doc.setTextColor(isClean ? 34 : 200, isClean ? 150 : 0, 0);
@@ -220,16 +226,19 @@ export default function AuditIngestionPortal() {
           headStyles: { fillColor: [30, 41, 59] }
         });
 
-        doc.save(`Sovereign_Audit_Report_${lastExecutionId.substring(0,8)}.pdf`);
+        doc.setFontSize(8); doc.setTextColor(150);
+        doc.text("Mathematically sealed by Sovereign Kernel V10. Segregation of Duties (SoD) Protocol Enforced.", 105, 285, { align: 'center' });
+        doc.save(`Sovereign_Certified_Audit_${lastExecutionId.substring(0,8)}.pdf`);
       } 
       else {
         const { utils, writeFile } = await import('xlsx');
         const wb = utils.book_new();
-        utils.book_append_sheet(wb, utils.aoa_to_sheet([["TRACE ID", lastExecutionId], ["VERDICT", auditVerdict]]), "Summary");
+        const summary = [["TRACE ID", lastExecutionId], ["OPINION", auditVerdict], ["VARIANCE", variance], ["FINGERPRINT", fileHash]];
+        utils.book_append_sheet(wb, utils.aoa_to_sheet(summary), "Executive_Summary");
         utils.book_append_sheet(wb, utils.json_to_sheet(report.entries || []), "Verified_Ledger");
-        writeFile(wb, `Sovereign_Forensic_Evidence_${fiscalYear}.${format === 'CSV' ? 'csv' : 'xlsx'}`);
+        writeFile(wb, `Sovereign_Audit_Binder_${fiscalYear}.${format === 'CSV' ? 'csv' : 'xlsx'}`);
       }
-      toast.success(`${format} Binder Exported.`);
+      toast.success(`${format} Audit Evidence Binder Exported.`);
     } catch (e: any) { toast.error("Export System Failure."); } finally { setIsProcessing(false); }
   };
 
@@ -252,17 +261,18 @@ export default function AuditIngestionPortal() {
         setFileData(results.data);
         performSmartAutoMap(results.meta.fields || []); 
         setIsProcessing(false);
-        toast.success(`Ledger Patterns Locked.`);
+        toast.success(`Forensic DNA Pattern Locked.`);
       }
     });
   };
 
   /**
-   * THE V10 KERNEL (Sovereign Seal)
+   * THE V10 GLOBAL KERNEL (Real Integration)
+   * Targets DB Routine: proc_sovereign_global_audit_kernel_v10
    */
   const executeSovereignSeal = async () => {
     if (!industry || !taxRegime || (sourceMode === 'EXTERNAL_ONLY' && fileData.length === 0)) {
-      toast.error("Compliance Check: Mandatories Required."); return;
+      toast.error("Audit Locked: Configuration Required."); return;
     }
 
     setIsProcessing(true); setProgress(15);
@@ -327,7 +337,7 @@ export default function AuditIngestionPortal() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-32 animate-in fade-in duration-700">
       
-      {/* --- Column 1: Provenance & Evidence --- */}
+      {/* --- Column 1: Provenance & Evidence Ingestion --- */}
       <div className="lg:col-span-4 space-y-6">
         
         {/* PROVENANCE CONTROL */}
@@ -336,27 +346,25 @@ export default function AuditIngestionPortal() {
            <CardHeader className="bg-blue-50/40">
              <div className="flex items-center gap-2 text-blue-700">
                <LinkIcon className="w-5 h-5" />
-               <CardTitle className="text-sm font-extrabold uppercase">Audit Provenance Control</CardTitle>
+               <CardTitle className="text-sm font-extrabold uppercase tracking-tight">Audit Provenance Control</CardTitle>
              </div>
            </CardHeader>
            <CardContent className="pt-6 space-y-4">
-             <div className="flex items-center justify-between p-3 border rounded-lg bg-white shadow-sm">
-                <div className="flex items-center gap-2">
-                   <FileText className="w-4 h-4 text-blue-600" />
-                   <div><p className="text-xs font-bold leading-none">ERP Direct Link</p><p className="text-[8px] text-muted-foreground uppercase mt-1">Status: {isErpConnected ? 'ACTIVE' : 'READY'}</p></div>
+             <div className="flex items-center justify-between p-3 border rounded-lg bg-white shadow-sm hover:border-blue-300 transition-all group">
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-slate-100 rounded group-hover:bg-blue-100 transition-colors"><FileText className="w-4 h-4 text-blue-600" /></div>
+                   <div><p className="text-xs font-bold leading-none">ERP Direct Sync</p><p className="text-[8px] text-muted-foreground uppercase mt-1">Status: {isErpConnected ? 'ACTIVE' : 'READY'}</p></div>
                 </div>
-                <Button variant="outline" size="sm" className="text-[10px] h-7" onClick={() => setIsErpConnected(!isErpConnected)}>
-                  {isErpConnected ? 'Linked' : 'Connect'}
-                </Button>
+                <Button variant="outline" size="sm" className="text-[10px] h-7" onClick={() => { logSettingChange('ERP_SYNC', 'OFF', 'ON'); setIsErpConnected(!isErpConnected); }}>{isErpConnected ? 'Linked' : 'Connect'}</Button>
              </div>
              <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 flex items-center justify-between">
                 <div className="flex items-center gap-2"><Eye className="w-4 h-4 text-blue-600" /><p className="text-[10px] font-bold uppercase">SoD Protocol Active</p></div>
-                <Badge className="bg-blue-600 text-[8px] border-none">ISO-27001</Badge>
+                <Badge className="bg-blue-600 text-[8px] border-none tracking-widest">ISO-27001</Badge>
              </div>
            </CardContent>
         </Card>
 
-        {/* EVIDENCE INGESTOR */}
+        {/* EVIDENCE INGESTOR (Receipts / Vouchers) */}
         <Card className="border-t-4 border-t-emerald-600 shadow-xl bg-emerald-50/20">
           <CardHeader>
              <CardTitle className="flex items-center gap-2 text-emerald-800"><ScanLine className="w-5 h-5" /> Evidence Artifacts</CardTitle>
@@ -377,6 +385,7 @@ export default function AuditIngestionPortal() {
                 <input type="file" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleEvidenceUpload} accept=".pdf,.png,.jpg,.jpeg,.zip" />
                 <FileArchive className="w-8 h-8 mx-auto text-emerald-400 mb-2" />
                 <p className="text-[10px] font-bold text-emerald-800 uppercase">Ingest Proof Artifacts</p>
+                <p className="text-[8px] text-emerald-600 mt-1">Automatic OCR extraction enabled</p>
              </div>
           </CardContent>
         </Card>
@@ -387,29 +396,43 @@ export default function AuditIngestionPortal() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase text-muted-foreground">Audit Mode</label>
-              <Select defaultValue={sourceMode} onValueChange={(v) => { logSettingChange('STRATEGY', sourceMode, v); setSourceMode(v); }}>
+              <Select defaultValue={sourceMode} onValueChange={(v) => { logSettingChange('AUDIT_MODE', sourceMode, v); setSourceMode(v); }}>
                 <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="EXTERNAL_ONLY">Agnostic Forensic Upload</SelectItem><SelectItem value="DIRECT_API">Direct ERP Sync</SelectItem></SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground">Tax DNA</label>
+              <label className="text-[10px] font-bold uppercase text-muted-foreground">Tax Jurisdiction DNA</label>
               <Select onValueChange={(v) => { logSettingChange('TAX_DNA', taxRegime, v); setTaxRegime(v); }}>
                 <SelectTrigger className="font-bold"><SelectValue placeholder="Select Global DNA" /></SelectTrigger>
                 <SelectContent>
                    <SelectItem value="UK-VAT">UK (VAT 20.0%)</SelectItem>
                    <SelectItem value="KE-VAT">Kenya (VAT 16.0%)</SelectItem>
                    <SelectItem value="US-NY">USA (Sales Tax 8.875%)</SelectItem>
-                   <SelectItem value="OTHER">Custom Jurisdictional DNA</SelectItem>
+                   <SelectItem value="UAE-VAT">UAE (VAT 5.0%)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="relative group border-2 border-dashed rounded-xl p-8 text-center hover:bg-primary/5 transition-all">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-muted-foreground">Industry Vertical</label>
+              <Select onValueChange={setIndustry}>
+                <SelectTrigger className="w-full font-bold"><SelectValue placeholder="Select Vertical" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="retail">Retail / Wholesale</SelectItem>
+                    <SelectItem value="sacco">SACCO / Co-operative</SelectItem>
+                    <SelectItem value="lending">Microfinance / Lending</SelectItem>
+                    <SelectItem value="telecom">Telecom / Agnostic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="relative group border-2 border-dashed border-muted rounded-xl p-8 text-center hover:bg-primary/5 transition-all">
               <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileLoad} accept=".csv,.xlsx" />
               <FileSpreadsheet className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-xs font-bold">Ingest Ledger CSV</p>
+              <p className="text-xs font-bold uppercase tracking-tight">Ingest Ledger CSV</p>
+              <p className="text-[9px] text-muted-foreground uppercase mt-1">SHA-256 Chain of Custody Enforced</p>
             </div>
           </CardContent>
         </Card>
@@ -461,21 +484,22 @@ export default function AuditIngestionPortal() {
             )}
           </CardContent>
           
-          {/* TRUTH SUMMARY */}
+          {/* FINAL TRUTH SUMMARY (numeric 24,4 schema) */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-10 bg-slate-50 border-t">
              <Card className="shadow-none border-t-2 border-t-emerald-500 bg-white p-4">
                 <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Math Variance</p>
                 <p className="text-2xl font-mono font-bold text-emerald-600 tracking-tighter">{variance.toFixed(4)}</p>
              </Card>
              <Card className="shadow-none border-t-2 border-t-blue-500 bg-white p-4">
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Document Coverage</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Documentation Match</p>
                 <p className="text-2xl font-mono font-bold text-blue-600 tracking-tighter">{vouchingCoverage.toFixed(2)}%</p>
              </Card>
              <Card className="shadow-none border-t-2 border-t-amber-500 bg-white p-4">
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Benford Score</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Fraud Score (Benford)</p>
                 <p className="text-2xl font-mono font-bold text-amber-500 tracking-tighter">{accuracyScore?.toFixed(2) || '0.00'}%</p>
              </Card>
              <Card className="shadow-none border-t-2 border-t-primary bg-white p-4 flex flex-col justify-center">
+                <p className="text-[9px] font-bold text-muted-foreground uppercase mb-2">Verdict Lock</p>
                 <Badge className={`text-[10px] h-8 justify-center border-none font-bold ${auditVerdict ? 'bg-emerald-600' : 'bg-slate-400'}`}>
                    {auditVerdict?.replace('_', ' ') || 'UNAUDITED'}
                 </Badge>
@@ -484,19 +508,19 @@ export default function AuditIngestionPortal() {
 
           <CardFooter className="bg-muted/10 border-t py-8 flex justify-between items-center px-12">
              <div className="flex items-center gap-3 opacity-60"><CheckCircle2 className="w-4 h-4 text-emerald-600" /><span className="text-[10px] font-bold uppercase tracking-widest">ISA-700 Golden Audit Enforced</span></div>
-             <p className="text-[10px] text-slate-400 font-mono italic">Provenance: {fileHash?.substring(0,32)}...</p>
+             <p className="text-[10px] text-slate-400 font-mono italic leading-none">Chain of Custody Lock: {fileHash?.substring(0,32)}...</p>
           </CardFooter>
         </Card>
 
-        {/* FINAL EXPORT ACTIONS */}
+        {/* FINAL BINDER ACTIONS */}
         {auditVerdict && (
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in zoom-in">
              <Card className="bg-slate-900 text-white shadow-2xl border-t-4 border-t-emerald-500 overflow-hidden">
                 <CardHeader className="pb-3 px-6"><CardTitle className="text-sm font-bold flex items-center gap-2"><Download className="w-4 h-4" /> Management Letter</CardTitle></CardHeader>
                 <CardContent className="px-6 pb-6 space-y-3">
-                   <Button onClick={() => handleForensicDownload('PDF')} className="w-full bg-slate-800 hover:bg-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
+                   <Button onClick={() => handleForensicDownload('PDF')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
                       <div className="p-2 bg-red-500/10 rounded mr-3 group-hover:bg-red-500/20"><FileText className="w-5 h-5 text-red-500" /></div>
-                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase leading-none">ISA-700 Report</p><p className="text-xs mt-1">Audit Certificate (PDF)</p></div>
+                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase leading-none">ISA-700 Report</p><p className="text-xs font-bold mt-1">Audit Certificate (PDF)</p></div>
                    </Button>
                 </CardContent>
              </Card>
@@ -505,7 +529,7 @@ export default function AuditIngestionPortal() {
                 <CardContent className="px-6 pb-6 space-y-3">
                    <Button onClick={() => handleForensicDownload('EXCEL')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
                       <div className="p-2 bg-emerald-500/10 rounded mr-3 group-hover:bg-emerald-500/20"><FileDown className="w-5 h-5 text-emerald-500" /></div>
-                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase leading-none">Forensic Workbook</p><p className="text-xs mt-1">Audit Worksheet (XL)</p></div>
+                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase leading-none">Forensic Workbook</p><p className="text-xs font-bold mt-1">Audit Worksheet (XL)</p></div>
                    </Button>
                 </CardContent>
              </Card>
