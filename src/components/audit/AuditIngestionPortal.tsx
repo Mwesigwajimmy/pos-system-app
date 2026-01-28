@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   UploadCloud, FileSpreadsheet, ShieldCheck, Trash2, Play, AlertCircle, 
-  Database, Binary, Globe, Scale, Calculator, Landmark, ShieldAlert,
+  Database, Binary, Globe, Scale, Calculator, Coins, Landmark, ShieldAlert,
   BrainCircuit, Layers, Wand2, CalendarClock, Download, FileText, FileDown, 
   ShieldQuestion, CheckCircle2, FileJson, Zap, Fingerprint, Users, History,
   Link as LinkIcon, ShieldX, Eye, FileStack, ClipboardCheck, Activity,
-  SearchCode, Lock, Image as ImageIcon, FileArchive,
-  ScanLine, CheckSquare, BarChart4, FileSignature, Hash, Archive
+  ExternalLink, FileWarning, SearchCode, Lock, Image as ImageIcon, FileArchive,
+  ScanLine, CheckSquare, BarChart4, Terminal, FileSignature, Hash, Archive
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -68,7 +68,7 @@ export default function AuditIngestionPortal() {
       await supabase.from('sovereign_settings_log').insert({
         tenant_id: user?.id, actor_id: user?.id, setting_key: key, old_value: oldVal || 'NULL', new_value: newVal 
       });
-    } catch (e) { console.error("Compliance Log Failure:", e); }
+    } catch (e) { console.error("Trace Log Failure:", e); }
   };
 
   /**
@@ -85,12 +85,12 @@ export default function AuditIngestionPortal() {
 
   /**
    * HEURISTIC DNA PATTERN SCANNER
-   * Autonomous discovery of financial pillars in disorganized datasets.
+   * Autonomous discovery of financial pillars in disorganized global datasets.
    */
   const performSmartAutoMap = (incomingHeaders: string[]) => {
     const newMappings: Record<string, string> = {};
     const patterns = [
-      { key: 'date', words: ['date', 'time', 'tx_date', 'period', 'timestamp'] },
+      { key: 'date', words: ['date', 'time', 'tx_date', 'period', 'day', 'timestamp'] },
       { key: 'account_name', words: ['name', 'account', 'desc', 'particulars', 'ledger', 'item'] },
       { key: 'account_code', words: ['code', 'acc', 'gl', 'reference', 'cid', 'chart'] },
       { key: 'debit', words: ['debit', 'dr', 'payment', 'withdrawal', 'outflow'] },
@@ -109,13 +109,13 @@ export default function AuditIngestionPortal() {
   };
 
   /**
-   * PHYSICAL EVIDENCE SUBSTANTIATION (Vouching Ingestion)
+   * PHYSICAL EVIDENCE INGESTION (Triple-Match Vouching)
    */
   const handleEvidenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     if (!lastExecutionId) {
-      toast.error("Compliance Violation: Generate a Trace ID via 'Seal' before uploading evidence.");
+      toast.error("Compliance Violation: Generate a Trace ID via 'Seal' before uploading proof artifacts.");
       return;
     }
 
@@ -137,7 +137,7 @@ export default function AuditIngestionPortal() {
           file_hash_sha256: artifactHash,
           artifact_type: file.type.includes('pdf') ? 'INVOICE' : 'RECEIPT',
           vouching_status: 'PENDING',
-          detected_amount: 0.0000 // Professional OCR extraction logic targets this field
+          detected_amount: 0.0000 
         });
         if (dbErr) throw dbErr;
         successful++;
@@ -146,12 +146,12 @@ export default function AuditIngestionPortal() {
 
       await Promise.all(uploadPromises);
 
-      // Trigger Triple-Match Verification
+      // Trigger Vouching Kernel
       const { data: kernelRes } = await supabase.rpc('proc_autonomous_vouching_kernel_v10', { p_execution_id: lastExecutionId });
       
       setEvidenceCount(prev => prev + successful);
       setVouchingCoverage(kernelRes?.audit_coverage_percent || 0);
-      toast.success(`${successful} Proof Artifacts legally locked and vouched by Kernel.`);
+      toast.success(`${successful} Proof Artifacts locked and vouched by Kernel.`);
     } catch (err: any) {
       toast.error("Chain of Custody Failure: " + err.message);
     } finally { setIsProcessing(false); setProgress(0); }
@@ -159,7 +159,6 @@ export default function AuditIngestionPortal() {
 
   /**
    * ENTERPRISE ISA-700 EXPORT ENGINE
-   * Generates Forensic Evidence Binders for Regulatory Submission.
    */
   const handleForensicDownload = async (format: 'PDF' | 'EXCEL' | 'CSV') => {
     if (!lastExecutionId) return;
@@ -180,7 +179,7 @@ export default function AuditIngestionPortal() {
         doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 50, 'F');
         doc.setTextColor(255, 255, 255); doc.setFontSize(22);
         doc.text("SOVEREIGN AUDIT CERTIFICATE", 105, 25, { align: 'center' });
-        doc.setFontSize(8); doc.text(`TRACE: ${lastExecutionId} | CHAIN OF CUSTODY: ${fileHash?.substring(0,32)}...`, 105, 40, { align: 'center' });
+        doc.setFontSize(8); doc.text(`TRACE: ${lastExecutionId} | DNA FINGERPRINT: ${fileHash?.substring(0,32)}...`, 105, 40, { align: 'center' });
 
         if (variance !== 0) {
             doc.setFillColor(254, 242, 242); doc.rect(15, 55, 180, 22, 'F');
@@ -196,9 +195,9 @@ export default function AuditIngestionPortal() {
 
         autoTable(doc, {
           startY: 105,
-          head: [['Forensic Dimension', 'Metric Result', 'Kernel Verdict']],
+          head: [['Forensic Dimension', 'Metric Result', 'Kernel Status']],
           body: [
-            ['Benford Law Pattern Match', `${accuracyScore?.toFixed(2)}%`, (accuracyScore || 0) > 85 ? 'CONFORMANT' : 'OUTLIER'],
+            ['Benford Pattern Match', `${accuracyScore?.toFixed(2)}%`, (accuracyScore || 0) > 85 ? 'CONFORMANT' : 'OUTLIER'],
             ['Substantive Vouching', `${vouchingCoverage.toFixed(2)}%`, vouchingCoverage > 85 ? 'HIGH' : 'LOW'],
             ['Kernel Variance (24,4)', variance.toFixed(4), variance === 0 ? 'ABSOLUTE' : 'IMBALANCED']
           ],
@@ -206,24 +205,23 @@ export default function AuditIngestionPortal() {
         });
 
         doc.setFontSize(8); doc.setTextColor(150);
-        doc.text("Sealed by Sovereign Kernel V10.1. Segregation of Duties (SoD) Protocol Enforced.", 105, 285, { align: 'center' });
-        doc.save(`Sovereign_Audit_Certificate_${fiscalYear}.pdf`);
+        doc.text("Mathematically sealed by Sovereign Kernel V10.1. Valid for regulatory submission.", 105, 285, { align: 'center' });
+        doc.save(`Sovereign_Certified_Audit_${fiscalYear}.pdf`);
       } else {
         const { utils, writeFile } = await import('xlsx');
         const wb = utils.book_new();
-        const summary = [["FINGERPRINT", fileHash], ["TRACE ID", lastExecutionId], ["OPINION", auditVerdict], ["VARIANCE", variance]];
+        const summary = [["TRACE ID", lastExecutionId], ["OPINION", auditVerdict], ["VARIANCE", variance], ["FINGERPRINT", fileHash]];
         utils.book_append_sheet(wb, utils.aoa_to_sheet(summary), "Executive_Summary");
         utils.book_append_sheet(wb, utils.json_to_sheet(report.entries || []), "Verified_Ledger");
-        utils.book_append_sheet(wb, utils.json_to_sheet(report.anomalies || []), "Anomaly_Findings");
+        utils.book_append_sheet(wb, utils.json_to_sheet(report.anomalies || []), "Forensic_Findings");
         writeFile(wb, `Audit_Evidence_Binder_${fiscalYear}.${format.toLowerCase()}`);
       }
-      toast.success(`${format} Forensic Binder Exported.`);
+      toast.success(`${format} Binder Exported.`);
     } catch (e: any) { toast.error("Forensic Export Failure."); } finally { setIsProcessing(false); }
   };
 
   /**
    * THE MASTER BILLION-DOLLAR KERNEL EXECUTION
-   * Synchronizes all 8 compliance pillars across Sandbox and Production.
    */
   const executeDigitalAudit = async () => {
     if (!industry || !taxRegime || (sourceMode === 'EXTERNAL_ONLY' && fileData.length === 0)) {
@@ -251,7 +249,6 @@ export default function AuditIngestionPortal() {
       
       setProgress(50);
 
-      // RPC CALL: Full 8-Pillar Compliance Signature
       const { data, error } = await supabase.rpc('proc_sovereign_global_audit_kernel_v10', {
         p_tenant_id: user?.id, 
         p_fiscal_year: parseInt(fiscalYear),
@@ -272,7 +269,7 @@ export default function AuditIngestionPortal() {
       setAuditVerdict(data.verdict);
       setLastExecutionId(data.execution_id);
       setProgress(100); setFileData([]);
-      toast.success("Audit Seal Absolute: V10.1 Global Protocol Certified.");
+      toast.success("Audit Seal Absolute: Golden Audit Protocol Certified.");
       
     } catch (error: any) { toast.error("Kernel Violation: " + error.message); } finally { setIsProcessing(false); }
   };
@@ -305,7 +302,7 @@ export default function AuditIngestionPortal() {
         setFileData(results.data);
         performSmartAutoMap(results.meta.fields || []); 
         setIsProcessing(false);
-        toast.success(`DNA Patterns Locked. Chain of Custody Established.`);
+        toast.success(`Ledger Patterns Locked. Chain of Custody Established.`);
       }
     });
   };
@@ -345,31 +342,46 @@ export default function AuditIngestionPortal() {
           <CardHeader>
             <div className="flex items-center gap-3">
               <BrainCircuit className="w-6 h-6 text-primary" />
-              <div><CardTitle className="text-lg font-bold">Forensic Setup</CardTitle><CardDescription className="text-[10px] font-bold uppercase text-primary/60">Autonomous Logic Strategy</CardDescription></div>
+              <div><CardTitle className="text-lg font-bold">Forensic Setup</CardTitle></div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <Select defaultValue={sourceMode} onValueChange={(v) => { logSettingChange('AUDIT_MODE', sourceMode, v); setSourceMode(v); }}>
-              <SelectTrigger className="font-bold"><SelectValue placeholder="Audit Strategy" /></SelectTrigger>
+              <SelectTrigger className="font-bold border-primary/20"><SelectValue placeholder="Audit Strategy" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="EXTERNAL_ONLY">External Agnostic Ingestion</SelectItem>
-                <SelectItem value="INTERNAL_ONLY">Internal Production Audit</SelectItem>
+                <SelectItem value="INTERNAL_ONLY">Production Ledger Audit</SelectItem>
                 <SelectItem value="RECONCILED_HYBRID">Hybrid Reconciliation</SelectItem>
               </SelectContent>
             </Select>
 
             <Select onValueChange={(v) => { logSettingChange('TAX_DNA', taxRegime, v); setTaxRegime(v); }}>
-              <SelectTrigger className="font-bold"><SelectValue placeholder="Jurisdictional DNA" /></SelectTrigger>
+              <SelectTrigger className="font-bold border-primary/20"><SelectValue placeholder="Tax Jurisdiction DNA" /></SelectTrigger>
               <SelectContent>
                  <SelectItem value="UK-VAT">United Kingdom (VAT 20%)</SelectItem>
-                 <SelectItem value="KE-VAT">Kenya (VAT 16.0%)</SelectItem>
+                 <SelectItem value="KE-VAT">Kenya (VAT 16%)</SelectItem>
                  <SelectItem value="US-NY">USA New York (Tax 8.875%)</SelectItem>
                  <SelectItem value="UAE-VAT">UAE (VAT 5.0%)</SelectItem>
                  <SelectItem value="OTHER">Agnostic Global DNA</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select onValueChange={setIndustry}><SelectTrigger className="font-bold"><SelectValue placeholder="Business Vertical" /></SelectTrigger>
+            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
+              <div className="flex items-center gap-3"><Scale className="w-4 h-4 text-primary" /><p className="text-sm font-bold">Tax Compliance Shield</p></div>
+              <Switch checked={taxAuditMode} onCheckedChange={setTaxAuditMode} />
+            </div>
+
+            {taxAuditMode && (
+              <div className="space-y-2 animate-in slide-in-from-top-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                   <Calculator className="w-3 h-3" /> Custom Verification Rate (%)
+                </label>
+                <Input type="number" placeholder="e.g. 16.5" value={customTaxRate} onChange={(e) => setCustomTaxRate(e.target.value)} className="font-mono text-sm border-primary/20" />
+                <p className="text-[9px] text-muted-foreground italic">*Overrides jurisdictional standard for forensic cross-checking.</p>
+              </div>
+            )}
+
+            <Select onValueChange={setIndustry}><SelectTrigger className="font-bold border-primary/20"><SelectValue placeholder="Business Vertical DNA" /></SelectTrigger>
               <SelectContent>
                   <SelectGroup><SelectLabel>Commercial</SelectLabel>
                     <SelectItem value="retail">Retail / Wholesale</SelectItem><SelectItem value="restaurant">Restaurant / Cafe</SelectItem><SelectItem value="distribution">Distribution / Logistics</SelectItem>
@@ -388,7 +400,7 @@ export default function AuditIngestionPortal() {
                  <div className="relative border-2 border-dashed rounded-xl p-8 text-center hover:bg-primary/5 transition-all cursor-pointer group">
                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileLoad} accept=".csv,.xlsx" />
                    <FileSpreadsheet className="w-10 h-10 mx-auto text-muted-foreground mb-2 group-hover:text-primary transition-colors" />
-                   <p className="text-xs font-bold uppercase">Ingest Ledger CSV</p>
+                   <p className="text-xs font-bold uppercase tracking-widest">Ingest Ledger CSV</p>
                  </div>
               </TabsContent>
               <TabsContent value="proof" className="pt-4">
@@ -396,7 +408,7 @@ export default function AuditIngestionPortal() {
                     <input type="file" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleEvidenceUpload} accept=".pdf,.png,.jpg,.jpeg" />
                     <Archive className="w-10 h-10 mx-auto text-emerald-400 mb-2 group-hover:text-emerald-600 transition-colors" />
                     <p className="text-xs font-bold text-emerald-800 uppercase">Batch Proof Artifacts</p>
-                    {evidenceCount > 0 && <Badge className="mt-2 bg-emerald-600">{evidenceCount} Files Ready</Badge>}
+                    {evidenceCount > 0 && <Badge className="mt-2 bg-emerald-600 animate-in zoom-in">{evidenceCount} Files Ready</Badge>}
                  </div>
               </TabsContent>
             </Tabs>
@@ -427,11 +439,11 @@ export default function AuditIngestionPortal() {
                 <CardHeader className="pb-3 px-6"><CardTitle className="text-sm font-bold flex items-center gap-2"><Download className="w-4 h-4" /> Evidence Binder Ready</CardTitle></CardHeader>
                 <CardContent className="px-6 pb-6 space-y-3">
                    <Button onClick={() => handleForensicDownload('PDF')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
-                      <div className="p-2 bg-red-500/10 rounded mr-3 group-hover:bg-red-500/20"><FileText className="w-5 h-5 text-red-500" /></div>
+                      <div className="p-2 bg-red-500/10 rounded mr-3 group-hover:bg-red-500/20 transition-colors"><FileText className="w-5 h-5 text-red-500" /></div>
                       <div className="text-left font-bold uppercase leading-none"><p className="text-[10px] opacity-50">Management Letter</p><p className="text-xs mt-1">Audit Certificate (PDF)</p></div>
                    </Button>
                    <Button onClick={() => handleForensicDownload('EXCEL')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
-                      <div className="p-2 bg-emerald-500/10 rounded mr-3 group-hover:bg-emerald-500/20"><FileDown className="w-5 h-5 text-emerald-500" /></div>
+                      <div className="p-2 bg-emerald-500/10 rounded mr-3 group-hover:bg-emerald-500/20 transition-colors"><FileDown className="w-5 h-5 text-emerald-500" /></div>
                       <div className="text-left font-bold uppercase leading-none"><p className="text-[10px] opacity-50">Detailed Workbook</p><p className="text-xs mt-1">Forensic Artifacts (XL)</p></div>
                    </Button>
                 </CardContent>
@@ -454,14 +466,14 @@ export default function AuditIngestionPortal() {
           <CardContent className="p-0 flex-grow">
             {headers.length > 0 ? (
               <Table>
-                <TableHeader><TableRow className="bg-slate-50"><TableHead className="font-bold text-[10px] uppercase">Compliance Pillar</TableHead><TableHead className="font-bold text-[10px] uppercase">Mapping</TableHead><TableHead className="font-bold text-[10px] uppercase">DNA Sample</TableHead><TableHead className="text-right font-bold text-[10px] uppercase">Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow className="bg-slate-50"><TableHead className="font-bold text-[10px] uppercase tracking-widest">Compliance Pillar</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-widest">Autonomous Mapping</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-widest">DNA Sample</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-widest">Status</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {['date', 'account_name', 'account_code', 'debit', 'credit', 'reported_tax', 'currency'].map((k) => (
                     <TableRow key={k} className="hover:bg-slate-50/50 transition-colors h-16">
                       <TableCell className="font-bold flex items-center gap-2 text-sm text-slate-700 uppercase tracking-tighter">{k.replace('_', ' ')}</TableCell>
                       <TableCell>
                         <Select value={mappings[k] || ''} onValueChange={(val) => setMappings(m => ({ ...m, [k]: val }))}>
-                          <SelectTrigger className="w-[200px] h-9 text-xs font-mono border-primary/10 shadow-inner"><SelectValue placeholder="Heuristic Sync..." /></SelectTrigger>
+                          <SelectTrigger className="w-[190px] h-9 text-xs font-mono border-primary/10 shadow-inner"><SelectValue placeholder="Heuristic Sync..." /></SelectTrigger>
                           <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
                         </Select>
                       </TableCell>
