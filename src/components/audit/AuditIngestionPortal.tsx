@@ -158,7 +158,8 @@ export default function AuditIngestionPortal() {
   };
 
   /**
-   * ENTERPRISE ISA-700 EXPORT ENGINE
+   * ENTERPRISE FORENSIC EXPORT ENGINE
+   * Generates Audit Certificates (PDF), Workbooks (Excel), and Traces (CSV)
    */
   const handleForensicDownload = async (format: 'PDF' | 'EXCEL' | 'CSV') => {
     if (!lastExecutionId) return;
@@ -175,12 +176,13 @@ export default function AuditIngestionPortal() {
         const autoTable = (await import('jspdf-autotable')).default;
         const doc = new jsPDF();
 
-        // High-Tier Certification Header
+        // 1. High-Tier Regulatory Header
         doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 50, 'F');
         doc.setTextColor(255, 255, 255); doc.setFontSize(22);
         doc.text("SOVEREIGN AUDIT CERTIFICATE", 105, 25, { align: 'center' });
-        doc.setFontSize(8); doc.text(`TRACE: ${lastExecutionId} | DNA FINGERPRINT: ${fileHash?.substring(0,32)}...`, 105, 40, { align: 'center' });
+        doc.setFontSize(8); doc.text(`TRACE ID: ${lastExecutionId} | DNA FINGERPRINT: ${fileHash?.substring(0,32)}...`, 105, 40, { align: 'center' });
 
+        // Variance Disclaimer
         if (variance !== 0) {
             doc.setFillColor(254, 242, 242); doc.rect(15, 55, 180, 22, 'F');
             doc.setTextColor(185, 28, 28); doc.setFontSize(8);
@@ -188,13 +190,16 @@ export default function AuditIngestionPortal() {
             doc.text(doc.splitTextToSize(disclaimer, 170), 20, 62);
         }
 
-        doc.setTextColor(0); doc.setFontSize(14); doc.text("1. Independent Auditor's Opinion:", 20, 90);
+        // 2. Audit Opinion (ISA-700)
+        doc.setTextColor(0); doc.setFontSize(14); doc.text("Independent Auditor's Opinion:", 20, 90);
+        doc.setFontSize(10);
         const isClean = auditVerdict?.includes('CLEAN') && variance === 0;
-        doc.setTextColor(isClean ? 34 : 200, isClean ? 150 : 0, 0);
-        doc.text(isClean ? "UNQUALIFIED CLEAN" : "QUALIFIED WITH FINDINGS", 75, 90);
+        const opinion = `We have audited the financial records for the fiscal year ${fiscalYear}. In our autonomous opinion, the books present a ${auditVerdict?.replace('_', ' ')} status based on the Golden Audit Protocol.`;
+        doc.text(doc.splitTextToSize(opinion, 170), 20, 100);
 
+        // 3. Findings Table
         autoTable(doc, {
-          startY: 105,
+          startY: 115,
           head: [['Forensic Dimension', 'Metric Result', 'Kernel Status']],
           body: [
             ['Benford Pattern Match', `${accuracyScore?.toFixed(2)}%`, (accuracyScore || 0) > 85 ? 'CONFORMANT' : 'OUTLIER'],
@@ -210,14 +215,15 @@ export default function AuditIngestionPortal() {
       } else {
         const { utils, writeFile } = await import('xlsx');
         const wb = utils.book_new();
+        // Professional Multi-Sheet Forensic Workbook
         const summary = [["TRACE ID", lastExecutionId], ["OPINION", auditVerdict], ["VARIANCE", variance], ["FINGERPRINT", fileHash]];
         utils.book_append_sheet(wb, utils.aoa_to_sheet(summary), "Executive_Summary");
-        utils.book_append_sheet(wb, utils.json_to_sheet(report.entries || []), "Verified_Ledger");
-        utils.book_append_sheet(wb, utils.json_to_sheet(report.anomalies || []), "Forensic_Findings");
-        writeFile(wb, `Audit_Evidence_Binder_${fiscalYear}.${format.toLowerCase()}`);
+        utils.book_append_sheet(wb, utils.json_to_sheet(report.entries || []), "Audited_Ledger");
+        utils.book_append_sheet(wb, utils.json_to_sheet(report.anomalies || []), "Anomaly_Log");
+        writeFile(wb, `Audit_Workbook_${lastExecutionId.substring(0,8)}.${format.toLowerCase()}`);
       }
-      toast.success(`${format} Binder Exported.`);
-    } catch (e: any) { toast.error("Forensic Export Failure."); } finally { setIsProcessing(false); }
+      toast.success(`${format} Forensic Evidence Exported.`);
+    } catch (e: any) { toast.error("Export Engine Failure."); } finally { setIsProcessing(false); }
   };
 
   /**
@@ -261,7 +267,22 @@ export default function AuditIngestionPortal() {
       });
 
       if (error) throw error;
-      if (data?.status === 'BLOCK_SEAL') { setVariance(data?.variance ?? 0); toast.error(data?.message); return; }
+
+      // SOVEREIGN SAFETY GATES: Date-Lock & Integrity Checks
+      if (data?.status === 'BLOCK_SEAL') {
+        setVariance(data?.variance ?? 0);
+        
+        // Specific Toast for Date Locking
+        if (data.verdict === 'TEMPORAL_VIOLATION') {
+           toast.error(`Compliance Violation: ${data.message}`, {
+             description: "Audit Engine is locked to the selected fiscal year. Records outside this period were physically rejected.",
+             duration: 10000
+           });
+        } else {
+           toast.error(`Sovereign Block: ${data.message}`);
+        }
+        return;
+      }
 
       setVariance(data.variance || 0.0000);
       setAccuracyScore(data.forensic_summary?.benford_score ?? 100);
@@ -355,6 +376,13 @@ export default function AuditIngestionPortal() {
               </SelectContent>
             </Select>
 
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                 <CalendarClock className="w-3 h-3" /> Target Fiscal Year
+              </label>
+              <Input type="number" value={fiscalYear} onChange={(e) => setFiscalYear(e.target.value)} className="font-mono text-sm border-primary/20" />
+            </div>
+
             <Select onValueChange={(v) => { logSettingChange('TAX_DNA', taxRegime, v); setTaxRegime(v); }}>
               <SelectTrigger className="font-bold border-primary/20"><SelectValue placeholder="Tax Jurisdiction DNA" /></SelectTrigger>
               <SelectContent>
@@ -415,7 +443,7 @@ export default function AuditIngestionPortal() {
           </CardContent>
         </Card>
 
-        {/* METRICS & VERDICT */}
+        {/* METRICS & RESULTS */}
         <div className="flex flex-col gap-6">
           <Card className="bg-slate-950 text-white border-none shadow-2xl p-6 relative overflow-hidden">
             <Zap className="absolute -right-2 -top-2 w-16 h-16 text-emerald-500 opacity-10" />
@@ -427,7 +455,10 @@ export default function AuditIngestionPortal() {
           {auditVerdict && (
             <div className="space-y-4 animate-in zoom-in duration-500">
               <Card className="bg-black text-white border border-emerald-500/30 p-6 shadow-2xl">
-                <div className="flex justify-between items-start"><p className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">Sovereign Opinion</p><Badge className="bg-emerald-600 text-[9px] border-none uppercase tracking-widest">Certified</Badge></div>
+                <div className="flex justify-between items-start">
+                  <p className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest">Sovereign Opinion</p>
+                  <Badge className="bg-emerald-600 text-[9px] border-none uppercase tracking-widest">Certified</Badge>
+                </div>
                 <div className="text-2xl font-extrabold tracking-tight text-white mt-2 uppercase">{auditVerdict.replace('_', ' ')}</div>
                 <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-white/10">
                    <div><p className="text-[9px] text-muted-foreground uppercase flex items-center gap-1"><Activity className="w-3 h-3" /> Integrity Score</p><p className="text-2xl font-mono font-bold text-emerald-500">{accuracyScore?.toFixed(2)}%</p></div>
@@ -435,16 +466,31 @@ export default function AuditIngestionPortal() {
                 </div>
               </Card>
 
-              <Card className="border-slate-800 bg-slate-900 text-white shadow-2xl border-t-4 border-t-emerald-500 overflow-hidden">
-                <CardHeader className="pb-3 px-6"><CardTitle className="text-sm font-bold flex items-center gap-2"><Download className="w-4 h-4" /> Evidence Binder Ready</CardTitle></CardHeader>
+              {/* PROFESSIONAL FORENSIC ACTION INTERFACE */}
+              <Card className="border-slate-800 bg-slate-900 text-white shadow-2xl border-t-4 border-t-emerald-500 animate-in zoom-in">
+                <CardHeader className="pb-3 px-6">
+                   <div className="flex items-center gap-2">
+                     <Download className="w-5 h-5 text-emerald-500" />
+                     <div>
+                       <CardTitle className="text-sm font-bold">Evidence Binder Ready</CardTitle>
+                       <CardDescription className="text-[9px] text-emerald-500/70 uppercase">Legal-Grade Forensic Trace Generated</CardDescription>
+                     </div>
+                   </div>
+                </CardHeader>
                 <CardContent className="px-6 pb-6 space-y-3">
-                   <Button onClick={() => handleForensicDownload('PDF')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
+                   <Button onClick={() => handleForensicDownload('PDF')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-12 px-4 shadow-inner group transition-all">
                       <div className="p-2 bg-red-500/10 rounded mr-3 group-hover:bg-red-500/20 transition-colors"><FileText className="w-5 h-5 text-red-500" /></div>
-                      <div className="text-left font-bold uppercase leading-none"><p className="text-[10px] opacity-50">Management Letter</p><p className="text-xs mt-1">Audit Certificate (PDF)</p></div>
+                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase tracking-widest leading-none">ISA-700 Verdict</p><p className="text-xs">Download PDF Certificate</p></div>
                    </Button>
-                   <Button onClick={() => handleForensicDownload('EXCEL')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-14 px-4 shadow-inner group transition-all">
+                   
+                   <Button onClick={() => handleForensicDownload('EXCEL')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-12 px-4 shadow-inner group transition-all">
                       <div className="p-2 bg-emerald-500/10 rounded mr-3 group-hover:bg-emerald-500/20 transition-colors"><FileDown className="w-5 h-5 text-emerald-500" /></div>
-                      <div className="text-left font-bold uppercase leading-none"><p className="text-[10px] opacity-50">Detailed Workbook</p><p className="text-xs mt-1">Forensic Artifacts (XL)</p></div>
+                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase tracking-widest leading-none">Forensic Workbook</p><p className="text-xs">Audit Ledger (Excel)</p></div>
+                   </Button>
+
+                   <Button onClick={() => handleForensicDownload('CSV')} className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white justify-start h-12 px-4 shadow-inner group transition-all">
+                      <div className="p-2 bg-blue-500/10 rounded mr-3 group-hover:bg-blue-500/20 transition-colors"><FileJson className="w-5 h-5 text-blue-500" /></div>
+                      <div className="text-left font-bold"><p className="text-[10px] opacity-50 uppercase tracking-widest leading-none">Raw Anomaly Trace</p><p className="text-xs">Export CSV Findings</p></div>
                    </Button>
                 </CardContent>
               </Card>

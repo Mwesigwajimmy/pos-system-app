@@ -1591,7 +1591,7 @@ const PartnerWithUsSection = () => {
         // 3. Force Open Email Client
         // We use window.open for better compatibility in Modals, 
         // targeting '_self' acts just like a standard link click.
-        window.open(`mailto:mwesigwajimmy123@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
+        window.open(`mailto:nakkungujackline.92@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
     };
 
     // Handler for WhatsApp Affiliate
