@@ -1,16 +1,23 @@
 import React from 'react';
+import { Metadata } from "next";
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 // --- Icons & UI ---
-import { PlusCircle, FileWarning, ShieldAlert, RefreshCw, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, FileWarning, ShieldAlert, RefreshCw, LayoutDashboard, ShieldCheck, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // --- Supabase & Components ---
 import { createClient } from '@/lib/supabase/server';
 import { InvoicesDataTable, InvoiceData } from '@/components/invoicing/InvoicesDataTable';
+
+// --- Enterprise Metadata ---
+export const metadata: Metadata = {
+    title: "Invoice Registry | Enterprise Financial Control",
+    description: "Unified accounts receivable ledger with real-time autonomous synchronization.",
+};
 
 export default async function InvoicesListPage({ params: { locale } }: { params: { locale: string } }) {
     // 1. Initialize Secure Server Client
@@ -24,140 +31,156 @@ export default async function InvoicesListPage({ params: { locale } }: { params:
         redirect(`/${locale}/auth/login`);
     }
 
-    // 3. Multi-Tenant Legal Entity Fetching
-    // We fetch the profile AND the Tenant details to get the legal business name for the PDF issuer
-    const { data: profile } = await supabase
+    // 3. Sovereign Context Resolution
+    // We fetch both columns to bridge the desync discovered in our historical audit.
+    const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('business_id')
+        .select('business_id, organization_id')
         .eq('id', user.id)
         .single();
 
-    if (!profile?.business_id) {
+    // The 'activeTenantId' is our golden key for the 1:1 Ledger Interconnect
+    const activeTenantId = profile?.business_id || profile?.organization_id;
+
+    if (profileError || !activeTenantId) {
         return (
-            <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 p-8">
-                <div className="rounded-full bg-red-100 p-4 text-red-600">
-                    <ShieldAlert className="h-10 w-10" />
+            <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-6 p-8 text-center">
+                <div className="rounded-3xl bg-red-50 border-2 border-dashed border-red-200 p-12 shadow-2xl shadow-red-500/10 max-w-md">
+                    <ShieldAlert className="h-16 w-16 text-red-600 mx-auto mb-6 animate-pulse" />
+                    <h1 className="text-3xl font-black tracking-tighter text-red-900 uppercase">Entity Unlinked</h1>
+                    <p className="mt-4 text-red-700 font-medium leading-relaxed">
+                        Security Alert: Your profile is not currently mapped to an active Business Unit. 
+                        Registry access is restricted.
+                    </p>
+                    <Button variant="destructive" className="mt-8 font-bold" asChild>
+                        <Link href={`/${locale}/onboarding`}>Link Business Unit</Link>
+                    </Button>
                 </div>
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Enterprise Access Denied</h1>
-                    <p className="mt-2 text-gray-500 italic">No business entity linked to account: {user.email}</p>
-                </div>
-                <Button variant="outline" asChild>
-                    <Link href={`/${locale}/onboarding`}>Register Organization</Link>
-                </Button>
             </div>
         );
     }
 
-    // Fetch the legal tenant name for document branding
+    // Fetch the legal tenant name for high-end document branding
     const { data: tenantRecord } = await supabase
         .from('tenants')
         .select('name')
-        .eq('id', profile.business_id)
+        .eq('id', activeTenantId)
         .single();
 
-    const businessId = profile.business_id;
-    const tenantLegalName = tenantRecord?.name || "Our Organization";
+    const tenantLegalName = tenantRecord?.name || "Global Organization";
 
-    // 4. Global Ledger Synchronization (Fetching from the Interconnect View)
+    // 4. Global Interconnect Fetch (1:1 Relational Bridge)
+    // We fetch from the 'invoices' table and join 'customers' to ensure names are always current.
     const { data: rawData, error: dbError } = await supabase
-        .from('accounting_invoices') 
-        .select('*')
-        .eq('business_id', businessId) 
+        .from('invoices') 
+        .select(`
+            *,
+            customers ( name )
+        `)
+        .eq('business_id', activeTenantId) 
         .order('created_at', { ascending: false });
 
     if (dbError) {
-        console.error("[Enterprise Invoicing] Fetch Error:", dbError.message);
+        console.error("[Enterprise Invoicing] Interconnect Failure:", dbError.message);
         return (
-            <div className="p-8">
-                <Alert variant="destructive" className="border-2">
-                    <FileWarning className="h-4 w-4" />
-                    <AlertTitle>Ledger Sync Failure</AlertTitle>
-                    <AlertDescription>
-                        Could not synchronize with the Accounts Receivable registry. 
-                        <span className="block mt-2 font-mono text-[10px] uppercase opacity-60">Status: {dbError.message}</span>
+            <div className="p-8 max-w-3xl mx-auto">
+                <Alert variant="destructive" className="border-none shadow-2xl bg-red-600 text-white rounded-2xl p-8">
+                    <FileWarning className="h-8 w-8 text-white" />
+                    <AlertTitle className="text-2xl font-black tracking-tighter uppercase mb-2">Ledger Desync Error</AlertTitle>
+                    <AlertDescription className="text-red-100 font-medium leading-relaxed">
+                        The system encountered a logic gap while synchronizing with the General Ledger. 
+                        The autonomous engine has paused for safety.
+                        <span className="block mt-6 font-mono text-[10px] p-2 bg-red-700/50 rounded uppercase">Technical Root: {dbError.message}</span>
                     </AlertDescription>
                 </Alert>
             </div>
         );
     }
 
-    // 5. Enterprise Data Transformation (IFRS/GAAP Compliant)
+    // 5. Enterprise Data Transformation (Traceability Check)
     const invoices: InvoiceData[] = (rawData || []).map((inv: any) => {
-        const total = Number(inv.total_amount) || 0;
-        // In GADS systems, tax_amount is often a decimal; we handle it safely
-        const taxAmount = Number(inv.tax_amount || 0); 
+        const total = Number(inv.total_amount) || Number(inv.total) || 0;
+        const taxAmount = Number(inv.tax_amount || inv.tax || 0); 
         
         return {
             id: String(inv.id),
-            // Robust reference generation
-            invoice_number: inv.invoice_number || `INV-${String(inv.id).toUpperCase().substring(0, 6)}`,
-            customer_name: inv.customer_name || 'Walk-in Client',
+            // Use the verified reference or fallback to the BIGINT ID
+            invoice_number: inv.invoice_number || `INV-${inv.id}`,
+            // Relational name takes priority over string backup
+            customer_name: inv.customers?.name || inv.customer_name || 'Walk-in Client',
             total: total,
             tax_amount: taxAmount,
-            // Calculate subtotal for the professional PDF breakdown
             subtotal: total - taxAmount,
-            balance_due: Number(inv.amount_due) || 0,
-            currency: inv.currency || 'UGX',
+            balance_due: Number(inv.balance_due) || 0,
+            currency: inv.currency || inv.currency_code || 'UGX',
             status: inv.status || 'DRAFT',
-            issue_date: inv.created_at || new Date().toISOString(),
+            issue_date: inv.issue_date || inv.created_at || new Date().toISOString(),
             due_date: inv.due_date || null,
             items_count: Array.isArray(inv.items_data) ? inv.items_data.length : 0,
-            items_data: inv.items_data || [] // Pass full JSONB array for PDF line items
+            // Interconnect Key: Used by UI to show "Ledger Sealed" badge
+            transaction_id: inv.transaction_id || null,
+            items_data: inv.items_data || [] 
         };
     });
 
-    // 6. Render Unified Registry
+    // 6. Render Autonomous Registry
     return (
-        <div className="flex h-full flex-col space-y-6 p-4 md:p-8 bg-slate-50/30">
-            {/* Context Breadcrumbs for Enterprise Navigation */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
+        <div className="flex h-full flex-col space-y-8 p-6 md:p-10 bg-slate-50/50">
+            {/* Context Navigation */}
+            <div className="flex items-center gap-3 text-[10px] text-slate-400 uppercase tracking-[0.3em] font-black">
                 <LayoutDashboard className="h-3 w-3" />
-                <Link href={`/${locale}/dashboard`} className="hover:text-primary transition-colors">Finance</Link>
-                <span>/</span>
-                <span className="text-slate-400">Accounts Receivable</span>
+                <Link href={`/${locale}/dashboard`} className="hover:text-blue-600 transition-colors">Sovereign Control</Link>
+                <span className="opacity-30">/</span>
+                <span className="text-blue-600">Revenue Ledger</span>
             </div>
 
-            {/* Global Header Section */}
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div className="space-y-1">
-                    <h2 className="text-4xl font-black tracking-tighter text-slate-900 uppercase">
+            {/* Global Header Interface */}
+            <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end border-b border-slate-100 pb-10">
+                <div className="space-y-3">
+                    <h2 className="text-5xl font-black tracking-tighter text-slate-900 uppercase">
                         Invoice Registry
                     </h2>
-                    <p className="text-sm text-muted-foreground">
-                        Managing {invoices.length} legal documents for <span className="font-bold text-primary underline underline-offset-4">{tenantLegalName}</span>
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 h-1.5 w-8 rounded-full" />
+                        <p className="text-sm text-slate-500 font-medium">
+                            Monitoring <span className="text-slate-900 font-bold">{invoices.length}</span> documents for <span className="text-blue-600 font-black italic">{tenantLegalName}</span>
+                        </p>
+                    </div>
                 </div>
+                
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" className="h-11 px-6 shadow-sm hidden md:flex hover:bg-white transition-all">
-                        <RefreshCw className="mr-2 h-4 w-4 text-slate-400" /> 
-                        Refresh Ledger
+                    <Button variant="ghost" className="h-12 px-6 font-bold text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all">
+                        <History className="mr-2 h-4 w-4" /> 
+                        Audit Logs
                     </Button>
-                    <Button asChild className="h-11 px-8 shadow-xl bg-primary hover:bg-primary/90 transition-all font-bold">
+                    <Button asChild className="h-12 px-8 shadow-2xl shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest rounded-xl">
                         <Link href={`/${locale}/invoicing/create`}>
-                            <PlusCircle className="mr-2 h-5 w-5" /> New Invoice
+                            <PlusCircle className="mr-2 h-5 w-5" strokeWidth={3} /> New Invoice
                         </Link>
                     </Button>
                 </div>
             </div>
 
-            {/* Centralized Data Table 
-                Now receives the Legal Tenant Name for dynamic PDF branding 
-            */}
+            {/* Interconnected Data Fabric */}
             <div className="flex-1 overflow-hidden">
-                <InvoicesDataTable 
-                    data={invoices} 
-                    locale={locale} 
-                    tenantName={tenantLegalName}
-                />
+                <div className="relative">
+                    <div className="absolute -top-10 -right-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+                    <InvoicesDataTable 
+                        data={invoices} 
+                        locale={locale} 
+                        tenantName={tenantLegalName}
+                    />
+                </div>
             </div>
 
-            {/* Global Compliance Footer */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-slate-400 font-medium py-4 border-t uppercase tracking-widest">
-                <p>© 2026 UG-BizSuite Cloud ERP • Secure Tenant Environment</p>
-                <div className="flex gap-4">
-                    <span className="flex items-center gap-1 text-green-600"><ShieldAlert className="h-3 w-3"/> GADS Compliant</span>
-                    <span>IFRS Double-Entry Sync: Verified</span>
+            {/* Global Compliance & Integrity Footer */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-[9px] text-slate-300 font-black py-6 border-t border-slate-100 uppercase tracking-[0.25em]">
+                <p>© 2026 Sovereign ERP Systems • Autonomous Financial Environment</p>
+                <div className="flex items-center gap-6">
+                    <span className="flex items-center gap-1.5 text-blue-600/60">
+                        <ShieldCheck className="h-3.5 w-3.5"/> 1:1 Ledger Interconnect: Active
+                    </span>
+                    <span className="opacity-50">IFRS GAAP Compliant Architecture</span>
                 </div>
             </div>
         </div>

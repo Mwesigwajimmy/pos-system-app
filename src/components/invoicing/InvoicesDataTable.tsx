@@ -255,6 +255,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                         <div className="flex items-center gap-2">
                            {inv.invoice_number || 'DRAFT'}
                            {inv.transaction_id && (
+                             /* FIX: Wrapped in span to solve the TypeScript title error */
                              <span title="Hard-linked to Ledger">
                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                              </span>
@@ -313,6 +314,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                             </Button>
                             
                             <Button asChild size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                                {/* FIX: Ensure the link matches your dynamic folder structure [invoiceId] */}
                                 <Link href={`/${locale}/invoicing/invoice/${inv.id}`}>
                                     <ArrowRight className="h-5 w-5 text-slate-400 group-hover:text-blue-600" />
                                 </Link>
