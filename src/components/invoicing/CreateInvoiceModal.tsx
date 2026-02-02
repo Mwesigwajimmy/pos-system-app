@@ -91,35 +91,53 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
 
   // --- 5. Data Fetching ---
   useEffect(() => {
-    if (!isOpen) return; // Only fetch when opened
+  if (!isOpen) return; // Only fetch when opened
 
-    let isMounted = true;
-    const fetchCustomers = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, name, email')
-          .eq('tenant_id', tenantId)
-          .order('name');
-        
-        if (error) throw error;
-        if (isMounted && data) setCustomers(data);
-      } catch (err) {
-        console.error("Failed to load customers", err);
-      } finally {
-        if (isMounted) setIsLoadingCustomers(false);
+  let isMounted = true;
+  const fetchCustomers = async () => {
+    try {
+      // 1. ENTERPRISE MULTI-TENANT FILTER
+      // We check both tenant_id and business_id to bridge the desync found in the audit.
+      // This ensures "Nak", "Clevland", and "Cake" organizations all see their correct data.
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name, email, tenant_id, business_id')
+        .or(`tenant_id.eq.${tenantId},business_id.eq.${tenantId}`)
+        .eq('is_active', true) // Only fetch active accounts
+        .order('name');
+      
+      if (error) throw error;
+
+      if (isMounted && data) {
+        // 2. THE BIGINT-TO-STRING BRIDGE
+        // Your database returns numeric ID 12. Your Zod Schema expects "12".
+        // This mapping allows the "Select" dropdown to recognize and display the data.
+        const formattedData = data.map((customer: any) => ({
+          ...customer,
+          id: String(customer.id) 
+        }));
+
+        setCustomers(formattedData);
+        console.log(`Autonomous Sync: Loaded ${formattedData.length} customers for organization.`);
       }
-    };
-    fetchCustomers();
+    } catch (err: any) {
+      console.error("Modal Connectivity Error:", err.message);
+    } finally {
+      if (isMounted) setIsLoadingCustomers(false);
+    }
+  };
 
-    // Lock body scroll
-    document.body.style.overflow = 'hidden';
-    return () => { 
-      isMounted = false; 
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen, tenantId, supabase]);
+  fetchCustomers();
 
+  // 3. UI LAYOUT INTEGRITY
+  // Lock body scroll to prevent layout shifting while modal is open
+  document.body.style.overflow = 'hidden';
+  
+  return () => { 
+    isMounted = false; 
+    document.body.style.overflow = 'unset';
+  };
+}, [isOpen, tenantId, supabase]);
   // --- 6. Form Setup ---
   const { 
     register, 

@@ -2,22 +2,30 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2, Search, FileText } from 'lucide-react';
+import { Loader2, Search, FilePlus, AlertCircle, TrendingUp } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { createClient } from '@/lib/supabase/client';
 
-// Define the shape of your data
+// --- Enterprise Data Interface ---
 interface DebitNote {
   id: string;
   note_number: string;
-  supplier_name: string;
-  currency: string;
   amount: number;
+  currency: string;
   reason: string;
   status: string;
   created_at: string;
+  // Relational Bridge: Join through invoice to find the partner
+  invoices: {
+    customer_name: string;
+    invoice_number: string;
+    customers: {
+      name: string;
+    }
+  }
 }
 
 interface Props {
@@ -25,116 +33,151 @@ interface Props {
   locale?: string;
 }
 
-export default function DebitNotesTable({ tenantId }: Props) {
+export default function DebitNotesTable({ tenantId, locale = 'en-UG' }: Props) {
   const [notes, setNotes] = useState<DebitNote[]>([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   
-  // Client-side Supabase client (does not need cookies passed manually)
   const supabase = createClient();
 
   useEffect(() => {
+    let isMounted = true;
     const fetchNotes = async () => {
       setLoading(true);
-      
-      // Fetch data scoped to the tenant
-      const { data, error } = await supabase
-        .from('debit_notes')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+      try {
+        // ENTERPRISE RELATIONAL FETCH:
+        // We join 'debit_notes' -> 'invoices' -> 'customers'
+        // This ensures the adjustment is hard-linked to the correct ledger sub-account.
+        const { data, error } = await supabase
+          .from('debit_notes')
+          .select(`
+            id, note_number, amount, currency, reason, status, created_at,
+            invoices (
+              customer_name,
+              invoice_number,
+              customers (
+                name
+              )
+            )
+          `)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error("Error fetching debit notes:", error);
+        if (error) throw error;
+        if (isMounted && data) setNotes(data as any);
+      } catch (err: any) {
+        console.error("Debit Note Connectivity Error:", err.message);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      
-      if (data) {
-        // Cast data to ensure TS is happy, or rely on generated types if available
-        setNotes(data as unknown as DebitNote[]);
-      }
-      
-      setLoading(false);
     };
 
-    if (tenantId) {
-      fetchNotes();
-    }
+    if (tenantId) fetchNotes();
+    return () => { isMounted = false; };
   }, [tenantId, supabase]);
 
-  // Client-side filtering
-  const filtered = useMemo(() => notes.filter(n => 
-    (n.note_number?.toLowerCase() || '').includes(filter.toLowerCase()) || 
-    (n.supplier_name?.toLowerCase() || '').includes(filter.toLowerCase())
-  ), [notes, filter]);
+  // SMART FILTERING: Handles potential null values in note numbers or names
+  const filtered = useMemo(() => notes.filter(n => {
+    const search = filter.toLowerCase();
+    const noteNum = (n.note_number || '').toLowerCase();
+    const partyName = (n.invoices?.customers?.name || n.invoices?.customer_name || '').toLowerCase();
+    return noteNum.includes(search) || partyName.includes(search);
+  }), [notes, filter]);
+
+  const getStatusBadge = (status: string) => {
+    const s = (status || 'DRAFT').toUpperCase();
+    switch (s) {
+      case 'APPROVED': 
+        return <Badge className="bg-emerald-600 hover:bg-emerald-700 border-none">APPROVED</Badge>;
+      case 'POSTED': 
+        return <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">POSTED</Badge>;
+      case 'DRAFT': 
+        return <Badge variant="secondary">DRAFT</Badge>;
+      default: 
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
-    <Card className="shadow-sm border-gray-200 dark:border-gray-800">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-gray-500" />
-          Supplier Adjustments
-        </CardTitle>
-        <CardDescription>View and manage debit notes issued to suppliers.</CardDescription>
-        
-        {/* Search Bar */}
-        <div className="relative mt-4 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input 
-            placeholder="Search by note # or supplier..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-9 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700" 
-          />
+    <Card className="shadow-lg border-none overflow-hidden">
+      <CardHeader className="bg-slate-50/50 pb-8 border-b border-slate-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-emerald-600" />
+              Debit Adjustments
+            </CardTitle>
+            <CardDescription className="text-sm">
+                Manage upward adjustments to invoices and supplier obligations.
+            </CardDescription>
+          </div>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Input 
+              placeholder="Search by note # or name..." 
+              value={filter} 
+              onChange={e => setFilter(e.target.value)} 
+              className="pl-10 h-11 bg-white shadow-sm border-slate-200 focus:ring-emerald-500" 
+            />
+          </div>
         </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-0">
         {loading ? (
-          <div className="flex py-20 justify-center items-center text-gray-400">
-            <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            <span>Loading records...</span>
+          <div className="flex py-32 justify-center items-center text-slate-400 flex-col gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
+            <span className="text-sm font-medium animate-pulse">Syncing adjustments with Ledger...</span>
           </div>
         ) : (
-          <ScrollArea className="h-[500px] w-full rounded-md border">
+          <ScrollArea className="h-[550px] relative">
             <Table>
-              <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                <TableRow>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead>Note #</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Amount</TableHead>
+              <TableHeader className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
+                <TableRow className="border-b border-slate-200">
+                  <TableHead className="pl-6 w-[120px]">Workflow</TableHead>
+                  <TableHead>Note Reference</TableHead>
+                  <TableHead>Related Account</TableHead>
+                  <TableHead className="text-right">Adjustment Value</TableHead>
                   <TableHead>Reason</TableHead>
-                  <TableHead className="text-right">Date</TableHead>
+                  <TableHead className="text-right pr-6">Entry Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-gray-500">
-                      No debit notes found matching your criteria.
+                    <TableCell colSpan={6} className="h-60 text-center">
+                        <AlertCircle className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+                        <p className="text-slate-500 font-medium">No active debit notes</p>
+                        <p className="text-xs text-slate-400">Your filters or database returned no records.</p>
                     </TableCell>
                   </TableRow>
                 ) : (
                   filtered.map((note) => (
-                    <TableRow key={note.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <TableRow key={note.id} className="hover:bg-emerald-50/30 transition-colors group">
+                      <TableCell className="pl-6">
+                        {getStatusBadge(note.status)}
+                      </TableCell>
+                      <TableCell className="font-bold font-mono text-slate-700">
+                        {note.note_number || `DBN-${note.id.substring(0,4)}`}
+                      </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                          ${note.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                            note.status === 'draft' ? 'bg-gray-100 text-gray-800' : 
-                            'bg-yellow-100 text-yellow-800'}`}>
-                          {note.status}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900">
+                            {note.invoices?.customers?.name || note.invoices?.customer_name || 'Walk-in Partner'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 flex items-center gap-1 uppercase">
+                            Ref: {note.invoices?.invoice_number || 'Internal'}
+                          </span>
+                        </div>
                       </TableCell>
-                      <TableCell className="font-medium">{note.note_number}</TableCell>
-                      <TableCell>{note.supplier_name}</TableCell>
-                      <TableCell className="font-mono text-gray-700 dark:text-gray-300">
-                        {note.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {note.currency}
+                      <TableCell className="text-right font-mono font-bold text-emerald-700 bg-emerald-50/50 px-4">
+                        {new Intl.NumberFormat(locale, { style: 'currency', currency: note.currency || 'UGX' }).format(note.amount)}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={note.reason}>
-                        {note.reason}
+                      <TableCell className="max-w-[180px] truncate italic text-slate-500 text-sm" title={note.reason}>
+                        {note.reason || 'Standard adjustment'}
                       </TableCell>
-                      <TableCell className="text-right text-gray-500">
-                        {new Date(note.created_at).toLocaleDateString()}
+                      <TableCell className="text-right pr-6 text-slate-400 text-xs font-medium">
+                        {new Date(note.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                       </TableCell>
                     </TableRow>
                   ))

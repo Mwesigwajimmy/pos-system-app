@@ -93,28 +93,45 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
   const router = useRouter();
 
   // --- 5. Data Fetching ---
-  useEffect(() => {
-    let isMounted = true;
-    const fetchCustomers = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, name, email, vat_number')
-          .eq('tenant_id', tenantId)
-          .order('name');
-        
-        if (error) throw error;
-        if (isMounted && data) setCustomers(data);
-      } catch (err: any) {
-        console.error("Error fetching customers:", err);
-      } finally {
-        if (isMounted) setIsLoadingCustomers(false);
-      }
-    };
-    fetchCustomers();
-    return () => { isMounted = false; };
-  }, [tenantId, supabase]);
+ useEffect(() => {
+  let isMounted = true;
+  const fetchCustomers = async () => {
+    try {
+      // 1. ORIGINAL QUERY: Logic remains exactly as you had it
+      // Added .or to check business_id too, ensuring Jimmy (ID 12) is found
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name, email, vat_number, tenant_id, business_id')
+        .or(`tenant_id.eq.${tenantId},business_id.eq.${tenantId}`)
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
 
+      if (isMounted && data) {
+        // 2. THE ENTERPRISE BRIDGE: 
+        // We map the data to ensure 'id' is a string so your Zod schema 
+        // customerId: z.string() doesn't reject Mwesigwa Jimmy (ID 12).
+        const formattedCustomers = data.map((customer) => ({
+          ...customer,
+          id: String(customer.id) // This is the fix for the empty dropdown
+        }));
+
+        setCustomers(formattedCustomers);
+      }
+    } catch (err: any) {
+      console.error("Error fetching customers:", err);
+    } finally {
+      if (isMounted) setIsLoadingCustomers(false);
+    }
+  };
+
+  if (tenantId) {
+    fetchCustomers();
+  }
+  
+  return () => { isMounted = false; };
+}, [tenantId, supabase]);
   // --- 6. Form Initialization ---
   // Note: We do NOT pass <InvoiceFormValues> to useForm. We let Zod infer it.
   const { 

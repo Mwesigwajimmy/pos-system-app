@@ -3,18 +3,30 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, Calendar, DollarSign } from 'lucide-react';
+import { Loader2, Search, Calendar, DollarSign, Wallet, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress"; // Ensure you have this Shadcn component
+import { Badge } from "@/components/ui/badge";
 import { createClient } from '@/lib/supabase/client';
 
+// --- Enterprise Data Structure ---
 interface DeferredExpense {
   id: string;
   vendor_name: string;
-  amount: number;
+  total_amount: number;
+  recognized_amount: number;
   start_date: string;
   end_date: string;
+  status: string;
   currency: string;
+  // Relational link to the 1:1 schedules
+  accounting_amortization_schedules: {
+    id: string;
+    recognition_date: string;
+    amount: number;
+    status: string;
+  }[];
 }
 
 interface Props {
@@ -22,86 +34,149 @@ interface Props {
   locale?: string;
 }
 
-export default function DeferredExpensesTable({ tenantId }: Props) {
+export default function DeferredExpensesTable({ tenantId, locale = 'en-UG' }: Props) {
   const [expenses, setExpenses] = useState<DeferredExpense[]>([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   
-  // Client Side supabase (no arguments needed here)
   const supabase = createClient();
 
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('deferred_expenses')
-        .select('*')
-        .eq('tenant_id', tenantId);
+      try {
+        // ENTERPRISE JOIN: 
+        // We fetch the master record PLUS all monthly recognition slots.
+        const { data, error } = await supabase
+          .from('deferred_expenses')
+          .select(`
+            *,
+            accounting_amortization_schedules (
+              id,
+              recognition_date,
+              amount,
+              status
+            )
+          `)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
 
-      if (error) console.error("Error fetching expenses:", error);
-      if (data) setExpenses(data as unknown as DeferredExpense[]);
-      
-      setLoading(false);
+        if (error) throw error;
+        if (isMounted && data) setExpenses(data as any);
+      } catch (err: any) {
+        console.error("Deferred Expense Sync Error:", err.message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
+
     if (tenantId) fetchData();
+    return () => { isMounted = false; };
   }, [tenantId, supabase]);
 
+  // SMART FILTERING
   const filtered = useMemo(() => 
     expenses.filter(e => (e.vendor_name || '').toLowerCase().includes(filter.toLowerCase())), 
   [expenses, filter]);
 
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: currency || 'UGX' }).format(amount);
+  };
+
   return (
-    <Card className="shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-gray-500" />
-          Prepaid Expenses
-        </CardTitle>
-        <CardDescription>View amortization schedules for prepaid items.</CardDescription>
-        <div className="relative mt-4 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Filter by vendor..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
-            className="pl-9" 
-          />
+    <Card className="shadow-lg border-none overflow-hidden">
+      <CardHeader className="bg-slate-50/50 pb-8 border-b border-slate-100">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <Wallet className="h-6 w-6 text-blue-600" />
+              Prepaid Amortization
+            </CardTitle>
+            <CardDescription className="text-sm">
+                Tracking asset-to-expense recognition across future periods.
+            </CardDescription>
+          </div>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Input 
+              placeholder="Search vendor..." 
+              value={filter} 
+              onChange={e => setFilter(e.target.value)} 
+              className="pl-10 h-11 bg-white border-slate-200" 
+            />
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
+      
+      <CardContent className="p-0">
         {loading ? (
-          <div className="flex py-16 justify-center text-gray-500">
-            <Loader2 className="animate-spin h-8 w-8 mr-2" /> Loading data...
+          <div className="flex py-32 justify-center items-center flex-col gap-4">
+            <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
+            <span className="text-sm font-medium text-slate-500">Calculating recognition progress...</span>
           </div>
         ) : (
-          <ScrollArea className="h-[500px] border rounded-md">
+          <ScrollArea className="h-[600px] relative">
             <Table>
-              <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+              <TableHeader className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
                 <TableRow>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
+                  <TableHead className="pl-6 w-[250px]">Vendor & Status</TableHead>
+                  <TableHead>Amortization Progress</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
+                  <TableHead className="text-center">Recognition Period</TableHead>
+                  <TableHead className="text-right pr-6">Remaining</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-10 text-gray-500">
-                      No deferred expenses found.
+                    <TableCell colSpan={5} className="h-60 text-center text-slate-400">
+                       No deferred expenses found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map(exp => (
-                    <TableRow key={exp.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <TableCell className="font-medium">{exp.vendor_name}</TableCell>
-                      <TableCell className="font-mono">
-                        {exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {exp.currency}
-                      </TableCell>
-                      <TableCell>{new Date(exp.start_date).toLocaleDateString()}</TableCell>
-                      <TableCell>{new Date(exp.end_date).toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))
+                  filtered.map(exp => {
+                    const progress = (exp.recognized_amount / exp.total_amount) * 100;
+                    return (
+                      <TableRow key={exp.id} className="hover:bg-blue-50/20 transition-colors">
+                        <TableCell className="pl-6 py-5">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-slate-900">{exp.vendor_name}</span>
+                            <div className="flex items-center gap-2">
+                                <Badge variant={exp.status === 'active' ? 'default' : 'secondary'} className="text-[10px] px-1.5 h-4">
+                                    {exp.status.toUpperCase()}
+                                </Badge>
+                                <span className="text-[10px] text-slate-400 flex items-center gap-1 uppercase font-semibold">
+                                    <Clock className="h-2.5 w-2.5"/> {exp.accounting_amortization_schedules?.length || 0} Months
+                                </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1.5 w-48">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase">
+                                <span>{Math.round(progress)}% Recognize</span>
+                                <span>{exp.recognized_amount > 0 ? 'Live' : 'Pending'}</span>
+                            </div>
+                            <Progress value={progress} className="h-1.5 bg-slate-100" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-slate-700">
+                          {formatCurrency(exp.total_amount, exp.currency)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-500 bg-slate-50 py-1 px-2 rounded-full border border-slate-100">
+                            {new Date(exp.start_date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                            <ArrowRight className="h-3 w-3" />
+                            {new Date(exp.end_date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-6 font-mono font-bold text-blue-600">
+                           {formatCurrency(exp.total_amount - exp.recognized_amount, exp.currency)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
