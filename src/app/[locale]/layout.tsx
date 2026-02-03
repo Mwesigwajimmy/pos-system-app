@@ -38,10 +38,16 @@ export default async function LocaleRootLayout({
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
         <SupabaseProvider session={session}>
           <TanstackProvider>
+            {/* 
+                THEME FIX: 
+                Changed defaultTheme to "light" and enableSystem to false.
+                This prevents phones from turning "blue" and forces the clean 
+                professional white look from Picture 2 on all devices.
+            */}
             <ThemeProvider
               attribute="class"
-              defaultTheme="system"
-              enableSystem
+              defaultTheme="light" 
+              enableSystem={false}
               disableTransitionOnChange
             >
               <SidebarProvider>

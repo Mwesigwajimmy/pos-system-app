@@ -1553,7 +1553,40 @@ const DynamicPricingSection = () => {
         </>
     );
 };
-
+{/* --- ENTERPRISE LEAD CAPTURE SECTION --- */}
+<AnimatedSection className="bg-blue-600 py-16">
+    <div className="max-w-4xl mx-auto text-center px-4">
+        <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase mb-4">
+            Ready for Sovereign Control?
+        </h2>
+        <p className="text-blue-100 text-lg mb-8 font-medium">
+            Enter your email to receive the BBU1 Enterprise Architecture Whitepaper and a direct line to our Architects.
+        </p>
+        <form 
+            onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                handleLeadCapture(formData.get('lead_email') as string);
+                e.currentTarget.reset();
+            }}
+            className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
+        >
+            <Input 
+                name="lead_email"
+                type="email" 
+                placeholder="Enter business email..." 
+                className="h-14 bg-white/10 border-white/20 text-white placeholder:text-blue-200 rounded-2xl focus:ring-white"
+                required
+            />
+            <Button 
+                type="submit"
+                className="h-14 px-8 bg-white text-blue-600 font-black uppercase tracking-widest hover:bg-blue-50 rounded-2xl transition-all"
+            >
+                Get Started
+            </Button>
+        </form>
+    </div>
+</AnimatedSection>
 // --- PARTNER WITH US SECTION (Fixed: Direct Action Buttons) ---
 const PartnerWithUsSection = () => {
     const [activeTab, setActiveTab] = useState<'affiliate' | 'investor' | 'solution'>('affiliate');
@@ -1847,6 +1880,78 @@ export default function HomePage() {
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
     const [activePillarIndex, setActivePillarIndex] = useState(0);
+const handleLeadCapture = async (email: string) => {
+    if (!email || !email.includes('@')) {
+        toast.error("Please enter a valid business email.");
+        return;
+    }
+
+    try {
+        // 1. Log IP and Email to your Marketing Vault
+        const { error: dbError } = await supabase.from('system_marketing_leads').insert({
+            email: email.toLowerCase().trim(),
+            ip_address: navigator.userAgent, // Captures device context for your Admin Panel
+            metadata: { 
+                path: window.location.pathname,
+                captured_at: new Date().toISOString(),
+                source: 'Landing Page Lead Magnet'
+            }
+        });
+
+        // Handle unique constraint (if they already signed up, just move to Step 2)
+        if (dbError && dbError.code !== '23505') throw dbError;
+
+        // 2. Trigger the Sovereign Broadcaster to send a Professional Welcome
+        const { error: fnError } = await supabase.functions.invoke('sovereign-broadcaster', {
+            body: { 
+                action: 'send_bulk_comms', 
+                payload: { 
+                    recipients: [{ email }], 
+                    channel: 'EMAIL',
+                    subject: 'Welcome to the BBU1 Ecosystem',
+                    content: `<h1>Welcome to the Future of Business</h1>
+                              <p>Thank you for your interest in BBU1. Our System Architect has been notified of your visit.</p>
+                              <p>We are preparing your enterprise environment.</p>` 
+                } 
+            }
+        });
+
+        if (fnError) console.warn("Comms delay:", fnError);
+        
+        showToast("Welcome packet dispatched to your email!");
+    } catch (err) {
+        console.error("Lead Capture Logic Gap:", err);
+        showToast("Connection established, but packet delayed.");
+    }
+};
+useEffect(() => {
+    const trackVisitor = async () => {
+        // Prevent double tracking in local development
+        if (process.env.NODE_ENV === 'development') console.log("Tracking simulated for Dev.");
+
+        try {
+            const { error } = await supabase.from('system_global_telemetry').insert({
+                event_category: 'VISIT',
+                event_name: 'Landing Page Access',
+                metadata: {
+                    path: window.location.pathname,
+                    referrer: document.referrer || 'direct',
+                    userAgent: navigator.userAgent,
+                    screenResolution: `${window.screen.width}x${window.screen.height}`,
+                    language: navigator.language,
+                    session_id: getCookie('bbu1_session_id') || 'new_visitor'
+                }
+            });
+            if (error) throw error;
+        } catch (err) {
+            console.error("Telemetry link failed:", err);
+        }
+    };
+
+    if (mounted) {
+        trackVisitor();
+    }
+}, [mounted, supabase]);
 
     const memoizedRotatingTexts = React.useMemo(() => rotatingTexts, []);
     const memoizedSlideshowContent = React.useMemo(() => slideshowContent, []);

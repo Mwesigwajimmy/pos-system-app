@@ -42,6 +42,19 @@ interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; rol
 type NavItem = NavLink | NavAccordion;
 
 const navSections: NavItem[] = [
+ {
+        type: 'accordion', 
+        title: 'Sovereign Control', 
+        icon: ShieldAlert, 
+        roles: ['architect', 'commander'], // Uses the new ENUM roles
+        module: 'admin',
+        subItems: [
+            { href: '/admin/command-center', label: 'War Room Dashboard', icon: Zap },
+            { href: '/admin/tenants', label: 'Tenant Management', icon: Building2 },
+            { href: '/admin/telemetry', label: 'Global Traffic', icon: Activity },
+            { href: '/admin/billing', label: 'Global Cashflow', icon: Banknote },
+        ]
+    },
     // --- DASHBOARD & UTILS ---
     { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
     { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor'] }, 
@@ -423,7 +436,7 @@ const navSections: NavItem[] = [
     },
 ];
 
-const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin'] };
+const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin', 'ARCHITECT'] };
 
 const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; }) => {
   const pathname = usePathname();
@@ -478,24 +491,27 @@ export default function Sidebar() {
     const isLoading = isLoadingRole || isLoadingTenant; 
 
     const finalNavItems = useMemo(() => {
-        // We now proceed even if enabledModules is null/empty
+        // 1. Safety Guard: Stop if data is missing
         if (isLoading || !role || !tenant) return [];
-        const userRole = role.toLowerCase();
         
-        // Use default empty string if not found
-        const businessType = tenant.business_type || ''; 
+        const userRole = role.toLowerCase();
 
-        return navSections.filter(item => {
-            // Role Permission Check (Keep this to ensure security)
+        // 2. Filter the Master Navigation Sections
+        return navSections.filter((item) => {
+            // Role Permission Check
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
+            
+            // Sovereign Bypass: Architects and Commanders see everything
+            if (userRole === 'architect' || userRole === 'commander') return true;
+
+            // Standard Security Check
             if (!hasRolePermission) return false;
 
             // --- MODULE CHECK BYPASS ---
-            // Original: if (item.module) return enabledModules.includes(item.module);
             // Modified: We return true so ALL modules are visible during development
             return true; 
         });
-    }, [isLoading, role, enabledModules, tenant]);
+    }, [isLoading, role, enabledModules, tenant]); 
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
@@ -515,7 +531,6 @@ export default function Sidebar() {
                 }
                 if (item.type === 'accordion') {
                     const userRole = role?.toLowerCase() || '';
-                    // const businessType = tenant?.business_type || ''; // Unused for now
 
                     const filteredSubItems = item.subItems.filter(sub => {
                         // Role check
