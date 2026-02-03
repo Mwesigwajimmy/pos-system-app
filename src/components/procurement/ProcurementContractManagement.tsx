@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { Loader2, FileText, Upload, Download, AlertCircle } from 'lucide-react';
+import { Loader2, FileText, Upload, Download, AlertCircle, Globe } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +22,14 @@ import toast from 'react-hot-toast';
 const contractSchema = z.object({
   vendor_name: z.string().min(2, "Vendor name is required"),
   contract_ref: z.string().min(2, "Reference number required"),
-  value: z.coerce.number().min(0, "Value must be positive"),
-  currency: z.string().default("USD"),
+  // Using .number() instead of .coerce to avoid "unknown" type mismatches
+  value: z.number().min(0, "Value must be positive"),
+  currency: z.string().min(1, "Currency is required"),
   start_date: z.string().min(1, "Start date required"),
   end_date: z.string().min(1, "End date required"),
-  status: z.enum(['draft', 'active', 'expired', 'terminated']).default('active'),
+  entity: z.string().min(1, "Legal entity is required"),
+  country: z.string().min(1, "Country is required"),
+  status: z.enum(['draft', 'active', 'expired', 'terminated']),
 });
 
 type ContractFormValues = z.infer<typeof contractSchema>;
@@ -39,6 +42,8 @@ interface Contract {
   end_date: string;
   value: number;
   currency: string;
+  entity: string;
+  country: string;
   status: 'draft' | 'active' | 'expired' | 'terminated';
   file_url?: string;
   created_at: string;
@@ -78,16 +83,18 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
   });
 
   // Form Setup
-  const form = useForm({
+  const form = useForm<ContractFormValues>({
     resolver: zodResolver(contractSchema),
     defaultValues: {
       vendor_name: '',
       contract_ref: '',
       value: 0,
       currency: 'USD',
+      entity: '',
+      country: '',
       start_date: new Date().toISOString().split('T')[0],
-      end_date: new Date(Date.now() + 31536000000).toISOString().split('T')[0], // +1 Year
-      status: 'active' as const
+      end_date: new Date(Date.now() + 31536000000).toISOString().split('T')[0],
+      status: 'active'
     }
   });
 
@@ -97,7 +104,6 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
       const supabase = createClient();
       let filePath = null;
 
-      // 1. Upload File
       if (selectedFile) {
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${tenantId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -110,11 +116,11 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
         filePath = fileName;
       }
 
-      // 2. Insert DB Record
       const { error: dbError } = await supabase.from('procurement_contracts').insert({
         tenant_id: tenantId,
         ...values,
         file_url: filePath,
+        updated_at: new Date().toISOString()
       });
 
       if (dbError) throw dbError;
@@ -164,21 +170,26 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
                   )}/>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="entity" render={({field}) => (
+                    <FormItem><FormLabel>Legal Entity</FormLabel><FormControl><Input placeholder="Holding Co." {...field}/></FormControl><FormMessage/></FormItem>
+                  )}/>
+                  <FormField control={form.control} name="country" render={({field}) => (
+                    <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="United Kingdom" {...field}/></FormControl><FormMessage/></FormItem>
+                  )}/>
+                </div>
+
                 <div className="grid grid-cols-3 gap-4">
                   <FormField control={form.control} name="value" render={({field}) => (
                     <FormItem className="col-span-2">
                       <FormLabel>Contract Value</FormLabel>
                       <FormControl>
-                        {/* 
-                            FIXED HERE: Explicitly casting field.value to (string | number)
-                            This satisfies TypeScript because Input expects string | number.
-                        */}
                         <Input 
                           type="number" 
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(e.target.value)}
-                          value={field.value as string | number}
+                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                          value={field.value}
                         />
                       </FormControl>
                       <FormMessage/>
@@ -217,7 +228,7 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={uploadMutation.isPending}>
+                  <Button type="submit" disabled={uploadMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
                     {uploadMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                     Save Contract
                   </Button>
@@ -233,7 +244,7 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
           <Table>
             <TableHeader className="bg-slate-50 sticky top-0 z-10">
               <TableRow>
-                <TableHead>Vendor</TableHead>
+                <TableHead>Vendor & Entity</TableHead>
                 <TableHead>Reference</TableHead>
                 <TableHead>Value</TableHead>
                 <TableHead>Duration</TableHead>
@@ -253,17 +264,22 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
 
                   return (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-500" />
-                        {c.vendor_name}
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                           <FileText className="h-4 w-4 text-blue-500" />
+                           {c.vendor_name}
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-normal ml-6">
+                           <Globe className="h-2 w-2"/> {c.country} / {c.entity}
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs">{c.contract_ref}</TableCell>
-                      <TableCell>{c.value.toLocaleString()} {c.currency}</TableCell>
+                      <TableCell className="font-semibold">{Number(c.value).toLocaleString()} {c.currency}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(c.start_date).toLocaleDateString()} &rarr; {new Date(c.end_date).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={isExpired ? 'destructive' : c.status === 'active' ? 'default' : 'secondary'} className="uppercase">
+                        <Badge variant={isExpired ? 'destructive' : c.status === 'active' ? 'default' : 'secondary'} className="uppercase text-[9px]">
                           {isExpired ? 'Expired' : c.status}
                         </Badge>
                         {isExpiringSoon && !isExpired && (
@@ -274,7 +290,7 @@ export default function ProcurementContractManagement({ tenantId }: Props) {
                       </TableCell>
                       <TableCell className="text-right">
                         {c.file_url ? (
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Download">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Download" asChild>
                             <a href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/contracts/${c.file_url}`} target="_blank" rel="noopener noreferrer">
                               <Download className="h-4 w-4 text-slate-600" />
                             </a>

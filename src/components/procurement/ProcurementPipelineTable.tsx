@@ -4,16 +4,17 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, X } from "lucide-react";
+import { Loader2, Search, X, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 
+// ENTERPRISE TYPE ALIGNMENT: Matches DB columns 1:1
 interface PipelineRow {
   id: string;
   request_no: string;
   description: string;
-  requestor: string;
+  requestor_name: string; // Fixed: Matches DB column 'requestor_name'
   department: string;
   entity: string;
   country: string;
@@ -34,13 +35,16 @@ export default function ProcurementPipelineTable({ tenantId }: Props) {
   const supabase = createClient();
 
   useEffect(() => {
+    if (!tenantId) return;
+
     const fetchPipeline = async () => {
-      const { data } = await supabase
+      // Interconnected query strictly isolated by tenant_id
+      const { data, error } = await supabase
         .from('procurement_requests')
         .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (data) setPipeline(data as any);
       setLoading(false);
@@ -53,22 +57,33 @@ export default function ProcurementPipelineTable({ tenantId }: Props) {
     () => pipeline.filter(
       p => (p.request_no || '').toLowerCase().includes(filter.toLowerCase())
         || (p.description || '').toLowerCase().includes(filter.toLowerCase())
-        || (p.requestor || '').toLowerCase().includes(filter.toLowerCase())
+        || (p.requestor_name || '').toLowerCase().includes(filter.toLowerCase())
     ),
     [pipeline, filter]
   );
 
+  // Enterprise status coloring logic
+  const getStatusVariant = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'approved': return 'default';
+      case 'pending': return 'secondary';
+      case 'rejected': return 'destructive';
+      case 'draft': return 'outline';
+      default: return 'outline';
+    }
+  };
+
   return (
-    <Card>
+    <Card className="shadow-sm border-t-4 border-t-slate-800">
       <CardHeader>
         <CardTitle>Procurement Pipeline</CardTitle>
         <CardDescription>
-          All procurement requests, every stage—request, review, approval, PO, tender.
+          Real-time tracking of all procurement requests through every stage of the lifecycle.
         </CardDescription>
         <div className="relative mt-3 max-w-xs">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Filter by request/desc..." 
+            placeholder="Search pipeline..." 
             value={filter} 
             onChange={e => setFilter(e.target.value)} 
             className="pl-8" 
@@ -83,38 +98,45 @@ export default function ProcurementPipelineTable({ tenantId }: Props) {
       </CardHeader>
       <CardContent>
         {loading
-          ? <div className="flex py-10 justify-center"><Loader2 className="w-7 h-7 animate-spin"/></div>
-          : <ScrollArea className="h-80">
+          ? <div className="flex py-20 justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-400"/></div>
+          : <ScrollArea className="h-[450px] border rounded-md">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-slate-50 sticky top-0 z-10">
                 <TableRow>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead>Request #</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Requestor</TableHead>
-                  <TableHead>Dept</TableHead>
+                  <TableHead>Requestor & Entity</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0
-                  ? <TableRow><TableCell colSpan={7} className="text-center">No requests found.</TableCell></TableRow>
+                  ? <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">No active pipeline items found.</TableCell></TableRow>
                   : filtered.map((p) => (
-                      <TableRow key={p.id}>
+                      <TableRow key={p.id} className="hover:bg-slate-50/50 transition-colors">
                         <TableCell>
-                          <Badge variant={p.status === 'approved' ? 'default' : 'secondary'}>
+                          <Badge variant={getStatusVariant(p.status)} className="uppercase text-[10px] tracking-wider">
                             {p.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>{p.request_no}</TableCell>
-                        <TableCell>{p.description}</TableCell>
-                        <TableCell>{p.requestor}</TableCell>
-                        <TableCell>{p.department}</TableCell>
-                        <TableCell>
-                          {(p.total_value || 0).toLocaleString()} {p.currency}
+                        <TableCell className="font-mono text-xs font-semibold">{p.request_no}</TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={p.description}>
+                          {p.description}
                         </TableCell>
-                        <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="font-medium text-sm">{p.requestor_name}</div>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase">
+                             <Globe className="h-2 w-2" /> {p.country} / {p.entity}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold whitespace-nowrap">
+                          {(Number(p.total_value) || 0).toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">{p.currency}</span>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </TableCell>
                       </TableRow>
                     ))}
               </TableBody>

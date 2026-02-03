@@ -3,20 +3,21 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Loader2, CheckCircle2, AlertCircle, UserCheck, Search, X } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Clock, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
 
+// ENTERPRISE TYPE ALIGNMENT: Matches DB columns 1:1
 interface ApprovalStep {
   id: string;
   request_no: string;
   stage: string;
-  reviewer: string;
-  status: "pending" | "approved" | "rejected";
+  reviewer_name: string; // Updated from 'reviewer' to match SQL schema
+  status: "pending" | "approved" | "rejected" | string;
   updated_at: string;
-  entity: string;
-  country: string;
+  entity?: string;
+  country?: string;
 }
 
 interface Props {
@@ -32,7 +33,7 @@ export default function ProcurementApprovalWorkflow({ tenantId }: Props) {
     if (!tenantId) return;
 
     const fetchApprovals = async () => {
-      // Assuming a table that tracks approval steps
+      // Logic interconnected to your 'procurement_approval_steps' table
       const { data } = await supabase
         .from('procurement_approval_steps')
         .select('*')
@@ -52,15 +53,17 @@ export default function ProcurementApprovalWorkflow({ tenantId }: Props) {
     () => workflow.filter(
       aw =>
         (aw.request_no || '').toLowerCase().includes(filter.toLowerCase()) ||
-        (aw.reviewer || '').toLowerCase().includes(filter.toLowerCase())
+        (aw.reviewer_name || '').toLowerCase().includes(filter.toLowerCase())
     ),
     [workflow, filter]
   );
 
   return (
-    <Card>
+    <Card className="border-l-4 border-l-blue-500 shadow-md">
       <CardHeader>
-        <CardTitle>Procurement Approval Workflow</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Procurement Approval Workflow
+        </CardTitle>
         <CardDescription>
           Live view of approval steps, reviewer actions, and status.
         </CardDescription>
@@ -72,10 +75,10 @@ export default function ProcurementApprovalWorkflow({ tenantId }: Props) {
       </CardHeader>
       <CardContent>
         {loading
-          ? <div className="flex justify-center py-10"><Loader2 className="h-7 w-7 animate-spin" /></div>
-          : <ScrollArea className="h-60">
+          ? <div className="flex justify-center py-10"><Loader2 className="h-7 w-7 animate-spin text-blue-500" /></div>
+          : <ScrollArea className="h-72 border rounded-md">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead>Request</TableHead>
@@ -86,21 +89,21 @@ export default function ProcurementApprovalWorkflow({ tenantId }: Props) {
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0
-                    ? <TableRow><TableCell colSpan={5}>No active workflows.</TableCell></TableRow>
+                    ? <TableRow><TableCell colSpan={5} className="text-center py-4">No active workflows.</TableCell></TableRow>
                     : filtered.map(wf => (
-                        <TableRow key={wf.id}>
+                        <TableRow key={wf.id} className="hover:bg-slate-50 transition-colors">
                           <TableCell>
                             {wf.status === "approved"
-                              ? <div className="flex items-center text-green-700"><CheckCircle2 className="w-4 h-4 mr-2"/> Approved</div>
+                              ? <div className="flex items-center text-green-700 font-medium"><CheckCircle2 className="w-4 h-4 mr-2"/> Approved</div>
                               : wf.status === "rejected"
-                                ? <div className="flex items-center text-red-700"><AlertCircle className="w-4 h-4 mr-2"/> Rejected</div>
-                                : <div className="flex items-center text-yellow-700"><UserCheck className="w-4 h-4 mr-2"/> Pending</div>
+                                ? <div className="flex items-center text-red-700 font-medium"><AlertCircle className="w-4 h-4 mr-2"/> Rejected</div>
+                                : <div className="flex items-center text-amber-600 font-medium"><Clock className="w-4 h-4 mr-2 animate-pulse"/> Pending</div>
                             }
                           </TableCell>
-                          <TableCell className="font-medium">{wf.request_no}</TableCell>
-                          <TableCell className="capitalize">{wf.stage}</TableCell>
-                          <TableCell>{wf.reviewer}</TableCell>
-                          <TableCell>{new Date(wf.updated_at).toLocaleDateString()}</TableCell>
+                          <TableCell className="font-mono text-sm">{wf.request_no}</TableCell>
+                          <TableCell className="italic text-slate-500">{wf.stage}</TableCell>
+                          <TableCell className="font-medium">{wf.reviewer_name}</TableCell>
+                          <TableCell className="text-muted-foreground">{new Date(wf.updated_at).toLocaleDateString()}</TableCell>
                         </TableRow>
                       ))}
                 </TableBody>
