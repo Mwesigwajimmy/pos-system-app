@@ -1,6 +1,6 @@
 /* 
-  BBU1 ENTERPRISE STYLESHEET - Version 2.2.0
-  CLEAN BUILD VERSION - ALL DUPLICATES REMOVED
+  BBU1 ENTERPRISE STYLESHEET - Version 2.2.1
+  STABLE BUILD VERSION - COMPATIBLE WITH NEXT.JS 15 & TAILWIND 3
 */
 
 @tailwind base;
@@ -65,7 +65,14 @@
   }
 }
 
-/* --- FIX FOR BUILD ERROR: Removing Tailwind 4 specific function crash --- */
+/* 
+  FIXED: Removed var(--spacing(8)) which causes build failures 
+  Replaced with standard CSS variable compatibility
+*/
+.\[--cell-size\:--spacing\(8\)\] {
+  --cell-size: 2rem !important;
+}
+
 [class*="--cell-size"] {
   --cell-size: 2rem !important;
 }
