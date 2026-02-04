@@ -1,5 +1,3 @@
-// src/components/Sidebar.tsx
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -15,7 +13,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 // --- ICONS ---
 import {
     LayoutDashboard, ShoppingCart, Clock, Users, BarChart3, History, Boxes, Truck,
-    ClipboardCheck, Receipt, BookOpen,ShieldAlert, Banknote, BookCopy, Briefcase, UsersRound,
+    ClipboardCheck, Receipt, BookOpen, ShieldAlert, Banknote, BookCopy, Briefcase, UsersRound,
     ShieldCheck, Settings, Landmark, Home, FileText, Tags, Undo2, LucideIcon,
     Building2, Handshake, ClipboardList, UserCog, Sparkles, ArrowRightLeft, Percent,
     Printer, CalendarDays, ClipboardPlus, Activity, Route, KeyRound, PiggyBank,
@@ -23,8 +21,7 @@ import {
     UploadCloud, Plug, Scale, Wallet, FileWarning, Construction, Wrench, FolderKanban, 
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
-    CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus,Package, Utensils,
-    // Icons for Activities
+    CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock
 } from 'lucide-react';
 
@@ -46,7 +43,7 @@ const navSections: NavItem[] = [
         type: 'accordion', 
         title: 'Sovereign Control', 
         icon: ShieldAlert, 
-        roles: ['architect', 'commander'], // Uses the new ENUM roles
+        roles: ['architect', 'commander'], 
         module: 'admin',
         subItems: [
             { href: '/admin/command-center', label: 'War Room Dashboard', icon: Zap },
@@ -56,22 +53,22 @@ const navSections: NavItem[] = [
         ]
     },
     // --- DASHBOARD & UTILS ---
-    { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager'] },
-    { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor'] }, 
-    { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier'] },
+    { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner'] },
+    { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner'] }, 
+    { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier', 'owner'] },
     
-    // --- POS & KDS (Added KDS Here) ---
-    { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier'], module: 'sales' },
-    { type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, roles: ['admin', 'manager', 'cashier', 'kitchen'], module: 'sales' },
+    // --- POS & KDS ---
+    { type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier', 'owner'], module: 'sales' },
+    { type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, roles: ['admin', 'manager', 'cashier', 'kitchen', 'owner'], module: 'sales' },
     
     // --- ACTIVITIES & LOGS ---
     {
-        type: 'accordion', title: 'Activities & Logs', icon: ListChecks, roles: ['admin', 'manager', 'auditor'], module: 'activities',
+        type: 'accordion', title: 'Activities & Logs', icon: ListChecks, roles: ['admin', 'manager', 'auditor', 'owner'], module: 'activities',
         subItems: [
             { href: '/activities/timeline', label: 'Global Timeline', icon: Activity },      
             { href: '/activities/user-feeds', label: 'User Activity Feed', icon: UserCog },  
             { href: '/activities/workflows', label: 'Workflow Logs', icon: GitGraph },       
-            { href: '/activities/tasks', label: 'Task Activities', icon: ClipboardCheck }, // This links to your AssignmentTaskPanel
+            { href: '/activities/tasks', label: 'Task Activities', icon: ClipboardCheck },
             { href: '/activities/notifications', label: 'Notifications', icon: Bell },       
             { href: '/activities/comments', label: 'Comments History', icon: MessageSquare },
         ]
@@ -79,7 +76,7 @@ const navSections: NavItem[] = [
 
     // --- INVOICING ---
     {
-        type: 'accordion', title: 'Invoicing', icon: Receipt, roles: ['admin', 'manager', 'accountant', 'cashier'], module: 'invoicing',
+        type: 'accordion', title: 'Invoicing', icon: Receipt, roles: ['admin', 'manager', 'accountant', 'cashier', 'owner'], module: 'invoicing',
         subItems: [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
             { href: '/invoicing/list', label: 'All Invoices', icon: FileStack }, 
@@ -93,11 +90,11 @@ const navSections: NavItem[] = [
 
     // --- SALES ---
     {
-        type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager'], module: 'sales',
+        type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager', 'owner'], module: 'sales',
         subItems: [
             { href: '/customers', label: 'Customers', icon: Users },
             { href: '/returns', label: 'Returns', icon: Undo2 },
-            { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager'] },
+            { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager', 'owner'] },
             { href: '/sales/pricing-rules', label: 'Price Lists & Rules', icon: Percent, businessTypes: ['Retail / Wholesale', 'Distribution'] },
             { href: '/sales/orders-to-upsell', label: 'Upsell Opportunities', icon: Activity },
         ]
@@ -105,7 +102,7 @@ const navSections: NavItem[] = [
 
     // --- REPORTS CENTER ---
     {
-        type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor'], module: 'reports',
+        type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner'], module: 'reports',
         subItems: [
             { href: '/reports/finance-hub', label: 'Finance Hub', icon: Landmark },
             { href: '/reports/executive-summary', label: 'Executive Summary', icon: Activity },
@@ -126,7 +123,7 @@ const navSections: NavItem[] = [
 
     // --- INVENTORY ---
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager'], module: 'inventory',
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner'], module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, 
             { href: '/inventory/categories', label: 'Categories', icon: Tags }, 
@@ -148,7 +145,7 @@ const navSections: NavItem[] = [
 
     // --- PROCUREMENT ---
     {
-        type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager'], module: 'procurement',
+        type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager', 'owner'], module: 'procurement',
         subItems: [
             { href: '/procurement', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/procurement/pipeline', label: 'Procurement Pipeline', icon: Activity },
@@ -164,7 +161,7 @@ const navSections: NavItem[] = [
 
     // --- PROFESSIONAL SERVICES ---
     {
-        type: 'accordion', title: 'Professional Services', icon: Briefcase, roles: ['admin', 'manager'], module: 'professional-services',
+        type: 'accordion', title: 'Professional Services', icon: Briefcase, roles: ['admin', 'manager', 'owner'], module: 'professional-services',
         subItems: [
             { href: '/professional-services', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/professional-services/clients', label: 'Client Hub', icon: Users },
@@ -183,7 +180,7 @@ const navSections: NavItem[] = [
    
        // --- HUMAN RESOURCES ---
     {
-        type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager'], module: 'hcm',
+        type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager', 'owner'], module: 'hcm',
         subItems: [ 
             { href: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard },
             { href: '/hr/directory', label: 'Employee Directory', icon: Contact },
@@ -202,11 +199,11 @@ const navSections: NavItem[] = [
 
     // --- FINANCE ---
     {
-        type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant'], module: 'finance',
+        type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner'], module: 'finance',
         subItems: [ 
             { href: '/finance/banking', label: 'Banking & Reconciliation', icon: Landmark },
             { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
-            { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant'] },
+            { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner'] },
             { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
             { href: '/expenses', label: 'Expenses', icon: Wallet },
             { href: '/ledger', label: 'General Ledger', icon: BookOpen },
@@ -221,7 +218,7 @@ const navSections: NavItem[] = [
 
     // --- DISTRIBUTION ---
     {
-        type: 'accordion', title: 'Distribution', icon: Truck, roles: ['admin', 'manager'], module: 'distribution',
+        type: 'accordion', title: 'Distribution', icon: Truck, roles: ['admin', 'manager', 'owner'], module: 'distribution',
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard }, 
             { href: '/distribution/routes', label: 'Routes Manager', icon: Route }, 
@@ -239,7 +236,7 @@ const navSections: NavItem[] = [
 
     // --- SACCO & CO-OPS ---
     {
-        type: 'accordion', title: 'SACCO & Co-ops', icon: Handshake, roles: ['admin', 'manager'], module: 'sacco',
+        type: 'accordion', title: 'SACCO & Co-ops', icon: Handshake, roles: ['admin', 'manager', 'owner'], module: 'sacco',
         subItems: [ 
             { href: '/sacco', label: 'Dashboard', icon: LayoutDashboard }, 
             { href: '/sacco/analytics', label: 'BI Analytics', icon: BarChart3 }, 
@@ -260,13 +257,13 @@ const navSections: NavItem[] = [
             { href: '/sacco/audit', label: 'Statutory Audit', icon: ShieldCheck }, 
             { href: '/sacco/api', label: 'OpenAPI Gateway', icon: Plug }, 
             { href: '/sacco/agent-portal', label: 'Agent Portal', icon: Smartphone }, 
-            { href: '/sacco/admin', label: 'Administration', icon: Settings, roles: ['admin'] }, 
+            { href: '/sacco/admin', label: 'Administration', icon: Settings, roles: ['admin', 'owner'] }, 
         ]
     },
 
     // --- LENDING ---
     {
-        type: 'accordion', title: 'Lending', icon: Landmark, roles: ['admin', 'manager'], module: 'lending',
+        type: 'accordion', title: 'Lending', icon: Landmark, roles: ['admin', 'manager', 'owner'], module: 'lending',
         subItems: [ 
             { href: '/lending', label: 'Portfolio Dashboard', icon: LayoutDashboard },
             { href: '/lending/analytics', label: 'BI Analytics', icon: BarChart3 },
@@ -288,7 +285,7 @@ const navSections: NavItem[] = [
 
     // --- RENTALS ---
     {
-        type: 'accordion', title: 'Rentals', icon: Home, roles: ['admin', 'manager'], module: 'rentals',
+        type: 'accordion', title: 'Rentals', icon: Home, roles: ['admin', 'manager', 'owner'], module: 'rentals',
         subItems: [ 
             { href: '/rentals/properties', label: 'Properties & Units', icon: Building2 }, 
             { href: '/rentals/leases', label: 'Leases', icon: FileText }, 
@@ -298,34 +295,33 @@ const navSections: NavItem[] = [
 
     // --- TELECOM SERVICES ---
     {
-        type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant'], module: 'telecom',
+        type: 'accordion', title: 'Telecom Services', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant', 'owner'], module: 'telecom',
         subItems: [ 
-            { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager'] }, 
-            { href: '/telecom/operator', label: 'Operator Dashboard', icon: Zap, roles: ['admin', 'manager'] }, 
-            { href: '/telecom/agents', label: 'Agent Management', icon: UserCog, roles: ['admin', 'manager'] }, 
+            { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/telecom/operator', label: 'Operator Dashboard', icon: Zap, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/telecom/agents', label: 'Agent Management', icon: UserCog, roles: ['admin', 'manager', 'owner'] }, 
             { href: '/telecom/virtual-agent', label: 'Virtual Agent Form', icon: Smartphone }, 
             { href: '/telecom/float-requests', label: 'Float Requests', icon: ArrowRightLeft }, 
-            { href: '/telecom/products', label: 'Telecom Products', icon: Boxes, roles: ['admin', 'manager'] }, 
+            { href: '/telecom/products', label: 'Telecom Products', icon: Boxes, roles: ['admin', 'manager', 'owner'] }, 
             { href: '/telecom/inventory', label: 'Sim/Device Inventory', icon: Boxes }, 
             { href: '/telecom/tariffs', label: 'Tariff Plans', icon: FileSpreadsheet }, 
             { href: '/telecom/subscribers', label: 'Subscriber Mgmt', icon: Users }, 
             { href: '/telecom/channels', label: 'Channel Partners', icon: Handshake }, 
-            { href: '/telecom/reconciliation', label: 'Reconciliation', icon: ClipboardCheck, roles: ['admin', 'manager', 'accountant'] }, 
-            { href: '/telecom/financials', label: 'Financials', icon: Banknote, roles: ['admin', 'manager'] }, 
-            { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager'] }, 
-            { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant'] }, 
+            { href: '/telecom/reconciliation', label: 'Reconciliation', icon: ClipboardCheck, roles: ['admin', 'manager', 'accountant', 'owner'] }, 
+            { href: '/telecom/financials', label: 'Financials', icon: Banknote, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant', 'owner'] }, 
             { href: '/telecom/compliance', label: 'Regulatory Compliance', icon: ShieldCheck }, 
-            { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier'] }, 
-            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier'] },
-            { href: '/telecom/bi', label: 'BI Analytics', icon: BarChart3, roles: ['admin', 'manager'] }
+            { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier', 'owner'] }, 
+            { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier', 'owner'] },
+            { href: '/telecom/bi', label: 'BI Analytics', icon: BarChart3, roles: ['admin', 'manager', 'owner'] }
         ]
     },
 
     // --- E-COMMERCE ---
     {
-        type: 'accordion', title: 'eCommerce', icon: ShoppingCart, roles: ['admin', 'manager'], module: 'ecommerce',
+        type: 'accordion', title: 'eCommerce', icon: ShoppingCart, roles: ['admin', 'manager', 'owner'], module: 'ecommerce',
         subItems: [ 
-            { href: '/ecommerce', label: 'Dashboard', icon: LayoutDashboard }, 
             { href: '/ecommerce/orders', label: 'Online Orders', icon: ClipboardCheck }, 
             { href: '/ecommerce/returns', label: 'Order Returns', icon: Undo2 }, 
             { href: '/ecommerce/products', label: 'Online Products', icon: Boxes }, 
@@ -341,7 +337,7 @@ const navSections: NavItem[] = [
 
     // --- CRM ---
     {
-        type: 'accordion', title: 'CRM', icon: Handshake, roles: ['admin', 'manager'], module: 'crm',
+        type: 'accordion', title: 'CRM', icon: Handshake, roles: ['admin', 'manager', 'owner'], module: 'crm',
         subItems: [ 
             { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 }, 
             { href: '/crm/marketing', label: 'Marketing Campaigns', icon: Megaphone }, 
@@ -351,7 +347,7 @@ const navSections: NavItem[] = [
 
     // --- FIELD SERVICE ---
     {
-        type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager'], module: 'field-service',
+        type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager', 'owner'], module: 'field-service',
         subItems: [ 
             { href: '/field-service/schedule', label: 'Dispatch & Schedule', icon: CalendarDays }, 
             { href: '/field-service/smart-schedule', label: 'Smart Scheduler', icon: Zap },
@@ -365,7 +361,7 @@ const navSections: NavItem[] = [
 
     // --- CONTRACTOR TOOLS ---
     {
-        type: 'accordion', title: 'Contractor Tools', icon: Construction, roles: ['admin', 'manager'], module: 'contractor',
+        type: 'accordion', title: 'Contractor Tools', icon: Construction, roles: ['admin', 'manager', 'owner'], module: 'contractor',
         subItems: [ 
             { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard }, 
             { href: '/contractor/jobs', label: 'Job Management', icon: Briefcase }, 
@@ -376,7 +372,7 @@ const navSections: NavItem[] = [
 
     // --- NON-PROFIT ---
     {
-        type: 'accordion', title: 'Non-Profit', icon: HeartHandshake, roles: ['admin', 'manager'], module: 'nonprofit',
+        type: 'accordion', title: 'Non-Profit', icon: HeartHandshake, roles: ['admin', 'manager', 'owner'], module: 'nonprofit',
         subItems: [ 
             { href: '/nonprofit', label: 'Overview', icon: LayoutDashboard },
             { href: '/nonprofit/donors', label: 'Donor Management', icon: Users },
@@ -391,52 +387,52 @@ const navSections: NavItem[] = [
 
     // --- BOOKING ---
     {
-        type: 'accordion', title: 'Booking', icon: CalendarDays, roles: ['admin', 'manager'], module: 'booking',
+        type: 'accordion', title: 'Booking', icon: CalendarDays, roles: ['admin', 'manager', 'owner'], module: 'booking',
         subItems: [ { href: '/booking', label: 'Calendar', icon: CalendarDays }, { href: '/booking/services', label: 'Manage Services', icon: ClipboardPlus }, ]
     },
 
     // --- COLLABORATION ---
     {
-        type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor'], module: 'collaboration',
-        subItems: [ { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant'] }, ]
+        type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner'], module: 'collaboration',
+        subItems: [ { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet, roles: ['admin', 'manager', 'cashier', 'accountant', 'owner'] }, ]
     },
 
     // --- BUSINESS HUB ---
     {
-        type: 'accordion', title: 'Business Hub', icon: Briefcase, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'], module: 'business-hub',
-        subItems: [ { href: '/library', label: 'Document Library', icon: Library, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor'] }, ]
+        type: 'accordion', title: 'Business Hub', icon: Briefcase, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner'], module: 'business-hub',
+        subItems: [ { href: '/library', label: 'Document Library', icon: Library, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner'] }, ]
     },
 
     // --- MANAGEMENT ---
     {
-        type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor'], module: 'management',
+        type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor', 'owner'], module: 'management',
         subItems: [
-            { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin'] },
-            { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager'] },
-            { href: '/audit/sandbox', label: 'Sovereign Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant'] },
-            { href: '/settings/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
-            { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin'] },
-            { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager'] },
-            { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager'], businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
-            { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager'] },
-            { href: '/management/timecards', label: 'Timecards', icon: ClipboardCheck, roles: ['admin', 'manager'] }, 
-            { href: '/audit', label: 'System Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor'] },
-            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor'] },
-            { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant'] },
-            { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin'] },
-            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin'], businessTypes: ['Retail / Wholesale'] },
-            { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin'] }, 
-            { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin'] },
-            { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin'] },
-            { href: '/settings/migration', label: 'Data Migration', icon: UploadCloud, roles: ['admin'] },
-            { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin'] },
-            { href: '/settings/integrations', label: 'API Integrations', icon: Plug, roles: ['admin'] },
-            { href: '/management/api', label: 'API Keys', icon: KeyRound, roles: ['admin'] }, 
+            { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner'] },
+            { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner'] },
+            { href: '/audit/sandbox', label: 'Sovereign Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant', 'owner'] },
+            { href: '/settings/locations', label: 'Locations', icon: Building2, roles: ['admin', 'owner'] },
+            { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin', 'owner'] },
+            { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager', 'owner'] },
+            { href: '/management/monitoring', label: 'Live POS Monitor', icon: Activity, roles: ['admin', 'manager', 'owner'], businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
+            { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner'] },
+            { href: '/management/timecards', label: 'Timecards', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/audit', label: 'System Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor', 'owner'] },
+            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner'] },
+            { href: '/accountant', label: 'Accountant Center', icon: BookCopy, roles: ['admin', 'accountant', 'owner'] },
+            { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin', 'owner'] },
+            { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin', 'owner'], businessTypes: ['Retail / Wholesale'] },
+            { href: '/settings/branding', label: 'Branding', icon: Sparkles, roles: ['admin', 'owner'] }, 
+            { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin', 'owner'] },
+            { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin', 'owner'] },
+            { href: '/settings/migration', label: 'Data Migration', icon: UploadCloud, roles: ['admin', 'owner'] },
+            { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin', 'owner'] },
+            { href: '/settings/integrations', label: 'API Integrations', icon: Plug, roles: ['admin', 'owner'] },
+            { href: '/management/api', label: 'API Keys', icon: KeyRound, roles: ['admin', 'owner'] }, 
         ]
     },
 ];
 
-const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin', 'ARCHITECT'] };
+const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin', 'architect', 'owner'] };
 
 const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; }) => {
   const pathname = usePathname();
@@ -488,34 +484,31 @@ export default function Sidebar() {
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
 
-    const isLoading = isLoadingRole || isLoadingTenant; 
+    const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
     const finalNavItems = useMemo(() => {
-        // 1. Safety Guard: Stop if data is missing
         if (isLoading || !role || !tenant) return [];
         
         const userRole = role.toLowerCase();
 
-        // 2. Filter the Master Navigation Sections
         return navSections.filter((item) => {
+            // FIX: Correct logic for Sovereign Bypass (Only Architect and Commander)
+            if (['architect', 'commander'].includes(userRole)) return true;
+
             // Role Permission Check
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
             
-            // Sovereign Bypass: Architects and Commanders see everything
-            if (userRole === 'architect' || userRole === 'commander', 'owner') return true;
-
-            // Standard Security Check
             if (!hasRolePermission) return false;
 
             // --- MODULE CHECK BYPASS ---
-            // Modified: We return true so ALL modules are visible during development
+            // Ensuring modules are visible even if DB seed is pending
             return true; 
         });
     }, [isLoading, role, enabledModules, tenant]); 
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
-            if (section.type === 'accordion' && section.subItems?.some(sub => pathname.startsWith(sub.href) && sub.href !== '/')) {
+            if (section.type === 'accordion' && section.subItems?.some(sub => pathname.startsWith(sub.href))) {
                 return section.module;
             }
         }
@@ -526,26 +519,22 @@ export default function Sidebar() {
         <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full">
             {items.map((item) => {
                 if (item.type === 'link') {
-                    const { icon: Icon, ...rest } = item;
-                    return <NavLinkComponent key={item.href} {...rest} Icon={Icon} isSidebarOpen={isSidebarOpen} />;
+                    return <NavLinkComponent key={item.href} href={item.href} label={item.label} Icon={item.icon} isSidebarOpen={isSidebarOpen} />;
                 }
                 if (item.type === 'accordion') {
                     const userRole = role?.toLowerCase() || '';
 
                     const filteredSubItems = item.subItems.filter(sub => {
-                        // Role check
-                        const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
+                        // Standard Role check OR Sovereign check
+                        const hasRolePermission = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole) || ['architect', 'commander'].includes(userRole);
                         
-                        // --- BUSINESS TYPE BYPASS ---
-                        // Original: const hasBusinessTypePermission = !sub.businessTypes || sub.businessTypes.includes(businessType);
-                        // Modified: We default to true so all sub-items appear
+                        // Modified: Default to true for display reliability
                         const hasBusinessTypePermission = true; 
 
                         return hasRolePermission && hasBusinessTypePermission;
                     });
 
-                    if (filteredSubItems.length === 0) return null;
-                    if (!isSidebarOpen) return null;
+                    if (filteredSubItems.length === 0 || !isSidebarOpen) return null;
 
                     return (
                         <AccordionItem key={item.module} value={item.module} className="border-none">
@@ -554,7 +543,7 @@ export default function Sidebar() {
                             </AccordionTrigger>
                             <AccordionContent className="pl-6 pt-1 space-y-1">
                                 {filteredSubItems.map(subItem => {
-                                    const isSubItemActive = pathname.startsWith(subItem.href) && subItem.href !== '/';
+                                    const isSubItemActive = pathname.startsWith(subItem.href);
                                     return (
                                         <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
@@ -577,11 +566,11 @@ export default function Sidebar() {
         )}>
             <div className="flex items-center justify-between h-16 border-b px-4 flex-shrink-0">
                 {isSidebarOpen && <h1 className="text-lg font-bold tracking-tight text-primary">BBU1</h1>}
-                <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"} className={cn(!isSidebarOpen && "mx-auto")}>
+                <Button variant="ghost" size="icon" onClick={toggleSidebar}>
                     {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
             </div>
-            <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-2 space-y-1 overflow-y-auto pt-4">
                 {isLoading ? (
                     <div className="p-3 text-sm text-muted-foreground animate-pulse">Loading navigation...</div>
                 ) : (
@@ -589,23 +578,10 @@ export default function Sidebar() {
                 )}
             </nav>
             <div className="p-4 mt-auto border-t space-y-2 flex-shrink-0">
-                {isSidebarOpen ? (
-                    <Button variant="outline" className="w-full justify-start" onClick={openCopilot}>
-                        <Sparkles className="mr-3 h-5 w-5 text-primary" />
-                        Ask Aura
-                    </Button>
-                ) : (
-                    <TooltipProvider delayDuration={0}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="outline" size="icon" className="w-full" onClick={openCopilot} aria-label="Ask Aura">
-                                    <Sparkles className="h-5 w-5 text-primary" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right"><p>Ask Aura</p></TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
+                <Button variant="outline" className={cn("w-full justify-start", !isSidebarOpen && "justify-center px-0")} onClick={openCopilot}>
+                    <Sparkles className={cn("h-5 w-5 text-primary", isSidebarOpen && "mr-3")} />
+                    {isSidebarOpen && "Ask Aura"}
+                </Button>
                 <NavLinkComponent {...settingsNav} Icon={settingsNav.Icon} isSidebarOpen={isSidebarOpen} />
             </div>
         </aside>
