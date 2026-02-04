@@ -502,7 +502,7 @@ export default function Sidebar() {
             const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
             
             // Sovereign Bypass: Architects and Commanders see everything
-            if (userRole === 'architect' || userRole === 'commander') return true;
+            if (userRole === 'architect' || userRole === 'commander', 'owner') return true;
 
             // Standard Security Check
             if (!hasRolePermission) return false;

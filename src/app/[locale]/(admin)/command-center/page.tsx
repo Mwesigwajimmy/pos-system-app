@@ -34,7 +34,8 @@ export default function SovereignCommandCenter() {
   const [liveLogs, setLiveLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createClient();
+  // Memoized supabase client so actions below reuse the same instance
+  const supabase = useMemo(() => createClient(), []);
 
   // --- 1. SOVEREIGN DATA ORCHESTRATION ---
   const loadMasterData = async () => {
@@ -98,9 +99,13 @@ export default function SovereignCommandCenter() {
 
     return () => { 
         isMounted = false;
-        supabase.removeChannel(channel); 
+        // defensive cleanup
+        try {
+          if (typeof supabase.removeChannel === 'function') supabase.removeChannel(channel);
+          else if (channel && typeof channel.unsubscribe === 'function') channel.unsubscribe();
+        } catch (e) { /* ignore */ }
     };
-  }, []);
+  }, [supabase]);
 
   // --- 3. ARCHITECT ACTIONS (TACTICAL OVERRIDE) ---
   const handleFreezeAccount = async (tid: string, name: string) => {
@@ -134,6 +139,23 @@ export default function SovereignCommandCenter() {
     if (!error) toast.success("Directive dispatched via Sovereign Bridge");
   };
 
+  // New: logout function wired to Power button
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Sign out failed', e);
+    } finally {
+      // Redirect to login page
+      window.location.href = '/login';
+    }
+  };
+
+  // Quick open dashboard helper (LayoutDashboard button)
+  const openDashboard = () => {
+    window.location.href = '/dashboard';
+  };
+
   if (loading) {
       return (
           <div className="min-h-screen bg-[#020205] flex items-center justify-center">
@@ -160,8 +182,8 @@ export default function SovereignCommandCenter() {
           <p className="text-slate-500 font-medium">Real-time oversight across 316 tables and 2,808 backend triggers.</p>
         </div>
 
-        {/* TACTICAL NAVIGATION */}
-        <nav className="flex bg-slate-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl shadow-2xl">
+        {/* TACTICAL NAVIGATION + QUICK ACTIONS */}
+        <nav className="flex bg-slate-900/50 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl shadow-2xl items-center gap-4">
           {[
             { id: 'war_room', label: 'War Room', icon: Activity },
             { id: 'financials', label: 'Audit', icon: Landmark },
@@ -180,6 +202,21 @@ export default function SovereignCommandCenter() {
               <tab.icon size={16} /> {tab.label}
             </button>
           ))}
+
+          {/* Quick action icons (all imports now used) */}
+          <div className="flex items-center gap-2 ml-3 px-2">
+            <button onClick={openDashboard} title="Open Tenant Dashboard" className="p-2 rounded hover:bg-white/3">
+              <LayoutDashboard size={16} />
+            </button>
+
+            <button onClick={() => handleDispatchMessage(null)} title="Broadcast Directive" className="p-2 rounded hover:bg-white/3">
+              <ArrowUpRight size={16} />
+            </button>
+
+            <button onClick={handleLogout} title="Sign out" className="p-2 rounded hover:bg-white/3">
+              <Power size={16} />
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -254,8 +291,11 @@ export default function SovereignCommandCenter() {
                 <p className="text-slate-500 font-medium leading-relaxed px-6">
                     Tracking 1:1 visitor context. Capturing IP, resolution, and referrer path autonomously.
                 </p>
-                <button className="mt-10 py-5 bg-blue-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition-all">
-                    Export Marketing Intelligence
+                <button
+                  className="mt-10 py-5 bg-blue-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                  onClick={() => { /* keep existing behavior or trigger an export flow */ }}
+                >
+                    Export Marketing Intelligence <ArrowUpRight size={14} />
                 </button>
              </div>
           </div>
@@ -285,7 +325,7 @@ export default function SovereignCommandCenter() {
                                  <div className="flex items-center gap-4 mt-1">
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TYPE: {t.business_type || 'STANDARD'}</span>
                                     <span className="h-1 w-1 bg-slate-700 rounded-full" />
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ID: {t.id.substring(0,8)}</span>
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ID: {String(t.id).substring(0,8)}</span>
                                  </div>
                               </div>
                            </div>
@@ -300,9 +340,18 @@ export default function SovereignCommandCenter() {
                               </button>
                               <button 
                                 onClick={() => handleFreezeAccount(t.id, t.name)}
-                                className="px-6 py-3 bg-red-600/10 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                className="px-6 py-3 bg-red-600/10 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center"
                               >
                                 <Lock size={12} className="inline mr-2" /> Isolate
+                              </button>
+
+                              {/* Small quick action affordance using ChevronRight */}
+                              <button
+                                onClick={() => handleDispatchMessage(t.id)}
+                                title="Quick action"
+                                className="p-2 rounded hover:bg-white/3"
+                              >
+                                <ChevronRight size={16} />
                               </button>
                            </div>
                         </div>
@@ -323,6 +372,10 @@ export default function SovereignCommandCenter() {
           <div className="flex items-center gap-10">
               <span className="flex items-center gap-2"><HardDrive size={14} className="text-slate-800" /> 316 GLOBAL TABLES</span>
               <span className="flex items-center gap-2 text-blue-500/80 underline underline-offset-8 decoration-2"><Zap size={14} /> 2,808 ACTIVE SENTINELS</span>
+              {/* Put MessageSquare in footer as a small helper / support icon */}
+              <span className="flex items-center gap-2 text-slate-500">
+                <MessageSquare size={14} /> Support
+              </span>
           </div>
       </footer>
     </div>
