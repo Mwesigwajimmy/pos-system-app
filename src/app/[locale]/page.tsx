@@ -1881,7 +1881,7 @@ export default function HomePage() {
     const [toastState, setToastState] = useState<ToastState>({ visible: false, message: '' });
 
     // 2. DATA ARRAYS
-    const rotatingTexts = ["We are part of your business.", "From startup to enterprise.", "For every ambition."];
+    const rotatingTexts = ["We are part of your business.", "In.", "Book Keeping.", "Advanced Accounting.", "Business Reports.", "Internal & External Auditing.", "From startup to enterprise.", "For every ambition."];
     const slideshowContent = [
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers" },
         { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast, secure system for transactions.", alt: "Mobile money agent" },
