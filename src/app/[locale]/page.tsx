@@ -1867,6 +1867,146 @@ const PartnerWithUsSection = () => {
     );
 };
 
+// --- TOP-TIER CORPORATE & ARCHITECT SECTION ---
+const AboutCompanyExecutiveSection = () => {
+    return (
+        <AnimatedSection id="about-us" className="bg-slate-50 py-24 border-y overflow-hidden">
+            <div className="container mx-auto px-4">
+                
+                {/* PART 1: CORPORATE IDENTITY (VISION & MISSION) */}
+                <div className="max-w-5xl mx-auto mb-20">
+                    <div className="text-center mb-16">
+                        <span className="text-blue-600 font-black uppercase tracking-[0.2em] text-xs px-4 py-2 bg-blue-50 rounded-full border border-blue-100">
+                            Corporate Governance
+                        </span>
+                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 mt-6 tracking-tight">
+                            The Business Base Universe.
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Mission */}
+                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="h-12 w-12 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-200">
+                                <Target className="h-6 w-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-4">Our Mission</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                                To engineer a unified, sovereign business infrastructure that eliminates operational friction, enabling enterprises to scale from startups to global conglomerates through intelligent automation and data integrity.
+                            </p>
+                        </div>
+
+                        {/* Vision */}
+                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="h-12 w-12 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-200">
+                                <Globe2 className="h-6 w-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-4">Our Vision</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                                To be the global standard for the modern Business Operating System (BOS)—empowering the next generation of African and international commerce with an unbreakable "Business Base" that functions anywhere.
+                            </p>
+                        </div>
+
+                        {/* Values */}
+                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="h-12 w-12 bg-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-200">
+                                <ShieldCheck className="h-6 w-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-4">Core Values</h3>
+                            <ul className="text-slate-600 text-sm space-y-2">
+                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Technical Integrity</li>
+                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Data Sovereignty</li>
+                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Innovation with Purpose</li>
+                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Radical Accessibility</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* PART 2: THE LEAD ARCHITECT (Mwesigwa Jimmy) */}
+                <div className="max-w-6xl mx-auto">
+                    <div className="relative bg-slate-900 rounded-[3rem] p-8 md:p-16 overflow-hidden shadow-2xl">
+                        {/* Artistic Background Accent */}
+                        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/10 to-transparent pointer-events-none" />
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+                            {/* Profile Image/Badge */}
+                            <div className="lg:col-span-4 flex flex-col items-center">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 animate-pulse" />
+                                    <div className="h-48 w-48 md:h-64 md:w-64 rounded-[3rem] bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center text-6xl font-black text-white shadow-2xl border-4 border-white/10 relative z-10">
+                                        MJ
+                                    </div>
+                                </div>
+                                <div className="mt-8 text-center">
+                                    <h4 className="text-2xl font-black text-white tracking-tight">Mwesigwa Jimmy</h4>
+                                    <p className="text-blue-400 font-bold uppercase tracking-widest text-xs mt-1">Founder, CEO & Lead Architect</p>
+                                    <div className="flex justify-center gap-3 mt-4">
+                                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 font-bold uppercase">Uganda</div>
+                                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 font-bold uppercase">System Architect</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Professional Biography */}
+                            <div className="lg:col-span-8 space-y-6">
+                                <div className="flex items-center gap-4 text-blue-500">
+                                    <div className="h-px w-12 bg-blue-500" />
+                                    <span className="text-xs font-black uppercase tracking-widest">Architectural Milestone</span>
+                                </div>
+                                
+                                <h3 className="text-3xl md:text-4xl font-black text-white leading-tight">
+                                    Bridging the Gap Between <br /> Concept and Global Utility.
+                                </h3>
+                                
+                                <div className="space-y-4 text-slate-300 text-base md:text-lg leading-relaxed">
+                                    <p>
+                                        BBU1 was born in <span className="text-white font-bold">July 2024</span> when Mwesigwa Jimmy identified a critical failure in the modern enterprise landscape: the "Integration Tax"—the cost businesses pay for using disconnected tools that don't speak the same language.
+                                    </p>
+                                    <p>
+                                        Driven by the ambition to create a tech-sovereign Africa, Jimmy initiated the full system architecting on <span className="text-blue-400 font-bold">August 17, 2024</span>. His approach was surgical, focusing on a "Local-First" database protocol that ensures even the most remote business in Uganda operates with the same digital power as a firm in London or New York.
+                                    </p>
+                                    <p className="text-slate-400 text-sm italic border-l-2 border-blue-600 pl-4 py-1">
+                                        "My work is to architect a universe where your business never stops. We don't build software; we build certainty." — Mwesigwa Jimmy
+                                    </p>
+                                </div>
+
+                                {/* Technical Specs of the Architect */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
+                                    <div className="flex items-start gap-3">
+                                        <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                            <BrainCircuit className="h-3 w-3 text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-white text-sm font-bold">AI Strategy</p>
+                                            <p className="text-slate-500 text-xs">Pioneer of the Aura AI Insights layer.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                                            <ShieldHalf className="h-3 w-3 text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-white text-sm font-bold">Compliance Architect</p>
+                                            <p className="text-slate-500 text-xs">Designer of the Automated Audit Engine.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="pt-8">
+                                    <Button className="bg-white text-slate-900 font-black px-8 py-6 rounded-2xl hover:bg-blue-50 hover:scale-105 transition-all shadow-xl shadow-blue-500/10" asChild>
+                                        <a href="mailto:mwesigwajimmy123@gmail.com">Inquire with the Founder</a>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </AnimatedSection>
+    );
+};
+
 // --- HomePage Component ---
 export default function HomePage() {
     const supabase = createClient();
@@ -2108,7 +2248,7 @@ export default function HomePage() {
                         </div>
                     </motion.div>
                 </AnimatedSection>
-                
+                <AboutCompanyExecutiveSection />
                 <DynamicPricingSection />
 
                 {/* --- ENTERPRISE LEAD CAPTURE SECTION (MOVED TO CORRECT POSITION) --- */}
