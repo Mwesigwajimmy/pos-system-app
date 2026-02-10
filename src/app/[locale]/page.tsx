@@ -1907,134 +1907,195 @@ const PartnerWithUsSection = () => {
     );
 };
 
-// --- TOP-TIER CORPORATE & ARCHITECT SECTION ---
+// --- MASTER CORPORATE & ARCHITECT MANIFESTO SECTION ---
 const AboutCompanyExecutiveSection = () => {
     return (
-        <AnimatedSection id="about-us" className="bg-slate-50 py-24 border-y overflow-hidden">
-            <div className="container mx-auto px-4">
+        <section className="relative bg-white dark:bg-slate-950 overflow-hidden">
+            
+            {/* 1. EXECUTIVE HERO HEADER WITH BACKGROUND IMAGE */}
+            <div className="relative h-[480px] w-full flex items-center justify-center overflow-hidden">
+                {/* Your Selected Background Image from the directory */}
+                <Image 
+                    src="/images/showcase/grocery-store-bbU1.jpg" 
+                    alt="BBU1 Global Commerce Base"
+                    fill
+                    className="object-cover brightness-[0.35] scale-105"
+                    priority
+                />
                 
-                {/* PART 1: CORPORATE IDENTITY (VISION & MISSION) */}
-                <div className="max-w-5xl mx-auto mb-20">
-                    <div className="text-center mb-16">
-                        <span className="text-blue-600 font-black uppercase tracking-[0.2em] text-xs px-4 py-2 bg-blue-50 rounded-full border border-blue-100">
-                            Corporate Governance
-                        </span>
-                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 mt-6 tracking-tight">
-                            The Business Base Universe.
-                        </h2>
-                    </div>
+                {/* Professional Gradient Overlay (Blends image into the content below) */}
+                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/40 to-white dark:to-slate-950" />
+                
+                {/* Hero Title Content */}
+                <div className="relative z-10 text-center px-4">
+                    <motion.span 
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="inline-block text-blue-400 font-black uppercase tracking-[0.3em] text-[10px] px-5 py-2.5 bg-white/5 backdrop-blur-md rounded-full border border-white/10 mb-8"
+                    >
+                        Corporate Governance
+                    </motion.span>
+                    <motion.h2 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.1 }}
+                        className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none"
+                    >
+                        The Business <br /> Base Universe.
+                    </motion.h2>
+                    <motion.p 
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.3 }}
+                        className="text-blue-200/60 text-sm mt-6 uppercase tracking-[0.4em] font-bold"
+                    >
+                        Architecting Sovereign Commerce
+                    </motion.p>
+                </div>
+            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Mission */}
-                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="h-12 w-12 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-200">
-                                <Target className="h-6 w-6 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Our Mission</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">
-                                To engineer a unified, sovereign business infrastructure that eliminates operational friction, enabling enterprises to scale from startups to global conglomerates through intelligent automation and data integrity.
-                            </p>
+            {/* 2. CORPORATE IDENTITY (MISSION, VISION, VALUES) */}
+            <div className="container mx-auto px-4 -mt-24 relative z-20">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    
+                    {/* Mission Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl hover:shadow-blue-500/10 transition-all duration-500"
+                    >
+                        <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-blue-600/20">
+                            <Target className="h-7 w-7 text-white" />
                         </div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Our Mission</h3>
+                        <p className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+                            To engineer a unified, sovereign business infrastructure that eliminates operational friction, enabling enterprises to scale from startups to global conglomerates through intelligent automation and data integrity.
+                        </p>
+                    </motion.div>
 
-                        {/* Vision */}
-                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="h-12 w-12 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-200">
-                                <Globe2 className="h-6 w-6 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Our Vision</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">
-                                To be the global standard for the modern Business Operating System (BOS)—empowering the next generation of African and international commerce with an unbreakable "Business Base" that functions anywhere.
-                            </p>
+                    {/* Vision Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.1 }}
+                        className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500"
+                    >
+                        <div className="h-14 w-14 bg-indigo-600 rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-indigo-600/20">
+                            <Globe2 className="h-7 w-7 text-white" />
                         </div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Our Vision</h3>
+                        <p className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+                            To be the global standard for the modern Business Operating System (BOS)—empowering the next generation of African and international commerce with an unbreakable "Business Base" that functions anywhere.
+                        </p>
+                    </motion.div>
 
-                        {/* Values */}
-                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="h-12 w-12 bg-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-200">
-                                <ShieldCheck className="h-6 w-6 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-4">Core Values</h3>
-                            <ul className="text-slate-600 text-sm space-y-2">
-                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Technical Integrity</li>
-                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Data Sovereignty</li>
-                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Innovation with Purpose</li>
-                                <li className="flex items-center gap-2"><div className="h-1 w-1 bg-emerald-500 rounded-full" /> Radical Accessibility</li>
-                            </ul>
+                    {/* Values Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500"
+                    >
+                        <div className="h-14 w-14 bg-emerald-600 rounded-2xl flex items-center justify-center mb-8 shadow-xl shadow-emerald-600/20">
+                            <ShieldCheck className="h-7 w-7 text-white" />
                         </div>
-                    </div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Core Values</h3>
+                        <ul className="text-slate-600 dark:text-slate-400 text-base space-y-3">
+                            <li className="flex items-center gap-3 font-bold text-slate-900 dark:text-slate-200">
+                                <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full" /> Technical Integrity
+                            </li>
+                            <li className="flex items-center gap-3 font-bold text-slate-900 dark:text-slate-200">
+                                <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full" /> Data Sovereignty
+                            </li>
+                            <li className="flex items-center gap-3 font-bold text-slate-900 dark:text-slate-200">
+                                <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full" /> Innovation with Purpose
+                            </li>
+                            <li className="flex items-center gap-3 font-bold text-slate-900 dark:text-slate-200">
+                                <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full" /> Radical Accessibility
+                            </li>
+                        </ul>
+                    </motion.div>
                 </div>
 
-                {/* PART 2: THE LEAD ARCHITECT (Mwesigwa Jimmy) */}
-                <div className="max-w-6xl mx-auto">
-                    <div className="relative bg-slate-900 rounded-[3rem] p-8 md:p-16 overflow-hidden shadow-2xl">
-                        {/* Artistic Background Accent */}
+                {/* 3. THE LEAD ARCHITECT PROFILE (Mwesigwa Jimmy) */}
+                <div className="mt-28 mb-24">
+                    <div className="relative bg-slate-900 rounded-[4rem] p-8 md:p-16 overflow-hidden shadow-2xl border border-white/10">
+                        {/* Background Light Effect */}
                         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/10 to-transparent pointer-events-none" />
                         
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-                            {/* Profile Image/Badge */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center relative z-10">
+                            
+                            {/* Portrait Section */}
                             <div className="lg:col-span-4 flex flex-col items-center">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 animate-pulse" />
-                                    <div className="h-48 w-48 md:h-64 md:w-64 rounded-[3rem] bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center text-6xl font-black text-white shadow-2xl border-4 border-white/10 relative z-10">
+                                    <div className="absolute inset-0 bg-blue-500 blur-[80px] opacity-20 animate-pulse" />
+                                    <div className="h-64 w-64 md:h-80 md:w-80 rounded-[4rem] bg-gradient-to-br from-blue-600 to-indigo-900 flex items-center justify-center text-8xl font-black text-white shadow-2xl border-4 border-white/10 relative z-10">
                                         MJ
                                     </div>
                                 </div>
-                                <div className="mt-8 text-center">
-                                    <h4 className="text-2xl font-black text-white tracking-tight">Mwesigwa Jimmy</h4>
-                                    <p className="text-blue-400 font-bold uppercase tracking-widest text-xs mt-1">Founder, CEO & Lead Architect</p>
-                                    <div className="flex justify-center gap-3 mt-4">
-                                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 font-bold uppercase">Uganda</div>
-                                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 font-bold uppercase">System Architect</div>
+                                <div className="mt-10 text-center">
+                                    <h4 className="text-3xl font-black text-white tracking-tight">Mwesigwa Jimmy</h4>
+                                    <p className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Founder, CEO & Lead Architect</p>
+                                    <div className="flex justify-center gap-3 mt-6">
+                                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 font-black tracking-widest uppercase">Uganda</div>
+                                        <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] text-slate-400 font-black tracking-widest uppercase">System Architect</div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Professional Biography */}
-                            <div className="lg:col-span-8 space-y-6">
+                            {/* Biography Content */}
+                            <div className="lg:col-span-8 space-y-8">
                                 <div className="flex items-center gap-4 text-blue-500">
                                     <div className="h-px w-12 bg-blue-500" />
-                                    <span className="text-xs font-black uppercase tracking-widest">Architectural Milestone</span>
+                                    <span className="text-xs font-black uppercase tracking-[0.3em]">Architectural Milestone</span>
                                 </div>
                                 
-                                <h3 className="text-3xl md:text-4xl font-black text-white leading-tight">
-                                    Bridging the Gap Between <br /> Concept and Global Utility.
+                                <h3 className="text-4xl md:text-6xl font-black text-white leading-none tracking-tighter">
+                                    Bridging the Gap Between <br className="hidden md:block" /> Concept and Global Utility.
                                 </h3>
                                 
-                                <div className="space-y-4 text-slate-300 text-base md:text-lg leading-relaxed">
+                                <div className="space-y-6 text-slate-300 text-lg md:text-xl leading-relaxed">
                                     <p>
                                         BBU1 was born in <span className="text-white font-bold">July 2024</span> when Mwesigwa Jimmy identified a critical failure in the modern enterprise landscape: the "Integration Tax"—the cost businesses pay for using disconnected tools that don't speak the same language.
                                     </p>
                                     <p>
                                         Driven by the ambition to create a tech-sovereign Africa, Jimmy initiated the full system architecting on <span className="text-blue-400 font-bold">August 17, 2024</span>. His approach was surgical, focusing on a "Local-First" database protocol that ensures even the most remote business in Uganda operates with the same digital power as a firm in London or New York.
                                     </p>
-                                    <p className="text-slate-400 text-sm italic border-l-2 border-blue-600 pl-4 py-1">
+                                    <p className="text-slate-400 text-base italic border-l-4 border-blue-600 pl-6 py-3 bg-white/5 rounded-r-3xl">
                                         "My work is to architect a universe where your business never stops. We don't build software; we build certainty." — Mwesigwa Jimmy
                                     </p>
                                 </div>
 
-                                {/* Technical Specs of the Architect */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
-                                    <div className="flex items-start gap-3">
-                                        <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                                            <BrainCircuit className="h-3 w-3 text-blue-400" />
+                                {/* Specialized Architect Badges */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-8">
+                                    <div className="flex items-start gap-5 p-6 bg-white/5 rounded-[2rem] border border-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="h-12 w-12 rounded-2xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                                            <BrainCircuit className="h-6 w-6 text-blue-400" />
                                         </div>
                                         <div>
-                                            <p className="text-white text-sm font-bold">AI Strategy</p>
-                                            <p className="text-slate-500 text-xs">Pioneer of the Aura AI Insights layer.</p>
+                                            <p className="text-white text-lg font-bold">Aura AI Strategy</p>
+                                            <p className="text-slate-500 text-sm">Pioneer of the global Aura AI Insights framework.</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="h-6 w-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                                            <ShieldHalf className="h-3 w-3 text-blue-400" />
+                                    <div className="flex items-start gap-5 p-6 bg-white/5 rounded-[2rem] border border-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="h-12 w-12 rounded-2xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                                            <ShieldHalf className="h-6 w-6 text-blue-400" />
                                         </div>
                                         <div>
-                                            <p className="text-white text-sm font-bold">Compliance Architect</p>
-                                            <p className="text-slate-500 text-xs">Designer of the Automated Audit Engine.</p>
+                                            <p className="text-white text-lg font-bold">Audit Engineering</p>
+                                            <p className="text-slate-500 text-sm">Lead architect of the automated compliance engine.</p>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <div className="pt-8">
-                                    <Button className="bg-white text-slate-900 font-black px-8 py-6 rounded-2xl hover:bg-blue-50 hover:scale-105 transition-all shadow-xl shadow-blue-500/10" asChild>
+                                <div className="pt-10">
+                                    <Button className="bg-white text-slate-900 font-black px-12 py-8 text-xl rounded-2xl hover:bg-blue-50 hover:scale-105 transition-all shadow-2xl shadow-blue-500/20" asChild>
                                         <a href="mailto:mwesigwajimmy123@gmail.com">Inquire with the Founder</a>
                                     </Button>
                                 </div>
@@ -2043,7 +2104,7 @@ const AboutCompanyExecutiveSection = () => {
                     </div>
                 </div>
             </div>
-        </AnimatedSection>
+        </section>
     );
 };
 
