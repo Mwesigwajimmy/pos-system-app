@@ -1923,7 +1923,7 @@ const AboutCompanyExecutiveSection = () => {
             {/* 1. UNIVERSAL BACKGROUND IMAGE (Visible across the entire section) */}
             <div className="absolute inset-0 z-0">
                 <Image 
-                    src="/images/showcase/grocery-store-bbU1.jpg" 
+                    src="/images/showcase/ai-warehouse-logistics.jpg" 
                     alt="BBU1 Universe Background"
                     fill
                     className="object-cover brightness-[0.25] contrast-[1.1] fixed"
