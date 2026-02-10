@@ -2151,7 +2151,14 @@ const AboutCompanyExecutiveSection = () => {
                             {/* Inquiry / Speak to Founder Box (On Left) */}
                             <div className="p-12 bg-white/5 border border-white/10 rounded-[4rem] backdrop-blur-3xl max-w-2xl shadow-3xl">
                                 <div className="flex items-center gap-8 mb-10">
-                                    <div className="h-24 w-24 rounded-3xl bg-blue-600 flex items-center justify-center text-4xl font-black text-white shadow-2xl">MJ</div>
+                                    <div className="h-24 w-24 rounded-3xl overflow-hidden border border-white/20 relative shadow-2xl bg-slate-900">
+                                        <Image 
+                                            src="/images/showcase/Photo Background Edi (4).jpeg" 
+                                            alt="Mwesigwa Jimmy"
+                                            fill
+                                            className="object-cover object-top"
+                                        />
+                                    </div>
                                     <div>
                                         <h5 className="text-2xl font-black text-white uppercase italic">Mwesigwa Jimmy</h5>
                                         <p className="text-blue-400 text-xs uppercase font-black tracking-widest">Lead Architect & Inventor</p>
