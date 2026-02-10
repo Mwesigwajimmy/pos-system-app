@@ -1908,48 +1908,51 @@ const PartnerWithUsSection = () => {
 };
 
 const AboutCompanyExecutiveSection = () => {
-    // Tier-1 Smooth Entrance Variants
+    // High-End Animation Variants
     const fadeInUp = {
-        initial: { opacity: 0, y: 40 },
+        initial: { opacity: 0, y: 60 },
         whileInView: { opacity: 1, y: 0 },
         viewport: { once: true, margin: "-100px" },
-        transition: { duration: 1, ease: [0.16, 1, 0.3, 1] }
+        transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] }
     };
 
     return (
-        <section className="relative w-full bg-[#020617] selection:bg-blue-500/30 font-sans">
+        <section className="relative w-full bg-[#020617] selection:bg-blue-500/30 font-sans text-slate-300">
             
-            {/* --- 1. THE UNIVERSAL BACKDROP --- */}
+            {/* --- 1. THE UNIVERSAL BACKDROP (Immersive Engineering Visuals) --- */}
             <div className="absolute inset-0 z-0 overflow-hidden">
                 <Image 
                     src="/images/showcase/ai-warehouse-logistics.jpg" 
                     alt="BBU1 Universe Background"
                     fill
-                    className="object-cover opacity-[0.15] scale-110 fixed"
+                    className="object-cover opacity-[0.12] fixed"
                     priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-transparent to-[#020617]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.05)_0%,transparent_70%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.07)_0%,transparent_50%)]" />
             </div>
 
             <div className="relative z-10">
                 
-                {/* --- 2. THE GRAND OPENING: WHO WE ARE --- */}
-                <div className="relative min-h-screen flex flex-col items-center justify-center text-center px-6">
+                {/* --- 2. WHO WE ARE: THE CORPORATE IDENTITY --- */}
+                <div className="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-6 border-b border-white/5">
                     <motion.div 
-                        initial={{ opacity: 0, letterSpacing: "0.2em" }}
-                        whileInView={{ opacity: 1, letterSpacing: "0.5em" }}
-                        className="mb-8 text-blue-500 text-[10px] font-black uppercase tracking-[0.5em] border-y border-blue-500/20 py-2"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        className="mb-12 inline-flex items-center gap-3 px-8 py-3 bg-blue-500/5 border border-blue-500/20 rounded-full backdrop-blur-xl"
                     >
-                        Established 2024 • Corporate Manifesto
+                        <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
+                        <span className="text-blue-400 text-[11px] font-black uppercase tracking-[0.5em]">
+                            Global Infrastructure & Governance
+                        </span>
                     </motion.div>
 
                     <motion.h1 
                         {...fadeInUp}
-                        className="text-6xl md:text-[140px] font-black text-white tracking-tighter leading-[0.8] mb-12"
+                        className="text-6xl md:text-[150px] font-black text-white tracking-tighter leading-[0.8] mb-12"
                     >
                         WHO WE <br /> 
-                        <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white/80 to-white/20">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-b from-white via-white/70 to-white/10">
                             ARE.
                         </span>
                     </motion.h1>
@@ -1957,86 +1960,98 @@ const AboutCompanyExecutiveSection = () => {
                     <motion.div 
                         {...fadeInUp}
                         transition={{ delay: 0.2 }}
-                        className="max-w-3xl space-y-6"
+                        className="max-w-4xl space-y-8"
                     >
-                        <p className="text-slate-400 text-xl md:text-2xl font-light leading-relaxed italic">
-                            "BBU1 is not merely a software provider; we are the Master Architects of the Business Base Universe."
+                        <p className="text-2xl md:text-3xl font-light text-slate-400 leading-relaxed italic border-l-2 border-blue-600 pl-8 text-left mx-auto">
+                            "BBU1 is the architect of the Business Base Universe—a sovereign digital ecosystem where 
+                            commerce is no longer restricted by disconnected software, but empowered by a unified 
+                            operating core."
                         </p>
-                        <p className="text-slate-500 text-lg leading-relaxed">
-                            We exist at the intersection of extreme engineering and sovereign commerce. 
-                            Our purpose is to provide the unbreakable foundation—the Business Operating System (BOS)—upon 
-                            which the next century of global trade will be built.
+                        <p className="text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto">
+                            We bridge the gap between complex engineering and global business utility. 
+                            Our purpose is to provide an unbreakable foundation for the next generation 
+                            of digital commerce.
                         </p>
                     </motion.div>
                 </div>
 
-                {/* --- 3. THE IDENTITY STACK (MISSION, VISION, VALUES) --- */}
-                {/* Each occupies a significant vertical space for professional impact */}
+                {/* --- 3. THE IDENTITY PILLARS (VERTICAL NARRATIVE) --- */}
+                {/* Each pillar occupies its own space for maximum professional authority */}
                 
-                <div className="container mx-auto px-6 space-y-64 py-20">
+                <div className="container mx-auto px-6 space-y-64 py-40">
                     
-                    {/* MISSION SECTION */}
-                    <motion.div {...fadeInUp} className="max-w-6xl mx-auto">
-                        <div className="grid lg:grid-cols-2 gap-20 items-center">
-                            <div>
-                                <div className="flex items-center gap-4 mb-8">
-                                    <div className="h-px w-12 bg-blue-600" />
-                                    <span className="text-blue-500 font-black text-xs uppercase tracking-widest">The Directive</span>
+                    {/* MISSION: THE WHY */}
+                    <motion.div {...fadeInUp} className="max-w-6xl mx-auto border-t border-blue-600/20 pt-20">
+                        <div className="grid lg:grid-cols-2 gap-24 items-start">
+                            <div className="space-y-12">
+                                <div className="flex items-center gap-4 text-blue-500">
+                                    <Target className="h-10 w-10" />
+                                    <span className="text-sm font-black uppercase tracking-[0.3em]">Fundamental Mission</span>
                                 </div>
-                                <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-8 italic">OUR MISSION.</h2>
-                                <p className="text-slate-400 text-2xl leading-relaxed font-light">
+                                <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter leading-none italic uppercase">
+                                    Engineering <br /> Certainty.
+                                </h2>
+                            </div>
+                            <div className="space-y-8">
+                                <p className="text-3xl font-light text-white leading-snug">
                                     To engineer a unified, sovereign business infrastructure that eliminates 
-                                    operational friction, enabling enterprises to scale from agile startups 
-                                    to global conglomerates through intelligent automation and absolute data integrity.
+                                    operational friction.
                                 </p>
-                            </div>
-                            <div className="aspect-square bg-blue-600/5 rounded-[4rem] border border-blue-500/20 flex items-center justify-center">
-                                <Target className="h-40 w-40 text-blue-500/20" />
+                                <p className="text-slate-500 text-xl leading-relaxed">
+                                    We enable enterprises to scale from agile startups to global conglomerates 
+                                    through intelligent automation and absolute data integrity. By removing 
+                                    the "Integration Tax," we allow businesses to focus on growth while our 
+                                    infrastructure handles the complexity.
+                                </p>
                             </div>
                         </div>
                     </motion.div>
 
-                    {/* VISION SECTION */}
-                    <motion.div {...fadeInUp} className="max-w-6xl mx-auto text-right">
-                        <div className="grid lg:grid-cols-2 gap-20 items-center">
-                            <div className="order-2 lg:order-1 aspect-square bg-indigo-600/5 rounded-[4rem] border border-indigo-500/20 flex items-center justify-center">
-                                <Globe2 className="h-40 w-40 text-indigo-500/20" />
-                            </div>
-                            <div className="order-1 lg:order-2">
-                                <div className="flex items-center justify-end gap-4 mb-8">
-                                    <span className="text-indigo-500 font-black text-xs uppercase tracking-widest">The Horizon</span>
-                                    <div className="h-px w-12 bg-indigo-600" />
+                    {/* VISION: THE WHERE */}
+                    <motion.div {...fadeInUp} className="max-w-6xl mx-auto border-t border-indigo-600/20 pt-20">
+                        <div className="grid lg:grid-cols-2 gap-24 items-start">
+                            <div className="space-y-12 order-1 lg:order-2">
+                                <div className="flex items-center gap-4 text-indigo-500">
+                                    <Globe2 className="h-10 w-10" />
+                                    <span className="text-sm font-black uppercase tracking-[0.3em]">Future Projection</span>
                                 </div>
-                                <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-8 italic">OUR VISION.</h2>
-                                <p className="text-slate-400 text-2xl leading-relaxed font-light">
-                                    To define the global standard for modern commerce—empowering the 
-                                    next generation of international markets with an unbreakable 
-                                    'Business Base' that functions with the same power in remote Uganda 
-                                    as it does in London or New York.
+                                <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter leading-none italic uppercase">
+                                    The Global <br /> Standard.
+                                </h2>
+                            </div>
+                            <div className="space-y-8 order-2 lg:order-1">
+                                <p className="text-3xl font-light text-white leading-snug">
+                                    To define the Business Operating System (BOS) for the modern world.
+                                </p>
+                                <p className="text-slate-500 text-xl leading-relaxed">
+                                    Our vision is to empower the next generation of African and international 
+                                    commerce with an unbreakable 'Business Base' that functions with 
+                                    identical power anywhere on earth—from a village in Uganda to a 
+                                    skyscraper in Manhattan.
                                 </p>
                             </div>
                         </div>
                     </motion.div>
 
-                    {/* CORE VALUES SECTION */}
-                    <motion.div {...fadeInUp} className="max-w-6xl mx-auto">
-                        <div className="mb-20">
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="h-px w-12 bg-emerald-600" />
-                                <span className="text-emerald-500 font-black text-xs uppercase tracking-widest">The Ethics</span>
+                    {/* CORE VALUES: THE HOW */}
+                    <motion.div {...fadeInUp} className="max-w-6xl mx-auto border-t border-emerald-600/20 pt-20">
+                        <div className="mb-24">
+                            <div className="flex items-center gap-4 text-emerald-500 mb-8">
+                                <ShieldCheck className="h-10 w-10" />
+                                <span className="text-sm font-black uppercase tracking-[0.3em]">Operational Ethics</span>
                             </div>
-                            <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-8 italic">CORE VALUES.</h2>
+                            <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter italic uppercase">CORE VALUES.</h2>
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                             {[
-                                { title: "Technical Integrity", desc: "Building code that is mathematically sound and operationally unbreakable." },
-                                { title: "Data Sovereignty", desc: "Absolute ownership and privacy. Your business data is your ultimate asset." },
-                                { title: "Innovation with Purpose", desc: "We reject novelty for its own sake. Every line of code must drive value." },
-                                { title: "Radical Accessibility", desc: "Democratizing tier-1 enterprise power for every visionary business." }
+                                { title: "Technical Integrity", desc: "We believe in software as structural engineering. It must be mathematically sound and unbreakable." },
+                                { title: "Data Sovereignty", desc: "Absolute ownership. Your business intelligence remains your ultimate sovereign asset." },
+                                { title: "Innovation with Purpose", desc: "We reject novelty for novelty's sake. Every line of code must serve a strategic business goal." },
+                                { title: "Radical Accessibility", desc: "Making elite, Tier-1 enterprise power available to every visionary entrepreneur." }
                             ].map((v, i) => (
-                                <div key={i} className="p-10 bg-white/5 border border-white/10 rounded-3xl hover:bg-emerald-500/5 hover:border-emerald-500/30 transition-all group">
-                                    <ShieldCheck className="h-8 w-8 text-emerald-500 mb-6 group-hover:scale-110 transition-transform" />
-                                    <h4 className="text-white text-xl font-black mb-4 tracking-tight uppercase">{v.title}</h4>
+                                <div key={i} className="group p-12 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-emerald-500/5 transition-all duration-500">
+                                    <h4 className="text-white text-2xl font-black mb-6 tracking-tight group-hover:text-emerald-400 transition-colors uppercase italic">{v.title}</h4>
+                                    <div className="h-1 w-12 bg-emerald-500/30 mb-6 group-hover:w-full transition-all duration-700" />
                                     <p className="text-slate-500 text-sm leading-relaxed">{v.desc}</p>
                                 </div>
                             ))}
@@ -2044,104 +2059,112 @@ const AboutCompanyExecutiveSection = () => {
                     </motion.div>
                 </div>
 
-                {/* --- 4. THE FOUR BUSINESS COMMITMENTS --- */}
-                <div className="bg-blue-600/5 backdrop-blur-3xl py-40 border-y border-white/5">
+                {/* --- 4. THE FOUR BUSINESS COMMITMENTS (THE BBU1 VALUE) --- */}
+                <div className="bg-blue-600/5 backdrop-blur-3xl py-48 border-y border-white/5">
                     <div className="container mx-auto px-6">
                         <div className="max-w-4xl mx-auto text-center mb-24">
-                            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase mb-6">The Four Commitments</h2>
-                            <p className="text-slate-400 text-lg font-light leading-relaxed">
-                                For businesses to achieve global-tier performance, they must be anchored by these 
-                                four fundamental commitments which BBU1 provides out of the box.
+                            <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter uppercase mb-6 italic">The Four Commitments</h2>
+                            <p className="text-slate-400 text-xl font-light leading-relaxed">
+                                For any enterprise to achieve market dominance, they must master four dimensions. 
+                                BBU1 provides these as the core DNA of your Business Base.
                             </p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                             {[
-                                { icon: <Zap />, title: "Velocity", desc: "We eliminate the 'Integration Tax', allowing your operations to move as fast as your ideas." },
-                                { icon: <Layers />, title: "Unity", desc: "Your CRM, Logistics, Finance, and AI are no longer disconnected silos, but one heartbeat." },
-                                { icon: <Scale />, title: "Elasticity", desc: "Infrastructure that breathes. Scale from one user to one million without structural change." },
-                                { icon: <Microscope />, title: "Precision", desc: "100% data accuracy through our proprietary Audit-Engineering protocols." }
+                                { icon: <Zap />, title: "Velocity", desc: "Real-time decision making enabled by frictionless data flows." },
+                                { icon: <Layers />, title: "Unity", desc: "Total integration of AI, Logistics, Finance, and CRM into one nervous system." },
+                                { icon: <Scale />, title: "Elasticity", desc: "An infrastructure that grows effortlessly with your ambition, not against it." },
+                                { icon: <Microscope />, title: "Precision", desc: "Eliminating human error through proprietary Audit-Engineering protocols." }
                             ].map((c, i) => (
-                                <div key={i} className="relative p-12 bg-black border border-white/10 rounded-[3rem] group overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-8 text-blue-500/10 group-hover:text-blue-500/30 transition-colors">
+                                <div key={i} className="group relative p-12 bg-slate-950 border border-white/10 rounded-[4rem] hover:border-blue-500/40 transition-all">
+                                    <div className="mb-8 p-4 bg-blue-600/10 rounded-2xl w-fit group-hover:scale-110 transition-transform text-blue-500">
                                         {c.icon}
                                     </div>
-                                    <h3 className="text-white font-black text-2xl mb-4 tracking-tight">{c.title}</h3>
-                                    <p className="text-slate-500 leading-relaxed text-sm">{c.desc}</p>
+                                    <h3 className="text-white font-black text-3xl mb-4 tracking-tight">{c.title}</h3>
+                                    <p className="text-slate-500 leading-relaxed text-base">{c.desc}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* --- 5. THE FOUNDER'S LEGACY: MWESIGWA JIMMY --- */}
-                <div className="py-64 container mx-auto px-6">
+                {/* --- 5. THE FOUNDER'S MESSAGE: LEGACY & ARCHITECTURE --- */}
+                <div className="py-72 container mx-auto px-6">
                     <div className="max-w-7xl mx-auto">
-                        <div className="relative bg-gradient-to-br from-slate-900 to-black rounded-[5rem] border border-white/10 overflow-hidden shadow-[0_0_100px_rgba(37,99,235,0.1)]">
+                        <div className="relative bg-gradient-to-br from-slate-900 to-black rounded-[6rem] border border-white/10 overflow-hidden shadow-2xl">
                             <div className="grid grid-cols-1 lg:grid-cols-12">
                                 
-                                {/* Identity Column */}
-                                <div className="lg:col-span-5 p-16 md:p-24 flex flex-col items-center lg:items-start border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.02]">
-                                    <div className="relative mb-16">
-                                        <div className="h-80 w-80 rounded-[4.5rem] bg-gradient-to-br from-blue-700 to-indigo-950 flex items-center justify-center text-[140px] font-thin text-white/10 border border-white/20 relative z-10 shadow-2xl overflow-hidden group">
+                                {/* IDENTITY COLUMN */}
+                                <div className="lg:col-span-5 p-20 md:p-32 flex flex-col items-center lg:items-start border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.02]">
+                                    <div className="relative mb-20 group">
+                                        <div className="h-96 w-96 rounded-[5rem] bg-gradient-to-br from-blue-700 to-indigo-950 flex items-center justify-center text-[160px] font-thin text-white/10 border border-white/20 relative z-10 shadow-3xl overflow-hidden">
                                             MJ
-                                            <div className="absolute inset-0 bg-blue-500/20 blur-3xl group-hover:opacity-100 opacity-0 transition-opacity" />
+                                            <div className="absolute inset-0 bg-blue-500/10 blur-3xl group-hover:opacity-100 opacity-0 transition-all duration-1000" />
                                         </div>
-                                        <div className="absolute -bottom-6 -right-6 bg-blue-600 h-24 w-24 rounded-3xl flex items-center justify-center shadow-2xl">
-                                            <Cpu className="h-10 w-10 text-white" />
+                                        <div className="absolute -bottom-10 -right-10 bg-blue-600 h-28 w-28 rounded-[2rem] flex items-center justify-center shadow-2xl border-4 border-[#020617] rotate-12 group-hover:rotate-0 transition-transform">
+                                            <Cpu className="h-12 w-12 text-white" />
                                         </div>
                                     </div>
                                     
-                                    <div className="text-center lg:text-left">
-                                        <h4 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-none">Mwesigwa Jimmy</h4>
-                                        <p className="text-blue-400 font-black uppercase tracking-[0.4em] text-[10px] mt-6 bg-blue-500/10 inline-block px-4 py-1 rounded-full">
+                                    <div className="text-center lg:text-left space-y-6">
+                                        <h4 className="text-5xl font-black text-white tracking-tighter uppercase leading-none">Mwesigwa Jimmy</h4>
+                                        <p className="text-blue-400 font-black uppercase tracking-[0.5em] text-xs">
                                             The Lead Architect & Inventor
                                         </p>
                                         
-                                        <div className="mt-12 space-y-4">
-                                            <div className="flex items-center gap-4 text-slate-400">
-                                                <Award className="h-5 w-5 text-blue-500" />
-                                                <span className="text-sm font-bold tracking-tight">B.S. Computer Science</span>
+                                        <div className="pt-12 space-y-6">
+                                            <div className="flex items-center gap-6 text-slate-400">
+                                                <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center">
+                                                    <Award className="h-6 w-6 text-blue-500" />
+                                                </div>
+                                                <span className="text-base font-bold tracking-tight">B.S. Computer Science</span>
                                             </div>
-                                            <div className="flex items-center gap-4 text-slate-400">
-                                                <BookOpen className="h-5 w-5 text-blue-500" />
-                                                <span className="text-sm font-bold tracking-tight">SOS Children's Villages Alumnus</span>
+                                            <div className="flex items-center gap-6 text-slate-400">
+                                                <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center">
+                                                    <BookOpen className="h-6 w-6 text-blue-500" />
+                                                </div>
+                                                <span className="text-base font-bold tracking-tight">SOS Children's Villages Alumnus</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Narrative Column */}
-                                <div className="lg:col-span-7 p-16 md:p-24 space-y-16">
+                                {/* MANIFESTO COLUMN */}
+                                <div className="lg:col-span-7 p-20 md:p-32 space-y-20">
                                     <div className="space-y-6">
-                                        <div className="flex items-center gap-4 text-blue-500 uppercase tracking-widest text-xs font-black">
-                                            <span className="h-px w-8 bg-blue-500" />
-                                            The Founder's Manifesto
+                                        <div className="flex items-center gap-4 text-blue-500 uppercase tracking-[0.4em] text-xs font-black">
+                                            <div className="h-px w-10 bg-blue-500" />
+                                            The Founder's Journey
                                         </div>
-                                        <h3 className="text-4xl md:text-6xl font-black text-white leading-none tracking-tighter">A Foundation of <br /> Certainty.</h3>
+                                        <h3 className="text-5xl md:text-8xl font-black text-white leading-[0.85] tracking-tighter">A Foundation <br /> of Gratitude.</h3>
                                     </div>
                                     
-                                    <div className="space-y-8 text-slate-300 text-xl leading-relaxed font-light">
+                                    <div className="space-y-12 text-slate-400 text-2xl leading-relaxed font-light">
                                         <p>
-                                            "My journey into system architecture was born from a deep understanding of what it means to have a strong foundation. 
-                                            I was raised within the beautiful and caring community of <span className="text-white font-bold italic">SOS Children's Villages in Uganda</span>. 
-                                            They did more than just provide for my needs; they invested in my future, paying my school fees and supporting me through my entire university education."
+                                            "My work is rooted in a profound understanding of what a stable foundation can do for a human life. 
+                                            I am proud to share that I was raised by the beautiful family named <span className="text-white font-bold italic">SOS Children's Villages in Uganda</span>. 
+                                            They cared for me from my very youngest years, providing for my needs and paying for my education 
+                                            through university."
                                         </p>
                                         <p>
-                                            "Completing my degree in <span className="text-white font-bold uppercase underline decoration-blue-600 underline-offset-8">Computer Science</span> was the final step in preparing me to pay that foundation forward. 
-                                            As the inventor of the Business Base Universe (BBU1), I have channeled that sense of systematic support into technology. 
-                                            If a child can be raised into a leader through the right infrastructure, a business can be raised into a global empire through the right digital operating system."
+                                            "It was through their support that I pursued my degree in <span className="text-white font-black underline decoration-blue-600 underline-offset-8">Computer Science</span>. 
+                                            This background is why I invented the Business Base Universe (BBU1). I believe 
+                                            every business needs the same digital 'care' and structured infrastructure I 
+                                            received—a base that ensures they can grow, scale, and thrive regardless of their environment."
                                         </p>
                                         <p>
-                                            "I initiated the full system architecting of BBU1 on <span className="text-blue-400 font-black tracking-widest">AUGUST 17, 2024</span>. 
-                                            My goal is to ensure that even the most remote enterprise in Africa operates with the same digital power as a firm in any major global financial hub."
+                                            "On <span className="text-blue-400 font-black tracking-widest">AUGUST 17, 2024</span>, I initiated the 
+                                            full system architecting of BBU1. My mission is to ensure that even the most remote business 
+                                            in Uganda operates with the same digital power as a firm in any global hub. 
+                                            We don't just build software; we build certainty."
                                         </p>
                                         
-                                        <div className="relative p-12 bg-white/[0.03] border-l-8 border-blue-600 rounded-r-[3rem] shadow-2xl">
-                                            <Quote className="absolute top-4 right-8 h-12 w-12 text-blue-500/10" />
-                                            <p className="text-white text-2xl md:text-3xl italic font-medium leading-relaxed">
-                                                "We don't build software to solve problems; we architect universes to prevent them. BBU1 is about the certainty of progress."
+                                        <div className="relative p-16 bg-blue-600/5 border-l-8 border-blue-600 rounded-r-[4rem] shadow-inner mt-20">
+                                            <Quote className="absolute top-8 right-12 h-16 w-16 text-blue-500/10" />
+                                            <p className="text-white text-3xl md:text-4xl italic font-medium leading-relaxed">
+                                                "Architecture is about the future we decide to build today. BBU1 is the infrastructure of that future."
                                             </p>
-                                            <p className="mt-8 text-blue-500 font-black text-xs uppercase tracking-[0.6em]">— MWESIGWA JIMMY</p>
+                                            <p className="mt-12 text-blue-500 font-black text-sm uppercase tracking-[0.6em]">— MWESIGWA JIMMY</p>
                                         </div>
                                     </div>
                                 </div>
@@ -2150,31 +2173,31 @@ const AboutCompanyExecutiveSection = () => {
                     </div>
                 </div>
 
-                {/* --- 6. CORPORATE RESPONSIBILITY & GOVERNANCE --- */}
-                <div className="container mx-auto px-6 py-40 border-t border-white/5">
-                    <div className="grid lg:grid-cols-2 gap-20 items-end">
-                        <div className="space-y-12">
-                            <div className="flex items-center gap-4 text-emerald-500">
-                                <Heart className="h-6 w-6" />
-                                <span className="text-xs font-black uppercase tracking-[0.4em]">Corporate Responsibility</span>
+                {/* --- 6. CORPORATE RESPONSIBILITY & COMMITMENT --- */}
+                <div className="container mx-auto px-6 py-52 border-t border-white/5 bg-[radial-gradient(circle_at_bottom,rgba(37,99,235,0.05)_0%,transparent_50%)]">
+                    <div className="grid lg:grid-cols-2 gap-32 items-end">
+                        <div className="space-y-16">
+                            <div className="flex items-center gap-6 text-emerald-500">
+                                <Heart className="h-8 w-8 animate-pulse" />
+                                <span className="text-sm font-black uppercase tracking-[0.5em]">The Legacy Responsibility</span>
                             </div>
-                            <h3 className="text-5xl font-black text-white tracking-tighter uppercase italic">The Legacy Framework.</h3>
-                            <p className="text-slate-500 text-xl font-light leading-relaxed max-w-xl">
-                                At BBU1, our responsibility extends beyond the digital realm. We believe in 
-                                <span className="text-white font-bold"> Tech-Empowerment</span>. 
-                                We commit 10% of our architectural capacity to supporting NGOs and community-driven 
-                                initiatives that provide digital literacy to youth in developing regions, 
-                                ensuring the 'SOS Children's Villages' spirit of support lives on through our code.
+                            <h3 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Giving Back <br /> to the Base.</h3>
+                            <p className="text-slate-500 text-2xl font-light leading-relaxed max-w-2xl">
+                                Because I was raised by <span className="text-white font-bold">SOS Children's Villages</span>, BBU1 is committed 
+                                to the same spirit of support. We dedicate a percentage of our profits and architectural 
+                                resources to technical mentorship and digital development programs for children in 
+                                similar communities, ensuring that the next generation of architects is born from 
+                                the same foundation of care.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-6">
-                            <div className="p-10 bg-white/5 border border-white/10 rounded-3xl">
-                                <h5 className="text-white font-black text-lg mb-2 uppercase italic tracking-tight">Global Inquiries</h5>
-                                <p className="text-slate-500 text-sm mb-8">Direct line for enterprise architecture consultation and strategic partnerships.</p>
-                                <Button className="w-full bg-blue-600 text-white font-black py-8 text-lg rounded-2xl hover:bg-blue-700 hover:scale-105 transition-all group" asChild>
+                        <div className="space-y-12">
+                            <div className="p-16 bg-white/5 border border-white/10 rounded-[4rem] backdrop-blur-3xl">
+                                <h5 className="text-white font-black text-2xl mb-4 uppercase italic tracking-tight">Strategic Inquiry</h5>
+                                <p className="text-slate-500 text-lg mb-12">Connect directly with the Founder's office for enterprise-tier consultation.</p>
+                                <Button className="w-full bg-blue-600 text-white font-black py-10 text-xl rounded-3xl hover:bg-blue-700 hover:scale-[1.02] transition-all group shadow-3xl shadow-blue-600/20" asChild>
                                     <a href="mailto:mwesigwajimmy123@gmail.com">
-                                        Engage with the Lead Architect
-                                        <ArrowRight className="ml-4 h-6 w-6 group-hover:translate-x-3 transition-transform" />
+                                        Inquire with the Lead Architect
+                                        <ArrowRight className="ml-6 h-8 w-8 group-hover:translate-x-4 transition-transform" />
                                     </a>
                                 </Button>
                             </div>
@@ -2185,6 +2208,7 @@ const AboutCompanyExecutiveSection = () => {
         </section>
     );
 };
+
 // --- HomePage Component ---
 export default function HomePage() {
     const supabase = createClient();
