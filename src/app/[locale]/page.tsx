@@ -1051,41 +1051,46 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                         <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">Contact Sales</a></li>
                         <li><Link href="/support" className="text-slate-400 hover:text-blue-400 transition-colors">Support Center</Link></li>
                         <li>
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <button className="text-slate-400 hover:text-blue-400 text-left transition-colors font-medium">
-                                About Us
-                            </button>
-                        </DialogTrigger>
-                        <DialogContent className="!fixed !inset-0 !z-[200] !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0 !border-none p-0 bg-white dark:bg-slate-950">
-                            <ScrollArea className="h-full w-full">
-                                <div className="relative pb-20">
-                                    
-                                    {/* EXECUTIVE CLOSE BUTTON - Always stays at top right */}
-                                    <div className="sticky top-0 z-[210] flex justify-end p-6 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b">
-                                        <DialogClose asChild>
-                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                                                <X className="h-6 w-6 text-slate-900 dark:text-white" />
-                                            </Button>
-                                        </DialogClose>
-                                    </div>
+    <Dialog>
+        <DialogTrigger asChild>
+            <button className="text-slate-400 hover:text-blue-400 text-left transition-colors font-medium">
+                About Us
+            </button>
+        </DialogTrigger>
+        {/* FIX: We added overflow-hidden to the content and h-screen */}
+        <DialogContent className="!fixed !inset-0 !z-[200] !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0 !border-none p-0 bg-white dark:bg-slate-950 overflow-hidden">
+            
+            {/* FIX: Explicitly set h-screen so the ScrollArea knows how big the window is */}
+            <ScrollArea className="h-screen w-full">
+                <div className="relative flex flex-col">
+                    
+                    {/* EXECUTIVE CLOSE BUTTON - Sticky so it stays while you scroll */}
+                    <div className="sticky top-0 z-[210] flex justify-end p-6 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b">
+                        <DialogClose asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                                <X className="h-6 w-6 text-slate-900 dark:text-white" />
+                            </Button>
+                        </DialogClose>
+                    </div>
 
-                                    {/* MISSION, VISION & LEADERSHIP CONTENT */}
-                                    <AboutCompanyExecutiveSection />
+                    {/* THE CONTENT */}
+                    <div className="flex-grow">
+                        <AboutCompanyExecutiveSection />
+                    </div>
 
-                                    {/* PROFESSIONAL FINISH */}
-                                    <div className="max-w-4xl mx-auto px-4 text-center mt-16 pt-12 border-t">
-                                         <DialogClose asChild>
-                                            <Button variant="outline" className="px-12 h-12 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl font-bold uppercase tracking-widest">
-                                                Return to BBU1 System
-                                            </Button>
-                                        </DialogClose>
-                                    </div>
-                                </div>
-                            </ScrollArea>
-                        </DialogContent>
-                    </Dialog>
-                </li>
+                    {/* PROFESSIONAL FINISH AT THE VERY BOTTOM */}
+                    <div className="max-w-4xl mx-auto w-full px-4 text-center py-20 border-t mt-10">
+                         <DialogClose asChild>
+                            <Button variant="outline" className="px-12 h-12 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl font-bold uppercase tracking-widest">
+                                Close & Return to System
+                            </Button>
+                        </DialogClose>
+                    </div>
+                </div>
+            </ScrollArea>
+        </DialogContent>
+    </Dialog>
+</li>
                         <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers</Link></li>
                     </ul>
                 </div>
