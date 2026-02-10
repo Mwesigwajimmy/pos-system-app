@@ -46,10 +46,11 @@ const navSections: NavItem[] = [
         roles: ['architect', 'commander'], 
         module: 'admin',
         subItems: [
-            { href: '/admin/command-center', label: 'War Room Dashboard', icon: Zap },
-            { href: '/admin/tenants', label: 'Tenant Management', icon: Building2 },
-            { href: '/admin/telemetry', label: 'Global Traffic', icon: Activity },
-            { href: '/admin/billing', label: 'Global Cashflow', icon: Banknote },
+            { href: '/command-center', label: 'War Room Dashboard', icon: Zap },
+            { href: '/sovereign-control', label: 'Control Center', icon: ShieldCheck },
+            { href: '/tenants', label: 'Tenant Management', icon: Building2 },
+            { href: '/telemetry', label: 'Global Traffic', icon: Activity },
+            { href: '/billing', label: 'Global Cashflow', icon: Banknote },
         ]
     },
     // --- DASHBOARD & UTILS ---
