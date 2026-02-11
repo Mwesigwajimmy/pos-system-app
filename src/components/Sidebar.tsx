@@ -454,7 +454,8 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 export default function Sidebar() {
     const pathname = usePathname();
     const { role, isLoading: isLoadingRole } = useUserRole();
-    const { data: enabledModules = [], isLoading: isLoadingModules } = useTenantModules();
+    const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
+    const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
     
     const { isSidebarOpen, toggleSidebar } = useSidebar();
