@@ -463,34 +463,45 @@ export default function Sidebar() {
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
-    const finalNavItems = useMemo(() => {
+ const finalNavItems = useMemo(() => {
+        // Safety Check: Prevent "Client-side exception" if hooks are still fetching
         if (isLoading || !role || !tenant) return [];
         
         const userRole = role?.toLowerCase() || '';
-        const bizType = tenant.business_type;
+        const bizType = tenant?.business_type || '';
         const isSovereign = ['architect', 'commander'].includes(userRole);
+        const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
         return navSections.filter((item) => {
-            // 1. Gate One: Sovereign Bypass
+            // --- GATE 1: SOVEREIGN BYPASS ---
+            // Architects and Commanders bypass all filters to maintain the global system.
             if (isSovereign) return true;
 
-            // 2. Gate Two: Role Permission Check
-            const hasRolePermission = item.roles.map(r => r.toLowerCase()).includes(userRole);
+            // --- GATE 2: ROLE PERMISSION CHECK ---
+            // Ensures staff (cashiers, etc.) only see what their specific role allows.
+            const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
 
-            // 3. Gate Three: Module License Check
-            if (item.module && !enabledModules.includes(item.module)) {
-                return false;
+            // --- GATE 3: SMART MODULE LICENSE CHECK ---
+            // 1. If user is Admin/Owner: Grant access to all modules for their industry automatically.
+            // 2. If user is Staff: Only show modules the Admin has explicitly enabled in the database.
+            if (item.module) {
+                const isModuleEnabled = enabledModules?.includes?.(item.module);
+                if (!isAdminOrOwner && !isModuleEnabled) {
+                    return false;
+                }
             }
 
-            // 4. Gate Four: Industry Lockdown
+            // --- GATE 4: INDUSTRY LOCKDOWN ---
+            // Ensures the system stays "clean." A Retailer never sees SACCO or Pharmacy tools.
+            // This allows the system to scale to thousands of tenants automatically.
             if (item.businessTypes && !item.businessTypes.includes(bizType)) {
                 return false;
             }
 
             return true;
         });
-    }, [isLoading, role, enabledModules, tenant]); 
+    }, [isLoading, role, enabledModules, tenant]);
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
