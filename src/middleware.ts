@@ -25,39 +25,101 @@ function getLocale(request: NextRequest): string {
 }
 
 const rolePermissions: Record<string, string[]> = {
+    // --- SOVEREIGN PATHS ---
     '/command-center': ['architect', 'commander'],
     '/sovereign-control': ['architect', 'commander'],
     '/tenants': ['architect', 'commander'],
     '/telemetry': ['architect', 'commander'],
     '/billing': ['architect', 'commander'],
-    '/inventory': ['admin', 'manager'],
-    '/purchases': ['admin', 'manager'],
-    '/customers': ['admin', 'manager'],
-    '/reports': ['admin', 'manager'],
-    '/shifts': ['admin', 'manager'],
-    '/expenses': ['admin', 'manager'],
-    '/employees': ['admin'],
-    '/ledger': ['admin', 'manager', 'accountant'],
-    '/audit': ['admin', 'auditor'],
-    '/compliance': ['admin', 'manager', 'accountant'],
-    '/accountant': ['admin', 'accountant'],
-    '/settings': ['admin'],
-    '/pos': ['admin', 'manager', 'cashier'],
-    '/distribution': ['admin', 'manager'],
-    '/management': ['admin', 'manager', 'auditor'],
-    '/sacco': ['admin', 'manager'],
-    '/rentals': ['admin', 'manager'],
-    '/lending': ['admin', 'manager'],
-    '/booking': ['admin', 'manager'],
-};
 
+    // --- CORE & SHARED PATHS ---
+    '/dashboard': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'auditor'],
+    '/copilot': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
+    '/time-clock': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'waiter_staff', 'pharmacist'],
+    '/activities': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander'],
+    '/reports': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
+    '/workbooks': ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
+    '/library': ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect', 'commander'],
+
+    // --- SALES & POS ---
+    '/pos': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'bartender'],
+    '/kds': ['admin', 'manager', 'kitchen_staff', 'chef', 'architect', 'commander'],
+    '/sales': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'accountant'],
+    '/customers': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist'],
+    '/dsr': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant'],
+    '/returns': ['admin', 'manager', 'owner', 'architect', 'commander'],
+    '/loyalty': ['admin', 'owner', 'architect', 'commander'],
+
+    // --- INVOICING & FINANCE ---
+    '/invoicing': ['admin', 'manager', 'accountant', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'legal_counsel'],
+    '/finance': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor'],
+    '/ledger': ['admin', 'manager', 'accountant', 'architect', 'commander'],
+    '/expenses': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander'],
+    '/accountant': ['admin', 'accountant', 'architect', 'commander', 'owner'],
+    '/compliance': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander'],
+    '/audit': ['admin', 'auditor', 'architect', 'commander', 'owner'],
+
+    // --- INVENTORY & PROCUREMENT ---
+    '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'warehouse_manager', 'inventory_manager', 'chef'],
+    '/purchases': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'warehouse_manager'],
+    '/procurement': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer'],
+
+    // --- HUMAN RESOURCES & PAYROLL ---
+    '/hr': ['admin', 'manager', 'owner', 'architect', 'commander'],
+    '/payroll': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander'],
+    '/employees': ['admin', 'owner', 'architect', 'commander'],
+
+    // --- SPECIALIZED INDUSTRY PATHS ---
+    '/sacco': ['admin', 'manager', 'owner', 'architect', 'commander', 'sacco_manager', 'teller', 'loan_officer'],
+    '/lending': ['admin', 'manager', 'owner', 'architect', 'commander', 'loan_officer', 'credit_analyst', 'debt_collector'],
+    '/telecom': ['admin', 'manager', 'owner', 'architect', 'commander', 'agent', 'dsr_rep', 'float_manager', 'cashier'],
+    '/distribution': ['admin', 'manager', 'owner', 'architect', 'commander', 'fleet_manager', 'driver', 'warehouse_manager'],
+    '/professional-services': ['admin', 'manager', 'owner', 'architect', 'commander', 'lawyer', 'accountant', 'consultant', 'practitioner'],
+    '/rentals': ['admin', 'manager', 'owner', 'architect', 'commander', 'property_manager', 'leasing_agent'],
+    '/contractor': ['admin', 'manager', 'owner', 'architect', 'commander', 'engineer', 'foreman', 'site_manager'],
+    '/field-service': ['admin', 'manager', 'owner', 'architect', 'commander', 'field_technician', 'dispatcher'],
+    '/nonprofit': ['admin', 'manager', 'owner', 'architect', 'commander', 'grant_manager', 'donor_relations', 'volunteer_coordinator'],
+    '/ecommerce': ['admin', 'manager', 'owner', 'architect', 'commander'],
+    '/crm': ['admin', 'manager', 'owner', 'architect', 'commander'],
+    '/booking': ['admin', 'manager', 'owner', 'architect', 'commander'],
+
+    // --- SYSTEM & SETTINGS ---
+    '/management': ['admin', 'manager', 'owner', 'architect', 'commander', 'auditor'],
+    '/settings': ['admin', 'owner', 'architect', 'commander'],
+    '/marketplace': ['admin', 'owner', 'architect', 'commander'],
+    '/shifts': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander'],
+};
 const defaultDashboards: Record<string, string> = {
+        'architect': '/command-center',
+    'commander': '/command-center',
+    'cashier': '/pos',
+    'pharmacist': '/pos',
+    'waiter_staff': '/pos',
+    'chef': '/kds',
+    'kitchen_staff': '/kds',
+    'dsr_rep': '/telecom/dsr-dashboard',
+    'agent': '/telecom/agent',
+    'field_technician': '/field-service/technician',
+    'driver': '/distribution',
+    'loan_officer': '/lending/applications',
+    'teller': '/sacco/contributions',
+    'accountant': '/finance/banking',
+    'auditor': '/audit',
+
+    // --- INDUSTRY REDIRECTS (Exact Signup Strings) ---
     'SACCO / Co-operative': '/sacco',
+    'Lending / Microfinance': '/lending',
     'Rentals / Real Estate': '/rentals/properties',
-    'Lending / Microfinance': '/lending/applications',
+    'Telecom & Mobile Money': '/telecom',
+    'Distribution / Wholesale Supply': '/distribution',
+    'Contractor (General, Remodeling)': '/contractor',
+    'Field Service (Trades, Barber, Salon)': '/field-service/work-orders',
+    'Professional Services (Accounting, Medical)': '/professional-services',
+    'Nonprofit / Education / NGO': '/nonprofit',
     'Retail / Wholesale': '/dashboard',
     'Restaurant / Cafe': '/dashboard',
-    'cashier': '/pos',
+    'Mixed/Conglomerate': '/dashboard',
+
     'default': '/dashboard',
 };
 
