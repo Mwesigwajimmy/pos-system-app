@@ -206,7 +206,13 @@ export async function middleware(request: NextRequest) {
     }
     
     const userContext = userContextData[0];
-    const userRole = userContext.user_role;
+    if (!userContext) {
+        // This prevents the crash if the RPC returns no data
+        const loginUrl = new URL(`/${localeInPath}/login`, request.url);
+        loginUrl.searchParams.set('error', 'context_missing');
+        return NextResponse.redirect(loginUrl);
+    }
+    const userRole = userContext.user_role || 'guest';
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
     

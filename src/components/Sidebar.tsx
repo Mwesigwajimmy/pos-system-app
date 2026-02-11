@@ -465,7 +465,7 @@ export default function Sidebar() {
     const finalNavItems = useMemo(() => {
         if (isLoading || !role || !tenant) return [];
         
-        const userRole = role.toLowerCase();
+        const userRole = role?.toLowerCase() || '';
         const bizType = tenant.business_type;
         const isSovereign = ['architect', 'commander'].includes(userRole);
 
