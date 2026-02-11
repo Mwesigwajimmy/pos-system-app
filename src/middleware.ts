@@ -25,6 +25,11 @@ function getLocale(request: NextRequest): string {
 }
 
 const rolePermissions: Record<string, string[]> = {
+    '/command-center': ['architect', 'commander'],
+    '/sovereign-control': ['architect', 'commander'],
+    '/tenants': ['architect', 'commander'],
+    '/telemetry': ['architect', 'commander'],
+    '/billing': ['architect', 'commander'],
     '/inventory': ['admin', 'manager'],
     '/purchases': ['admin', 'manager'],
     '/customers': ['admin', 'manager'],

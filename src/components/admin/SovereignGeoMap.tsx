@@ -74,7 +74,14 @@ export default function SovereignGeoMap() {
   const [points, setPoints] = useState<MapMarker[]>([]);
   const [stats, setStats] = useState<GeoStat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  
   const supabase = useMemo(() => createClient(), []);
+
+  // Prevent Hydration Mismatch (standard for maps/charts)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Scales memoized to prevent recalculation on every pulse
   const scales = useMemo(() => ({
@@ -99,12 +106,12 @@ export default function SovereignGeoMap() {
 
       if (geoStats) setStats(geoStats);
       if (markers) {
-        // Validation & Type Casting
-        const validatedMarkers = markers.map(m => ({
-          ...m,
-          latitude: parseFloat(m.latitude),
-          longitude: parseFloat(m.longitude)
-        })).filter(m => !isNaN(m.latitude) && !isNaN(m.longitude));
+        // Validation: Ensure coordinates are valid numbers before letting them into state
+        const validatedMarkers = markers.map(m => {
+          const lat = parseFloat(m.latitude);
+          const lng = parseFloat(m.longitude);
+          return { ...m, latitude: lat, longitude: lng };
+        }).filter(m => !isNaN(m.latitude) && !isNaN(m.longitude));
         
         setPoints(validatedMarkers);
       }
@@ -117,10 +124,10 @@ export default function SovereignGeoMap() {
 
   // 2. Real-time Subscription Logic
   useEffect(() => {
-    let mounted = true;
+    if (!mounted) return;
+    
     syncAuthoritativeData();
 
-    // Throttle the stats refresh to once every 30 seconds to save DB cycles
     const statsInterval = setInterval(syncAuthoritativeData, 30000);
 
     const channel = supabase
@@ -130,20 +137,24 @@ export default function SovereignGeoMap() {
         { event: 'INSERT', schema: 'public', table: 'system_global_telemetry' },
         (payload) => {
           const newM = payload.new;
-          if (!mounted || !newM.latitude || !newM.longitude) return;
+          
+          // CRITICAL FIX: Convert and validate numeric coordinates immediately
+          const lat = parseFloat(newM.latitude);
+          const lng = parseFloat(newM.longitude);
+
+          // If coordinates are null or NaN, exit now to prevent marker crash
+          if (isNaN(lat) || isNaN(lng)) return;
 
           const freshPoint: MapMarker = {
             id: newM.id,
-            latitude: parseFloat(newM.latitude),
-            longitude: parseFloat(newM.longitude),
+            latitude: lat,
+            longitude: lng,
             severity_level: newM.severity_level || 'LOW',
             created_at: newM.created_at
           };
 
           setPoints(prev => {
-            // Check for duplicates
             if (prev.some(p => p.id === freshPoint.id)) return prev;
-            // Prepend and cap buffer at 150 for performance
             return [freshPoint, ...prev].slice(0, 150);
           });
         }
@@ -151,11 +162,12 @@ export default function SovereignGeoMap() {
       .subscribe();
 
     return () => {
-      mounted = false;
       clearInterval(statsInterval);
       supabase.removeChannel(channel);
     };
-  }, [supabase, syncAuthoritativeData]);
+  }, [supabase, syncAuthoritativeData, mounted]);
+
+  if (!mounted) return null;
 
   return (
     <div className="relative bg-[#020617] border border-white/5 rounded-[3rem] p-1 overflow-hidden shadow-2xl group">
@@ -259,7 +271,7 @@ export default function SovereignGeoMap() {
                       />
                     </div>
                     <span className="text-[10px] font-mono font-bold text-red-500">
-                      {s.anomaly_count.toLocaleString()}
+                      {Number(s.anomaly_count || 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
