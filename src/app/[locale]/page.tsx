@@ -729,19 +729,21 @@ const MegaMenuHeader = () => {
                                     </ul>
                                 </ScrollArea>
                             </NavigationMenuContent>
-                        </NavigationMenuItem>
-
-                        {/* Support Link */}
-                        <NavigationMenuItem>
-                            <Link href="/support" legacyBehavior passHref>
-                                <NavigationMenuLink className={cn(
-                                    navigationMenuTriggerStyle(),
-                                    "bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
-                                )}>
-                                    Support
-                                </NavigationMenuLink>
-                            </Link>
-                        </NavigationMenuItem>
+                            </NavigationMenuItem>
+                      {/* Help Center Link linked to GitBook Manuals */}
+<NavigationMenuItem>
+    <a 
+        href="https://bbu1.gitbook.io/bbu1-docs/" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className={cn(
+            navigationMenuTriggerStyle(),
+            "bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
+        )}
+    >
+        Help Center
+    </a>
+</NavigationMenuItem>
 
                         {/* FAQ Dialog */}
                         <NavigationMenuItem>
@@ -969,10 +971,16 @@ const MegaMenuHeader = () => {
                                 </FullScreenDialog>
                             </Dialog>
 
-                            {/* Other links */}
-                            <Link href="/support" className="block text-lg font-medium hover:text-blue-600 py-2 px-2 rounded-md hover:bg-accent/20 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                                Support
-                            </Link>
+                            {/* Help Center Link for Mobile */}
+<a 
+    href="https://bbu1.gitbook.io/bbu1-docs/" 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="block text-lg font-medium hover:text-blue-600 py-2 px-2 rounded-md hover:bg-accent/20 transition-colors" 
+    onClick={() => setIsMobileMenuOpen(false)}
+>
+    Help Center
+</a>
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
@@ -1045,12 +1053,25 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     </ul>
                 </div>
 
-                <div>
-                    <h4 className="font-bold text-white mb-6">Company</h4>
-                    <ul className="space-y-4 text-sm">
-                        <li><a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">Contact Sales</a></li>
-                        <li><Link href="/support" className="text-slate-400 hover:text-blue-400 transition-colors">Support Center</Link></li>
-                        <li>
+<div>
+    <h4 className="font-bold text-white mb-6">Company</h4>
+    <ul className="space-y-4 text-sm">
+        <li>
+            <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">
+                Contact Sales
+            </a>
+        </li>
+        <li>
+            <a 
+                href="https://bbu1.gitbook.io/bbu1-docs/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-slate-400 hover:text-blue-400 transition-colors"
+            >
+                Help Center
+            </a>
+        </li>
+        <li>
     <Dialog>
         <DialogTrigger asChild>
             <button className="text-slate-400 hover:text-blue-400 text-left transition-colors font-medium">
