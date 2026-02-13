@@ -11,6 +11,7 @@ import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
 import type { Session } from '@supabase/supabase-js';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
+import Script from 'next/script';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -34,6 +35,22 @@ export default async function LocaleRootLayout({
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        
+        {/* Google tag (gtag.js) */}
+        <Script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-VXKX3Y51MN"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-VXKX3Y51MN');
+          `}
+        </Script>
       </head>
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
         <SupabaseProvider session={session}>
