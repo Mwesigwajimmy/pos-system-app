@@ -1377,31 +1377,62 @@ const DynamicPricingSection = () => {
     useEffect(() => {
         const detectLocation = async () => {
             try {
-                // Determine user's country
-                const response = await fetch('https://ipapi.co/json/');
+                // --- 1. SET UP ABORT CONTROLLER (Prevents hanging) ---
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second limit
+
+                // --- 2. PRIMARY ATTEMPT (ipapi.co) ---
+                let response = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+                let data;
+
                 if (response.ok) {
-                    const data = await response.json();
-                    const countryCode = data.country_code;
-                    
-                    // --- OPTIMIZED DETECTION LOGIC ---
-                    let detectedCurrency;
-                    if (EUROZONE_COUNTRIES.includes(countryCode)) {
-                        detectedCurrency = GEO_CURRENCIES['EU'];
-                    } else {
-                        detectedCurrency = GEO_CURRENCIES[countryCode] || GEO_CURRENCIES['DEFAULT'];
-                    }
-                    
-                    setCurrency(detectedCurrency);
+                    data = await response.json();
+                    clearTimeout(timeoutId);
+                } else {
+                    // --- 3. SECONDARY ATTEMPT (ip-api.com) ---
+                    // This runs if ipapi.co hits its daily limit or fails
+                    const fallbackResponse = await fetch('https://ipapi.com/json_api/check'); 
+                    // Note: If above fails, we try a public non-key alternative
+                    const altResponse = await fetch('https://api.country.is');
+                    data = await altResponse.json();
                 }
+
+                // --- 4. NORMALIZE COUNTRY CODE ---
+                // Different APIs use different keys (country_code vs country)
+                const countryCode = (data.country_code || data.country || data.ip_country || '').toUpperCase();
+
+                console.log(`BBU1 Smart Pricing: User detected in [${countryCode}]`);
+
+                // --- 5. OPTIMIZED DETECTION LOGIC ---
+                let detectedCurrency;
+
+                if (!countryCode || countryCode === 'RESERVED' || countryCode === 'LOCALHOST') {
+                    // Handle local development or failed detection
+                    detectedCurrency = GEO_CURRENCIES['DEFAULT'];
+                } else if (EUROZONE_COUNTRIES.includes(countryCode)) {
+                    // Handle all 20+ Eurozone countries automatically
+                    detectedCurrency = GEO_CURRENCIES['EU'];
+                } else if (GEO_CURRENCIES[countryCode]) {
+                    // Handle specific mapped countries (UG, KE, NG, etc.)
+                    detectedCurrency = GEO_CURRENCIES[countryCode];
+                } else {
+                    // Fallback for countries not explicitly in your list
+                    detectedCurrency = GEO_CURRENCIES['DEFAULT'];
+                }
+
+                setCurrency(detectedCurrency);
+
             } catch (error) {
-                console.warn("Location detection failed, defaulting to USD.");
+                // This catches Ad-Blocker interference or total network failure
+                console.warn("BBU1 Smart Pricing: Geolocation blocked. Defaulting to Global (USD).", error);
+                setCurrency(GEO_CURRENCIES['DEFAULT']);
             } finally {
                 setLoading(false);
             }
         };
-        detectLocation();
-    }, []);
 
+        detectLocation();
+    }, [setCurrency]); // Added dependency for best practice
     const formatPrice = (base: number) => {
         let price = base * currency.rate;
         if (billingCycle === 'yearly') price = price * 0.8; // 20% Discount
