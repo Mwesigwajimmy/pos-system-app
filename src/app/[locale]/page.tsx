@@ -87,9 +87,14 @@ const siteConfig = {
     name: "BBU1",
     shortDescription: "Your all-in-one OS for your business. Unify cloud accounting, cloud Auditing, Advanced reports, invoicing, cloud finance, CRM, advanced inventory, Enterprise intergrations, HR, Aura AI insights. Built for the world.",
     url: "https://www.bbu1.com/",
-    contactInfo: {
+   contactInfo: {
+        email: "info@bbu1.com",
         whatsappLink: `https://wa.me/256703572503?text=${encodeURIComponent("Hello BBU1, I'm interested in a demo for my enterprise.")}`,
-        socials: { linkedin: '#', twitter: '#', facebook: '#' }
+        socials: { 
+            linkedin: "https://www.linkedin.com/in/mwesigwa-jimmy-8248a1243", 
+            twitter: "https://x.com/MwesigwaJimmy5", 
+            facebook: "https://facebook.com/bbu1official" // Update this if you have the link
+        }
     },
     featureSets: [
         {
@@ -1027,23 +1032,36 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
                         <Rocket className="h-6 w-6 text-blue-500" /> {siteConfig.name}
                     </h3>
-                    <p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">
-                        {siteConfig.shortDescription}
-                    </p>
-                    <div className="flex items-center gap-4">
-                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300">
-                            <Linkedin size={18} />
-                        </a>
-                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-400 hover:text-white transition-all duration-300">
-                            <Twitter size={18} />
-                        </a>
-                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-700 hover:text-white transition-all duration-300">
-                            <Facebook size={18} />
-                        </a>
-                    </div>
-                </div>
-                
-                <div>
+<p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">
+    {siteConfig.shortDescription}
+</p>
+{/* EMAIL CONTACT DISPLAY */}
+<div className="mt-4 mb-6">
+    <a 
+        href={`mailto:${siteConfig.contactInfo.email}`} 
+        className="flex items-center gap-3 text-sm text-slate-400 hover:text-blue-400 transition-colors group"
+    >
+        <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center group-hover:bg-blue-600 transition-all border border-slate-800">
+            <Mail size={18} className="text-slate-400 group-hover:text-white" />
+        </div>
+        <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Official Inquiry</span>
+            <span className="text-slate-200">{siteConfig.contactInfo.email}</span>
+        </div>
+    </a>
+</div>
+
+<div className="flex items-center gap-4">
+    <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300">
+        <Linkedin size={18} />
+    </a>
+    <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-400 hover:text-white transition-all duration-300">
+        <Twitter size={18} />
+    </a>
+    <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-700 hover:text-white transition-all duration-300">
+        <Facebook size={18} />
+    </a>
+</div>
                     <h4 className="font-bold text-white mb-6">Product</h4>
                     <ul className="space-y-4 text-sm">
                         <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Features</Link></li>
@@ -1717,7 +1735,7 @@ const PartnerWithUsSection = () => {
         // 3. Force Open Email Client
         // We use window.open for better compatibility in Modals, 
         // targeting '_self' acts just like a standard link click.
-        window.open(`mailto:nakkungujackline.92@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
+        window.open(`mailto:contact@bbu1.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
     };
 
     // Handler for WhatsApp Affiliate
@@ -2189,13 +2207,13 @@ const AboutCompanyExecutiveSection = () => {
                                 <div className="space-y-8 text-slate-300 text-2xl font-light leading-relaxed">
                                     <p>
                                         "My journey into system architecture was born from a deep understanding of what it means to have a strong foundation. 
-                                        I was raised by a beautiful family named <span className="text-white font-bold italic">SOS Children's Villages in Uganda</span>. 
-                                        They cared for me from my youngest years, providing for my needs and paying for my education through university."
+                                        I was raised by a beautiful family and with the support from named <span className="text-white font-bold italic">SOS Children's Villages in Uganda</span>. 
+                                        They built the pillars from my youngest years, providing for my needs and paying for my education through university."
                                     </p>
                                     <p>
                                         "Pursuing my degree in <span className="text-white font-black underline decoration-blue-600 underline-offset-8">Computer Science</span> was the final step in preparing me to pay that support forward. 
                                         On <span className="text-blue-400 font-black tracking-widest">AUGUST 17, 2024</span>, I initiated the full system architecting of BBU1. 
-                                        My mission is to ensure that even the most remote enterprise in Africa operates with the same digital power as a firm in New York."
+                                        My mission is to ensure that even the most remote enterprise in Africa operates with the same digital power as a firm in New York and the world at Large."
                                     </p>
                                 </div>
                             </div>
@@ -2216,18 +2234,18 @@ const AboutCompanyExecutiveSection = () => {
                                         <p className="text-blue-400 text-xs uppercase font-black tracking-widest">Lead Architect & Inventor</p>
                                     </div>
                                 </div>
-                                <h5 className="text-white font-black text-2xl mb-4 uppercase italic tracking-tight">Strategic Inquiry</h5>
-                                <p className="text-slate-500 mb-10 text-lg leading-relaxed font-light">
-                                    Connect directly with the Founder's office for enterprise-tier consultation and strategic partnership.
-                                </p>
-                                <Button className="w-full bg-blue-600 text-white font-black py-10 text-xl rounded-[2.5rem] hover:bg-blue-700 hover:scale-[1.02] transition-all group shadow-2xl shadow-blue-600/20" asChild>
-                                    <a href="mailto:mwesigwajimmy123@gmail.com">
-                                        Inquire with the Founder
-                                        <ArrowRight className="ml-6 h-8 w-8 group-hover:translate-x-4 transition-transform" />
-                                    </a>
-                                </Button>
-                            </div>
-                        </div>
+                               <h5 className="text-white font-black text-2xl mb-4 uppercase italic tracking-tight">Strategic Inquiry</h5>
+<p className="text-slate-500 mb-10 text-lg leading-relaxed font-light">
+    Connect directly with the Founder's office for enterprise-tier consultation and strategic partnership.
+</p>
+<Button className="w-full bg-blue-600 text-white font-black py-10 text-xl rounded-[2.5rem] hover:bg-blue-700 hover:scale-[1.02] transition-all group shadow-2xl shadow-blue-600/20" asChild>
+    <a href="mailto:ceo@bbu1.com">
+        Inquire with the Founder
+        <ArrowRight className="ml-6 h-8 w-8 group-hover:translate-x-4 transition-transform" />
+    </a>
+</Button>
+</div>
+</div>
 
                         {/* Right: Picture (Greeting 39) */}
                         <motion.div 
