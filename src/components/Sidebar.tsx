@@ -196,10 +196,62 @@ const navSections: NavItem[] = [
             { href: '/procurement', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/procurement/pipeline', label: 'Procurement Pipeline', icon: Activity },
             { href: '/procurement/tenders', label: 'Tenders & Bids', icon: Gavel },
-            { href: '/procurement/contracts', label: 'Contract Mgmt', icon: FileCheck },
-            { href: '/procurement/suppliers', label: 'Supplier Risk', icon: ShieldCheck },
-            { href: '/procurement/approvals', label: 'Approvals Workflow', icon: CheckSquare },
+            { href: '/procurement/contracts', label: 'Contract Management', icon: FileCheck },
+            { href: '/procurement/suppliers', label: 'Supplier Risk Register', icon: ShieldCheck },
+            { href: '/procurement/approvals', label: 'Approval Workflow', icon: CheckSquare },
             { href: '/procurement/spend', label: 'Spend Analysis', icon: PieChart },
+            { href: '/procurement/strategy', label: 'Category Strategy', icon: SlidersHorizontal },
+            { href: '/procurement/sourcing-calendar', label: 'Sourcing Calendar', icon: CalendarDays },
+            { href: '/procurement/agentic-drafts', label: 'Agentic AI Drafts', icon: Zap },
+        ]
+    },
+
+
+   {
+        type: 'accordion', title: 'Audit & Assurance', icon: ShieldCheck, roles: ['admin', 'auditor', 'owner', 'architect'], module: 'audit',
+        subItems: [
+            { href: '/audit/sandbox', label: 'Sovereign Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant', 'owner', 'architect'] },
+            { href: '/audit/planning', label: 'Audit Planning Board', icon: CalendarDays },
+            { href: '/audit/findings', label: 'Audit Findings Table', icon: ClipboardList },
+            { href: '/audit/controls', label: 'Internal Controls Matrix', icon: ShieldCheck },
+            { href: '/audit/trail-viewer', label: 'Audit Trail Viewer', icon: Eye },
+            { href: '/audit/ingestion', label: 'Audit Ingestion Portal', icon: UploadCloud },
+            { href: '/audit/kpi', label: 'Audit KPI Cards', icon: Activity },
+            { href: '/audit', label: 'System Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor', 'owner', 'architect'] },
+            { href: '/audit/workflow', label: 'Audit Action Workflow', icon: GitGraph },
+            { href: '/audit/assignments', label: 'Auditor Assignments', icon: UserCog },
+            { href: '/audit/files', label: 'Audit File Manager', icon: Archive },
+            { href: '/audit/liveguard', label: 'Sovereign LiveGuard', icon: ShieldAlert },
+        ]
+    },
+
+{
+        type: 'accordion', title: 'Compliance Hub', icon: Gavel, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], module: 'compliance',
+        subItems: [
+            { href: '/compliance/hub', label: 'Compliance Hub Main', icon: LayoutDashboard },
+            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
+            { href: '/compliance/risk-dashboard', label: 'Compliance Risk Dashboard', icon: BarChart3 },
+            { href: '/compliance/kyc-aml', label: 'KYC / AML Monitor', icon: UserCheckIcon },
+            { href: '/compliance/gdpr', label: 'GDPR Data Requests', icon: FileText },
+            { href: '/compliance/regulations', label: 'Regulations Register', icon: ScrollText },
+            { href: '/compliance/permits', label: 'Licenses & Permits', icon: KeyRound },
+            { href: '/compliance/policy-library', label: 'Policy Document Library', icon: Library },
+            { href: '/compliance/sanctions', label: 'Sanctions Screening', icon: BadgeAlert },
+            { href: '/compliance/drilldown', label: 'Compliance Drilldown', icon: Activity },
+            { href: '/compliance/tax-reports', label: 'Tax Report Generator', icon: FileText }, 
+            { href: '/compliance/checklist', label: 'Compliance Checklist', icon: ListChecks },
+            { href: '/compliance/tax-settings', label: 'Tax Settings & Reports', icon: Settings },
+        ]
+    },
+
+{
+        type: 'accordion', title: 'Accountant Tools', icon: Calculator, roles: ['admin', 'accountant', 'architect'], module: 'accountant',
+        subItems: [
+            { href: '/accountant/ai-assistant', label: 'AI Audit Assistant', icon: Sparkles },
+            { href: '/accountant/management', label: 'Auditor Management', icon: UsersRound },
+            { href: '/accountant/invite-auditor', label: 'Invite Auditor', icon: UserPlus }, 
+            { href: '/accountant/chart-of-accounts', label: 'Chart of Accounts Table', icon: ListChecks },
+            { href: '/accountant/export', label: 'Full Data Export', icon: UploadCloud },
         ]
     },
 
@@ -404,13 +456,12 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
             { href: '/payroll', label: 'Payroll Engine', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
-            { href: '/audit/sandbox', label: 'Sovereign Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant', 'owner', 'architect'] },
             { href: '/settings/locations', label: 'Physical Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
+            { href: '/management/comms-hub', label: 'Unified Comms Hub', icon: MessageSquare },   
+            { href: '/management/timecard-report', label: 'Timecard Report', icon: FileSpreadsheet },
             { href: '/management/monitoring', label: 'Live System Monitor', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale', 'Distribution / Wholesale Supply'] }, 
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner', 'architect'] },
-            { href: '/audit', label: 'System Audit Log', icon: ShieldCheck, roles: ['admin', 'auditor', 'owner', 'architect'] },
-            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin', 'owner', 'architect'] },
             { href: '/settings/branding', label: 'System Branding', icon: Sparkles, roles: ['admin', 'owner', 'architect'] }, 
             { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin', 'owner', 'architect'] },
