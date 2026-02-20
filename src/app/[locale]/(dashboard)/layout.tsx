@@ -3,12 +3,17 @@
 'use client';
 
 import React, { memo, ReactNode } from 'react';
-import { Menu, X, Sparkles, Loader2 } from 'lucide-react';
+import { 
+  Menu, X, Sparkles, Loader2, 
+  ShieldAlert, Activity, Zap, Fingerprint // Upgrade: Forensic Icons
+} from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
+import { createClient } from '@/lib/supabase/client'; // Upgrade: For Trigger Listening
+import { toast } from 'sonner'; // Upgrade: For Real-time Notifications
 
 // --- V-REVOLUTION FIX: IMPORT THE NECESSARY PROVIDERS ---
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
@@ -17,6 +22,40 @@ import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+
+/**
+ * --- UPGRADE: SOVEREIGN LIVE GUARD ---
+ * This component completes the 'Forensic Ledger Guard' invention.
+ * It listens specifically for rows inserted by your SQL triggers.
+ */
+const SovereignLiveGuard = () => {
+    const supabase = createClient();
+    
+    useEffect(() => {
+        const channel = supabase
+            .channel('sovereign_forensics')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'sovereign_audit_anomalies' 
+            }, (payload) => {
+                const anomaly = payload.new;
+                // Parity Check: Only alert on CRITICAL fraud indicators
+                if (anomaly.severity === 'CRITICAL' || anomaly.severity === 'HIGH') {
+                    toast.error(`AUTONOMOUS GUARD: ${anomaly.anomaly_type}`, {
+                        description: anomaly.description,
+                        duration: 10000,
+                        icon: <ShieldAlert className="text-red-500" />
+                    });
+                }
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [supabase]);
+
+    return null; // Component stays invisible until a toast is triggered
+}
 
 // --- The Omnipresent AI Toggle Button (No changes needed here) ---
 const CopilotToggleButton = () => {
@@ -70,6 +109,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-screen bg-background">
+      {/* Upgrade: Autonomous Forensic Listener */}
+      <SovereignLiveGuard />
+      
       <div className="hidden md:flex md:flex-shrink-0"><Sidebar /></div>
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex flex-col flex-1 overflow-hidden">

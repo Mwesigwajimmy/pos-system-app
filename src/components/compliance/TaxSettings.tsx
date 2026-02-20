@@ -17,13 +17,15 @@ import {
   Landmark, 
   Trash2, 
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Fingerprint
 } from "lucide-react";
 import { toast } from "sonner";
 
 interface TaxConfig {
   id: string;
   tax_name: string;
+  tax_category_code: string | null;
   rate_percentage: number;
   country_code: string;
   region_code: string | null;
@@ -56,7 +58,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
     fetchConfigs();
   }, [fetchConfigs]);
 
-  // 2. Save New Smart Rule
+  // 2. Save New Smart Rule (Upgraded with Robotic Category Mapping)
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
@@ -65,6 +67,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
     const newRule = {
       business_id: businessId,
       tax_name: formData.get('tax_name'),
+      tax_category_code: formData.get('tax_category_code')?.toString().toUpperCase() || 'STANDARD',
       rate_percentage: parseFloat(formData.get('rate') as string),
       country_code: formData.get('country')?.toString().toUpperCase(),
       region_code: formData.get('region')?.toString() || null,
@@ -125,6 +128,16 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
               <Input id="tax_name" name="tax_name" placeholder="e.g. Texas Sales Tax or Uganda VAT" required />
             </div>
 
+            {/* UPGRADE: Robotic Category Code Field */}
+            <div className="space-y-2">
+              <Label htmlFor="tax_category_code" className="flex items-center gap-2">
+                <Fingerprint className="w-4 h-4 text-slate-400"/>
+                Tax Category Code
+              </Label>
+              <Input id="tax_category_code" name="tax_category_code" placeholder="e.g. MEDICINE, TOBACCO, or STANDARD" required />
+              <p className="text-[10px] text-slate-500">This code allows the Robotic Kernel to auto-distribute this tax to specific products.</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="rate">Rate (%)</Label>
@@ -149,7 +162,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
 
             <div className="p-3 bg-blue-50 rounded-lg flex gap-3 text-sm text-blue-700 border border-blue-100">
                 <Globe className="w-5 h-5 shrink-0"/>
-                <p>Rules are applied based on the transaction location. Ensure ISO codes match your sales data.</p>
+                <p>Rules are applied based on the transaction location and product category autonomously.</p>
             </div>
           </CardContent>
           <CardFooter className="bg-slate-50/50 border-t pt-4">
@@ -168,8 +181,8 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
             <CardTitle>Jurisdictional Registry</CardTitle>
             <CardDescription>All active tax rules currently being applied to calculations.</CardDescription>
           </div>
-          <Badge variant="outline" className="px-3 py-1 font-mono">
-            {configs.length} Active Rules
+          <Badge variant="outline" className="px-3 py-1 font-mono text-blue-600 border-blue-200 bg-blue-50">
+            {configs.length} Global Rules
           </Badge>
         </CardHeader>
         <CardContent>
@@ -191,7 +204,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableHead>Authority</TableHead>
+                    <TableHead>Authority & Category</TableHead>
                     <TableHead>Jurisdiction</TableHead>
                     <TableHead className="text-right">Rate</TableHead>
                     <TableHead className="text-center">Status</TableHead>
@@ -206,7 +219,12 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
                             <Landmark className="w-4 h-4 text-slate-400"/>
                             <div>
                                 <p className="font-semibold text-slate-900">{rule.tax_name}</p>
-                                <p className="text-[10px] text-slate-500 uppercase font-mono">{rule.currency_code}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[10px] text-slate-500 uppercase font-mono">{rule.currency_code}</p>
+                                  <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-slate-100 text-slate-600 font-bold">
+                                    {rule.tax_category_code || 'STANDARD'}
+                                  </Badge>
+                                </div>
                             </div>
                         </div>
                       </TableCell>
@@ -241,7 +259,10 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
           )}
         </CardContent>
         <CardFooter className="bg-slate-50 text-[10px] text-slate-400 flex justify-between border-t py-3">
-            <span>IFRS Compliance Verified</span>
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-green-500"/>
+              Global Sovereign Compliance Verified
+            </span>
             <span>Last Synced: {new Date().toLocaleTimeString()}</span>
         </CardFooter>
       </Card>

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldAlert, FilePen, Trash2, AlertCircle } from 'lucide-react';
+import { ShieldAlert, FilePen, Trash2, AlertCircle, Fingerprint, Zap } from 'lucide-react'; // Upgrade: Added Forensic Icons
 import { cn } from '@/lib/utils';
 
 // --- TYPES ---
@@ -13,32 +13,53 @@ interface AuditStats {
   high_risk_actions_24h: number;
   updates_today: number;
   deletions_this_week: number;
+  forensic_anomalies_24h?: number; // Upgrade: Added Parity for SQL Trigger output
 }
+
 interface KpiCardProps {
   title: string;
   value: number | undefined;
   description: string;
   icon: React.ElementType;
   valueClassName?: string;
+  isAutonomous?: boolean; // Upgrade: Visual flag for Trigger-based data
 }
 
 // --- API FUNCTION ---
 async function fetchAuditStats(): Promise<AuditStats> {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc('get_audit_log_stats').single();
-  if (error) {
-    console.error('Error fetching audit stats:', error);
+  
+  // 1. Fetch original Administrative stats from your RPC
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_audit_log_stats').single();
+  
+  if (rpcError) {
+    console.error('Error fetching audit stats:', rpcError);
     throw new Error('Could not retrieve audit statistics.');
   }
-  return data as AuditStats;
+
+  // 2. Upgrade: Fetch real-time count from your Forensic Guard Invention
+  // This looks at the 'sovereign_audit_anomalies' table populated by your trg_ledger_forensics
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: anomalyCount } = await supabase
+    .from('sovereign_audit_anomalies')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', twentyFourHoursAgo);
+
+  return {
+    ...(rpcData as AuditStats),
+    forensic_anomalies_24h: anomalyCount || 0
+  };
 }
 
 // --- KPI CARD COMPONENT ---
-const KpiCard = ({ title, value, description, icon: Icon, valueClassName }: KpiCardProps) => (
-  <Card>
+const KpiCard = ({ title, value, description, icon: Icon, valueClassName, isAutonomous }: KpiCardProps) => (
+  <Card className={cn(isAutonomous && "border-primary/20 bg-primary/[0.02] shadow-md shadow-primary/5")}>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {isAutonomous && <Zap className="h-3 w-3 text-primary animate-pulse fill-current" />}
+      </div>
+      <Icon className={cn("h-4 w-4", isAutonomous ? "text-primary" : "text-muted-foreground")} />
     </CardHeader>
     <CardContent>
       <div className={cn("text-2xl font-bold", valueClassName)}>
@@ -80,10 +101,19 @@ export default function AuditKpiCards() {
   const { data, isLoading, isError } = useQuery<AuditStats>({
     queryKey: ['auditStats'],
     queryFn: fetchAuditStats,
-    refetchInterval: 5 * 60 * 1000, 
+    refetchInterval: 60 * 1000, // Upgrade: Faster polling (1m) to catch Forensic Triggers
   });
 
   const kpiConfig = [
+    // NEW UPGRADE: Forensic Guard Status
+    {
+      title: "Forensic Anomalies (24h)",
+      value: data?.forensic_anomalies_24h,
+      description: "Autonomous ledger fraud indicators.",
+      icon: Fingerprint,
+      valueClassName: cn("text-primary", (data?.forensic_anomalies_24h || 0) > 0 && "text-red-600 animate-pulse"),
+      isAutonomous: true
+    },
     {
       title: "High-Risk Actions (24h)",
       value: data?.high_risk_actions_24h,
@@ -106,7 +136,7 @@ export default function AuditKpiCards() {
   ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"> {/* Upgrade: Layout expanded to 4 cols */}
       {isLoading ? (
         kpiConfig.map(config => <KpiCardSkeleton key={config.title} />)
       ) : isError ? (

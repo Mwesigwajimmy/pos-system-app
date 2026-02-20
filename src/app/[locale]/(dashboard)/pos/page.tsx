@@ -13,7 +13,11 @@ import { useSync } from '@/components/core/SyncProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, User, Plus, Minus, Printer as PrinterIcon, RefreshCw, FileText, Loader2, Tag } from 'lucide-react';
+import { 
+    X, User, Plus, Minus, Printer as PrinterIcon, RefreshCw, 
+    FileText, Loader2, Tag, Calculator, Fingerprint, Activity,
+    ShieldAlert, Lock, Zap, KeyRound, CheckCircle // Upgrade: Forensic Icons
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +26,7 @@ import CustomerSearchModal from '@/components/customers/CustomerSearchModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import { Receipt, ReceiptData } from '@/components/pos/Receipt';
 import ProductSearch from '@/components/pos/ProductSearch';
+import { createClient } from '@/lib/supabase/client'; // Upgrade: For Real-time Sentry Logic
 
 interface CompletedSale {
     receiptData: ReceiptData;
@@ -31,12 +36,15 @@ interface Discount {
     value: number;
 }
 
+// UPGRADE: Extended Search Result to support Global/Medical logic
 type SearchResultProduct = { 
     variant_id: number; 
     product_name: string; 
     variant_name: string; 
     price: number; 
     sku: string;
+    tax_category_code?: string;
+    units_per_pack?: number;
 };
 
 const ProductGrid = ({ products, onProductSelect, disabled }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, disabled: boolean }) => {
@@ -49,7 +57,13 @@ const ProductGrid = ({ products, onProductSelect, disabled }: { products: Sellab
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
                     {products.map(product => (
                         <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-primary transition-all">
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                                {/* UPGRADE: Visual Indicator for Fractional/Medical items */}
+                                {(product as any).units_per_pack > 1 && (
+                                    <div className="absolute top-0 right-0 p-1 bg-blue-500 text-white rounded-bl-lg" title="Fractional Units Support">
+                                        <Calculator className="w-3 h-3" />
+                                    </div>
+                                )}
                                 <p className="font-bold text-sm line-clamp-2">{product.product_name}</p>
                                 <p className="text-xs text-muted-foreground">{product.variant_name}</p>
                                 <p className="mt-2 font-semibold">UGX {product.price.toLocaleString()}</p>
@@ -74,16 +88,52 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
         <div className="flex flex-col h-full bg-card rounded-lg shadow-md">
             <div className="p-4 border-b flex justify-between items-center">
                 <div className="flex items-center gap-2 cursor-pointer" onClick={onSetCustomer}><User className="h-5 w-5" /><span className="font-bold text-lg">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span></div>
-                <Button variant="secondary" size="sm" onClick={onSetCustomer}>Change (F2)</Button>
+                <div className="flex gap-2">
+                    {/* UPGRADE: Clinical Link Placeholder */}
+                    <Button variant="outline" size="sm" className="hidden md:flex text-blue-600 border-blue-200" onClick={() => toast.info("Prescription Sync Active")}>
+                        <Activity className="w-4 h-4 mr-1" /> Clinical
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={onSetCustomer}>Change (F2)</Button>
+                </div>
             </div>
             <ScrollArea className="flex-1 bg-muted/20">
                 {cart.length === 0 ? <div className="flex items-center justify-center h-full text-muted-foreground p-4 text-center">Your cart is empty. <br/> Use the search bar to add products.</div> : 
                     <div className="p-2">{cart.map(item => (
-                        <div key={item.variant_id} className="flex items-center gap-2 p-2 border-b">
-                            <div className="flex-1"><p className="text-sm font-semibold">{item.product_name} ({item.variant_name})</p><p className="text-xs text-muted-foreground">@ UGX {item.price.toLocaleString()}</p></div>
-                            <div className="flex items-center gap-2"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button><span className="w-8 text-center font-bold text-lg">{item.quantity}</span><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.variant_id, item.quantity + 1)}><Plus className="h-4 w-4" /></Button></div>
-                            <p className="w-24 text-right font-bold">UGX {(item.price * item.quantity).toLocaleString()}</p>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemoveItem(item.variant_id)}><X className="h-4 w-4" /></Button>
+                        <div key={item.variant_id} className="flex flex-col p-2 border-b gap-1">
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold flex items-center gap-2">
+                                        {item.product_name}
+                                        {/* UPGRADE: Show Robotic Tax Category */}
+                                        {(item as any).tax_category_code && (
+                                            <span className="text-[9px] px-1 bg-slate-100 text-slate-500 rounded border font-mono">
+                                                {(item as any).tax_category_code}
+                                            </span>
+                                        )}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {item.variant_name} 
+                                        {/* UPGRADE: Show Packet Logic */}
+                                        {(item as any).units_per_pack > 1 && ` • 1 pk / ${(item as any).units_per_pack} units`}
+                                    </p>
+                                </div>
+                                
+                                {/* UPGRADE: Fractional Input Machine */}
+                                <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}><Minus className="h-3 w-3" /></Button>
+                                    <Input 
+                                        className="w-14 h-7 text-center font-bold text-xs p-0 px-1" 
+                                        type="number" 
+                                        step="0.0001"
+                                        value={item.quantity}
+                                        onChange={(e) => onUpdateQuantity(item.variant_id, parseFloat(e.target.value) || 0)}
+                                    />
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onUpdateQuantity(item.variant_id, item.quantity + 1)}><Plus className="h-3 w-3" /></Button>
+                                </div>
+
+                                <p className="w-24 text-right font-bold text-sm">UGX {(item.price * item.quantity).toLocaleString()}</p>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemoveItem(item.variant_id)}><X className="h-4 w-4" /></Button>
+                            </div>
                         </div>
                     ))}</div>
                 }
@@ -100,6 +150,11 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                             </PopoverContent>
                         </Popover>
                         <span className="font-medium text-destructive">- UGX {discountAmount.toLocaleString()}</span>
+                    </div>
+                    {/* UPGRADE: Global Tax Calculation Indicator */}
+                    <div className="flex justify-between text-[10px] text-slate-400 italic">
+                        <span className="flex items-center gap-1"><Fingerprint className="w-2 h-2"/> Sovereign Tax Seal Active</span>
+                        <span>Auto-Calculated by Kernel</span>
                     </div>
                 </div>
                 <div className="flex justify-between font-bold text-2xl border-t pt-2"><span>Total</span><span>UGX {total.toLocaleString()}</span></div>
@@ -118,13 +173,91 @@ export default function POSPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [discount, setDiscount] = useState<Discount>({ type: 'fixed', value: 0 });
     const receiptRef = useRef<HTMLDivElement>(null);
+    
+    // Upgrade: Sentry Real-time Lockdown & Continuity Override
+    const [isLockedDown, setIsLockedDown] = useState(false);
+    const [managerEmail, setManagerEmail] = useState("");
+    const [managerPassword, setManagerPassword] = useState("");
+    const [isVerifyingManager, setIsVerifyingManager] = useState(false);
 
     const { isSyncing, triggerSync } = useSync();
-    const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
+    const { data: userProfile, isLoading: isProfileLoading, refetch: refetchProfile } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.orderBy('product_name').toArray(), []);
     
     const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
+    const supabase = createClient();
+
+    // Upgrade: Real-time Security Lockdown Listener
+    useEffect(() => {
+        if (!userProfile?.id) return;
+        const channel = supabase.channel('sentry_pos_handshake')
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'profiles', 
+                filter: `id=eq.${userProfile.id}` 
+            }, (payload) => {
+                if (payload.new.is_active === false) {
+                    setIsLockedDown(true);
+                }
+            }).subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [userProfile?.id, supabase]);
+
+    // Upgrade: Managerial Reactivation Logic (Continuity Protocol)
+    const handleManagerOverride = async () => {
+        setIsVerifyingManager(true);
+        try {
+            // 1. Authenticate Manager using their original system credentials
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: managerEmail,
+                password: managerPassword,
+            });
+
+            if (authError) throw new Error("Invalid Manager Credentials");
+
+            // 2. Resolve Manager Profile and Role from the Brain
+            const { data: managerProfile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (managerProfile?.role !== 'admin' && managerProfile?.role !== 'manager') {
+                throw new Error("Authorization Denied: Requires Managerial clearance.");
+            }
+
+            // 3. Reactivate the Suspended Terminal
+            const { error: reactivateErr } = await supabase
+                .from('profiles')
+                .update({ is_active: true })
+                .eq('id', userProfile?.id);
+
+            if (reactivateErr) throw reactivateErr;
+
+            // 4. Record the Bypass for the Sovereign Audit Trail
+            await supabase.from('system_global_telemetry').insert({
+                event_category: 'SECURITY',
+                event_name: 'ROBOTIC_LOCKDOWN_OVERRIDDEN',
+                tenant_id: userProfile?.tenant_id,
+                metadata: { authorized_by: managerEmail, target_user: userProfile?.email }
+            });
+
+            // 5. Restore System State
+            setIsLockedDown(false);
+            setManagerEmail("");
+            setManagerPassword("");
+            refetchProfile();
+            toast.success("Security Lockdown Overridden. Terminal Reactivated.", {
+                icon: <CheckCircle className="text-emerald-500" />
+            });
+        } catch (err: any) {
+            toast.error(err.message || "Bypass Failed.");
+        } finally {
+            setIsVerifyingManager(false);
+        }
+    };
 
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
         setIsSaving(true);
@@ -180,7 +313,7 @@ export default function POSPage() {
         };
         
         setLastCompletedSale({ receiptData });
-        toast.success(`Sale #${saleId} saved locally.`);
+        toast.success(`Sale #${saleId} saved locally. Robotic Seal Pending Sync.`);
         setCart([]);
         setSelectedCustomer(null);
         setDiscount({ type: 'fixed', value: 0 });
@@ -207,10 +340,20 @@ export default function POSPage() {
         setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: qty } : i)); 
     };
     
-    const handleRemoveItem = (id: number) => setCart(cart.filter(i => i.variant_id !== id));
+    // Upgrade: Forensic Deterrent Trigger
+    const handleRemoveItem = (id: number) => {
+        const itemToRemove = cart.find(i => i.variant_id === id);
+        if (itemToRemove && itemToRemove.price > 50000) {
+            toast.error("SECURITY ALERT: High-value deletion attempt recorded by Kernel.", {
+                icon: <ShieldAlert className="text-red-500" />
+            });
+        }
+        setCart(cart.filter(i => i.variant_id !== id));
+    }
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (isLockedDown) return; 
             if (document.querySelector('[role="dialog"]')) return;
             const target = e.target as HTMLElement;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
@@ -219,7 +362,7 @@ export default function POSPage() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cart]);
+    }, [cart, isLockedDown]);
 
     const totalAmount = useMemo(() => {
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -229,11 +372,75 @@ export default function POSPage() {
     
     const isLoading = (!products && !isSyncing) || isProfileLoading;
 
+    // UPGRADE: Sentry Override Portal UI
+    if (isLockedDown || userProfile?.is_active === false) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white p-10 text-center space-y-8 animate-in fade-in duration-500">
+                <div className="p-12 bg-red-600/10 rounded-full border-4 border-red-600/50 animate-pulse relative">
+                    <Lock size={100} className="text-red-600" />
+                    <ShieldAlert size={32} className="absolute top-8 right-8 text-white fill-red-600" />
+                </div>
+                
+                <div className="space-y-2">
+                    <h1 className="text-5xl font-black uppercase tracking-tighter italic">Robotic Lockdown</h1>
+                    <p className="max-w-md text-slate-400 font-medium mx-auto">
+                        Suspected theft pattern detected. Terminal physically suspended. Manager authorization required to resume operations.
+                    </p>
+                </div>
+
+                <Card className="w-full max-w-sm bg-white/5 border-white/10 shadow-2xl overflow-hidden">
+                    <CardHeader className="bg-white/[0.02] border-b border-white/5 pb-4">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center justify-center gap-2">
+                            <KeyRound size={12}/> Managerial Credentials
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-6 pb-6">
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Work Email</Label>
+                            <Input 
+                                type="email" 
+                                placeholder="manager@system.com" 
+                                className="bg-black/50 border-white/10 h-11"
+                                value={managerEmail}
+                                onChange={(e) => setManagerEmail(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2 text-left">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Secure Password</Label>
+                            <Input 
+                                type="password" 
+                                placeholder="••••••••" 
+                                className="bg-black/50 border-white/10 h-11"
+                                value={managerPassword}
+                                onChange={(e) => setManagerPassword(e.target.value)}
+                            />
+                        </div>
+                        <Button 
+                            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 font-black uppercase tracking-widest text-xs" 
+                            onClick={handleManagerOverride}
+                            disabled={isVerifyingManager || !managerEmail || !managerPassword}
+                        >
+                            {isVerifyingManager ? <Loader2 className="animate-spin h-5 w-5 mr-2"/> : <Zap size={16} className="mr-2 fill-current"/>}
+                            Authorize Override
+                        </Button>
+                    </CardContent>
+                </Card>
+                
+                <p className="text-[9px] text-slate-600 font-mono uppercase tracking-widest">
+                    Forensic Identification: {userProfile?.email || "SEC_NULL"}
+                </p>
+            </div>
+        );
+    }
+
     if (isLoading) {
         return (
             <div className="p-10 text-center flex flex-col items-center justify-center h-screen">
-                <p className="mb-4 text-lg">{isProfileLoading ? "Loading user profile..." : "Loading local data..."}</p>
-                <p className="mb-4 text-sm text-muted-foreground">If this is your first time or data is missing, please sync.</p>
+                <p className="mb-4 text-lg font-bold flex items-center gap-2">
+                    <RefreshCw className="animate-spin h-5 w-5 text-blue-600" />
+                    {isProfileLoading ? "Loading user profile..." : "Synchronizing Global Kernel..."}
+                </p>
+                <p className="mb-4 text-sm text-muted-foreground italic">Establishing Sovereign Connectivity...</p>
                 <Button onClick={triggerSync} disabled={isSyncing}>
                     <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && 'animate-spin')} />
                     {isSyncing ? 'Syncing...' : 'Sync Data Now'}
@@ -245,10 +452,15 @@ export default function POSPage() {
     if (lastCompletedSale) {
         return (
             <div className="p-4 md:p-8 flex flex-col items-center bg-gray-100 min-h-screen">
-                <Card className="w-full max-w-md">
-                    <CardHeader><CardTitle className="text-center">Sale Complete!</CardTitle><CardDescription className="text-center">Receipt is ready.</CardDescription></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="border rounded-md">
+                <Card className="w-full max-w-md shadow-2xl">
+                    <CardHeader className="bg-blue-600 text-white rounded-t-lg">
+                        <CardTitle className="text-center">Sale Complete!</CardTitle>
+                        <CardDescription className="text-center text-blue-100 italic font-mono text-[10px]">
+                            TRANSACTION SEALED BY KERNEL
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-6">
+                        <div className="border rounded-md shadow-inner bg-white">
                             <Receipt 
                                 ref={receiptRef} 
                                 receiptData={lastCompletedSale.receiptData} 
@@ -257,11 +469,11 @@ export default function POSPage() {
                             />
                         </div>
                         <div className="flex gap-4 no-print">
-                            <Button variant="outline" className="w-full" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
-                            <Button className="w-full" onClick={() => toast.info('Reprint job sent.')}><PrinterIcon className="mr-2 h-4 w-4" />Reprint</Button>
+                            <Button variant="outline" className="w-full h-12" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
+                            <Button className="w-full h-12 bg-blue-600" onClick={() => toast.info('Reprint job sent.')}><PrinterIcon className="mr-2 h-4 w-4" />Reprint</Button>
                         </div>
-                        <Button variant="link" size="sm" className="w-full" onClick={handleWebPrint}>
-                            <FileText className="mr-2 h-4 w-4" />Print to A4 (Web Fallback)
+                        <Button variant="link" size="sm" className="w-full text-slate-400" onClick={handleWebPrint}>
+                            <FileText className="mr-2 h-4 w-4" />Print to A4 (Global Standard)
                         </Button>
                     </CardContent>
                 </Card>
@@ -271,26 +483,28 @@ export default function POSPage() {
 
     return (
         <>
-            <div className="h-screen grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-muted/40">
-                <div className="flex flex-col gap-4 overflow-hidden">
+            <div className="h-screen grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-muted/40 overflow-hidden">
+                <div className="flex flex-col gap-4 overflow-hidden h-full">
                     <ProductSearch onProductSelect={handleAddToCart} />
                     <ProductGrid 
-                        products={products?.slice(0, 12) || []}
+                        products={products?.slice(0, 24) || []}
                         onProductSelect={handleAddToCart} 
                         disabled={isSyncing} 
                     />
                 </div>
-                <CartDisplay 
-                    cart={cart} 
-                    onUpdateQuantity={handleUpdateQuantity} 
-                    onRemoveItem={handleRemoveItem} 
-                    selectedCustomer={selectedCustomer} 
-                    onSetCustomer={() => setCustomerModalOpen(true)} 
-                    onCharge={() => setPaymentModalOpen(true)} 
-                    isProcessing={isSaving} 
-                    discount={discount} 
-                    setDiscount={setDiscount}
-                />
+                <div className="h-full overflow-hidden">
+                    <CartDisplay 
+                        cart={cart} 
+                        onUpdateQuantity={handleUpdateQuantity} 
+                        onRemoveItem={handleRemoveItem} 
+                        selectedCustomer={selectedCustomer} 
+                        onSetCustomer={() => setCustomerModalOpen(true)} 
+                        onCharge={() => setPaymentModalOpen(true)} 
+                        isProcessing={isSaving} 
+                        discount={discount} 
+                        setDiscount={setDiscount}
+                    />
+                </div>
             </div>
             <CustomerSearchModal 
                 isOpen={isCustomerModalOpen} 

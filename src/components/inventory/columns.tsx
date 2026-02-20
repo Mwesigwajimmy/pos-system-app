@@ -1,9 +1,22 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Edit, Trash2, AlertCircle, Layers, Package, Tag, ClipboardList, Building2 } from "lucide-react";
+import { 
+  MoreHorizontal, 
+  Edit, 
+  Trash2, 
+  AlertCircle, 
+  Layers, 
+  Package, 
+  Tag, 
+  ClipboardList, 
+  Building2,
+  Fingerprint, // UPGRADE: Global Tax Icon
+  Calculator,  // UPGRADE: Fractional Logic Icon
+  ShieldCheck  // UPGRADE: Forensic Seal Icon
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox"; // <--- NEW: Required for Selection
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge"; // UPGRADE: Required for new labels
 import { ProductRow } from "@/types/dashboard";
 
 // Advanced TanStack Table meta for enterprise actions
@@ -28,13 +42,15 @@ declare module '@tanstack/react-table' {
 
 // Helper for low-stock/expiry indicators
 const getStockStatus = (product: ProductRow) => {
-  if (product.total_stock < 5) return { warning: true, message: "Low Stock: Only " + product.total_stock + " units left." };
-  // Add more advanced logic if expiry, lot, etc.
+  // UPGRADE: Precision checking for fractional stock (e.g., 0.5 tablets vs 5 full boxes)
+  const stock = Number(product.total_stock || 0);
+  if (stock <= 0) return { warning: true, message: "Out of Stock: Critical Replenishment Required.", color: "text-red-600" };
+  if (stock < 5) return { warning: true, message: "Low Stock: Only " + stock + " remaining.", color: "text-amber-500" };
   return { warning: false, message: "" };
 };
 
 export const columns: ColumnDef<ProductRow>[] = [
-  // --- 1. ENTERPRISE SELECTION COLUMN (New) ---
+  // --- 1. ENTERPRISE SELECTION COLUMN ---
   {
     id: "select",
     header: ({ table }) => (
@@ -60,7 +76,7 @@ export const columns: ColumnDef<ProductRow>[] = [
     enableHiding: false,
     size: 40, 
   },
-  // --------------------------------------------
+  
   {
     accessorKey: "name",
     header: ({ column }) => (
@@ -69,7 +85,13 @@ export const columns: ColumnDef<ProductRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <div className="font-semibold">{row.original.name}</div>
+      <div className="flex items-center gap-2">
+        <div className="font-semibold">{row.original.name}</div>
+        {/* UPGRADE: Forensic Integrity Seal badge for verified high-volume items */}
+        {row.original.total_stock > 100 && (
+          <ShieldCheck className="h-3 w-3 text-blue-500" title="High-Volume Sovereign Certified" />
+        )}
+      </div>
     ),
     enableSorting: true,
     enableGlobalFilter: true,
@@ -83,12 +105,32 @@ export const columns: ColumnDef<ProductRow>[] = [
     ),
     cell: ({ row }) => (
       row.original.category_name ? (
-        <span className="px-2 py-1 rounded bg-muted">{row.original.category_name}</span>
-      ) : <span className="italic text-muted-foreground">Uncategorized</span>
+        <span className="px-2 py-1 rounded bg-muted text-xs font-medium">{row.original.category_name}</span>
+      ) : <span className="italic text-muted-foreground text-xs">Uncategorized</span>
     ),
     enableSorting: true,
     enableGlobalFilter: true,
   },
+
+  // --- UPGRADE: GLOBAL TAX CATEGORY COLUMN ---
+  {
+    id: "tax_logic",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <Fingerprint className="h-4 w-4 text-blue-500" /> Tax Link
+      </div>
+    ),
+    cell: ({ row }) => {
+      // Cast to any to access the new 'tax_category_code' from the upgraded schema
+      const rawRow = row.original as any;
+      return (
+        <Badge variant="outline" className="text-[10px] font-mono uppercase bg-slate-50">
+          {rawRow.tax_category_code || 'STANDARD'}
+        </Badge>
+      );
+    },
+  },
+
   {
     accessorKey: "total_stock",
     header: () => (
@@ -98,15 +140,17 @@ export const columns: ColumnDef<ProductRow>[] = [
     ),
     cell: ({ row }) => {
       const status = getStockStatus(row.original);
+      const stockValue = Number(row.original.total_stock);
+      
       return (
         <div className="flex items-center gap-2">
-          <span>{row.original.total_stock}</span>
-          {/* 
-             Enterprise Logic: Visual Indicator for Low Stock
-          */}
+          {/* UPGRADE: Supports Decimal display for fractional stock items */}
+          <span className={`font-mono font-bold ${status.warning ? status.color : ""}`}>
+            {stockValue % 1 === 0 ? stockValue : stockValue.toFixed(2)}
+          </span>
           {status.warning && (
             <span title={status.message}>
-              <AlertCircle className="h-4 w-4 text-destructive" />
+              <AlertCircle className={`h-4 w-4 ${status.color}`} />
             </span>
           )}
         </div>
@@ -115,6 +159,26 @@ export const columns: ColumnDef<ProductRow>[] = [
     enableSorting: true,
     enableGlobalFilter: false,
   },
+
+  // --- UPGRADE: FRACTIONAL UNITS/PACK COLUMN ---
+  {
+    id: "packet_logic",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <Calculator className="h-4 w-4 text-slate-500" /> Units/Pack
+      </div>
+    ),
+    cell: ({ row }) => {
+      const rawRow = row.original as any;
+      const uPack = rawRow.units_per_pack || 1;
+      return (
+        <span className="text-xs font-mono text-slate-500">
+          {uPack > 1 ? `1:${uPack}` : 'Whole'}
+        </span>
+      );
+    },
+  },
+
   {
     accessorKey: "variants_count",
     header: () => (
@@ -123,7 +187,7 @@ export const columns: ColumnDef<ProductRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <span className="font-mono">{row.original.variants_count}</span>
+      <span className="font-mono text-xs">{row.original.variants_count}</span>
     ),
     enableSorting: true,
     enableGlobalFilter: false,
@@ -136,8 +200,9 @@ export const columns: ColumnDef<ProductRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      // Enterprise: Shows which branch owns this item
-      <span className="text-xs text-muted-foreground">{row.original.business_entity_name || "Main"}</span>
+      <span className="text-[10px] uppercase font-bold text-muted-foreground">
+        {row.original.business_entity_name || "Main"}
+      </span>
     ),
     enableSorting: true,
     enableGlobalFilter: true,
@@ -147,8 +212,11 @@ export const columns: ColumnDef<ProductRow>[] = [
     header: "",
     cell: ({ row, table }) => {
       const product = row.original;
-      // Enterprise: Role-Based Access Control (RBAC) Check
-      const isManager = table.options.meta?.userRole === "manager" || table.options.meta?.userRole === "admin";
+      // UPGRADE: Added 'architect' to the RBAC check
+      const isManager = 
+        table.options.meta?.userRole === "manager" || 
+        table.options.meta?.userRole === "admin" || 
+        table.options.meta?.userRole === "architect";
       
       return (
         <div className="text-right">
@@ -158,19 +226,19 @@ export const columns: ColumnDef<ProductRow>[] = [
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-[180px]">
+              <DropdownMenuLabel>Autonomous Actions</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => table.options.meta?.onEdit(product)}
                 disabled={!isManager}
               >
-                <Edit className="mr-2 h-4 w-4" /> Edit Product
+                <Edit className="mr-2 h-4 w-4 text-blue-500" /> Edit Product
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => table.options.meta?.onAdjust(product)}
                 disabled={!isManager}
               >
-                <ClipboardList className="mr-2 h-4 w-4" /> Stock Adjustment
+                <ClipboardList className="mr-2 h-4 w-4 text-orange-500" /> Stock Adjustment
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -184,7 +252,7 @@ export const columns: ColumnDef<ProductRow>[] = [
               <DropdownMenuItem
                 onClick={() => table.options.meta?.onAudit(product)}
               >
-                <AlertCircle className="mr-2 h-4 w-4" /> View Audit Log
+                <AlertCircle className="mr-2 h-4 w-4 text-slate-400" /> View Audit Log
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -20,7 +20,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Loader2, Download, Trash, BarChart } from 'lucide-react';
+import { 
+  Loader2, 
+  Download, 
+  Trash, 
+  BarChart, 
+  Calculator, 
+  Fingerprint 
+} from 'lucide-react';
 
 import AddProductDialog from '@/components/inventory/AddProductDialog';
 import ImportProductsDialog from '@/components/inventory/ImportProductsDialog';
@@ -78,7 +85,7 @@ async function processBulkAdjustment(payload: { reason: string; productIds: numb
 
     const items = (variants as VariantReference[]).map((v) => ({
         variant_id: v.id,
-        quantity_change: payload.quantityChange
+        quantity_change: payload.quantityChange // UPGRADE: Database now accepts Numeric(19,4) for fractions
     }));
 
     const { error } = await supabase.rpc('process_stock_adjustment_v2', {
@@ -193,19 +200,20 @@ export default function InventoryDataTable({
         return;
     }
 
-    const headers = ["ID", "Name", "SKU", "Total Stock", "Category", "Variants Count", "Entity"];
+    // UPGRADE: Added Units/Pack and Tax Code to the Enterprise Export
+    const headers = ["ID", "Name", "SKU", "Total Stock", "Category", "Tax Category", "Units/Pack", "Entity"];
     const csvContent = [
       headers.join(","),
-      // FIX: Cast row to 'any' to bypass missing SKU definition in ProductRow type
       ...dataToExport.map((row: any) => {
           const escape = (val: any) => `"${String(val || '').replace(/"/g, '""')}"`;
           return [
               row.id, 
               escape(row.name), 
-              escape(row.sku), // This will now work
+              escape(row.sku),
               row.total_stock, 
               escape(row.category_name),
-              row.variants_count,
+              escape(row.tax_category_code || 'STANDARD'), // UPGRADE: Global Tax Visibility
+              row.units_per_pack || 1,                     // UPGRADE: Fractional Visibility
               escape(row.business_entity_name)
           ].join(",");
       })
@@ -215,11 +223,11 @@ export default function InventoryDataTable({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `inventory_export_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `sovereign_inventory_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported ${dataToExport.length} rows to CSV.`);
+    toast.success(`Exported ${dataToExport.length} rows with global metadata.`);
   };
 
   const handleBulkAdjustSubmit = () => {
@@ -387,10 +395,13 @@ export default function InventoryDataTable({
       <Dialog open={isBulkAdjustOpen} onOpenChange={setIsBulkAdjustOpen}>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-                <DialogTitle>Bulk Adjust Stock</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-blue-600"/>
+                  Fractional Bulk Adjust
+                </DialogTitle>
                 <DialogDescription>
-                    Apply a quick stock adjustment to the {Object.keys(rowSelection).length} selected products. 
-                    <br/><span className="text-xs text-muted-foreground font-medium mt-1 block">Note: This will update ALL variants associated with selected products.</span>
+                    Apply a stock adjustment to the {Object.keys(rowSelection).length} selected products. 
+                    <br/><span className="text-xs text-blue-600 font-medium mt-1 block italic">Support for fractions (e.g. 0.5) is now active.</span>
                 </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -399,7 +410,8 @@ export default function InventoryDataTable({
                     <Input 
                         id="adj-val" 
                         type="number" 
-                        placeholder="+10 or -5" 
+                        step="0.0001" // UPGRADE: Visual support for high-precision entry
+                        placeholder="+10 or -0.5" 
                         className="col-span-3"
                         value={bulkAdjustValue}
                         onChange={(e) => setBulkAdjustValue(e.target.value)}
@@ -409,7 +421,7 @@ export default function InventoryDataTable({
                     <Label htmlFor="adj-reason" className="text-right">Reason</Label>
                     <Input 
                         id="adj-reason" 
-                        placeholder="e.g. Received Shipment" 
+                        placeholder="e.g. Received Pharmacy Pack" 
                         className="col-span-3"
                         value={bulkAdjustReason}
                         onChange={(e) => setBulkAdjustReason(e.target.value)}

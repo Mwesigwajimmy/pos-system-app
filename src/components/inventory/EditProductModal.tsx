@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { Loader2, Save, Package, Layers, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Save, Package, Layers, Plus, Trash2, Fingerprint, Calculator } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { Category, ProductRow } from '@/types/dashboard';
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 // --- Types ---
 
@@ -31,6 +32,7 @@ interface Variant {
   price: number;
   cost_price: number;
   stock_quantity: number;
+  units_per_pack: number; // UPGRADE: Fractional Inventory Support
   attributes: Record<string, string>;
   uom_id: string | null;
   isNew?: boolean; // Helper flag for UI
@@ -41,6 +43,7 @@ interface ProductDetails {
   name: string;
   category_id: string | null;
   uom_id: string | null;
+  tax_category_code: string; // UPGRADE: Global Tax Distribution Link
   variants: Variant[];
 }
 
@@ -77,12 +80,14 @@ async function fetchProductDetails(productId: string): Promise<ProductDetails> {
     name: prod.name,
     category_id: prod.category_id ? String(prod.category_id) : null,
     uom_id: prod.uom_id ? String(prod.uom_id) : null,
+    tax_category_code: prod.tax_category_code || 'STANDARD', // Map new column
     variants: variants.map((v: any) => ({
       id: String(v.id),
       sku: v.sku || '',
       price: v.price || 0,
       cost_price: v.cost_price || 0,
       stock_quantity: v.stock_quantity || 0,
+      units_per_pack: v.units_per_pack || 1, // Map new column
       attributes: v.attributes || {},
       uom_id: v.uom_id ? String(v.uom_id) : null
     }))
@@ -125,7 +130,12 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
   // Update Mutation (Uses V3 RPC)
   const { mutate: updateProduct, isPending: isUpdating } = useMutation({
     mutationFn: async (data: ProductDetails) => {
-      // Use V3 RPC that supports UPSERT
+      // 1. Sync Tax Category Code to Product record manually
+      await supabase.from('products').update({ 
+        tax_category_code: data.tax_category_code.toUpperCase() 
+      }).eq('id', data.id);
+
+      // 2. Use V3 RPC that supports UPSERT
       const { error } = await supabase.rpc('update_product_and_variants_v3', {
         p_product_id: data.id,
         p_name: data.name,
@@ -163,6 +173,7 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
       price: 0,
       cost_price: 0,
       stock_quantity: 0,
+      units_per_pack: 1, // Default
       attributes: { "Name": "New Variant" }, // Default attribute
       uom_id: formData.uom_id,
       isNew: true
@@ -185,9 +196,6 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
        return;
     }
 
-    // If it's an existing variant in DB, we should ideally mark it for deletion
-    // For now, let's block deletion of existing items in this modal to be safe, 
-    // or you can add a `deleted_at` logic to the RPC.
     toast.error("Cannot delete saved variants in this modal yet.");
   };
 
@@ -209,7 +217,7 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: General */}
+        {/* Tab 1: General (Upgraded with Tax Routing) */}
         <TabsContent value="general" className="space-y-4 px-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -236,21 +244,34 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
                   </SelectContent>
                 </Select>
               </div>
+              {/* UPGRADE: Tax Category Code Selector */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Fingerprint className="w-3 h-3 text-blue-500" />
+                  Tax Category
+                </Label>
+                <Input 
+                  value={formData.tax_category_code} 
+                  onChange={e => setFormData({...formData, tax_category_code: e.target.value.toUpperCase()})}
+                  placeholder="e.g. STANDARD, MEDICINE"
+                />
+              </div>
             </div>
         </TabsContent>
 
-        {/* Tab 2: Variants */}
+        {/* Tab 2: Variants (Upgraded with Fractional Stock) */}
         <TabsContent value="variants" className="px-1 space-y-4">
           <div className="border rounded-md max-h-[400px] overflow-y-auto shadow-sm">
             <Table>
               <TableHeader className="bg-muted/50 sticky top-0 z-10">
                 <TableRow>
                   <TableHead>Variant Name / Attributes</TableHead>
-                  <TableHead className="w-[100px]">Price</TableHead>
-                  <TableHead className="w-[100px]">Cost</TableHead>
-                  <TableHead className="w-[120px]">SKU</TableHead>
-                  <TableHead className="w-[80px]">Stock</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="w-[90px]">Price</TableHead>
+                  <TableHead className="w-[90px]">Cost</TableHead>
+                  <TableHead className="w-[70px]">U/Pack</TableHead>
+                  <TableHead className="w-[110px]">SKU</TableHead>
+                  <TableHead className="w-[70px]">Stock</TableHead>
+                  <TableHead className="w-[40px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -278,14 +299,20 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
                                 )}
                             </TableCell>
                             <TableCell>
-                                <Input type="number" className="h-8 text-xs" 
+                                <Input type="number" step="0.01" className="h-8 text-xs" 
                                     value={variant.price} 
                                     onChange={e => handleVariantChange(idx, 'price', Number(e.target.value))} />
                             </TableCell>
                             <TableCell>
-                                <Input type="number" className="h-8 text-xs" 
+                                <Input type="number" step="0.01" className="h-8 text-xs" 
                                     value={variant.cost_price} 
                                     onChange={e => handleVariantChange(idx, 'cost_price', Number(e.target.value))} />
+                            </TableCell>
+                            {/* UPGRADE: Units Per Pack Column */}
+                            <TableCell>
+                                <Input type="number" className="h-8 text-xs" 
+                                    value={variant.units_per_pack} 
+                                    onChange={e => handleVariantChange(idx, 'units_per_pack', Number(e.target.value))} />
                             </TableCell>
                             <TableCell>
                                 <Input className="h-8 text-xs uppercase" 
@@ -293,7 +320,7 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
                                     onChange={e => handleVariantChange(idx, 'sku', e.target.value)} />
                             </TableCell>
                             <TableCell>
-                                <Input type="number" className="h-8 text-xs" 
+                                <Input type="number" step="0.0001" className="h-8 text-xs" 
                                     value={variant.stock_quantity} 
                                     onChange={e => handleVariantChange(idx, 'stock_quantity', Number(e.target.value))} />
                             </TableCell>
@@ -321,7 +348,12 @@ export default function EditProductModal({ product, isOpen, onClose, categories 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Product</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Edit Product
+            {formData?.tax_category_code && (
+              <Badge variant="secondary" className="text-[10px] uppercase">{formData.tax_category_code}</Badge>
+            )}
+          </DialogTitle>
           <DialogDescription>Modify product details and manage variants.</DialogDescription>
         </DialogHeader>
         <Separator className="my-2" />

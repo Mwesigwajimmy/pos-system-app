@@ -1,8 +1,3 @@
-// WARNING: This is a minimal, hand-mocked version of the Database type
-// created because the Supabase CLI was not accessible.
-// For full type safety, you MUST install and use the Supabase CLI to generate the real file.
-// Real command: supabase gen types typescript --project-id "oezlqscjymzoeizysljp" > src/types/supabase.ts
-
 export type Json =
   | string
   | number
@@ -14,38 +9,161 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      /**
-       * Definition for the payroll_runs table based on usage in PayrollHistoryTable.tsx
-       */
-      payroll_runs: {
+      accounting_journal_entries: {
         Row: {
-          // Columns required by PayrollHistoryTable.tsx:
-          id: number 
-          period_start: string 
-          period_end: string 
-          created_at: string 
-          status: 'PENDING_APPROVAL' | 'APPROVED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | string
-          
-          // Index signature for other, unknown columns (like tenant_id)
-          [key: string]: any 
+          id: string
+          business_id: string
+          transaction_id: string
+          account_id: string
+          description: string | null
+          debit: number
+          credit: number
+          due_date: string | null
+          partner_id: string | null
+          reconciled: boolean
+          created_at: string
+          source_type: string | null
+          source_id: number | null
+          is_reconciled: boolean
+          reconciliation_id: string | null
+          bank_transaction_id: string | null
+          tax_profile_id: number | null
+          is_tax_line: boolean
+          tax_type: string | null
+          voucher_no: string | null
+          partner_type: string | null
+          product_name: string | null
+          product_id: number | null
+          is_auditor_locked: boolean
         }
-        Insert: Record<string, unknown>
-        Update: Record<string, unknown>
+        Insert: {
+          id?: string
+          business_id: string
+          transaction_id: string
+          account_id: string
+          description?: string | null
+          debit?: number
+          credit?: number
+          due_date?: string | null
+          partner_id?: string | null
+          reconciled?: boolean
+          created_at?: string
+          source_type?: string | null
+          source_id?: number | null
+          is_reconciled?: boolean
+          reconciliation_id?: string | null
+          bank_transaction_id?: string | null
+          tax_profile_id?: number | null
+          is_tax_line?: boolean
+          tax_type?: string | null
+          voucher_no?: string | null
+          partner_type?: string | null
+          product_name?: string | null
+          product_id?: number | null
+          is_auditor_locked?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['accounting_journal_entries']['Row']>
       }
-
-      // Minimal mock for other tables referenced in the server action to pass compilation:
-      tenants: { Row: Record<string, any> }
-      employees: { Row: Record<string, any> }
-      payroll_elements: { Row: Record<string, any> }
-      payslips: { Row: Record<string, any> }
-      payslip_details: { Row: Record<string, any> }
-      
-      // Index signature to allow other tables
-      [key: string]: any
+      sovereign_audit_anomalies: {
+        Row: {
+          id: string
+          execution_id: string | null
+          tenant_id: string | null
+          anomaly_type: string | null
+          severity: string | null
+          description: string | null
+          raw_evidence: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          execution_id?: string | null
+          tenant_id?: string | null
+          anomaly_type?: string | null
+          severity?: string | null
+          description?: string | null
+          raw_evidence?: Json | null
+          created_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['sovereign_audit_anomalies']['Row']>
+      }
+      // Added based on your Sacco/Telecom metadata
+      sacco_members: {
+        Row: {
+          id: string
+          member_number: string
+          first_name: string
+          last_name: string
+          phone_number: string | null
+          status: string
+          total_shares: number
+          business_id: string | null
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['sacco_members']['Row']>
+        Update: Partial<Database['public']['Tables']['sacco_members']['Row']>
+      }
+      telecom_transactions: {
+        Row: {
+          id: number
+          business_id: string
+          service_id: number | null
+          transaction_type: string
+          amount: number
+          commission_earned: number
+          customer_phone: string | null
+          transaction_category: Database['public']['Enums']['transaction_category']
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['telecom_transactions']['Row']>
+        Update: Partial<Database['public']['Tables']['telecom_transactions']['Row']>
+      }
     }
-    // Index signature to allow other schema objects like Views and Functions
-    [key: string]: any
+    Views: {
+      view_admin_critical_anomalies: {
+        Row: {
+          id: string
+          event_category: string
+          event_name: string
+          tenant_id: string
+          severity_level: string
+          metadata: Json
+          created_at: string
+        }
+      }
+      view_enterprise_management_cockpit: {
+        Row: {
+          Organization: string
+          Total_Invoices: number
+          Revenue_Booked: number
+          Ledger_Status: string
+        }
+      }
+    }
+    Functions: {
+      get_my_business_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      proc_sovereign_global_audit_engine: {
+        Args: {
+          p_tenant_id: string
+          p_fiscal_year: number
+          p_industry_vertical: string
+          p_region_code: string
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      user_role: "admin" | "manager" | "cashier" | "accountant" | "dsr" | "architect" | "commander" | "warehouse_manager" | "hr_manager"
+      transaction_status: "draft" | "posted" | "canceled"
+      payroll_status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+      sacco_txn_type: "DEPOSIT" | "WITHDRAWAL" | "LOAN_DISBURSEMENT" | "LOAN_REPAYMENT" | "SHARE_PURCHASE" | "WRITE_OFF"
+      transaction_category: "Sale" | "Float Deposit" | "Float Withdrawal" | "Expense"
+    }
   }
-  // Index signature to allow other database schemas
-  [key: string]: any
 }
+
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
+export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T]

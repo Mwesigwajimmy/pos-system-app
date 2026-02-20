@@ -8,7 +8,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { Loader2, CalendarIcon, AlertTriangle } from 'lucide-react';
+import { 
+  Loader2, CalendarIcon, AlertTriangle, 
+  ShieldCheck, Fingerprint, Activity, Zap, ShieldAlert // Upgrade: Added Forensic Icons
+} from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Badge } from '../ui/badge'; // Upgrade: For status parity
 
 // --- TYPES ---
 interface BankTransaction { 
@@ -81,6 +85,7 @@ async function createSystemTransaction(vars: {
 }) {
     const supabase = createClient();
     
+    // Upgrade Note: This call now triggers 'trg_ledger_forensics' on the backend
     const { data, error } = await supabase.rpc('create_reconciliation_transaction', {
         p_business_id: vars.businessId,
         p_user_id: vars.userId,
@@ -142,12 +147,16 @@ export function CreateTransactionModal({
     const mutation = useMutation({
         mutationFn: createSystemTransaction,
         onSuccess: () => {
-            toast.success('Journal Entry created successfully');
+            // Upgrade: Updated message to reflect Autonomous Guard parity
+            toast.success('Journal Entry Saved. Sovereign Forensic Guard established 1:1 parity.', {
+                duration: 5000,
+                icon: <ShieldCheck className="text-emerald-500" />
+            });
             queryClient.invalidateQueries({ queryKey: ['reconciliationData'] });
             form.reset();
             onClose();
         },
-        onError: (err: Error) => toast.error(`Error: ${err.message}`),
+        onError: (err: Error) => toast.error(`Forensic Block: ${err.message}`),
     });
 
     const onSubmit = (data: TransactionFormValues) => {
@@ -164,11 +173,19 @@ export function CreateTransactionModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] border-slate-200 shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle>Create Transaction</DialogTitle>
+                    <div className="flex items-center justify-between mb-2">
+                        <DialogTitle className="flex items-center gap-2">
+                            <Fingerprint className="w-5 h-5 text-primary" />
+                            Secure Transaction Entry
+                        </DialogTitle>
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-400 border-slate-100">
+                            Sovereign v10.1
+                        </Badge>
+                    </div>
                     <DialogDescription>
-                        Create a Journal Entry matching this bank line item.
+                        Create a Journal Entry matching this bank line item. Entry is verified against 90-day moving average drift.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -181,13 +198,13 @@ export function CreateTransactionModal({
                         )}>
                             {isMoneyOut ? (
                                 <>
-                                    <AlertTriangle className="w-4 h-4 mr-2" />
-                                    Money Out (Expense / Payment)
+                                    <ShieldAlert className="w-4 h-4 mr-2" />
+                                    Money Out (Liability Check Active)
                                 </>
                             ) : (
                                 <>
-                                    <AlertTriangle className="w-4 h-4 mr-2" />
-                                    Money In (Income / Deposit)
+                                    <ShieldCheck className="w-4 h-4 mr-2" />
+                                    Money In (Asset Verification Active)
                                 </>
                             )}
                         </div>
@@ -224,9 +241,9 @@ export function CreateTransactionModal({
                             name="description"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Description</FormLabel>
+                                    <FormLabel>Audit Narrative / Description</FormLabel>
                                     <FormControl>
-                                        <Input {...field} value={field.value as string || ''} />
+                                        <Input {...field} value={field.value as string || ''} placeholder="Required for forensic trail..." />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -247,6 +264,7 @@ export function CreateTransactionModal({
                                                 step="0.01" 
                                                 {...field} 
                                                 value={(field.value as number) || ''} 
+                                                className="font-mono"
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -282,13 +300,29 @@ export function CreateTransactionModal({
                             />
                         </div>
 
-                        <DialogFooter className="pt-4">
+                        <div className="pt-2 px-1">
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 font-mono uppercase tracking-tighter">
+                                <Zap size={10} className="text-emerald-500 fill-current animate-pulse" />
+                                1:1 Forensic Mapping Ready
+                            </p>
+                        </div>
+
+                        <DialogFooter className="pt-4 gap-2">
                             <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={mutation.isPending}>
-                                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create & Post
+                            <Button type="submit" disabled={mutation.isPending} className="px-6 shadow-xl shadow-primary/10">
+                                {mutation.isPending ? (
+                                    <>
+                                        <Activity className="mr-2 h-4 w-4 animate-pulse text-emerald-400" />
+                                        Verifying Drift...
+                                    </>
+                                ) : (
+                                    <>
+                                        <ShieldCheck className="mr-2 h-4 w-4" />
+                                        Post & Verify
+                                    </>
+                                )}
                             </Button>
                         </DialogFooter>
                     </form>

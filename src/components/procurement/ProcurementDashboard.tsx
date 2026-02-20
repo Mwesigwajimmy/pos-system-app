@@ -2,8 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ShoppingCart, TrendingUp, Clock, FileCheck, AlertCircle } from "lucide-react";
+import { ShoppingCart, TrendingUp, Clock, FileCheck, AlertCircle, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+
+// --- UPGRADE: AGENTIC COMPONENT IMPORT ---
+import AgenticDraftsPanel from "./AgenticDraftsPanel";
+// -----------------------------------------
 
 // ENTERPRISE TYPE DEFINITION
 interface ProcurementKpi {
@@ -130,41 +134,56 @@ export default function ProcurementDashboard({ tenantId }: Props) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="animate-pulse border-none shadow-sm">
-            <CardHeader className="h-24 bg-slate-100 dark:bg-slate-800 rounded-xl" />
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse border-none shadow-sm">
+              <CardHeader className="h-24 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+            </Card>
+          ))}
+        </div>
+        <div className="h-64 w-full bg-slate-100 animate-pulse rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {kpis.map((kpi, idx) => (
-        <Card key={idx} className="hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-              {kpi.label}
-            </CardTitle>
-            <div className="p-2 bg-slate-50 rounded-lg">
-              {kpi.icon}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {kpi.currency ? <span className="text-sm text-slate-400 mr-1">{kpi.currency}</span> : ""}
-              {typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}
-            </div>
-            <div className="flex items-center mt-2">
-               <p className="text-xs font-medium text-slate-400">
-                {kpi.period}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-8">
+      {/* 1. Original KPI Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((kpi, idx) => (
+          <Card key={idx} className="hover:shadow-md transition-shadow duration-200 bg-white border-slate-100">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                {kpi.label}
+              </CardTitle>
+              <div className="p-2 bg-slate-50 rounded-lg">
+                {kpi.icon}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">
+                {kpi.currency ? <span className="text-sm text-slate-400 mr-1">{kpi.currency}</span> : ""}
+                {typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}
+              </div>
+              <div className="flex items-center mt-2">
+                 <p className="text-xs font-medium text-slate-400">
+                  {kpi.period}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* 
+          UPGRADE: THE AGENTIC INTERFACE ROW
+          Purpose: Directly exposes the suggestions from fn_agentic_sourcing_orchestrator
+          Status: Parity v10.2 Global Protocol
+      */}
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
+        <AgenticDraftsPanel />
+      </div>
     </div>
   );
 }

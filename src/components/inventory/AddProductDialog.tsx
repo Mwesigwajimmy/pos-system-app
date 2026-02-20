@@ -17,7 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { 
-  Plus, Trash, Wand2, Loader2, AlertCircle, Package, Layers, Save 
+  Plus, Trash, Wand2, Loader2, AlertCircle, Package, Layers, Save, Fingerprint, Calculator 
 } from 'lucide-react';
 import { Category } from '@/types/dashboard';
 
@@ -36,6 +36,7 @@ interface VariantDraft {
   price: number;
   cost_price: number;
   stock_quantity: number;
+  units_per_pack: number; // UPGRADE: Support for fractional/packet logic
   attributes: Record<string, string>;
   uom_id: string | null;
 }
@@ -57,6 +58,7 @@ const DEFAULT_VARIANT: VariantDraft = {
   price: 0,
   cost_price: 0,
   stock_quantity: 0,
+  units_per_pack: 1, // UPGRADE: Default to 1 (Whole Unit)
   attributes: {},
   uom_id: null
 };
@@ -80,6 +82,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   const [productName, setProductName] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [uomId, setUomId] = useState<string | null>(null);
+  const [taxCategoryCode, setTaxCategoryCode] = useState('STANDARD'); // UPGRADE: Global Tax Link
   
   // --- Mode Switching ---
   const [isMultiVariant, setIsMultiVariant] = useState(false);
@@ -194,24 +197,12 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
         combinations = attrValues[0].map(v => [v]);
     } else {
         // Standard cartesian for 2+ arrays
-        // We use a simpler reduce for N arrays
-        const combine = (head: string[], tail: string[][]): string[][] => {
-             if (tail.length === 0) return head.map(x => [x]);
-             const current = tail[0];
-             const rest = tail.slice(1);
-             const combinations = head.flatMap(h => current.map(c => [h, c].flat().join('###'))); // Use separator to flatten temporarily
-             // This simple cartesian is getting complex for TS, let's use the proven reducer method:
-             return [];
-        };
-        
-        // Proven Cartesian One-Liner
         const cartesianProduct = (arr: any[]) => arr.reduce((a, b) => a.flatMap((c: any) => b.map((d: any) => [c, d].flat())));
         combinations = attrValues.length > 1 ? cartesianProduct(attrValues) : attrValues[0].map(v => [v]);
     }
 
     // 3. Construct Variant Drafts
     const newVariants: VariantDraft[] = combinations.map((combo) => {
-      // Ensure combo is array
       const comboArr = Array.isArray(combo) ? combo : [combo];
       
       const attrMap: Record<string, string> = {};
@@ -225,19 +216,20 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
       return {
         name: nameParts.join(' / '),
-        sku: '', // User must fill or auto-gen later
+        sku: '', 
         price: 0,
         cost_price: 0,
         stock_quantity: 0,
+        units_per_pack: 1, // UPGRADE: Default to 1
         attributes: attrMap,
-        uom_id: null // Inherits from parent
+        uom_id: null 
       };
     });
 
     // 4. Update State & UI
     setVariants(newVariants);
     toast.success(`Success: Generated ${newVariants.length} variants.`);
-    setActiveTab("preview"); // Automatically move to preview tab
+    setActiveTab("preview"); 
   };
 
   // --- Logic: Data Mutation ---
@@ -284,30 +276,31 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       
       const businessId = profile?.business_id;
 
-      // 3. Create Parent Product
+      // 3. Create Parent Product (Upgraded with Tax Category)
       const { data: product, error: prodError } = await supabase
         .from('products')
         .insert({
           name: productName,
-          category_id: categoryId ? parseInt(categoryId) : null, // Keep parseInt for Category
-          uom_id: uomId ? uomId : null, // <--- FIXED: Removed parseInt() (UUID is a string)
+          category_id: categoryId ? parseInt(categoryId) : null,
+          uom_id: uomId ? uomId : null, 
           business_id: businessId,
-          is_active: true
+          is_active: true,
+          tax_category_code: taxCategoryCode.toUpperCase() // UPGRADE: Wire to Global Tax Router
         })
         .select()
         .single();
 
       if (prodError) throw prodError;
 
-      // 4. Prepare Variants Payload
+      // 4. Prepare Variants Payload (Upgraded with Units Per Pack)
       const variantsPayload = variants.map(v => ({
         product_id: product.id,
         sku: v.sku,
         price: v.price,
         cost_price: v.cost_price,
         stock_quantity: v.stock_quantity,
+        units_per_pack: v.units_per_pack, // UPGRADE: Fractional Inventory Link
         attributes: v.attributes,
-        // FIXED: Removed parseInt() here as well. Uses variant specific UOM or falls back to parent UOM
         uom_id: v.uom_id ? v.uom_id : (uomId ? uomId : null), 
         business_id: businessId,
       }));
@@ -334,6 +327,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
     setProductName('');
     setCategoryId(null);
     setUomId(null);
+    setTaxCategoryCode('STANDARD');
     setIsMultiVariant(false);
     setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Size', inputValue: '', values: [] }]);
@@ -367,8 +361,8 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
           <div className="flex-1 py-4 space-y-6">
               
-              {/* SECTION 1: IDENTITY */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* SECTION 1: IDENTITY (Upgraded with Global Tax Routing) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                       <Label>Product Name <span className="text-red-500">*</span></Label>
                       <Input 
@@ -388,6 +382,18 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                               ))}
                           </SelectContent>
                       </Select>
+                  </div>
+                  {/* UPGRADE: Tax Category Selector */}
+                  <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Fingerprint className="w-3 h-3 text-blue-500"/>
+                        Global Tax Category
+                      </Label>
+                      <Input 
+                        value={taxCategoryCode} 
+                        onChange={e => setTaxCategoryCode(e.target.value)} 
+                        placeholder="STANDARD, MEDICINE, etc."
+                      />
                   </div>
               </div>
 
@@ -423,9 +429,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                           checked={isMultiVariant} 
                           onCheckedChange={(checked) => {
                               setIsMultiVariant(checked);
-                              // If turning off, reset to single default variant
                               if (!checked) setVariants([{ ...DEFAULT_VARIANT }]);
-                              // If turning on, ensure we are on the config tab
                               if (checked) setActiveTab("configuration");
                           }} 
                       />
@@ -437,11 +441,11 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
               <hr className="border-dashed" />
 
-              {/* SECTION 2: VARIANT CONFIGURATION */}
+              {/* SECTION 2: VARIANT CONFIGURATION (Upgraded with Units Per Pack) */}
               
               {!isMultiVariant ? (
                   // --- SIMPLE MODE (SINGLE VARIANT) ---
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg border">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-lg border">
                       <div className="space-y-2">
                           <Label>Selling Price</Label>
                           <Input 
@@ -467,6 +471,18 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                               placeholder="0"
                               value={variants[0].stock_quantity} 
                               onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))}
+                          />
+                      </div>
+                      {/* UPGRADE: Units Per Pack Input */}
+                      <div className="space-y-2">
+                          <Label className="flex items-center gap-1">
+                            <Calculator className="w-3 h-3 text-slate-400"/>
+                            Units/Pack
+                          </Label>
+                          <Input 
+                              type="number" 
+                              value={variants[0].units_per_pack} 
+                              onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))}
                           />
                       </div>
                       <div className="space-y-2">
@@ -539,7 +555,7 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                           </div>
                       </TabsContent>
 
-                      {/* SUB-TAB 2: VARIANT PREVIEW TABLE */}
+                      {/* SUB-TAB 2: VARIANT PREVIEW TABLE (Upgraded with Units/Pack column) */}
                       <TabsContent value="preview" className="px-2">
                           {variants.length > 0 && variants[0].attributes && Object.keys(variants[0].attributes).length > 0 ? (
                               <div className="border rounded-md overflow-hidden">
@@ -549,8 +565,9 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                                               <tr>
                                                   <th className="p-3 font-medium">Variant Name</th>
                                                   <th className="p-3 font-medium w-24">Price</th>
-                                                  <th className="p-3 font-medium w-24">Cost</th>
-                                                  <th className="p-3 font-medium w-24">Stock</th>
+                                                  <th className="p-3 font-medium w-20">Cost</th>
+                                                  <th className="p-3 font-medium w-20">Stock</th>
+                                                  <th className="p-3 font-medium w-20">U/Pack</th>
                                                   <th className="p-3 font-medium w-32">SKU</th>
                                               </tr>
                                           </thead>
@@ -582,6 +599,15 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                                                               className="h-8 bg-white" 
                                                               value={v.stock_quantity} 
                                                               onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))}
+                                                          />
+                                                      </td>
+                                                      {/* UPGRADE: Units Per Pack Column */}
+                                                      <td className="p-2">
+                                                          <Input 
+                                                              type="number" 
+                                                              className="h-8 bg-white" 
+                                                              value={v.units_per_pack} 
+                                                              onChange={e => updateVariant(idx, 'units_per_pack', Number(e.target.value))}
                                                           />
                                                       </td>
                                                       <td className="p-2">
