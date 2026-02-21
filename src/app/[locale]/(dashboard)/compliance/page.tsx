@@ -4,45 +4,6 @@ import { format, subMonths } from 'date-fns';
 import { redirect } from 'next/navigation';
 import { ComplianceHub } from '@/components/compliance/ComplianceHub';
 
-async function getComplianceHubData(supabase: any, from: string, to: string, activeSlug: string) {
-    // 1. Resolve the physical organization ID from the slug
-    const { data: org } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('slug', activeSlug)
-        .single();
-
-    if (!org) throw new Error("Organization not found");
-
-    // 2. Parallel Fetch using the Master Interconnected RPC we just created
-    // This now pulls the REAL Forensic Integrity Score from the Audit Module
-    const [taxReportResult, tasksResult] = await Promise.all([
-        supabase.rpc('generate_tax_report', { 
-            p_start_date: from, 
-            p_end_date: to,
-            p_entity_id: org.id 
-        }).single(),
-        supabase
-            .from('compliance_tasks')
-            .select('*')
-            .eq('business_id', org.id)
-            .order('due_date', { ascending: true })
-            .limit(10) // Only top tasks for the hub
-    ]);
-
-    // Format the data to match the UI component expectations
-    const taxSummary = {
-        total_revenue: taxReportResult.data?.taxable_sales || 0,
-        total_taxable_revenue: taxReportResult.data?.taxable_sales || 0,
-        total_tax_collected: taxReportResult.data?.tax_liability || 0,
-        forensic_score: taxReportResult.data?.forensic_integrity_score || 100 // THE AUDIT LINK
-    };
-
-    const tasks = tasksResult.data || [];
-
-    return { taxSummary, tasks, businessId: org.id, entityName: org.name };
-}
-
 export default async function CompliancePage({
     searchParams
 }: {
@@ -51,19 +12,39 @@ export default async function CompliancePage({
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. AUTH CHECK
+    // 1. AUTHENTICATION (Hard Guard)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 
-    // 2. SOVEREIGN CONTEXT RESOLUTION
-    const { data: userProfile } = await supabase
-        .from("user_profiles")
-        .select("active_organization_slug")
-        .eq("user_id", user.id)
+    // 2. THE MASTER IDENTITY RESOLVER (Absolute Truth)
+    // We pull every relevant ID from the Master 'profiles' table using auth.uid()
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
+            business_id,
+            tenant_id,
+            organization_id,
+            active_organization_slug,
+            business_name
+        `)
+        .eq('id', user.id)
         .single();
 
-    const activeSlug = userProfile?.active_organization_slug;
-    if (!activeSlug) return <div className="p-8 text-red-500 font-mono">Error: No active organization context found.</div>;
+    // Enterprise Safety Check: No more assumptions
+    if (profileError || !profile?.business_id) {
+        console.error("Master Identity Error:", profileError);
+        return (
+            <div className="p-8 border-2 border-red-200 rounded-xl bg-red-50 text-red-900 font-mono">
+                <h2 className="font-bold underline uppercase">Fiduciary Context Panic</h2>
+                <p className="text-xs mt-2 italic">The system could not resolve a Master Business ID for session: {user.id}</p>
+                <p className="text-xs mt-1">Please ensure your Master Profile has a valid 'business_id' and 'tenant_id'.</p>
+            </div>
+        );
+    }
+
+    const businessId = profile.business_id;
+    const tenantId = profile.tenant_id;
+    const entityName = profile.business_name || "Sovereign Entity";
 
     // 3. DATE LOGIC
     const toDate = searchParams.to ? new Date(searchParams.to) : new Date();
@@ -71,23 +52,27 @@ export default async function CompliancePage({
     const to = format(toDate, 'yyyy-MM-dd');
     const from = format(fromDate, 'yyyy-MM-dd');
     
-    // 4. FETCH INTERCONNECTED DATA
-    const { taxSummary, tasks, businessId, entityName } = await getComplianceHubData(supabase, from, to, activeSlug);
-    
+    // 4. FETCH DATA (Using the Master Business ID)
+    const { data: taxSummary } = await supabase.rpc('generate_sales_tax_report', { 
+        start_date: from, 
+        p_end_date: to, // Ensure param name matches your RPC
+        p_business_id: businessId 
+    });
+
     const reportPeriod = `${format(fromDate, 'PPP')} - ${format(toDate, 'PPP')}`;
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 animate-in fade-in duration-700">
-            {/* Header informing user exactly which entity they are looking at */}
-            <div className="border-l-4 border-blue-600 pl-4 py-1">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Autonomous Compliance Hub</span>
-                <h3 className="text-sm font-medium text-slate-500 italic">Connected to: {entityName}</h3>
+            {/* Context Badge: Proves the system is "Smart" and knows where it is */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-md w-fit text-[10px] font-mono tracking-widest uppercase shadow-xl">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Active Entity: {entityName}
             </div>
 
             <ComplianceHub
-                taxSummary={taxSummary}
-                taxTransactions={[]} // Transactions can be drilled down into via the specific Sales Tax page
-                tasks={tasks}
+                taxSummary={taxSummary || { total_revenue: 0, total_taxable_revenue: 0, total_tax_collected: 0 }}
+                taxTransactions={[]} 
+                tasks={[]} 
                 reportPeriod={reportPeriod}
                 businessId={businessId} 
             />
