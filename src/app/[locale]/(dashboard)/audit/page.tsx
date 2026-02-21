@@ -1,23 +1,61 @@
-'use client';
-
 import { Suspense } from 'react';
+import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+
+// --- UI COMPONENTS ---
 import AuditLogTable, { AuditLogTableSkeleton } from "@/components/audit/AuditLogTable";
 import AuditKpiCards, { KpiCardSkeleton } from "@/components/audit/AuditKpiCards";
-
-// --- UPGRADE: SOVEREIGN KERNEL COMPONENT IMPORTS ---
 import AuditFindingsTable from "@/components/audit/AuditFindingsTable";
 import AuditIngestionPortal from "@/components/audit/AuditIngestionPortal";
-// --------------------------------------------------
 
-import { Activity, ShieldCheck, Fingerprint, Zap } from 'lucide-react';
+// --- ICONS & UI ---
+import { Activity, ShieldCheck, Fingerprint, Zap, LayoutDashboard } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export default function AuditCenterPage() {
+export default async function AuditCenterPage() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // 1. Enterprise Security Guard
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <Fingerprint className="h-4 w-4" />
+          <AlertTitle>Security Violation</AlertTitle>
+          <AlertDescription>Unauthenticated access to Audit Command is prohibited.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // 2. Resolve Multi-Tenant Organization Identity
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("active_organization_slug")
+    .eq("user_id", user.id)
+    .single();
+
+  const activeSlug = profile?.active_organization_slug;
+
+  let entityName = "Sovereign Entity";
+  if (activeSlug) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("slug", activeSlug)
+      .single();
+    entityName = org?.name || activeSlug;
+  }
+
   return (
-    <main className="container mx-auto py-8 px-4 md:px-8 max-w-[1600px]">
+    <main className="container mx-auto py-8 px-4 md:px-8 max-w-[1600px] animate-in fade-in duration-500">
       <div className="flex flex-col gap-8">
         
-        {/* Header Section (Original logic preserved, enriched with Forensic Identity) */}
+        {/* Header Section: Professional Forensic Branding */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
@@ -25,7 +63,7 @@ export default function AuditCenterPage() {
               Sovereign Audit Command
             </h1>
             <p className="text-muted-foreground max-w-2xl">
-              Continuous monitoring of the 11-industry Sovereign Kernel. 
+              Command Center for <span className="font-semibold text-foreground underline decoration-primary/30">{entityName}</span>. 
               Autonomous Forensic Guard active. All entries are verified 1:1 with the General Ledger.
             </p>
           </div>
@@ -36,16 +74,13 @@ export default function AuditCenterPage() {
         </div>
 
         {/* Top Tier: Forensic Intelligence KPIs */}
-        <Suspense fallback={<KpiCardSkeleton />}>
-          <AuditKpiCards />
+        <Suspense fallback={<div className="grid grid-cols-1 md:grid-cols-4 gap-4"><KpiCardSkeleton /><KpiCardSkeleton /><KpiCardSkeleton /><KpiCardSkeleton /></div>}>
+          <AuditKpiCards entitySlug={activeSlug} />
         </Suspense>
 
-        {/* 
-            UPGRADE: ENTERPRISE TABBED ARCHITECTURE 
-            This organizes the 'Findings' (Exceptions) separately from the 'Logs' (History).
-        */}
+        {/* Tabbed Forensic Architecture */}
         <Tabs defaultValue="findings" className="space-y-6">
-          <TabsList className="grid grid-cols-3 w-full md:w-[600px]">
+          <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid grid-cols-3 w-full md:w-[600px]">
             <TabsTrigger value="findings" className="font-bold flex gap-2">
                <ShieldCheck size={14} /> Findings Register
             </TabsTrigger>
@@ -57,32 +92,35 @@ export default function AuditCenterPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* 
-              UPGRADE Content 1: Findings Table 
-              Displays rows from 'sovereign_audit_anomalies'
-          */}
+          {/* Findings Tab */}
           <TabsContent value="findings" className="space-y-4 outline-none">
-            <Suspense fallback={<AuditLogTableSkeleton />}>
-              <AuditFindingsTable />
+            <Suspense fallback={<AuditLogTableSkeleton rowCount={8} />}>
+              <AuditFindingsTable entitySlug={activeSlug} />
             </Suspense>
           </TabsContent>
 
-          {/* 
-              UPGRADE Content 2: Ingestion Portal 
-              Entry point for autonomous kernel seal (v10.1)
-          */}
+          {/* Ingestion Portal Tab */}
           <TabsContent value="ingestion" className="outline-none">
-             <AuditIngestionPortal />
+             <AuditIngestionPortal activeEntitySlug={activeSlug} />
           </TabsContent>
 
-          {/* Original Logic Content: Raw Audit Log Table */}
+          {/* Raw Historical Logs Tab */}
           <TabsContent value="logs" className="outline-none">
-            <Suspense fallback={<AuditLogTableSkeleton />}>
-              <AuditLogTable />
+            <Suspense fallback={<AuditLogTableSkeleton rowCount={10} />}>
+              <AuditLogTable activeEntitySlug={activeSlug} />
             </Suspense>
           </TabsContent>
         </Tabs>
         
+        {/* Footer Audit Statement */}
+        <div className="pt-8 border-t flex items-center justify-between opacity-50">
+           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+             <LayoutDashboard size={12} /> Unified Forensic Intelligence Hub
+           </div>
+           <div className="text-[9px] font-mono italic">
+             Trace: SLG-{activeSlug?.substring(0,8).toUpperCase()} // v10.1 Stable
+           </div>
+        </div>
       </div>
     </main>
   );
