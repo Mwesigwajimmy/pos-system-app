@@ -239,7 +239,7 @@ const navSections: NavItem[] = [
 {
         type: 'accordion', title: 'Compliance Hub', icon: Gavel, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], module: 'compliance',
         subItems: [
-            { href: '/compliance/hub', label: 'Compliance Hub Main', icon: LayoutDashboard },
+            { href: '/compliance', label: 'Compliance Hub Main', icon: LayoutDashboard },
             { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
             { href: '/compliance/risk-dashboard', label: 'Compliance Risk Dashboard', icon: BarChart3 },
             { href: '/compliance/kyc-aml', label: 'KYC / AML Monitor', icon: UserCheckIcon },
@@ -251,7 +251,7 @@ const navSections: NavItem[] = [
             { href: '/compliance/drilldown', label: 'Compliance Drilldown', icon: Activity },
             { href: '/compliance/tax-reports', label: 'Tax Report Generator', icon: FileText }, 
             { href: '/compliance/checklist', label: 'Compliance Checklist', icon: ListChecks },
-            { href: '/compliance/tax-settings', label: 'Tax Settings & Reports', icon: Settings },
+            { href: '/compliance/revolutionary-compliance', label: 'Revolutionary Intelligence', icon: Zap },
         ]
     },
 
