@@ -14,30 +14,24 @@ export default async function ComplianceDrilldownPage() {
     if (authError || !user) redirect('/login');
 
     // 2. MASTER IDENTITY RESOLUTION (Absolute Truth)
-    // We fetch from 'profiles' because our audit proved that's where tenant_id lives.
+    // We fetch from 'profiles' because our audit proved that's where the IDs live.
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("tenant_id, active_organization_slug, business_name")
+        .select("business_id, tenant_id, active_organization_slug, business_name")
         .eq("id", user.id)
         .single();
 
     // 3. ENTERPRISE SAFETY GATE
-    if (profileError || !profile?.tenant_id) {
+    if (profileError || !profile?.business_id) {
         console.error("Fiduciary Identity Failure:", profileError);
         return (
-            <div className="p-8">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Identity Perimeter Breach</AlertTitle>
-                    <AlertDescription>
-                        The forensic engine could not resolve a valid Tenant ID for this session. 
-                        Drilldown capabilities are locked until profile synchronization is complete.
-                    </AlertDescription>
-                </Alert>
+            <div className="p-8 text-red-500 font-mono italic underline">
+                CRITICAL ERROR: No Business ID resolved in Master Profile.
             </div>
         );
     }
 
+    // Logic: Use business_name if available, fallback to slug, then default
     const entityName = profile.business_name || profile.active_organization_slug || "Sovereign Entity";
 
     return (
@@ -64,17 +58,18 @@ export default async function ComplianceDrilldownPage() {
                 </div>
             </div>
 
-            {/* Main Component: Physically Connected via Real Tenant ID */}
+            {/* Main Component: Physically Connected via the Real ID */}
             <div className="grid gap-6">
                 <ComplianceDrilldown 
-                    tenantId={profile.tenant_id} 
+                    // We pass business_id because our component update uses this for the .eq() filter
+                    tenantId={profile.business_id} 
                     user={user.email || 'SYSTEM_OPERATOR'}
                 />
             </div>
 
             {/* Fiduciary Disclaimer Footer */}
             <p className="text-[9px] text-muted-foreground text-center mt-12 uppercase tracking-[0.3em] font-medium opacity-40">
-                Data Sovereignty Verified // Multi-Tenant Perimeter ID: {profile.tenant_id.substring(0,8).toUpperCase()}
+                Data Sovereignty Verified // Multi-Tenant Perimeter ID: {profile.business_id.substring(0,8).toUpperCase()}
             </p>
         </div>
     );

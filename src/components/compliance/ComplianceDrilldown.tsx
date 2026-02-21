@@ -34,7 +34,9 @@ interface ComplianceRow {
 // --- API Functions ---
 async function fetchComplianceMatrix(tenantId: string, refType?: string, refId?: string) {
   const db = createClient();
-  let q = db.from("compliance_matrix").select("*").eq("tenant_id", tenantId);
+  
+  // FIXED: Changed 'tenant_id' to 'business_id' to match your actual database schema
+  let q = db.from("compliance_matrix").select("*").eq("business_id", tenantId);
   
   if (refType) q = q.eq("entity_type", refType);
   if (refId) q = q.eq("entity_id", refId);
@@ -56,12 +58,14 @@ async function addRemediationNote({
   tenantId: string;
 }) {
   const db = createClient();
+  
+  // FIXED: Changed 'tenant_id' to 'business_id' to match your actual database schema
   const { error } = await db.from("compliance_matrix").update({
     notes: note,
     remediation_status: "REMEDIATION",
     last_reviewed_at: new Date().toISOString(),
     flagged_by: user
-  }).eq("id", rowId).eq("tenant_id", tenantId);
+  }).eq("id", rowId).eq("business_id", tenantId);
   
   if (error) throw error;
 }
