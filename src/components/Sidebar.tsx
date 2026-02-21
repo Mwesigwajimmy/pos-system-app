@@ -227,9 +227,9 @@ const navSections: NavItem[] = [
             { href: '/audit/controls', label: 'Internal Controls Matrix', icon: ShieldCheck },
             { href: '/audit/trail-viewer', label: 'Audit Trail Viewer', icon: Eye },
             { href: '/audit/ingestion', label: 'Audit Ingestion Portal', icon: UploadCloud },
-            { href: '/audit/kpi', label: 'Audit KPI Cards', icon: Activity },
+            { href: '/audit/kpi-cards', label: 'Audit KPI Cards', icon: Activity },
             { href: '/audit/logs', label: 'System Audit Log', icon: History }, // ADDED: Matches /audit/logs/page.tsx
-            { href: '/audit/workflow', label: 'Audit Action Workflow', icon: GitGraph },
+            { href: '/audit/action-workflow', label: 'Audit Action Workflow', icon: GitGraph },
             { href: '/audit/assignments', label: 'Auditor Assignments', icon: UserCog },
             { href: '/audit/files', label: 'Audit File Manager', icon: Archive },
             { href: '/audit/liveguard', label: 'Sovereign LiveGuard', icon: ShieldAlert },
