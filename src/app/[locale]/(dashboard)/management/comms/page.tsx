@@ -1,30 +1,18 @@
-'use client';
-
 import React, { Suspense } from 'react';
 import { 
-  MessageSquare, 
-  Zap, 
-  Bot, 
-  ShieldCheck, 
-  Fingerprint, 
-  Loader2, 
-  Activity
+  MessageSquare, Zap, Bot, ShieldCheck, Fingerprint, Loader2, Activity 
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UnifiedCommsHub from "@/components/management/UnifiedCommsHub";
 import AgenticDraftsPanel from "@/components/procurement/AgenticDraftsPanel";
 import { Badge } from "@/components/ui/badge";
 
-/**
- * SOVEREIGN COMMS COMMAND CENTER
- * Integrated with Kernel v10.2 Agentic Sourcing Handshake
- */
-export default function CommsCommandPage() {
+export default async function CommsCommandPage() {
   return (
     <main className="container mx-auto py-8 px-4 md:px-8 max-w-[1600px] animate-in fade-in duration-700">
       <div className="flex flex-col gap-8">
         
-        {/* Enterprise Header Section */}
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
           <div className="flex flex-col gap-2">
             <h1 className="text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
@@ -48,14 +36,14 @@ export default function CommsCommandPage() {
           </div>
         </div>
 
-        {/* Intelligence Alert Banner */}
+        {/* AI Agent Status Banner */}
         <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-4">
            <div className="bg-white p-2 rounded-lg shadow-sm">
               <Bot size={24} className="text-primary" />
            </div>
            <div className="text-sm">
               <span className="font-bold text-primary block uppercase text-[10px] tracking-widest">AI Agent Status</span>
-              <p className="text-slate-600">The <strong>Sourcing Orchestrator</strong> is currently monitoring 1,200+ stock variants for reorder thresholds.</p>
+              <p className="text-slate-600">The <strong>Sourcing Orchestrator</strong> is currently monitoring active stock variants for reorder thresholds.</p>
            </div>
            <Badge variant="outline" className="ml-auto border-primary/20 text-primary bg-white flex gap-2 py-1 px-3">
               <Activity size={12} className="animate-spin" />
@@ -63,7 +51,6 @@ export default function CommsCommandPage() {
            </Badge>
         </div>
 
-        {/* Main Interface Tabs */}
         <Tabs defaultValue="live_hub" className="space-y-6">
           <div className="flex items-center justify-between">
             <TabsList className="bg-slate-100 p-1 rounded-xl h-12">
@@ -81,26 +68,16 @@ export default function CommsCommandPage() {
             </div>
           </div>
 
-          {/* live Hub Content: The Unified Comms Component */}
           <TabsContent value="live_hub" className="outline-none">
-            <Suspense fallback={
-              <div className="h-[80vh] w-full bg-slate-50 animate-pulse rounded-xl border border-slate-100 flex items-center justify-center">
-                 <Loader2 className="w-10 h-10 animate-spin text-slate-200" />
-              </div>
-            }>
+            <Suspense fallback={<div className="h-[80vh] w-full bg-slate-50 animate-pulse rounded-xl border border-slate-100" />}>
               <UnifiedCommsHub />
             </Suspense>
           </TabsContent>
 
-          {/* Agentic Drafts Content: The Suggestion Engine */}
           <TabsContent value="agentic_drafts" className="outline-none">
-            <Suspense fallback={
-              <div className="h-[60vh] w-full bg-slate-50 animate-pulse rounded-xl border border-slate-100" />
-            }>
+            <Suspense fallback={<div className="h-[60vh] w-full bg-slate-50 animate-pulse rounded-xl" />}>
               <div className="grid gap-6">
                 <AgenticDraftsPanel />
-                
-                {/* Visual Footer for Drafts */}
                 <div className="p-8 border-2 border-dashed border-slate-100 rounded-3xl text-center space-y-2 opacity-50">
                    <Zap size={32} className="mx-auto text-slate-200" />
                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Agentic Sourcing History (24h)</p>
@@ -110,7 +87,6 @@ export default function CommsCommandPage() {
             </Suspense>
           </TabsContent>
         </Tabs>
-        
       </div>
     </main>
   );

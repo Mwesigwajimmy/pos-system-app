@@ -256,11 +256,21 @@ const navSections: NavItem[] = [
     },
 
 {
-        type: 'accordion', title: 'Accountant Tools', icon: Calculator, roles: ['admin', 'accountant', 'architect'], module: 'accountant',
+        type: 'accordion', 
+        title: 'Accountant Tools', 
+        icon: Calculator, 
+        roles: ['admin', 'accountant', 'architect'], 
+        module: 'accountant',
         subItems: [
+            // ADDED: The root dashboard (app/accountant/page.tsx)
+            { href: '/accountant', label: 'Accountant Command', icon: LayoutDashboard }, 
+            
             { href: '/accountant/ai-assistant', label: 'AI Audit Assistant', icon: Sparkles },
-            { href: '/accountant/management', label: 'Auditor Management', icon: UsersRound },
-            { href: '/accountant/invite-auditor', label: 'Invite Auditor', icon: UserPlus }, 
+            
+            // FIXED: Path changed from /management to /auditor-management to match your folder
+            { href: '/accountant/auditor-management', label: 'Auditor Management', icon: UsersRound }, 
+            
+            { href: '/accountant/invite-auditor', label: 'Invite Auditor', icon: UserPlus },
             { href: '/accountant/chart-of-accounts', label: 'Chart of Accounts Table', icon: ListChecks },
             { href: '/accountant/export', label: 'Full Data Export', icon: UploadCloud },
         ]
@@ -499,7 +509,7 @@ const navSections: NavItem[] = [
             { href: '/settings/locations', label: 'Physical Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin', 'owner'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
-            { href: '/management/comms-hub', label: 'Unified Comms Hub', icon: MessageSquare },   
+            { href: '/management/comms', label: 'Unified Comms Hub', icon: MessageSquare },   
             { href: '/management/timecard-report', label: 'Timecard Report', icon: FileSpreadsheet },
             { href: '/management/monitoring', label: 'Live System Monitor', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale', 'Distribution / Wholesale Supply'] }, 
             { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale'] },
