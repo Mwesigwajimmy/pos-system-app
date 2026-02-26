@@ -33,7 +33,8 @@ import {
   MapPin,
   Activity,
   Box,
-  Zap
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 
 import AddProductDialog from '@/components/inventory/AddProductDialog';
@@ -67,7 +68,6 @@ interface Location {
 
 // --- DATA ACCESS LAYER ---
 
-// UPGRADE: Added p_location_id to ensure branch-level isolation
 async function fetchProducts(pagination: PaginationState, searchTerm: string, businessEntityId?: string, locationId?: string) {
   const supabase = createClient();
   const { data, error } = await supabase.rpc('get_paginated_products', {
@@ -75,7 +75,7 @@ async function fetchProducts(pagination: PaginationState, searchTerm: string, bu
     p_page_size: pagination.pageSize,
     p_search_text: searchTerm || null,
     p_business_entity_id: businessEntityId || null,
-    p_location_id: locationId || null, // NEW: Filter by specific branch
+    p_location_id: locationId || null, // Ensure this is always passed
   });
   if (error) throw new Error(error.message);
   return data;

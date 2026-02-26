@@ -81,15 +81,9 @@ async function fetchRecipe(compositeVariantId: number): Promise<Ingredient[]> {
     if (error) throw new Error(error.message);
     
     const details = data as any;
-    if (!details || !details.components) return [];
+    if (!details || !details.components) return [] as any;
 
-    return details.components.map((c: any) => ({
-        variant_id: c.component_variant_id,
-        name: c.component_name,
-        quantity_used: c.quantity,
-        unit_cost: c.unit_cost || 0, // UPGRADE: Pulling real cost from DB
-        uom_name: c.uom_name
-    }));
+    return details; // Returning the whole object so the useEffect can extract .components
 }
 
 async function saveRecipe({ compositeVariantId, ingredients }: SaveRecipePayload) {
@@ -182,9 +176,17 @@ export default function CompositeBuilder() {
         enabled: !!selectedComposite
     });
 
+    // UPDATED: Fixed handling for DB object return
     useEffect(() => {
-        if (selectedComposite && originalRecipe) { setIngredients(originalRecipe); setIsDirty(false); }
-        else if (selectedComposite && !isLoadingRecipe) { setIngredients([]); setIsDirty(false); }
+        // @ts-ignore - handling the object return from DB
+        if (selectedComposite && originalRecipe && originalRecipe.components) {
+            // FIX: We must only set the 'components' array, not the whole object
+            setIngredients(originalRecipe.components); 
+            setIsDirty(false);
+        } else if (selectedComposite && !isLoadingRecipe) {
+            setIngredients([]);
+            setIsDirty(false);
+        }
     }, [originalRecipe, selectedComposite, isLoadingRecipe]);
 
     const mutation = useMutation({
@@ -220,6 +222,17 @@ export default function CompositeBuilder() {
         newIngredients[index].quantity_used = qty;
         setIngredients(newIngredients);
         setIsDirty(true);
+    };
+
+    const handleSave = () => {
+        if (!selectedComposite) return;
+        mutation.mutate({
+            compositeVariantId: selectedComposite.value,
+            ingredients: ingredients.map(ing => ({
+                variant_id: ing.variant_id,
+                quantity_used: ing.quantity_used
+            }))
+        });
     };
 
     if (isLoadingVariants) return <div className="p-10 text-center animate-pulse text-slate-300">Synchronizing Financial Pillars...</div>;
@@ -303,7 +316,7 @@ export default function CompositeBuilder() {
                                                         <div className="flex items-center gap-2 bg-white rounded-lg border p-1 shadow-sm focus-within:ring-1 ring-primary/30 transition-all">
                                                             <Input 
                                                                 type="number" 
-                                                                step="0.0001" // UPGRADE: Forensic Precision
+                                                                step="0.0001" 
                                                                 value={ing.quantity_used} 
                                                                 onChange={e => handleUpdateQuantity(idx, Number(e.target.value))} 
                                                                 className="h-8 border-none text-center font-black text-xs focus-visible:ring-0" 

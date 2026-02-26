@@ -2,17 +2,31 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { notFound, redirect } from 'next/navigation';
 
-// --- CORE COMPONENTS ---
+// --- CORE LOGIC COMPONENTS ---
 import { InventoryTrackingManager, TrackingMethod } from '@/components/inventory/InventoryTrackingManager';
 import { SerialNumberManager, SerialNumberEntry } from '@/components/inventory/SerialNumberManager';
 import { LotNumberManager, LotEntry } from '@/components/inventory/LotNumberManager';
 import { ReorderPointManager } from '@/components/inventory/ReorderPointManager';
 
-// --- ICONS & UI ---
-import { Package, ShieldCheck, Zap, Activity, AlertCircle, Fingerprint } from 'lucide-react';
+// --- UI COMPONENTS ---
+import { 
+  Package, 
+  ShieldCheck, 
+  Zap, 
+  Activity, 
+  AlertCircle, 
+  Fingerprint 
+} from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 
+// --- INTERFACES ---
 interface ProductDB {
   id: string;
   name: string;
@@ -91,7 +105,7 @@ export default async function ProductDetailsPage({ params }: { params: { product
     notFound();
   }
 
-  // 4. NEURAL DATA MAPPING
+  // 4. NEURAL DATA MAPPING (Transforming DB to Component Props)
   const serialData: SerialNumberEntry[] = (product.serial_numbers || []).map(s => ({
     id: s.id,
     serialCode: s.serial_number,
@@ -113,7 +127,7 @@ export default async function ProductDetailsPage({ params }: { params: { product
   return (
     <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 animate-in fade-in duration-700">
       
-      {/* High-Tier Forensic Header */}
+      {/* --- High-Tier Forensic Header --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-8">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -140,13 +154,13 @@ export default async function ProductDetailsPage({ params }: { params: { product
                 </div>
             </div>
             <div className="h-10 w-px bg-slate-200" />
-            <Badge className="bg-slate-900 px-4 py-1 text-[10px] tracking-widest">
-                {product.status?.toUpperCase() || 'ACTIVE'}
+            <Badge className="bg-slate-900 px-4 py-1 text-[10px] tracking-widest uppercase">
+                {product.status || 'ACTIVE'}
             </Badge>
         </div>
       </div>
 
-      {/* Main Management Grid */}
+      {/* --- Main Management Grid --- */}
       <div className="grid gap-8 grid-cols-1 lg:grid-cols-12">
         
         {/* Left Column: Core Configuration */}
@@ -170,9 +184,11 @@ export default async function ProductDetailsPage({ params }: { params: { product
         <div className="lg:col-span-8 space-y-8">
             {product.inventory_tracking_method === 'SERIAL' && (
                 <div className="animate-in slide-in-from-right-4 duration-500">
-                    <Card className="border-none shadow-2xl">
+                    <Card className="border-none shadow-2xl rounded-3xl overflow-hidden">
                         <CardHeader className="bg-slate-50/80 border-b">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest">Individual Asset Tracking</CardTitle>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                <Fingerprint size={16} /> Individual Asset Tracking
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
                             <SerialNumberManager data={serialData} />
@@ -183,9 +199,11 @@ export default async function ProductDetailsPage({ params }: { params: { product
 
             {product.inventory_tracking_method === 'LOT' && (
                 <div className="animate-in slide-in-from-right-4 duration-500">
-                    <Card className="border-none shadow-2xl">
+                    <Card className="border-none shadow-2xl rounded-3xl overflow-hidden">
                         <CardHeader className="bg-slate-50/80 border-b">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest">Batch & Expiry Ledger</CardTitle>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                <Activity size={16} /> Batch & Expiry Ledger
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
                             <LotNumberManager data={lotData} />
@@ -195,17 +213,18 @@ export default async function ProductDetailsPage({ params }: { params: { product
             )}
 
             {product.inventory_tracking_method === 'SIMPLE' && (
-                <div className="p-20 text-center border-2 border-dashed rounded-3xl bg-slate-50/50">
+                <div className="p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
                     <Activity size={48} className="mx-auto text-slate-200 mb-4" />
                     <p className="font-black uppercase tracking-widest text-slate-300 italic">
                         Standard Inventory Sync Active
                     </p>
+                    <p className="text-[10px] text-slate-400 mt-2 font-bold">No serialized or batch tracking required for this asset.</p>
                 </div>
             )}
         </div>
       </div>
 
-      {/* Audit Policy Footer */}
+      {/* --- Audit Policy Footer --- */}
       <div className="mt-12 pt-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 opacity-50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
           <div className="flex items-center gap-2">
             <ShieldCheck size={14} className="text-emerald-600" />
