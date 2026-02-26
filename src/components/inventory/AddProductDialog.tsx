@@ -88,8 +88,6 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   const [isMultiVariant, setIsMultiVariant] = useState(false);
   
   // --- Unified Variant State (Single Source of Truth) ---
-  // If isMultiVariant is false, we only use variants[0].
-  // If isMultiVariant is true, we use the whole array.
   const [variants, setVariants] = useState<VariantDraft[]>([{ ...DEFAULT_VARIANT }]);
 
   // --- Attribute Builder State (For Generator) ---
@@ -114,9 +112,9 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       };
       fetchUnits();
     }
-  }, [open]);
+  }, [open, supabase]);
 
-  // --- Logic: Add New Unit (New Feature) ---
+  // --- Logic: Add New Unit ---
   const handleAddUnit = async () => {
     if (!newUnitName.trim() || !newUnitAbbr.trim()) {
       toast.error("Please provide both a name and an abbreviation.");
@@ -125,7 +123,6 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
     setIsSavingUnit(true);
     try {
-      // Get current user business context securely
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Unauthorized");
       
@@ -148,12 +145,10 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
 
       if (error) throw error;
 
-      // Update local state
       setUnits(prev => [...prev, newUnit]);
-      setUomId(String(newUnit.id)); // Auto-select the new unit
+      setUomId(String(newUnit.id)); 
       toast.success("New unit added successfully!");
       
-      // Reset and close
       setNewUnitName('');
       setNewUnitAbbr('');
       setIsUnitModalOpen(false);
@@ -167,9 +162,6 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
   // --- Logic: Variant Generation ---
   
   const generateVariants = () => {
-    console.log("Starting Variant Generation Logic...");
-
-    // 1. Parse and Validate Attributes
     const validAttributes = attributes
       .map(attr => ({
         name: attr.name.trim(),
@@ -178,33 +170,21 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
       .filter(attr => attr.values.length > 0 && attr.name.trim() !== '');
 
     if (validAttributes.length === 0) {
-      toast.error("Configuration Error: Please define at least one attribute with values (e.g. Size: S, M, L).");
+      toast.error("Configuration Error: Please define at least one attribute with values.");
       return;
     }
 
-    // 2. Cartesian Product Algorithm (Combinatorics)
-    const cartesian = (args: string[][]) => args.reduce(
-      (a, b) => a.flatMap(d => b.map(e => [d, e].flat())), 
-      [[]] as string[][]
-    );
-    
-    // Fix: Handle the case of 1 attribute array correctly vs multiple
     const attrValues = validAttributes.map(a => a.values);
-    
-    // If we have only 1 attribute, cartesian logic needs a slight adjust or we map directly
     let combinations: string[][];
     if (validAttributes.length === 1) {
         combinations = attrValues[0].map(v => [v]);
     } else {
-        // Standard cartesian for 2+ arrays
         const cartesianProduct = (arr: any[]) => arr.reduce((a, b) => a.flatMap((c: any) => b.map((d: any) => [c, d].flat())));
-        combinations = attrValues.length > 1 ? cartesianProduct(attrValues) : attrValues[0].map(v => [v]);
+        combinations = cartesianProduct(attrValues);
     }
 
-    // 3. Construct Variant Drafts
     const newVariants: VariantDraft[] = combinations.map((combo) => {
       const comboArr = Array.isArray(combo) ? combo : [combo];
-      
       const attrMap: Record<string, string> = {};
       let nameParts: string[] = [];
 
@@ -220,106 +200,98 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
         price: 0,
         cost_price: 0,
         stock_quantity: 0,
-        units_per_pack: 1, // UPGRADE: Default to 1
+        units_per_pack: 1, 
         attributes: attrMap,
         uom_id: null 
       };
     });
 
-    // 4. Update State & UI
     setVariants(newVariants);
     toast.success(`Success: Generated ${newVariants.length} variants.`);
     setActiveTab("preview"); 
   };
 
-  // --- Logic: Data Mutation ---
-
-  // Helper to update a specific variant in the array
   const updateVariant = (index: number, field: keyof VariantDraft, value: any) => {
     const updated = [...variants];
     updated[index] = { ...updated[index], [field]: value };
     setVariants(updated);
   };
 
-  // Helper for Attribute Builder Inputs
   const updateAttributeInput = (index: number, val: string) => {
     const updated = [...attributes];
     updated[index].inputValue = val;
     setAttributes(updated);
   };
 
-  const addAttributeRow = () => {
-    setAttributes([...attributes, { name: '', inputValue: '', values: [] }]);
-  };
+  const addAttributeRow = () => setAttributes([...attributes, { name: '', inputValue: '', values: [] }]);
+  const removeAttributeRow = (index: number) => setAttributes(attributes.filter((_, i) => i !== index));
 
-  const removeAttributeRow = (index: number) => {
-    setAttributes(attributes.filter((_, i) => i !== index));
-  };
-
-  // --- Logic: Submission (Transactional) ---
+  // --- Logic: Submission (ENTERPRISE UPGRADE) ---
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      // 1. Validation
       if (!productName.trim()) throw new Error("Product Name is required.");
-      if (isMultiVariant && variants.length === 0) throw new Error("Multi-variant mode enabled but no variants generated.");
 
-     // 2. Auth Context
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Unauthorized.");
       
       const { data: profile } = await supabase
         .from('profiles')
-        .select('business_id')
+        .select('business_id, tenant_id')
         .eq('id', user.id)
         .single();
       
-      const businessId = profile?.business_id;
+      const bizId = profile?.business_id;
+      const tenantId = profile?.tenant_id;
 
-      // 3. Create Parent Product (Upgraded with Tax Category)
+      // 1. Create Parent Product (Absolute Handshake)
       const { data: product, error: prodError } = await supabase
         .from('products')
         .insert({
           name: productName,
           category_id: categoryId ? parseInt(categoryId) : null,
           uom_id: uomId ? uomId : null, 
-          business_id: businessId,
+          business_id: bizId,
+          tenant_id: tenantId,
           is_active: true,
-          tax_category_code: taxCategoryCode.toUpperCase() // UPGRADE: Wire to Global Tax Router
+          status: 'active', // FIXED: Resolves "record new has no field status"
+          tax_category_code: taxCategoryCode.toUpperCase()
         })
         .select()
         .single();
 
       if (prodError) throw prodError;
 
-      // 4. Prepare Variants Payload (Upgraded with Units Per Pack)
+      // 2. Prepare Variants (Forensic Alignment)
       const variantsPayload = variants.map(v => ({
         product_id: product.id,
-        sku: v.sku,
+        name: v.name,
+        sku: v.sku || `VAR-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
         price: v.price,
+        selling_price: v.price, // FIXED: Satisfies v8/v10 fractional kernels
         cost_price: v.cost_price,
         stock_quantity: v.stock_quantity,
-        units_per_pack: v.units_per_pack, // UPGRADE: Fractional Inventory Link
+        units_per_pack: v.units_per_pack || 1,
+        status: 'active', // FIXED: Resolves variant-level trigger crashes
         attributes: v.attributes,
         uom_id: v.uom_id ? v.uom_id : (uomId ? uomId : null), 
-        business_id: businessId,
+        business_id: bizId,
+        tenant_id: tenantId
       }));
 
-      // 5. Insert Variants
       const { error: varError } = await supabase.from('product_variants').insert(variantsPayload);
       if (varError) throw varError;
 
       return product;
     },
     onSuccess: () => {
-      toast.success("Product created successfully.");
+      toast.success("Product & Inventory Successfully Sealed");
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
       setOpen(false);
       resetForm();
     },
     onError: (err: any) => {
-      console.error(err);
-      toast.error(err.message || "Failed to create product.");
+      toast.error(err.message || "Fiduciary Handshake Failed.");
     }
   });
 
@@ -332,68 +304,37 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
     setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Size', inputValue: '', values: [] }]);
     setActiveTab("configuration");
-    setIsUnitModalOpen(false);
-    setNewUnitName('');
-    setNewUnitAbbr('');
   };
-
-  // --- Render ---
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(val) => {
-          if (!val) resetForm();
-          setOpen(val);
-      }}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button className="shadow-sm">
-              <Plus className="w-4 h-4 mr-2" /> Add New Product
-          </Button>
+          <Button className="shadow-sm"><Plus className="w-4 h-4 mr-2" /> Add New Product</Button>
         </DialogTrigger>
         
         <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-xl">Create Product</DialogTitle>
-            <DialogDescription>
-              Configure product details, attributes, and stock information.
-            </DialogDescription>
+            <DialogTitle className="text-xl font-black tracking-tight">Create Product</DialogTitle>
+            <DialogDescription>Configure details and stock for the Sovereign Ledger.</DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 py-4 space-y-6">
-              
-              {/* SECTION 1: IDENTITY (Upgraded with Global Tax Routing) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                       <Label>Product Name <span className="text-red-500">*</span></Label>
-                      <Input 
-                          value={productName} 
-                          onChange={e => setProductName(e.target.value)} 
-                          placeholder="e.g. Wireless Mouse" 
-                          autoFocus
-                      />
+                      <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Grass" autoFocus />
                   </div>
                   <div className="space-y-2">
                       <Label>Category</Label>
                       <Select value={categoryId || ''} onValueChange={setCategoryId}>
-                          <SelectTrigger><SelectValue placeholder="Select Category..." /></SelectTrigger>
-                          <SelectContent>
-                              {categories.map(c => (
-                                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                              ))}
-                          </SelectContent>
+                          <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>{categories.map(c => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))}</SelectContent>
                       </Select>
                   </div>
-                  {/* UPGRADE: Tax Category Selector */}
                   <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Fingerprint className="w-3 h-3 text-blue-500"/>
-                        Global Tax Category
-                      </Label>
-                      <Input 
-                        value={taxCategoryCode} 
-                        onChange={e => setTaxCategoryCode(e.target.value)} 
-                        placeholder="STANDARD, MEDICINE, etc."
-                      />
+                      <Label className="flex items-center gap-2"><Fingerprint className="w-3 h-3 text-blue-500"/> Global Tax Category</Label>
+                      <Input value={taxCategoryCode} onChange={e => setTaxCategoryCode(e.target.value)} placeholder="STANDARD" />
                   </div>
               </div>
 
@@ -403,301 +344,82 @@ export default function AddProductDialog({ categories }: AddProductDialogProps) 
                       <div className="flex gap-2">
                         <Select value={uomId || ''} onValueChange={setUomId}>
                             <SelectTrigger className="flex-1"><SelectValue placeholder="e.g. Pcs, Kg..." /></SelectTrigger>
-                            <SelectContent>
-                                {units.map(u => (
-                                    <SelectItem key={u.id} value={String(u.id)}>
-                                        {u.name} ({u.abbreviation})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
+                            <SelectContent>{units.map(u => (<SelectItem key={u.id} value={String(u.id)}>{u.name} ({u.abbreviation})</SelectItem>))}</SelectContent>
                         </Select>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          title="Add New Unit"
-                          onClick={() => setIsUnitModalOpen(true)}
-                          type="button"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => setIsUnitModalOpen(true)} type="button"><Plus className="w-4 h-4" /></Button>
                       </div>
                   </div>
-                  
                   <div className="flex items-center space-x-2 border p-2 rounded-md bg-muted/20 h-10">
-                      <Switch 
-                          id="multi-variant" 
-                          checked={isMultiVariant} 
-                          onCheckedChange={(checked) => {
-                              setIsMultiVariant(checked);
-                              if (!checked) setVariants([{ ...DEFAULT_VARIANT }]);
-                              if (checked) setActiveTab("configuration");
-                          }} 
-                      />
-                      <Label htmlFor="multi-variant" className="cursor-pointer font-medium">
-                          Enable Variants (Size, Color, etc.)
-                      </Label>
+                      <Switch id="multi-variant" checked={isMultiVariant} onCheckedChange={(checked) => { setIsMultiVariant(checked); if (!checked) setVariants([{ ...DEFAULT_VARIANT }]); }} />
+                      <Label htmlFor="multi-variant" className="cursor-pointer font-medium">Enable Variants</Label>
                   </div>
               </div>
 
               <hr className="border-dashed" />
 
-              {/* SECTION 2: VARIANT CONFIGURATION (Upgraded with Units Per Pack) */}
-              
               {!isMultiVariant ? (
-                  // --- SIMPLE MODE (SINGLE VARIANT) ---
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-lg border">
-                      <div className="space-y-2">
-                          <Label>Selling Price</Label>
-                          <Input 
-                              type="number" 
-                              placeholder="0.00" 
-                              value={variants[0].price} 
-                              onChange={(e) => updateVariant(0, 'price', Number(e.target.value))}
-                          />
-                      </div>
-                      <div className="space-y-2">
-                          <Label>Cost Price</Label>
-                          <Input 
-                              type="number" 
-                              placeholder="0.00"
-                              value={variants[0].cost_price} 
-                              onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))}
-                          />
-                      </div>
-                      <div className="space-y-2">
-                          <Label>Initial Stock</Label>
-                          <Input 
-                              type="number" 
-                              placeholder="0"
-                              value={variants[0].stock_quantity} 
-                              onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))}
-                          />
-                      </div>
-                      {/* UPGRADE: Units Per Pack Input */}
-                      <div className="space-y-2">
-                          <Label className="flex items-center gap-1">
-                            <Calculator className="w-3 h-3 text-slate-400"/>
-                            Units/Pack
-                          </Label>
-                          <Input 
-                              type="number" 
-                              value={variants[0].units_per_pack} 
-                              onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))}
-                          />
-                      </div>
-                      <div className="space-y-2">
-                          <Label>SKU / Barcode</Label>
-                          <Input 
-                              placeholder="AUTO"
-                              value={variants[0].sku} 
-                              onChange={(e) => updateVariant(0, 'sku', e.target.value)}
-                          />
-                      </div>
+                      <div className="space-y-2"><Label>Selling Price</Label><Input type="number" value={variants[0].price} onChange={(e) => updateVariant(0, 'price', Number(e.target.value))}/></div>
+                      <div className="space-y-2"><Label>Cost Price</Label><Input type="number" value={variants[0].cost_price} onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))}/></div>
+                      <div className="space-y-2"><Label>Initial Stock</Label><Input type="number" value={variants[0].stock_quantity} onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))}/></div>
+                      <div className="space-y-2"><Label className="flex items-center gap-1"><Calculator className="w-3 h-3 text-slate-400"/> Units/Pack</Label><Input type="number" value={variants[0].units_per_pack} onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))}/></div>
+                      <div className="space-y-2"><Label>SKU / Barcode</Label><Input placeholder="AUTO" value={variants[0].sku} onChange={(e) => updateVariant(0, 'sku', e.target.value)}/></div>
                   </div>
               ) : (
-                  // --- MULTI VARIANT MODE (TABS) ---
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full border rounded-lg p-2">
                       <TabsList className="grid w-full grid-cols-2 mb-4">
-                          <TabsTrigger value="configuration">
-                              <Package className="w-4 h-4 mr-2"/> 1. Define Attributes
-                          </TabsTrigger>
-                          <TabsTrigger value="preview" disabled={variants.length <= 0 && activeTab === 'configuration'}>
-                              <Layers className="w-4 h-4 mr-2"/> 2. Review Variants
-                          </TabsTrigger>
+                          <TabsTrigger value="configuration"><Package className="w-4 h-4 mr-2"/> 1. Define Attributes</TabsTrigger>
+                          <TabsTrigger value="preview" disabled={variants.length <= 0}><Layers className="w-4 h-4 mr-2"/> 2. Review Variants</TabsTrigger>
                       </TabsList>
-
-                      {/* SUB-TAB 1: ATTRIBUTE BUILDER */}
                       <TabsContent value="configuration" className="space-y-4 px-2">
-                          <div className="space-y-3">
-                              {attributes.map((attr, idx) => (
+                          <div className="space-y-3">{attributes.map((attr, idx) => (
                                   <div key={idx} className="flex gap-3 items-end">
-                                      <div className="w-1/3 space-y-1">
-                                          <Label className="text-xs">Attribute Name</Label>
-                                          <Input 
-                                              value={attr.name} 
-                                              onChange={e => {
-                                                  const updated = [...attributes];
-                                                  updated[idx].name = e.target.value;
-                                                  setAttributes(updated);
-                                              }}
-                                              placeholder="e.g. Size" 
-                                          />
-                                      </div>
-                                      <div className="flex-1 space-y-1">
-                                          <Label className="text-xs">Values (Comma separated)</Label>
-                                          <Input 
-                                              value={attr.inputValue}
-                                              onChange={e => updateAttributeInput(idx, e.target.value)}
-                                              placeholder="e.g. Small, Medium, Large" 
-                                          />
-                                      </div>
-                                      {attributes.length > 1 && (
-                                          <Button 
-                                              variant="ghost" 
-                                              size="icon" 
-                                              onClick={() => removeAttributeRow(idx)}
-                                              className="text-muted-foreground hover:text-destructive"
-                                          >
-                                              <Trash className="w-4 h-4" />
-                                          </Button>
-                                      )}
+                                      <div className="w-1/3 space-y-1"><Label className="text-xs">Attribute Name</Label><Input value={attr.name} onChange={e => { const updated = [...attributes]; updated[idx].name = e.target.value; setAttributes(updated); }} placeholder="e.g. Size" /></div>
+                                      <div className="flex-1 space-y-1"><Label className="text-xs">Values (Comma separated)</Label><Input value={attr.inputValue} onChange={e => updateAttributeInput(idx, e.target.value)} placeholder="e.g. S, M, L" /></div>
+                                      {attributes.length > 1 && (<Button variant="ghost" size="icon" onClick={() => removeAttributeRow(idx)} className="text-muted-foreground hover:text-destructive"><Trash className="w-4 h-4" /></Button>)}
                                   </div>
-                              ))}
-                          </div>
-
+                              ))}</div>
                           <div className="flex justify-between items-center pt-2">
-                              <Button variant="outline" size="sm" onClick={addAttributeRow}>
-                                  <Plus className="w-4 h-4 mr-2" /> Add Attribute
-                              </Button>
-                              <Button type="button" size="sm" onClick={generateVariants}>
-                                  <Wand2 className="w-4 h-4 mr-2" /> Generate Variants
-                              </Button>
+                              <Button variant="outline" size="sm" onClick={addAttributeRow}><Plus className="w-4 h-4 mr-2" /> Add Attribute</Button>
+                              <Button type="button" size="sm" onClick={generateVariants}><Wand2 className="w-4 h-4 mr-2" /> Generate</Button>
                           </div>
                       </TabsContent>
-
-                      {/* SUB-TAB 2: VARIANT PREVIEW TABLE (Upgraded with Units/Pack column) */}
                       <TabsContent value="preview" className="px-2">
-                          {variants.length > 0 && variants[0].attributes && Object.keys(variants[0].attributes).length > 0 ? (
-                              <div className="border rounded-md overflow-hidden">
-                                  <div className="max-h-[300px] overflow-y-auto">
-                                      <table className="w-full text-sm text-left">
-                                          <thead className="bg-muted text-muted-foreground sticky top-0 z-10">
-                                              <tr>
-                                                  <th className="p-3 font-medium">Variant Name</th>
-                                                  <th className="p-3 font-medium w-24">Price</th>
-                                                  <th className="p-3 font-medium w-20">Cost</th>
-                                                  <th className="p-3 font-medium w-20">Stock</th>
-                                                  <th className="p-3 font-medium w-20">U/Pack</th>
-                                                  <th className="p-3 font-medium w-32">SKU</th>
-                                              </tr>
-                                          </thead>
-                                          <tbody className="divide-y">
-                                              {variants.map((v, idx) => (
-                                                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                      <td className="p-3 font-medium text-slate-700">
-                                                          {v.name}
-                                                      </td>
-                                                      <td className="p-2">
-                                                          <Input 
-                                                              type="number" 
-                                                              className="h-8 bg-white" 
-                                                              value={v.price} 
-                                                              onChange={e => updateVariant(idx, 'price', Number(e.target.value))}
-                                                          />
-                                                      </td>
-                                                      <td className="p-2">
-                                                          <Input 
-                                                              type="number" 
-                                                              className="h-8 bg-white" 
-                                                              value={v.cost_price} 
-                                                              onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))}
-                                                          />
-                                                      </td>
-                                                      <td className="p-2">
-                                                          <Input 
-                                                              type="number" 
-                                                              className="h-8 bg-white" 
-                                                              value={v.stock_quantity} 
-                                                              onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))}
-                                                          />
-                                                      </td>
-                                                      {/* UPGRADE: Units Per Pack Column */}
-                                                      <td className="p-2">
-                                                          <Input 
-                                                              type="number" 
-                                                              className="h-8 bg-white" 
-                                                              value={v.units_per_pack} 
-                                                              onChange={e => updateVariant(idx, 'units_per_pack', Number(e.target.value))}
-                                                          />
-                                                      </td>
-                                                      <td className="p-2">
-                                                          <Input 
-                                                              className="h-8 bg-white uppercase" 
-                                                              value={v.sku} 
-                                                              onChange={e => updateVariant(idx, 'sku', e.target.value)}
-                                                              placeholder="AUTO"
-                                                          />
-                                                      </td>
-                                                  </tr>
-                                              ))}
-                                          </tbody>
-                                      </table>
-                                  </div>
-                              </div>
-                          ) : (
-                              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground border-2 border-dashed rounded-lg bg-slate-50">
-                                  <AlertCircle className="w-8 h-8 mb-2 opacity-50" />
-                                  <p>No variants generated.</p>
-                                  <Button variant="link" onClick={() => setActiveTab("configuration")}>
-                                      Go to configuration
-                                  </Button>
-                              </div>
-                          )}
-                          
-                          <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-                              <span>Total Variants: {variants.length}</span>
-                              <Button variant="ghost" size="sm" onClick={() => setActiveTab("configuration")}>
-                                  Back to Attributes
-                              </Button>
-                          </div>
+                          <div className="border rounded-md overflow-hidden"><div className="max-h-[300px] overflow-y-auto"><table className="w-full text-sm text-left">
+                                <thead className="bg-muted text-muted-foreground sticky top-0 z-10"><tr><th className="p-3 font-medium">Variant Name</th><th className="p-3 font-medium w-24">Price</th><th className="p-3 font-medium w-20">Cost</th><th className="p-3 font-medium w-20">Stock</th><th className="p-3 font-medium w-20">U/Pack</th><th className="p-3 font-medium w-32">SKU</th></tr></thead>
+                                <tbody className="divide-y">{variants.map((v, idx) => (<tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-3 font-medium text-slate-700">{v.name}</td>
+                                    <td className="p-2"><Input type="number" className="h-8" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))}/></td>
+                                    <td className="p-2"><Input type="number" className="h-8" value={v.cost_price} onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))}/></td>
+                                    <td className="p-2"><Input type="number" className="h-8" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))}/></td>
+                                    <td className="p-2"><Input type="number" className="h-8" value={v.units_per_pack} onChange={e => updateVariant(idx, 'units_per_pack', Number(e.target.value))}/></td>
+                                    <td className="p-2"><Input className="h-8" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO"/></td>
+                                </tr>))}</tbody></table></div></div>
+                          <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground"><span>Total: {variants.length}</span><Button variant="ghost" size="sm" onClick={() => setActiveTab("configuration")}>Back</Button></div>
                       </TabsContent>
                   </Tabs>
               )}
-
           </div>
 
           <DialogFooter className="pt-2 border-t mt-auto bg-background z-20">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
-              Cancel
-            </Button>
-            <Button onClick={() => mutate()} disabled={isPending} className="min-w-[120px]">
-              {isPending ? (
-                  <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
-                  </>
-              ) : (
-                  "Save Product"
-              )}
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
+            <Button onClick={() => mutate()} disabled={isPending} className="min-w-[120px] font-black uppercase">
+              {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sealing...</> : "Save Product"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* --- EXTRA DIALOG: ADD NEW UNIT --- */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Add New Unit</DialogTitle>
-            <DialogDescription>
-              Create a new unit of measure (e.g., Kilogram, Gallon).
-            </DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add New Unit</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="unit-name">Unit Name</Label>
-              <Input 
-                id="unit-name" 
-                placeholder="e.g. Kilogram" 
-                value={newUnitName}
-                onChange={(e) => setNewUnitName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="unit-abbr">Abbreviation</Label>
-              <Input 
-                id="unit-abbr" 
-                placeholder="e.g. kg" 
-                value={newUnitAbbr}
-                onChange={(e) => setNewUnitAbbr(e.target.value)}
-              />
-            </div>
+            <div className="space-y-2"><Label>Unit Name</Label><Input placeholder="Kilogram" value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)}/></div>
+            <div className="space-y-2"><Label>Abbreviation</Label><Input placeholder="kg" value={newUnitAbbr} onChange={(e) => setNewUnitAbbr(e.target.value)}/></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsUnitModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddUnit} disabled={isSavingUnit}>
-               {isSavingUnit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-               Save Unit
-            </Button>
+            <Button onClick={handleAddUnit} disabled={isSavingUnit}>{isSavingUnit ? <Loader2 className="animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Unit</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

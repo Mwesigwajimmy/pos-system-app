@@ -511,6 +511,7 @@ const navSections: NavItem[] = [
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
             { href: '/management/comms', label: 'Unified Comms Hub', icon: MessageSquare },   
             { href: '/management/timecard-report', label: 'Timecard Report', icon: FileSpreadsheet },
+            { href: '/management/sentry-hub', label: 'Sovereign Sentry Hub', icon: ShieldAlert, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/monitoring', label: 'Live System Monitor', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale', 'Distribution / Wholesale Supply'] }, 
             { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale'] },
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner', 'architect'] },
