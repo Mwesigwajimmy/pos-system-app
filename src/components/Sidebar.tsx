@@ -162,17 +162,6 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- PHARMACY SPECIALTY ---
-    {
-        type: 'accordion', title: 'Pharmacy & Health', icon: Pill, roles: ['admin', 'owner', 'pharmacist', 'medical_officer', 'nurse', 'architect'], module: 'inventory',
-        businessTypes: ['Retail / Wholesale', 'Professional Services (Accounting, Medical)', 'Mixed/Conglomerate'],
-        subItems: [
-            { href: '/inventory/prescriptions', label: 'Prescription Tracking', icon: ClipboardPlus },
-            { href: '/inventory/expiry-monitor', label: 'Expiry & Batch Alerts', icon: AlertTriangle },
-            { href: '/pharmacy/patients', label: 'Patient Records', icon: Contact },
-        ]
-    },
-
     // --- INVENTORY & STOCK ---
     {
         type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager'], module: 'inventory',
