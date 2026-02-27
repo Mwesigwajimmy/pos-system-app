@@ -50,7 +50,7 @@ async function getProductDetails(supabase: any, productId: string, businessId: s
       lot_numbers ( id, lot_number, expiry_date, quantity, status )
     `)
     .eq('id', productId)
-    .eq('business_id', businessId) // THE SECURITY LOCK
+    .eq('business_id', businessId)
     .single();
 
   if (error || !data) return null;
@@ -95,7 +95,7 @@ export default async function ProductDetailsPage({ params }: { params: { product
   const businessId = profile.business_id;
   const entityName = profile.business_name || profile.active_organization_slug || "Sovereign Entity";
 
-  // 3. PARALLEL DATA FETCHING (Interconnected)
+  // 3. PARALLEL DATA FETCHING
   const [product, vendors] = await Promise.all([
     getProductDetails(supabase, params.productId, businessId),
     getVendors(supabase, businessId)
@@ -105,7 +105,7 @@ export default async function ProductDetailsPage({ params }: { params: { product
     notFound();
   }
 
-  // 4. NEURAL DATA MAPPING (Transforming DB to Component Props)
+  // 4. NEURAL DATA MAPPING
   const serialData: SerialNumberEntry[] = (product.serial_numbers || []).map(s => ({
     id: s.id,
     serialCode: s.serial_number,
@@ -125,68 +125,65 @@ export default async function ProductDetailsPage({ params }: { params: { product
   }));
 
   return (
-    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 animate-in fade-in duration-700">
+    <div className="flex-1 space-y-6 p-6 md:p-10 pt-6 animate-in fade-in duration-500 bg-slate-50/30">
       
-      {/* --- High-Tier Forensic Header --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-8">
+      {/* --- Header Section (Cleaned like your screenshot) --- */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-slate-900 rounded-lg text-white">
-                <Package size={24} />
+                <Package size={20} />
              </div>
-             <h2 className="text-4xl font-black tracking-tighter text-slate-900 uppercase italic">
+             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                 {product.name}
              </h2>
           </div>
-          <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest mt-2 flex items-center gap-2">
-            <Fingerprint size={12} className="text-primary" />
-            SKU: {product.sku || 'N/A'} // IDENTITY: {entityName}
+          <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
+            <Fingerprint size={14} className="text-slate-400" />
+            SKU: {product.sku || 'N/A'} • {entityName}
           </p>
         </div>
 
-        {/* Real-time Status Telemetry */}
-        <div className="flex items-center gap-4">
-            <div className="flex flex-col items-end">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Kernel Status</span>
-                <div className="flex items-center gap-1.5 mt-1 text-xs font-bold text-emerald-600">
-                    <ShieldCheck size={14} />
-                    LEDGER SEALED
-                </div>
+        {/* Status Badges (Cleaned and professional) */}
+        <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
+                <ShieldCheck size={14} />
+                Live System Sync
             </div>
-            <div className="h-10 w-px bg-slate-200" />
-            <Badge className="bg-slate-900 px-4 py-1 text-[10px] tracking-widest uppercase">
+            <Badge className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 text-xs rounded-md">
                 {product.status || 'ACTIVE'}
             </Badge>
         </div>
       </div>
 
       {/* --- Main Management Grid --- */}
-      <div className="grid gap-8 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
         
         {/* Left Column: Core Configuration */}
-        <div className="lg:col-span-4 space-y-8">
-            <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 relative overflow-hidden">
-                <Zap className="absolute -right-4 -top-4 w-24 h-24 text-primary/5 rotate-12" />
-                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-4">Tracking Intelligence</h4>
+        <div className="lg:col-span-4 space-y-6">
+            <div className="p-6 bg-white rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <h4 className="text-sm font-semibold text-slate-900 mb-4">Tracking Method</h4>
                 <InventoryTrackingManager 
                     productId={product.id} 
                     currentMethod={product.inventory_tracking_method} 
                 />
             </div>
 
-            <ReorderPointManager 
-                product={product} 
-                vendors={vendors} 
-            />
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <ReorderPointManager 
+                    product={product} 
+                    vendors={vendors} 
+                />
+            </div>
         </div>
 
-        {/* Right Column: Dynamic Logistics Content */}
-        <div className="lg:col-span-8 space-y-8">
+        {/* Right Column: Logistics Content */}
+        <div className="lg:col-span-8 space-y-6">
             {product.inventory_tracking_method === 'SERIAL' && (
                 <div className="animate-in slide-in-from-right-4 duration-500">
-                    <Card className="border-none shadow-2xl rounded-3xl overflow-hidden">
-                        <CardHeader className="bg-slate-50/80 border-b">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+                        <CardHeader className="bg-slate-50/50 border-b py-4">
+                            <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                                 <Fingerprint size={16} /> Individual Asset Tracking
                             </CardTitle>
                         </CardHeader>
@@ -199,9 +196,9 @@ export default async function ProductDetailsPage({ params }: { params: { product
 
             {product.inventory_tracking_method === 'LOT' && (
                 <div className="animate-in slide-in-from-right-4 duration-500">
-                    <Card className="border-none shadow-2xl rounded-3xl overflow-hidden">
-                        <CardHeader className="bg-slate-50/80 border-b">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden">
+                        <CardHeader className="bg-slate-50/50 border-b py-4">
+                            <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                                 <Activity size={16} /> Batch & Expiry Ledger
                             </CardTitle>
                         </CardHeader>
@@ -213,24 +210,24 @@ export default async function ProductDetailsPage({ params }: { params: { product
             )}
 
             {product.inventory_tracking_method === 'SIMPLE' && (
-                <div className="p-20 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
-                    <Activity size={48} className="mx-auto text-slate-200 mb-4" />
-                    <p className="font-black uppercase tracking-widest text-slate-300 italic">
+                <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-xl bg-white">
+                    <Activity size={40} className="mx-auto text-slate-300 mb-3" />
+                    <p className="font-semibold text-slate-600">
                         Standard Inventory Sync Active
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-2 font-bold">No serialized or batch tracking required for this asset.</p>
+                    <p className="text-xs text-slate-400 mt-1">No serialized or batch tracking required for this asset.</p>
                 </div>
             )}
         </div>
       </div>
 
-      {/* --- Audit Policy Footer --- */}
-      <div className="mt-12 pt-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 opacity-50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+      {/* --- Footer (Simple and clean) --- */}
+      <div className="mt-8 pt-6 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-medium text-slate-400">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={14} className="text-emerald-600" />
-            Immutable Product Lifecycle v10.2
+            <ShieldCheck size={14} className="text-slate-300" />
+            Product Lifecycle Security v10.2
           </div>
-          <div className="font-mono">KERN_HASH: {product.id.substring(0,12).toUpperCase()}</div>
+          <div className="font-mono bg-slate-100 px-2 py-0.5 rounded">ID_HASH: {product.id.substring(0,12).toUpperCase()}</div>
       </div>
     </div>
   );
