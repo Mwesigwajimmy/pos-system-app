@@ -2414,7 +2414,7 @@ export default function HomePage() {
                 {/* HERO SECTION */}
                 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[600px] flex items-center justify-center">
                     <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
-                        <Image src="/images/showcase/modern-office-analytics.jpg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
+                        <Image src="/images/showcase/Greeting (41).jpeg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
                         <div className="absolute inset-0 bg-black/70"></div>
                     </motion.div>
                     <div className="container mx-auto relative z-10 text-white">
