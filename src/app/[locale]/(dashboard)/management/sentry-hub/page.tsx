@@ -13,7 +13,7 @@ export default async function SentryHubPage() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) redirect('/login');
 
-    // 2. MASTER IDENTITY RESOLUTION
+    // 2. MASTER IDENTITY RESOLUTION (Identifying the Business)
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("tenant_id, business_name, active_organization_slug")
@@ -23,12 +23,12 @@ export default async function SentryHubPage() {
     if (profileError || !profile?.tenant_id) {
         return (
             <div className="p-8">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Hardware Protocol Error</AlertTitle>
-                    <AlertDescription>
+                <Alert variant="destructive" className="rounded-3xl border-2">
+                    <AlertCircle className="h-5 w-5" />
+                    <AlertTitle className="font-black uppercase tracking-widest">Hardware Protocol Error</AlertTitle>
+                    <AlertDescription className="font-medium text-xs opacity-80">
                         The Robotic Guard could not resolve a valid tenant perimeter. 
-                        Security monitoring is offline for this session.
+                        Security monitoring and physical hardware connectivity are offline.
                     </AlertDescription>
                 </Alert>
             </div>
@@ -42,17 +42,17 @@ export default async function SentryHubPage() {
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 animate-in fade-in duration-1000 bg-slate-50/30">
             
             {/* Top-Level Context Badge */}
-            <div className="flex items-center justify-between opacity-60">
+            <div className="flex items-center justify-between opacity-60 px-2">
                 <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-md text-[9px] font-mono tracking-widest uppercase">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Active Perimeter: {entityName}
                 </div>
                 <div className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">
-                    Sovereign Sentry Engine v10.2
+                    Sovereign Sentry Engine v10.2 // Enterprise Grade
                 </div>
             </div>
 
-            {/* Main Robotic UI Interface */}
+            {/* THE BRAIN: Main Robotic UI Interface */}
             <SentryHub tenantId={tenantId} />
 
             {/* Fiduciary Disclaimer Footer */}

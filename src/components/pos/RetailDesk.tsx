@@ -20,10 +20,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     X, User, Plus, Minus, Printer as PrinterIcon, RefreshCw, Barcode, FileText, Tag,
-    Calculator, // UPGRADE: Fractional/Unit Icon
-    Fingerprint, // UPGRADE: Tax Seal Icon
-    ShieldCheck, // UPGRADE: Forensic Icon
-    Loader2      // UPGRADE: Loading Icon
+    Calculator, 
+    Fingerprint, 
+    ShieldCheck, 
+    Loader2      
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -36,7 +36,7 @@ import CustomerSearchModal from '@/components/customers/CustomerSearchModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import { Receipt, ReceiptData } from '@/components/pos/Receipt';
 
-// --- NEW/UPDATED TYPES ---
+// --- TYPES ---
 interface CompletedSale {
     receiptData: ReceiptData;
 }
@@ -60,7 +60,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     useEffect(() => {
         let barcode = '';
         let lastKeyTime = new Date(0);
-        const SCANNER_INPUT_TIMEOUT = 100;
+        const SCANNER_INPUT_TIMEOUT = 50; // UPGRADED: High-speed handshake
 
         const handleKeyDown = (e: KeyboardEvent) => {
             const currentTime = new Date();
@@ -91,7 +91,6 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                             onClick={() => onProductSelect(product)} 
                             className="cursor-pointer hover:shadow-lg transition-all relative overflow-hidden group border-slate-100 hover:border-blue-200"
                         >
-                            {/* UPGRADE: Unit-of-Measure Indicator */}
                             {(product as any).units_per_pack > 1 && (
                                 <div className="absolute top-0 right-0 bg-blue-600 text-white p-1 rounded-bl-lg shadow-sm z-10">
                                     <Calculator className="w-3 h-3" />
@@ -332,6 +331,9 @@ export default function RetailDesk() {
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = subtotal - discountAmount;
+        
+        // UPGRADED: Balance Logic
+        const changeDue = paymentData.amountPaid > totalAmount ? paymentData.amountPaid - totalAmount : 0;
         const dueAmount = totalAmount - paymentData.amountPaid;
 
         if (dueAmount > 0 && !selectedCustomer) {
@@ -359,22 +361,22 @@ export default function RetailDesk() {
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
+        // UPGRADED: Complete Receipt Data Handshake
         const receiptData: ReceiptData = {
             saleInfo: { 
                 id: saleId, 
                 created_at: newSale.createdAt, 
                 payment_method: newSale.paymentMethod, 
                 total_amount: totalAmount, 
-                amount_tendered: newSale.amount_paid,
-                change_due: newSale.amount_paid > totalAmount ? newSale.amount_paid - totalAmount : 0,
+                amount_tendered: paymentData.amountPaid,
+                change_due: changeDue,
                 subtotal,
                 discount: discountAmount,
                 amount_due: newSale.due_amount,
-                // UPGRADE: Unique Kernel Forensic ID
                 kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
             },
             storeInfo: { 
-                name: 'Sovereign ERP', 
+                name: userProfile.business_name || 'Sovereign ERP', 
                 address: 'Kampala, Uganda', 
                 phone_number: '0703 XXX XXX', 
                 receipt_footer: 'Sealed by Sovereign Kernel' 
@@ -390,7 +392,12 @@ export default function RetailDesk() {
         };
 
         setLastCompletedSale({ receiptData });
-        toast.success(`Sale #${saleId} recorded locally. Forensic Seal Pending.`);
+        
+        // UPGRADED: Change alert in Toast
+        toast.success(`Transaction Sealed. ${changeDue > 0 ? `Change Due: UGX ${changeDue.toLocaleString()}` : ''}`, {
+            duration: 8000
+        });
+
         setCart([]);
         setSelectedCustomer(null);
         setDiscount({ type: 'fixed', value: 0 });
@@ -414,7 +421,7 @@ export default function RetailDesk() {
         const product = products.find(p => p.sku === sku); 
         if (product) { 
             handleAddToCart(product); 
-            toast.success(`Robotic Scan: ${product.product_name}`, { icon: <Barcode className="h-4 w-4" /> }); 
+            toast.success(`Scanned: ${product.product_name}`, { icon: <Barcode className="h-4 w-4" /> }); 
         } else { 
             toast.error(`SKU Not Registered: ${sku}`); 
         } 
@@ -472,7 +479,6 @@ export default function RetailDesk() {
     
     return (
         <div className="h-screen flex flex-col bg-slate-100/30 overflow-hidden font-sans">
-            {/* Header / Sync Bar */}
             <div className="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm z-20">
                 <div className="flex items-center gap-3">
                     <div className="bg-blue-600 p-1.5 rounded-lg">
@@ -498,9 +504,7 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* Main Content Area */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-                {/* Product Section */}
                 <div className="lg:col-span-7 h-full overflow-hidden flex flex-col">
                     <ProductGrid 
                         products={products || []} 
@@ -510,7 +514,6 @@ export default function RetailDesk() {
                     />
                 </div>
 
-                {/* Cart Section */}
                 <div className="lg:col-span-5 h-full overflow-hidden flex flex-col">
                     <CartDisplay 
                         cart={cart} 
@@ -526,7 +529,6 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* Modals */}
             <CustomerSearchModal 
                 isOpen={isCustomerModalOpen} 
                 onClose={() => setCustomerModalOpen(false)} 
