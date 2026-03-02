@@ -60,7 +60,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     useEffect(() => {
         let barcode = '';
         let lastKeyTime = new Date(0);
-        const SCANNER_INPUT_TIMEOUT = 50; // UPGRADED: High-speed handshake
+        const SCANNER_INPUT_TIMEOUT = 50; 
 
         const handleKeyDown = (e: KeyboardEvent) => {
             const currentTime = new Date();
@@ -100,7 +100,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                                 <p className="font-bold text-sm line-clamp-2 text-slate-800 leading-tight mb-1">{product.product_name}</p>
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{product.variant_name}</p>
                                 <div className="mt-auto pt-2 flex flex-col items-center gap-1">
-                                    <p className="font-bold text-blue-700">UGX {product.price.toLocaleString()}</p>
+                                    <p className="font-bold text-blue-700">{(product.price || 0).toLocaleString()}</p>
                                     {(product as any).units_per_pack > 1 && (
                                         <span className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase">
                                             1 PK : {(product as any).units_per_pack} UNITS
@@ -116,7 +116,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     );
 };
 
-const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void }) => {
+const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency = 'UGX' }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void, currency?: string }) => {
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
     const discountAmount = useMemo(() => {
         if (discount.type === 'percentage') return (subtotal * discount.value) / 100;
@@ -202,7 +202,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm text-slate-600 font-medium">
                         <span>Subtotal</span>
-                        <span>UGX {subtotal.toLocaleString()}</span>
+                        <span>{currency} {subtotal.toLocaleString()}</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -218,7 +218,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                     <Select value={discount.type} onValueChange={(v: 'fixed' | 'percentage') => setDiscount({ ...discount, type: v })}>
                                         <SelectTrigger className="h-8"><SelectValue/></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="fixed">Fixed Amount (UGX)</SelectItem>
+                                            <SelectItem value="fixed">Fixed Amount ({currency})</SelectItem>
                                             <SelectItem value="percentage">Percentage (%)</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -234,7 +234,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                 </div>
                             </PopoverContent>
                         </Popover>
-                        <span className="text-sm text-destructive font-black">- UGX {discountAmount.toLocaleString()}</span>
+                        <span className="text-sm text-destructive font-black">- {currency} {discountAmount.toLocaleString()}</span>
                     </div>
 
                     <div className="flex justify-between items-center py-1">
@@ -252,7 +252,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 <div className="flex justify-between items-end border-t-2 border-slate-200 pt-3">
                     <span className="font-bold text-slate-500 uppercase text-xs tracking-widest">Grand Total</span>
                     <span className="font-black text-3xl text-slate-900 leading-none">
-                        <span className="text-sm font-bold mr-1">UGX</span>
+                        <span className="text-sm font-bold mr-1">{currency}</span>
                         {total.toLocaleString()}
                     </span>
                 </div>
@@ -282,6 +282,7 @@ export default function RetailDesk() {
     const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
     const [lastCompletedSale, setLastCompletedSale] = useState<CompletedSale | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const receiptRef = useRef<HTMLDivElement>(null);
     const [discount, setDiscount] = useState<Discount>({ type: 'fixed', value: 0 });
 
@@ -328,80 +329,94 @@ export default function RetailDesk() {
             return setPaymentModalOpen(false);
         }
 
-        const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
-        const totalAmount = subtotal - discountAmount;
-        
-        // UPGRADED: Balance Logic
-        const changeDue = paymentData.amountPaid > totalAmount ? paymentData.amountPaid - totalAmount : 0;
-        const dueAmount = totalAmount - paymentData.amountPaid;
+        setIsProcessingPayment(true);
 
-        if (dueAmount > 0 && !selectedCustomer) {
-            return toast.error("A customer must be selected for credit or partial payments.");
+        try {
+            // --- ENTERPRISE TAX & MATH CORE ---
+            const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+            const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
+            const totalAmount = subtotal - discountAmount;
+            
+            // Multi-tenant Tax Calculation (Dynamic per user profile)
+            const taxRate = (userProfile as any).tax_rate || 0; // Standardize 0 if not set
+            const taxAmount = (totalAmount * taxRate) / (100 + taxRate); // Inclusive Tax Logic
+            const netAmount = totalAmount - taxAmount;
+
+            const changeDue = paymentData.amountPaid > totalAmount ? paymentData.amountPaid - totalAmount : 0;
+            const dueAmount = totalAmount - paymentData.amountPaid;
+
+            if (dueAmount > 0.01 && !selectedCustomer) {
+                throw new Error("Customer identification required for credit/partial payment.");
+            }
+
+            let payment_status: 'paid' | 'partial' | 'unpaid' = 'paid';
+            if (dueAmount > 0.01) payment_status = 'partial'; 
+            else if (paymentData.amountPaid <= 0) payment_status = 'unpaid';
+
+            // --- ATOMIC DATABASE TRANSACTION ---
+            // Ensuring Database and UI sync perfectly
+            const receiptData = await db.transaction('rw', db.offlineSales, async () => {
+                const newSale: Omit<OfflineSale, 'id'> = {
+                    createdAt: new Date(),
+                    cartItems: cart,
+                    customerId: selectedCustomer?.id || null,
+                    paymentMethod: paymentData.paymentMethod,
+                    amount_paid: paymentData.amountPaid,
+                    business_id: userProfile.business_id,
+                    user_id: userProfile.id,
+                    discount_type: discount.value > 0 ? discount.type : null,
+                    discount_value: discount.value > 0 ? discount.value : null,
+                    discount_amount: discountAmount > 0 ? discountAmount : null,
+                    payment_status,
+                    due_amount: dueAmount > 0 ? dueAmount : 0,
+                };
+
+                const saleId = await db.offlineSales.add(newSale as OfflineSale);
+                
+                return {
+                    saleInfo: { 
+                        id: saleId, 
+                        created_at: newSale.createdAt, 
+                        payment_method: newSale.paymentMethod, 
+                        total_amount: totalAmount, 
+                        amount_tendered: paymentData.amountPaid,
+                        change_due: changeDue,
+                        subtotal,
+                        discount: discountAmount,
+                        tax_amount: taxAmount,
+                        net_amount: netAmount,
+                        amount_due: newSale.due_amount,
+                        kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+                    },
+                    storeInfo: { 
+                        name: userProfile.business_name || 'Sovereign ERP', 
+                        address: (userProfile as any).address || 'No Address Set', 
+                        phone_number: (userProfile as any).phone_number || 'No Contact Set', 
+                        receipt_footer: (userProfile as any).receipt_footer || 'Mathematically Sealed by Sovereign Kernel' 
+                    },
+                    customerInfo: selectedCustomer,
+                    saleItems: cart.map(item => ({ 
+                        product_name: item.product_name, 
+                        variant_name: item.variant_name, 
+                        quantity: item.quantity, 
+                        unit_price: item.price, 
+                        subtotal: item.quantity * item.price 
+                    }))
+                };
+            });
+
+            setLastCompletedSale({ receiptData });
+            toast.success(`Transaction Sealed. ${changeDue > 0 ? `Change Due: ${userProfile.currency_symbol || 'UGX'} ${changeDue.toLocaleString()}` : ''}`, { duration: 8000 });
+
+            setCart([]);
+            setSelectedCustomer(null);
+            setDiscount({ type: 'fixed', value: 0 });
+            setPaymentModalOpen(false);
+        } catch (error: any) {
+            toast.error(error.message || "Fiduciary error during checkout.");
+        } finally {
+            setIsProcessingPayment(false);
         }
-
-        let payment_status: 'paid' | 'partial' | 'unpaid' = 'paid';
-        if (dueAmount > 0.01) payment_status = 'partial'; 
-        else if (paymentData.amountPaid <= 0) payment_status = 'unpaid';
-
-        const newSale: Omit<OfflineSale, 'id'> = {
-            createdAt: new Date(),
-            cartItems: cart,
-            customerId: selectedCustomer?.id || null,
-            paymentMethod: paymentData.paymentMethod,
-            amount_paid: paymentData.amountPaid,
-            business_id: userProfile.business_id,
-            user_id: userProfile.id,
-            discount_type: discount.value > 0 ? discount.type : null,
-            discount_value: discount.value > 0 ? discount.value : null,
-            discount_amount: discountAmount > 0 ? discountAmount : null,
-            payment_status,
-            due_amount: dueAmount > 0 ? dueAmount : 0,
-        };
-
-        const saleId = await db.offlineSales.add(newSale as OfflineSale);
-        
-        // UPGRADED: Complete Receipt Data Handshake
-        const receiptData: ReceiptData = {
-            saleInfo: { 
-                id: saleId, 
-                created_at: newSale.createdAt, 
-                payment_method: newSale.paymentMethod, 
-                total_amount: totalAmount, 
-                amount_tendered: paymentData.amountPaid,
-                change_due: changeDue,
-                subtotal,
-                discount: discountAmount,
-                amount_due: newSale.due_amount,
-                kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-            },
-            storeInfo: { 
-                name: userProfile.business_name || 'Sovereign ERP', 
-                address: 'Kampala, Uganda', 
-                phone_number: '0703 XXX XXX', 
-                receipt_footer: 'Sealed by Sovereign Kernel' 
-            },
-            customerInfo: selectedCustomer,
-            saleItems: cart.map(item => ({ 
-                product_name: item.product_name, 
-                variant_name: item.variant_name, 
-                quantity: item.quantity, 
-                unit_price: item.price, 
-                subtotal: item.quantity * item.price 
-            }))
-        };
-
-        setLastCompletedSale({ receiptData });
-        
-        // UPGRADED: Change alert in Toast
-        toast.success(`Transaction Sealed. ${changeDue > 0 ? `Change Due: UGX ${changeDue.toLocaleString()}` : ''}`, {
-            duration: 8000
-        });
-
-        setCart([]);
-        setSelectedCustomer(null);
-        setDiscount({ type: 'fixed', value: 0 });
-        setPaymentModalOpen(false);
     };
 
     const handleAddToCart = (product: SellableProduct) => setCart(currentCart => { 
@@ -485,12 +500,20 @@ export default function RetailDesk() {
                         <ShieldCheck className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-sm font-black tracking-tighter text-slate-800 leading-none">RETAIL DESK</h1>
-                        <p className="text-[10px] text-blue-600 font-bold leading-none mt-1">SOVEREIGN KERNEL v4.0</p>
+                        <h1 className="text-sm font-black tracking-tighter text-slate-800 leading-none">{userProfile?.business_name || 'RETAIL DESK'}</h1>
+                        <p className="text-[10px] text-blue-600 font-bold leading-none mt-1 uppercase tracking-widest">
+                            {userProfile?.business_name ? 'Branch Active' : 'Initializing Kernel...'}
+                        </p>
                     </div>
                 </div>
                 
-                <div className="no-print">
+                <div className="no-print flex items-center gap-3">
+                    {userProfile?.business_name && (
+                        <div className="hidden md:flex flex-col items-end mr-4">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Fiduciary ID</span>
+                            <span className="text-[11px] font-mono text-slate-600 font-bold uppercase">{userProfile.id.split('-')[0]}</span>
+                        </div>
+                    )}
                     <Button 
                         onClick={handleSync} 
                         variant="outline" 
@@ -522,9 +545,10 @@ export default function RetailDesk() {
                         selectedCustomer={selectedCustomer} 
                         onSetCustomer={() => setCustomerModalOpen(true)} 
                         onCharge={() => setPaymentModalOpen(true)} 
-                        isProcessing={false}
+                        isProcessing={isProcessingPayment}
                         discount={discount}
                         setDiscount={setDiscount} 
+                        currency={userProfile?.currency_symbol || 'UGX'}
                     />
                 </div>
             </div>
@@ -540,7 +564,7 @@ export default function RetailDesk() {
                 onClose={() => setPaymentModalOpen(false)} 
                 totalAmount={totalAmount} 
                 onConfirm={handleProcessPayment} 
-                isProcessing={false} 
+                isProcessing={isProcessingPayment} 
             />
         </div>
     );
