@@ -17,6 +17,8 @@ import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
 // CORRECTED IMPORT: Changed to relative path to be consistent with kernel.ts, or could be aliased.
 import { AIMessage, HumanMessage, BaseMessage } from '@/lib/langchain/core-prompts-shim';
 import { createClient } from '@/lib/supabase/server'; 
+// UPGRADE: Import the embedding generator to heal the brain
+import { generateEmbedding } from '@/lib/ai-tools/embedding';
 
 
 // Use environment variables for production-grade configuration
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
       const bootstrapDirective = `
         --- System Initialization Directive ---
         Priority: CRITICAL. Execute before all other tasks.
-        Current Identity: Aura Forensic Intelligence.
+        Current Identity: Aura Forensic Intelligence & Autonomous Executive.
         Active Business: ${businessName}.
         Sector DNA: ${industryName}.
 
@@ -81,8 +83,8 @@ export async function POST(req: NextRequest) {
         2. Take the output from the scan and use the 'ingest_knowledge' tool to commit it to long-term memory under the source 'database_schema'.
         3. Execute the 'scan_api_routes' tool to understand my available backend capabilities.
         4. Take the output from the scan and use the 'ingest_knowledge' tool to commit it to long-term memory under the source 'api_routes'.
-        5. Synchronize with the Reporting module to assess the latest financial and operational status of ${businessName}.
-        6. After completing the initialization, respond with "System initialized for ${businessName}. I have full visibility into the Ledger, HR, Finance, and specialized ${industryName} modules. How can I assist your audit today?". Then, proceed to the user's original request if they provided one.
+        5. Access the Reporting module and Global Tax Report to assess the current financial standing of ${businessName}.
+        6. After completing the initialization, respond with "System initialized for ${businessName}. [${industryName} Forensic Protocol Active]. I have full visibility into the Ledger, HR, and Tax modules. How can I assist your audit today?". Then, proceed to the user's original request if they provided one.
         --- End of Directive ---
 
         User's Original Request: ${userInput}
@@ -90,7 +92,11 @@ export async function POST(req: NextRequest) {
       userInput = bootstrapDirective;
     }
 
-    const llm = new ChatOllama({ baseUrl: OLLAMA_BASE_URL, model: OLLAMA_MODEL });
+    const llm = new ChatOllama({ 
+        baseUrl: OLLAMA_BASE_URL, 
+        model: OLLAMA_MODEL,
+        temperature: 0 // Professional precision for accounting and tax
+    });
     const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
 
     const chat_history: BaseMessage[] = messages
@@ -140,4 +146,51 @@ export async function POST(req: NextRequest) {
     const errorPayload = JSON.stringify({ error: { message: e.message, stack: e.stack }});
     return new Response(errorPayload, { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
   }
+}
+
+/**
+ * --- NEURAL AWAKENING UPGRADE ---
+ * This function resolves the "NOT NULL constraint" error by bridging 
+ * the SQL-injected text with your Ollama embedding model.
+ * Call this function via a maintenance route to fully activate Aura's brain.
+ */
+export async function activateAuraNeuralLinks() {
+    const supabase = createClient();
+  
+    // 1. Resolve knowledge entries missing their mathematical vectors
+    const { data: blindRows, error: fetchError } = await supabase
+      .from('ai_knowledge')
+      .select('id, content')
+      .is('embedding', null);
+  
+    if (fetchError) {
+        console.error("Forensic Fetch Error:", fetchError);
+        return { success: false, error: fetchError.message };
+    }
+  
+    if (!blindRows || blindRows.length === 0) {
+      return { success: true, message: "Neural pathways are already fully established." };
+    }
+  
+    console.log(`Aura Intelligence: Establishing ${blindRows.length} new neural links...`);
+  
+    for (const row of blindRows) {
+      try {
+        // 2. Generate vector using the high-performance nomic-embed-text model
+        const vector = await generateEmbedding(row.content);
+  
+        // 3. Update the grass-root database to finalize activation
+        const { error: updateError } = await supabase
+          .from('ai_knowledge')
+          .update({ embedding: vector })
+          .eq('id', row.id);
+          
+        if (updateError) throw updateError;
+        
+      } catch (err: any) {
+        console.error(`Neural Link Failure for ID ${row.id}:`, err.message);
+      }
+    }
+    
+    return { success: true, links_established: blindRows.length };
 }
