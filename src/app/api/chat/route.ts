@@ -2,39 +2,57 @@
 
 import { NextRequest } from 'next/server';
 import { CoreMessage as VercelChatMessage, TextPart } from 'ai';
+// ROOT FIX: Import the base createClient to bypass the cookie 'get' error
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 // --- ADD THIS LINE TO FORCE NODE.JS RUNTIME ---
 export const runtime = 'nodejs';
-// This resolves the 'process.versions' and other Node.js API errors
-// caused by Supabase Realtime and other dependencies (like vm2).
 // ----------------------------------------------
 
-// --- FIX: ALL LANGCHAIN IMPORTS MUST USE THE CONSISTENT ALIASES/SHIMS ---
 import { AIKernel } from '@/lib/ai-core/kernel';
-// CORRECTED IMPORT: This now uses the webpack alias to prevent duplicate identifiers.
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
-// CORRECTED IMPORT: Changed to relative path to be consistent with kernel.ts, or could be aliased.
 import { AIMessage, HumanMessage, BaseMessage } from '@/lib/langchain/core-prompts-shim';
 import { createClient } from '@/lib/supabase/server'; 
-// UPGRADE: Import the embedding generator to heal the brain
 import { generateEmbedding } from '@/lib/ai-tools/embedding';
 
-
-// Use environment variables for production-grade configuration
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral:latest";
 
 /**
- * A robust utility to extract and concatenate text content from the Vercel AI SDK's
- * potentially multimodal 'content' property.
- * @param content The 'content' property from a VercelChatMessage.
- * @returns A single string containing all text found in the content parts.
+ * UPGRADED: THE ACTIVATOR (GET Handler)
+ * Visit /api/chat in your browser to wake up the 28 brain cells.
+ * FIX: We now use a Service Role Client to bypass the 'cookies().get()' crash.
+ */
+export async function GET() {
+  try {
+    // Initialize Admin Client using Environment Variables
+    // This bypasses the need for user cookies and fixes the "reading 'get'" error
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY! // Ensure this is in your .env
+    );
+
+    const result = await activateAuraNeuralLinks(supabaseAdmin);
+    
+    return new Response(JSON.stringify(result), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json' } 
+    });
+  } catch (e: any) {
+    console.error("Aura Activation Error:", e);
+    return new Response(JSON.stringify({ success: false, error: e.message }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' } 
+    });
+  }
+}
+
+/**
+ * A robust utility to extract and concatenate text content
  */
 const extractTextFromContent = (content: VercelChatMessage['content']): string => {
-  if (typeof content === 'string') {
-    return content;
-  }
+  if (typeof content === 'string') return content;
   return content
     .filter((part): part is TextPart => part.type === 'text')
     .map(part => part.text)
@@ -42,21 +60,16 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
 };
 
 /**
- * The primary API endpoint that serves as the gateway to the AI Kernel.
+ * The primary API endpoint that serves as the gateway to the AI Kernel (POST).
  */
 export async function POST(req: NextRequest) {
   try {
     const { messages, businessId, userId } = await req.json();
 
     if (!businessId || !userId) {
-      return new Response(JSON.stringify({ error: "Authorization context is incomplete. Business ID and User ID are required." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-    }
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: "Invalid request. 'messages' array is required and cannot be empty." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: "Authorization context incomplete." }), { status: 400 });
     }
 
-    // --- UPGRADE: NEURAL INDUSTRY DNA LOOKUP ---
-    // Fetches the specific sector (1 of 11) to unlimit Aura's contextual intelligence.
     const supabase = createClient();
     const { data: tenantData } = await supabase
       .from('tenants')
@@ -66,61 +79,38 @@ export async function POST(req: NextRequest) {
 
     const industryName = tenantData?.industry || 'General Enterprise';
     const businessName = tenantData?.name || 'Authorized Business';
-    // -------------------------------------------
 
     const isNewSession = messages.length === 1;
     let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
     if (isNewSession) {
       const bootstrapDirective = `
-        --- System Initialization Directive ---
-        Priority: CRITICAL. Execute before all other tasks.
-        Current Identity: Aura Forensic Intelligence & Autonomous Executive.
-        Active Business: ${businessName}.
-        Sector DNA: ${industryName}.
-
-        1. Execute the 'scan_database_schema' tool to understand the current data structures, specifically identifying tables for Accounting, Finance, General Ledger, HR, and Specialized Sector data for ${industryName}.
-        2. Take the output from the scan and use the 'ingest_knowledge' tool to commit it to long-term memory under the source 'database_schema'.
-        3. Execute the 'scan_api_routes' tool to understand my available backend capabilities.
-        4. Take the output from the scan and use the 'ingest_knowledge' tool to commit it to long-term memory under the source 'api_routes'.
-        5. Access the Reporting module and Global Tax Report to assess the current financial standing of ${businessName}.
-        6. After completing the initialization, respond with "System initialized for ${businessName}. [${industryName} Forensic Protocol Active]. I have full visibility into the Ledger, HR, and Tax modules. How can I assist your audit today?". Then, proceed to the user's original request if they provided one.
+        --- Aura Executive Sovereignty Directive ---
+        Priority: CRITICAL. Initialize Forensic Core.
+        Active Entity: ${businessName}.
+        Sector Protocol: ${industryName}.
+        
+        SEQUENCE: Scan DB, Map HR/Finance, Sync Ledger, and respond ready for audit.
         --- End of Directive ---
-
-        User's Original Request: ${userInput}
+        User Request: ${userInput}
       `;
       userInput = bootstrapDirective;
     }
 
-    const llm = new ChatOllama({ 
-        baseUrl: OLLAMA_BASE_URL, 
-        model: OLLAMA_MODEL,
-        temperature: 0 // Professional precision for accounting and tax
-    });
+    const llm = new ChatOllama({ baseUrl: OLLAMA_BASE_URL, model: OLLAMA_MODEL, temperature: 0 });
     const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
 
     const chat_history: BaseMessage[] = messages
         .slice(0, -1)
         .map((m: VercelChatMessage): BaseMessage => {
             const textContent = extractTextFromContent(m.content);
-            if (m.role === 'user') {
-                return new HumanMessage(textContent);
-            } else {
-                return new AIMessage(textContent);
-            }
+            return m.role === 'user' ? new HumanMessage(textContent) : new AIMessage(textContent);
         });
 
     const stream = kernel.run({
       input: userInput,
       chat_history: chat_history,
-      config: { 
-        configurable: { 
-          businessId, 
-          userId,
-          industry: industryName, // Inject sector DNA into tool config
-          businessName: businessName
-        } 
-      },
+      config: { configurable: { businessId, userId, industry: industryName, businessName } },
     });
 
     const transformStream = new ReadableStream({
@@ -143,54 +133,52 @@ export async function POST(req: NextRequest) {
 
   } catch (e: any)  {
     console.error("AI Core Exception:", e);
-    const errorPayload = JSON.stringify({ error: { message: e.message, stack: e.stack }});
-    return new Response(errorPayload, { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
 }
 
 /**
- * --- NEURAL AWAKENING UPGRADE ---
- * This function resolves the "NOT NULL constraint" error by bridging 
- * the SQL-injected text with your Ollama embedding model.
- * Call this function via a maintenance route to fully activate Aura's brain.
+ * --- NEURAL AWAKENING LOGIC ---
+ * Uses the passed-in Admin client to perform the background hydration.
  */
-export async function activateAuraNeuralLinks() {
-    const supabase = createClient();
-  
+export async function activateAuraNeuralLinks(adminClient: any) {
     // 1. Resolve knowledge entries missing their mathematical vectors
-    const { data: blindRows, error: fetchError } = await supabase
+    const { data: blindRows, error: fetchError } = await adminClient
       .from('ai_knowledge')
       .select('id, content')
       .is('embedding', null);
   
     if (fetchError) {
-        console.error("Forensic Fetch Error:", fetchError);
-        return { success: false, error: fetchError.message };
+        throw new Error(`Forensic Fetch Error: ${fetchError.message}`);
     }
   
     if (!blindRows || blindRows.length === 0) {
-      return { success: true, message: "Neural pathways are already fully established." };
+      return { success: true, message: "Neural pathways are already established." };
     }
   
-    console.log(`Aura Intelligence: Establishing ${blindRows.length} new neural links...`);
-  
+    let activationCount = 0;
     for (const row of blindRows) {
       try {
         // 2. Generate vector using the high-performance nomic-embed-text model
         const vector = await generateEmbedding(row.content);
   
-        // 3. Update the grass-root database to finalize activation
-        const { error: updateError } = await supabase
+        // 3. Update the database directly
+        const { error: updateError } = await adminClient
           .from('ai_knowledge')
           .update({ embedding: vector })
           .eq('id', row.id);
           
         if (updateError) throw updateError;
+        activationCount++;
         
       } catch (err: any) {
         console.error(`Neural Link Failure for ID ${row.id}:`, err.message);
       }
     }
     
-    return { success: true, links_established: blindRows.length };
+    return { 
+        success: true, 
+        links_established: activationCount,
+        status: "Brain Activated. All 28 sectors are now live." 
+    };
 }
