@@ -74,11 +74,12 @@ export default function CopilotPanel() {
 
   /**
    * NEURAL UNLOCK FIX: 
-   * We allow sending if businessId exists, even if isReady is still hydrating.
-   * This prevents the "Permanently Disabled" issue.
+   * Updated to ensure the input is always open for the user to type.
+   * canSend now lights up the button as soon as text exists.
    */
-  const canSend = !isLoading && (businessId || isReady) && (input || '').trim().length > 0;
-  const isInputDisabled = isLoading || (!businessId && !isReady);
+  const hasInput = (input || '').trim().length > 0;
+  const canSend = !isLoading && hasInput;
+  const isInputDisabled = isLoading; // Only disable when the AI is processing
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden">
@@ -153,6 +154,13 @@ export default function CopilotPanel() {
         <form 
           onSubmit={(e) => {
             e.preventDefault();
+            
+            // If user clicks send before context is ready, we show a helpful message
+            if (!businessId || !isReady) {
+              toast.error("Forensic Link is still initializing. Please wait a moment.");
+              return;
+            }
+
             if (canSend) handleSubmit(e);
           }} 
           className="flex items-center gap-2"
@@ -160,15 +168,19 @@ export default function CopilotPanel() {
           <Input 
             value={input} 
             onChange={handleInputChange} 
-            placeholder={isInputDisabled ? "Initializing Neural Link..." : "Ask Aura to analyze ledger drift..."} 
+            placeholder={!businessId ? "Establishing Secure Link..." : "Ask Aura to analyze ledger drift..."} 
             className="h-12 rounded-xl bg-slate-50 border-none shadow-inner focus-visible:ring-emerald-500"
             disabled={isInputDisabled}
+            autoFocus
           />
           <Button 
             type="submit" 
             size="icon" 
             disabled={!canSend} 
-            className="h-12 w-12 rounded-xl shadow-xl bg-slate-950 hover:bg-slate-800 transition-all shrink-0"
+            className={cn(
+              "h-12 w-12 rounded-xl shadow-xl transition-all shrink-0",
+              canSend ? "bg-slate-950 hover:bg-slate-800" : "bg-slate-200"
+            )}
           >
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>
@@ -178,7 +190,7 @@ export default function CopilotPanel() {
         <div className="flex justify-between items-center mt-3 px-1">
             <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground">
                 <Activity className="h-3 w-3 text-emerald-500" /> 
-                Neural Link: <span className="font-mono text-emerald-600 font-bold">{businessId ? businessId.slice(0, 12) : 'OFFLINE'}</span>
+                Neural Link: <span className="font-mono text-emerald-600 font-bold">{businessId ? businessId.slice(0, 12) : 'CONNECTING...'}</span>
             </div>
             <div className="text-[8px] uppercase tracking-tighter font-bold text-slate-300">
                 Secure Forensic Context Isolated
