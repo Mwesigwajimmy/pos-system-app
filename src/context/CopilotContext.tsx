@@ -6,10 +6,13 @@ import { useChat } from '@ai-sdk/react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 
-// Import your actual hooks
+// --- Grassroots Hooks: Business and Capability Discovery ---
 import { useBusinessContext } from '@/hooks/useBusinessContext'; 
 import { useTenantModules } from '@/hooks/useTenantModules';
 
+/**
+ * --- Type Definitions (Enterprise Grade) ---
+ */
 interface CopilotContextType {
   messages: any[]; 
   input: string;
@@ -26,59 +29,84 @@ interface CopilotContextType {
   startAIAssistance: (prompt: string) => void;
   isReady: boolean;
   businessId: string;
-  tenantModules: string[]; // Added to track tenant capabilities
+  userId: string;       // Added: Individual security context
+  tenantModules: string[]; // Added: Module capability context
 }
 
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
- * AI Neural Worker
- * Now receives both Business and Tenant Module context
+ * AI Neural Worker Provider
+ * This component initializes the Vercel AI SDK hook with the full multi-tenant context.
+ * It ensures Aura knows WHO is talking, for WHICH BUSINESS, and with WHAT PERMISSIONS.
  */
 function CopilotWorkerProvider({ 
     children, 
     businessId, 
+    userId,
     modules 
 }: { 
     children: ReactNode; 
     businessId: string; 
+    userId: string;
     modules: string[]; 
 }) {
   const [isOpen, setIsOpen] = useState(false);
   
+  // SHARED AI ENGINE: Initialized with the full executive context
   const chat = useChat({
     api: '/api/chat',
-    // We pass BOTH businessId and the list of tenant modules to the AI
     body: { 
         businessId, 
+        userId,
         tenantModules: modules,
-        contextType: 'forensic_multi_tenant' 
+        contextType: 'forensic_sovereign_executive' 
     }, 
     experimental_streamData: true,
-    onError: (err: Error) => toast.error(`Aura Connection Error: ${err.message}`),
+    onResponse: (res) => {
+        if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");
+    },
+    onError: (err: Error) => {
+        console.error("Aura Neural Link Error:", err);
+        toast.error(`Aura Connection Error: ${err.message}`);
+    },
   });
+  
+  const openCopilot = () => setIsOpen(true);
+  const closeCopilot = () => setIsOpen(false);
+  const toggleCopilot = () => setIsOpen(prev => !prev);
+  
+  /**
+   * Autonomous Trigger
+   * Allows dashboard buttons to programmatically start AI tasks (e.g., "Analyze this report")
+   */
+  const startAIAssistance = (prompt: string) => {
+    if (!prompt) return;
+    chat.setInput(prompt);
+    setIsOpen(true);
+    // Execute with a slight delay to ensure the UI has opened and state is stable
+    setTimeout(() => chat.handleSubmit(new Event('submit') as any), 150);
+  };
   
   const contextValue = useMemo(() => ({
     ...chat,
-    input: chat.input || '',
+    // THE ROOT FIX: Ensure input is never undefined to prevent .trim() crashes in the UI
+    input: chat.input || '', 
     isOpen,
-    openCopilot: () => setIsOpen(true),
-    closeCopilot: () => setIsOpen(false),
-    toggleCopilot: () => setIsOpen(prev => !prev),
-    startAIAssistance: (prompt: string) => {
-        if (!prompt) return;
-        chat.setInput(prompt);
-        setIsOpen(true);
-        setTimeout(() => chat.handleSubmit(new Event('submit') as any), 100);
-    },
+    openCopilot,
+    closeCopilot,
+    toggleCopilot,
+    startAIAssistance,
     isReady: true,
     businessId,
+    userId,
     tenantModules: modules
-  }), [chat, isOpen, businessId, modules]);
+  }), [chat, isOpen, businessId, userId, modules]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
       {children}
+      {/* Executive Sidebar - Hosts the CopilotPanel */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 flex flex-col border-l shadow-2xl overflow-hidden">
            <CopilotPanel />
@@ -89,19 +117,27 @@ function CopilotWorkerProvider({
 }
 
 /**
- * Global Provider
- * Resolves Business and Tenant data before activating Aura
+ * --- Global Gatekeeper Provider ---
+ * This is the component used in your root layout.
+ * It resolves the Supabase Auth/Profile data and Tenant capabilities before waking up Aura.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
+  // 1. Fetch Business Identity (contains business_id and user profile info)
   const { data: businessData, isLoading: businessLoading } = useBusinessContext();
+  
+  // 2. Fetch Active Modules (CRM, HR, Finance, etc.)
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
-  // VALIDATION: We wait for the Business ID to exist.
-  // businessData.id is the correct property based on your hook file.
-  if (!businessLoading && businessData?.id) {
+  // VALIDATION: We only activate the AI Worker if we have a valid Business ID
+  // businessData.id maps to the business, businessData.profile.id maps to the user
+  const activeBusinessId = businessData?.id;
+  const activeUserId = (businessData as any)?.profile?.id || (businessData as any)?.user_id;
+
+  if (!businessLoading && !modulesLoading && activeBusinessId && activeUserId) {
     return (
       <CopilotWorkerProvider 
-        businessId={businessData.id} 
+        businessId={activeBusinessId} 
+        userId={activeUserId}
         modules={modules || []}
       >
         {children}
@@ -109,7 +145,11 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // Fallback state while loading or if data is missing
+  /**
+   * --- HYDRATION FALLBACK ---
+   * While the system is identifying the user and business, we provide a 
+   * "Locked" context value to prevent the frontend from throwing exceptions.
+   */
   const notReadyValue: CopilotContextType = {
       messages: [], 
       input: '', 
@@ -117,18 +157,19 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
       handleInputChange: () => {},
       handleSubmit: (e: any) => {
           e.preventDefault();
-          toast.warning("Aura is synchronizing with your business profile...");
+          toast.info("Aura is synchronizing with your business profile...");
       }, 
       isLoading: false, 
       setMessages: () => {}, 
       data: undefined,
       isOpen: false, 
-      openCopilot: () => {}, 
+      openCopilot: () => { toast.warning("Neural Link is still initializing."); }, 
       closeCopilot: () => {}, 
       toggleCopilot: () => {},
       startAIAssistance: () => {}, 
       isReady: false,
       businessId: '',
+      userId: '',
       tenantModules: []
   };
 
@@ -139,8 +180,14 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * --- useCopilot Custom Hook ---
+ * Single hook to access Aura's executive intelligence from any component.
+ */
 export function useCopilot() {
   const context = useContext(CopilotContext);
-  if (context === undefined) throw new Error("useCopilot must be used within a GlobalCopilotProvider");
+  if (context === undefined) {
+      throw new Error("Sovereignty Error: useCopilot must be used within a GlobalCopilotProvider");
+  }
   return context;
 }
