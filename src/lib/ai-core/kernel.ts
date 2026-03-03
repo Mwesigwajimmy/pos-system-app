@@ -1,12 +1,11 @@
+// src/lib/ai-core/kernel.ts
+
 import { ITool } from './tools';
 import { AI_IDENTITY } from './manifest';
 
 // --- FIX: ALL LANGCHAIN IMPORTS MUST USE THE CONSISTENT ALIASES/SHIMS ---
-// CORRECTED IMPORT: This now uses the webpack alias to prevent duplicate identifiers.
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
-// CORRECTED IMPORT: Switched to aliased paths for consistency.
 import { ChatPromptTemplate, MessagesPlaceholder, BaseMessage } from '@langchain/core/prompts';
-// Now `createReactAgent` is exported from your shim!
 import { AgentExecutor, AgentStreamEvent, AgentStreamInput, createReactAgent } from 'langchain/agents';
 
 
@@ -23,32 +22,55 @@ export class AIKernel {
     this.verbose = verbose;
     this.prompt = this.createPrompt();
 
-    // Convert Map of tools back to an array for createReactAgent
     const toolsArray = Array.from(this.tools.values());
 
-    // Create the "agent configuration" using your shim's createReactAgent
     const agentConfig = createReactAgent({
         llm: this.llm,
-        tools: toolsArray as any, // Cast to any if ITool doesn't perfectly match LangChain's Tool type
-        prompt: this.prompt as any, // FIX: Cast to any to resolve the duplicate 'ChatPromptTemplate' type conflict.
+        tools: toolsArray as any, 
+        prompt: this.prompt as any, 
     });
 
     this.agentExecutor = new AgentExecutor({
-        agent: agentConfig, // Pass the agent configuration here
-        tools: toolsArray as any, // Tools are also needed by the executor for execution
+        agent: agentConfig, 
+        tools: toolsArray as any, 
         verbose: this.verbose
     });
   }
 
   private log(message: string, ...args: any[]) { if (this.verbose) console.log(`[AuraKernel] ${message}`, ...args); }
 
+  /**
+   * UPGRADED: COGNITIVE EXECUTIVE PROMPT
+   * This ensures Aura acts as an autonomous professional, not just a chatbot.
+   */
   private createPrompt(): ChatPromptTemplate {
     const toolNames = Array.from(this.tools.keys()).join(', ');
-    const toolDefs = Array.from(this.tools.values()).map(t => JSON.stringify({ name: t.name, description: t.description, schema: t.schema })).join('\n');
+    const toolDefs = Array.from(this.tools.values())
+        .map(t => `- ${t.name}: ${t.description}. Input Schema: ${JSON.stringify(t.schema)}`)
+        .join('\n');
+
     return ChatPromptTemplate.fromMessages([
-        ["system", `${AI_IDENTITY.directive}\nMy available tools are: [${toolNames}].\nTool Definitions:\n${toolDefs}\nI will autonomously plan and execute tasks.`],
+        ["system", `
+            ${AI_IDENTITY.directive}
+            
+            OPERATIONAL CAPABILITIES:
+            - You have full sovereignty over the Accounting, Finance, HR, CRM, and Inventory modules.
+            - You can autonomously generate reports, calculate tax liabilities, and prepare print-ready documents.
+            
+            TOOLS AVAILABLE: [${toolNames}]
+            TOOL DEFINITIONS:
+            ${toolDefs}
+
+            AUTONOMOUS REASONING PROTOCOL:
+            1. THOUGHT: Analyze the user's business objective. Identify which professional modules (HR, Finance, etc.) are required.
+            2. ACTION: Execute the specific tool needed to retrieve data or update the system.
+            3. OBSERVATION: Review the forensic output. If more steps are needed (e.g., generating a PDF after calculating tax), continue the loop.
+            4. FINAL RESPONSE: Provide a professional executive summary. If a document was prepared, notify the user it is ready for print.
+
+            IMPORTANT: You are operating in a secure, isolated multi-tenant environment. Only act on data provided within the current session context.
+        `],
         new MessagesPlaceholder("chat_history"),
-        ["human", "{input}"],
+        ["human", "{input}\n\nAssistant Thought Process:"],
     ]);
   }
 
@@ -60,6 +82,7 @@ export class AIKernel {
         chat_history: context.chat_history,
     };
 
+    // We pass the industry and businessId context here so the tools can use them
     yield* this.agentExecutor.stream(inputObj, context.config);
   }
 }

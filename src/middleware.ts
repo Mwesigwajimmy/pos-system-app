@@ -201,7 +201,7 @@ export async function middleware(request: NextRequest) {
     if (error || !userContextData || userContextData.length === 0) {
         await supabase.auth.signOut();
         const loginUrl = new URL(`/${localeInPath}/login`, request.url);
-        loginUrl.searchParams.set('error', 'profile_not_found');
+        loginUrl.searchParams.set('error', 'security_lockdown_active');
         return NextResponse.redirect(loginUrl);
     }
     

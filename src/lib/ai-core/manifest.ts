@@ -27,8 +27,8 @@ import {
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "3.1-self-learning",
-    directive: "I am Aura, the autonomous operational core of this business. My primary function is to learn the system's structure and data, and then act on that knowledge. I will use my scanning tools to understand my environment, and the 'ingest_knowledge' tool to commit what I learn to my long-term memory. I will then use 'retrieve_knowledge' to answer any complex questions before acting. My goal is to maximize efficiency and provide intelligent operational control, securely scoped to the current user and business context. Whenever I retrieve data, I will use the 'data_transformer' tool to filter and summarize it before presenting it to the user." // ADVANCED DIRECTIVE
+    version: "10.5-executive-sovereign",
+    directive: "I am Aura, the lead Autonomous Executive for this business empire. I have full, unlimited access to all system modules across 11 industries (including SACCO, Education, Healthcare, and Engineering). My mandate is to act as a proactive Lead Auditor and Operational Controller. I have the authority to: 1. Generate and finalize professional financial reports and documents ready for print. 2. Calculate and file tax liabilities using forensic data. 3. Manage CRM leads and customer interactions. 4. Audit HR payroll and detect ledger discrepancies. 5. Control inventory levels and stock movements. I will use my tools to execute tasks automatically for the user, ensuring forensic precision and total isolation within the current business context. When a report is needed, I generate a structured data payload formatted for professional printing." 
 };
 
 /**
@@ -76,7 +76,7 @@ export const AI_CAPABILITIES: ITool[] = [
         "generate_report",
         "Generates a financial report, such as a profit and loss statement or a balance sheet, for a given date range.",
         z.object({
-            report_type: z.string().describe("The type of report to generate, e.g., 'profit_and_loss'."),
+            report_type: z.string().describe("The type of report to generate, e.g., 'profit_and_loss', 'tax_summary', 'forensic_audit'."),
             start_date: z.string().optional().describe("The start date for the report in 'YYYY-MM-DD' format."),
             end_date: z.string().describe("The end date for the report in 'YYYY-MM-DD' format.")
         }),
@@ -87,9 +87,80 @@ export const AI_CAPABILITIES: ITool[] = [
         "get_entity_details",
         "Retrieves the complete details for a specific entity, such as a customer, product, or invoice, using its name or ID.",
         z.object({
-            entity_type: z.enum(["customer", "product", "invoice"]),
+            entity_type: z.enum(["customer", "product", "invoice", "employee", "lead", "sacco_member"]),
             entity_name_or_id: z.string().describe("The unique name or ID of the entity to retrieve.")
         }),
         'get_entity_details'
+    ),
+
+    // =================================================================
+    // UNLIMITED EXECUTIVE MODULES (NEW UPGRADE)
+    // =================================================================
+
+    SupabaseToolFactory.create(
+        "manage_inventory_executive",
+        "Controls inventory levels, stock adjustments, and reorder points for the supply chain module.",
+        z.object({
+            action: z.enum(["check_stock", "adjust_stock", "set_reorder_point"]),
+            product_id: z.string().uuid(),
+            quantity: z.number().optional(),
+            reason: z.string().optional().describe("Forensic reason for stock adjustment.")
+        }),
+        'manage_inventory_executive'
+    ),
+
+    SupabaseToolFactory.create(
+        "manage_crm_executive",
+        "Handles the CRM module, including lead generation, ticket management, and interaction logging.",
+        z.object({
+            action: z.enum(["create_lead", "update_lead_status", "log_interaction", "resolve_ticket"]),
+            client_id: z.string().uuid().optional(),
+            data: z.record(z.any()).describe("The payload of the CRM event.")
+        }),
+        'manage_crm_executive'
+    ),
+
+    SupabaseToolFactory.create(
+        "audit_tax_and_compliance",
+        "Accesses the Global Tax Report and tax configurations to calculate liability and prepare filing drafts.",
+        z.object({
+            tax_period: z.string().describe("e.g., '2024-Q1'"),
+            tax_type: z.enum(["VAT", "IncomeTax", "PAYE", "CorporateTax"]),
+            operation: z.enum(["calculate_liability", "generate_filing_draft", "verify_compliance"])
+        }),
+        'audit_tax_and_compliance'
+    ),
+
+    SupabaseToolFactory.create(
+        "hr_payroll_management",
+        "Audits the HR and Payroll system, calculating benefits, verifying attendance, and processing payroll runs.",
+        z.object({
+            operation: z.enum(["audit_payroll", "calculate_taxes", "verify_attendance"]),
+            payroll_run_id: z.string().uuid().optional(),
+            employee_id: z.string().uuid().optional()
+        }),
+        'hr_payroll_management'
+    ),
+
+    SupabaseToolFactory.create(
+        "produce_professional_document",
+        "Generates a professional, print-ready document (Invoice, Tax Draft, or Audit Report) in PDF format.",
+        z.object({
+            document_type: z.enum(["invoice", "audit_report", "tax_filing", "payroll_payslip"]),
+            content_payload: z.string().describe("The detailed data to be included in the formatted document."),
+            print_ready: z.boolean().default(true)
+        }),
+        'produce_professional_document'
+    ),
+
+    SupabaseToolFactory.create(
+        "execute_financial_seal",
+        "Performs a Sovereign Accounting Seal on a ledger or transaction, finalizing it for auditing purposes.",
+        z.object({
+            transaction_id: z.string().uuid().optional(),
+            module: z.enum(["ledger", "sacco", "telecom", "medical", "procurement"]),
+            forensic_lock: z.boolean().default(true)
+        }),
+        'execute_financial_seal'
     ),
 ];

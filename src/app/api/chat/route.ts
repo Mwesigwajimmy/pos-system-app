@@ -16,6 +16,7 @@ import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
 // CORRECTED IMPORT: Changed to relative path to be consistent with kernel.ts, or could be aliased.
 import { AIMessage, HumanMessage, BaseMessage } from '@/lib/langchain/core-prompts-shim';
+import { createClient } from '@/lib/supabase/server'; 
 
 
 // Use environment variables for production-grade configuration
@@ -52,6 +53,19 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: "Invalid request. 'messages' array is required and cannot be empty." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // --- UPGRADE: NEURAL INDUSTRY DNA LOOKUP ---
+    // Fetches the specific sector (1 of 11) to unlimit Aura's contextual intelligence.
+    const supabase = createClient();
+    const { data: tenantData } = await supabase
+      .from('tenants')
+      .select('name, industry')
+      .eq('id', businessId)
+      .single();
+
+    const industryName = tenantData?.industry || 'General Enterprise';
+    const businessName = tenantData?.name || 'Authorized Business';
+    // -------------------------------------------
+
     const isNewSession = messages.length === 1;
     let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
@@ -59,11 +73,16 @@ export async function POST(req: NextRequest) {
       const bootstrapDirective = `
         --- System Initialization Directive ---
         Priority: CRITICAL. Execute before all other tasks.
-        1. Execute the 'scan_database_schema' tool to understand the current data structures.
+        Current Identity: Aura Forensic Intelligence.
+        Active Business: ${businessName}.
+        Sector DNA: ${industryName}.
+
+        1. Execute the 'scan_database_schema' tool to understand the current data structures, specifically identifying tables for Accounting, Finance, General Ledger, HR, and Specialized Sector data for ${industryName}.
         2. Take the output from the scan and use the 'ingest_knowledge' tool to commit it to long-term memory under the source 'database_schema'.
         3. Execute the 'scan_api_routes' tool to understand my available backend capabilities.
         4. Take the output from the scan and use the 'ingest_knowledge' tool to commit it to long-term memory under the source 'api_routes'.
-        5. After completing the initialization, respond with "System initialized. I have reviewed the latest system and data structures. How can I assist you?". Then, proceed to the user's original request if they provided one.
+        5. Synchronize with the Reporting module to assess the latest financial and operational status of ${businessName}.
+        6. After completing the initialization, respond with "System initialized for ${businessName}. I have full visibility into the Ledger, HR, Finance, and specialized ${industryName} modules. How can I assist your audit today?". Then, proceed to the user's original request if they provided one.
         --- End of Directive ---
 
         User's Original Request: ${userInput}
@@ -88,7 +107,14 @@ export async function POST(req: NextRequest) {
     const stream = kernel.run({
       input: userInput,
       chat_history: chat_history,
-      config: { configurable: { businessId, userId } },
+      config: { 
+        configurable: { 
+          businessId, 
+          userId,
+          industry: industryName, // Inject sector DNA into tool config
+          businessName: businessName
+        } 
+      },
     });
 
     const transformStream = new ReadableStream({
