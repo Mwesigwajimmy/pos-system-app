@@ -23,6 +23,7 @@ interface CopilotContextType {
   toggleCopilot: () => void;
   startAIAssistance: (prompt: string) => void;
   isReady: boolean;
+  businessId: string; // Added to interface for UI safety
 }
 
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
@@ -30,7 +31,6 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 function CopilotWorkerProvider({ children, businessId, userId }: { children: ReactNode; businessId: string; userId: string; }) {
   const [isOpen, setIsOpen] = useState(false);
   
-  // SHARED AI CORE
   const chat = useChat({
     api: '/api/chat',
     body: { businessId, userId }, 
@@ -43,6 +43,8 @@ function CopilotWorkerProvider({ children, businessId, userId }: { children: Rea
   const toggleCopilot = () => setIsOpen(prev => !prev);
   
   const startAIAssistance = (prompt: string) => {
+    // Safety check for prompt
+    if (!prompt) return;
     chat.setInput(prompt);
     setIsOpen(true);
     setTimeout(() => {
@@ -52,13 +54,16 @@ function CopilotWorkerProvider({ children, businessId, userId }: { children: Rea
   
   const contextValue = useMemo(() => ({
     ...chat,
+    // CRITICAL FIX: Ensure input is never undefined
+    input: chat.input || '',
     isOpen,
     openCopilot,
     closeCopilot,
     toggleCopilot,
     startAIAssistance,
     isReady: true,
-  }), [chat, isOpen]);
+    businessId: businessId || '',
+  }), [chat, isOpen, businessId]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -84,10 +89,21 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   }
 
   const notReadyValue = {
-      messages: [], input: '', setInput: () => {}, handleInputChange: () => {},
-      handleSubmit: (e: any) => e.preventDefault(), isLoading: false, setMessages: () => {}, data: undefined,
-      isOpen: false, openCopilot: () => {}, closeCopilot: () => {}, toggleCopilot: () => {},
-      startAIAssistance: () => {}, isReady: false,
+      messages: [], 
+      input: '', 
+      setInput: () => {}, 
+      handleInputChange: () => {},
+      handleSubmit: (e: any) => e.preventDefault(), 
+      isLoading: false, 
+      setMessages: () => {}, 
+      data: undefined,
+      isOpen: false, 
+      openCopilot: () => {}, 
+      closeCopilot: () => {}, 
+      toggleCopilot: () => {},
+      startAIAssistance: () => {}, 
+      isReady: false,
+      businessId: ''
   };
 
   return (
