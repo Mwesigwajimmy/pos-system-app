@@ -36,17 +36,17 @@ interface CopilotContextType {
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
- * AI Neural Worker Provider
- * This component manages the UI state and sidebar visibility.
- * It receives the initialized chat state from the Global Gatekeeper.
+ * AI Neural Worker
+ * This component manages the Sidebar UI and local state.
+ * It consumes the AI state initialized by the Gatekeeper.
  */
-function CopilotWorker({ 
+function CopilotWorkerProvider({ 
     children, 
     chat,
     businessId, 
     userId,
     modules,
-    isReady
+    isReady 
 }: { 
     children: ReactNode; 
     chat: any;
@@ -63,7 +63,7 @@ function CopilotWorker({
   
   /**
    * Autonomous Trigger
-   * Allows dashboard buttons to programmatically start AI tasks (e.g., "Analyze this report")
+   * Allows dashboard buttons to programmatically start AI tasks
    */
   const startAIAssistance = (prompt: string) => {
     if (!prompt) return;
@@ -89,14 +89,14 @@ function CopilotWorker({
   }), [chat, isOpen, businessId, userId, modules, isReady]);
 
   /**
-   * THE SECURITY WRAPPER:
-   * We wrap the handleSubmit to ensure that even if the keyboard is active,
-   * the message only sends if the Identity Handshake is verified.
+   * SOVEREIGN SUBMIT WRAPPER
+   * Prevents actual transmission until the handshake is verified,
+   * but typing remains 100% active.
    */
   const safeHandleSubmit = (e: any, options?: any) => {
     if (!isReady) {
       e.preventDefault();
-      toast.info("Aura: Synchronizing with your business profile. Please wait...");
+      toast.info("Aura: Finalizing forensic handshake with your profile...");
       return;
     }
     chat.handleSubmit(e, options);
@@ -118,17 +118,15 @@ function CopilotWorker({
 /**
  * --- Global Gatekeeper Provider ---
  * Upgraded with Forensic ID Resolution.
- * It resolves the Supabase Auth/Profile data and Tenant capabilities before waking up Aura.
+ * It resolves the Supabase Auth/Profile data before waking up the AI.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
-  // FIX: Added hydration guard to prevent Next.js client-side exceptions
+  // Hydration guard to prevent Next.js client-side exceptions
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // 1. Fetch Business Identity (contains business_id and user profile info)
+  // 1. Fetch Business Identity and Modules (Handshake Data)
   const { data: businessData, isLoading: businessLoading } = useBusinessContext();
-  
-  // 2. Fetch Active Modules (CRM, HR, Finance, etc.)
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
   /**
@@ -143,13 +141,13 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const activeUserId = useMemo(() => {
     if (!businessData) return '';
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    return target?.id || (target as any)?.profile?.id || (target as any)?.user_id || (target as any)?.owner_id || '';
+    return target?.id || (target as any)?.profile?.id || (target as any)?.user_id || '';
   }, [businessData]);
 
   /**
-   * --- SHARED AI ENGINE (THE CURE FOR THE KEYBOARD FREEZE) ---
-   * By initializing useChat here, the handleInputChange function is ALIVE 
-   * the moment the component mounts, allowing the user to type immediately.
+   * 2. SHARED AI ENGINE (THE CURE)
+   * Initializing useChat here ensures the 'handleInputChange' is ALIVE 
+   * the moment the component mounts. This unlocks your keyboard instantly.
    */
   const chat = useChat({
     api: '/api/chat',
@@ -169,15 +167,16 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Verify if the system is fully linked and ready to transmit
   const isReady = mounted && !businessLoading && !!activeBusinessId && !!activeUserId;
 
   /**
-   * THE GATEKEEPER UI:
-   * We always render the Worker so that typing is active, but we pass
-   * the "isReady" status so the assistant knows when the handshake is finished.
+   * THE GATEKEEPER:
+   * We now render the Worker immediately so the user can type while 
+   * the background data finishes loading.
    */
   return (
-    <CopilotWorker 
+    <CopilotWorkerProvider 
       chat={chat}
       businessId={activeBusinessId} 
       userId={activeUserId}
@@ -185,13 +184,12 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
       isReady={isReady}
     >
       {children}
-    </CopilotWorker>
+    </CopilotWorkerProvider>
   );
 }
 
 /**
  * --- useCopilot Custom Hook ---
- * Single hook to access Aura's executive intelligence from any component.
  */
 export function useCopilot() {
   const context = useContext(CopilotContext);
