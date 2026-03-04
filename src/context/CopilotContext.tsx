@@ -37,40 +37,25 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
  * AI Neural Worker Provider
- * This component initializes the Vercel AI SDK hook with the full multi-tenant context.
- * It ensures Aura knows WHO is talking, for WHICH BUSINESS, and with WHAT PERMISSIONS.
+ * This component manages the UI state and sidebar visibility.
+ * It receives the initialized chat state from the Global Gatekeeper.
  */
-function CopilotWorkerProvider({ 
+function CopilotWorker({ 
     children, 
+    chat,
     businessId, 
     userId,
-    modules 
+    modules,
+    isReady
 }: { 
     children: ReactNode; 
+    chat: any;
     businessId: string; 
     userId: string;
     modules: string[]; 
+    isReady: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // SHARED AI ENGINE: Initialized with the full executive context
-  const chat = useChat({
-    api: '/api/chat',
-    body: { 
-        businessId, 
-        userId,
-        tenantModules: modules,
-        contextType: 'forensic_sovereign_executive' 
-    }, 
-    experimental_streamData: true,
-    onResponse: (res) => {
-        if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");
-    },
-    onError: (err: Error) => {
-        console.error("Aura Neural Link Error:", err);
-        toast.error(`Aura Connection Error: ${err.message}`);
-    },
-  });
   
   const openCopilot = () => setIsOpen(true);
   const closeCopilot = () => setIsOpen(false);
@@ -97,14 +82,28 @@ function CopilotWorkerProvider({
     closeCopilot,
     toggleCopilot,
     startAIAssistance,
-    isReady: true,
+    isReady,
     businessId,
     userId,
     tenantModules: modules
-  }), [chat, isOpen, businessId, userId, modules]);
+  }), [chat, isOpen, businessId, userId, modules, isReady]);
+
+  /**
+   * THE SECURITY WRAPPER:
+   * We wrap the handleSubmit to ensure that even if the keyboard is active,
+   * the message only sends if the Identity Handshake is verified.
+   */
+  const safeHandleSubmit = (e: any, options?: any) => {
+    if (!isReady) {
+      e.preventDefault();
+      toast.info("Aura: Synchronizing with your business profile. Please wait...");
+      return;
+    }
+    chat.handleSubmit(e, options);
+  };
 
   return (
-    <CopilotContext.Provider value={contextValue}>
+    <CopilotContext.Provider value={{ ...contextValue, handleSubmit: safeHandleSubmit }}>
       {children}
       {/* Executive Sidebar - Hosts the CopilotPanel */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -133,88 +132,60 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
   /**
-   * --- ARRAY-SAFE FORENSIC ID RESOLUTION (THE FIX) ---
-   * We normalize businessData to ensure we handle both single objects and 
-   * result arrays returned by Supabase hooks.
+   * --- ARRAY-SAFE FORENSIC ID RESOLUTION ---
    */
   const activeBusinessId = useMemo(() => {
     if (!businessData) return '';
-    // Handle array-wrapped data
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    
-    return (
-        target?.business_id || 
-        target?.tenant_id || 
-        target?.organization_id || 
-        target?.id || 
-        ''
-    );
+    return target?.business_id || target?.tenant_id || target?.organization_id || target?.id || '';
   }, [businessData]);
 
   const activeUserId = useMemo(() => {
     if (!businessData) return '';
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    
-    return (
-        target?.id || // Profile ID matches Auth ID in your perfect backend
-        (target as any)?.profile?.id || 
-        (target as any)?.user_id || 
-        (target as any)?.owner_id || 
-        ''
-    );
+    return target?.id || (target as any)?.profile?.id || (target as any)?.user_id || (target as any)?.owner_id || '';
   }, [businessData]);
 
   /**
-   * --- HYDRATION FALLBACK ---
-   * While the system is identifying the user and business, we provide a 
-   * "Locked" context value to prevent the frontend from throwing exceptions.
+   * --- SHARED AI ENGINE (THE CURE FOR THE KEYBOARD FREEZE) ---
+   * By initializing useChat here, the handleInputChange function is ALIVE 
+   * the moment the component mounts, allowing the user to type immediately.
    */
-  const notReadyValue: CopilotContextType = {
-      messages: [], 
-      input: '', 
-      setInput: () => {}, 
-      handleInputChange: () => {},
-      handleSubmit: (e: any) => {
-          e.preventDefault();
-          toast.info("Aura is synchronizing with your business profile...");
-      }, 
-      isLoading: false, 
-      setMessages: () => {}, 
-      data: undefined,
-      isOpen: false, 
-      openCopilot: () => { toast.warning("Neural Link is still initializing."); }, 
-      closeCopilot: () => {}, 
-      toggleCopilot: () => {},
-      startAIAssistance: () => {}, 
-      isReady: false,
-      businessId: activeBusinessId, // Pass what we have so far
-      userId: activeUserId,
-      tenantModules: []
-  };
+  const chat = useChat({
+    api: '/api/chat',
+    body: { 
+        businessId: activeBusinessId, 
+        userId: activeUserId,
+        tenantModules: modules || [],
+        contextType: 'forensic_sovereign_executive' 
+    }, 
+    experimental_streamData: true,
+    onResponse: (res) => {
+        if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");
+    },
+    onError: (err: Error) => {
+        console.error("Aura Neural Link Error:", err);
+        toast.error(`Aura Connection Error: ${err.message}`);
+    },
+  });
+
+  const isReady = mounted && !businessLoading && !!activeBusinessId && !!activeUserId;
 
   /**
-   * THE GATEKEEPER:
-   * Only activate the AI Worker if we have successfully resolved BOTH 
-   * the Business context and the User identity.
-   * 
-   * FIX: added !mounted check to ensure server/client consistency.
+   * THE GATEKEEPER UI:
+   * We always render the Worker so that typing is active, but we pass
+   * the "isReady" status so the assistant knows when the handshake is finished.
    */
-  if (mounted && !businessLoading && !modulesLoading && activeBusinessId && activeUserId) {
-    return (
-      <CopilotWorkerProvider 
-        businessId={activeBusinessId} 
-        userId={activeUserId}
-        modules={modules || []}
-      >
-        {children}
-      </CopilotWorkerProvider>
-    );
-  }
-
   return (
-    <CopilotContext.Provider value={notReadyValue}>
+    <CopilotWorker 
+      chat={chat}
+      businessId={activeBusinessId} 
+      userId={activeUserId}
+      modules={modules || []}
+      isReady={isReady}
+    >
       {children}
-    </CopilotContext.Provider>
+    </CopilotWorker>
   );
 }
 
