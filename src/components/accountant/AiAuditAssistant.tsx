@@ -22,7 +22,6 @@ import remarkGfm from 'remark-gfm';
 /**
  * --- AgentStep Component ---
  * Visualizes Aura's autonomous forensic reasoning loop.
- * Renders tool calls and backend observations in real-time.
  */
 const AgentStep = ({ data }: { data: any }) => {
     const isToolCall = data.step === 'tool_call' || data.event === 'on_agent_action';
@@ -61,20 +60,46 @@ const AgentStep = ({ data }: { data: any }) => {
 };
 
 export function AiAuditAssistant() {
-  // 1. MASTER IDENTITY HANDSHAKE
-  const { businessId: ctxBizId, userId: ctxUserId, isReady } = useCopilot();
+  // 1. MASTER IDENTITY HANDSHAKE (Enhanced with Deep Pathing)
+  const { businessId: ctxBizId, userId: ctxUserId, isReady: contextReady } = useCopilot();
   const { data: userProfile } = useUserProfile();
   
-  // Multi-tenant pathing resolution
-  const businessId = ctxBizId || (userProfile as any)?.business_id || (userProfile as any)?.tenant_id || '';
-  const userId = ctxUserId || userProfile?.id || '';
-  const industry = (userProfile as any)?.industry || 'General Enterprise';
+  /**
+   * --- FORENSIC ID RESOLUTION ---
+   * We ensure the ID is found even if the hook returns nested data or different casing.
+   */
+  const businessId = useMemo(() => {
+    const profile = (userProfile as any)?.data || userProfile;
+    const target = Array.isArray(profile) ? profile[0] : profile;
+    
+    return (
+        ctxBizId || 
+        target?.business_id || 
+        target?.businessId || 
+        target?.tenant_id || 
+        target?.organization_id || 
+        ''
+    );
+  }, [ctxBizId, userProfile]);
+
+  const userId = useMemo(() => {
+    const profile = (userProfile as any)?.data || userProfile;
+    const target = Array.isArray(profile) ? profile[0] : profile;
+    
+    return ctxUserId || target?.id || target?.userId || '';
+  }, [ctxUserId, userProfile]);
+
+  const industry = useMemo(() => {
+    const profile = (userProfile as any)?.data || userProfile;
+    const target = Array.isArray(profile) ? profile[0] : profile;
+    return target?.industry || target?.business_type || 'General Enterprise';
+  }, [userProfile]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const [finalAnswer, setFinalAnswer] = useState('');
   const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
-  // 2. SHARED EXECUTIVE AI CORE (Vercel AI SDK)
+  // 2. SHARED EXECUTIVE AI CORE
   const chat = useChat({
     api: '/api/chat',
     body: { 
@@ -85,7 +110,6 @@ export function AiAuditAssistant() {
     },
     experimental_streamData: true,
     onFinish: (message) => { 
-        // Forensic metadata extraction logic
         const lastDataChunk = chat.data?.at(-1); 
         if (lastDataChunk) {
             try {
@@ -122,18 +146,25 @@ export function AiAuditAssistant() {
   
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      setFinalAnswer(''); setSuggestedActions([]);
+      if (!businessId) {
+          toast.error("Handshake pending. Please wait for identity resolution.");
+          return;
+      }
+      setFinalAnswer(''); 
+      setSuggestedActions([]);
       handleSubmit(e);
   };
   
   const handleSuggestionClick = (action: string) => {
-      const newMessages: CoreMessage[] = [
+      const newMessages: any[] = [
           ...messages, 
-          { id: crypto.randomUUID(), role: 'assistant', content: finalAnswer || "Proceeding with next logic gate..." } as any, 
-          { id: crypto.randomUUID(), role: 'user', content: action } as any
+          { id: crypto.randomUUID(), role: 'assistant', content: finalAnswer || "Proceeding with next logic gate..." }, 
+          { id: crypto.randomUUID(), role: 'user', content: action }
       ];
-      setMessages(newMessages as any);
-      setFinalAnswer(''); setSuggestedActions([]); setInput('');
+      setMessages(newMessages);
+      setFinalAnswer(''); 
+      setSuggestedActions([]); 
+      setInput('');
       handleSubmit(new Event('submit') as any, { options: { body: { businessId, userId, messages: newMessages } } });
   };
   
@@ -143,6 +174,9 @@ export function AiAuditAssistant() {
       "Check payroll disbursement for contract parity.",
       "Generate a multi-country tax compliance report.",
   ];
+
+  // UI STATE LOCK: Unlocks input once IDs are physically resolved
+  const isInputLocked = !businessId || !contextReady;
 
   return (
     <div className="w-full h-full flex flex-col border rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden min-h-[700px]">
@@ -161,7 +195,7 @@ export function AiAuditAssistant() {
               </div>
           </div>
           <div className="flex items-center gap-3">
-              <Badge className="bg-slate-800 text-slate-400 text-[9px] font-mono border-slate-700">ID: {businessId?.slice(0, 8)}</Badge>
+              <Badge className="bg-slate-800 text-slate-400 text-[9px] font-mono border-slate-700">ID: {businessId?.slice(0, 8) || 'SYNCING'}</Badge>
               <Badge className="bg-emerald-600 text-[9px] font-mono border-none px-3 py-1 shadow-lg shadow-emerald-900/20">v10.5 PRO</Badge>
           </div>
       </header>
@@ -296,8 +330,8 @@ export function AiAuditAssistant() {
                 className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 text-base px-8 pr-14 transition-all"
                 value={input} 
                 onChange={handleInputChange} 
-                placeholder={isChatLoading ? "Processing Forensic Stream..." : "Command Aura to audit, calculate, or report..."} 
-                disabled={isChatLoading || !businessId}
+                placeholder={isInputLocked ? "Synchronizing Sovereignty Context..." : "Command Aura to audit, calculate, or report..."} 
+                disabled={isInputLocked || isChatLoading}
               />
               <div className="absolute right-5 top-1/2 -translate-y-1/2">
                 <Database size={18} className={cn("transition-colors", isChatLoading ? "text-emerald-500 animate-pulse" : "text-slate-300")} />
@@ -305,8 +339,11 @@ export function AiAuditAssistant() {
           </div>
           <Button 
             type="submit" 
-            disabled={isChatLoading || !businessId || !input.trim()} 
-            className="h-16 w-16 rounded-2xl shadow-2xl bg-slate-950 hover:bg-slate-900 transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0"
+            disabled={isInputLocked || isChatLoading || !input.trim()} 
+            className={cn(
+                "h-16 w-16 rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0",
+                (!isInputLocked && !isChatLoading && input.trim()) ? "bg-slate-950 opacity-100" : "bg-slate-200 opacity-50"
+            )}
           >
               {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin text-emerald-500" /> : <Send className="h-7 w-7 text-white" />}
           </Button>

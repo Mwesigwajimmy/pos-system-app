@@ -8,63 +8,74 @@ import { toast } from 'sonner';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 /**
- * --- CRITICAL PATH FIX ---
- * We point directly to the component folder to resolve the Webpack error.
+ * --- DUAL DIRECTORY IMPORT RESOLUTION ---
+ * To satisfy your enterprise structure, we pull from both folders.
+ * 'Core' is the system base, 'Extended' is the Aura v10.5 Pro interface.
  */
-import CopilotPanel from '@/components/copilot/CopilotPanel';
+import CopilotPanelCore from '@/components/core/CopilotPanel';
+import CopilotPanelExtended from '@/components/copilot/CopilotPanel';
 
 /**
- * --- Enterprise Grade Type Definitions ---
+ * --- Type Definitions (Enterprise Grade) ---
  */
 interface CopilotContextType {
-  messages: CoreMessage[];
+  messages: any[];
   input: string;
   setInput: (value: string) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
-  setMessages: (messages: CoreMessage[]) => void;
-  data: readonly any[] | undefined;
+  setMessages: (messages: any[]) => void;
+  data: any[] | undefined;
   isOpen: boolean;
   openPanel: () => void;
   closePanel: () => void;
   togglePanel: () => void;
   startAIAssistance: (prompt: string) => void;
+  // Forensic Identity Status
   isReady: boolean;
   businessId: string;
   userId: string;
+  tenantModules: string[];
 }
 
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
  * --- THE NEURAL WORKER ---
- * This component runs the actual AI engine once the business context is resolved.
+ * This is the ACTIVE state of Aura. It mounts only when IDs are physically verified.
+ * It provides the REAL input handlers that unlock your keyboard and submit button.
  */
 function CopilotNeuralWorker({ 
     children, 
     businessId, 
-    userId 
+    userId,
+    modules 
 }: { 
     children: React.ReactNode; 
     businessId: string; 
     userId: string; 
+    modules: string[];
 }) {
     const [isOpen, setIsOpen] = useState(false);
 
-    // THE SHARED AI ENGINE: Initialized with Sovereign Context
+    // 1. THE SHARED AI ENGINE (Vercel AI SDK)
+    // Linked to your verified Backend Kernel
     const chat = useChat({
         api: '/api/chat',
         body: { 
             businessId, 
             userId,
-            contextType: 'forensic_sovereign_executive',
-            initSearch: true 
+            tenantModules: modules,
+            contextType: 'forensic_sovereign_executive' 
         },
         experimental_streamData: true,
+        onResponse: (res) => {
+            if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");
+        },
         onError: (err: Error) => {
             console.error("Aura Neural Link Error:", err);
-            toast.error(`Aura Core Error: ${err.message}`);
+            toast.error(`Aura Connection Error: ${err.message}`);
         },
     });
 
@@ -72,19 +83,23 @@ function CopilotNeuralWorker({
     const closePanel = () => setIsOpen(false);
     const togglePanel = () => setIsOpen(prev => !prev);
 
+    /**
+     * Autonomous Trigger
+     * Allows system buttons to programmatically start AI forensic tasks.
+     */
     const startAIAssistance = (prompt: string) => {
         if (!prompt) return;
         chat.setInput(prompt);
         setIsOpen(true);
-        // Delay ensures the UI sheet opens before the stream begins
+        // Delay ensures UI transition is stable before stream starts
         setTimeout(() => {
             chat.handleSubmit(new Event('submit') as any);
-        }, 400);
+        }, 200);
     };
 
     const contextValue = useMemo(() => ({
         ...chat,
-        // UI Safety: Fallback to empty string ensures typing is never locked by undefined
+        // UI FIX: Ensure input is never null to allow immediate typing
         input: chat.input || '',
         isOpen,
         openPanel,
@@ -93,15 +108,17 @@ function CopilotNeuralWorker({
         startAIAssistance,
         isReady: true,
         businessId,
-        userId
-    }), [chat, isOpen, businessId, userId]);
+        userId,
+        tenantModules: modules
+    }), [chat, isOpen, businessId, userId, modules]);
 
     return (
         <CopilotContext.Provider value={contextValue}>
             {children}
+            {/* The AI Sidebar - Renders the v10.5 Extended Panel */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 flex flex-col border-l shadow-2xl overflow-hidden">
-                    <CopilotPanel />
+                <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 flex flex-col border-l shadow-2xl overflow-hidden bg-white">
+                    <CopilotPanelExtended />
                 </SheetContent>
             </Sheet>
         </CopilotContext.Provider>
@@ -110,19 +127,21 @@ function CopilotNeuralWorker({
 
 /**
  * --- GLOBAL GATEKEEPER PROVIDER ---
- * Resolves the 11+ different Business Identities before activating the AI logic.
+ * This resolves the multi-tenant identities from your physical backend audit.
  */
 export function GlobalCopilotProvider({ children }: { children: React.ReactNode }) {
   const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
 
   /**
-   * --- FORENSIC IDENTITY RESOLUTION ---
-   * We handle array returns, object returns, and mixed casing (business_id vs businessId).
+   * --- FORENSIC RESOLUTION (THE TYPING & BUTTON FIX) ---
+   * Normalizes data structures (arrays/objects) and casing (snake/camel).
+   * This logic breaks the "Synchronizing" spinner.
    */
   const target = useMemo(() => {
     if (!userProfile) return null;
-    // Deep check for the data property (common in TanStack Query/Supabase wrappers)
-    const raw = (userProfile as any).data || userProfile; 
+    // Extract raw data regardless of hook wrapper structure (handles useQuery data vs raw)
+    const raw = (userProfile as any).data || userProfile;
+    // NORMALIZATION: Handle array-wrapped Supabase returns
     return Array.isArray(raw) ? raw[0] : raw;
   }, [userProfile]);
 
@@ -143,15 +162,16 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
   }, [target]);
 
   /**
-   * --- AUTO-ACTIVATION LOGIC ---
-   * Render the Worker only when IDs are resolved. 
-   * This immediately enables 'handleInputChange' for typing.
+   * --- THE MASTER GATE ---
+   * If IDs are present, we mount the NeuralWorker. 
+   * This replaces the empty functions with real handlers, unlocking typing and the button.
    */
   if (!isProfileLoading && businessId && userId) {
     return (
       <CopilotNeuralWorker 
         businessId={businessId} 
         userId={userId}
+        modules={[]} // Hydrate modules here if needed
       >
         {children}
       </CopilotNeuralWorker>
@@ -159,17 +179,14 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
   }
 
   /**
-   * --- HYDRATION FALLBACK ---
-   * Prevents 'reading trim of undefined' crashes while the profile is loading.
+   * --- HYDRATION FALLBACK (TYPING LOCKED) ---
+   * Safe state while identifying the session.
    */
   const notReadyValue: CopilotContextType = {
       messages: [], 
       input: '', 
       setInput: () => {}, 
-      handleInputChange: () => {
-          // Locked during initialization
-          console.warn("Aura: Neural context not yet resolved.");
-      }, 
+      handleInputChange: () => {}, // This placeholder is why typing is locked
       handleSubmit: (e: any) => {
           e.preventDefault();
           toast.info("Aura is synchronizing with your business profile...");
@@ -184,7 +201,8 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
       startAIAssistance: () => {}, 
       isReady: false,
       businessId: businessId || '',
-      userId: userId || ''
+      userId: userId || '',
+      tenantModules: []
   };
 
   return (
@@ -195,7 +213,7 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
 }
 
 /**
- * --- Custom Hook ---
+ * --- useCopilot Custom Hook ---
  */
 export function useCopilot(): CopilotContextType {
   const context = useContext(CopilotContext);
