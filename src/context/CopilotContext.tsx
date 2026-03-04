@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useChat } from '@ai-sdk/react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -122,6 +122,10 @@ function CopilotWorkerProvider({
  * It resolves the Supabase Auth/Profile data and Tenant capabilities before waking up Aura.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
+  // FIX: Added hydration guard to prevent Next.js client-side exceptions
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   // 1. Fetch Business Identity (contains business_id and user profile info)
   const { data: businessData, isLoading: businessLoading } = useBusinessContext();
   
@@ -161,23 +165,6 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   }, [businessData]);
 
   /**
-   * THE GATEKEEPER:
-   * Only activate the AI Worker if we have successfully resolved BOTH 
-   * the Business context and the User identity.
-   */
-  if (!businessLoading && !modulesLoading && activeBusinessId && activeUserId) {
-    return (
-      <CopilotWorkerProvider 
-        businessId={activeBusinessId} 
-        userId={activeUserId}
-        modules={modules || []}
-      >
-        {children}
-      </CopilotWorkerProvider>
-    );
-  }
-
-  /**
    * --- HYDRATION FALLBACK ---
    * While the system is identifying the user and business, we provide a 
    * "Locked" context value to prevent the frontend from throwing exceptions.
@@ -204,6 +191,25 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
       userId: activeUserId,
       tenantModules: []
   };
+
+  /**
+   * THE GATEKEEPER:
+   * Only activate the AI Worker if we have successfully resolved BOTH 
+   * the Business context and the User identity.
+   * 
+   * FIX: added !mounted check to ensure server/client consistency.
+   */
+  if (mounted && !businessLoading && !modulesLoading && activeBusinessId && activeUserId) {
+    return (
+      <CopilotWorkerProvider 
+        businessId={activeBusinessId} 
+        userId={activeUserId}
+        modules={modules || []}
+      >
+        {children}
+      </CopilotWorkerProvider>
+    );
+  }
 
   return (
     <CopilotContext.Provider value={notReadyValue}>
