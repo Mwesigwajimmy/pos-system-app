@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { AiAuditAssistant } from '@/components/accountant/AiAuditAssistant';
-import { Sparkles, ShieldCheck, Fingerprint, Activity, ShieldAlert, Zap, Search } from 'lucide-react';
+import { Sparkles, ShieldCheck, Fingerprint, Activity, ShieldAlert, Zap } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
  * industry-specific forensic kernels across all 20+ businesses.
  */
 export default async function AiAuditAssistantPage() {
-    // 1. ASYNC COOKIE RESOLUTION (Next.js 15 Protocol)
+    // 1. ASYNC COOKIE RESOLUTION (Next.js 15 Logic)
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
@@ -22,8 +22,7 @@ export default async function AiAuditAssistantPage() {
 
     // 3. MASTER IDENTITY & SECTOR RESOLUTION
     // Forensic Fetch: We pull every possible ID variant confirmed in our audit.
-    // We remove the strict 'single()' to handle potential race conditions during signup.
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(`
             id,
@@ -41,29 +40,27 @@ export default async function AiAuditAssistantPage() {
             )
         `)
         .eq("id", user.id)
-        .maybeSingle();
+        .single();
 
     /**
-     * --- SOVEREIGN HANDSHAKE RESOLUTION (THE FINAL FIX) ---
-     * We no longer let a 'profileError' stop the entire system.
-     * We prioritize finding a valid ID from the 6 confirmed forensic paths.
+     * --- SOVEREIGN HANDSHAKE RESOLUTION (THE DEEP FIX) ---
+     * We no longer rely solely on the 'tenants' join which can be blocked by RLS.
+     * We resolve the identity through 5 unique forensic paths.
      */
-    const profile = profileData as any;
     const rawTenantData = profile?.tenants as any;
     
     const resolvedBusinessId = 
         profile?.business_id || 
         profile?.tenant_id || 
-        profile?.organization_id || 
+        (profile as any)?.organization_id || 
         rawTenantData?.id ||
-        (user.app_metadata?.business_id as string) || 
-        (user.user_metadata?.business_id as string) || // Check user_metadata as final fallback
+        (user.app_metadata?.business_id as string) || // Final Handshake Check
         '';
 
-    // Sector DNA Resolution: Fallback logic for industry context
+    // Sector DNA Resolution: Ensures Aura knows her mission context
     const industry = 
         profile?.industry || 
-        profile?.business_type || 
+        (profile as any)?.business_type || 
         rawTenantData?.industry || 
         "General Enterprise";
 
@@ -74,24 +71,20 @@ export default async function AiAuditAssistantPage() {
 
     /**
      * 4. FIDUCIARY VALIDATION GATE
-     * We only show the error if we are 100% unable to find an ID.
-     * This bypasses RLS 'join' warnings that were previously causing the failure.
+     * If the ID resolved through any path, we unlock the dashboard.
+     * If all 5 paths are empty, we display the Forensic Link Failure.
      */
-    if (!resolvedBusinessId) {
+    if (profileError || !resolvedBusinessId) {
         return (
-            <div className="p-8 max-w-4xl mx-auto space-y-4">
-                <Alert variant="destructive" className="border-2 shadow-2xl bg-destructive/5 border-red-500/20">
+            <div className="p-8">
+                <Alert variant="destructive" className="border-2 shadow-2xl bg-destructive/5">
                     <ShieldAlert className="h-5 w-5" />
                     <AlertTitle className="font-black uppercase tracking-widest text-xs">Fiduciary Neural Link Failure</AlertTitle>
                     <AlertDescription className="text-xs font-medium mt-2 leading-relaxed">
-                        Aura could not establish a secure link to your business context. 
-                        Identity resolution failed across all 6 forensic paths. Please ensure your 
-                        Business Profile setup is finalized.
+                        The AI Assistant could not establish a secure link to your business context. 
+                        Your profile is physically present, but the 'business_id' handshake failed to resolve across all 5 forensic paths.
                     </AlertDescription>
                 </Alert>
-                <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
-                   <p className="text-[10px] text-slate-400 font-mono">TRACE_ID: {user.id}</p>
-                </div>
             </div>
         );
     }
@@ -140,11 +133,6 @@ export default async function AiAuditAssistantPage() {
 
             {/* AI Assistant Core Interface */}
             <div className="max-w-6xl mx-auto w-full">
-                {/* 
-                  Aura is now fully vectorized. 
-                  We pass the resolved IDs to ensure the component 
-                  initializes instantly without re-fetching.
-                */}
                 <AiAuditAssistant />
             </div>
 
@@ -164,13 +152,13 @@ export default async function AiAuditAssistantPage() {
                 
                 <div className="flex flex-col items-end gap-1.5">
                     <p className="text-[10px] text-slate-400 font-medium italic max-w-sm text-right leading-relaxed">
-                        Isolated forensic context verified. 
-                        AI-generated outputs comply with Multi-Tenant Sovereignty standards.
+                        Aura forensic protocols comply with ISO-27001 Multi-Tenant Isolation standards. 
+                        AI-generated tax projections require lead-auditor verification prior to submission.
                     </p>
                     <div className="flex items-center gap-2">
                         <ShieldCheck size={12} className="text-emerald-500" />
                         <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">
-                            Sovereign Data Protection Active
+                            Sovereign Data Protection Verified
                         </span>
                     </div>
                 </div>
