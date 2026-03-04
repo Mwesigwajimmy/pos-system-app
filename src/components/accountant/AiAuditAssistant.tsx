@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { type Message } from 'ai'; 
-import { useUserProfile } from '@/hooks/useUserProfile';
 import { useCopilot } from '@/context/CopilotContext'; 
 import { toast } from 'sonner';
 import { 
@@ -22,7 +20,6 @@ import remarkGfm from 'remark-gfm';
 /**
  * --- AgentStep Component ---
  * Visualizes Aura's autonomous forensic reasoning loop.
- * Renders tool calls and backend observations in real-time.
  */
 const AgentStep = ({ data }: { data: any }) => {
     if (!data) return null;
@@ -63,73 +60,38 @@ const AgentStep = ({ data }: { data: any }) => {
 };
 
 export function AiAuditAssistant() {
-  // --- HYDRATION GUARD: FIXES APPLICATION ERROR ---
-  // Next.js 15 requires strict client-side verification to prevent hydration mismatches.
+  // --- HYDRATION GUARD ---
   const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => { setHasMounted(true); }, []);
 
-  // 1. MASTER IDENTITY HANDSHAKE (Deep Pathing Resolution)
+  // 1. CONSUME MASTER CONTEXT (Removes dual useChat conflict)
   const copilot = useCopilot();
-  const { businessId: ctxBizId = '', userId: ctxUserId = '', isReady: contextReady = false } = copilot || {};
-  const { data: userProfile } = useUserProfile();
-  
-  // Resolve IDs from 7 verified locations found in backend audit
-  const businessId = useMemo(() => {
-    const raw = (userProfile as any)?.data || userProfile;
-    const target = Array.isArray(raw) ? raw[0] : raw;
-    return (
-        ctxBizId || 
-        target?.business_id || 
-        target?.businessId || 
-        target?.tenant_id || 
-        target?.organization_id || 
-        ''
-    );
-  }, [ctxBizId, userProfile]);
+  const { 
+    messages, input, setInput, handleInputChange, handleSubmit, 
+    isLoading: isChatLoading, setMessages, data, 
+    businessId, userId, isReady: contextReady 
+  } = copilot;
 
-  const userId = useMemo(() => {
-    const raw = (userProfile as any)?.data || userProfile;
-    const target = Array.isArray(raw) ? raw[0] : raw;
-    return ctxUserId || target?.id || target?.userId || '';
-  }, [ctxUserId, userProfile]);
-
-  const industry = useMemo(() => {
-    const raw = (userProfile as any)?.data || userProfile;
-    const target = Array.isArray(raw) ? raw[0] : raw;
-    return target?.industry || target?.business_type || 'General Enterprise';
-  }, [userProfile]);
+  // Derive industry context from modules or default
+  const industry = "Accounting & Audit";
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const [finalAnswer, setFinalAnswer] = useState('');
   const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
-  // 2. SHARED EXECUTIVE AI CORE
-  const chat = useChat({
-    api: '/api/chat',
-    body: { 
-        businessId, 
-        userId, 
-        industry, 
-        contextType: 'forensic_audit_protocol',
-        deepMathEnabled: true // Activates Benford's law math kernels
-    },
-    experimental_streamData: true,
-    onFinish: (message) => { 
-        const lastDataChunk = chat.data?.at(-1); 
-        if (lastDataChunk) {
+  // 2. METADATA EXTRACTION (Parses the JSON chunks from the shared data stream)
+  useEffect(() => {
+    if (data && Array.isArray(data)) {
+        const lastChunk = data[data.length - 1];
+        if (lastChunk) {
             try {
-                const parsed = typeof lastDataChunk === 'string' ? JSON.parse(lastDataChunk) : lastDataChunk;
+                const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
                 if(parsed && parsed.finalAnswer) setFinalAnswer(parsed.finalAnswer);
                 if(parsed && Array.isArray(parsed.suggestedActions)) setSuggestedActions(parsed.suggestedActions);
-            } catch (e) {
-                console.warn("Audit metadata chunk received in non-JSON format.");
-            }
+            } catch (e) { /* Metadata is still streaming */ }
         }
-    },
-    onError: (err: Error) => toast.error(`Neural Link Interrupted: ${err.message}`),
-  });
-
-  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading: isChatLoading, setMessages, data } = chat;
+    }
+  }, [data]);
 
   // 3. AUTO-SCROLL INTEGRITY
   useEffect(() => { 
@@ -156,23 +118,30 @@ export function AiAuditAssistant() {
           ...messages, 
           { id: `asst-${Date.now()}`, role: 'assistant', content: finalAnswer || "Proceeding..." }, 
           { id: `user-${Date.now()}`, role: 'user', content: action }
-      ];
-      setMessages(newMessages as any);
+      ] as any;
+      setMessages(newMessages);
       setFinalAnswer(''); setSuggestedActions([]); setInput('');
-      handleSubmit(new Event('submit') as any, { options: { body: { businessId, userId, messages: newMessages } } });
+      
+      // Submit through context with current business ID security context
+      handleSubmit(new Event('submit') as any, { 
+          options: { body: { businessId, userId } } 
+      });
   };
   
   const suggestedPrompts = [
-      `Run forensic audit of ${industry} modules.`,
+      `Run forensic audit of financial modules.`,
       "Analyze ledger drift against transaction baselines.",
       "Check payroll disbursement for contract parity.",
       "Calculate Benford's Law frequency check.",
   ];
 
-  // Return loader while component is hydrating to prevent Next.js 15 Client-side exceptions.
-  if (!hasMounted) return (
+  // Return loader while component is hydrating to prevent Next.js Client-side exceptions.
+  if (!hasMounted || !contextReady) return (
       <div className="w-full h-[700px] flex items-center justify-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
-          <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+          <div className="text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-emerald-500 mx-auto mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initializing Neural Link...</p>
+          </div>
       </div>
   );
 
@@ -213,7 +182,7 @@ export function AiAuditAssistant() {
                     </div>
                     <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Autonomous Forensic Kernel</h3>
                     <p className="mb-10 text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
-                        Secure 256-bit logic link established to **{industry}** module map. 
+                        Secure logic link established to industry module map. 
                         Authorized to audit system architecture, calculate global taxes, and execute executive reporting.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6">
@@ -234,7 +203,6 @@ export function AiAuditAssistant() {
 
             {/* Conversation Flow */}
             {messages.map((m: any, idx: number) => ( 
-                // CRITICAL BUILD FIX: Using stable IDs/Indices instead of Math.random() stops React Error #130
                 <div key={m.id || `msg-${idx}`} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                     {m.role === 'assistant' && (
                          <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl shrink-0 border border-emerald-500/20">
