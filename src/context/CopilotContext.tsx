@@ -129,28 +129,33 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
   /**
-   * --- FORENSIC ID RESOLUTION (THE FIX) ---
-   * We do not assume the property name. We check every possible path 
-   * based on your Database Audit (id, business_id, tenant_id).
+   * --- ARRAY-SAFE FORENSIC ID RESOLUTION (THE FIX) ---
+   * We normalize businessData to ensure we handle both single objects and 
+   * result arrays returned by Supabase hooks.
    */
   const activeBusinessId = useMemo(() => {
     if (!businessData) return '';
+    // Handle array-wrapped data
+    const target = Array.isArray(businessData) ? businessData[0] : businessData;
+    
     return (
-        businessData.business_id || 
-        businessData.tenant_id || 
-        businessData.id || 
-        (businessData as any).organization_id || 
+        target?.business_id || 
+        target?.tenant_id || 
+        target?.organization_id || 
+        target?.id || 
         ''
     );
   }, [businessData]);
 
   const activeUserId = useMemo(() => {
     if (!businessData) return '';
+    const target = Array.isArray(businessData) ? businessData[0] : businessData;
+    
     return (
-        (businessData as any).profile?.id || 
-        (businessData as any).user_id || 
-        (businessData as any).owner_id || 
-        businessData.id || // Fallback if the hook returns the profile as the root
+        target?.id || // Profile ID matches Auth ID in your perfect backend
+        (target as any)?.profile?.id || 
+        (target as any)?.user_id || 
+        (target as any)?.owner_id || 
         ''
     );
   }, [businessData]);

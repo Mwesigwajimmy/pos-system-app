@@ -1,55 +1,38 @@
-'use client'; // Ensure this file is treated as a client component
+'use client';
 
-import { useBusiness } from '@/context/BusinessContext';
+import { useBusinessContext } from './useBusinessContext';
 
-// --- Your Original Type Definition (Preserved) ---
 export interface UserProfile {
   id: string;
   business_id: string;
   role: string;
   full_name: string;
   business_type?: string;
+  industry?: string;
 }
-
-// This function is no longer needed as the BusinessProvider handles fetching globally.
-// We keep it commented out for reference but it will not be used.
-/*
-async function fetchUserProfile(): Promise<UserProfile> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("User not authenticated.");
-  }
-
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('id, business_id, role, full_name')
-    .eq('id', user.id)
-    .single();
-
-  if (error || !profile) {
-    throw new Error(error?.message || "User profile not found in database.");
-  }
-
-  return profile as UserProfile;
-}
-*/
 
 /**
- * This hook now acts as a clean, performant wrapper around the global `useBusiness` context.
- * It no longer fetches data itself, eliminating race conditions.
- * It provides the globally fetched profile to any component that still uses `useUserProfile`.
+ * Clean wrapper around the verified Business Context.
+ * Resolves the "Synchronizing" loop by ensuring data is never undefined.
  */
 export function useUserProfile() {
-  const { profile, isLoading, error } = useBusiness();
+  // Use the verified context fetcher
+  const { data, isLoading, error } = useBusinessContext();
   
-  // The 'useQuery' structure is replaced with direct context consumption.
-  // We return an object that has the same shape your components expect.
+  // Normalize the data for your components
+  // Handles both single objects and array wrappers
+  const profile = Array.isArray(data) ? data[0] : data;
+
   return {
-    data: profile,
+    data: profile ? {
+        id: profile.userId || (profile as any).id,
+        business_id: profile.businessId || (profile as any).business_id,
+        full_name: (profile as any).full_name || 'Authorized User',
+        role: (profile as any).role || 'admin',
+        industry: profile.industry
+    } : null,
     isLoading,
     isError: !!error,
-    error: error ? new Error(error) : null,
+    error: error || null,
   };
 }

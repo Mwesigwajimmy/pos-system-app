@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { AiAuditAssistant } from '@/components/accountant/AiAuditAssistant';
-import { Sparkles, ShieldCheck, AlertCircle, Fingerprint, Activity, ShieldAlert } from 'lucide-react';
+import { Sparkles, ShieldCheck, Fingerprint, Activity, ShieldAlert, Zap } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 
@@ -21,14 +21,17 @@ export default async function AiAuditAssistantPage() {
     if (authError || !user) redirect('/login');
 
     // 3. MASTER IDENTITY & SECTOR RESOLUTION
-    // Forensic Join: We pull from 'profiles' and follow the link to the 'tenants' DNA.
+    // Forensic Fetch: We pull every possible ID variant confirmed in our audit.
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(`
             id,
             business_id, 
             tenant_id, 
+            organization_id,
             business_name,
+            industry,
+            business_type,
             tenants (
                 id,
                 industry,
@@ -39,11 +42,38 @@ export default async function AiAuditAssistantPage() {
         .eq("id", user.id)
         .single();
 
-    // 4. FIDUCIARY HANDSHAKE VALIDATION (No Assumptions)
-    // Check all possible ID variants: business_id, tenant_id, or joined tenant object.
+    /**
+     * --- SOVEREIGN HANDSHAKE RESOLUTION (THE DEEP FIX) ---
+     * We no longer rely solely on the 'tenants' join which can be blocked by RLS.
+     * We resolve the identity through 5 unique forensic paths.
+     */
     const rawTenantData = profile?.tenants as any;
-    const resolvedBusinessId = profile?.business_id || profile?.tenant_id || rawTenantData?.id;
+    
+    const resolvedBusinessId = 
+        profile?.business_id || 
+        profile?.tenant_id || 
+        (profile as any)?.organization_id || 
+        rawTenantData?.id ||
+        (user.app_metadata?.business_id as string) || // Final Handshake Check
+        '';
 
+    // Sector DNA Resolution: Ensures Aura knows her mission context
+    const industry = 
+        profile?.industry || 
+        (profile as any)?.business_type || 
+        rawTenantData?.industry || 
+        "General Enterprise";
+
+    const entityName = 
+        profile?.business_name || 
+        rawTenantData?.name || 
+        "Authorized Sovereign Entity";
+
+    /**
+     * 4. FIDUCIARY VALIDATION GATE
+     * If the ID resolved through any path, we unlock the dashboard.
+     * If all 5 paths are empty, we display the Forensic Link Failure.
+     */
     if (profileError || !resolvedBusinessId) {
         return (
             <div className="p-8">
@@ -52,17 +82,12 @@ export default async function AiAuditAssistantPage() {
                     <AlertTitle className="font-black uppercase tracking-widest text-xs">Fiduciary Neural Link Failure</AlertTitle>
                     <AlertDescription className="text-xs font-medium mt-2 leading-relaxed">
                         The AI Assistant could not establish a secure link to your business context. 
-                        Your profile is physically present, but the 'business_id' handshake is not yet established in the metadata.
+                        Your profile is physically present, but the 'business_id' handshake failed to resolve across all 5 forensic paths.
                     </AlertDescription>
                 </Alert>
             </div>
         );
     }
-
-    // 5. SECTOR DNA RESOLUTION
-    // We prioritize the Industry column, then fallback to Business Type.
-    const industry = rawTenantData?.industry || rawTenantData?.business_type || "General Enterprise";
-    const entityName = profile?.business_name || rawTenantData?.name || "Authorized Sovereign Entity";
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -108,10 +133,6 @@ export default async function AiAuditAssistantPage() {
 
             {/* AI Assistant Core Interface */}
             <div className="max-w-6xl mx-auto w-full">
-                {/* 
-                  Aura is now 100% vectorized and intelligent. 
-                  The AiAuditAssistant handles its own Chat instance using the context IDs.
-                */}
                 <AiAuditAssistant />
             </div>
 

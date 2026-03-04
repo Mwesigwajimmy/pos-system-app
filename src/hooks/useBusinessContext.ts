@@ -3,27 +3,38 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
-// Define the expected return type for your business context data.
-// Customize this interface based on what 'get_business_context_data' would return.
 export interface BusinessContextData {
-  id: string;
-  name: string;
-  // Add other properties relevant to the overall business context
-  // e.g., legal_name: string;
-  //       main_currency: string;
-  //       subscription_status: string;
+  userId: string;
+  businessId: string;
+  businessName: string;
+  industry: string;
+  country?: string;
 }
 
 async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const supabase = createClient();
-    // Assuming you have a Supabase RPC function that fetches the relevant business context data
-    // Replace 'get_business_context_data' with your actual RPC function name,
-    // or a direct .from().select() if it's simpler.
-    const { data, error } = await supabase.rpc('get_business_context_data'); // <-- Customize this RPC call
+    
+    // --- FORENSIC FIX: Swapping to the verified RPC found in the audit ---
+    // 'get_aura_handshake' was confirmed in your DB audit to return 
+    // the user_id, business_id, and industry.
+    const { data, error } = await supabase.rpc('get_aura_handshake'); 
 
     if (error) {
-        console.error("Error fetching business context data:", error);
-        return null; // Return null on error, similar to useBusinessType
+        console.error("Neural Link Handshake Error:", error);
+        // Fallback: If RPC fails, try a direct table fetch to bypass RPC naming
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, business_id, business_name, industry')
+            .single();
+            
+        if (profile) return {
+            userId: profile.id,
+            businessId: profile.business_id,
+            businessName: profile.business_name,
+            industry: profile.industry
+        };
+
+        return null;
     }
     return data as BusinessContextData;
 }
@@ -32,6 +43,6 @@ export function useBusinessContext() {
     return useQuery<BusinessContextData | null, Error>({
       queryKey: ['businessContext'],
       queryFn: fetchBusinessContextData,
-      staleTime: 1000 * 60 * 15, // Example: Cache this context data for 15 minutes
+      staleTime: 1000 * 60 * 15, // Cache for 15 minutes
     });
 }

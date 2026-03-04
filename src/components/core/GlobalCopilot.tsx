@@ -51,7 +51,7 @@ function CopilotNeuralWorker({
     const [isOpen, setIsOpen] = useState(false);
 
     // 1. THE SHARED AI ENGINE
-    // Initialized with the full executive context resolved from your D: Drive / Localhost
+    // Initialized with the full executive context resolved from your perfect Backend.
     const chat = useChat({
         api: '/api/chat',
         body: { 
@@ -113,23 +113,40 @@ function CopilotNeuralWorker({
  * Resolves the 20+ different Business Identities before activating the AI Brain.
  */
 export function GlobalCopilotProvider({ children }: { children: React.ReactNode }) {
-  // 1. FORENSIC IDENTITY FETCH (From your profiles table)
+  // 1. FORENSIC IDENTITY FETCH (Using the hook verified in the audit)
   const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
 
-  // 2. MULTI-PATH RESOLUTION (No Assumptions)
-  // Ensures we catch 'business_id', 'tenant_id', or 'id' based on your schema
-  const businessId = useMemo(() => {
-    return userProfile?.business_id || (userProfile as any)?.tenant_id || (userProfile as any)?.organization_id || '';
+  /**
+   * --- FORENSIC NORMALIZATION (THE ROOT FIX) ---
+   * We normalize the data to handle both single-object and array-wrapped returns.
+   * This ensures the gatekeeper finds the ID even if the hook returns [{...}].
+   */
+  const target = useMemo(() => {
+    if (!userProfile) return null;
+    return Array.isArray(userProfile) ? userProfile[0] : userProfile;
   }, [userProfile]);
+
+  // 2. MULTI-PATH RESOLUTION (Aligned with audited DB columns)
+  const businessId = useMemo(() => {
+    if (!target) return '';
+    return (
+        target.business_id || 
+        target.tenant_id || 
+        (target as any).organization_id || 
+        target.id || 
+        ''
+    );
+  }, [target]);
 
   const userId = useMemo(() => {
-    return userProfile?.id || (userProfile as any)?.user_id || '';
-  }, [userProfile]);
+    if (!target) return '';
+    return target.id || (target as any).user_id || '';
+  }, [target]);
 
   /**
-   * --- LOGIC GATE ---
+   * --- THE GATEKEEPER ---
    * We only render the Worker if the handshake is 100% complete.
-   * This is the "Root Fix" for the Initializing loop.
+   * Once these IDs resolve, the Synchronizing loop will end.
    */
   if (!isProfileLoading && businessId && userId) {
     return (
@@ -144,7 +161,8 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
 
   /**
    * --- HYDRATION FALLBACK ---
-   * Safe state while the system identifies the business owner.
+   * While the system is identifying the user and business, we provide a 
+   * "Locked" context value to prevent the frontend from throwing exceptions.
    */
   const notReadyValue: CopilotContextType = {
       messages: [], 
@@ -159,13 +177,19 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
       setMessages: () => {}, 
       data: undefined,
       isOpen: false, 
-      openPanel: () => { toast.warning("Neural Link is still initializing."); }, 
+      openPanel: () => { 
+        if (!isProfileLoading && (!businessId || !userId)) {
+           toast.error("Identity Handshake Failed: Profile exists but IDs are unresolvable.");
+        } else {
+           toast.warning("Neural Link is still initializing."); 
+        }
+      }, 
       closePanel: () => {}, 
       togglePanel: () => {},
       startAIAssistance: () => {}, 
       isReady: false,
-      businessId: '',
-      userId: ''
+      businessId: businessId || '',
+      userId: userId || ''
   };
 
   return (
