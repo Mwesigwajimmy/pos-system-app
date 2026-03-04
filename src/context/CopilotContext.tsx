@@ -8,11 +8,11 @@ import { toast } from 'sonner';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 /**
- * --- DUAL DIRECTORY IMPORT RESOLUTION ---
- * To satisfy your enterprise structure, we pull from both folders.
- * 'Core' is the system base, 'Extended' is the Aura v10.5 Pro interface.
+ * --- DUAL DIRECTORY ARCHITECTURE (MASTER IMPORT) ---
+ * We use DEFAULT imports here to match the 'export default' in your components.
+ * This fixes the 'Module not found' and 'is not exported' build errors.
  */
-import CopilotPanelCore from '@/components/core/CopilotPanel';
+import GlobalCopilotCoreUI from '@/components/core/GlobalCopilot';
 import CopilotPanelExtended from '@/components/copilot/CopilotPanel';
 
 /**
@@ -29,6 +29,7 @@ interface CopilotContextType {
   data: any[] | undefined;
   isOpen: boolean;
   openPanel: () => void;
+  openCopilot: () => void; // Aliased for sidebar 'Ask Aura' link functionality
   closePanel: () => void;
   togglePanel: () => void;
   startAIAssistance: (prompt: string) => void;
@@ -43,8 +44,9 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
  * --- THE NEURAL WORKER ---
- * This is the ACTIVE state of Aura. It mounts only when IDs are physically verified.
- * It provides the REAL input handlers that unlock your keyboard and submit button.
+ * This component activates the Vercel AI SDK logic once the system is ready.
+ * Mounting this component provides the REAL handlers (handleInputChange/handleSubmit) 
+ * which unlocks your typing and the submit button.
  */
 function CopilotNeuralWorker({ 
     children, 
@@ -60,7 +62,6 @@ function CopilotNeuralWorker({
     const [isOpen, setIsOpen] = useState(false);
 
     // 1. THE SHARED AI ENGINE (Vercel AI SDK)
-    // Linked to your verified Backend Kernel
     const chat = useChat({
         api: '/api/chat',
         body: { 
@@ -71,7 +72,7 @@ function CopilotNeuralWorker({
         },
         experimental_streamData: true,
         onResponse: (res) => {
-            if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");
+            if (res.status === 401) toast.error("Aura: Security session expired.");
         },
         onError: (err: Error) => {
             console.error("Aura Neural Link Error:", err);
@@ -85,7 +86,7 @@ function CopilotNeuralWorker({
 
     /**
      * Autonomous Trigger
-     * Allows system buttons to programmatically start AI forensic tasks.
+     * Programmatically starts AI tasks from dashboard buttons.
      */
     const startAIAssistance = (prompt: string) => {
         if (!prompt) return;
@@ -94,15 +95,16 @@ function CopilotNeuralWorker({
         // Delay ensures UI transition is stable before stream starts
         setTimeout(() => {
             chat.handleSubmit(new Event('submit') as any);
-        }, 200);
+        }, 250);
     };
 
     const contextValue = useMemo(() => ({
         ...chat,
-        // UI FIX: Ensure input is never null to allow immediate typing
+        // UI FIX: Ensure input is never null to allow typing immediately
         input: chat.input || '',
         isOpen,
         openPanel,
+        openCopilot: openPanel, // ALIAS: Fixes sidebar link naming discrepancy
         closePanel,
         togglePanel,
         startAIAssistance,
@@ -115,9 +117,13 @@ function CopilotNeuralWorker({
     return (
         <CopilotContext.Provider value={contextValue}>
             {children}
-            {/* The AI Sidebar - Renders the v10.5 Extended Panel */}
+            
+            {/* Renders the Core UI trigger component from src/components/core */}
+            <GlobalCopilotCoreUI /> 
+
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 flex flex-col border-l shadow-2xl overflow-hidden bg-white">
+                    {/* Renders the Extended Panel from src/components/copilot */}
                     <CopilotPanelExtended />
                 </SheetContent>
             </Sheet>
@@ -127,7 +133,7 @@ function CopilotNeuralWorker({
 
 /**
  * --- GLOBAL GATEKEEPER PROVIDER ---
- * This resolves the multi-tenant identities from your physical backend audit.
+ * Resolves the multi-tenant identities from your physical backend audit.
  */
 export function GlobalCopilotProvider({ children }: { children: React.ReactNode }) {
   const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
@@ -135,13 +141,12 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
   /**
    * --- FORENSIC RESOLUTION (THE TYPING & BUTTON FIX) ---
    * Normalizes data structures (arrays/objects) and casing (snake/camel).
-   * This logic breaks the "Synchronizing" spinner.
+   * Mounting the NeuralWorker is what clears the "Synchronizing" spinner.
    */
   const target = useMemo(() => {
     if (!userProfile) return null;
-    // Extract raw data regardless of hook wrapper structure (handles useQuery data vs raw)
     const raw = (userProfile as any).data || userProfile;
-    // NORMALIZATION: Handle array-wrapped Supabase returns
+    // ARRAY SAFETY: Correctly handles Supabase array returns [{...}]
     return Array.isArray(raw) ? raw[0] : raw;
   }, [userProfile]);
 
@@ -163,15 +168,15 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
 
   /**
    * --- THE MASTER GATE ---
-   * If IDs are present, we mount the NeuralWorker. 
-   * This replaces the empty functions with real handlers, unlocking typing and the button.
+   * We only mount the worker once the ID handshake is 100% resolved.
+   * This provides the real AI handlers to the input field and button.
    */
   if (!isProfileLoading && businessId && userId) {
     return (
       <CopilotNeuralWorker 
         businessId={businessId} 
         userId={userId}
-        modules={[]} // Hydrate modules here if needed
+        modules={[]} 
       >
         {children}
       </CopilotNeuralWorker>
@@ -179,14 +184,14 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
   }
 
   /**
-   * --- HYDRATION FALLBACK (TYPING LOCKED) ---
-   * Safe state while identifying the session.
+   * --- HYDRATION FALLBACK (UI LOCKED) ---
+   * This is the state where typing is disabled while waiting for the DB.
    */
   const notReadyValue: CopilotContextType = {
       messages: [], 
       input: '', 
       setInput: () => {}, 
-      handleInputChange: () => {}, // This placeholder is why typing is locked
+      handleInputChange: () => {}, // Placeholder stops keystrokes during sync
       handleSubmit: (e: any) => {
           e.preventDefault();
           toast.info("Aura is synchronizing with your business profile...");
@@ -196,6 +201,7 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
       data: undefined,
       isOpen: false, 
       openPanel: () => { toast.warning("Neural Link is still initializing."); }, 
+      openCopilot: () => { toast.warning("Neural Link is still initializing."); }, 
       closePanel: () => {}, 
       togglePanel: () => {},
       startAIAssistance: () => {}, 
@@ -213,7 +219,7 @@ export function GlobalCopilotProvider({ children }: { children: React.ReactNode 
 }
 
 /**
- * --- useCopilot Custom Hook ---
+ * --- useCopilot Hook ---
  */
 export function useCopilot(): CopilotContextType {
   const context = useContext(CopilotContext);
