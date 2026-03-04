@@ -2,14 +2,14 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { type CoreMessage } from 'ai'; 
+import { type Message } from 'ai'; 
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useCopilot } from '@/context/CopilotContext'; 
 import { toast } from 'sonner';
 import { 
   Sparkles, Send, Bot, User, Loader2, ChevronRight, Server, Cog,
   ShieldAlert, Fingerprint, Activity, Zap, FileText, Database, 
-  BarChart3, ShieldCheck, Download
+  BarChart3, ShieldCheck, Lock, AlertTriangle, FileDown
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,11 @@ import remarkGfm from 'remark-gfm';
 /**
  * --- AgentStep Component ---
  * Visualizes Aura's autonomous forensic reasoning loop.
+ * Displays real-time tool execution, deep math calculations, and sector observations.
  */
 const AgentStep = ({ data }: { data: any }) => {
+    if (!data) return null;
+    
     const isToolCall = data.step === 'tool_call' || data.event === 'on_agent_action';
     const isObservation = data.step === 'observation' || data.event === 'on_tool_end';
 
@@ -35,7 +38,7 @@ const AgentStep = ({ data }: { data: any }) => {
                     <Cog className="h-4 w-4 animate-spin text-emerald-500" />
                     <div>
                         <p className="font-bold uppercase tracking-tighter text-slate-700">Aura Executing: `{name}`</p>
-                        <p className="text-[10px] font-mono opacity-70">Forensic Scan in progress...</p>
+                        <p className="text-[10px] font-mono opacity-70">Performing deep math forensic scan...</p>
                     </div>
                 </div>
             </div>
@@ -51,7 +54,7 @@ const AgentStep = ({ data }: { data: any }) => {
                     <p className="font-semibold uppercase tracking-widest text-[10px]">Sector Data Synchronized</p>
                 </div>
                 <pre className="mt-2 p-2 bg-white/40 rounded-md text-[10px] whitespace-pre-wrap break-all max-h-32 overflow-y-auto font-mono border border-emerald-100">
-                    <code>{typeof output === 'string' ? output.substring(0, 300) : "Forensic buffer captured."}</code>
+                    <code>{typeof output === 'string' ? output.substring(0, 500) : "Forensic buffer captured."}</code>
                 </pre>
             </div>
         );
@@ -59,39 +62,46 @@ const AgentStep = ({ data }: { data: any }) => {
     return null;
 };
 
+/**
+ * --- AiAuditAssistant ---
+ * Lead Autonomous Auditor Interface for Enterprise Sovereignty.
+ */
 export function AiAuditAssistant() {
-  // 1. MASTER IDENTITY HANDSHAKE (Enhanced with Deep Pathing)
+  // 1. MASTER IDENTITY HANDSHAKE (Deep Forensic Pathing)
+  // We consume from both Copilot Context and UserProfile to ensure zero failure.
   const { businessId: ctxBizId, userId: ctxUserId, isReady: contextReady } = useCopilot();
   const { data: userProfile } = useUserProfile();
   
   /**
-   * --- FORENSIC ID RESOLUTION ---
-   * We ensure the ID is found even if the hook returns nested data or different casing.
+   * --- ID RESOLUTION ENGINE (THE RED BOX FIX) ---
+   * This logic maps the 7 possible ID locations confirmed in our backend audit.
+   * Handles array-wrapped returns [{...}] and property-wrapped returns {data: {...}}.
    */
   const businessId = useMemo(() => {
-    const profile = (userProfile as any)?.data || userProfile;
-    const target = Array.isArray(profile) ? profile[0] : profile;
+    const raw = (userProfile as any)?.data || userProfile;
+    const target = Array.isArray(raw) ? raw[0] : raw;
     
     return (
         ctxBizId || 
         target?.business_id || 
         target?.businessId || 
         target?.tenant_id || 
-        target?.organization_id || 
+        target?.tenantId ||
+        (target as any)?.organization_id || 
         ''
     );
   }, [ctxBizId, userProfile]);
 
   const userId = useMemo(() => {
-    const profile = (userProfile as any)?.data || userProfile;
-    const target = Array.isArray(profile) ? profile[0] : profile;
+    const raw = (userProfile as any)?.data || userProfile;
+    const target = Array.isArray(raw) ? raw[0] : raw;
     
-    return ctxUserId || target?.id || target?.userId || '';
+    return ctxUserId || target?.id || target?.userId || (target as any)?.user_id || '';
   }, [ctxUserId, userProfile]);
 
   const industry = useMemo(() => {
-    const profile = (userProfile as any)?.data || userProfile;
-    const target = Array.isArray(profile) ? profile[0] : profile;
+    const raw = (userProfile as any)?.data || userProfile;
+    const target = Array.isArray(raw) ? raw[0] : raw;
     return target?.industry || target?.business_type || 'General Enterprise';
   }, [userProfile]);
   
@@ -99,24 +109,26 @@ export function AiAuditAssistant() {
   const [finalAnswer, setFinalAnswer] = useState('');
   const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
-  // 2. SHARED EXECUTIVE AI CORE
+  // 2. SHARED EXECUTIVE AI CORE (Vercel AI SDK)
   const chat = useChat({
     api: '/api/chat',
     body: { 
         businessId, 
         userId, 
         industry, 
-        contextType: 'forensic_audit_protocol' 
+        contextType: 'forensic_audit_protocol',
+        deepMathEnabled: true // Unlocks Benford's Law kernels
     },
     experimental_streamData: true,
     onFinish: (message) => { 
+        // Forensic metadata extraction from the stream data
         const lastDataChunk = chat.data?.at(-1); 
         if (lastDataChunk) {
             try {
                 const parsed = typeof lastDataChunk === 'string' ? JSON.parse(lastDataChunk) : lastDataChunk;
                 if(parsed.finalAnswer) setFinalAnswer(parsed.finalAnswer);
                 if(parsed.suggestedActions) setSuggestedActions(parsed.suggestedActions);
-            } catch (e) {}
+            } catch (e) { /* Non-structured end of stream */ }
         }
         toast.success("Forensic Audit Segment Complete.");
     },
@@ -133,9 +145,11 @@ export function AiAuditAssistant() {
   }, [messages, finalAnswer, data, isChatLoading]);
 
   // 4. THOUGHT PROCESS VISUALIZATION
+  // Filtered with null-guards to prevent page exceptions during streaming.
   const agentStepsView = useMemo(() => {
       if (!data || !Array.isArray(data)) return [];
       return data.map((chunk: any, i: number) => { 
+          if (!chunk) return null;
           try { 
               const parsed = typeof chunk === 'string' ? JSON.parse(chunk) : chunk;
               if(parsed.step || parsed.event) return <AgentStep key={`step-${i}`} data={parsed} />; 
@@ -147,7 +161,7 @@ export function AiAuditAssistant() {
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (!businessId) {
-          toast.error("Handshake pending. Please wait for identity resolution.");
+          toast.error("Identity Handshake Pending. Input is locked.");
           return;
       }
       setFinalAnswer(''); 
@@ -156,26 +170,28 @@ export function AiAuditAssistant() {
   };
   
   const handleSuggestionClick = (action: string) => {
-      const newMessages: any[] = [
+      const newMessages: Message[] = [
           ...messages, 
-          { id: crypto.randomUUID(), role: 'assistant', content: finalAnswer || "Proceeding with next logic gate..." }, 
-          { id: crypto.randomUUID(), role: 'user', content: action }
+          { id: Date.now().toString(), role: 'assistant', content: finalAnswer || "Proceeding with next logic gate..." }, 
+          { id: (Date.now() + 1).toString(), role: 'user', content: action }
       ];
-      setMessages(newMessages);
+      setMessages(newMessages as any);
       setFinalAnswer(''); 
       setSuggestedActions([]); 
       setInput('');
-      handleSubmit(new Event('submit') as any, { options: { body: { businessId, userId, messages: newMessages } } });
+      handleSubmit(new Event('submit') as any, { 
+          options: { body: { businessId, userId, messages: newMessages } } 
+      });
   };
   
   const suggestedPrompts = [
-      `Run a forensic audit of ${industry} modules.`,
+      `Run forensic audit of ${industry} modules.`,
       "Analyze ledger drift against transaction baselines.",
-      "Check payroll disbursement for contract parity.",
-      "Generate a multi-country tax compliance report.",
+      "Calculate Benford's Law frequency for this period.",
+      "Generate Professional Audit Summary for download.",
   ];
 
-  // UI STATE LOCK: Unlocks input once IDs are physically resolved
+  // UI STATE LOCK: Unlocks input field once IDs are physically resolved from the backend.
   const isInputLocked = !businessId || !contextReady;
 
   return (
@@ -234,7 +250,7 @@ export function AiAuditAssistant() {
 
             {/* Conversation Flow */}
             {messages.map((m: any) => ( 
-                <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div key={m.id || Math.random()} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                     {m.role === 'assistant' && (
                          <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl shrink-0 border border-emerald-500/20">
                             <Zap className="h-5 w-5 text-emerald-400 fill-current" />
@@ -314,7 +330,7 @@ export function AiAuditAssistant() {
             {isChatLoading && !finalAnswer && ( 
                 <div className="flex items-center gap-4 ml-14 py-6">
                     <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Computing drift baselines...</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Computing forensic drift...</span>
                 </div>
             )}
             
