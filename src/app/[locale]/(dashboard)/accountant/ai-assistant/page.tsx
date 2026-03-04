@@ -8,11 +8,10 @@ import { Badge } from '@/components/ui/badge';
 
 /**
  * --- AI AUDIT MISSION CONTROL PAGE ---
- * Performs the Master Identity Resolution required to activate Aura's 
- * industry-specific forensic kernels across all 20+ businesses.
+ * Resolves the Master Identity Handshake to activate Aura across all business types.
  */
 export default async function AiAuditAssistantPage() {
-    // 1. ASYNC COOKIE RESOLUTION (Next.js 15 Logic)
+    // 1. ASYNC COOKIE RESOLUTION
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
@@ -21,7 +20,6 @@ export default async function AiAuditAssistantPage() {
     if (authError || !user) redirect('/login');
 
     // 3. MASTER IDENTITY & SECTOR RESOLUTION
-    // Forensic Fetch: We pull every possible ID variant confirmed in our audit.
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(`
@@ -43,9 +41,8 @@ export default async function AiAuditAssistantPage() {
         .single();
 
     /**
-     * --- SOVEREIGN HANDSHAKE RESOLUTION (THE DEEP FIX) ---
-     * We no longer rely solely on the 'tenants' join which can be blocked by RLS.
-     * We resolve the identity through 5 unique forensic paths.
+     * --- SOVEREIGN HANDSHAKE RESOLUTION ---
+     * Resolves the identity through multiple forensic paths to prevent RLS blocks.
      */
     const rawTenantData = profile?.tenants as any;
     
@@ -54,10 +51,9 @@ export default async function AiAuditAssistantPage() {
         profile?.tenant_id || 
         (profile as any)?.organization_id || 
         rawTenantData?.id ||
-        (user.app_metadata?.business_id as string) || // Final Handshake Check
+        (user.app_metadata?.business_id as string) || 
         '';
 
-    // Sector DNA Resolution: Ensures Aura knows her mission context
     const industry = 
         profile?.industry || 
         (profile as any)?.business_type || 
@@ -69,11 +65,7 @@ export default async function AiAuditAssistantPage() {
         rawTenantData?.name || 
         "Authorized Sovereign Entity";
 
-    /**
-     * 4. FIDUCIARY VALIDATION GATE
-     * If the ID resolved through any path, we unlock the dashboard.
-     * If all 5 paths are empty, we display the Forensic Link Failure.
-     */
+    // 4. FIDUCIARY VALIDATION GATE
     if (profileError || !resolvedBusinessId) {
         return (
             <div className="p-8">
@@ -81,8 +73,8 @@ export default async function AiAuditAssistantPage() {
                     <ShieldAlert className="h-5 w-5" />
                     <AlertTitle className="font-black uppercase tracking-widest text-xs">Fiduciary Neural Link Failure</AlertTitle>
                     <AlertDescription className="text-xs font-medium mt-2 leading-relaxed">
-                        The AI Assistant could not establish a secure link to your business context. 
-                        Your profile is physically present, but the 'business_id' handshake failed to resolve across all 5 forensic paths.
+                        The AI Assistant could not establish a secure link. 
+                        Handshake failed to resolve across all 5 forensic paths.
                     </AlertDescription>
                 </Alert>
             </div>
@@ -92,7 +84,7 @@ export default async function AiAuditAssistantPage() {
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             
-            {/* High-Tier Intelligence Header */}
+            {/* Header: Professional Forensic Interface */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-8 relative overflow-hidden">
                 <div className="space-y-1 relative z-10">
                     <div className="flex items-center gap-3">
@@ -114,16 +106,13 @@ export default async function AiAuditAssistantPage() {
                     </div>
                 </div>
                 
-                {/* Kernel Status: Professional Telemetry Display */}
-                <div className="flex items-center gap-6 bg-white p-5 rounded-2xl border border-slate-100 shadow-xl shadow-slate-100/50">
+                {/* Status Telemetry */}
+                <div className="flex items-center gap-6 bg-white p-5 rounded-2xl border border-slate-100 shadow-xl">
                     <div className="flex flex-col items-end">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] leading-none">Neural Link Status</span>
                         <div className="flex items-center gap-2 mt-2">
-                            <div className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </div>
-                            <span className="text-[11px] font-black text-emerald-700 uppercase tracking-tighter">v10.5 PRO ONLINE</span>
+                            <span className="animate-ping h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="text-[11px] font-black text-emerald-700 uppercase">v10.5 PRO ONLINE</span>
                         </div>
                     </div>
                     <div className="h-10 w-px bg-slate-100 hidden md:block" />
@@ -131,35 +120,18 @@ export default async function AiAuditAssistantPage() {
                 </div>
             </div>
 
-            {/* AI Assistant Core Interface */}
+            {/* Assistant Interface */}
             <div className="max-w-6xl mx-auto w-full">
                 <AiAuditAssistant />
             </div>
 
-            {/* Forensic Footer: Security Traceability */}
+            {/* Footer Traceability */}
             <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div className="flex items-center gap-4 px-5 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
                     <Fingerprint size={20} className="text-slate-900" />
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-mono font-bold text-slate-700 leading-none">
-                            AUTH_USER: {user.email}
-                        </span>
-                        <span className="text-[9px] font-mono text-emerald-600 font-bold uppercase mt-1.5">
-                            SECURE_HANDSHAKE: {resolvedBusinessId.substring(0,24).toUpperCase()}...
-                        </span>
-                    </div>
-                </div>
-                
-                <div className="flex flex-col items-end gap-1.5">
-                    <p className="text-[10px] text-slate-400 font-medium italic max-w-sm text-right leading-relaxed">
-                        Aura forensic protocols comply with ISO-27001 Multi-Tenant Isolation standards. 
-                        AI-generated tax projections require lead-auditor verification prior to submission.
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck size={12} className="text-emerald-500" />
-                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">
-                            Sovereign Data Protection Verified
-                        </span>
+                        <span className="text-[10px] font-mono font-bold text-slate-700 leading-none">AUTH_USER: {user.email}</span>
+                        <span className="text-[9px] font-mono text-emerald-600 font-bold uppercase mt-1.5">SECURE_TRACE: {resolvedBusinessId.substring(0,24).toUpperCase()}</span>
                     </div>
                 </div>
             </div>

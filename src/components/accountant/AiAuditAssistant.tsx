@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { type CoreMessage } from 'ai'; 
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useCopilot } from '@/context/CopilotContext'; // Pull from our hardened context
+import { useCopilot } from '@/context/CopilotContext'; 
 import { toast } from 'sonner';
 import { 
   Sparkles, Send, Bot, User, Loader2, ChevronRight, Server, Cog,
@@ -21,7 +21,8 @@ import remarkGfm from 'remark-gfm';
 
 /**
  * --- AgentStep Component ---
- * Visualizes Aura's autonomous forensic reasoning.
+ * Visualizes Aura's autonomous forensic reasoning loop.
+ * Renders tool calls and backend observations in real-time.
  */
 const AgentStep = ({ data }: { data: any }) => {
     const isToolCall = data.step === 'tool_call' || data.event === 'on_agent_action';
@@ -60,11 +61,11 @@ const AgentStep = ({ data }: { data: any }) => {
 };
 
 export function AiAuditAssistant() {
-  // 1. HARDENED IDENTITY HANDSHAKE
+  // 1. MASTER IDENTITY HANDSHAKE
   const { businessId: ctxBizId, userId: ctxUserId, isReady } = useCopilot();
   const { data: userProfile } = useUserProfile();
   
-  // Robust Fallbacks for multi-tenant pathing
+  // Multi-tenant pathing resolution
   const businessId = ctxBizId || (userProfile as any)?.business_id || (userProfile as any)?.tenant_id || '';
   const userId = ctxUserId || userProfile?.id || '';
   const industry = (userProfile as any)?.industry || 'General Enterprise';
@@ -73,8 +74,8 @@ export function AiAuditAssistant() {
   const [finalAnswer, setFinalAnswer] = useState('');
   const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
-  // 2. SHARED EXECUTIVE AI CORE
-  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading: isChatLoading, setMessages, data } = useChat({
+  // 2. SHARED EXECUTIVE AI CORE (Vercel AI SDK)
+  const chat = useChat({
     api: '/api/chat',
     body: { 
         businessId, 
@@ -84,8 +85,8 @@ export function AiAuditAssistant() {
     },
     experimental_streamData: true,
     onFinish: (message) => { 
-        // Logic to extract structured forensic actions from the stream metadata
-        const lastDataChunk = data?.at(-1); 
+        // Forensic metadata extraction logic
+        const lastDataChunk = chat.data?.at(-1); 
         if (lastDataChunk) {
             try {
                 const parsed = typeof lastDataChunk === 'string' ? JSON.parse(lastDataChunk) : lastDataChunk;
@@ -98,14 +99,16 @@ export function AiAuditAssistant() {
     onError: (err: Error) => toast.error(`Neural Link Interrupted: ${err.message}`),
   });
 
-  // 3. AUTO-SCROLL
+  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading: isChatLoading, setMessages, data } = chat;
+
+  // 3. AUTO-SCROLL INTEGRITY
   useEffect(() => { 
     if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' }); 
     }
   }, [messages, finalAnswer, data, isChatLoading]);
 
-  // 4. MEMOIZED THOUGHT PROCESS
+  // 4. THOUGHT PROCESS VISUALIZATION
   const agentStepsView = useMemo(() => {
       if (!data || !Array.isArray(data)) return [];
       return data.map((chunk: any, i: number) => { 
@@ -126,8 +129,8 @@ export function AiAuditAssistant() {
   const handleSuggestionClick = (action: string) => {
       const newMessages: CoreMessage[] = [
           ...messages, 
-          { id: crypto.randomUUID(), role: 'assistant', content: finalAnswer || "Proceeding with next logic gate..." } as CoreMessage, 
-          { id: crypto.randomUUID(), role: 'user', content: action } as CoreMessage
+          { id: crypto.randomUUID(), role: 'assistant', content: finalAnswer || "Proceeding with next logic gate..." } as any, 
+          { id: crypto.randomUUID(), role: 'user', content: action } as any
       ];
       setMessages(newMessages as any);
       setFinalAnswer(''); setSuggestedActions([]); setInput('');
@@ -176,8 +179,8 @@ export function AiAuditAssistant() {
                     </div>
                     <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Autonomous Forensic Kernel</h3>
                     <p className="mb-10 text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
-                        I have established a 256-bit encrypted link to the **{industry}** data ledger. 
-                        I am authorized to audit your system architecture, calculate global taxes, and execute executive actions.
+                        Secure 256-bit link established to **{industry}** data ledger. 
+                        Aura is authorized to audit system architecture, calculate global taxes, and execute executive reporting.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6">
                         {suggestedPrompts.map(prompt => (
@@ -185,7 +188,7 @@ export function AiAuditAssistant() {
                                 key={prompt} 
                                 variant="outline" 
                                 onClick={() => setInput(prompt)}
-                                className="text-[11px] font-bold h-auto py-4 px-5 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-left justify-start rounded-2xl group shadow-sm"
+                                className="text-[11px] font-bold h-auto py-4 px-5 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-left justify-start rounded-2xl group shadow-sm bg-white"
                             >
                                 <ChevronRight className="h-4 w-4 mr-3 text-emerald-500 group-hover:translate-x-1 transition-transform" />
                                 {prompt}
@@ -195,7 +198,7 @@ export function AiAuditAssistant() {
                 </div>
             )}
 
-            {/* Conversation Stream */}
+            {/* Conversation Flow */}
             {messages.map((m: any) => ( 
                 <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                     {m.role === 'assistant' && (
@@ -223,10 +226,10 @@ export function AiAuditAssistant() {
                 </div>
             ))}
 
-            {/* Live Thinking Process */}
+            {/* Thought/Action Stream */}
             {agentStepsView}
 
-            {/* HIGH-AUTHORITY REPORT SECTION */}
+            {/* FINAL VALIDATED AUDIT REPORT */}
             {!isChatLoading && finalAnswer && (
                 <div className="flex items-start gap-4 animate-in fade-in zoom-in-95 duration-700">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-200 shrink-0">
@@ -240,7 +243,7 @@ export function AiAuditAssistant() {
                             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-3 py-1 text-[10px] font-black uppercase tracking-widest">
                                 Forensic Report Validated
                             </Badge>
-                            <span className="text-[9px] text-slate-400 font-mono tracking-tighter">SIG_AUTH: {businessId?.slice(0,12)}</span>
+                            <span className="text-[9px] text-slate-400 font-mono tracking-tighter">AUTH_SIG: {businessId?.slice(0,12).toUpperCase()}</span>
                         </div>
                         <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none font-medium text-slate-900 prose-p:leading-relaxed">
                             {finalAnswer}
@@ -273,11 +276,11 @@ export function AiAuditAssistant() {
                 </div>
             )}
 
-            {/* Thinking Indicator */}
+            {/* Syncing Indicator */}
             {isChatLoading && !finalAnswer && ( 
                 <div className="flex items-center gap-4 ml-14 py-6">
                     <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Aura computing sector drift...</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Computing drift baselines...</span>
                 </div>
             )}
             
@@ -286,7 +289,7 @@ export function AiAuditAssistant() {
       </ScrollArea>
 
       {/* Controller Area */}
-      <div className="p-8 border-t bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+      <div className="p-8 border-t bg-white">
         <form onSubmit={handleFormSubmit} className="flex items-center gap-4 max-w-4xl mx-auto">
           <div className="relative flex-grow">
               <Input 
@@ -308,14 +311,6 @@ export function AiAuditAssistant() {
               {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin text-emerald-500" /> : <Send className="h-7 w-7 text-white" />}
           </Button>
         </form>
-        <div className="flex justify-center items-center gap-8 mt-5">
-            <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-bold flex items-center gap-2">
-                <ShieldCheck size={12} className="text-emerald-500" /> Multi-Tenant Sovereignty Active
-            </p>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-bold flex items-center gap-2">
-                <Activity size={12} className="text-sky-500" /> Sector Logic: {industry}
-            </p>
-        </div>
       </div>
     </div>
   );
