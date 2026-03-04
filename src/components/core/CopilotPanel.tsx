@@ -26,7 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 import { useCopilot, type CoreMessage } from '@/context/CopilotContext'; 
-import { useUserProfile } from '@/hooks/useUserProfile';
 
 // Intersection type to ensure messages have a keyable ID
 type MessageWithId = CoreMessage & { id: string };
@@ -60,12 +59,12 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
 
       if (outputData.action === "navigate") {
         return (
-          <div className="text-xs text-sky-500 ml-11 my-2 p-3 border rounded-md bg-sky-500/10 border-sky-500/20 animate-pulse">
+          <div className="text-xs text-sky-500 ml-11 my-2 p-3 border rounded-xl bg-sky-500/5 border-sky-500/20 animate-in fade-in slide-in-from-left-2">
             <div className="flex items-center gap-2">
-              <Compass className="h-4 w-4 flex-shrink-0" />
+              <Compass className="h-4 w-4 flex-shrink-0 animate-spin-slow" />
               <div>
                 <p className="font-bold uppercase tracking-tighter text-sky-600">Autonomous Navigation</p>
-                <p className="font-mono text-[10px]">Destination: {outputData.payload?.url}</p>
+                <p className="font-mono text-[10px] opacity-70">Destination: {outputData.payload?.url}</p>
               </div>
             </div>
           </div>
@@ -74,12 +73,12 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
       
       if (outputData.action === "download_file") {
         return (
-          <div className="text-xs text-emerald-500 ml-11 my-2 p-3 border rounded-md bg-emerald-500/10 border-emerald-500/20">
+          <div className="text-xs text-emerald-500 ml-11 my-2 p-3 border rounded-xl bg-emerald-500/5 border-emerald-500/20 animate-in fade-in slide-in-from-left-2">
             <div className="flex items-center gap-2">
               <FileDown className="h-4 w-4 flex-shrink-0" />
               <div>
-                <p className="font-bold uppercase tracking-tighter">Data Extraction Complete</p>
-                <p className="text-[10px]">Buffer prepared for {outputData.payload?.fileName}</p>
+                <p className="font-bold uppercase tracking-tighter text-emerald-600">Data Extraction Complete</p>
+                <p className="text-[10px] opacity-70">Buffer prepared: {outputData.payload?.fileName}</p>
               </div>
             </div>
           </div>
@@ -88,12 +87,12 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
 
       if (outputData.action === "present_draft") {
         return (
-          <div className="text-xs text-fuchsia-500 ml-11 my-2 p-3 border rounded-md bg-fuchsia-500/10 border-fuchsia-500/20">
+          <div className="text-xs text-fuchsia-500 ml-11 my-2 p-3 border rounded-xl bg-fuchsia-500/5 border-fuchsia-500/20 animate-in fade-in slide-in-from-left-2">
             <div className="flex items-center gap-2">
               <Pilcrow className="h-4 w-4 flex-shrink-0" />
               <div>
                 <p className="font-bold uppercase tracking-tighter text-fuchsia-600">Synthesizing Communication</p>
-                <p className="text-[10px]">Forensic draft presented for review.</p>
+                <p className="text-[10px] opacity-70">Forensic draft presented for review.</p>
               </div>
             </div>
           </div>
@@ -104,12 +103,12 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     // Logic for raw tool invocation
     if (data.tool) {
         return (
-          <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-md bg-slate-50 border-dashed">
+          <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-xl bg-slate-50 border-dashed animate-pulse">
             <div className="flex items-center gap-2">
               <Cog className="h-3 w-3 animate-spin text-emerald-600" />
               <div>
                 <p className="font-bold uppercase tracking-widest text-slate-600">Executing Core: {data.tool}</p>
-                <p className="opacity-60 truncate max-w-[250px] font-mono">{JSON.stringify(data.toolInput)}</p>
+                <p className="opacity-50 truncate max-w-[250px] font-mono">{JSON.stringify(data.toolInput)}</p>
               </div>
             </div>
           </div>
@@ -119,7 +118,7 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     // Logic for raw tool results/observations
     if (data.output && typeof data.output === 'string' && data.output.length < 1000) {
         return (
-          <div className="text-[10px] text-muted-foreground ml-11 my-2 p-2 border-l-2 border-emerald-500 bg-slate-50/50 italic font-mono">
+          <div className="text-[10px] text-muted-foreground ml-11 my-2 p-2 border-l-2 border-emerald-500 bg-slate-50/50 italic font-mono animate-in fade-in">
             Observation: {data.output.substring(0, 150)}...
           </div>
         );
@@ -135,13 +134,19 @@ export default function CopilotPanel() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // Shared AI State from Context
-  const { messages, input, handleInputChange, handleSubmit, isLoading, data, isReady } = useCopilot();
+  // Shared AI State from Context - PULLED DIRECTLY FROM THE SOURCE OF TRUTH
+  const { 
+    messages, 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading, 
+    data, 
+    isReady, 
+    businessId, 
+    userId 
+  } = useCopilot();
   
-  // Business Context for Multi-Tenant Sovereignty
-  const { data: userProfile } = useUserProfile();
-  const businessId = (userProfile as any)?.business_id || ''; 
-
   // Effect: Handle real-time side effects (Navigation & Downloads) from the stream
   useEffect(() => {
     if (data && data.length > 0) {
@@ -188,27 +193,37 @@ export default function CopilotPanel() {
   const streamingMessage = isLoading && messages.length > 0 ? (messages[messages.length - 1] as CoreMessage) : null;
   const renderedMessages = streamingMessage ? messages.slice(0, -1) : messages;
 
-  // NEURAL UNLOCK: Allow typing if we have a businessId
-  const canSend = !isLoading && businessId && (input || '').trim().length > 0;
-  const isInputDisabled = !businessId || isLoading;
+  // NEURAL UNLOCK: Locked unless the Multi-Path Handshake is complete
+  const canSend = !isLoading && isReady && (input || '').trim().length > 0;
+  const isInputDisabled = !isReady || isLoading;
   
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden border-l shadow-2xl">
       {/* Forensic Branding Header */}
-      <header className="p-6 border-b bg-slate-950 text-white flex flex-col gap-1 shrink-0 shadow-lg">
-        <div className="flex items-center justify-between">
+      <header className="p-6 border-b bg-slate-950 text-white flex flex-col gap-1 shrink-0 shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Fingerprint size={80} className="text-emerald-500" />
+        </div>
+        <div className="flex items-center justify-between relative z-10">
             <h2 className="text-lg font-black flex items-center gap-2 uppercase tracking-tighter italic text-emerald-400">
-                <Fingerprint className="h-5 w-5 animate-pulse"/> Aura Intelligence
+                <Zap className="h-5 w-5 fill-emerald-400 animate-pulse"/> Aura Intelligence
             </h2>
             <Badge className="bg-emerald-600 text-[8px] border-none px-2 py-0.5">v10.5 PRO</Badge>
         </div>
-        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">Autonomous Forensic Co-Pilot</p>
+        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest relative z-10">Autonomous Forensic Co-Pilot</p>
       </header>
       
       {/* Neural Link Feed */}
       <ScrollArea className="flex-grow p-4 bg-slate-50/30">
-        <div className="space-y-6">
-            {messages.length === 0 && (
+        <div className="space-y-6 max-w-2xl mx-auto">
+            {!isReady && (
+                <div className="py-32 text-center animate-in fade-in duration-700">
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto text-emerald-500 mb-4" />
+                    <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Synchronizing Forensic ID...</p>
+                </div>
+            )}
+
+            {isReady && messages.length === 0 && (
                 <div className="py-20 text-center opacity-20 grayscale transition-all duration-1000">
                     <Bot size={64} className="mx-auto mb-4 animate-bounce text-slate-900" />
                     <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-900">Awaiting Forensic Command</p>
@@ -216,7 +231,7 @@ export default function CopilotPanel() {
             )}
 
             {/* Rendered Past Messages */}
-            {(renderedMessages as MessageWithId[]).map((m) => ( 
+            {isReady && (renderedMessages as MessageWithId[]).map((m) => ( 
               <div key={m.id} className={cn('flex items-start gap-3', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {m.role === 'assistant' && (
                    <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shrink-0 border border-emerald-500/20">
@@ -224,7 +239,7 @@ export default function CopilotPanel() {
                    </div>
                 )}
                 <div className={cn(
-                    'rounded-2xl p-4 max-w-[85%] text-sm shadow-sm border transition-all',
+                    'rounded-2xl p-4 max-w-[85%] text-sm shadow-sm border transition-all leading-relaxed',
                     m.role === 'user' 
                         ? 'bg-primary text-white border-primary rounded-tr-none' 
                         : 'bg-white text-slate-800 border-slate-100 rounded-tl-none'
@@ -246,7 +261,7 @@ export default function CopilotPanel() {
 
             {/* Current Active Stream */}
             {isLoading && streamingMessage && (
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 animate-in slide-in-from-bottom-2">
                     <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shrink-0 border border-emerald-500/20">
                         <Zap className="h-5 w-5 text-emerald-400 fill-current" />
                     </div>
@@ -254,51 +269,60 @@ export default function CopilotPanel() {
                         <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none">
                             {typeof streamingMessage.content === 'string' ? streamingMessage.content : JSON.stringify(streamingMessage.content)}
                         </ReactMarkdown>
-                        <div className="flex items-center gap-2 mt-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Aura is processing...
+                        <div className="flex items-center gap-2 mt-3 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Aura is processing sector drift...
                         </div>
                     </div>
                 </div>
             )}
             
-            <div ref={scrollRef} className="h-4" />
+            <div ref={scrollRef} className="h-8" />
         </div>
       </ScrollArea>
       
       {/* Command Input Area */}
-      <div className="p-4 border-t bg-white shrink-0">
+      <div className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
         <form 
           onSubmit={(e) => {
             e.preventDefault();
             if (canSend) handleSubmit(e);
           }} 
-          className="flex items-center gap-2"
+          className="flex items-center gap-3"
         >
           <Input 
             value={input || ''} 
             onChange={handleInputChange} 
-            placeholder={isInputDisabled ? "Neural Link Initializing..." : "Ask Aura to audit anything..."} 
+            placeholder={!isReady ? "Neural Link Initializing..." : "Ask Aura to audit anything..."} 
             disabled={isInputDisabled}
-            className="h-12 rounded-xl bg-slate-50 border-none shadow-inner focus-visible:ring-emerald-500"
+            className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
           />
           <Button 
             type="submit" 
             size="icon" 
             disabled={!canSend} 
-            className="h-12 w-12 rounded-xl shadow-xl bg-slate-950 hover:bg-slate-800 transition-all shrink-0"
+            className={cn(
+                "h-14 w-14 rounded-2xl shadow-xl transition-all shrink-0 active:scale-95",
+                canSend ? "bg-slate-950 hover:bg-slate-800" : "bg-slate-100 grayscale opacity-40"
+            )}
           >
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
           </Button>
         </form>
 
-        {/* Verification Badge for the 11 Industries */}
-        <div className="flex justify-between items-center mt-3 px-1">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
-                <Activity className="h-3 w-3 text-emerald-500" />
-                Neural Link: <span className="font-mono text-emerald-600">{businessId ? businessId.slice(0, 12) : 'OFFLINE'}</span>
+        {/* Multi-Tenant Handshake Status (Physical Verification) */}
+        <div className="flex justify-between items-end mt-4 px-1">
+            <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
+                    <Activity className="h-3 w-3 text-emerald-500" />
+                    Neural Link: <span className="font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{businessId ? businessId.slice(0, 18) : 'OFFLINE'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
+                    <Fingerprint className="h-3 w-3 text-sky-500" />
+                    Forensic ID: <span className="font-mono text-sky-600 bg-sky-50 px-1 rounded">{userId ? userId.slice(0, 18) : 'SEARCHING...'}</span>
+                </div>
             </div>
-            <div className="text-[9px] uppercase tracking-tighter font-bold text-slate-300">
-                Isolated Forensic Context
+            <div className="text-[8px] uppercase tracking-tighter font-black text-slate-300 text-right leading-tight">
+                Isolated Executive Context<br/>11 Industry Logic Active
             </div>
         </div>
       </div>

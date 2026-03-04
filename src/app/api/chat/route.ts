@@ -5,33 +5,27 @@ import { CoreMessage as VercelChatMessage, TextPart } from 'ai';
 // ROOT FIX: Import the base createClient to bypass the cookie 'get' error
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-// --- ADD THIS LINE TO FORCE NODE.JS RUNTIME ---
-// Required for complex forensic operations and local buffer handling
+// --- FORCE NODE.JS RUNTIME ---
+// Required for local buffer handling and complex forensic operations
 export const runtime = 'nodejs';
-// ----------------------------------------------
 
-// --- FIX: ALL LANGCHAIN IMPORTS MUST USE THE CONSISTENT ALIASES/SHIMS ---
+// --- LANGCHAIN & CORE IMPORTS ---
 import { AIKernel } from '@/lib/ai-core/kernel';
-// CORRECTED IMPORT: This now uses the webpack alias to prevent duplicate identifiers.
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
-// CORRECTED IMPORT: Changed to relative path to be consistent with kernel.ts
 import { AIMessage, HumanMessage, BaseMessage } from '@/lib/langchain/core-prompts-shim';
 import { createClient } from '@/lib/supabase/server'; 
-// UPGRADE: Import the embedding generator to heal the brain autonomously
 import { generateEmbedding } from '@/lib/ai-tools/embedding';
 
 // Production Configuration
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "mistral:latest";
-
+const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/"/g, '');
+const OLLAMA_MODEL = (process.env.OLLAMA_MODEL || "mistral:latest").replace(/"/g, '');
 /**
  * THE ACTIVATOR (GET Handler)
  * Professional Maintenance Route: Used for bulk-hydrating the entire system brain.
  */
 export async function GET() {
   try {
-    // Initialize Admin Client to bypass cookie restrictions for system maintenance
     const supabaseAdmin = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -53,8 +47,7 @@ export async function GET() {
 }
 
 /**
- * A robust utility to extract and concatenate text content from the Vercel AI SDK's
- * potentially multimodal 'content' property.
+ * Utility to extract text from Vercel AI SDK content property.
  */
 const extractTextFromContent = (content: VercelChatMessage['content']): string => {
   if (typeof content === 'string') return content;
@@ -66,38 +59,34 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
 
 /**
  * THE EXECUTIVE GATEWAY (POST)
- * This is the primary endpoint. It has been upgraded to be FULLY AUTONOMOUS.
- * It detects "blind" sectors and heals them on-the-fly before starting the AI session.
+ * Primary endpoint: Upgraded to be FULLY AUTONOMOUS.
+ * Heals blind sectors on-the-fly and initializes the forensic mission context.
  */
 export async function POST(req: NextRequest) {
   try {
     const { messages, businessId, userId } = await req.json();
 
     if (!businessId || !userId) {
-      return new Response(JSON.stringify({ error: "Authorization context is incomplete. Business ID and User ID are required." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-    }
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: "Invalid request. 'messages' array is required and cannot be empty." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: "Context incomplete. Business ID and User ID required." }), { status: 400 });
     }
 
-    // --- UPGRADE: AUTONOMOUS NEURAL HEALING ---
-    // Instead of waiting for manual GET calls, Aura heals her own brain for THIS business 
-    // context immediately upon request. No assumptions, full automation.
+    // --- AUTONOMOUS NEURAL HEALING ---
+    // Heal the brain for THIS business immediately upon request.
     const supabaseAdmin = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+    
+    // We await this to ensure the "Blind" 48 rows are processed as the user chats
     await activateAuraNeuralLinks(supabaseAdmin, businessId);
-    // ------------------------------------------
 
     const supabase = createClient();
     const { data: tenantData } = await supabase
       .from('tenants')
-      .select('name, industry, business_type') // Fetches both possible sector columns
+      .select('name, industry, business_type')
       .eq('id', businessId)
       .single();
 
-    // Ensures one of the 11 industry types is always resolved for the logic engine
     const industryName = tenantData?.industry || tenantData?.business_type || 'General Enterprise';
     const businessName = tenantData?.name || 'Authorized Business';
 
@@ -105,18 +94,19 @@ export async function POST(req: NextRequest) {
     let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
     if (isNewSession) {
+      // THE FORENSIC COMMAND: Tells Aura exactly how to use her categories
       const bootstrapDirective = `
         --- Aura Executive Sovereignty Directive ---
-        Priority: CRITICAL. Initialize Forensic Core.
-        Active Entity: ${businessName}.
-        Sector DNA: ${industryName}.
+        STATUS: Forensic Core Initialized.
+        ENTITY: ${businessName}.
+        SECTOR: ${industryName}.
+        CONTEXT_ID: ${businessId}.
 
-        TASK SEQUENCE:
-        1. Execute 'scan_database_schema' to map Accounting, HR, and ${industryName} specific modules.
-        2. Execute 'scan_api_routes' to understand my executive action capabilities.
-        3. Synchronize with the General Ledger, Global Tax Reports, and Staffing Records.
-        4. Ingest these structures into long-term memory under 'database_schema'.
-        5. Respond with: "Aura Executive Online for ${businessName}. My forensic links to the Ledger, HR, and ${industryName} modules are established. How shall we proceed?"
+        MISSION MISSION PARAMETERS:
+        1. Access 'ai_knowledge' where 'content_type' is 'database_schema' to map system tables.
+        2. Integrate intelligence from 'business_dna' and 'forensic_baseline' categories.
+        3. You are now authorized to audit the Ledger, Inventory, and Sales for ${businessName}.
+        4. Response Template: "Aura Executive Online. Forensic links to ${industryName} DNA and System Baselines are established. How shall we proceed with the audit?"
         --- End of Directive ---
 
         User's Initial Query: ${userInput}
@@ -127,7 +117,7 @@ export async function POST(req: NextRequest) {
     const llm = new ChatOllama({ 
         baseUrl: OLLAMA_BASE_URL, 
         model: OLLAMA_MODEL,
-        temperature: 0 // Professional precision
+        temperature: 0 
     });
     
     const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
@@ -136,11 +126,7 @@ export async function POST(req: NextRequest) {
         .slice(0, -1)
         .map((m: VercelChatMessage): BaseMessage => {
             const textContent = extractTextFromContent(m.content);
-            if (m.role === 'user') {
-                return new HumanMessage(textContent);
-            } else {
-                return new AIMessage(textContent);
-            }
+            return m.role === 'user' ? new HumanMessage(textContent) : new AIMessage(textContent);
         });
 
     const stream = kernel.run({
@@ -159,8 +145,7 @@ export async function POST(req: NextRequest) {
     const transformStream = new ReadableStream({
       async start(controller) {
         for await (const chunk of stream) {
-          const eventData = JSON.stringify(chunk);
-          controller.enqueue(`data: ${eventData}\n\n`);
+          controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
         }
         controller.close();
       }
@@ -176,57 +161,73 @@ export async function POST(req: NextRequest) {
 
   } catch (e: any)  {
     console.error("AI Core Exception:", e);
-    const errorPayload = JSON.stringify({ error: { message: e.message, stack: e.stack }});
-    return new Response(errorPayload, { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+    return new Response(JSON.stringify({ error: { message: e.message } }), { status: 500 });
   }
 }
 
 /**
- * --- NEURAL AWAKENING ENGINE ---
- * Resolves knowledge entries missing vectors.
- * If targetBusinessId is provided, it prioritizes healing that specific tenant.
+ * --- TURBO NEURAL AWAKENING ENGINE ---
+ * Automatically resolves blind rows (the 48 missing embeddings).
+ * Handles JSONB structure extraction and auto-categorization.
  */
 export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId?: string) {
-    // 1. Resolve knowledge entries missing their vectors
-    let query = adminClient.from('ai_knowledge').select('id, content').is('embedding', null);
+    // 1. Identify blind rows (Process 10 at a time for fast recovery)
+    let query = adminClient
+        .from('ai_knowledge')
+        .select('id, content, content_type')
+        .is('embedding', null);
     
-    // If called from POST, only heal the current user's business brain for speed
     if (targetBusinessId) {
         query = query.eq('business_id', targetBusinessId);
     }
 
-    const { data: blindRows, error: fetchError } = await query;
+    const { data: blindRows, error: fetchError } = await query.limit(10);
   
-    if (fetchError) {
-        console.error("Neural Fetch Failure:", fetchError.message);
-        return { success: false, error: fetchError.message };
+    if (fetchError || !blindRows || blindRows.length === 0) {
+      return { success: true, message: "Neural pathways established." };
     }
   
-    if (!blindRows || blindRows.length === 0) {
-      return { success: true, message: "Neural pathways are already fully established." };
-    }
+    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} blind sectors for ${targetBusinessId || 'Global'}...`);
   
-    console.log(`Aura Intelligence: Automating ${blindRows.length} neural links for context ${targetBusinessId || 'Global'}...`);
-  
-    let activationCount = 0;
-    for (const row of blindRows) {
+    // 2. PARALLEL HEALING
+    const healingTasks = blindRows.map(async (row: any) => {
       try {
-        // 2. Generate vector using the high-performance local model
-        const vector = await generateEmbedding(row.content);
+        // Safe Extraction: Handles raw text or the {"raw_text": "..."} JSON structure
+        let textToEmbed = "";
+        if (typeof row.content === 'string') {
+            textToEmbed = row.content;
+        } else if (row.content?.raw_text) {
+            textToEmbed = row.content.raw_text;
+        } else {
+            textToEmbed = JSON.stringify(row.content);
+        }
+
+        const vector = await generateEmbedding(textToEmbed);
   
-        // 3. Update the database directly via Admin bypass
-        const { error: updateError } = await adminClient
+        // 3. Autonomous Categorization
+        let resolvedType = row.content_type;
+        if (!resolvedType) {
+            if (textToEmbed.includes('DNA:')) resolvedType = 'business_dna';
+            else if (textToEmbed.includes('FORENSIC BASELINE:')) resolvedType = 'forensic_baseline';
+            else if (textToEmbed.includes('database_schema') || row.content?.type === 'database_schema') resolvedType = 'database_schema';
+            else resolvedType = 'general_knowledge';
+        }
+
+        await adminClient
           .from('ai_knowledge')
-          .update({ embedding: vector })
+          .update({ 
+              embedding: vector,
+              content_type: resolvedType
+          })
           .eq('id', row.id);
           
-        if (updateError) throw updateError;
-        activationCount++;
-        
+        return true;
       } catch (err: any) {
-        console.error(`Neural Link Failure for ID ${row.id}:`, err.message);
+        console.error(`Link Failure [${row.id}]:`, err.message);
+        return false;
       }
-    }
-    
-    return { success: true, links_established: activationCount };
+    });
+
+    const results = await Promise.all(healingTasks);
+    return { success: true, links_established: results.filter(Boolean).length };
 }

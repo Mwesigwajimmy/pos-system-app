@@ -118,7 +118,7 @@ function CopilotWorkerProvider({
 
 /**
  * --- Global Gatekeeper Provider ---
- * This is the component used in your root layout.
+ * Upgraded with Forensic ID Resolution.
  * It resolves the Supabase Auth/Profile data and Tenant capabilities before waking up Aura.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
@@ -128,11 +128,38 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   // 2. Fetch Active Modules (CRM, HR, Finance, etc.)
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
-  // VALIDATION: We only activate the AI Worker if we have a valid Business ID
-  // businessData.id maps to the business, businessData.profile.id maps to the user
-  const activeBusinessId = businessData?.id;
-  const activeUserId = (businessData as any)?.profile?.id || (businessData as any)?.user_id;
+  /**
+   * --- FORENSIC ID RESOLUTION (THE FIX) ---
+   * We do not assume the property name. We check every possible path 
+   * based on your Database Audit (id, business_id, tenant_id).
+   */
+  const activeBusinessId = useMemo(() => {
+    if (!businessData) return '';
+    return (
+        businessData.business_id || 
+        businessData.tenant_id || 
+        businessData.id || 
+        (businessData as any).organization_id || 
+        ''
+    );
+  }, [businessData]);
 
+  const activeUserId = useMemo(() => {
+    if (!businessData) return '';
+    return (
+        (businessData as any).profile?.id || 
+        (businessData as any).user_id || 
+        (businessData as any).owner_id || 
+        businessData.id || // Fallback if the hook returns the profile as the root
+        ''
+    );
+  }, [businessData]);
+
+  /**
+   * THE GATEKEEPER:
+   * Only activate the AI Worker if we have successfully resolved BOTH 
+   * the Business context and the User identity.
+   */
   if (!businessLoading && !modulesLoading && activeBusinessId && activeUserId) {
     return (
       <CopilotWorkerProvider 
@@ -168,8 +195,8 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
       toggleCopilot: () => {},
       startAIAssistance: () => {}, 
       isReady: false,
-      businessId: '',
-      userId: '',
+      businessId: activeBusinessId, // Pass what we have so far
+      userId: activeUserId,
       tenantModules: []
   };
 

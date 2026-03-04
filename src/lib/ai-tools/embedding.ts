@@ -1,59 +1,73 @@
 // src/lib/ai-tools/embedding.ts
 
-// FIX: Change import to use the configured shim alias path
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
-
 /**
- * A dedicated, high-performance Ollama model instance for generating text embeddings.
- * It is recommended to use a model specifically fine-tuned for this task.
- * 'nomic-embed-text' is a top-tier, open-source embedding model.
+ * --- AURA NEURAL CONFIGURATION ---
+ * Dynamically resolves the connection to your D: drive Ollama instance.
+ * Using 127.0.0.1 bypasses local DNS lookups for maximum speed.
  */
-const embeddingModel = new ChatOllama({
-  baseUrl: "http://localhost:11434",
-  model: "nomic-embed-text"
-});
+const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/"/g, '');
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "nomic-embed-text:latest";
 
 /**
- * Generates a vector embedding for a given piece of text using a local Ollama model.
- * This function is the core of the AI's ability to "understand" and "remember" textual information.
- *
- * @param text The text to be converted into a vector embedding. Cannot be empty.
- * @returns A promise that resolves to an array of numbers representing the vector.
- * @throws An error if the embedding generation fails due to a network issue or an API error.
+ * Generates a high-precision vector embedding for a given piece of text.
+ * This is the "Visual Cortex" of Aura, allowing her to understand business DNA.
+ * 
+ * @param text The raw text (Business DNA, Baselines, or Schemas) to be vectorized.
+ * @returns A promise resolving to a 768 or 1024-dimension numerical vector.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const sanitizedText = text.replace(/\n/g, ' ');
+  // 1. FORENSIC SANITIZATION
+  // We remove newlines and extra spaces to ensure the embedding model gets a clean signal.
+  const sanitizedText = text.replace(/\n/g, ' ').trim();
+  
   if (!sanitizedText) {
-    throw new Error("Cannot generate embedding for empty text.");
+    throw new Error("Aura Forensic Error: Cannot generate neural link for empty text content.");
   }
 
   try {
-    const response = await fetch(`${embeddingModel.baseUrl}/api/embeddings`, {
+    // 2. THE LOCAL HANDSHAKE
+    // We use a direct fetch to the Ollama API for the lowest possible latency.
+    const response = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: embeddingModel.model,
+        model: EMBEDDING_MODEL,
         prompt: sanitizedText
       })
     });
 
+    // 3. ERROR CAPTURE
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`Failed to generate embedding. Status: ${response.status}. Body: ${errorBody}`);
+      throw new Error(`Neural Link Interrupted. Status: ${response.status}. Detail: ${errorBody}`);
     }
 
     const data = await response.json();
 
+    // 4. VECTOR VALIDATION
+    // Ensures the data returned is a valid mathematical vector before saving to Supabase.
     if (!data.embedding || !Array.isArray(data.embedding)) {
-        throw new Error("Invalid response from embedding API. The 'embedding' field is missing or not an array.");
+        throw new Error("Invalid Neural Response: The embedding vector is missing or malformed.");
     }
 
+    // Success: Return the vector to be stored in the 'embedding' column
     return data.embedding;
-  } catch (error) {
-    console.error("Embedding generation process failed:", error);
-    // Re-throw the error to be handled by the calling tool
+
+  } catch (error: any) {
+    // SYSTEM DIAGNOSTICS
+    // If this fails, it usually means Ollama is closed or the D: drive is disconnected.
+    console.error("--- AURA CRITICAL NEURAL FAILURE ---");
+    console.error(`TARGET_URL: ${OLLAMA_BASE_URL}`);
+    console.error(`TARGET_MODEL: ${EMBEDDING_MODEL}`);
+    console.error(`ERROR_LOG: ${error.message}`);
+    
+    // Check for "Connection Refused" - The most common grassroots error
+    if (error.code === 'ECONNREFUSED' || error.message.includes('fetch failed')) {
+        throw new Error("Aura is OFFLINE: Ensure Ollama is running ('ollama serve') on your host machine.");
+    }
+    
     throw error;
   }
 }
