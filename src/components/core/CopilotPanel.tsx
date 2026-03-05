@@ -193,9 +193,12 @@ export default function CopilotPanel() {
   const streamingMessage = isLoading && messages.length > 0 ? (messages[messages.length - 1] as CoreMessage) : null;
   const renderedMessages = streamingMessage ? messages.slice(0, -1) : messages;
 
-  // NEURAL UNLOCK: Locked unless the Multi-Path Handshake is complete
-  const canSend = !isLoading && isReady && (input || '').trim().length > 0;
-  const isInputDisabled = !isReady || isLoading;
+  /**
+   * ROOT FIX: NEURAL UNLOCK
+   * Decouple 'canSend' and input 'disabled' status from 'isReady'.
+   * This allows immediate typing while the forensic handshake resolves in the background.
+   */
+  const canSend = !isLoading && (input || '').trim().length > 0;
   
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden border-l shadow-2xl">
@@ -208,7 +211,10 @@ export default function CopilotPanel() {
             <h2 className="text-lg font-black flex items-center gap-2 uppercase tracking-tighter italic text-emerald-400">
                 <Zap className="h-5 w-5 fill-emerald-400 animate-pulse"/> Aura Intelligence
             </h2>
-            <Badge className="bg-emerald-600 text-[8px] border-none px-2 py-0.5">v10.5 PRO</Badge>
+            <div className="flex items-center gap-2">
+               {isReady && <Badge className="bg-emerald-600 text-[8px] border-none px-2 py-0.5 animate-in fade-in">ENCRYPTED</Badge>}
+               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5">v10.5 PRO</Badge>
+            </div>
         </div>
         <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest relative z-10">Autonomous Forensic Co-Pilot</p>
       </header>
@@ -216,7 +222,7 @@ export default function CopilotPanel() {
       {/* Neural Link Feed */}
       <ScrollArea className="flex-grow p-4 bg-slate-50/30">
         <div className="space-y-6 max-w-2xl mx-auto">
-            {!isReady && (
+            {!isReady && messages.length === 0 && (
                 <div className="py-32 text-center animate-in fade-in duration-700">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto text-emerald-500 mb-4" />
                     <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Synchronizing Forensic ID...</p>
@@ -231,7 +237,7 @@ export default function CopilotPanel() {
             )}
 
             {/* Rendered Past Messages */}
-            {isReady && (renderedMessages as MessageWithId[]).map((m) => ( 
+            {(renderedMessages as MessageWithId[]).map((m) => ( 
               <div key={m.id} className={cn('flex items-start gap-3', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {m.role === 'assistant' && (
                    <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shrink-0 border border-emerald-500/20">
@@ -281,28 +287,32 @@ export default function CopilotPanel() {
       </ScrollArea>
       
       {/* Command Input Area */}
-      <div className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+      <div className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] relative z-20">
         <form 
           onSubmit={(e) => {
             e.preventDefault();
-            if (canSend) handleSubmit(e);
+            // handleSubmit in context handles the safety handshake check
+            handleSubmit(e);
           }} 
           className="flex items-center gap-3"
         >
           <Input 
             value={input || ''} 
             onChange={handleInputChange} 
-            placeholder={!isReady ? "Neural Link Initializing..." : "Ask Aura to audit anything..."} 
-            disabled={isInputDisabled}
+            placeholder={!isReady ? "Handshake Syncing..." : "Ask Aura to audit anything..."} 
+            // ROOT FIX: Input is only disabled during an active AI computation stream
+            disabled={isLoading}
             className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
+            autoFocus
           />
           <Button 
             type="submit" 
             size="icon" 
+            // ROOT FIX: Button unlocks visually as soon as typing begins
             disabled={!canSend} 
             className={cn(
                 "h-14 w-14 rounded-2xl shadow-xl transition-all shrink-0 active:scale-95",
-                canSend ? "bg-slate-950 hover:bg-slate-800" : "bg-slate-100 grayscale opacity-40"
+                canSend ? "bg-slate-950 hover:bg-slate-800 scale-100" : "bg-slate-100 grayscale opacity-40"
             )}
           >
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
@@ -310,11 +320,11 @@ export default function CopilotPanel() {
         </form>
 
         {/* Multi-Tenant Handshake Status (Physical Verification) */}
-        <div className="flex justify-between items-end mt-4 px-1">
+        <div className="flex justify-between items-end mt-4 px-1 pt-4 border-t border-slate-50">
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
                     <Activity className="h-3 w-3 text-emerald-500" />
-                    Neural Link: <span className="font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{businessId ? businessId.slice(0, 18) : 'OFFLINE'}</span>
+                    Neural Link: <span className="font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{businessId ? businessId.slice(0, 18) : 'IDENTIFYING...'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
                     <Fingerprint className="h-3 w-3 text-sky-500" />

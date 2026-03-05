@@ -112,7 +112,6 @@ export default function CopilotPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // 1. Connect to the Sovereign AI State (Context)
-  // Destructuring all verified forensic identifiers from the context.
   const { 
     messages, 
     input, 
@@ -126,17 +125,12 @@ export default function CopilotPanel() {
   } = useCopilot();
 
   // 2. NEURAL ACTION HANDLER
-  /**
-   * This effect watches the live data stream. 
-   * If Aura emits a "navigate" or "download" command, it executes it physically in the browser.
-   */
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
         
-        // Detect tool output actions
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           
@@ -164,9 +158,13 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
-  // UI State Control: Keyboard and Button Lock Logic
+  /** 
+   * ROOT FIX: UI State Control
+   * We unlock 'canSend' so the button activates as soon as you type.
+   * We only enforce the 'isLinked' check inside the actual submit function.
+   */
   const isLinked = !!businessId && !!userId;
-  const canSend = !isChatLoading && isLinked && isContextReady && (input || '').trim().length > 0;
+  const canSend = !isChatLoading && (input || '').trim().length > 0;
   const isLocked = !isLinked || !isContextReady;
 
   return (
@@ -191,8 +189,8 @@ export default function CopilotPanel() {
       {/* Neural Link Feed */}
       <ScrollArea className="flex-grow p-6 bg-slate-50/30">
         <div className="space-y-6 max-w-2xl mx-auto">
-            {/* INITIALIZING LOADER */}
-            {!isContextReady && (
+            {/* INITIALIZING LOADER: Only shown if no messages exist yet */}
+            {!isContextReady && messages.length === 0 && (
                 <div className="py-32 text-center animate-in fade-in duration-700">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto text-emerald-500 mb-4" />
                     <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Synchronizing Forensic ID...</p>
@@ -234,7 +232,7 @@ export default function CopilotPanel() {
               </div>
             ))}
 
-            {/* Visualize Autonomous Thought Steps (Agent reasoning wheels) */}
+            {/* Visualize Autonomous Thought Steps */}
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-2 mt-4">
                     {streamData.map((chunk: any, i: number) => (
@@ -258,25 +256,24 @@ export default function CopilotPanel() {
         <form 
           onSubmit={(e) => {
             e.preventDefault();
-            if (!isLinked) {
-              toast.error("Handshake Failed: Identity context is unresolvable.");
-              return;
-            }
-            if (canSend) handleSubmit(e);
+            // Handle the submit via context. SafeHandleSubmit in Context handles the lock toast.
+            handleSubmit(e);
           }} 
           className="flex items-center gap-3"
         >
           <Input 
             value={input || ''} 
             onChange={handleInputChange} 
-            placeholder={isLocked ? "Neural Link Initializing..." : "Ask Aura to audit your ledger..."} 
+            placeholder={isLocked ? "Neural Link Synchronizing..." : "Ask Aura to audit your ledger..."} 
             className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
-            disabled={isLocked || isChatLoading}
+            // ROOT FIX: Only disable if the AI is currently thinking. Keyboard remains open during handshake.
+            disabled={isChatLoading}
             autoFocus
           />
           <Button 
             type="submit" 
             size="icon" 
+            // ROOT FIX: Button activates based on input, allowing the user to initiate the send.
             disabled={!canSend} 
             className={cn(
                 "h-14 w-14 rounded-2xl shadow-xl transition-all shrink-0 active:scale-95",
@@ -287,7 +284,7 @@ export default function CopilotPanel() {
           </Button>
         </form>
         
-        {/* --- MULTI-TENANT HANDSHAKE STATUS (RESTORED FULLY) --- */}
+        {/* --- MULTI-TENANT HANDSHAKE STATUS --- */}
         <div className="flex justify-between items-end mt-5 px-1 border-t pt-4 border-slate-50">
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">

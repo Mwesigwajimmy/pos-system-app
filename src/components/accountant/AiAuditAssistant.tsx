@@ -136,16 +136,20 @@ export function AiAuditAssistant() {
   ];
 
   // Return loader while component is hydrating to prevent Next.js Client-side exceptions.
-  if (!hasMounted || !contextReady) return (
+  if (!hasMounted) return (
       <div className="w-full h-[700px] flex items-center justify-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
-          <div className="text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-emerald-500 mx-auto mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initializing Neural Link...</p>
-          </div>
+          <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
       </div>
   );
 
+  /**
+   * ROOT FIX: NEURAL UNLOCK
+   * We decouple the disabled state from the Handshake (contextReady).
+   * This allows immediate typing. We use isInputLocked only for placeholders
+   * and to prevent the actual submission until valid IDs are present.
+   */
   const isInputLocked = !businessId || !contextReady;
+  const canSend = !isChatLoading && (input || '').trim().length > 0;
 
   return (
     <div className="w-full h-full flex flex-col border rounded-3xl bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden min-h-[700px]">
@@ -296,10 +300,7 @@ export function AiAuditAssistant() {
         <form 
           onSubmit={(e) => {
             e.preventDefault();
-            if (!businessId) {
-              toast.error("Forensic Handshake Required.");
-              return;
-            }
+            // handleSubmit in context now handles the "Syncing" handshake security check.
             handleSubmit(e);
           }} 
           className="flex items-center gap-4 max-w-4xl mx-auto"
@@ -309,8 +310,9 @@ export function AiAuditAssistant() {
                 className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 text-base px-8 pr-14 transition-all"
                 value={input} 
                 onChange={handleInputChange} 
-                placeholder={isInputLocked ? "Synchronizing Handshake..." : "Command Aura to audit, calculate, or report..."} 
-                disabled={isInputLocked || isChatLoading}
+                placeholder={isInputLocked ? "Neural Link Synchronizing..." : "Command Aura to audit, calculate, or report..."} 
+                // ROOT FIX: Input remains enabled so user can type while handshake finishes.
+                disabled={isChatLoading}
               />
               <div className="absolute right-5 top-1/2 -translate-y-1/2">
                 <Database size={18} className={cn("transition-colors", isChatLoading ? "text-emerald-500 animate-pulse" : "text-slate-300")} />
@@ -318,10 +320,11 @@ export function AiAuditAssistant() {
           </div>
           <Button 
             type="submit" 
-            disabled={isInputLocked || isChatLoading || !input.trim()} 
+            // ROOT FIX: Button activates visually as soon as text is typed.
+            disabled={isChatLoading || !input.trim()} 
             className={cn(
                 "h-16 w-16 rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0",
-                (!isInputLocked && !isChatLoading && input.trim()) ? "bg-slate-950 opacity-100" : "bg-slate-200 opacity-50"
+                (!isChatLoading && input.trim()) ? "bg-slate-950 opacity-100" : "bg-slate-200 opacity-50"
             )}
           >
               {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin text-emerald-500" /> : <Send className="h-7 w-7 text-white" />}
