@@ -75,8 +75,12 @@ function CopilotWorkerProvider({
   
   const contextValue = useMemo(() => ({
     ...chat,
-    // THE ROOT FIX: Ensure input is never undefined to prevent .trim() crashes in the UI
+    // --- ROOT FIX: Explicitly map SDK functions to prevent "i is not a function" TypeErrors ---
     input: chat.input || '', 
+    setInput: chat.setInput,
+    handleInputChange: chat.handleInputChange,
+    setMessages: chat.setMessages,
+    
     isOpen,
     openCopilot,
     closeCopilot,
