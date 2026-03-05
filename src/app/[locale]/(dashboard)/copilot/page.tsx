@@ -99,6 +99,12 @@ const AgentStep = ({ data }: { data: any }) => {
 export default function MissionControlPage() {
   const router = useRouter();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * ENTERPRISE FOCUS REFERENCE
+   * Used to programmatically target the command input for high-speed interaction.
+   */
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // 1. CONSUME THE SHARED EXECUTIVE STATE
   const { 
@@ -153,6 +159,17 @@ export default function MissionControlPage() {
     }
   }, [messages, isLoading, data]);
 
+  /**
+   * ENTERPRISE CONTROLLED FOCUS PROTOCOL
+   * Forces the browser to focus the input box immediately once the 
+   * forensic link is established.
+   */
+  useEffect(() => {
+    if (isReady && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isReady]);
+
   // 4. Logic: Process incoming tool-call data chunks
   const agentStepsView = useMemo(() => {
     if (!data || !Array.isArray(data)) return [];
@@ -171,7 +188,12 @@ export default function MissionControlPage() {
   const streamingContent = isLoading && lastMessage?.role === 'assistant' ? lastMessage.content : null;
   const renderedMessages = streamingContent ? messages.slice(0, -1) : messages;
 
-  const canSend = !isLoading && (input || '').trim().length > 0 && isReady;
+  /**
+   * ROOT FIX: NEURAL UNLOCK
+   * Decouple visually from 'isReady' so the button activates as you type.
+   * handleSubmit in the context handles the actual link safety check.
+   */
+  const canSend = !isLoading && (input || '').trim().length > 0;
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-3xl shadow-2xl overflow-hidden min-h-[700px] border-slate-100">
@@ -281,10 +303,12 @@ export default function MissionControlPage() {
         >
           <div className="relative flex-1">
               <Input 
+                ref={inputRef}
                 value={input} 
                 onChange={handleInputChange}
                 placeholder={!isReady ? "Initializing Secure Handshake..." : "Command Aura to audit your ledger..."} 
-                disabled={!isReady || isLoading} 
+                // ROOT FIX: Only disable during active AI thinking. Keyboard is unlocked during handshake.
+                disabled={isLoading} 
                 className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner text-base px-8 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all pr-16" 
               />
               <div className="absolute right-6 top-1/2 -translate-y-1/2">

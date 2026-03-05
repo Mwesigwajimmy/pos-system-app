@@ -133,6 +133,12 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
 export default function CopilotPanel() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * ENTERPRISE FOCUS REFERENCE
+   * Used to programmatically target the command input for high-speed interaction.
+   */
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // Shared AI State from Context - PULLED DIRECTLY FROM THE SOURCE OF TRUTH
   const { 
@@ -176,6 +182,17 @@ export default function CopilotPanel() {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, data, isLoading]);
+
+  /**
+   * ENTERPRISE CONTROLLED FOCUS PROTOCOL
+   * Forces the browser to focus the input box immediately once the 
+   * forensic link is established.
+   */
+  useEffect(() => {
+    if (isReady && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isReady]);
 
   // Memo: Process agent steps for the UI
   const memoizedAgentSteps = useMemo(() => {
@@ -297,13 +314,13 @@ export default function CopilotPanel() {
           className="flex items-center gap-3"
         >
           <Input 
+            ref={inputRef}
             value={input || ''} 
             onChange={handleInputChange} 
             placeholder={!isReady ? "Handshake Syncing..." : "Ask Aura to audit anything..."} 
             // ROOT FIX: Input is only disabled during an active AI computation stream
             disabled={isLoading}
             className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
-            autoFocus
           />
           <Button 
             type="submit" 

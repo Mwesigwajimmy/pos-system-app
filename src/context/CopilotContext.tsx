@@ -166,14 +166,18 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
    * Initializing useChat here ensures the 'handleInputChange' is ALIVE 
    * the moment the component mounts. This unlocks your keyboard instantly.
    */
+  
+  // --- ROOT FIX: Memoize the body object to prevent state-reset loop while typing ---
+  const chatBody = useMemo(() => ({
+    businessId: activeBusinessId, 
+    userId: activeUserId,
+    tenantModules: modules || [],
+    contextType: 'forensic_sovereign_executive' 
+  }), [activeBusinessId, activeUserId, modules]);
+
   const chat = useChat({
     api: '/api/chat',
-    body: { 
-        businessId: activeBusinessId, 
-        userId: activeUserId,
-        tenantModules: modules || [],
-        contextType: 'forensic_sovereign_executive' 
-    }, 
+    body: chatBody, 
     experimental_streamData: true,
     onResponse: (res) => {
         if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");

@@ -111,6 +111,12 @@ export default function CopilotPanel() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   
+  /**
+   * ENTERPRISE FOCUS REFERENCE
+   * Used to programmatically target the command input for high-speed interaction.
+   */
+  const inputRef = useRef<HTMLInputElement>(null);
+  
   // 1. Connect to the Sovereign AI State (Context)
   const { 
     messages, 
@@ -166,6 +172,17 @@ export default function CopilotPanel() {
   const isLinked = !!businessId && !!userId;
   const canSend = !isChatLoading && (input || '').trim().length > 0;
   const isLocked = !isLinked || !isContextReady;
+
+  /**
+   * ENTERPRISE CONTROLLED FOCUS PROTOCOL
+   * Forces the browser to focus the input box immediately once the 
+   * forensic link is established.
+   */
+  useEffect(() => {
+    if (!isLocked && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isLocked]);
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l">
@@ -262,13 +279,13 @@ export default function CopilotPanel() {
           className="flex items-center gap-3"
         >
           <Input 
+            ref={inputRef}
             value={input || ''} 
             onChange={handleInputChange} 
             placeholder={isLocked ? "Neural Link Synchronizing..." : "Ask Aura to audit your ledger..."} 
             className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
             // ROOT FIX: Only disable if the AI is currently thinking. Keyboard remains open during handshake.
             disabled={isChatLoading}
-            autoFocus
           />
           <Button 
             type="submit" 

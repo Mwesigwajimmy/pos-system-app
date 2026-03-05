@@ -82,6 +82,13 @@ export function AiAuditAssistant() {
   const industry = "Accounting & Audit";
   
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * ENTERPRISE FOCUS REFERENCE
+   * Used to programmatically target the command input for high-speed interaction.
+   */
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const [finalAnswer, setFinalAnswer] = useState('');
   const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
@@ -119,6 +126,17 @@ export function AiAuditAssistant() {
           } catch (e) { return null; }
       }).filter(Boolean);
   }, [data]);
+
+  /**
+   * ENTERPRISE CONTROLLED FOCUS PROTOCOL
+   * Forces the browser to focus the input box immediately once the 
+   * forensic link is established.
+   */
+  useEffect(() => {
+    if (contextReady && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [contextReady]);
   
   /**
    * Action Handler for UI suggestions
@@ -317,6 +335,7 @@ export function AiAuditAssistant() {
         >
           <div className="relative flex-grow">
               <Input 
+                ref={inputRef}
                 className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 text-base px-8 pr-14 transition-all"
                 value={input} 
                 onChange={handleInputChange} 
