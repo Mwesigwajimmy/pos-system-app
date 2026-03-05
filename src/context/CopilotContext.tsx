@@ -130,18 +130,35 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
   /**
-   * --- ARRAY-SAFE FORENSIC ID RESOLUTION ---
+   * --- ARRAY-SAFE FORENSIC ID RESOLUTION (CAMEL + SNAKE CASE FIX) ---
+   * We search across all potential property names confirmed in the DB audit.
    */
   const activeBusinessId = useMemo(() => {
     if (!businessData) return '';
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    return target?.business_id || target?.tenant_id || target?.organization_id || target?.id || '';
+    
+    return (
+        target?.businessId ||      // RPC result
+        target?.business_id ||     // Profile table
+        target?.tenantId ||        // Alternative naming
+        target?.tenant_id ||       // Profile table fallback
+        target?.organization_id || 
+        target?.id ||              // Direct Tenant ID
+        ''
+    );
   }, [businessData]);
 
   const activeUserId = useMemo(() => {
     if (!businessData) return '';
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    return target?.id || (target as any)?.profile?.id || (target as any)?.user_id || '';
+    
+    return (
+        target?.userId ||          // RPC result
+        target?.user_id ||         // Profile fallback
+        target?.id ||              // Profile primary key
+        (target as any)?.profile?.id || 
+        ''
+    );
   }, [businessData]);
 
   /**

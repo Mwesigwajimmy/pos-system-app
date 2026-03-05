@@ -20,6 +20,7 @@ import remarkGfm from 'remark-gfm';
 /**
  * --- AgentStep Component ---
  * Visualizes Aura's autonomous forensic reasoning loop.
+ * Renders tool calls and backend observations in real-time.
  */
 const AgentStep = ({ data }: { data: any }) => {
     if (!data) return null;
@@ -59,12 +60,17 @@ const AgentStep = ({ data }: { data: any }) => {
     return null;
 };
 
+/**
+ * --- AI Audit Assistant ---
+ * Primary executive dashboard component for forensic auditing.
+ */
 export function AiAuditAssistant() {
   // --- HYDRATION GUARD ---
   const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => { setHasMounted(true); }, []);
 
-  // 1. CONSUME MASTER CONTEXT (Removes dual useChat conflict)
+  // 1. CONSUME MASTER CONTEXT
+  // Using the shared executive core from CopilotContext.
   const copilot = useCopilot();
   const { 
     messages, input, setInput, handleInputChange, handleSubmit, 
@@ -72,14 +78,15 @@ export function AiAuditAssistant() {
     businessId, userId, isReady: contextReady 
   } = copilot;
 
-  // Derive industry context from modules or default
+  // Identity logic for visual protocols
   const industry = "Accounting & Audit";
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const [finalAnswer, setFinalAnswer] = useState('');
   const [suggestedActions, setSuggestedActions] = useState<string[]>([]);
 
-  // 2. METADATA EXTRACTION (Parses the JSON chunks from the shared data stream)
+  // 2. METADATA EXTRACTION
+  // Automatically parses incoming JSON chunks from the shared stream.
   useEffect(() => {
     if (data && Array.isArray(data)) {
         const lastChunk = data[data.length - 1];
@@ -88,7 +95,7 @@ export function AiAuditAssistant() {
                 const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
                 if(parsed && parsed.finalAnswer) setFinalAnswer(parsed.finalAnswer);
                 if(parsed && Array.isArray(parsed.suggestedActions)) setSuggestedActions(parsed.suggestedActions);
-            } catch (e) { /* Metadata is still streaming */ }
+            } catch (e) { /* Buffer streaming - skip partial JSON */ }
         }
     }
   }, [data]);
@@ -113,6 +120,9 @@ export function AiAuditAssistant() {
       }).filter(Boolean);
   }, [data]);
   
+  /**
+   * Action Handler for UI suggestions
+   */
   const handleSuggestionClick = (action: string) => {
       const newMessages: Message[] = [
           ...messages, 
@@ -122,9 +132,9 @@ export function AiAuditAssistant() {
       setMessages(newMessages);
       setFinalAnswer(''); setSuggestedActions([]); setInput('');
       
-      // Submit through context with current business ID security context
+      // Execute through the Sovereign Handshake wrapper in context
       handleSubmit(new Event('submit') as any, { 
-          options: { body: { businessId, userId } } 
+          options: { body: { businessId, userId, messages: newMessages } } 
       });
   };
   
@@ -135,7 +145,7 @@ export function AiAuditAssistant() {
       "Calculate Benford's Law frequency check.",
   ];
 
-  // Return loader while component is hydrating to prevent Next.js Client-side exceptions.
+  // Loader while hydrating to prevent Next.js 15 client exceptions.
   if (!hasMounted) return (
       <div className="w-full h-[700px] flex items-center justify-center bg-slate-50/50 rounded-3xl border-2 border-dashed">
           <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
@@ -143,10 +153,9 @@ export function AiAuditAssistant() {
   );
 
   /**
-   * ROOT FIX: NEURAL UNLOCK
-   * We decouple the disabled state from the Handshake (contextReady).
-   * This allows immediate typing. We use isInputLocked only for placeholders
-   * and to prevent the actual submission until valid IDs are present.
+   * ROOT FIX: Decouple typing from handshake status.
+   * Input placeholder reacts to handshake, but the box remains enabled
+   * so the user can type while background verification finishes.
    */
   const isInputLocked = !businessId || !contextReady;
   const canSend = !isChatLoading && (input || '').trim().length > 0;
@@ -175,6 +184,7 @@ export function AiAuditAssistant() {
 
       <ScrollArea className="flex-grow p-8 bg-slate-50/30">
         <div className="space-y-8 max-w-4xl mx-auto">
+            {/* INITIAL PROTOCOL EMPTY STATE */}
             {messages.length === 0 && !isChatLoading && (
                 <div className="text-center py-16 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                     <div className="flex justify-center mb-8 relative">
@@ -300,7 +310,7 @@ export function AiAuditAssistant() {
         <form 
           onSubmit={(e) => {
             e.preventDefault();
-            // handleSubmit in context now handles the "Syncing" handshake security check.
+            // Submitting through safe context wrapper (SafeHandleSubmit in context)
             handleSubmit(e);
           }} 
           className="flex items-center gap-4 max-w-4xl mx-auto"
@@ -310,8 +320,8 @@ export function AiAuditAssistant() {
                 className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 text-base px-8 pr-14 transition-all"
                 value={input} 
                 onChange={handleInputChange} 
-                placeholder={isInputLocked ? "Neural Link Synchronizing..." : "Command Aura to audit, calculate, or report..."} 
-                // ROOT FIX: Input remains enabled so user can type while handshake finishes.
+                placeholder={isInputLocked ? "Neural Link Syncing..." : "Command Aura to audit, calculate, or report..."} 
+                // ROOT FIX: Only disable input during active AI stream, not during handshake.
                 disabled={isChatLoading}
               />
               <div className="absolute right-5 top-1/2 -translate-y-1/2">
@@ -320,11 +330,11 @@ export function AiAuditAssistant() {
           </div>
           <Button 
             type="submit" 
-            // ROOT FIX: Button activates visually as soon as text is typed.
-            disabled={isChatLoading || !input.trim()} 
+            // ROOT FIX: Button activates visually based on input length alone.
+            disabled={!canSend} 
             className={cn(
                 "h-16 w-16 rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0",
-                (!isChatLoading && input.trim()) ? "bg-slate-950 opacity-100" : "bg-slate-200 opacity-50"
+                canSend ? "bg-slate-950 opacity-100" : "bg-slate-200 opacity-50"
             )}
           >
               {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin text-emerald-500" /> : <Send className="h-7 w-7 text-white" />}
