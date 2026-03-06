@@ -6,13 +6,9 @@ import { useChat } from '@ai-sdk/react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 
-// --- Grassroots Hooks: Business and Capability Discovery ---
 import { useBusinessContext } from '@/hooks/useBusinessContext'; 
 import { useTenantModules } from '@/hooks/useTenantModules';
 
-/**
- * --- Type Definitions (Enterprise Grade) ---
- */
 interface CopilotContextType {
   messages: any[]; 
   input: string;
@@ -29,17 +25,12 @@ interface CopilotContextType {
   startAIAssistance: (prompt: string) => void;
   isReady: boolean;
   businessId: string;
-  userId: string;       // Added: Individual security context
-  tenantModules: string[]; // Added: Module capability context
+  userId: string;
+  tenantModules: string[];
 }
 
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
-/**
- * AI Neural Worker
- * This component manages the Sidebar UI and local state.
- * It consumes the AI state initialized by the Gatekeeper.
- */
 function CopilotWorkerProvider({ 
     children, 
     chat,
@@ -61,26 +52,36 @@ function CopilotWorkerProvider({
   const closeCopilot = () => setIsOpen(false);
   const toggleCopilot = () => setIsOpen(prev => !prev);
   
-  /**
-   * Autonomous Trigger
-   * Allows dashboard buttons to programmatically start AI tasks
-   */
   const startAIAssistance = (prompt: string) => {
     if (!prompt) return;
-    chat.setInput(prompt);
+    if (chat.setInput) chat.setInput(prompt);
     setIsOpen(true);
-    // Execute with a slight delay to ensure the UI has opened and state is stable
-    setTimeout(() => chat.handleSubmit(new Event('submit') as any), 150);
+    setTimeout(() => {
+      if (chat.handleSubmit) {
+        chat.handleSubmit(new Event('submit') as any);
+      }
+    }, 150);
   };
   
+  // ✅ FIXED: Proper fallback handling for all chat functions
   const contextValue = useMemo(() => ({
-    ...chat,
-    // --- ROOT FIX: Explicitly map SDK functions to prevent "i is not a function" TypeErrors ---
-    input: chat.input || '', 
-    setInput: chat.setInput,
-    handleInputChange: chat.handleInputChange,
-    setMessages: chat.setMessages,
-    
+    messages: chat?.messages || [],
+    input: chat?.input || '', 
+    setInput: chat?.setInput || (() => {}),
+    handleInputChange: chat?.handleInputChange || ((e: any) => {
+      if (chat?.setInput) chat.setInput(e.target.value);
+    }),
+    handleSubmit: (e: any, options?: any) => {
+      if (!isReady) {
+        e.preventDefault();
+        toast.info("Aura: Finalizing forensic handshake with your profile...");
+        return;
+      }
+      if (chat?.handleSubmit) chat.handleSubmit(e, options);
+    },
+    isLoading: chat?.isLoading || false,
+    setMessages: chat?.setMessages || (() => {}),
+    data: chat?.data,
     isOpen,
     openCopilot,
     closeCopilot,
@@ -92,24 +93,9 @@ function CopilotWorkerProvider({
     tenantModules: modules
   }), [chat, isOpen, businessId, userId, modules, isReady]);
 
-  /**
-   * SOVEREIGN SUBMIT WRAPPER
-   * Prevents actual transmission until the handshake is verified,
-   * but typing remains 100% active.
-   */
-  const safeHandleSubmit = (e: any, options?: any) => {
-    if (!isReady) {
-      e.preventDefault();
-      toast.info("Aura: Finalizing forensic handshake with your profile...");
-      return;
-    }
-    chat.handleSubmit(e, options);
-  };
-
   return (
-    <CopilotContext.Provider value={{ ...contextValue, handleSubmit: safeHandleSubmit }}>
+    <CopilotContext.Provider value={contextValue}>
       {children}
-      {/* Executive Sidebar - Hosts the CopilotPanel */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 flex flex-col border-l shadow-2xl overflow-hidden">
            <CopilotPanel />
@@ -119,35 +105,24 @@ function CopilotWorkerProvider({
   );
 }
 
-/**
- * --- Global Gatekeeper Provider ---
- * Upgraded with Forensic ID Resolution.
- * It resolves the Supabase Auth/Profile data before waking up the AI.
- */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
-  // Hydration guard to prevent Next.js client-side exceptions
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // 1. Fetch Business Identity and Modules (Handshake Data)
   const { data: businessData, isLoading: businessLoading } = useBusinessContext();
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
 
-  /**
-   * --- ARRAY-SAFE FORENSIC ID RESOLUTION (CAMEL + SNAKE CASE FIX) ---
-   * We search across all potential property names confirmed in the DB audit.
-   */
   const activeBusinessId = useMemo(() => {
     if (!businessData) return '';
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
     
     return (
-        target?.businessId ||      // RPC result
-        target?.business_id ||     // Profile table
-        target?.tenantId ||        // Alternative naming
-        target?.tenant_id ||       // Profile table fallback
+        target?.businessId ||
+        target?.business_id ||
+        target?.tenantId ||
+        target?.tenant_id ||
         target?.organization_id || 
-        target?.id ||              // Direct Tenant ID
+        target?.id ||
         ''
     );
   }, [businessData]);
@@ -157,21 +132,15 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
     
     return (
-        target?.userId ||          // RPC result
-        target?.user_id ||         // Profile fallback
-        target?.id ||              // Profile primary key
+        target?.userId ||
+        target?.user_id ||
+        target?.id ||
         (target as any)?.profile?.id || 
         ''
     );
   }, [businessData]);
 
-  /**
-   * 2. SHARED AI ENGINE (THE CURE)
-   * Initializing useChat here ensures the 'handleInputChange' is ALIVE 
-   * the moment the component mounts. This unlocks your keyboard instantly.
-   */
-  
-  // --- ROOT FIX: Memoize the body object to prevent state-reset loop while typing ---
+  // ✅ FIXED: Include modulesLoading in dependency
   const chatBody = useMemo(() => ({
     businessId: activeBusinessId, 
     userId: activeUserId,
@@ -192,14 +161,9 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Verify if the system is fully linked and ready to transmit
-  const isReady = mounted && !businessLoading && !!activeBusinessId && !!activeUserId;
+  // ✅ FIXED: Include modulesLoading in readiness check
+  const isReady = mounted && !businessLoading && !modulesLoading && !!activeBusinessId && !!activeUserId;
 
-  /**
-   * THE GATEKEEPER:
-   * We now render the Worker immediately so the user can type while 
-   * the background data finishes loading.
-   */
   return (
     <CopilotWorkerProvider 
       chat={chat}
@@ -213,9 +177,6 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * --- useCopilot Custom Hook ---
- */
 export function useCopilot() {
   const context = useContext(CopilotContext);
   if (context === undefined) {
