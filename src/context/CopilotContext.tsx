@@ -8,6 +8,8 @@ import CopilotPanel from '@/components/copilot/CopilotPanel';
 
 import { useBusinessContext } from '@/hooks/useBusinessContext'; 
 import { useTenantModules } from '@/hooks/useTenantModules';
+// ✅ PILLAR 3: Identity & Boundary Verification Hook
+import { useTenant } from '@/hooks/useTenant'; 
 
 interface CopilotContextType {
   messages: any[]; 
@@ -26,6 +28,7 @@ interface CopilotContextType {
   isReady: boolean;
   businessId: string;
   userId: string;
+  tenantData: any; 
   tenantModules: string[];
 }
 
@@ -36,6 +39,7 @@ function CopilotWorkerProvider({
     chat,
     businessId, 
     userId,
+    tenantData,
     modules,
     isReady 
 }: { 
@@ -43,6 +47,7 @@ function CopilotWorkerProvider({
     chat: any;
     businessId: string; 
     userId: string;
+    tenantData: any;
     modules: string[]; 
     isReady: boolean;
 }) {
@@ -63,7 +68,8 @@ function CopilotWorkerProvider({
     }, 150);
   };
   
-  // ✅ FIXED: Proper fallback handling for all chat functions
+  // ✅ FIX: Dependency array updated with chat?.input and chat?.messages.
+  // This allows real-time typing across the dashboard and activates the Send button.
   const contextValue = useMemo(() => ({
     messages: chat?.messages || [],
     input: chat?.input || '', 
@@ -74,7 +80,7 @@ function CopilotWorkerProvider({
     handleSubmit: (e: any, options?: any) => {
       if (!isReady) {
         e.preventDefault();
-        toast.info("Aura: Finalizing forensic handshake with your profile...");
+        toast.info("Aura: Finalizing forensic handshake with your organization...");
         return;
       }
       if (chat?.handleSubmit) chat.handleSubmit(e, options);
@@ -90,8 +96,9 @@ function CopilotWorkerProvider({
     isReady,
     businessId,
     userId,
+    tenantData,
     tenantModules: modules
-  }), [chat, isOpen, businessId, userId, modules, isReady]);
+  }), [chat, chat?.input, chat?.messages, chat?.isLoading, isOpen, businessId, userId, tenantData, modules, isReady]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -109,51 +116,38 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  // ✅ FETCHING THE TRIPLE PILLAR DATA
   const { data: businessData, isLoading: businessLoading } = useBusinessContext();
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
+  const { data: tenantData, isLoading: tenantLoading } = useTenant();
 
+  // ✅ ROBUST ID RESOLUTION: 
+  // If the handshake RPC returns AUTH_VOID, we fall back to the Tenant Record ID.
   const activeBusinessId = useMemo(() => {
-    if (!businessData) return '';
+    if (tenantData?.id) return tenantData.id;
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    
-    return (
-        target?.businessId ||
-        target?.business_id ||
-        target?.tenantId ||
-        target?.tenant_id ||
-        target?.organization_id || 
-        target?.id ||
-        ''
-    );
-  }, [businessData]);
+    return target?.businessId || target?.business_id || target?.tenantId || '';
+  }, [businessData, tenantData]);
 
   const activeUserId = useMemo(() => {
-    if (!businessData) return '';
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
-    
-    return (
-        target?.userId ||
-        target?.user_id ||
-        target?.id ||
-        (target as any)?.profile?.id || 
-        ''
-    );
-  }, [businessData]);
+    return target?.userId || target?.user_id || tenantData?.owner_id || '';
+  }, [businessData, tenantData]);
 
-  // ✅ FIXED: Include modulesLoading in dependency
   const chatBody = useMemo(() => ({
     businessId: activeBusinessId, 
     userId: activeUserId,
+    tenantDetails: tenantData,
     tenantModules: modules || [],
     contextType: 'forensic_sovereign_executive' 
-  }), [activeBusinessId, activeUserId, modules]);
+  }), [activeBusinessId, activeUserId, tenantData, modules]);
 
   const chat = useChat({
     api: '/api/chat',
     body: chatBody, 
     experimental_streamData: true,
     onResponse: (res) => {
-        if (res.status === 401) toast.error("Aura: Security session expired. Please re-login.");
+        if (res.status === 401) toast.error("Aura: Security session expired.");
     },
     onError: (err: Error) => {
         console.error("Aura Neural Link Error:", err);
@@ -161,14 +155,21 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // ✅ FIXED: Include modulesLoading in readiness check
-  const isReady = mounted && !businessLoading && !modulesLoading && !!activeBusinessId && !!activeUserId;
+  // ✅ FINALIZED HANDSHAKE READINESS: 
+  // Logic unlocks only when all three database pillars are resolved.
+  const isReady = mounted && 
+                  !businessLoading && 
+                  !modulesLoading && 
+                  !tenantLoading && 
+                  !!activeBusinessId && 
+                  !!activeUserId;
 
   return (
     <CopilotWorkerProvider 
       chat={chat}
       businessId={activeBusinessId} 
       userId={activeUserId}
+      tenantData={tenantData}
       modules={modules || []}
       isReady={isReady}
     >
