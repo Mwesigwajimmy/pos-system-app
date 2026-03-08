@@ -20,6 +20,7 @@ import { generateEmbedding } from '@/lib/ai-tools/embedding';
 // Production Configuration
 const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/"/g, '');
 const OLLAMA_MODEL = (process.env.OLLAMA_MODEL || "mistral:latest").replace(/"/g, '');
+
 /**
  * THE ACTIVATOR (GET Handler)
  * Professional Maintenance Route: Used for bulk-hydrating the entire system brain.
@@ -64,20 +65,19 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
  */
 export async function POST(req: NextRequest) {
   try {
-    const { messages, businessId, userId } = await req.json();
+    // ✅ FIX: Extracted tenantModules to enable Autonomous Tool mapping
+    const { messages, businessId, userId, tenantModules } = await req.json();
 
     if (!businessId || !userId) {
       return new Response(JSON.stringify({ error: "Context incomplete. Business ID and User ID required." }), { status: 400 });
     }
 
     // --- AUTONOMOUS NEURAL HEALING ---
-    // Heal the brain for THIS business immediately upon request.
     const supabaseAdmin = createSupabaseClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
-    // We await this to ensure the "Blind" 48 rows are processed as the user chats
     await activateAuraNeuralLinks(supabaseAdmin, businessId);
 
     const supabase = createClient();
@@ -94,19 +94,20 @@ export async function POST(req: NextRequest) {
     let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
     if (isNewSession) {
-      // THE FORENSIC COMMAND: Tells Aura exactly how to use her categories
+      // ✅ UPGRADED: Added "Autonomous Editor" authorization to the directive
       const bootstrapDirective = `
         --- Aura Executive Sovereignty Directive ---
         STATUS: Forensic Core Initialized.
         ENTITY: ${businessName}.
         SECTOR: ${industryName}.
         CONTEXT_ID: ${businessId}.
+        ACTIVE_MODULES: ${tenantModules?.join(', ') || 'Core only'}.
 
-        MISSION MISSION PARAMETERS:
+        MISSION PARAMETERS:
         1. Access 'ai_knowledge' where 'content_type' is 'database_schema' to map system tables.
         2. Integrate intelligence from 'business_dna' and 'forensic_baseline' categories.
-        3. You are now authorized to audit the Ledger, Inventory, and Sales for ${businessName}.
-        4. Response Template: "Aura Executive Online. Forensic links to ${industryName} DNA and System Baselines are established. How shall we proceed with the audit?"
+        3. AUTONOMOUS EDITOR PROTOCOL: You are now authorized to invoke 'aura_autonomous_edit' to physically update system records, correct ledger entries, and manage inventory state.
+        4. Response Template: "Aura Executive Online. Forensic links to ${industryName} DNA established. Autonomous Editor Protocol is ACTIVE. How shall we proceed with the audit or system modifications?"
         --- End of Directive ---
 
         User's Initial Query: ${userInput}
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
         temperature: 0 
     });
     
+    // ✅ FIX: Kernel now receives the tenantModules for tool-switching logic
     const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
 
     const chat_history: BaseMessage[] = messages
@@ -137,7 +139,8 @@ export async function POST(req: NextRequest) {
           businessId, 
           userId,
           industry: industryName, 
-          businessName: businessName
+          businessName: businessName,
+          tenantModules: tenantModules || [] // ✅ Pass the modules into the kernel config
         } 
       },
     });
@@ -171,7 +174,6 @@ export async function POST(req: NextRequest) {
  * Handles JSONB structure extraction and auto-categorization.
  */
 export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId?: string) {
-    // 1. Identify blind rows (Process 10 at a time for fast recovery)
     let query = adminClient
         .from('ai_knowledge')
         .select('id, content, content_type')
@@ -187,12 +189,10 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
       return { success: true, message: "Neural pathways established." };
     }
   
-    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} blind sectors for ${targetBusinessId || 'Global'}...`);
+    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} blind sectors...`);
   
-    // 2. PARALLEL HEALING
     const healingTasks = blindRows.map(async (row: any) => {
       try {
-        // Safe Extraction: Handles raw text or the {"raw_text": "..."} JSON structure
         let textToEmbed = "";
         if (typeof row.content === 'string') {
             textToEmbed = row.content;
@@ -204,7 +204,6 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
 
         const vector = await generateEmbedding(textToEmbed);
   
-        // 3. Autonomous Categorization
         let resolvedType = row.content_type;
         if (!resolvedType) {
             if (textToEmbed.includes('DNA:')) resolvedType = 'business_dna';

@@ -2,6 +2,7 @@
 
 import { useTenant } from '@/hooks/useTenant';
 import { Loader2 } from 'lucide-react';
+import AuraForensicGuard from '@/components/AuraForensicGuard';
 
 // --- Import All 11 Industry Views ---
 import RetailDashboard from '@/components/dashboard-views/RetailDashboard';
@@ -32,63 +33,73 @@ export default function DashboardClientPage() {
 
     const type = (tenant.business_type || '').toLowerCase();
 
-    // --- LOGIC: 11 Distinct Routes ---
+    // --- SOVEREIGN WRAPPER LOGIC ---
+    // We determine the component first, then wrap it in the AuraForensicGuard 
+    // to "awaken" the entire system's AI and typing capabilities globally.
+    
+    const renderDashboard = () => {
+        // 1. Restaurant / Cafe
+        if (type.includes('restaurant') || type.includes('cafe') || type.includes('bar')) {
+            return <RestaurantDashboard />;
+        }
 
-    // 1. Restaurant / Cafe
-    if (type.includes('restaurant') || type.includes('cafe') || type.includes('bar')) {
-        return <RestaurantDashboard />;
-    }
+        // 2. Retail / Wholesale (General)
+        if (type.includes('retail') || type.includes('wholesale') || type.includes('shop') || type.includes('supermarket')) {
+            return <RetailDashboard />;
+        }
 
-    // 2. Retail / Wholesale (General)
-    if (type.includes('retail') || type.includes('wholesale') || type.includes('shop') || type.includes('supermarket')) {
+        // 3. Contractor (Construction, Remodeling)
+        if (type.includes('contractor') || type.includes('construction') || type.includes('builder')) {
+            return <ContractorDashboard />;
+        }
+
+        // 4. Field Service (HVAC, Plumbing, Trades)
+        if (type.includes('field') || type.includes('hvac') || type.includes('plumbing') || type.includes('repair')) {
+            return <FieldServiceDashboard />;
+        }
+
+        // 5. Professional Services (Legal, Accounting, Consulting)
+        if (type.includes('professional') || type.includes('legal') || type.includes('account') || type.includes('consult')) {
+            return <ProServicesDashboard />;
+        }
+
+        // 6. Distribution (Logistics)
+        if (type.includes('distribution') || type.includes('logistics') || type.includes('delivery')) {
+            return <DistributionDashboard />;
+        }
+
+        // 7. SACCO / Co-operative (Distinct from Lending)
+        if (type.includes('sacco') || type.includes('co-op') || type.includes('union')) {
+            return <SaccoDashboard />;
+        }
+
+        // 8. Lending / Microfinance
+        if (type.includes('lending') || type.includes('microfinance') || type.includes('credit')) {
+            return <LendingDashboard />;
+        }
+
+        // 9. Rentals / Real Estate
+        if (type.includes('rent') || type.includes('estate') || type.includes('property')) {
+            return <RealEstateDashboard />;
+        }
+
+        // 10. Telecom Services
+        if (type.includes('telecom') || type.includes('airtime') || type.includes('mobile')) {
+            return <TelecomDashboard />;
+        }
+
+        // 11. Nonprofit
+        if (type.includes('nonprofit') || type.includes('charity') || type.includes('ngo')) {
+            return <NonprofitDashboard />;
+        }
+
+        // Fallback
         return <RetailDashboard />;
-    }
+    };
 
-    // 3. Contractor (Construction, Remodeling)
-    if (type.includes('contractor') || type.includes('construction') || type.includes('builder')) {
-        return <ContractorDashboard />;
-    }
-
-    // 4. Field Service (HVAC, Plumbing, Trades)
-    if (type.includes('field') || type.includes('hvac') || type.includes('plumbing') || type.includes('repair')) {
-        return <FieldServiceDashboard />;
-    }
-
-    // 5. Professional Services (Legal, Accounting, Consulting)
-    if (type.includes('professional') || type.includes('legal') || type.includes('account') || type.includes('consult')) {
-        return <ProServicesDashboard />;
-    }
-
-    // 6. Distribution (Logistics)
-    if (type.includes('distribution') || type.includes('logistics') || type.includes('delivery')) {
-        return <DistributionDashboard />;
-    }
-
-    // 7. SACCO / Co-operative (Distinct from Lending)
-    if (type.includes('sacco') || type.includes('co-op') || type.includes('union')) {
-        return <SaccoDashboard />;
-    }
-
-    // 8. Lending / Microfinance
-    if (type.includes('lending') || type.includes('microfinance') || type.includes('credit')) {
-        return <LendingDashboard />;
-    }
-
-    // 9. Rentals / Real Estate
-    if (type.includes('rent') || type.includes('estate') || type.includes('property')) {
-        return <RealEstateDashboard />;
-    }
-
-    // 10. Telecom Services
-    if (type.includes('telecom') || type.includes('airtime') || type.includes('mobile')) {
-        return <TelecomDashboard />;
-    }
-
-    // 11. Nonprofit
-    if (type.includes('nonprofit') || type.includes('charity') || type.includes('ngo')) {
-        return <NonprofitDashboard />;
-    }
-
-    // Fallback
-    return <RetailDashboard />;
+    return (
+        <AuraForensicGuard>
+            {renderDashboard()}
+        </AuraForensicGuard>
+    );
 }

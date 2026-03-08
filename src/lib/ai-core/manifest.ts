@@ -120,6 +120,17 @@ export const AI_CAPABILITIES: ITool[] = [
         'manage_crm_executive'
     ),
 
+   SupabaseToolFactory.create(
+        "aura_autonomous_edit",
+        "Physically edits or corrects a record in the database. Use this to autonomously fix ledger errors, update inventory, or modify entity details after a forensic audit.",
+        z.object({
+            target_table: z.string().describe("The name of the database table to edit (e.g., 'ledger', 'inventory', 'customers')."),
+            target_id: z.string().uuid().describe("The unique UUID of the record to update."),
+            update_data: z.record(z.any()).describe("A JSON object of the fields and new values to be changed.")
+        }),
+        'aura_autonomous_edit'
+    ),
+
     SupabaseToolFactory.create(
         "audit_tax_and_compliance",
         "Accesses the Global Tax Report and tax configurations to calculate liability and prepare filing drafts.",
