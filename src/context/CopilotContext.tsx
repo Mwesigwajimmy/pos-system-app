@@ -70,11 +70,21 @@ function CopilotWorkerProvider({
       const submitAction = chat?.sendMessage || chat?.append;
       if (submitAction) {
         try {
-          // Wrap in object to avoid the 'text in h' TypeError
+          // ✅ UPGRADE: Send message with IDs attached directly to the payload
+          // This prevents the "Context incomplete" error from the backend.
           if (chat?.sendMessage) {
-            chat.sendMessage({ content: prompt });
+            chat.sendMessage({ 
+              content: prompt,
+              businessId: businessId,
+              userId: userId
+            });
           } else if (chat?.append) {
-            chat.append({ role: 'user', content: prompt });
+            chat.append({ 
+              role: 'user', 
+              content: prompt,
+              businessId: businessId,
+              userId: userId
+            });
           }
           setInputState('');
         } catch (err) {
@@ -92,10 +102,11 @@ function CopilotWorkerProvider({
       console.log('CURRENT INPUT BUFFER:', inputState);
       console.log('ACTIVE CONVERSATION DEPTH:', (chat?.messages || []).length);
       console.log('SDK STATUS:', chat?.status || 'idle');
+      console.log('ATTACHED CONTEXT:', { businessId, userId });
     } catch (err) {
       console.error('COPILOT DEBUG (Provider) - log error:', err);
     }
-  }, [chat, inputState, chat?.messages, chat?.status]);
+  }, [chat, inputState, chat?.messages, chat?.status, businessId, userId]);
 
   // ✅ ROOT FIX: UNIVERSAL SUBMISSION PROTOCOL
   // This memo standardizes the interaction between the UI and the SDK Engine.
@@ -116,14 +127,24 @@ function CopilotWorkerProvider({
         // Validation check
         if (!inputState.trim()) return;
 
-        // CRITICAL FIX: The TypeError "search for text in h" occurs because 
-        // sendMessage expects an object { content: string }, not a raw string.
+        // ✅ CRITICAL UPGRADE: THE FORENSIC HANDSHAKE
+        // We include the IDs in the function call to ensure the API receives them 
+        // even if the hook initialization was delayed.
         try { 
           if (typeof chat?.sendMessage === 'function') {
-            console.log('AURA: Dispatching Structured message...');
-            chat.sendMessage({ content: inputState });
+            console.log('AURA: Dispatching Structured message with verified Context...');
+            chat.sendMessage({ 
+              content: inputState,
+              businessId,
+              userId 
+            });
           } else if (typeof chat?.append === 'function') {
-            chat.append({ role: 'user', content: inputState });
+            chat.append({ 
+              role: 'user', 
+              content: inputState,
+              businessId,
+              userId
+            });
           } else if (typeof chat?.handleSubmit === 'function') {
             chat.handleSubmit(e);
           } else {
@@ -196,6 +217,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   }, [businessData, tenantData]);
 
   // THE EXECUTIVE AI ENGINE
+  // ✅ UPGRADE: The body is now dynamically reactive to the resolved IDs
   const chat = useChat({
     api: '/api/chat',
     body: {
