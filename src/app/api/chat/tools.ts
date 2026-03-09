@@ -110,13 +110,60 @@ export const processPaymentTool = new DynamicTool({
     }
 });
 
-// --- FILE EXPORTING ---
+// ✅ UPGRADE: AUTONOMOUS EDITOR TOOL
+// Physically corrects database records based on forensic audit findings.
+export const autonomousEditorTool = new DynamicTool({
+    name: "aura_autonomous_edit",
+    description: "Physically corrects database records. Use this to autonomously fix ledger errors, update inventory levels, or modify entity details after a forensic audit.",
+    schema: z.object({
+        target_table: z.string().describe("The name of the database table to edit (e.g., 'sales', 'expenses', 'inventory')."),
+        target_id: z.string().uuid().describe("The unique UUID of the record to update."),
+        update_data: z.record(z.any()).describe("A JSON object of the fields and new values to be changed.")
+    }),
+    func: async ({ target_table, target_id, update_data }, runManager: RunManager) => {
+        const supabase = createClient(cookies());
+        const { data, error } = await supabase.rpc('aura_autonomous_edit', {
+            target_table,
+            target_id,
+            update_data
+        });
+        if (error) return `Forensic Edit Failed: ${error.message}`;
+        return `SUCCESS: Record in ${target_table} has been forensicly corrected. Result: ${JSON.stringify(data)}`;
+    }
+});
+
+// ✅ UPGRADE: FORENSIC AUDIT & MATH TOOL
+// Enables Benford's Law analysis and profit margin verification against raw database structure.
+export const forensicAuditTool = new DynamicTool({
+    name: "execute_forensic_audit",
+    description: "Runs complex mathematical audits including Benford's Law analysis and profit margin verification. Use this to detect fraud or UI math errors by querying raw database records.",
+    schema: z.object({
+        audit_type: z.enum(["benfords_law", "profit_margin_verification", "sacco_dividend_audit", "tax_liability_audit"]),
+        target_period: z.string().describe("The time range for the audit, e.g., '2024-Q1', 'today', or 'last_30_days'.")
+    }),
+    func: async ({ audit_type, target_period }, runManager: RunManager) => {
+        const businessId = runManager.config.configurable?.businessId;
+        const supabase = createClient(cookies());
+        
+        // This hits the specialized math RPC designed to override UI errors
+        const { data, error } = await supabase.rpc('perform_system_math_audit', {
+            p_business_id: businessId,
+            p_audit_type: audit_type,
+            p_period: target_period
+        });
+
+        if (error) return `Audit Mathematical Failure: ${error.message}`;
+        return `Forensic Mathematical Result: ${JSON.stringify(data)}`;
+    }
+});
+
+// --- FILE EXPORTING (UPGRADED WITH CSV SUPPORT) ---
 export const universalFileExporterTool = new DynamicTool({
     name: "export_data_as_file",
-    description: "Takes a JSON array and converts it into a PDF or Excel file, returning a base64 string for download. The LLM MUST only output a final message with the Download ToolCall.",
-    // Correct schema structure confirmed
+    description: "Takes a JSON array and converts it into a PDF, Excel, or CSV file, returning a base64 string for download. The LLM MUST only output a final message with the Download ToolCall.",
+    // Upgrade: Added CSV to the allowed file formats
     schema: z.object({ 
-        file_format: z.enum(["pdf", "excel"]), 
+        file_format: z.enum(["pdf", "excel", "csv"]), 
         file_name: z.string().describe("The desired name for the file, without the extension."), 
         title: z.string().describe("The title to be used inside the document (e.g., 'Q4 Sales Report')."), 
         data: z.array(z.record(z.string(), z.any())).describe("The structured JSON array of data to be exported.")
@@ -128,36 +175,33 @@ export const universalFileExporterTool = new DynamicTool({
         try {
             let base64Content: string;
             let mimeType: string;
-            let finalFileName: string;
+            let finalFileName: string = `${file_name}.${file_format}`;
 
             if (file_format === 'pdf') {
                 const doc = new jsPDF();
+                doc.setFontSize(18);
                 doc.text(title, 14, 20);
-                // Extract headers from the first object
                 const head = [Object.keys(data[0])]; 
-                // Map data to rows based on the headers
                 const body = data.map((row: any) => head[0].map(key => row[key] !== null && row[key] !== undefined ? String(row[key]) : ''));
                 
-                // @ts-ignore - autoTable does not have full type definitions
-                autoTable(doc, { startY: 30, head: head, body: body, theme: 'striped' });
-                
-                // Outputting as base64 string
+                // @ts-ignore
+                autoTable(doc, { startY: 25, head: head, body: body, theme: 'grid', styles: { fontSize: 8 } });
                 base64Content = Buffer.from(doc.output('arraybuffer')).toString('base64');
                 mimeType = 'application/pdf';
-                finalFileName = `${file_name}.pdf`;
+            } else if (file_format === 'csv') {
+                const worksheet = XLSX.utils.json_to_sheet(data);
+                const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+                base64Content = Buffer.from(csvOutput).toString('base64');
+                mimeType = 'text/csv';
             } else { // Excel (xlsx)
                 const worksheet = XLSX.utils.json_to_sheet(data);
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-                
-                // Write workbook to a buffer then convert to base64
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'SovereignData');
                 const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
                 base64Content = buffer.toString('base64');
                 mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-                finalFileName = `${file_name}.xlsx`;
             }
 
-            // Return a machine-readable JSON object with the action for the frontend to handle the download.
             return JSON.stringify({ 
                 action: "download_file", 
                 payload: { 

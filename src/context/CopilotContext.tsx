@@ -53,52 +53,114 @@ function CopilotWorkerProvider({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   
+  // ✅ PROPERTY RECOVERY STATE
+  // Manages typing locally since the current SDK returns 'undefined' for chat.input
+  const [inputState, setInputState] = useState('');
+
   const openCopilot = () => setIsOpen(true);
   const closeCopilot = () => setIsOpen(false);
   const toggleCopilot = () => setIsOpen(prev => !prev);
   
   const startAIAssistance = (prompt: string) => {
     if (!prompt) return;
-    if (chat.setInput) chat.setInput(prompt);
+    setInputState(prompt);
     setIsOpen(true);
     setTimeout(() => {
-      if (chat.handleSubmit) {
-        chat.handleSubmit(new Event('submit') as any);
+      // Logic mapping based on SDK available methods
+      const submitAction = chat?.sendMessage || chat?.append;
+      if (submitAction) {
+        try {
+          // Wrap in object to avoid the 'text in h' TypeError
+          if (chat?.sendMessage) {
+            chat.sendMessage({ content: prompt });
+          } else if (chat?.append) {
+            chat.append({ role: 'user', content: prompt });
+          }
+          setInputState('');
+        } catch (err) {
+          console.error('COPILOT DEBUG - startAIAssistance submit error:', err);
+        }
       }
     }, 150);
   };
-  
-  // ✅ FIX: Dependency array updated with chat?.input and chat?.messages.
-  // This allows real-time typing across the dashboard and activates the Send button.
-  const contextValue = useMemo(() => ({
-    messages: chat?.messages || [],
-    input: chat?.input || '', 
-    setInput: chat?.setInput || (() => {}),
-    handleInputChange: chat?.handleInputChange || ((e: any) => {
-      if (chat?.setInput) chat.setInput(e.target.value);
-    }),
-    handleSubmit: (e: any, options?: any) => {
-      if (!isReady) {
-        e.preventDefault();
-        toast.info("Aura: Finalizing forensic handshake with your organization...");
-        return;
-      }
-      if (chat?.handleSubmit) chat.handleSubmit(e, options);
-    },
-    isLoading: chat?.isLoading || false,
-    setMessages: chat?.setMessages || (() => {}),
-    data: chat?.data,
-    isOpen,
-    openCopilot,
-    closeCopilot,
-    toggleCopilot,
-    startAIAssistance,
-    isReady,
-    businessId,
-    userId,
-    tenantData,
-    tenantModules: modules
-  }), [chat, chat?.input, chat?.messages, chat?.isLoading, isOpen, businessId, userId, tenantData, modules, isReady]);
+
+  // 🧪 DEEP SYSTEM AUDIT (Console Logging)
+  useEffect(() => {
+    try {
+      console.log('--- AURA NEURAL LINK STATUS ---');
+      console.log('SDK KEYS AVAILABLE:', Object.keys(chat || {}));
+      console.log('CURRENT INPUT BUFFER:', inputState);
+      console.log('ACTIVE CONVERSATION DEPTH:', (chat?.messages || []).length);
+      console.log('SDK STATUS:', chat?.status || 'idle');
+    } catch (err) {
+      console.error('COPILOT DEBUG (Provider) - log error:', err);
+    }
+  }, [chat, inputState, chat?.messages, chat?.status]);
+
+  // ✅ ROOT FIX: UNIVERSAL SUBMISSION PROTOCOL
+  // This memo standardizes the interaction between the UI and the SDK Engine.
+  const contextValue = useMemo(() => {
+    const isActuallyLoading = chat?.isLoading || chat?.status === 'in_progress' || chat?.status === 'streaming';
+
+    return {
+      messages: chat?.messages || [],
+      input: inputState, 
+      setInput: setInputState,
+      handleInputChange: (e: any) => {
+        const val = e?.target?.value ?? '';
+        setInputState(val); 
+      },
+      handleSubmit: (e: any) => {
+        if (e && e.preventDefault) e.preventDefault();
+        
+        // Validation check
+        if (!inputState.trim()) return;
+
+        // CRITICAL FIX: The TypeError "search for text in h" occurs because 
+        // sendMessage expects an object { content: string }, not a raw string.
+        try { 
+          if (typeof chat?.sendMessage === 'function') {
+            console.log('AURA: Dispatching Structured message...');
+            chat.sendMessage({ content: inputState });
+          } else if (typeof chat?.append === 'function') {
+            chat.append({ role: 'user', content: inputState });
+          } else if (typeof chat?.handleSubmit === 'function') {
+            chat.handleSubmit(e);
+          } else {
+            console.error('AURA ERROR: No valid submission method found in SDK.');
+            toast.error("Handshake Mismatch: Submission logic missing.");
+          }
+          
+          setInputState(''); // Clear buffer on success
+        } catch (err: any) { 
+          console.error('AURA CRITICAL FAILURE - Submission Error:', err); 
+          toast.error(`Forensic Link Error: ${err.message}`);
+        }
+      },
+      isLoading: isActuallyLoading,
+      setMessages: chat?.setMessages || (() => {}),
+      data: chat?.data,
+      isOpen,
+      openCopilot,
+      closeCopilot,
+      toggleCopilot,
+      startAIAssistance,
+      isReady,
+      businessId,
+      userId,
+      tenantData,
+      tenantModules: modules
+    };
+  }, [
+    chat, 
+    inputState, 
+    isOpen, 
+    businessId, 
+    userId, 
+    tenantData, 
+    modules, 
+    isReady
+  ]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -116,13 +178,12 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // ✅ FETCHING THE TRIPLE PILLAR DATA
+  // TRIPLE PILLAR DATA SYNC
   const { data: businessData, isLoading: businessLoading } = useBusinessContext();
   const { data: modules, isLoading: modulesLoading } = useTenantModules();
   const { data: tenantData, isLoading: tenantLoading } = useTenant();
 
-  // ✅ ROBUST ID RESOLUTION: 
-  // If the handshake RPC returns AUTH_VOID, we fall back to the Tenant Record ID.
+  // IDENTIFIER RESOLUTION
   const activeBusinessId = useMemo(() => {
     if (tenantData?.id) return tenantData.id;
     const target = Array.isArray(businessData) ? businessData[0] : businessData;
@@ -134,35 +195,36 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return target?.userId || target?.user_id || tenantData?.owner_id || '';
   }, [businessData, tenantData]);
 
-  const chatBody = useMemo(() => ({
-    businessId: activeBusinessId, 
-    userId: activeUserId,
-    tenantDetails: tenantData,
-    tenantModules: modules || [],
-    contextType: 'forensic_sovereign_executive' 
-  }), [activeBusinessId, activeUserId, tenantData, modules]);
-
+  // THE EXECUTIVE AI ENGINE
   const chat = useChat({
     api: '/api/chat',
-    body: chatBody, 
+    body: {
+        businessId: activeBusinessId, 
+        userId: activeUserId,
+        tenantModules: modules || [],
+        contextType: 'forensic_sovereign_executive'
+    }, 
     experimental_streamData: true,
     onResponse: (res) => {
-        if (res.status === 401) toast.error("Aura: Security session expired.");
+        if (res.status === 401) toast.error("Aura: Session integrity failed.");
     },
     onError: (err: Error) => {
-        console.error("Aura Neural Link Error:", err);
-        toast.error(`Aura Connection Error: ${err.message}`);
+        console.error("Aura Neural Link Fault:", err);
     },
   });
 
-  // ✅ FINALIZED HANDSHAKE READINESS: 
-  // Logic unlocks only when all three database pillars are resolved.
-  const isReady = mounted && 
-                  !businessLoading && 
-                  !modulesLoading && 
-                  !tenantLoading && 
-                  !!activeBusinessId && 
-                  !!activeUserId;
+  // Global Exception Handling
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => {
+      console.error('COPILOT SYSTEM EXCEPTION:', e.message);
+    };
+    window.addEventListener('error', onError);
+    return () => window.removeEventListener('error', onError);
+  }, []);
+
+  // ✅ FINALIZED READINESS
+  // Handshake resolves as soon as the Business ID is found, ending the "Awaiting" lock.
+  const isReady = mounted && !!activeBusinessId;
 
   return (
     <CopilotWorkerProvider 

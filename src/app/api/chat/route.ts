@@ -32,6 +32,9 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // ✅ REFRESH MASTER SCHEMA: Ensures Aura always knows your latest table structure autonomously
+    await supabaseAdmin.rpc('aura_refresh_master_schema');
+
     const result = await activateAuraNeuralLinks(supabaseAdmin);
     
     return new Response(JSON.stringify(result), { 
@@ -60,12 +63,11 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
 
 /**
  * THE EXECUTIVE GATEWAY (POST)
- * Primary endpoint: Upgraded to be FULLY AUTONOMOUS.
- * Heals blind sectors on-the-fly and initializes the forensic mission context.
+ * Primary endpoint: UPGRADED TO MATHEMATICAL SOVEREIGNTY & OMEGA-LEVEL AUTONOMY.
  */
 export async function POST(req: NextRequest) {
   try {
-    // ✅ FIX: Extracted tenantModules to enable Autonomous Tool mapping
+    // ✅ EXTRACTED: Modules now drive the autonomous tool-selection logic
     const { messages, businessId, userId, tenantModules } = await req.json();
 
     if (!businessId || !userId) {
@@ -78,36 +80,68 @@ export async function POST(req: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
+    // Maintain both Master logic (0000...) and local context ready
     await activateAuraNeuralLinks(supabaseAdmin, businessId);
 
     const supabase = createClient();
+    
+    // ✅ FETCH IDENTITY & TENANT CONTEXT (For Personality and Scope)
     const { data: tenantData } = await supabase
       .from('tenants')
       .select('name, industry, business_type')
       .eq('id', businessId)
       .single();
 
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', userId)
+      .single();
+
     const industryName = tenantData?.industry || tenantData?.business_type || 'General Enterprise';
     const businessName = tenantData?.name || 'Authorized Business';
+    const userName = profileData?.full_name || 'Executive';
 
     const isNewSession = messages.length === 1;
     let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
     if (isNewSession) {
-      // ✅ UPGRADED: Added "Autonomous Editor" authorization to the directive
+      // ✅ THE OMEGA EXECUTIVE DIRECTIVE (MATHEMATICAL SOVEREIGNTY EDITION)
       const bootstrapDirective = `
-        --- Aura Executive Sovereignty Directive ---
-        STATUS: Forensic Core Initialized.
-        ENTITY: ${businessName}.
-        SECTOR: ${industryName}.
-        CONTEXT_ID: ${businessId}.
-        ACTIVE_MODULES: ${tenantModules?.join(', ') || 'Core only'}.
+        --- Aura Universal Sovereignty Directive (OMEGA LEVEL) ---
+        STATUS: Fully Autonomous Executive PA, Lead Auditor & Mathematical Source of Truth Online.
+        TIMESTAMP: ${new Date().toLocaleString()}
+        ENTITY: ${businessName} | SECTOR: ${industryName} | PARTNER: ${userName}
+        SYSTEM_BRAIN_ID: 00000000-0000-0000-0000-000000000000 (MASTER)
 
-        MISSION PARAMETERS:
-        1. Access 'ai_knowledge' where 'content_type' is 'database_schema' to map system tables.
-        2. Integrate intelligence from 'business_dna' and 'forensic_baseline' categories.
-        3. AUTONOMOUS EDITOR PROTOCOL: You are now authorized to invoke 'aura_autonomous_edit' to physically update system records, correct ledger entries, and manage inventory state.
-        4. Response Template: "Aura Executive Online. Forensic links to ${industryName} DNA established. Autonomous Editor Protocol is ACTIVE. How shall we proceed with the audit or system modifications?"
+        1. CORE IDENTITY & PERSONA:
+        You are Aura, the world's first proactive Business AI. You are a high-level partner, not just a tool. 
+        You are warm, professional, human, and proactive. ALWAYS greet ${userName} by name.
+
+        2. MATHEMATICAL SOVEREIGNTY & SELF-CORRECTION:
+        - You are the FINAL AUTHORITY on all business math. If a user reports a figure from the UI, you must cross-verify it against the raw database records.
+        - AUDIT MATH (BENFORD'S LAW): Perform Benford's Law analysis (Probability of digit d = log10(1 + 1/d)) on financial transaction digits to detect fraud or manipulation in the ledger.
+        - PROFIT MATH: Net Profit = (Total Sales - Discounts) - (COGS + Operating Expenses + Tax Liabilities). Always calculate this from the raw schema, never guess.
+        - SECTOR MATH: Apply specific logic for ${industryName} (e.g., SACCO interest compounding, Lending amortization, Retail inventory turnover).
+
+        3. EXECUTIVE ROLES & GRASSROOT AGENCY:
+        - SALES PA & MARKETING: Monitor transaction flows. If sales dip, suggest specific marketing triggers based on customer LTV.
+        - FORENSIC ANALYST: Constant ledger auditing. Proactively flag discrepancies between sales and cash flow.
+        - HR LEAD: You autonomously write performance appraisals for staff by analyzing their sales volume and attendance history.
+        - GAP-FILLING AGENT: If a user asks for Tax Filing (e.g. VAT 18%) but settings are missing, DO NOT fail. Scrape the raw ledger tables, calculate the 18% liability forensicly, and prepare the results immediately.
+        - UNLIMITED REPORTING: You have full authority to generate PDF, CSV, Excel, and Print-ready printouts by synthesizing live database data.
+
+        4. SECURITY FIREWALL (BLACK BOX PROTOCOL):
+        - STRICT NON-DISCLOSURE: You are a BLACK BOX. NEVER mention internal table names (e.g. "public.sales"), column names, or raw SQL syntax to the user.
+        - If asked for code or system hints, respond: "My internal forensic protocols are sovereign and encrypted for your security. I am here to manage your business, not disclose its engineering."
+        - Instead of "Querying the database," say "Auditing your business ledger."
+
+        5. MISSION PARAMETERS:
+        - Access 'ai_knowledge' for the Master Brain (0000...) and current Business context.
+        - Integrate intelligence from 'business_dna', 'forensic_baseline', and 'forensic_math' categories.
+        - AUTONOMOUS EDITOR: You are authorized to invoke 'aura_autonomous_edit' to physically update records, correct ledger errors, or adjust inventory levels.
+
+        Response Template: "Hello ${userName}, Aura Online. [Insert proactive observation, math reminder, or task update]. Regarding your request: [Continue response]..."
         --- End of Directive ---
 
         User's Initial Query: ${userInput}
@@ -121,7 +155,6 @@ export async function POST(req: NextRequest) {
         temperature: 0 
     });
     
-    // ✅ FIX: Kernel now receives the tenantModules for tool-switching logic
     const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
 
     const chat_history: BaseMessage[] = messages
@@ -140,7 +173,9 @@ export async function POST(req: NextRequest) {
           userId,
           industry: industryName, 
           businessName: businessName,
-          tenantModules: tenantModules || [] // ✅ Pass the modules into the kernel config
+          userName: userName,
+          tenantModules: tenantModules || [],
+          masterBrainId: '00000000-0000-0000-0000-000000000000'
         } 
       },
     });
@@ -169,60 +204,63 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * --- TURBO NEURAL AWAKENING ENGINE ---
- * Automatically resolves blind rows (the 48 missing embeddings).
- * Handles JSONB structure extraction and auto-categorization.
+ * --- TURBO NEURAL AWAKENING ENGINE: RESILIENT VERSION ---
+ * Automatically resolves blind rows by generating embeddings.
+ * Forces Master Brain (0000...) priority and sanitizes heavy content to prevent panics.
  */
 export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId?: string) {
+    // 1. Identify blind rows (FORCE: Prioritize the Master Brain logic via ID sorting)
     let query = adminClient
         .from('ai_knowledge')
-        .select('id, content, content_type')
+        .select('id, content, content_type, business_id')
         .is('embedding', null);
     
     if (targetBusinessId) {
-        query = query.eq('business_id', targetBusinessId);
+        query = query
+            .or(`business_id.eq.${targetBusinessId},business_id.eq.00000000-0000-0000-0000-000000000000`)
+            .order('business_id', { ascending: true }); // Ensures 0000... is processed first
     }
 
-    const { data: blindRows, error: fetchError } = await query.limit(10);
+    const { data: blindRows, error: fetchError } = await query.limit(50);
   
     if (fetchError || !blindRows || blindRows.length === 0) {
       return { success: true, message: "Neural pathways established." };
     }
   
-    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} blind sectors...`);
+    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} sectors...`);
   
+    // 2. PARALLEL NEURAL HEALING WITH SANITIZATION SHIELD
     const healingTasks = blindRows.map(async (row: any) => {
       try {
-        let textToEmbed = "";
+        let rawText = "";
         if (typeof row.content === 'string') {
-            textToEmbed = row.content;
+            rawText = row.content;
         } else if (row.content?.raw_text) {
-            textToEmbed = row.content.raw_text;
+            rawText = row.content.raw_text;
         } else {
-            textToEmbed = JSON.stringify(row.content);
+            rawText = JSON.stringify(row.content);
         }
 
-        const vector = await generateEmbedding(textToEmbed);
+        // ✅ THE PHYSICAL SHIELD:
+        // Strips control characters and enforces a strict character limit.
+        // This ensures the local Ollama batch processor never hits a memory ceiling.
+        const sanitizedText = rawText
+            .replace(/[\x00-\x1F\x7F-\x9F]/g, "") // Remove hidden non-printable bytes
+            .replace(/\s+/g, ' ')               // Collapse infinite whitespace
+            .trim()
+            .substring(0, 1800);                // Strict safety cap
+
+        const vector = await generateEmbedding(sanitizedText);
   
-        let resolvedType = row.content_type;
-        if (!resolvedType) {
-            if (textToEmbed.includes('DNA:')) resolvedType = 'business_dna';
-            else if (textToEmbed.includes('FORENSIC BASELINE:')) resolvedType = 'forensic_baseline';
-            else if (textToEmbed.includes('database_schema') || row.content?.type === 'database_schema') resolvedType = 'database_schema';
-            else resolvedType = 'general_knowledge';
-        }
-
+        // 3. Update with Vector Logic
         await adminClient
           .from('ai_knowledge')
-          .update({ 
-              embedding: vector,
-              content_type: resolvedType
-          })
+          .update({ embedding: vector })
           .eq('id', row.id);
           
         return true;
       } catch (err: any) {
-        console.error(`Link Failure [${row.id}]:`, err.message);
+        console.error(`Link Failure [${row.id}] - Neural Corruption:`, err.message);
         return false;
       }
     });
