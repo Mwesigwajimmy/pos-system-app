@@ -93,6 +93,30 @@ export const uiNavigationTool = new DynamicTool({
     }
 });
 
+// ✅ UPGRADE: THE SOVEREIGN BOARDROOM TOOL
+// Allows Aura to delegate briefings to her specialized Executive Council agents.
+export const boardroomPresentationTool = new DynamicTool({
+    name: "prepare_boardroom_presentation",
+    description: "Generates a full-screen executive briefing with slides, charts, and voice narration. Use this when the owner asks for a business overview, a report, or a breakdown of a specific department. Aura acts as the orchestrator and invites the CFO, COO, or PM to present.",
+    schema: z.object({
+        presenter_role: z.enum(["CFO", "COO", "PM", "Marketing"]).describe("The specialized Aura agent that will lead this presentation."),
+        meeting_title: z.string().describe("The official title of the executive briefing."),
+        slides: z.array(z.object({
+            title: z.string(),
+            content: z.string().describe("The narrative content explaining the data on this slide."),
+            visual_type: z.enum(["pie_chart", "bar_chart", "area_chart", "stats_grid"]),
+            data_payload: z.array(z.any()).describe("The raw JSON data required for the charts.")
+        }))
+    }),
+    func: async (input, runManager: RunManager) => {
+        // This tool commands the frontend to enter 'Boardroom Mode'
+        return JSON.stringify({
+            action: "prepare_boardroom_presentation",
+            payload: input
+        });
+    }
+});
+
 // --- CRITICAL BUSINESS ACTIONS ---
 export const processPaymentTool = new DynamicTool({
     name: "process_invoice_payment",
