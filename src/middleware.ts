@@ -185,7 +185,23 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
     
-    const publicPaths = ['/', '/login', '/signup', '/accept-invite', '/auth/callback'];
+    const publicPaths = [
+    '/', 
+    '/login', 
+    '/signup', 
+    '/accept-invite', 
+    '/auth/callback', 
+    '/blog', 
+    '/careers', 
+    '/pricing', 
+    '/about', 
+    '/aura-ai', 
+    '/industries', 
+    '/courses', 
+    '/donate', 
+    '/newsletter', 
+    '/help-centre'
+];
 
     if (!user) {
         if (publicPaths.includes(pathWithoutLocale)) {
