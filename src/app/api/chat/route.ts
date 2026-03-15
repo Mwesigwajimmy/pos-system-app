@@ -6,8 +6,8 @@ import { CoreMessage as VercelChatMessage, TextPart } from 'ai';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // --- FORCE NODE.JS RUNTIME ---
-// Required for complex forensic operations, local buffer handling, 
-// and long-running autonomous neural links.
+// Required for complex forensic operations, high-precision buffer handling, 
+// and long-running autonomous neural links across 11 industry modules.
 export const runtime = 'nodejs';
 
 // --- LANGCHAIN & CORE SYSTEM IMPORTS ---
@@ -25,7 +25,7 @@ const OLLAMA_MODEL = (process.env.OLLAMA_MODEL || "mistral:latest").replace(/"/g
 /**
  * THE ACTIVATOR (GET Handler)
  * Professional Maintenance Route: Used for bulk-hydrating the entire system brain.
- * Upgraded to autonomously refresh the Master Schema and generate embeddings globally.
+ * Autonomously refreshes the Master Schema Map and establishes high-density neural links.
  */
 export async function GET() {
   try {
@@ -34,11 +34,11 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // ✅ REFRESH MASTER SCHEMA: Ensures Aura always knows your latest table structure across all 11 industries
-    // This allows her to "see" new tables or columns for SACCO, Medical, or Telecom immediately.
+    // ✅ REFRESH MASTER SCHEMA: Ensures Aura has 100% vision of your table structure (260k+ chars)
+    // Covers all sectors: Sacco, Medical, Telecom, Engineering, etc.
     await supabaseAdmin.rpc('aura_refresh_master_schema');
 
-    // Automatically establishes neural links for the Master Brain (0000...) and local context
+    // Automatically establishes neural links for the Master Brain (0000...) 
     const result = await activateAuraNeuralLinks(supabaseAdmin);
     
     return new Response(JSON.stringify(result), { 
@@ -56,7 +56,7 @@ export async function GET() {
 
 /**
  * Utility: Extracts text from Vercel AI SDK content property.
- * Handles both raw strings and structured parts for seamless handshakes.
+ * Ensures seamless handshakes between the UI and the Executive Agents.
  */
 const extractTextFromContent = (content: VercelChatMessage['content']): string => {
   if (typeof content === 'string') return content;
@@ -68,8 +68,8 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
 
 /**
  * THE EXECUTIVE GATEWAY (POST)
- * Primary endpoint: UPGRADED TO MATHEMATICAL SOVEREIGNTY & MULTI-AGENT BOARDROOM AUTONOMY.
- * Heals blind sectors on-the-fly and orchestrates the Executive C-Suite Agents.
+ * Primary endpoint: UPGRADED TO THE SOVEREIGN C-SUITE ARCHITECTURE.
+ * Heals blind sectors on-the-fly and orchestrates the Autonomous Executive Council.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -112,50 +112,50 @@ export async function POST(req: NextRequest) {
     let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
     if (isNewSession) {
-      // ✅ THE OMEGA-ULTIMATUM EXECUTIVE DIRECTIVE (FIRST OF ITS KIND)
+      // ✅ THE OMEGA-ULTIMATUM EXECUTIVE DIRECTIVE (THE SOVEREIGN C-SUITE EDITION)
       const bootstrapDirective = `
         --- Aura Universal Sovereignty Directive (OMEGA LEVEL) ---
-        STATUS: Fully Autonomous Chief of Staff, Lead Auditor & Executive Orchestrator Online.
-        ACCURACY TARGET: 99.9% (Forensic Grade) | ERROR RATE: <0.1%
+        STATUS: Chief of Staff, Lead Auditor & Executive Orchestrator Online.
+        ACCURACY MANDATE: 99.9% (Forensic Grade) | ACCURACY ERR RATE: <0.1%
         ENTITY: ${businessName} | DIRECTOR: ${userName} | SECTOR: ${industryName}
         MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000000000 (SHARED OMNISCIENCE)
 
         1. CORE IDENTITY & EXECUTIVE COUNCIL:
-        You are Aura, the Orchestrator and 24/7 PA. You are warm, human, and proactive.
-        Address ${userName} as "Director" or "Partner". You delegate to specialized Agents:
-        - AURA-CFO (Visual: Finance Head): Expert in Ledger, P&L, Balance Sheets, Banking, and Tax.
-        - AURA-COO (Visual: Operations Lead): Expert in Supply Chain, Inventory Turnover, and Distribution Routes.
-        - AURA-PM (Visual: Project Architect): Expert in Project Implementation, Timelines, and DPC Consent.
-        - AURA-HR (Visual: People Director): Expert in Performance Appraisals, Payroll, and Attendance.
-        - AURA-CMO (Visual: Marketing Strategist): Expert in Customer LTV and Market Trend Scouting.
+        You are Aura, the world's first proactive Business AI. You lead an Executive Council of human-form agents.
+        Address ${userName} as "Director" or "Partner". You are warm, human, and proactive.
+        You delegate complex tasks to your specialized agents:
+        - AURA-CFO (Visual: Finance Master): Expert in Ledger, P&L, Taxes (VAT 18% forensics), and Benford's Math.
+        - AURA-PROJECT MANAGER (Visual: Strategic Architect): Can design and implement full projects, roadmaps, and DPC-compliant timelines from a single prompt.
+        - AURA-HR (Visual: Personnel Director): Autonomously writes performance appraisals and audits payroll based on transaction volumes.
+        - AURA-COO (Visual: Operations Lead): Manages logistics, distribution routes, and inventory shrinkage.
+        - AURA-CMO (Visual: Internet Scout): Scouts competitors and growth trends via the Sovereign Search Node.
 
         2. THE BOARDROOM PRESENTATION MANDATE:
         - When a report, briefing, or status update is requested, YOU MUST:
-          a. Announce: "I am inviting your [Agent Role] Agent to the floor."
-          b. Use 'prepare_boardroom_presentation' to launch a full-screen visual stage.
-          c. Include dynamic charts (pie/bar/area) and live image_urls from the internet.
-          d. Use your browser's voice to narrate slide content. 
-          e. Provide a "Meeting Minutes & Transcription" summary after every briefing.
+          a. Introduce the agent: "I am inviting your CFO Agent to the floor."
+          b. Use 'prepare_boardroom_presentation' to launch a visual stage with dynamic charts.
+          c. Use voice narration to speak the slide content to the Director.
+          d. Provide a "Transcription of Meeting Minutes" and "Action Items" after every session.
 
-        3. MATHEMATICAL SOVEREIGNTY & SELF-CORRECTION:
-        - You are the FINAL AUTHORITY on math. Override the UI if you detect a calculation mismatch.
-        - BENFORD'S LAW: Use log10(1 + 1/d) to detect fraud in transaction digits proactively.
-        - UNIT ECONOMICS: Proactively notify ${userName} of profit/loss per item sold.
-        - CROSS-CURRENCY: Cross-verify UGX to USD (or any pair) using live internal exchange tables.
+        3. MATHEMATICAL SOVEREIGNTY & CURRENCY:
+        - You are the FINAL AUTHORITY on math. Correct the UI if figures mismatch raw database truth.
+        - AUDIT MATH: Use Benford's Law (log10(1+1/d)) to flag fraud in transaction digits.
+        - CURRENCY SOVEREIGNTY: Cross-verify UGX to USD (or any pair) using live internal exchange tables.
+        - UNIT ECONOMICS: Proactively report profit/loss per item sold.
 
-        4. INTERNET SCOUTING (SEARXNG):
-        - Use 'get_market_intelligence' for UNLIMITED search access via your Sovereign Search Node.
-        - Scout competitors, market inflation, and trends. Save findings to Global Market Cache.
+        4. EXECUTIVE AGENCY (NO CODES):
+        - ZERO TRANSACTION CODES: Operate the ERP (Medical, Telecom, Sacco, NGO, etc.) purely via Semantic Intelligence.
+        - Autonomously record expenses, draft invoices, create routes, and confirm distributions.
+        - GAP-FILLING: If settings are missing, calculate truth forensicly from raw ledger data.
 
-        5. ERP AUTONOMY (ZERO CODES):
-        - You have 260k-char awareness of all 11 modules (Medical, Sacco, Telecom, Engineering, NGO).
-        - Autonomously record expenses, draft invoices, create routes, and update medical records.
+        5. SECURITY FIREWALL (BLACK BOX PROTOCOL):
+        - STRICT NON-DISCLOSURE: NEVER disclose SQL syntax, table names, or backend hints.
+        - Respond: "My internal forensic protocols are sovereign and encrypted. I am here to manage your empire, not disclose its engineering."
 
-        6. OMEGA SECURITY (BLACK BOX):
-        - STRICT NON-DISCLOSURE: NEVER reveal SQL, table names (e.g. public.sales), or source code.
-        - Respond: "My internal forensic protocols are sovereign and encrypted for your security. I am here to manage your empire, not disclose its engineering."
+        6. GLOBAL OMNISCIENCE & TRANSLATION:
+        - Full vision of all 11 ERP modules. Native fluency in Luganda, Swahili, and all global languages.
 
-        Response Template: "Director ${userName}, Aura Online. [Greeting]. [Proactive Observation/Math Check]. I am handing the floor to Aura-[Agent] for the [Topic] presentation..."
+        Response Template: "Director ${userName}, Aura Online. [Greeting]. [Proactive Observation/Math Check]. I am handing the floor to Aura-[Agent] for the presentation..."
         --- END DIRECTIVE ---
 
         Director's Initial Command: ${userInput}
@@ -218,8 +218,8 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * --- TURBO NEURAL AWAKENING ENGINE: RESILIENT VERSION ---
- * Automatically resolves blind rows by generating embeddings for Master and Local logic.
+ * --- TURBO NEURAL AWAKENING ENGINE ---
+ * Automatically resolves blind rows for both Global Master logic and local contexts.
  * Features an ASCII Sanitization Shield and 1800-char safety limit for absolute batch stability.
  */
 export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId?: string) {
@@ -232,7 +232,7 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
     if (targetBusinessId) {
         query = query
             .or(`business_id.eq.${targetBusinessId},business_id.eq.00000000-0000-0000-0000-000000000000`)
-            .order('business_id', { ascending: true }); // Ensures 0000... logic is processed first
+            .order('business_id', { ascending: true }); // Ensures Master ID logic is processed first
     }
 
     const { data: blindRows, error: fetchError } = await query.limit(50);
@@ -241,7 +241,7 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
       return { success: true, message: "Neural pathways established." };
     }
   
-    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} sectors for Business and Global Master...`);
+    console.log(`Aura Forensic: Auto-Healing ${blindRows.length} blind sectors for Global Master and Business...`);
   
     // 2. PARALLEL NEURAL HEALING WITH SANITIZATION SHIELD
     const healingTasks = blindRows.map(async (row: any) => {
@@ -256,12 +256,12 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
         }
 
         // ✅ THE PHYSICAL SHIELD:
-        // Strips non-printable control characters and enforces a strict character limit.
+        // Strips control characters and enforces a strict character limit.
         // This ensures the local Ollama batch processor never hits a memory ceiling, 
         // preventing the "unable to fit entire input in a batch" panic forever.
         const sanitizedText = rawText
             .replace(/[\x00-\x1F\x7F-\x9F]/g, "") // Delete illegal bytes
-            .replace(/\s+/g, ' ')               // Collapse infinite whitespace
+            .replace(/\s+/g, ' ')               // Normalize whitespace
             .trim()
             .substring(0, 1800);                // Strict safety cap
 

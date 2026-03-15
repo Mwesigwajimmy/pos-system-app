@@ -18,6 +18,7 @@ import {
 
   // UI and Communication Tools
   UINavigationTool,
+  MarketIntelligenceTool,
   CommunicationDraftTool
 } from '@/lib/ai-tools'; // <-- This now imports from index.ts by default
 
@@ -72,6 +73,28 @@ export const AI_CAPABILITIES: ITool[] = [
         'schedule_task'
     ),
 
+     new MarketIntelligenceTool(),
+
+    SupabaseToolFactory.create(
+        "generate_growth_strategy",
+        "Transforms financial downgrades into growth. Analyzes profit margins and suggests price updates or marketing campaigns.",
+        z.object({
+            current_issue: z.string().describe("e.g. 'high expense in fuel'"),
+            target_growth_percentage: z.number().default(20)
+        }),
+        'generate_growth_strategy'
+    ),
+
+   SupabaseToolFactory.create(
+        "execute_erp_operation",
+        "General tool for creating invoices, processing sales, or creating routes for distribution. Aura has full brain access to all 11 modules.",
+        z.object({
+            operation_type: z.enum(["create_invoice", "process_sale", "create_route", "confirm_distribution", "medical_record_update"]),
+            payload: z.record(z.any())
+        }),
+        'execute_erp_operation'
+    ),
+
     SupabaseToolFactory.create(
         "generate_report",
         "Generates a financial report, such as a profit and loss statement or a balance sheet, for a given date range.",
@@ -91,6 +114,22 @@ export const AI_CAPABILITIES: ITool[] = [
             entity_name_or_id: z.string().describe("The unique name or ID of the entity to retrieve.")
         }),
         'get_entity_details'
+    ),
+
+     SupabaseToolFactory.create(
+        "prepare_boardroom_presentation",
+        "Generates a full-screen executive briefing with slides, charts, and voice narration. Use this when the owner asks for an overview, a report, or a breakdown of the business.",
+        z.object({
+            presenter_role: z.enum(["CFO", "COO", "PM", "Marketing"]),
+            meeting_title: z.string(),
+            slides: z.array(z.object({
+                title: z.string(),
+                content: z.string(),
+                visual_type: z.enum(["pie_chart", "bar_chart", "area_chart", "stats_grid"]),
+                data_payload: z.array(z.any()).describe("The raw data for the charts")
+            }))
+        }),
+        'prepare_boardroom_presentation'
     ),
 
     // =================================================================

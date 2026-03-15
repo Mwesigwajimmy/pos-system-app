@@ -1069,15 +1069,6 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                         <li><Link href="/blog" className="text-slate-400 hover:text-blue-400 transition-colors font-bold text-blue-400/80">Latest Blog Posts</Link></li>
                         <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers & Hiring</Link></li>
                         <li><Link href="/pricing" className="text-slate-400 hover:text-blue-400 transition-colors">Pricing & Plans</Link></li>
-                        <li><Link href="/aura-ai" className="text-slate-400 hover:text-blue-400 transition-colors">Aura AI Insights</Link></li>
-                        <li><Link href="/industries" className="text-slate-400 hover:text-blue-400 transition-colors">Sector Solutions</Link></li>
-                        <li><Link href="/courses" className="text-slate-400 hover:text-blue-400 transition-colors">BBU1 Academy</Link></li>
-                        <li><Link href="/newsletter" className="text-slate-400 hover:text-blue-400 transition-colors">Intelligence Briefs</Link></li>
-                        <li><Link href="/donate" className="text-slate-400 hover:text-blue-400 transition-colors">Support our Mission</Link></li>
-                        <li><Link href="/features" className="text-slate-400 hover:text-blue-400 transition-colors">Core Capabilities</Link></li>
-                        <li><Link href="/about" className="text-slate-400 hover:text-blue-400 transition-colors">The BBU1 Story</Link></li>
-                        <li><Link href="/help-centre" className="text-slate-400 hover:text-blue-400 transition-colors">Documentation & Help</Link></li>
-                        <li><Link href="/contact" className="text-slate-400 hover:text-blue-400 transition-colors">Strategic Inquiry</Link></li>
                         <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Platform</Link></li>
                         <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Mobile App</Link></li>
                     </ul>

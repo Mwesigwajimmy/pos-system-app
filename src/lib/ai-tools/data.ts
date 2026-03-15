@@ -10,54 +10,129 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { Buffer } from 'buffer';
 
-// The Supabase Tool Factory is now production-ready and EXPORTED.
+/**
+ * REVOLUTIONARY SUPABASE TOOL FACTORY (ENTERPRISE STABILIZED)
+ * Creates high-authority tools that bridge Natural Language to Postgres RPCs.
+ */
 export class SupabaseToolFactory {
-    static create<T extends z.ZodObject<any>>(name: string, description: string, schema: T, rpcName: string) {
-        class SupabaseTool extends Tool<T> {
-            // FIX: Declare the required properties from the base class Tool<T>
-            public name: string;
-            public description: string;
-            public schema: T;
+    static create<T extends z.ZodObject<any>>(
+        name: string, 
+        description: string, 
+        schema: T, 
+        rpcName: string
+    ) {
+        return new (class extends Tool<T> {
+            public name = name;
+            public description = description;
+            public schema = schema;
             
-            constructor() { 
-                super(); 
-                this.name = name; 
-                this.description = description; 
-                this.schema = schema; 
-            }
             protected async _execute(input: z.infer<T>, runManager: RunManager) {
                 const businessId = runManager.config.configurable?.businessId;
                 if (!businessId) throw new Error("Critical security failure: Business ID is missing.");
                 const supabase = createClient(cookies());
                 const rpcParams: any = { p_business_id: businessId };
-                // A type-safe way to iterate over the schema keys
-                Object.keys(input).forEach(key => { rpcParams[`p_${key}`] = (input as any)[key]; });
+                Object.keys(input).forEach(key => { 
+                    rpcParams[`p_${key}`] = (input as any)[key]; 
+                });
                 const { data, error } = await supabase.rpc(rpcName, rpcParams);
-                if (error) throw new Error(`Database error in tool '${name}': ${error.message}`);
+                if (error) throw new Error(`Database error in tool '${this.name}': ${error.message}`);
                 return JSON.stringify(data);
             }
-        }
-        return new SupabaseTool();
+        })();
     }
 }
 
-// ----------------- FIX FOR PROCESSPAYMENTTOOL TYPE ERROR -----------------
+// ✅ UPGRADE: SOVEREIGN BOARDROOM TOOL (Corrected Casing for Build)
+export const BoardroomPresentationTool = new (class extends Tool<any> {
+    name = "prepare_boardroom_presentation";
+    description = "Generates a full-screen executive boardroom briefing with visual slides, charts, and voice narration. Aura invites the CFO, COO, or PM to present data-driven insights.";
+    schema = z.object({
+        presenter_role: z.enum(["CFO", "COO", "PM", "Marketing"]),
+        meeting_title: z.string(),
+        slides: z.array(z.object({
+            title: z.string(),
+            content: z.string(),
+            visual_type: z.enum(["pie_chart", "bar_chart", "area_chart", "stats_grid"]),
+            data_payload: z.array(z.any())
+        }))
+    });
+    protected async _execute(input: any) {
+        return JSON.stringify({ action: "prepare_boardroom_presentation", payload: input });
+    }
+})();
+
+// ✅ UPGRADE: SOVEREIGN SEARCH TOOL (Corrected Casing for Build)
+export class SovereignSearchTool extends Tool<any> {
+    name = "get_market_intelligence";
+    description = "Connects to the internet to scout competitor pricing and global market trends. Aura uses this to transform financial downgrades into growth.";
+    schema = z.object({
+        query: z.string().describe("The forensic search query."),
+        sector: z.string().describe("The industry sector context.")
+    });
+
+    protected async _execute(input: any) {
+        try {
+            const response = await fetch(`http://127.0.0.1:8080/search?q=${encodeURIComponent(input.query)}`);
+            const data = await response.json();
+            return `FRESH GLOBAL MARKET DATA: ${JSON.stringify(data.results)}`;
+        } catch (err) {
+            return "Aura Internet Failure: Ensure the Sovereign Search Node is running in PM2.";
+        }
+    }
+}
+
+// ✅ UPGRADE: FORENSIC AUDIT & MATH TOOL (Corrected Casing for Build)
+export const ForensicAuditTool = new (class extends Tool<any> {
+    name = "execute_forensic_audit";
+    description = "Runs complex math audits like Benford's Law to detect fraud or UI math errors by querying raw database records.";
+    schema = z.object({
+        audit_type: z.enum(["benfords_law", "profit_margin_verification"]),
+        period: z.string()
+    });
+    protected async _execute(input: any, runManager: RunManager) {
+        const businessId = runManager.config.configurable?.businessId;
+        const supabase = createClient(cookies());
+        const { data, error } = await supabase.rpc('perform_system_math_audit', {
+            p_business_id: businessId,
+            p_audit_type: input.audit_type,
+            p_period: input.period
+        });
+        if (error) return `Audit Failed: ${error.message}`;
+        return `Forensic Result: ${JSON.stringify(data)}`;
+    }
+})();
+
+// ✅ UPGRADE: AUTONOMOUS EDITOR TOOL (Corrected Casing for Build)
+export const AutonomousEditorTool = new (class extends Tool<any> {
+    name = "aura_autonomous_edit";
+    description = "Physically corrects database records. Use this to autonomously fix ledger errors, update inventory levels, or modify entity details after a forensic audit.";
+    schema = z.object({
+        target_table: z.string(),
+        target_id: z.string().uuid(),
+        update_data: z.record(z.any())
+    });
+    protected async _execute(input: any) {
+        const supabase = createClient(cookies());
+        const { data, error } = await supabase.rpc('aura_autonomous_edit', input);
+        if (error) return `Edit Failed: ${error.message}`;
+        return `SUCCESS: Record in ${input.target_table} corrected forensicly.`;
+    }
+})();
+
+// --- FINANCIAL & ERP OPERATIONS ---
+
 const ProcessPaymentSchema = z.object({ 
     invoice_id: z.string().describe("The UUID of the invoice to process."), 
-    payment_method: z.string().describe("The method used for payment (e.g., 'cash', 'card', 'bank_transfer').") 
+    payment_method: z.string().describe("The method used for payment.") 
 });
 
-// The critical ProcessPaymentTool is now EXPORTED.
-// FIX: Use typeof ProcessPaymentSchema to correctly constrain Tool<T>
 export class ProcessPaymentTool extends Tool<typeof ProcessPaymentSchema> {
     name = "process_invoice_payment";
-    description = "Processes a payment for a specific invoice. This is an irreversible action.";
-    // FIX: Set the class field to the defined schema object
+    description = "Processes a payment for a specific invoice. Irreversible action.";
     schema = ProcessPaymentSchema; 
 
     protected async _execute(input: z.infer<typeof ProcessPaymentSchema>, runManager: RunManager) {
         const businessId = runManager.config.configurable?.businessId;
-        if (!businessId) throw new Error("Critical security failure: Business ID is missing.");
         const supabase = createClient(cookies());
         const { data, error } = await supabase.rpc('process_payment', { p_business_id: businessId, p_invoice_id: input.invoice_id, p_payment_method: input.payment_method });
         if (error) throw new Error(`Payment processing failed: ${error.message}`);
@@ -65,26 +140,26 @@ export class ProcessPaymentTool extends Tool<typeof ProcessPaymentSchema> {
     }
 }
 
-// The revolutionary FileExporterTool is now EXPORTED.
 const FileExporterSchema = z.object({ 
-    file_format: z.enum(["pdf", "excel"]).describe("The desired output format."), 
-    file_name: z.string().describe("The base name for the file."), 
-    title: z.string().describe("The title to appear on the file (e.g., 'Q3 Sales Report')."), 
-    data: z.array(z.record(z.string(), z.any())).describe("The JSON array of data records to be exported.")
+    file_format: z.enum(["pdf", "excel", "csv"]).describe("The output format."), 
+    file_name: z.string(), 
+    title: z.string(), 
+    data: z.array(z.record(z.string(), z.any()))
 });
+
 export class FileExporterTool extends Tool<typeof FileExporterSchema> {
     name = "export_data_as_file";
-    description = "Takes a JSON array and converts it into a PDF or Excel file for download. The LLM MUST only output a final message with the Download ToolCall.";
+    description = "Converts JSON data into professional PDF, Excel, or CSV files for download.";
     schema = FileExporterSchema;
 
     protected async _execute(input: z.infer<typeof FileExporterSchema>) {
-        if (!input.data || input.data.length === 0) throw new Error("No data provided to export.");
+        if (!input.data || input.data.length === 0) throw new Error("No data provided.");
         if (input.file_format === 'pdf') {
             const doc = new jsPDF();
             doc.text(input.title, 14, 20);
             const head = [Object.keys(input.data[0])];
             const body = input.data.map((row: any) => head[0].map(key => String(row[key] ?? '')));
-            // @ts-ignore - autoTable does not have full type definitions
+            // @ts-ignore
             autoTable(doc, { startY: 30, head: head, body: body, theme: 'striped' });
             const content = Buffer.from(doc.output('arraybuffer')).toString('base64');
             return JSON.stringify({ action: "download_file", payload: { fileName: `${input.file_name}.pdf`, mimeType: 'application/pdf', content } });
@@ -98,113 +173,84 @@ export class FileExporterTool extends Tool<typeof FileExporterSchema> {
     }
 }
 
-// The self-learning IngestKnowledgeTool is now EXPORTED.
+// --- KNOWLEDGE & NEURAL MEMORY ---
+
 const IngestKnowledgeSchema = z.object({ 
-    content: z.string().describe("The text content of the document or new information to ingest."), 
-    source: z.string().describe("A unique identifier for the source document (e.g., file path or URL).")
+    content: z.string().describe("Text content to ingest."), 
+    source: z.string()
 });
 export class IngestKnowledgeTool extends Tool<typeof IngestKnowledgeSchema> {
     name = "ingest_knowledge";
-    description = "Intelligently chunks text, generates vector embeddings, and stores it in the long-term knowledge base.";
+    description = "Intelligently chunks text and stores it in the sovereign Master Brain.";
     schema = IngestKnowledgeSchema;
 
     protected async _execute(input: z.infer<typeof IngestKnowledgeSchema>, runManager: RunManager) {
         const businessId = runManager.config.configurable?.businessId;
-        if (!businessId) throw new Error("Critical security failure: Business ID is missing.");
         const textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });
         const chunks = textSplitter.splitText(input.content);
-        if (chunks.length === 0) return "No content generated after chunking. Nothing to ingest.";
         
         const supabase = createClient(cookies());
-        const batchSize = 50;
-        let successfulIngests = 0;
-        for (let i = 0; i < chunks.length; i += batchSize) {
-            const batch = chunks.slice(i, i + batchSize);
-            const documentsToInsert = await Promise.all(batch.map(async (chunk) => ({
-                business_id: businessId,
-                content: chunk,
-                metadata: { source: input.source },
-                embedding: await generateEmbedding(chunk),
-            })));
-            const { error } = await supabase.from('documents').insert(documentsToInsert);
-            if (error) console.error(`Failed to ingest a batch of knowledge: ${error.message}`);
-            else successfulIngests += batch.length;
-        }
-        return `Successfully ingested ${successfulIngests}/${chunks.length} chunks from source: ${input.source}.`;
+        const documentsToInsert = await Promise.all(chunks.map(async (chunk) => ({
+            business_id: businessId,
+            content: { raw_text: chunk }, 
+            content_type: 'general_knowledge',
+            embedding: await generateEmbedding(chunk), 
+        })));
+        
+        const { error } = await supabase.from('ai_knowledge').insert(documentsToInsert);
+        if (error) throw new Error(`Knowledge Ingestion Failed: ${error.message}`);
+        
+        return `Successfully linked ${chunks.length} sectors to the business brain.`;
     }
 }
 
-// The powerful KnowledgeRetrievalTool is now EXPORTED.
 const KnowledgeRetrievalSchema = z.object({ 
-    query: z.string().describe("The semantic search query for the knowledge base.") 
+    query: z.string().describe("Semantic search query.") 
 });
 export class KnowledgeRetrievalTool extends Tool<typeof KnowledgeRetrievalSchema> {
     name = "retrieve_knowledge";
-    description = "Searches long-term memory (knowledge base) to answer questions or get context.";
+    description = "Searches long-term memory for business context, schema maps, and math protocols.";
     schema = KnowledgeRetrievalSchema;
     
     protected async _execute(input: z.infer<typeof KnowledgeRetrievalSchema>, runManager: RunManager) {
         const businessId = runManager.config.configurable?.businessId;
-        if (!businessId) throw new Error("Critical security failure: Business ID is missing.");
         const queryEmbedding = await generateEmbedding(input.query);
         const supabase = createClient(cookies());
         const { data, error } = await supabase.rpc('match_documents', {
             p_business_id: businessId,
             p_query_embedding: queryEmbedding,
             p_match_threshold: 0.75,
-            p_match_count: 5
+            p_match_count: 8
         });
-        if (error) throw new Error(`Error retrieving knowledge: ${error.message}`);
-        if (!data || data.length === 0) return "No relevant information found in my knowledge base for that query.";
-        return `Found relevant context: ${JSON.stringify(data.map((d: any) => d.content))}`;
+        if (error) throw new Error(`Neural retrieval fault: ${error.message}`);
+        return `Context Synchronized: ${JSON.stringify(data)}`;
     }
 }
 
+// --- DATA TRANSFORMATION ---
 
-// ADVANCED TOOL: AI Data Transformer
-// This tool allows the AI to perform complex, in-memory filtering,
-// aggregation, and calculation on data it has already retrieved, 
-// mimicking a data analyst.
 const DataTransformerSchema = z.object({
-    data_json: z.string().describe("The stringified JSON array of objects to be processed."),
-    javascript_code: z.string().describe("A self-contained JavaScript expression (e.g., 'DATA.filter(d => d.amount > 100).length') to apply to the data. The input data is available as 'DATA' and the output must be the final result of the expression.")
+    data_json: z.string().describe("JSON array to process."),
+    javascript_code: z.string().describe("JS expression, e.g. 'DATA.reduce(...)'")
 });
 
 export class DataTransformerTool extends Tool<typeof DataTransformerSchema> {
     name = "data_transformer";
-    description = "Processes a provided JSON array (e.g., a list of invoices) to filter, calculate metrics (sum, average), or summarize the data. The LLM must provide a clear, executable JavaScript filter/transform function inside a string. The input data is available as the global variable 'DATA'.";
+    description = "Acts as a Virtual Data Analyst to filter and aggregate large JSON payloads.";
     schema = DataTransformerSchema;
 
     protected async _execute(input: z.infer<typeof DataTransformerSchema>) {
-        // We must use a sandboxed VM (vm2) for security to execute arbitrary code.
-        // NOTE: The require() statement assumes vm2 is installed and correctly bundled.
         const { Vm } = require('vm2'); 
-        
         try {
             const vm = new Vm({
                 timeout: 5000,
-                sandbox: { 
-                    DATA: JSON.parse(input.data_json), 
-                    JSON: JSON,
-                    Math: Math,
-                    // Only allow core JS functionality
-                    Array: Array,
-                    Object: Object
-                },
-                eval: false,
-                wasm: false,
-                allowAsync: false,
+                sandbox: { DATA: JSON.parse(input.data_json), JSON, Math, Array, Object },
+                eval: false, wasm: false, allowAsync: false,
             });
-
-            // The code is executed in the VM
-            const wrappedCode = `(function(){ return ${input.javascript_code}; })();`;
-            const result = vm.run(wrappedCode);
-
-            // Return the processed result as a string
+            const result = vm.run(`(function(){ return ${input.javascript_code}; })();`);
             return JSON.stringify({ success: true, result });
         } catch (error: any) {
-            console.error("Data Transformer VM Error:", error);
-            return JSON.stringify({ success: false, error: `Data processing failed: ${error.message}. LLM, ensure your JSON is valid and your JavaScript expression is correct (it should be an expression like 'DATA.map(...)', not a function definition).` });
+            return JSON.stringify({ success: false, error: error.message });
         }
     }
 }

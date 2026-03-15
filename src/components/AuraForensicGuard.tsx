@@ -9,6 +9,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import AuraBoardroom from '@/components/copilot/AuraBoardroom';
 
 interface AuraForensicGuardProps {
   children: ReactNode;
@@ -16,7 +17,9 @@ interface AuraForensicGuardProps {
 
 export default function AuraForensicGuard({ children }: AuraForensicGuardProps) {
   const { 
-    isReady, 
+    isReady,
+    boardroomData,
+    closeBoardroom,
     input, 
     handleInputChange, 
     handleSubmit, 
@@ -56,6 +59,16 @@ export default function AuraForensicGuard({ children }: AuraForensicGuardProps) 
   // --- 2. THE "ACTIVE" STATE (System Awakened) ---
   return (
     <div className="relative min-h-screen">
+      {/* 🟢 NEW: If Aura triggers a presentation, show it over the dashboard */}
+      {boardroomData && (
+        <AuraBoardroom 
+          presenter={boardroomData.presenter_role}
+          title={boardroomData.meeting_title}
+          slides={boardroomData.slides}
+          onClose={closeBoardroom}
+        />
+      )}
+
       {/* The Dashboard Content (Retail, Sacco, etc.) */}
       <div className="pb-32"> 
         {children}
@@ -94,8 +107,12 @@ export default function AuraForensicGuard({ children }: AuraForensicGuardProps) 
         
         {/* Verification Badges */}
         <div className="mt-4 flex justify-center gap-8 text-[8px] font-black uppercase tracking-[0.4em] text-slate-300">
-          <span className="flex items-center gap-2"><Activity className="h-3 w-3" /> Forensic Isolation Verified</span>
-          <span className="flex items-center gap-2"><Fingerprint className="h-3 w-3" /> Logic Encryption Active</span>
+          <span className="flex items-center gap-2">
+            <Activity className="h-3 w-3" /> Forensic Isolation Verified
+          </span>
+          <span className="flex items-center gap-2">
+            <Fingerprint className="h-3 w-3" /> Logic Encryption Active
+          </span>
         </div>
       </div>
     </div>
