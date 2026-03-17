@@ -200,7 +200,8 @@ export async function middleware(request: NextRequest) {
     '/courses', 
     '/donate', 
     '/newsletter', 
-    '/help-centre'
+    '/help-centre',
+    '/features'
 ];
 
  if (!user) {
