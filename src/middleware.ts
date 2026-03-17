@@ -203,11 +203,14 @@ export async function middleware(request: NextRequest) {
     '/help-centre'
 ];
 
-    if (!user) {
-        if (publicPaths.includes(pathWithoutLocale)) {
-            return response; // Allow access to public paths if not logged in
+ if (!user) {
+        const isPublicPath = publicPaths.some(pp => 
+            pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
+        );
+
+        if (isPublicPath) {
+            return response; 
         }
-        // For any other path, redirect to login
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
@@ -251,12 +254,19 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // PRIORITY 3: If setup IS complete and they land on a public page (like the homepage),
-    // redirect them into the application to their dashboard.
-    if (publicPaths.includes(pathWithoutLocale)) {
-        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
-    }
+   // PRIORITY 3: Allow logged-in users to stay on public pages and articles.
+    // We only force a redirect if they try to go back to the Login or Signup forms.
+    const isPublicPath = publicPaths.some(pp => 
+        pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
+    );
 
+    if (isPublicPath) {
+        const authOnlyPaths = ['/login', '/signup'];
+        if (authOnlyPaths.includes(pathWithoutLocale)) {
+            return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+        }
+        return response; 
+    }
     // =================================================================================
     // --- END OF LOGIC REORDERING ---
     // =================================================================================
