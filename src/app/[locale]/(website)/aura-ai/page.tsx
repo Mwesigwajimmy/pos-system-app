@@ -41,7 +41,7 @@ export default function AuraAIPage() {
               <div className="lg:col-span-5 relative aspect-square rounded-3xl overflow-hidden border border-slate-200 shadow-xl">
                 {/* --- UPDATED IMAGE: Representing Aura with your project asset --- */}
                 <Image 
-                  src="/images/showcase/office-presentation-on-dashboard.jpg" 
+                  src="/images/showcase/Greeting (10).jpeg" 
                   alt="Aura AI Neural Interface" 
                   fill 
                   className="object-cover"
