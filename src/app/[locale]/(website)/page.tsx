@@ -794,8 +794,10 @@ const MegaMenuHeader = () => {
         </header>
     );
 };
+
+// --- LandingFooter Component - SOVEREIGN NETWORK EDITION ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
-    <footer className="relative bg-slate-950 text-slate-200 pt-16 pb-8 border-t border-slate-800 z-10">
+    <footer className="relative bg-slate-950 text-slate-200 pt-16 pb-8 border-t border-slate-800 z-10 selection:bg-blue-500/30">
         <div className="container mx-auto px-4">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
                 <div className="col-span-2 pr-8">
@@ -805,9 +807,10 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     <p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">
                         {siteConfig.shortDescription}
                     </p>
+                    {/* EMAIL CONTACT DISPLAY */}
                     <div className="mt-4 mb-6">
-                        <a
-                            href={`mailto:${siteConfig.contactInfo.email}`}
+                        <a 
+                            href={`mailto:${siteConfig.contactInfo.email}`} 
                             className="flex items-center gap-3 text-sm text-slate-400 hover:text-blue-400 transition-colors group"
                         >
                             <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center group-hover:bg-blue-600 transition-all border border-slate-800">
@@ -819,6 +822,7 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                             </div>
                         </a>
                     </div>
+
                     <div className="flex items-center gap-4">
                         <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300">
                             <Linkedin size={18} />
@@ -835,13 +839,11 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                 <div>
                     <h4 className="font-bold text-white mb-6">Product</h4>
                     <ul className="space-y-4 text-sm">
-                        <li><Link href="/features" className="text-slate-400 hover:text-blue-400 transition-colors">Features</Link></li>
-                        <li><Link href="/industries" className="text-slate-400 hover:text-blue-400 transition-colors">Industries</Link></li>
-                        <li><Link href="/blog" className="text-slate-400 hover:text-blue-400 transition-colors font-bold text-blue-400/80">Latest Blog Posts</Link></li>
-                        <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers & Hiring</Link></li>
-                        <li><Link href="/pricing" className="text-slate-400 hover:text-blue-400 transition-colors">Pricing & Plans</Link></li>
-                        <li><Link href="/" className="text-slate-400 hover:text-blue-400 transition-colors">Platform</Link></li>
-                        <li><Link href="/" className="text-slate-400 hover:text-blue-400 transition-colors">Mobile App</Link></li>
+                        <li><Link href="/features" className="text-slate-400 hover:text-blue-400 transition-colors">OS Features</Link></li>
+                        <li><Link href="/industries" className="text-slate-400 hover:text-blue-400 transition-colors">Sector Solutions</Link></li>
+                        <li><Link href="/aura-ai" className="text-blue-500 font-bold hover:text-blue-400 transition-colors italic">Aura Neural Core</Link></li>
+                        <li><Link href="/pricing" className="text-slate-400 hover:text-blue-400 transition-colors">Investment Tiers</Link></li>
+                        <li><Link href="/blog" className="text-slate-400 hover:text-blue-400 transition-colors">Engineering Journal</Link></li>
                     </ul>
                 </div>
 
@@ -853,11 +855,8 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                                 Contact Sales
                             </a>
                         </li>
-                        <li>
-                            <a href="https://bbu1.gitbook.io/bbu1-docs/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">
-                                Help Center
-                            </a>
-                        </li>
+                        <li><Link href="/help-centre" className="text-slate-400 hover:text-blue-400 transition-colors">Documentation</Link></li>
+                        <li><Link href="/courses" className="text-slate-400 hover:text-blue-400 transition-colors">BBU1 Academy</Link></li>
                         <li>
                             <Dialog>
                                 <DialogTrigger asChild>
@@ -890,13 +889,16 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                                 </DialogContent>
                             </Dialog>
                         </li>
-                        <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers</Link></li>
+                        <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers & Hiring</Link></li>
                     </ul>
                 </div>
 
                 <div>
-                    <h4 className="font-bold text-white mb-6">Legal</h4>
+                    <h4 className="font-bold text-white mb-6">Support</h4>
                     <ul className="space-y-4 text-sm">
+                        <li><Link href="/contact" className="text-slate-400 hover:text-blue-400 transition-colors">Strategic Inquiry</Link></li>
+                        <li><Link href="/newsletter" className="text-slate-400 hover:text-blue-400 transition-colors">Executive Intel</Link></li>
+                        <li><Link href="/donate" className="text-slate-400 hover:text-blue-400 transition-colors">Support the Mission</Link></li>
                         <li>
                             <Dialog>
                                 <DialogTrigger asChild><button className="text-slate-400 hover:text-blue-400 text-left transition-colors">Terms of Service</button></DialogTrigger>
@@ -921,7 +923,7 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
             <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500">
                 <p>© {new Date().getFullYear()} {siteConfig.name} International. All rights reserved.</p>
                 <div className="flex items-center gap-6 mt-4 md:mt-0">
-                    <p className="flex items-center gap-1">Made with <Leaf className="h-3 w-3 text-green-600" /> for the World.</p>
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Made with <Leaf className="h-3 w-3 text-green-600" /> for the World.</p>
                 </div>
             </div>
         </div>
