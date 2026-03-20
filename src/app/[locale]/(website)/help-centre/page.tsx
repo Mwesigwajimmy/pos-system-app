@@ -42,47 +42,51 @@ export default async function HelpCentrePage({
   await params;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#020617] text-slate-300 font-sans selection:bg-blue-500/30">
-      <main className="flex-grow pt-32 pb-24">
-        <div className="container mx-auto px-6">
+    <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      <main className="flex-grow pt-20 pb-24">
+        <div className="container mx-auto px-6 max-w-7xl">
           
-          <header className="max-w-5xl mb-32">
-            <div className="inline-flex items-center gap-3 px-6 py-2 bg-blue-500/5 border border-blue-500/20 rounded-full mb-8">
-              <HelpCircle className="h-4 w-4 text-blue-500 animate-pulse" />
-              <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.5em]">Knowledge Infrastructure</span>
+          {/* --- HERO HEADER --- */}
+          <header className="max-w-4xl mb-32">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-8">
+              <HelpCircle className="h-4 w-4 text-blue-600" />
+              <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Knowledge Infrastructure</span>
             </div>
-            <h1 className="text-6xl md:text-9xl font-black text-white tracking-tighter leading-none mb-10 uppercase italic">
-              ENGINEERING <br /> <span className="text-blue-600">SUPPORT.</span>
+            {/* Fixed: Professional size, straight text, no all-caps */}
+            <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-10">
+              Engineering <span className="text-blue-600">Support.</span>
             </h1>
-            <p className="text-2xl md:text-3xl font-light text-slate-400 leading-relaxed italic border-l-4 border-blue-600 pl-8 max-w-3xl">
-              "Access the architectural blueprints for your business operations. Our knowledge base is engineered for certainty and operational speed."
+            <p className="text-xl md:text-2xl font-normal text-slate-600 leading-relaxed border-l-4 border-blue-600 pl-8 max-w-3xl">
+              Access the architectural blueprints for your business operations. Our knowledge base is engineered for certainty and operational speed.
             </p>
           </header>
 
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-40">
+          {/* --- CATEGORIES GRID --- */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-40">
             {supportCategories.map((cat, i) => (
-              <div key={i} className="p-10 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-blue-600/5 transition-all duration-500 group cursor-pointer">
+              <div key={i} className="p-10 bg-slate-50 border border-slate-200 rounded-[2.5rem] hover:bg-white hover:shadow-xl hover:border-blue-100 transition-all duration-300 group cursor-pointer">
                 <cat.icon className="h-10 w-10 text-blue-600 mb-6 group-hover:scale-110 transition-transform" />
-                <h3 className="text-white text-xl font-black mb-4 tracking-tight uppercase italic">{cat.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed font-light">{cat.desc}</p>
+                <h3 className="text-slate-900 text-xl font-bold mb-4 tracking-tight">{cat.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed font-normal">{cat.desc}</p>
               </div>
             ))}
           </section>
 
+          {/* --- MANUALS ACCORDION --- */}
           <section className="mb-40">
-            <div className="flex items-center gap-4 text-white mb-16">
+            <div className="flex items-center gap-4 text-slate-900 mb-16">
               <BookOpen className="h-8 w-8 text-blue-600" />
-              <h2 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter">SOVEREIGN MANUALS</h2>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Sovereign Manuals</h2>
             </div>
             
             <div className="max-w-4xl">
-              <Accordion type="single" collapsible className="space-y-6">
+              <Accordion type="single" collapsible className="space-y-4">
                 {technicalManuals.map((manual, idx) => (
-                  <AccordionItem key={idx} value={`item-${idx}`} className="border border-white/10 rounded-[2.5rem] bg-white/5 px-10 overflow-hidden hover:bg-white/[0.08] transition-all border-none">
+                  <AccordionItem key={idx} value={`item-${idx}`} className="border border-slate-200 rounded-3xl bg-slate-50 px-8 md:px-10 overflow-hidden hover:bg-white hover:border-blue-100 transition-all">
                     <AccordionTrigger className="hover:no-underline py-8">
                        <div className="flex flex-col items-start text-left">
-                          <h4 className="text-2xl font-black text-white uppercase italic tracking-tight">{manual.title}</h4>
-                          <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1">{manual.verticalCode} | {manual.standardTax}</span>
+                          <h4 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight leading-snug">{manual.title}</h4>
+                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-2">{manual.verticalCode} | {manual.standardTax}</span>
                        </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-10 pt-4">
@@ -90,13 +94,13 @@ export default async function HelpCentrePage({
                           <div className="grid gap-6">
                              {manual.phases.map((phase, pIdx) => (
                                <div key={pIdx} className="border-l-2 border-blue-600 pl-6 py-2">
-                                  <h5 className="text-sm font-black text-white uppercase tracking-widest mb-2 italic">{phase.phase}</h5>
-                                  <p className="text-slate-400 text-sm font-light leading-relaxed">{phase.description}</p>
+                                  <h5 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-2">{phase.phase}</h5>
+                                  <p className="text-slate-600 text-sm font-normal leading-relaxed">{phase.description}</p>
                                </div>
                              ))}
                           </div>
-                          <div className="p-8 bg-blue-600/10 border border-blue-600/20 rounded-3xl">
-                             <p className="text-white text-xs font-black uppercase tracking-widest leading-relaxed">
+                          <div className="p-8 bg-blue-50 border border-blue-100 rounded-2xl">
+                             <p className="text-blue-800 text-sm font-semibold leading-relaxed">
                                {manual.summary}
                              </p>
                           </div>
@@ -108,34 +112,36 @@ export default async function HelpCentrePage({
             </div>
           </section>
 
-          <section className="mb-40 border-t border-white/10 pt-24">
+          {/* --- FAQ SECTION --- */}
+          <section className="mb-40 border-t border-slate-100 pt-24">
              <div className="text-center mb-20">
-                <h2 className="text-4xl md:text-7xl font-black text-white uppercase italic tracking-tighter">COMMON INQUIRIES</h2>
+                <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight">Common Inquiries</h2>
              </div>
              <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
                 {[
                   { q: "How do I initiate account hydration?", a: "Upon signup, our Architects will contact your primary identity point to initialize the RLS protocols and hydrate your vertical database." },
                   { q: "Can I integrate custom hardware?", a: "Yes. BBU1 supports standard POS peripheral integration via our hardware sync gateway." },
-                  { q: "What is the support response SLA?", a: "Enterprise clients receive a < 2-hour response guarantee through our private WhatsApp executive channels." },
+                  { q: "What is the support response SLA?", a: "Enterprise clients receive a < 2-hour response guarantee through our private executive channels." },
                   { q: "Is the documentation localized?", a: "Our knowledge base is currently available in English, French, and Swahili to serve our diverse global user base." }
                 ].map((faq, i) => (
-                  <div key={i} className="p-10 bg-white/5 border border-white/10 rounded-[3rem]">
-                    <h4 className="text-white font-black uppercase italic tracking-tight mb-4">{faq.q}</h4>
-                    <p className="text-slate-500 font-light leading-relaxed text-sm">{faq.a}</p>
+                  <div key={i} className="p-10 bg-slate-50 border border-slate-100 rounded-3xl hover:bg-white hover:shadow-md transition-all duration-300">
+                    <h4 className="text-slate-900 font-bold text-lg mb-4 tracking-tight">{faq.q}</h4>
+                    <p className="text-slate-600 font-normal leading-relaxed text-sm">{faq.a}</p>
                   </div>
                 ))}
              </div>
           </section>
 
-          <section className="p-20 bg-blue-600 rounded-[5rem] text-center shadow-3xl relative overflow-hidden">
+          {/* --- FINAL CTA --- */}
+          <section className="p-16 md:p-24 bg-blue-600 rounded-[3rem] text-center shadow-2xl shadow-blue-600/20 relative overflow-hidden text-white">
              <div className="absolute top-0 right-0 p-10 opacity-10">
                 <MessageSquare className="h-64 w-64 text-white" />
              </div>
-             <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic mb-8 relative z-10">INTERFACE WITH US.</h2>
-             <p className="text-blue-100 text-2xl font-light mb-12 max-w-3xl mx-auto relative z-10">
+             <h2 className="text-4xl md:text-6xl font-bold text-white tracking-tight mb-8 relative z-10 leading-tight">Interface with us.</h2>
+             <p className="text-blue-50 text-xl md:text-2xl font-normal mb-12 max-w-3xl mx-auto relative z-10 leading-relaxed">
                Establish a direct line to our support architects for complex enterprise migrations and technical orchestration.
              </p>
-             <Button className="h-20 px-16 bg-white text-blue-600 text-xl font-black uppercase tracking-[0.2em] rounded-[2rem] hover:bg-slate-100 transition-all shadow-2xl relative z-10" asChild>
+             <Button size="lg" className="h-16 px-12 bg-white text-blue-600 text-lg font-bold rounded-xl hover:bg-slate-50 transition-all shadow-xl relative z-10" asChild>
                 <Link href="/contact">Direct Support Interface</Link>
              </Button>
           </section>

@@ -12,106 +12,111 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-[#020617] text-slate-300 font-sans selection:bg-blue-500/30">
-      <main className="flex-grow pt-32 pb-24">
-        <div className="container mx-auto px-6">
+    <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30">
+      <main className="flex-grow pt-20 pb-24">
+        <div className="container mx-auto px-6 max-w-7xl">
           
-          <header className="max-w-5xl mb-32">
-            <div className="inline-flex items-center gap-3 px-6 py-2 bg-blue-500/5 border border-blue-500/20 rounded-full mb-8">
-              <MessageSquareText className="h-4 w-4 text-blue-500 animate-pulse" />
-              <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.5em]">Communication Hub</span>
+          {/* --- HERO SECTION --- */}
+          <header className="max-w-4xl mb-24">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-8">
+              <MessageSquareText className="h-4 w-4 text-blue-600" />
+              <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Communication Hub</span>
             </div>
-            <h1 className="text-6xl md:text-9xl font-black text-white tracking-tighter leading-none mb-10 uppercase italic">
-              DIRECT <br /> <span className="text-blue-600">INTERFACE.</span>
+            {/* Fixed: Normal case, straight text, professional size */}
+            <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-tight mb-10">
+              Direct <span className="text-blue-600">Interface.</span>
             </h1>
-            <p className="text-2xl md:text-3xl font-light text-slate-400 leading-relaxed italic border-l-4 border-blue-600 pl-8 max-w-3xl">
-              "Establishing a direct connection between global enterprise and sovereign business architecture. We are here to facilitate your expansion."
+            <p className="text-xl md:text-2xl font-normal text-slate-600 leading-relaxed border-l-4 border-blue-600 pl-8 max-w-3xl">
+              Establishing a direct connection between global enterprise and sovereign business architecture. We are here to facilitate your expansion.
             </p>
           </header>
 
-          <div className="grid lg:grid-cols-12 gap-20 items-start mb-40">
-            {/* Contact Intelligence Sidebar */}
-            <div className="lg:col-span-5 space-y-12">
-              <h2 className="text-3xl font-black text-white uppercase italic tracking-tight mb-10">CHANNEL INTEL</h2>
+          <div className="grid lg:grid-cols-12 gap-16 items-start mb-40">
+            
+            {/* --- CONTACT INFO SIDEBAR --- */}
+            <div className="lg:col-span-5 space-y-10">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-8 uppercase">Channel Intel</h2>
               
-              <div className="space-y-8">
-                <div className="flex gap-6 group p-8 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-white/[0.08] transition-all">
-                  <div className="h-14 w-14 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 shrink-0 group-hover:scale-110 transition-transform">
-                    <Mail className="h-7 w-7" />
+              <div className="space-y-6">
+                <div className="flex gap-6 group p-8 bg-slate-50 border border-slate-200 rounded-3xl hover:bg-white hover:shadow-lg transition-all">
+                  <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 group-hover:scale-110 transition-transform">
+                    <Mail className="h-6 w-6" />
                   </div>
                   <div>
-                    <h4 className="text-white font-black uppercase tracking-widest text-xs mb-2 italic">Official Inquiry</h4>
-                    <a href="mailto:info@bbu1.com" className="text-slate-400 text-lg font-light hover:text-blue-400 transition-colors">info@bbu1.com</a>
+                    <h4 className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Official Inquiry</h4>
+                    <a href="mailto:info@bbu1.com" className="text-slate-900 text-lg font-semibold hover:text-blue-600 transition-colors">info@bbu1.com</a>
                   </div>
                 </div>
 
-                <div className="flex gap-6 group p-8 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-white/[0.08] transition-all">
-                  <div className="h-14 w-14 rounded-2xl bg-green-600/10 flex items-center justify-center text-green-500 shrink-0 group-hover:scale-110 transition-transform">
-                    <Phone className="h-7 w-7" />
+                <div className="flex gap-6 group p-8 bg-slate-50 border border-slate-200 rounded-3xl hover:bg-white hover:shadow-lg transition-all">
+                  <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 shrink-0 group-hover:scale-110 transition-transform">
+                    <Phone className="h-6 w-6" />
                   </div>
                   <div>
-                    <h4 className="text-white font-black uppercase tracking-widest text-xs mb-2 italic">Immediate Support</h4>
-                    <a href="https://wa.me/256703572503" target="_blank" rel="noopener noreferrer" className="text-slate-400 text-lg font-light hover:text-green-400 transition-colors">WhatsApp Direct</a>
+                    <h4 className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Immediate Support</h4>
+                    <a href="https://wa.me/256703572503" target="_blank" rel="noopener noreferrer" className="text-slate-900 text-lg font-semibold hover:text-green-600 transition-colors">WhatsApp Direct</a>
                   </div>
                 </div>
 
-                <div className="flex gap-6 group p-8 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-white/[0.08] transition-all">
-                  <div className="h-14 w-14 rounded-2xl bg-indigo-600/10 flex items-center justify-center text-indigo-500 shrink-0 group-hover:scale-110 transition-transform">
-                    <MapPin className="h-7 w-7" />
+                <div className="flex gap-6 group p-8 bg-slate-50 border border-slate-200 rounded-3xl hover:bg-white hover:shadow-lg transition-all">
+                  <div className="h-12 w-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 group-hover:scale-110 transition-transform">
+                    <MapPin className="h-6 w-6" />
                   </div>
                   <div>
-                    <h4 className="text-white font-black uppercase tracking-widest text-xs mb-2 italic">Global HQ</h4>
-                    <p className="text-slate-400 text-lg font-light">East Africa Base / Remote Presence</p>
+                    <h4 className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mb-1">Global HQ</h4>
+                    <p className="text-slate-900 text-lg font-semibold">East Africa Base / Remote Presence</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-10 bg-blue-600/10 border border-blue-600/30 rounded-[3rem]">
-                 <div className="flex items-center gap-3 text-blue-400 mb-4">
-                    <ShieldCheck className="h-5 w-5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Security Protocol</span>
+              <div className="p-8 bg-blue-50 border border-blue-100 rounded-3xl">
+                 <div className="flex items-center gap-2 text-blue-600 mb-3">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Security Protocol</span>
                  </div>
-                 <p className="text-slate-400 text-sm font-light leading-relaxed italic">
-                   "All data transmitted through this interface is encrypted with bank-level protocols and handled in accordance with the BBU1 Sovereignty Policy."
+                 <p className="text-slate-600 text-sm font-normal leading-relaxed">
+                   All data transmitted through this interface is encrypted with bank-level protocols and handled in accordance with the BBU1 Sovereignty Policy.
                  </p>
               </div>
             </div>
 
-            {/* Inquiry Form Terminal */}
+            {/* --- INQUIRY FORM --- */}
             <div className="lg:col-span-7">
-              <Card className="bg-white/5 border-white/10 rounded-[4rem] p-10 md:p-16 shadow-3xl border-none">
-                <h3 className="text-3xl font-black text-white uppercase italic tracking-tight mb-12 leading-none">PROCESS INQUIRY</h3>
-                <form className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card className="bg-slate-50 border-slate-200 rounded-[3rem] p-8 md:p-12 shadow-sm border">
+                <h3 className="text-2xl font-bold text-slate-900 mb-10">Process Inquiry</h3>
+                <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Corporate Email</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Corporate Email</label>
                     <input 
                       type="email" 
-                      placeholder="YOU@COMPANY.COM" 
-                      className="w-full h-16 px-8 bg-black/40 border border-white/10 rounded-2xl text-white font-black placeholder:text-slate-700 focus:outline-none focus:border-blue-600 transition-all"
+                      placeholder="you@company.com" 
+                      className="w-full h-14 px-6 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Inquiry Category</label>
-                    <select className="w-full h-16 px-8 bg-black/40 border border-white/10 rounded-2xl text-slate-400 font-bold focus:outline-none focus:border-blue-600 appearance-none transition-all cursor-pointer">
-                       <option>ENTERPRISE SALES</option>
-                       <option>STRATEGIC PARTNERSHIP</option>
-                       <option>TECHNICAL SUPPORT</option>
-                       <option>MEDIA & RELATIONS</option>
-                    </select>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Inquiry Category</label>
+                    <div className="relative">
+                      <select className="w-full h-14 px-6 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold focus:outline-none focus:border-blue-600 appearance-none transition-all cursor-pointer">
+                         <option>Enterprise Sales</option>
+                         <option>Strategic Partnership</option>
+                         <option>Technical Support</option>
+                         <option>Media & Relations</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Your Message / Brief</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Your Message / Brief</label>
                     <textarea 
-                      placeholder="DESCRIBE YOUR OBJECTIVES..." 
-                      className="w-full min-h-[200px] p-8 bg-black/40 border border-white/10 rounded-[2rem] text-white font-light placeholder:text-slate-700 focus:outline-none focus:border-blue-600 transition-all resize-none"
+                      placeholder="Describe your objectives..." 
+                      className="w-full min-h-[180px] p-6 bg-white border border-slate-200 rounded-2xl text-slate-900 font-normal placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all resize-none"
                       required
                     />
                   </div>
 
-                  <div className="md:col-span-2">
-                    <Button className="w-full h-24 bg-blue-600 text-white font-black uppercase tracking-[0.3em] text-xl rounded-[2rem] hover:bg-blue-700 shadow-2xl transition-all group">
-                      INITIATE TRANSMISSION <ArrowRight className="ml-6 h-8 w-8 group-hover:translate-x-4 transition-transform" />
+                  <div className="md:col-span-2 pt-4">
+                    <Button className="w-full h-16 bg-blue-600 text-white font-bold uppercase tracking-widest text-sm rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-600/20 transition-all group">
+                      Initiate Transmission <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-2 transition-transform" />
                     </Button>
                   </div>
                 </form>
@@ -119,31 +124,31 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Global Operations Stats */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-40 border-y border-white/5 py-16">
+          {/* --- STATS BAR --- */}
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-40 border-y border-slate-100 py-16">
             {[
-              { label: "RESPONSE TIME", value: "< 2 HOURS", icon: Globe },
-              { label: "GLOBAL REACH", value: "50+ NATIONS", icon: Landmark },
-              { label: "SOVEREIGN DATA", value: "100% PRIVATE", icon: ShieldCheck }
+              { label: "Response Time", value: "< 2 Hours", icon: Globe },
+              { label: "Global Reach", value: "50+ Nations", icon: Landmark },
+              { label: "Sovereign Data", value: "100% Private", icon: ShieldCheck }
             ].map((stat, i) => (
               <div key={i} className="flex flex-col items-center text-center group">
-                <stat.icon className="h-8 w-8 text-blue-600 mb-4 group-hover:scale-110 transition-transform" />
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">{stat.label}</p>
-                <div className="text-4xl font-black text-white italic tracking-tighter">{stat.value}</div>
+                <stat.icon className="h-6 w-6 text-blue-600 mb-4 group-hover:scale-110 transition-transform" />
+                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">{stat.label}</p>
+                <div className="text-3xl font-bold text-slate-900 tracking-tight">{stat.value}</div>
               </div>
             ))}
           </section>
 
-          {/* Call to Founder */}
-          <section className="p-20 bg-blue-600 rounded-[5rem] text-center shadow-3xl relative overflow-hidden">
+          {/* --- FOUNDER CTA --- */}
+          <section className="p-16 md:p-24 bg-blue-600 rounded-[3rem] text-center shadow-2xl shadow-blue-600/20 relative overflow-hidden text-white">
              <div className="absolute top-0 right-0 p-10 opacity-10">
                 <Landmark className="h-64 w-64 text-white" />
              </div>
-             <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter uppercase italic mb-8 relative z-10">TALK TO AN ARCHITECT.</h2>
-             <p className="text-blue-100 text-2xl font-light mb-12 max-w-3xl mx-auto relative z-10">
+             <h2 className="text-4xl md:text-6xl font-bold text-white tracking-tight mb-8 relative z-10">Talk to an Architect.</h2>
+             <p className="text-blue-50 text-xl md:text-2xl font-normal mb-12 max-w-3xl mx-auto relative z-10">
                Need a custom architectural review of your business operations? Connect directly with our engineering leadership.
              </p>
-             <Button className="h-20 px-16 bg-white text-blue-600 text-xl font-black uppercase tracking-[0.2em] rounded-[2rem] hover:bg-slate-100 transition-all shadow-2xl relative z-10" asChild>
+             <Button size="lg" className="h-16 px-12 bg-white text-blue-600 text-lg font-bold rounded-xl hover:bg-slate-50 transition-all shadow-xl relative z-10" asChild>
                 <a href="mailto:ceo@bbu1.com">Founder Direct Channel</a>
              </Button>
           </section>

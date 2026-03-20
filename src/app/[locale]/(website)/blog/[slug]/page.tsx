@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { Calendar, User, ArrowLeft, Tag, Share2 } from "lucide-react";
+import { Calendar, User, ArrowLeft, Tag, Share2, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -68,39 +68,83 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
   if (!article) notFound();
 
   return (
-    <article className="min-h-screen bg-[#020617] text-slate-300">
-      <div className="relative h-[70vh] w-full flex items-end pb-24">
-        <Image src={article.image} alt={article.title} fill className="object-cover opacity-40 grayscale-[0.5]" priority />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/40 to-transparent" />
-        <div className="container mx-auto px-6 relative z-10">
-          <Link href="/blog" className="inline-flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-12 hover:gap-4 transition-all">
+    <article className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100">
+      
+      {/* --- HERO SECTION --- */}
+      <header className="relative w-full bg-slate-50 border-b border-slate-100">
+        <div className="container mx-auto px-6 pt-24 pb-16 max-w-7xl">
+          <Link href="/blog" className="inline-flex items-center gap-2 text-blue-600 text-sm font-bold mb-10 hover:translate-x-[-4px] transition-transform">
             <ArrowLeft className="h-4 w-4" /> Back to Journal
           </Link>
-          <span className="bg-blue-600 text-white text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-widest mb-8 inline-block">
-            {article.category}
-          </span>
-          <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter leading-none max-w-5xl uppercase italic">
-            {article.title}
-          </h1>
+          
+          <div className="max-w-4xl">
+            <span className="bg-blue-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-md uppercase tracking-widest mb-6 inline-block">
+              {article.category}
+            </span>
+            
+            {/* Fixed Title: Bold, Straight, Normal Case, Professional Size */}
+            <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-8">
+              {article.title}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-500 font-medium">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                   <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <span>By {article.author}</span>
+              </div>
+              <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> {article.date}</span>
+              <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> 6 min read</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* --- FEATURED IMAGE --- */}
+      <div className="container mx-auto px-6 -mt-10 max-w-7xl">
+        <div className="relative aspect-[21/9] w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
+          <Image 
+            src={article.image} 
+            alt={article.title} 
+            fill 
+            className="object-cover" 
+            priority 
+          />
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-24">
-        <div className="grid lg:grid-cols-12 gap-20">
-          <div className="lg:col-span-3 space-y-12">
+      {/* --- CONTENT SECTION --- */}
+      <div className="container mx-auto px-6 py-20 max-w-7xl">
+        <div className="grid lg:grid-cols-12 gap-16">
+          
+          {/* Sidebar Info */}
+          <aside className="lg:col-span-3 space-y-10 border-r border-slate-100 pr-8 hidden lg:block">
             <div className="space-y-4">
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Lead Author</p>
-              <p className="text-white text-xl font-bold">{article.author}</p>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">About the Author</p>
+              <p className="text-slate-900 text-lg font-bold">{article.author}</p>
+              <p className="text-slate-500 text-sm leading-relaxed">Lead Architect at BBU1, specializing in enterprise-grade AI infrastructure and automation.</p>
             </div>
-            <div className="space-y-4">
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Published On</p>
-              <p className="text-white text-xl font-bold">{article.date}</p>
+            <div className="pt-6">
+               <button className="flex items-center gap-2 text-slate-900 font-bold text-sm hover:text-blue-600 transition-colors">
+                  <Share2 className="h-4 w-4" /> Share this Analysis
+               </button>
             </div>
-          </div>
+          </aside>
 
+          {/* Article Body */}
           <div className="lg:col-span-8">
-            <div className="max-w-3xl space-y-10 text-xl md:text-2xl leading-relaxed font-light whitespace-pre-wrap">
+            <div className="max-w-3xl text-lg md:text-xl text-slate-700 leading-relaxed font-normal whitespace-pre-wrap">
               {article.content}
+            </div>
+            
+            {/* Professional Footer CTA */}
+            <div className="mt-20 p-10 bg-blue-50 border border-blue-100 rounded-3xl">
+              <h4 className="text-slate-900 text-xl font-bold mb-4">Ready to automate your operations?</h4>
+              <p className="text-slate-600 mb-8">Integrate Aura AI into your business ecosystem and eliminate manual errors today.</p>
+              <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+                Get Started with BBU1 <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </div>
