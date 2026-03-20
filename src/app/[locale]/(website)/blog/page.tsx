@@ -12,7 +12,7 @@ const articles = [
         date: "2026-03-12", 
         author: "Mwesigwa Jimmy", 
         category: "Insights", 
-        image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/Greeting(23).jpg"
     },
     { 
         slug: "future-of-automation", 
@@ -20,7 +20,7 @@ const articles = [
         date: "2026-03-10", 
         author: "Mwesigwa Jimmy", 
         category: "Trends", 
-        image: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/Greeting(13).jpg"
     },
     { 
         slug: "zero-math-automation", 
@@ -28,7 +28,7 @@ const articles = [
         date: "2026-03-08", 
         author: "Mwesigwa Jimmy", 
         category: "Engineering", 
-        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/Greeting(36).jpg"
     },
     { 
         slug: "digital-transformation-sme", 
@@ -36,7 +36,7 @@ const articles = [
         date: "2026-03-06", 
         author: "Mwesigwa Jimmy", 
         category: "Growth", 
-        image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/retail-system-customer-service.jpg"
     },
     { 
         slug: "inventory-management-revolution", 
@@ -44,31 +44,31 @@ const articles = [
         date: "2026-03-04", 
         author: "Mwesigwa Jimmy", 
         category: "Supply Chain", 
-        image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/ai-warehouse-logistics.jpg" 
     },
     { 
         slug: "aura-ai-cutting-edge-intelligence", 
         title: "Aura AI: The Cutting-Edge of Intelligence", 
         date: "2026-03-02", 
-        author: "Engineering Team", 
+        author: "Mwesigwa Jimmy", 
         category: "Product Updates", 
-        image: "https://images.unsplash.com/photo-1675271591211-126ad94e495d?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/Greeting (10).jpeg"
     },
     { 
         slug: "unbreakable-offline-mode-continuity", 
         title: "Unbreakable Offline Mode: Business Continuity", 
         date: "2026-02-28", 
-        author: "Product Team", 
+        author: "Mwesigwa Jimmy", 
         category: "Features", 
-        image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/artisan-cooperative-tech.jpg"
     },
     { 
         slug: "sacco-transformation-success-story", 
         title: "Success Story: SACCO Digital Transformation", 
         date: "2026-02-25", 
-        author: "Customer Success", 
+        author: "Mwesigwa Jimmy", 
         category: "Success Stories", 
-        image: "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?q=80&w=2000&auto=format&fit=crop" 
+        image: "/images/showcase/System Image Generat (42).jpeg"
     }
 ];
 

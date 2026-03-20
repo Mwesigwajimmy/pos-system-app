@@ -11,7 +11,7 @@ const articles: Record<string, any> = {
     date: "2026-03-12",
     author: "Mwesigwa Jimmy",
     category: "Insights",
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/Greeting(23).jpg",
     content: `AI is no longer a luxury for elite tech firms; it is the fundamental engine of modern business competition. Traditional software simply records history. AI, specifically the Aura Neural Core, architects the future.
 
 ## The Shift from Reactive to Proactive
@@ -28,7 +28,7 @@ When an executive asks, "Should we open a new branch in Entebbe?", Aura doesn't 
     date: "2026-03-10",
     author: "Mwesigwa Jimmy",
     category: "Trends",
-    image: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/Greeting(13).jpg",
     content: `The next decade will belong to the autonomous enterprise. We are moving beyond simple "if-this-then-that" rules into a world of self-healing business systems that manage the complexities of global commerce.
 
 ## The End of the Integration Tax
@@ -45,7 +45,7 @@ Imagine a world where your tax filings and regulatory reports are generated and 
     date: "2026-03-08",
     author: "Mwesigwa Jimmy",
     category: "Engineering",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/Greeting(36).jpg",
     content: `Human beings are excellent at strategy but notoriously poor at repetitive mathematical accuracy. Zero Math Automation is our philosophy of removing the human hand from the calculation process entirely.
 
 ## Why Zero Math Matters
@@ -62,7 +62,7 @@ Zero Math is about trust. When you present your reports to a board, an investor,
     date: "2026-03-06",
     author: "Mwesigwa Jimmy",
     category: "Growth",
-    image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/retail-system-customer-service.jpg",
     content: `Digital transformation is often misunderstood as simply buying new hardware. For an SME, true transformation is the re-engineering of how value is created, tracked, and scaled.
 
 ## Leveling the Playing Field
@@ -79,7 +79,7 @@ Many SMEs fear losing control of their data to big tech. BBU1’s commitment to 
     date: "2026-03-04",
     author: "Mwesigwa Jimmy",
     category: "Supply Chain",
-    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/ai-warehouse-logistics.jpg",
     content: `Inventory is frozen capital. The revolution in inventory management is about turning that capital back into liquid cash flow as fast as humanly possible through intelligent synchronization.
 
 ## Real-time Multi-Warehouse Sync
@@ -94,9 +94,9 @@ Importing goods is complex. The revolution includes automated calculation of lan
   "aura-ai-cutting-edge-intelligence": {
     title: "Aura AI: The Cutting-Edge of Intelligence",
     date: "2026-03-02",
-    author: "Engineering Team",
+    author: "Mwesigwa Jimmy",
     category: "Product Updates",
-    image: "https://images.unsplash.com/photo-1675271591211-126ad94e495d?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/Greeting (10).jpeg",
     content: `Aura is not a chatbot or a novelty; it is a specialized, deterministic intelligence layer running across your entire business ecosystem to ensure operational excellence.
 
 ## Engineering Transparency
@@ -111,9 +111,9 @@ Aura never sleeps. It scans your ledger for anomalies, duplicate payments, and f
   "unbreakable-offline-mode-continuity": {
     title: "Unbreakable Offline Mode: Continuity Anywhere",
     date: "2026-02-28",
-    author: "Product Team",
+    author: "Mwesigwa Jimmy",
     category: "Features",
-    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/artisan-cooperative-tech.jpg",
     content: `In the real world, internet connectivity is not a guarantee. When the connection fails, your business shouldn't. BBU1 is built with a "Local-First" architecture designed for survival.
 
 ## Seamless Synchronization
@@ -128,9 +128,9 @@ Connectivity becomes a bonus feature rather than a prerequisite for operation. Y
   "sacco-transformation-success-story": {
     title: "Success Story: SACCO Digital Transformation",
     date: "2026-02-25",
-    author: "Customer Success",
+    author: "Mwesigwa Jimmy",
     category: "Success Stories",
-    image: "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?q=80&w=2000&auto=format&fit=crop",
+    image: "/images/showcase/System Image Generat (42).jpeg",
     content: `From manual ledger books to an automated powerhouse. This is the story of how a 500-member SACCO re-engineered their community trust through BBU1.
 
 ## The Challenge
