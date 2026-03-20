@@ -12,7 +12,7 @@ const articles = [
         date: "2026-03-12", 
         author: "Mwesigwa Jimmy", 
         category: "Insights", 
-        image: "/images/showcase/Greeting(23).jpg"
+        image: "/images/showcase/future-of-business-tech.jpg"
     },
     { 
         slug: "future-of-automation", 
@@ -20,7 +20,7 @@ const articles = [
         date: "2026-03-10", 
         author: "Mwesigwa Jimmy", 
         category: "Trends", 
-        image: "/images/showcase/Greeting(13).jpg"
+        image: "/images/showcase/Greeting (41).jpeg"
     },
     { 
         slug: "zero-math-automation", 
@@ -28,7 +28,7 @@ const articles = [
         date: "2026-03-08", 
         author: "Mwesigwa Jimmy", 
         category: "Engineering", 
-        image: "/images/showcase/Greeting(36).jpg"
+        image: "/images/showcase/education-dashboard.jpg"
     },
     { 
         slug: "digital-transformation-sme", 

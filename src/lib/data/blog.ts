@@ -21,7 +21,7 @@ export const blogPosts: BlogPost[] = [
         publishDate: "2026-03-12",
         category: "Insights",
         icon: BrainCircuit,
-        image: "/images/showcase/Greeting(23).jpg",
+        image: "/images/showcase/future-of-business-tech.jpg",
         content: [
             "AI is no longer a luxury; it is the fundamental engine of modern competition. Traditional software simply records history. AI, specifically the Aura Neural Core, architects the future.",
             "The shift from reactive to proactive is the most significant change. Most ERP systems wait for you to input data and then ask for a report. Aura AI works in reverse. It monitors your general ledger, inventory levels, and sales pipelines 24/7.",
@@ -37,7 +37,7 @@ export const blogPosts: BlogPost[] = [
         publishDate: "2026-03-10",
         category: "Insights",
         icon: TrendingUp,
-        image: "/images/showcase/Greeting(13).jpg",
+        image: "/images/showcase/Greeting (41).jpeg",
         content: [
             "We are moving beyond simple 'if-this-then-that' rules into a world of self-healing business systems. The future is an enterprise that requires zero human intervention for routine operations.",
             "The 'Integration Tax'—the hidden cost businesses pay for using disconnected apps—is coming to an end. By unifying CRM, Accounting, and Logistics into a single sovereign operating system, BBU1 eliminates the friction that slows down growth.",
@@ -53,7 +53,7 @@ export const blogPosts: BlogPost[] = [
         publishDate: "2026-03-08",
         category: "Features",
         icon: Cpu,
-        image: "/images/showcase/Greeting(36).jpg",
+        image: "/images/showcase/education-dashboard.jpg",
         content: [
             "Human beings are excellent at strategy but poor at repetitive mathematical accuracy. Zero Math Automation is our philosophy of removing human touchpoints from the calculation process.",
             "In a traditional business, an employee calculates a discount, then a tax, then a total. Every touchpoint is a risk. BBU1’s kernel handles all financial logic through verified, deterministic algorithms.",

@@ -11,7 +11,7 @@ const articles: Record<string, any> = {
     date: "2026-03-12",
     author: "Mwesigwa Jimmy",
     category: "Insights",
-    image: "/images/showcase/Greeting(23).jpg",
+    image: "/images/showcase/future-of-business-tech.jpg",
     content: `AI is no longer a luxury for elite tech firms; it is the fundamental engine of modern business competition. Traditional software simply records history. AI, specifically the Aura Neural Core, architects the future.
 
 ## The Shift from Reactive to Proactive
@@ -28,7 +28,7 @@ When an executive asks, "Should we open a new branch in Entebbe?", Aura doesn't 
     date: "2026-03-10",
     author: "Mwesigwa Jimmy",
     category: "Trends",
-    image: "/images/showcase/Greeting(13).jpg",
+    image: "/images/showcase/Greeting (41).jpeg",
     content: `The next decade will belong to the autonomous enterprise. We are moving beyond simple "if-this-then-that" rules into a world of self-healing business systems that manage the complexities of global commerce.
 
 ## The End of the Integration Tax
@@ -45,7 +45,7 @@ Imagine a world where your tax filings and regulatory reports are generated and 
     date: "2026-03-08",
     author: "Mwesigwa Jimmy",
     category: "Engineering",
-    image: "/images/showcase/Greeting(36).jpg",
+    image: "/images/showcase/education-dashboard.jpg",
     content: `Human beings are excellent at strategy but notoriously poor at repetitive mathematical accuracy. Zero Math Automation is our philosophy of removing the human hand from the calculation process entirely.
 
 ## Why Zero Math Matters
