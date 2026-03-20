@@ -561,7 +561,6 @@ const FullScreenDialog = ({ children, title, description, backgroundImage, icon:
     );
 };
 
-// --- MegaMenuHeader Component ---
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
@@ -579,7 +578,6 @@ const MegaMenuHeader = () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
             setDeferredPrompt(null);
         }
     };
@@ -593,13 +591,18 @@ const MegaMenuHeader = () => {
 
                 <NavigationMenu className="hidden lg:flex">
                     <NavigationMenuList>
-                        {/* Features Menu Item */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200">
                                 Features
                             </NavigationMenuTrigger>
                             <NavigationMenuContent className="bg-background/80 backdrop-blur-md border border-border/50">
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[600px] lg:w-[800px] max-w-[94vw] rounded-md">
+                                    <div className="p-4 border-b flex justify-between items-center">
+                                        <h4 className="font-bold text-blue-600 uppercase tracking-tighter">Capabilities</h4>
+                                        <Link href="/features" className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 transition-all flex items-center gap-2">
+                                            View Detailed Features <ArrowRight size={12}/>
+                                        </Link>
+                                    </div>
                                     <ul className="grid gap-3 p-4 md:grid-cols-2">
                                         {siteConfig.featureSets.map((feature) => (
                                             <li key={feature.title} className="list-none">
@@ -609,12 +612,7 @@ const MegaMenuHeader = () => {
                                                             <ListItem title={feature.title} icon={feature.icon}>{feature.description}</ListItem>
                                                         </button>
                                                     </DialogTrigger>
-                                                    <FullScreenDialog
-                                                        title={feature.title}
-                                                        description={feature.description}
-                                                        backgroundImage={feature.backgroundImage}
-                                                        icon={feature.icon}
-                                                    >
+                                                    <FullScreenDialog title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}>
                                                         <div className="py-4 space-y-6">
                                                             {feature.details.map(detail => (
                                                                 <div key={detail.name} className="flex items-start">
@@ -635,17 +633,22 @@ const MegaMenuHeader = () => {
                             </NavigationMenuContent>
                         </NavigationMenuItem>
 
-                        {/* Industries Menu Item - Desktop */}
                         <NavigationMenuItem>
                             <NavigationMenuTrigger className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200">
                                 Industries
                             </NavigationMenuTrigger>
                             <NavigationMenuContent className="bg-background/80 backdrop-blur-md border border-border/50">
                                 <ScrollArea className="h-[65vh] w-[90vw] md:w-[700px] lg:w-[800px] max-w-[94vw] rounded-md">
+                                    <div className="p-4 border-b flex justify-between items-center">
+                                        <h4 className="font-bold text-blue-600 uppercase tracking-tighter">Sector Blueprints</h4>
+                                        <Link href="/industries" className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600 transition-all flex items-center gap-2">
+                                            All Sector Solutions <ArrowRight size={12}/>
+                                        </Link>
+                                    </div>
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
                                         {['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'].map(category => (
                                             <div key={category} className="col-span-1">
-                                                <h3 className="font-semibold text-sm px-3 mb-2">{category}</h3>
+                                                <h3 className="font-semibold text-[10px] uppercase tracking-widest px-3 mb-2 opacity-50">{category}</h3>
                                                 {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
                                                     <Dialog key={item.name}>
                                                         <DialogTrigger asChild>
@@ -653,26 +656,14 @@ const MegaMenuHeader = () => {
                                                                 <ListItem title={item.name} icon={item.icon}>{item.description}</ListItem>
                                                             </button>
                                                         </DialogTrigger>
-                                                        <FullScreenDialog
-                                                            title={item.name}
-                                                            description={item.description}
-                                                            backgroundImage={item.backgroundImage}
-                                                            icon={item.icon}
-                                                        >
+                                                        <FullScreenDialog title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}>
                                                             <div className="p-4 space-y-6">
-                                                                <p className="text-lg text-muted-foreground leading-relaxed">
-                                                                    {item.fullDescription}
-                                                                </p>
+                                                                <p className="text-lg text-muted-foreground leading-relaxed">{item.fullDescription}</p>
                                                                 <div className="bg-accent/50 p-6 rounded-xl border">
-                                                                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                        <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Key Capabilities
-                                                                    </h4>
+                                                                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2"><Sparkles className="h-5 w-5 text-blue-600" /> Key Capabilities</h4>
                                                                     <ul className="grid gap-3">
                                                                         {item.keyFeatures.map((feature, idx) => (
-                                                                            <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
-                                                                                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                                                                <span>{feature}</span>
-                                                                            </li>
+                                                                            <li key={idx} className="flex items-start gap-3 text-sm md:text-base"><CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" /><span>{feature}</span></li>
                                                                         ))}
                                                                     </ul>
                                                                 </div>
@@ -687,77 +678,45 @@ const MegaMenuHeader = () => {
                             </NavigationMenuContent>
                         </NavigationMenuItem>
 
-                        {/* Platform Menu Item - Desktop */}
                         <NavigationMenuItem>
-                            <NavigationMenuTrigger className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200">
-                                Platform
-                            </NavigationMenuTrigger>
-                            <NavigationMenuContent className="bg-background/80 backdrop-blur-md border border-border/50">
-                                <ScrollArea className="h-[65vh] w-[90vw] md:w-[500px] lg:w-[600px] max-w-[94vw] rounded-md">
-                                    <ul className="grid gap-3 p-4 md:grid-cols-2">
-                                        {siteConfig.platformPillars.map((pillar) => (
-                                            <li key={pillar.title} className="list-none">
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <button className="w-full text-left">
-                                                            <ListItem title={pillar.title} icon={pillar.icon}>{pillar.description}</ListItem>
-                                                        </button>
-                                                    </DialogTrigger>
-                                                    <FullScreenDialog
-                                                        title={pillar.title}
-                                                        description={pillar.description}
-                                                        backgroundImage={pillar.backgroundImage}
-                                                        icon={pillar.icon}
-                                                    >
-                                                        <div className="p-4 space-y-6">
-                                                            <p className="text-lg text-muted-foreground leading-relaxed">
-                                                                {pillar.fullDescription}
-                                                            </p>
-                                                            <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
-                                                                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                    <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Technical Specifications
-                                                                </h4>
-                                                                <ul className="grid gap-3">
-                                                                    {pillar.technicalSpecs.map((spec, idx) => (
-                                                                        <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
-                                                                            <BadgeCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                                                            <span>{spec}</span>
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
-                                                        </div>
-                                                    </FullScreenDialog>
-                                                </Dialog>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </ScrollArea>
-                            </NavigationMenuContent>
-                            </NavigationMenuItem>
-                      {/* Help Center Link linked to GitBook Manuals */}
-<NavigationMenuItem>
-    <a 
-        href="https://bbu1.gitbook.io/bbu1-docs/" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className={cn(
-            navigationMenuTriggerStyle(),
-            "bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
-        )}
-    >
-        Help Center
-    </a>
-</NavigationMenuItem>
+                            <Link href="/aura-ai" legacyBehavior passHref>
+                                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-accent/20 text-blue-500 font-bold transition-all")}>
+                                    <Sparkles className="h-3 w-3 mr-1" /> Aura AI
+                                </NavigationMenuLink>
+                            </Link>
+                        </NavigationMenuItem>
 
-                        {/* FAQ Dialog */}
+                        <NavigationMenuItem>
+                            <Link href="/courses" legacyBehavior passHref>
+                                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-accent/20 transition-all")}>
+                                    Academy
+                                </NavigationMenuLink>
+                            </Link>
+                        </NavigationMenuItem>
+
+                        <NavigationMenuItem>
+                            <Link href="/blog" legacyBehavior passHref>
+                                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-accent/20 transition-all")}>
+                                    Journal
+                                </NavigationMenuLink>
+                            </Link>
+                        </NavigationMenuItem>
+
+                        <NavigationMenuItem>
+                            <a 
+                                href="https://bbu1.gitbook.io/bbu1-docs/" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-accent/20 transition-all")}
+                            >
+                                Help Center
+                            </a>
+                        </NavigationMenuItem>
+
                         <NavigationMenuItem>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="ghost" className={cn(
-                                        navigationMenuTriggerStyle(),
-                                        "bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
-                                    )}>
+                                    <Button variant="ghost" className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-accent/20 transition-all")}>
                                         FAQ
                                     </Button>
                                 </DialogTrigger>
@@ -776,242 +735,55 @@ const MegaMenuHeader = () => {
                     </NavigationMenuList>
                 </NavigationMenu>
 
-                {/* Desktop Actions */}
                 <div className="hidden lg:flex items-center gap-2">
                     {deferredPrompt && (
-                        <Button 
-                            variant="outline" 
-                            onClick={handleInstallClick} 
-                            className="flex items-center gap-1 bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
-                        >
+                        <Button variant="outline" onClick={handleInstallClick} className="flex items-center gap-1 bg-transparent hover:bg-accent/20 border-blue-600 text-blue-600 hover:text-blue-600 transition-all">
                             <DownloadCloud className="h-4 w-4" /> Install App
                         </Button>
                     )}
-                    <Button 
-                        variant="outline" 
-                        asChild
-                        className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
-                    >
+                    <Button variant="outline" asChild className="bg-transparent hover:bg-accent/20 border-blue-600 text-blue-600 hover:text-blue-600 transition-all">
                         <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
                     </Button>
-                    <Button 
-                        variant="ghost" 
-                        asChild
-                        className="bg-transparent hover:bg-accent/20 backdrop-blur-sm border border-transparent hover:border-border transition-all duration-200"
-                    >
+                    <Button variant="ghost" asChild className="bg-transparent hover:bg-accent/20 transition-all">
                         <Link href="/login">Log In</Link>
                     </Button>
-                    <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 transition-all duration-200">
+                    <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white transition-all">
                         <Link href="/signup">Get Started</Link>
                     </Button>
                     <ModeToggle />
                 </div>
 
-                {/* Mobile Actions */}
                 <div className="lg:hidden flex items-center gap-2">
                     <ModeToggle />
                     {deferredPrompt && (
-                        <Button variant="ghost" size="icon" onClick={handleInstallClick} aria-label="Install App" className="hover:bg-accent/20">
+                        <Button variant="ghost" size="icon" onClick={handleInstallClick} className="hover:bg-accent/20">
                             <DownloadCloud className="h-6 w-6" />
                         </Button>
                     )}
-                    <Button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} variant="ghost" size="icon" aria-label="Toggle mobile menu" className="hover:bg-accent/20">
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 hover:bg-accent/20 rounded-md transition-all">
                         {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                    </Button>
+                    </button>
                 </div>
             </div>
 
-            {/* Mobile Menu Overlay */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="lg:hidden bg-background/95 backdrop-blur-md border-t absolute w-full top-16 shadow-lg z-30 max-h-[calc(100vh-4rem)] overflow-y-auto">
                         <div className="container mx-auto py-4 px-4 space-y-4">
-                            {/* Mobile Menu Items */}
-                            {/* Features */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
-                                        Features
-                                    </button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Features" description="Explore the powerful features of BBU1" backgroundImage="/images/showcase/modern-office-analytics.jpg" icon={LayoutGrid} onClose={() => setIsMobileMenuOpen(false)}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.featureSets.map((feature) => (
-                                            <Dialog key={feature.title}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
-                                                        {React.createElement(feature.icon, { className: "h-7 w-7 text-blue-600 dark:text-blue-400 flex-shrink-0" })}
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl hover:text-blue-600">{feature.title}</h4>
-                                                            <p className="text-sm text-muted-foreground">{feature.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={feature.title}
-                                                    description={feature.description}
-                                                    backgroundImage={feature.backgroundImage}
-                                                    icon={feature.icon}
-                                                    onClose={() => setIsMobileMenuOpen(false)}
-                                                >
-                                                    <div className="py-4 space-y-6">
-                                                        {feature.details.map(detail => (
-                                                            <div key={detail.name} className="flex items-start">
-                                                                <CheckCircle className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0"/>
-                                                                <div>
-                                                                    <h4 className="font-semibold text-xl">{detail.name}</h4>
-                                                                    <p className="text-base text-muted-foreground mt-1">{detail.detail}</p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Industries - Mobile */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
-                                        Industries
-                                    </button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Industries" description="Solutions tailored for your business sector" backgroundImage="/images/showcase/bakery-pos-system.jpg" icon={Building} onClose={() => setIsMobileMenuOpen(false)}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.industryItems.map((item) => (
-                                            <Dialog key={item.name}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
-                                                        {React.createElement(item.icon, { className: "h-7 w-7 text-blue-600 dark:text-blue-400 flex-shrink-0" })}
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl hover:text-blue-600">{item.name}</h4>
-                                                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={item.name}
-                                                    description={item.description}
-                                                    backgroundImage={item.backgroundImage}
-                                                    icon={item.icon}
-                                                    onClose={() => setIsMobileMenuOpen(false)}
-                                                >
-                                                    <div className="p-4 space-y-6">
-                                                        <p className="text-lg text-muted-foreground leading-relaxed">
-                                                            {item.fullDescription}
-                                                        </p>
-                                                        <div className="bg-accent/50 p-6 rounded-xl border">
-                                                            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Key Capabilities
-                                                            </h4>
-                                                            <ul className="grid gap-3">
-                                                                {item.keyFeatures.map((feature, idx) => (
-                                                                    <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
-                                                                        <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                                                        <span>{feature}</span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Platform - Mobile */}
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
-                                        Platform
-                                    </button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Platform" description="The foundational pillars of the BBU1 operating system" backgroundImage="/images/showcase/future-of-business-tech.jpg" icon={Cloud} onClose={() => setIsMobileMenuOpen(false)}>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                                        {siteConfig.platformPillars.map((pillar) => (
-                                            <Dialog key={pillar.title}>
-                                                <DialogTrigger asChild>
-                                                    <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
-                                                        {React.createElement(pillar.icon, { className: "h-7 w-7 text-blue-600 dark:text-blue-400 flex-shrink-0" })}
-                                                        <div>
-                                                            <h4 className="font-semibold text-xl hover:text-blue-600">{pillar.title}</h4>
-                                                            <p className="text-sm text-muted-foreground">{pillar.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </DialogTrigger>
-                                                <FullScreenDialog
-                                                    title={pillar.title}
-                                                    description={pillar.description}
-                                                    backgroundImage={pillar.backgroundImage}
-                                                    icon={pillar.icon}
-                                                    onClose={() => setIsMobileMenuOpen(false)}
-                                                >
-                                                    <div className="p-4 space-y-6">
-                                                        <p className="text-lg text-muted-foreground leading-relaxed">
-                                                            {pillar.fullDescription}
-                                                        </p>
-                                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
-                                                            <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                                                <Wrench className="h-5 w-5 text-blue-600 dark:text-blue-400" /> Technical Specifications
-                                                            </h4>
-                                                            <ul className="grid gap-3">
-                                                                {pillar.technicalSpecs.map((spec, idx) => (
-                                                                    <li key={idx} className="flex items-start gap-3 text-sm md:text-base">
-                                                                        <BadgeCheck className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                                                        <span>{spec}</span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                </FullScreenDialog>
-                                            </Dialog>
-                                        ))}
-                                    </div>
-                                </FullScreenDialog>
-                            </Dialog>
-
-                            {/* Help Center Link for Mobile */}
-<a 
-    href="https://bbu1.gitbook.io/bbu1-docs/" 
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="block text-lg font-medium hover:text-blue-600 py-2 px-2 rounded-md hover:bg-accent/20 transition-colors" 
-    onClick={() => setIsMobileMenuOpen(false)}
->
-    Help Center
-</a>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="block text-lg font-medium hover:text-blue-600 w-full text-left py-2 px-2 rounded-md hover:bg-accent/20 transition-colors">
-                                        FAQ
-                                    </button>
-                                </DialogTrigger>
-                                <FullScreenDialog title="Frequently Asked Questions" icon={HelpCircle} backgroundImage="/images/showcase/office-admin-bbU1.jpg" onClose={() => setIsMobileMenuOpen(false)}>
-                                    <Accordion type="single" collapsible className="w-full py-4">
-                                        {siteConfig.faqItems.map((faq, index) => (
-                                            <AccordionItem key={index} value={`item-${index}`}>
-                                                <AccordionTrigger className="text-lg text-left hover:text-blue-600">{faq.q}</AccordionTrigger>
-                                                <AccordionContent className="text-muted-foreground text-base">{faq.a}</AccordionContent>
-                                            </AccordionItem>
-                                        ))}
-                                    </Accordion>
-                                </FullScreenDialog>
-                            </Dialog>
-
+                            <Link href="/features" className="block text-lg font-medium hover:text-blue-600 py-2 px-2" onClick={() => setIsMobileMenuOpen(false)}>Features</Link>
+                            <Link href="/industries" className="block text-lg font-medium hover:text-blue-600 py-2 px-2" onClick={() => setIsMobileMenuOpen(false)}>Industries</Link>
+                            <Link href="/aura-ai" className="block text-lg font-medium text-blue-500 py-2 px-2" onClick={() => setIsMobileMenuOpen(false)}>Aura AI</Link>
+                            <Link href="/courses" className="block text-lg font-medium hover:text-blue-600 py-2 px-2" onClick={() => setIsMobileMenuOpen(false)}>Academy</Link>
+                            <Link href="/blog" className="block text-lg font-medium hover:text-blue-600 py-2 px-2" onClick={() => setIsMobileMenuOpen(false)}>Journal</Link>
+                            <Link href="/help-centre" className="block text-lg font-medium hover:text-blue-600 py-2 px-2" onClick={() => setIsMobileMenuOpen(false)}>Help Center</Link>
                             <div className="flex flex-col gap-2 pt-4 border-t">
-                                <Button asChild className="hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/10 dark:hover:text-blue-400">
+                                <Button asChild className="hover:bg-blue-100 hover:text-blue-600">
                                     <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
                                 </Button>
-                                <Button variant="ghost" asChild className="hover:bg-accent/20">
+                                <Button variant="ghost" asChild>
                                     <Link href="/login">Log In</Link>
                                 </Button>
-                                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 transition-all">
+                                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
                                     <Link href="/signup">Get Started</Link>
                                 </Button>
                             </div>
@@ -1022,8 +794,6 @@ const MegaMenuHeader = () => {
         </header>
     );
 };
-
-// --- LandingFooter Component ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
     <footer className="relative bg-slate-950 text-slate-200 pt-16 pb-8 border-t border-slate-800 z-10">
         <div className="container mx-auto px-4">
@@ -1032,107 +802,94 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
                         <Rocket className="h-6 w-6 text-blue-500" /> {siteConfig.name}
                     </h3>
-<p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">
-    {siteConfig.shortDescription}
-</p>
-{/* EMAIL CONTACT DISPLAY */}
-<div className="mt-4 mb-6">
-    <a 
-        href={`mailto:${siteConfig.contactInfo.email}`} 
-        className="flex items-center gap-3 text-sm text-slate-400 hover:text-blue-400 transition-colors group"
-    >
-        <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center group-hover:bg-blue-600 transition-all border border-slate-800">
-            <Mail size={18} className="text-slate-400 group-hover:text-white" />
-        </div>
-        <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Official Inquiry</span>
-            <span className="text-slate-200">{siteConfig.contactInfo.email}</span>
-        </div>
-    </a>
-</div>
+                    <p className="text-sm text-slate-400 mb-6 max-w-xs leading-relaxed">
+                        {siteConfig.shortDescription}
+                    </p>
+                    <div className="mt-4 mb-6">
+                        <a
+                            href={`mailto:${siteConfig.contactInfo.email}`}
+                            className="flex items-center gap-3 text-sm text-slate-400 hover:text-blue-400 transition-colors group"
+                        >
+                            <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center group-hover:bg-blue-600 transition-all border border-slate-800">
+                                <Mail size={18} className="text-slate-400 group-hover:text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Official Inquiry</span>
+                                <span className="text-slate-200">{siteConfig.contactInfo.email}</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300">
+                            <Linkedin size={18} />
+                        </a>
+                        <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-400 hover:text-white transition-all duration-300">
+                            <Twitter size={18} />
+                        </a>
+                        <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-700 hover:text-white transition-all duration-300">
+                            <Facebook size={18} />
+                        </a>
+                    </div>
+                </div>
 
-<div className="flex items-center gap-4">
-    <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all duration-300">
-        <Linkedin size={18} />
-    </a>
-    <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-400 hover:text-white transition-all duration-300">
-        <Twitter size={18} />
-    </a>
-    <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:bg-blue-700 hover:text-white transition-all duration-300">
-        <Facebook size={18} />
-    </a>
-</div>
+                <div>
                     <h4 className="font-bold text-white mb-6">Product</h4>
                     <ul className="space-y-4 text-sm">
-                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Features</Link></li>
-                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Industries</Link></li>
+                        <li><Link href="/features" className="text-slate-400 hover:text-blue-400 transition-colors">Features</Link></li>
+                        <li><Link href="/industries" className="text-slate-400 hover:text-blue-400 transition-colors">Industries</Link></li>
                         <li><Link href="/blog" className="text-slate-400 hover:text-blue-400 transition-colors font-bold text-blue-400/80">Latest Blog Posts</Link></li>
                         <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers & Hiring</Link></li>
                         <li><Link href="/pricing" className="text-slate-400 hover:text-blue-400 transition-colors">Pricing & Plans</Link></li>
-                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Platform</Link></li>
-                        <li><Link href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Mobile App</Link></li>
+                        <li><Link href="/" className="text-slate-400 hover:text-blue-400 transition-colors">Platform</Link></li>
+                        <li><Link href="/" className="text-slate-400 hover:text-blue-400 transition-colors">Mobile App</Link></li>
                     </ul>
                 </div>
 
-<div>
-    <h4 className="font-bold text-white mb-6">Company</h4>
-    <ul className="space-y-4 text-sm">
-        <li>
-            <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">
-                Contact Sales
-            </a>
-        </li>
-        <li>
-            <a 
-                href="https://bbu1.gitbook.io/bbu1-docs/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-slate-400 hover:text-blue-400 transition-colors"
-            >
-                Help Center
-            </a>
-        </li>
-        <li>
-    <Dialog>
-        <DialogTrigger asChild>
-            <button className="text-slate-400 hover:text-blue-400 text-left transition-colors font-medium">
-                About Us
-            </button>
-        </DialogTrigger>
-        {/* FIX: We added overflow-hidden to the content and h-screen */}
-        <DialogContent className="!fixed !inset-0 !z-[200] !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0 !border-none p-0 bg-white dark:bg-slate-950 overflow-hidden">
-            
-            {/* FIX: Explicitly set h-screen so the ScrollArea knows how big the window is */}
-            <ScrollArea className="h-screen w-full">
-                <div className="relative flex flex-col">
-                    
-                    {/* EXECUTIVE CLOSE BUTTON - Sticky so it stays while you scroll */}
-                    <div className="sticky top-0 z-[210] flex justify-end p-6 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b">
-                        <DialogClose asChild>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                                <X className="h-6 w-6 text-slate-900 dark:text-white" />
-                            </Button>
-                        </DialogClose>
-                    </div>
-
-                    {/* THE CONTENT */}
-                    <div className="flex-grow">
-                        <AboutCompanyExecutiveSection />
-                    </div>
-
-                    {/* PROFESSIONAL FINISH AT THE VERY BOTTOM */}
-                    <div className="max-w-4xl mx-auto w-full px-4 text-center py-20 border-t mt-10">
-                         <DialogClose asChild>
-                            <Button variant="outline" className="px-12 h-12 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl font-bold uppercase tracking-widest">
-                                Close & Return to System
-                            </Button>
-                        </DialogClose>
-                    </div>
-                </div>
-            </ScrollArea>
-        </DialogContent>
-    </Dialog>
-</li>
+                <div>
+                    <h4 className="font-bold text-white mb-6">Company</h4>
+                    <ul className="space-y-4 text-sm">
+                        <li>
+                            <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">
+                                Contact Sales
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://bbu1.gitbook.io/bbu1-docs/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-400 transition-colors">
+                                Help Center
+                            </a>
+                        </li>
+                        <li>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="text-slate-400 hover:text-blue-400 text-left transition-colors font-medium">
+                                        About Us
+                                    </button>
+                                </DialogTrigger>
+                                <DialogContent className="!fixed !inset-0 !z-[200] !max-w-none !w-screen !h-screen !translate-x-0 !translate-y-0 !border-none p-0 bg-white dark:bg-slate-950 overflow-hidden">
+                                    <ScrollArea className="h-screen w-full">
+                                        <div className="relative flex flex-col">
+                                            <div className="sticky top-0 z-[210] flex justify-end p-6 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b">
+                                                <DialogClose asChild>
+                                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                                                        <X className="h-6 w-6 text-slate-900 dark:text-white" />
+                                                    </Button>
+                                                </DialogClose>
+                                            </div>
+                                            <div className="flex-grow">
+                                                <AboutCompanyExecutiveSection />
+                                            </div>
+                                            <div className="max-w-4xl mx-auto w-full px-4 text-center py-20 border-t mt-10">
+                                                <DialogClose asChild>
+                                                    <Button variant="outline" className="px-12 h-12 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl font-bold uppercase tracking-widest">
+                                                        Close & Return to System
+                                                    </Button>
+                                                </DialogClose>
+                                            </div>
+                                        </div>
+                                    </ScrollArea>
+                                </DialogContent>
+                            </Dialog>
+                        </li>
                         <li><Link href="/careers" className="text-slate-400 hover:text-blue-400 transition-colors">Careers</Link></li>
                     </ul>
                 </div>
@@ -1164,13 +921,12 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
             <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500">
                 <p>© {new Date().getFullYear()} {siteConfig.name} International. All rights reserved.</p>
                 <div className="flex items-center gap-6 mt-4 md:mt-0">
-                    <p className="flex items-center gap-1">Made with <Leaf className="h-3 w-3 text-green-500" /> for the World.</p>
+                    <p className="flex items-center gap-1">Made with <Leaf className="h-3 w-3 text-green-600" /> for the World.</p>
                 </div>
             </div>
         </div>
     </footer>
 );
-
 // --- AdvancedChatWidget Component ---
 const AdvancedChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
