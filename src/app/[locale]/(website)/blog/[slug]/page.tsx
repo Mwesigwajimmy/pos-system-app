@@ -1,5 +1,8 @@
 import { Metadata } from "next";
-import { Calendar, User, ArrowLeft, Tag, Share2, Clock, CheckCircle2, ArrowRight } from "lucide-react";
+import { 
+  Calendar, User, ArrowLeft, Tag, Share2, Clock, 
+  CheckCircle2, ArrowRight, Linkedin, Twitter, Facebook, MessageCircle 
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -150,10 +153,21 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 
   if (!article) notFound();
 
+  // --- SOCIAL SHARING LOGIC ---
+  const articleUrl = `https://bbu1.com/blog/${slug}`;
+  const shareMessage = `Check out this enterprise insight from BBU1: ${article.title}. Join the future of business at`;
+  
+  const shareLinks = {
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`,
+    twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}&url=${encodeURIComponent(articleUrl)}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`,
+    whatsapp: `https://wa.me/?text=${encodeURIComponent(shareMessage + " " + articleUrl)}`
+  };
+
   return (
     <article className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100">
       
-      {/* --- HEADER SECTION --- */}
+      {/* --- HERO SECTION --- */}
       <header className="relative w-full bg-slate-50 border-b border-slate-100">
         <div className="container mx-auto px-6 pt-24 pb-16 max-w-7xl">
           <Link href="/blog" className="inline-flex items-center gap-2 text-blue-600 text-sm font-bold mb-10 hover:translate-x-[-4px] transition-transform">
@@ -202,16 +216,34 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
           
           {/* Sidebar Info */}
           <aside className="lg:col-span-3 space-y-10 border-r border-slate-100 pr-8 hidden lg:block">
-            <div className="space-y-4">
+            
+            {/* Share Section (NEW) */}
+            <div className="space-y-6">
+               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                 <Share2 className="h-4 w-4" /> Share Analysis
+               </p>
+               <div className="grid grid-cols-2 gap-3">
+                  <a href={shareLinks.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-600 hover:text-blue-600 transition-all">
+                     <Linkedin className="h-5 w-5" />
+                  </a>
+                  <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:text-blue-400 transition-all">
+                     <Twitter className="h-5 w-5" />
+                  </a>
+                  <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-700 hover:text-blue-700 transition-all">
+                     <Facebook className="h-5 w-5" />
+                  </a>
+                  <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-green-500 hover:text-green-500 transition-all">
+                     <MessageCircle className="h-5 w-5" />
+                  </a>
+               </div>
+            </div>
+
+            <div className="space-y-4 pt-8 border-t border-slate-100">
               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">About the Author</p>
               <p className="text-slate-900 text-lg font-bold">{article.author}</p>
               <p className="text-slate-500 text-sm leading-relaxed">Specializing in enterprise-grade AI infrastructure and deterministic business automation at BBU1.</p>
             </div>
-            <div className="pt-6">
-               <button className="flex items-center gap-2 text-slate-900 font-bold text-sm hover:text-blue-600 transition-colors">
-                  <Share2 className="h-4 w-4" /> Share Analysis
-               </button>
-            </div>
+
             <div className="pt-8 border-t border-slate-100">
               <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                 <CheckCircle2 className="h-6 w-6 text-blue-600 mb-3" />
