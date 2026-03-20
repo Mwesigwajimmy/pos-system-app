@@ -25,10 +25,10 @@ export default function AuraAIPage() {
               <div className="lg:col-span-7">
                 <div className="inline-flex items-center gap-3 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full mb-8">
                   <Bot className="h-4 w-4 text-blue-600" />
-                  <span className="text-blue-700 text-xs font-bold tracking-widest">COGNITIVE INFRASTRUCTURE</span>
+                  <span className="text-blue-700 text-xs font-bold tracking-widest uppercase">Cognitive Infrastructure</span>
                 </div>
-                {/* Fixed: Normal case, not tilted, professional size */}
-                <h1 className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-tight mb-8">
+                {/* Fixed: Normal case, straight text, professional size */}
+                <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight mb-8">
                   Aura: The <span className="text-blue-600">Neural Core.</span>
                 </h1>
                 <p className="text-lg md:text-xl font-normal text-slate-600 leading-relaxed border-l-4 border-blue-600 pl-8 mb-10">
@@ -39,11 +39,13 @@ export default function AuraAIPage() {
                 </Button>
               </div>
               <div className="lg:col-span-5 relative aspect-square rounded-3xl overflow-hidden border border-slate-200 shadow-xl">
+                {/* --- UPDATED IMAGE: Representing Aura with your project asset --- */}
                 <Image 
-                  src="https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2000&auto=format&fit=crop" 
-                  alt="Aura AI Visualization" 
+                  src="/images/showcase/office-presentation-on-dashboard.jpg" 
+                  alt="Aura AI Neural Interface" 
                   fill 
                   className="object-cover"
+                  priority
                 />
               </div>
             </div>
@@ -84,7 +86,7 @@ export default function AuraAIPage() {
                 <div className="space-y-8">
                     <div className="flex items-center gap-3 text-blue-600">
                         <Sparkles className="h-6 w-6" />
-                        <span className="text-xs font-bold tracking-widest">DETERMINISTIC INTELLIGENCE</span>
+                        <span className="text-xs font-bold tracking-widest uppercase">Deterministic Intelligence</span>
                     </div>
                     <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
                        Beyond the Black Box.
@@ -110,7 +112,7 @@ export default function AuraAIPage() {
           </section>
 
           {/* --- FINAL CTA --- */}
-          <section className="text-center py-20 bg-blue-600 rounded-[3rem] shadow-2xl shadow-blue-600/20">
+          <section className="text-center py-20 bg-blue-600 rounded-[3rem] shadow-2xl shadow-blue-600/20 text-white">
              <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-6">Interface with Aura.</h2>
              <p className="text-blue-50 text-lg md:text-xl font-normal mb-10 max-w-2xl mx-auto">
                Experience the future of business management. Integrate the neural core of BBU1 into your enterprise today.
