@@ -15,13 +15,13 @@ import { MapPin, Briefcase, Printer, LineChart, TrendingUp, Wallet } from 'lucid
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export interface ProfitAndLossRecord {
-  category: 'Revenue' | 'Cost of Goods Sold' | 'Operating Expenses';
+  category: 'Revenue' | 'Cost of Goods Sold' | 'Operating Expenses' | string;
   account_name: string;
   amount: number;
 }
 
 export interface BalanceSheetRecord {
-  category: 'Assets' | 'Liabilities' | 'Equity';
+  category: 'Assets' | 'Liabilities' | 'Equity' | string;
   sub_category: string;
   account_name: string;
   balance: number;
@@ -38,10 +38,21 @@ interface FinanceHubProps {
   projects: { id: string, name: string }[];
 }
 
+// Internal Helper to bridge Database naming to Strict UI naming
+const isCategoryMatch = (itemCat: string, targetCat: string) => {
+  const item = itemCat?.toLowerCase() || '';
+  const target = targetCat?.toLowerCase() || '';
+  return item === target || 
+         item === target.replace(/s$/, '') || 
+         (target === 'liabilities' && item === 'liability') ||
+         (target === 'assets' && item === 'asset');
+};
+
 function BalanceSheetView({ data, dateStr }: { data: BalanceSheetRecord[], dateStr: string }) {
-  const assets = data.filter(d => d.category === 'Assets').reduce((acc, curr) => acc + curr.balance, 0);
-  const liabilities = data.filter(d => d.category === 'Liabilities').reduce((acc, curr) => acc + curr.balance, 0);
-  const equity = data.filter(d => d.category === 'Equity').reduce((acc, curr) => acc + curr.balance, 0);
+  // GRASSROOT FIX: Ensure 'Asset' matches 'Assets' and 'Liability' matches 'Liabilities'
+  const assets = data.filter(d => isCategoryMatch(d.category, 'Assets')).reduce((acc, curr) => acc + curr.balance, 0);
+  const liabilities = data.filter(d => isCategoryMatch(d.category, 'Liabilities')).reduce((acc, curr) => acc + curr.balance, 0);
+  const equity = data.filter(d => isCategoryMatch(d.category, 'Equity')).reduce((acc, curr) => acc + curr.balance, 0);
 
   return (
     <Card className="shadow-2xl border-none">
@@ -66,26 +77,26 @@ function BalanceSheetView({ data, dateStr }: { data: BalanceSheetRecord[], dateS
           </TableHeader>
           <TableBody>
             <TableRow className="bg-blue-50/30 font-bold"><TableCell className="text-blue-900">ASSET ACCOUNTS</TableCell><TableCell></TableCell></TableRow>
-            {data.filter(d => d.category === 'Assets').map((d, i) => (
-              <TableRow key={i} className="hover:bg-slate-50/50"><TableCell className="pl-8 text-slate-600">{d.account_name}</TableCell><TableCell className="text-right font-mono font-medium">{d.balance.toLocaleString()}</TableCell></TableRow>
+            {data.filter(d => isCategoryMatch(d.category, 'Assets')).map((d, i) => (
+              <TableRow key={i} className="hover:bg-slate-50/50"><TableCell className="pl-8 text-slate-600">{d.account_name}</TableCell><TableCell className="text-right font-mono font-medium">{d.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell></TableRow>
             ))}
-            <TableRow className="font-bold border-t bg-slate-100/30 text-lg"><TableCell>TOTAL ASSETS</TableCell><TableCell className="text-right font-mono">{assets.toLocaleString()}</TableCell></TableRow>
+            <TableRow className="font-bold border-t bg-slate-100/30 text-lg"><TableCell>TOTAL ASSETS</TableCell><TableCell className="text-right font-mono">{assets.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell></TableRow>
 
             <TableRow className="bg-red-50/30 font-bold mt-4"><TableCell className="text-red-900">LIABILITY ACCOUNTS</TableCell><TableCell></TableCell></TableRow>
-            {data.filter(d => d.category === 'Liabilities').map((d, i) => (
-              <TableRow key={i} className="hover:bg-slate-50/50"><TableCell className="pl-8 text-slate-600">{d.account_name}</TableCell><TableCell className="text-right font-mono font-medium">{d.balance.toLocaleString()}</TableCell></TableRow>
+            {data.filter(d => isCategoryMatch(d.category, 'Liabilities')).map((d, i) => (
+              <TableRow key={i} className="hover:bg-slate-50/50"><TableCell className="pl-8 text-slate-600">{d.account_name}</TableCell><TableCell className="text-right font-mono font-medium">{d.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell></TableRow>
             ))}
-            <TableRow className="font-bold border-t bg-slate-100/30 text-lg"><TableCell>TOTAL LIABILITIES</TableCell><TableCell className="text-right font-mono">{liabilities.toLocaleString()}</TableCell></TableRow>
+            <TableRow className="font-bold border-t bg-slate-100/30 text-lg"><TableCell>TOTAL LIABILITIES</TableCell><TableCell className="text-right font-mono">{liabilities.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell></TableRow>
 
             <TableRow className="bg-green-50/30 font-bold mt-4"><TableCell className="text-green-900">EQUITY & RETAINED EARNINGS</TableCell><TableCell></TableCell></TableRow>
-            {data.filter(d => d.category === 'Equity').map((d, i) => (
-              <TableRow key={i} className="hover:bg-slate-50/50"><TableCell className="pl-8 text-slate-600">{d.account_name}</TableCell><TableCell className="text-right font-mono font-medium">{d.balance.toLocaleString()}</TableCell></TableRow>
+            {data.filter(d => isCategoryMatch(d.category, 'Equity')).map((d, i) => (
+              <TableRow key={i} className="hover:bg-slate-50/50"><TableCell className="pl-8 text-slate-600">{d.account_name}</TableCell><TableCell className="text-right font-mono font-medium">{d.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell></TableRow>
             ))}
-            <TableRow className="font-bold border-t bg-slate-100/30 text-lg border-b-2"><TableCell>TOTAL EQUITY</TableCell><TableCell className="text-right font-mono">{equity.toLocaleString()}</TableCell></TableRow>
+            <TableRow className="font-bold border-t bg-slate-100/30 text-lg border-b-2"><TableCell>TOTAL EQUITY</TableCell><TableCell className="text-right font-mono">{equity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell></TableRow>
 
             <TableRow className="font-black border-t-4 bg-slate-900 text-white hover:bg-slate-900 h-20 uppercase tracking-widest text-xl">
               <TableCell className="pl-6">Liabilities & Equity</TableCell>
-              <TableCell className="text-right pr-6 font-mono font-black">{(liabilities + equity).toLocaleString()}</TableCell>
+              <TableCell className="text-right pr-6 font-mono font-black">{(liabilities + equity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -99,6 +110,17 @@ export function FinanceHub({ pnl, prevPnl, bs, trends, pnlPeriod, bsDate, locati
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isFirstRender = useRef(true);
+
+  // GRASSROOT PNL MAPPING: Since DB sends 'Expense', we must map 'Cost of Goods Sold' accounts specifically
+  const mapPnlData = (items: ProfitAndLossRecord[]) => items.map(item => {
+    const name = item.account_name?.toLowerCase() || '';
+    if (name.includes('cost of goods sold')) return { ...item, category: 'Cost of Goods Sold' as const };
+    if (item.category?.toLowerCase().includes('expense')) return { ...item, category: 'Operating Expenses' as const };
+    return item;
+  });
+
+  const processedPnl = mapPnlData(pnl);
+  const processedPrevPnl = prevPnl ? mapPnlData(prevPnl) : [];
 
   const [date, setDate] = useState<DateRange | undefined>(() => {
     const fromParam = searchParams.get('from');
@@ -206,7 +228,7 @@ export function FinanceHub({ pnl, prevPnl, bs, trends, pnlPeriod, bsDate, locati
           <TabsTrigger value="bs" className="rounded-lg font-black text-xs uppercase tracking-widest px-8">Financial Position</TabsTrigger>
         </TabsList>
         <TabsContent value="pnl">
-          <RevolutionaryProfitAndLossStatement data={pnl} prevData={prevPnl} reportPeriod={pnlPeriod} />
+          <RevolutionaryProfitAndLossStatement data={processedPnl} prevData={processedPrevPnl} reportPeriod={pnlPeriod} />
         </TabsContent>
         <TabsContent value="bs">
           <BalanceSheetView data={bs} dateStr={bsDate} />
