@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { formatCurrency } from '@/lib/utils';
 import { FileSpreadsheet, Printer, TrendingUp, TrendingDown, ListFilter, ArrowRight } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client'; // Standard Supabase client
+import { createClient } from '@/lib/supabase/client'; 
 import * as XLSX from 'xlsx';
 
 interface PnlItem {
-  category: 'Revenue' | 'Cost of Goods Sold' | 'Operating Expenses';
+  category: 'Revenue' | 'Cost of Goods Sold' | 'Operating Expenses' | string;
   account_name: string;
   amount: number;
 }
@@ -28,7 +28,17 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
   const [ledgerDetails, setLedgerDetails] = useState<any[]>([]);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
-  // Automated Drill-Down Fetcher
+  // Verification Helper: Maps database 'Expense' type to strict UI categories
+  const getMappedData = (items: PnlItem[]) => items.map(item => {
+    if (item.category === 'Revenue' || item.category === 'REVENUE') return { ...item, category: 'Revenue' };
+    if (item.account_name?.toLowerCase().includes('cost of goods sold')) return { ...item, category: 'Cost of Goods Sold' };
+    if (item.category?.toLowerCase().includes('expense')) return { ...item, category: 'Operating Expenses' };
+    return item;
+  });
+
+  const processedData = getMappedData(data);
+  const processedPrevData = getMappedData(prevData);
+
   useEffect(() => {
     if (!drillDownAccount) {
         setLedgerDetails([]);
@@ -37,10 +47,8 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
 
     const fetchLedgerData = async () => {
       setIsDetailsLoading(true);
-      
-      // Parse dates from "MMM dd - MMM dd, yyyy" format
       const parts = reportPeriod.split(' - ');
-      const endPart = parts[1]; // e.g. "Jan 31, 2026"
+      const endPart = parts[1]; 
       const year = endPart.split(', ')[1];
       const startDate = new Date(`${parts[0]}, ${year}`).toISOString().split('T')[0];
       const endDate = new Date(endPart).toISOString().split('T')[0];
@@ -53,18 +61,17 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
 
       if (error) console.error("Ledger Drilldown Error:", error);
       else setLedgerDetails(details || []);
-      
       setIsDetailsLoading(false);
     };
 
     fetchLedgerData();
   }, [drillDownAccount, reportPeriod, supabase]);
 
-  const calculateTotal = (category: PnlItem['category']) =>
-    data.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);
+  const calculateTotal = (category: string) =>
+    processedData.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);
 
-  const calculatePrevTotal = (category: PnlItem['category']) =>
-    prevData.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);
+  const calculatePrevTotal = (category: string) =>
+    processedPrevData.filter(item => item.category === category).reduce((sum, item) => sum + item.amount, 0);
 
   const totalRevenue = calculateTotal('Revenue');
   const prevRevenue = calculatePrevTotal('Revenue');
@@ -92,7 +99,7 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
   const exportToExcel = () => {
     const header = [["Profit & Loss Statement"], ["Period:", reportPeriod], [""]];
     const columns = [["Account", "Category", "Current Amount"]];
-    const rows = data.map(item => [item.account_name, item.category, item.amount]);
+    const rows = processedData.map(item => [item.account_name, item.category, item.amount]);
     const footer = [[""], ["Gross Profit", "", grossProfit], ["Net Profit", "", netProfit]];
     const ws = XLSX.utils.aoa_to_sheet([...header, ...columns, ...rows, ...footer]);
     const wb = XLSX.utils.book_new();
@@ -100,12 +107,12 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
     XLSX.writeFile(wb, `PnL_Statement_${reportPeriod.replace(/ /g, '_')}.xlsx`);
   };
 
-  const renderSection = (title: string, category: PnlItem['category'], isSubSection: boolean = false) => (
+  const renderSection = (title: string, category: string, isSubSection: boolean = false) => (
     <>
       <TableRow className={isSubSection ? 'bg-muted/30 font-bold' : 'bg-muted/50 font-bold'}>
         <TableCell colSpan={2}>{title}</TableCell>
       </TableRow>
-      {data.filter(item => item.category === category).map((item, index) => (
+      {processedData.filter(item => item.category === category).map((item, index) => (
         <TableRow 
           key={index} 
           className="group cursor-pointer hover:bg-slate-50 transition-all duration-200"

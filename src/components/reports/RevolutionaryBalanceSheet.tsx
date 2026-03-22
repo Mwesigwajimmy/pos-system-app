@@ -9,7 +9,7 @@ import { Scale, FileSpreadsheet, Printer } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface BalanceSheetItem {
-  category: 'Assets' | 'Liabilities' | 'Equity';
+  category: 'Assets' | 'Liabilities' | 'Equity' | string; // Updated to allow string matches from DB
   sub_category: string;
   account_name: string;
   balance: number;
@@ -22,10 +22,19 @@ interface RevolutionaryBalanceSheetProps {
 
 export function RevolutionaryBalanceSheet({ data, reportDate }: RevolutionaryBalanceSheetProps) {
   
-  const calculateTotal = (category: BalanceSheetItem['category'], subCategory?: string) =>
+  // Helper to strictly match DB singulars to UI plurals without assuming casing
+  const isCategoryMatch = (itemCat: string, targetCat: string) => {
+    const item = itemCat?.toLowerCase() || '';
+    const target = targetCat?.toLowerCase() || '';
+    return item === target || 
+           item === target.replace(/s$/, '') || 
+           (target === 'liabilities' && item === 'liability');
+  };
+
+  const calculateTotal = (category: string, subCategory?: string) =>
     data
-      .filter(item => item.category === category && (!subCategory || item.sub_category === subCategory))
-      .reduce((sum, item) => sum + item.balance, 0);
+      .filter(item => isCategoryMatch(item.category, category) && (!subCategory || item.sub_category === subCategory))
+      .reduce((sum, item) => sum + (Math.round(item.balance * 100) / 100), 0); // Corrects the .002 leaker during summation
 
   const totalAssets = calculateTotal('Assets');
   const totalLiabilities = calculateTotal('Liabilities');
@@ -50,8 +59,8 @@ export function RevolutionaryBalanceSheet({ data, reportDate }: RevolutionaryBal
     XLSX.writeFile(wb, `Balance_Sheet_${reportDate.replace(/ /g, '_')}.xlsx`);
   };
 
-  const renderSection = (title: string, category: BalanceSheetItem['category']) => {
-    const subCategories = [...new Set(data.filter(i => i.category === category).map(i => i.sub_category))];
+  const renderSection = (title: string, category: string) => {
+    const subCategories = [...new Set(data.filter(i => isCategoryMatch(i.category, category)).map(i => i.sub_category))];
     return (
       <>
         <TableRow className="font-extrabold text-lg bg-muted/50 hover:bg-muted/50">
@@ -63,7 +72,7 @@ export function RevolutionaryBalanceSheet({ data, reportDate }: RevolutionaryBal
               <TableCell className="pl-8">{sub}</TableCell>
               <TableCell className="text-right font-bold">{formatCurrency(calculateTotal(category, sub), 'USD')}</TableCell>
             </TableRow>
-            {data.filter(i => i.category === category && i.sub_category === sub).map((item, idx) => (
+            {data.filter(i => isCategoryMatch(i.category, category) && i.sub_category === sub).map((item, idx) => (
               <TableRow key={idx}>
                 <TableCell className="pl-12 text-muted-foreground">{item.account_name}</TableCell>
                 <TableCell className="text-right">{formatCurrency(item.balance, 'USD')}</TableCell>
