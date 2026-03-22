@@ -101,17 +101,19 @@ const useSignup = () => {
         const toastId = toast.loading('Creating your account...');
 
         const { data, error } = await supabase.auth.signUp({
-            email: values.email,
-            password: values.password,
-            options: {
-                data: {
-                    fullName: values.fullName,
-                    businessName: values.businessName,
-                    businessType: values.businessType,
-                    industry: values.industry, // Metadata update
-                }
-            }
-        });
+    email: values.email,
+    password: values.password,
+    options: {
+        // ADD THIS LINE BELOW:
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+            fullName: values.fullName,
+            businessName: values.businessName,
+            businessType: values.businessType,
+            industry: values.industry,
+        }
+    }
+});
 
         if (error) {
             toast.error(error.message, { id: toastId });
