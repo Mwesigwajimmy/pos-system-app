@@ -66,6 +66,6 @@ export async function GET(request: Request) {
   // On successful authentication, redirect the user to their intended page
   // or the dashboard root. The "next" parameter allows for redirecting
   // back to a specific page after login (e.g., a settings page).
-  const next = searchParams.get('next') ?? '/';
+  const next = searchParams.get('next') ?? '/dashboard';
   return NextResponse.redirect(`${origin}${next}`);
 }

@@ -262,7 +262,7 @@ export async function middleware(request: NextRequest) {
     );
 
     if (isPublicPath) {
-        const authOnlyPaths = ['/login', '/signup'];
+        const authOnlyPaths = ['/login', '/signup','/'];
         if (authOnlyPaths.includes(pathWithoutLocale)) {
             return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
         }
