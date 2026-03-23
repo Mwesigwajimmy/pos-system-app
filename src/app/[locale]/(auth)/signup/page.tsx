@@ -13,10 +13,23 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Eye, EyeOff, Briefcase, Globe2, Layers } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Briefcase, Globe2, Layers, MapPin, Phone, Landmark } from 'lucide-react';
+
+// --- GLOBAL COUNTRY DATA ---
+const countries = [
+    { code: 'UG', name: 'Uganda', currency: 'UGX' },
+    { code: 'KE', name: 'Kenya', currency: 'KES' },
+    { code: 'TZ', name: 'Tanzania', currency: 'TZS' },
+    { code: 'RW', name: 'Rwanda', currency: 'RWF' },
+    { code: 'US', name: 'United States', currency: 'USD' },
+    { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
+    { code: 'AE', name: 'United Arab Emirates', currency: 'AED' },
+    { code: 'ZA', name: 'South Africa', currency: 'ZAR' },
+    { code: 'NG', name: 'Nigeria', currency: 'NGN' },
+    { code: 'IN', name: 'India', currency: 'INR' },
+];
 
 // --- GLOBAL COMPREHENSIVE INDUSTRY MAPPING ---
-// This mapping covers global formal sectors and underserved local markets.
 const industryMapping: Record<string, string[]> = {
     "Retail / Wholesale": [
         "Local Shop / Kiosk", "Small-Scale Vendor / Hawker", "Market Stall / Trader", "General Supermarket / Grocery", 
@@ -73,12 +86,17 @@ const industryMapping: Record<string, string[]> = {
     ]
 };
 
-// --- Schema & Types (Updated with Industry) ---
+// --- Schema & Types (Updated with Global DNA) ---
 const signupSchema = z.object({
     fullName: z.string().min(2, "Full name must be at least 2 characters."),
     businessName: z.string().min(2, "Business name must be at least 2 characters."),
     businessType: z.string().min(1, "Please select a business type."),
     industry: z.string().min(1, "Please select a specific industry."),
+    country: z.string().min(2, "Country is required."),
+    currency: z.string().min(3, "Currency is required."),
+    phone: z.string().min(10, "Business phone is required."),
+    address: z.string().min(5, "Physical address is required for receipts."),
+    taxNumber: z.string().optional(),
     email: z.string().email("Please enter a valid email address."),
     password: z.string().min(6, "Password must be at least 6 characters."),
 });
@@ -93,27 +111,44 @@ const useSignup = () => {
     
     const form = useForm<SignupFormInput>({ 
         resolver: zodResolver(signupSchema), 
-        defaultValues: { fullName: '', businessName: '', businessType: '', industry: '', email: '', password: '' } 
+        defaultValues: { 
+            fullName: '', 
+            businessName: '', 
+            businessType: '', 
+            industry: '', 
+            country: 'UG', 
+            currency: 'UGX', 
+            phone: '', 
+            address: '',
+            taxNumber: '',
+            email: '', 
+            password: '' 
+        } 
     });
 
     const handleSignup = async (values: SignupFormInput) => {
         setIsLoading(true);
-        const toastId = toast.loading('Creating your account...');
+        const toastId = toast.loading('Establishing your Business Empire...');
 
         const { data, error } = await supabase.auth.signUp({
-    email: values.email,
-    password: values.password,
-    options: {
-        // ADD THIS LINE BELOW:
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: {
-            fullName: values.fullName,
-            businessName: values.businessName,
-            businessType: values.businessType,
-            industry: values.industry,
-        }
-    }
-});
+            email: values.email,
+            password: values.password,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+                data: {
+                    fullName: values.fullName,
+                    businessName: values.businessName,
+                    businessType: values.businessType,
+                    industry: values.industry,
+                    country: values.country,
+                    currency: values.currency,
+                    phone: values.phone,
+                    address: values.address,
+                    taxNumber: values.taxNumber,
+                    region: values.address.split(',')[0] // Extracts first part of address as region
+                }
+            }
+        });
 
         if (error) {
             toast.error(error.message, { id: toastId });
@@ -121,32 +156,22 @@ const useSignup = () => {
             return;
         }
 
-        // --- UNTOUCHED ORIGINAL RACE CONDITION LOGIC ---
         if (data.session) {
             toast.loading('Finalizing your business setup...', { id: toastId });
-
-            // Call the new PostgreSQL function to safely fetch the profile,
-            // which retries to give the backend trigger time to complete.
-            const { data: profileData, error: profileError } = await supabase
-                .rpc('get_user_business_profile');
-
+            const { data: profileData, error: profileError } = await supabase.rpc('get_user_business_profile');
             const profile = profileData ? profileData[0] : null;
 
             if (profileError || !profile) {
-                // If the profile is not found even after retries, it's a critical error.
-                toast.error(profileError?.message || 'Critical error: Could not find your business profile. Please try logging in or contact support.', { id: toastId, duration: 8000 });
-                router.push('/login'); // Redirect to login as a fallback
+                toast.error(profileError?.message || 'Critical error: Profile not found.', { id: toastId, duration: 8000 });
+                router.push('/login');
                 setIsLoading(false);
                 return;
             }
             
-            // Profile was found successfully!
             toast.success('Welcome! Your business is ready.', { id: toastId });
             router.push('/dashboard');
-
         } else {
-            // handles the case where email confirmation is enabled.
-            toast.success('Account created! Please check your email to confirm your account and log in.', { id: toastId, duration: 8000 });
+            toast.success('Account created! Please check your email to confirm your account.', { id: toastId, duration: 8000 });
             router.push('/auth/check-email');
         }
         setIsLoading(false);
@@ -161,7 +186,7 @@ const PasswordInput = memo(({ control }: { control: any }) => {
     return (
         <FormField control={control} name="password" render={({ field }) => (
             <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel>Secure Password</FormLabel>
                 <div className="relative">
                     <FormControl><Input type={isVisible ? 'text' : 'password'} className="pr-10" {...field} /></FormControl>
                     <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-0 top-0 h-full px-3 text-muted-foreground" aria-label={isVisible ? "Hide password" : "Show password"}>
@@ -179,7 +204,6 @@ PasswordInput.displayName = 'PasswordInput';
 const SmartIndustrySelect = ({ control, setValue }: { control: any, setValue: any }) => {
     const selectedType = useWatch({ control, name: 'businessType' });
     
-    // Safety check: Reset specific industry if the parent business type changes
     useEffect(() => {
         setValue('industry', '');
     }, [selectedType, setValue]);
@@ -192,13 +216,13 @@ const SmartIndustrySelect = ({ control, setValue }: { control: any, setValue: an
         <FormField control={control} name="industry" render={({ field }) => (
             <FormItem className="animate-in fade-in slide-in-from-top-2 duration-400">
                 <FormLabel className="flex items-center gap-2">
-                    <Layers className="w-3 h-3 text-primary" /> Specific Industry / Sector
+                    <Layers className="w-3 h-3 text-primary" /> Specific Sector
                 </FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="What is your specific industry?" /></SelectTrigger></FormControl>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Industry type?" /></SelectTrigger></FormControl>
                     <SelectContent className="max-h-[350px] overflow-y-auto">
                         <SelectGroup>
-                            <SelectLabel>Global Sectors for {selectedType}</SelectLabel>
+                            <SelectLabel>Available Sectors</SelectLabel>
                             {industries.map((ind) => (
                                 <SelectItem key={ind} value={ind}>{ind}</SelectItem>
                             ))}
@@ -214,75 +238,126 @@ const SmartIndustrySelect = ({ control, setValue }: { control: any, setValue: an
 // --- Main Signup Page Component ---
 export default function SignupPage() {
     const { form, isLoading, onSubmit } = useSignup();
+
+    // Auto-update currency based on country selection
+    const selectedCountry = useWatch({ control: form.control, name: 'country' });
+    useEffect(() => {
+        const match = countries.find(c => c.code === selectedCountry);
+        if (match) form.setValue('currency', match.currency);
+    }, [selectedCountry, form]);
+
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader>
-                    <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                        <Globe2 className="w-6 h-6 text-primary" /> Create Your Business Account
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+            <Card className="w-full max-w-2xl shadow-2xl border-none">
+                <CardHeader className="text-center">
+                    <CardTitle className="text-3xl font-black flex items-center justify-center gap-3">
+                        <Globe2 className="w-8 h-8 text-blue-600" /> BBU1 ENTERPRISE SETUP
                     </CardTitle>
-                    <CardDescription>One account to run your entire business empire.</CardDescription>
+                    <CardDescription className="text-slate-500 font-medium">Establish your global business identity autonomously.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
-                        <form onSubmit={onSubmit} className="space-y-4">
-                            <FormField control={form.control} name="fullName" render={({ field }) => (
-                                <FormItem><FormLabel>Your Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="businessName" render={({ field }) => (
-                                <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
+                        <form onSubmit={onSubmit} className="space-y-6">
                             
-                            {/* Business Type Field */}
-                            <FormField control={form.control} name="businessType" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Business Type</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select business category..." /></SelectTrigger></FormControl>
-                                        <SelectContent className="max-h-[250px]">
-                                            <SelectGroup>
-                                                <SelectLabel>Common</SelectLabel>
-                                                <SelectItem value="Retail / Wholesale">Retail / Wholesale</SelectItem>
-                                                <SelectItem value="Restaurant / Cafe">Restaurant / Cafe</SelectItem>
-                                            </SelectGroup>
-                                            <SelectGroup>
-                                                <SelectLabel>Trades & Services</SelectLabel>
-                                                <SelectItem value="Contractor">Contractor (General, Remodeling)</SelectItem>
-                                                <SelectItem value="Field Service">Field Service (Trades, Barber, Salon)</SelectItem>
-                                                <SelectItem value="Professional Services">Professional Services (Accounting, Medical)</SelectItem>
-                                            </SelectGroup>
-                                            <SelectGroup>
-                                                <SelectLabel>Specialized Industries</SelectLabel>
-                                                <SelectItem value="Distribution">Distribution / Wholesale Supply</SelectItem>
-                                                <SelectItem value="Lending / Microfinance">Lending / Microfinance</SelectItem>
-                                                <SelectItem value="Rentals / Real Estate">Rentals / Real Estate</SelectItem>
-                                                <SelectItem value="SACCO / Co-operative">SACCO / Co-operative</SelectItem>
-                                                <SelectItem value="Telecom Services">Telecom & Mobile Money</SelectItem>
-                                                <SelectItem value="Nonprofit">Nonprofit / Education / NGO</SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
+                            {/* IDENTITY SECTION */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="fullName" render={({ field }) => (
+                                    <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="businessName" render={({ field }) => (
+                                    <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input placeholder="Empire Holdings Ltd" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
 
-                            {/* DYNAMIC SMART INDUSTRY DROPDOWN */}
-                            <SmartIndustrySelect control={form.control} setValue={form.setValue} />
-                            
-                            <FormField control={form.control} name="email" render={({ field }) => (
-                                <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
+                            {/* GLOBAL LOCATION DNA SECTION */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100/50 p-4 rounded-xl border border-slate-200">
+                                <FormField control={form.control} name="country" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><MapPin className="w-3 h-3"/> Operational Country</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {countries.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="currency" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><Landmark className="w-3 h-3"/> Reporting Currency</FormLabel>
+                                        <FormControl><Input readOnly className="bg-slate-200 font-mono font-bold" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
 
-                            <PasswordInput control={form.control} />
+                            {/* CONTACT & ADDRESS (FOR RECEIPTS) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="phone" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><Phone className="w-3 h-3"/> Business Phone</FormLabel>
+                                        <FormControl><Input placeholder="+256..." {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="address" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><MapPin className="w-3 h-3"/> Physical Address</FormLabel>
+                                        <FormControl><Input placeholder="Plot 12, High St" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+
+                            {/* INDUSTRY ROUTING */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="businessType" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Industry Category</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select business type..." /></SelectTrigger></FormControl>
+                                            <SelectContent className="max-h-[250px]">
+                                                <SelectGroup>
+                                                    <SelectLabel>Retail & Services</SelectLabel>
+                                                    <SelectItem value="Retail / Wholesale">Retail / Wholesale</SelectItem>
+                                                    <SelectItem value="Restaurant / Cafe">Restaurant / Cafe</SelectItem>
+                                                    <SelectItem value="Field Service">Field Service (Trades, Salon)</SelectItem>
+                                                    <SelectItem value="Professional Services">Professional Services</SelectItem>
+                                                </SelectGroup>
+                                                <SelectGroup>
+                                                    <SelectLabel>Specialized</SelectLabel>
+                                                    <SelectItem value="Distribution">Distribution / Wholesale Supply</SelectItem>
+                                                    <SelectItem value="Lending / Microfinance">Lending / Microfinance</SelectItem>
+                                                    <SelectItem value="Rentals / Real Estate">Rentals / Real Estate</SelectItem>
+                                                    <SelectItem value="SACCO / Co-operative">SACCO / Co-operative</SelectItem>
+                                                    <SelectItem value="Telecom Services">Telecom & Mobile Money</SelectItem>
+                                                    <SelectItem value="Nonprofit">Nonprofit / Education / NGO</SelectItem>
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <SmartIndustrySelect control={form.control} setValue={form.setValue} />
+                            </div>
+
+                            <hr className="border-dashed" />
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="email" render={({ field }) => (
+                                    <FormItem><FormLabel>Login Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <PasswordInput control={form.control} />
+                            </div>
                             
-                            <Button type="submit" className="w-full font-bold" disabled={isLoading}>
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-                                Sign Up Free
+                            <Button type="submit" className="w-full h-12 text-lg font-black bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100" disabled={isLoading}>
+                                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "ESTABLISH EMPIRE"}
                             </Button>
                             
                             <p className="text-center text-sm text-muted-foreground pt-1">
-                                Already have an account?{' '}
-                                <Link href="/login" className="font-semibold text-primary hover:underline">Log In</Link>
+                                Already possess a Sovereign ID?{' '}
+                                <Link href="/login" className="font-bold text-blue-600 hover:underline">Log In</Link>
                             </p>
                         </form>
                     </Form>
