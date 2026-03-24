@@ -8,17 +8,18 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { Country, State } from 'country-state-city';
+
+// UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Eye, EyeOff, Globe2, Layers, MapPin, ShieldCheck, Calculator } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, SelectLabel } from "@/components/ui/select";
+import { Loader2, Eye, EyeOff, Globe2, Layers, MapPin, ShieldCheck, Calculator, Phone, Briefcase, Landmark } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 /** 
  * ULTIMATE GLOBAL TAX ATLAS
- * Comprehensive mapping of every sovereign country's specific Tax Identification nomenclature.
  */
 const taxLabelAtlas: Record<string, string> = {
     AF: 'TIN', AL: 'NIPT', DZ: 'NIF', AD: 'NR', AO: 'NIF', AG: 'TIN', AR: 'CUIT', AM: 'TIN', AU: 'ABN', AT: 'UID', 
@@ -36,37 +37,81 @@ const taxLabelAtlas: Record<string, string> = {
     QA: 'TRN', RO: 'CIF', RU: 'INN', RW: 'TIN', SA: 'VAT', SN: 'NINEA', RS: 'PIB', SG: 'UEN', SK: 'DIC', SI: 'ID', 
     ZA: 'TRN', ES: 'CIF', LK: 'TIN', SD: 'TIN', SE: 'ORG', CH: 'UID', SY: 'TIN', TW: 'BAN', TJ: 'TIN', TZ: 'TIN', 
     TH: 'TIN', TG: 'NIF', TT: 'BIR', TN: 'MF', TR: 'VKN', UG: 'TIN', UA: 'TIN', AE: 'TRN', GB: 'VAT', US: 'EIN', 
-    UY: 'RUT', UZ: 'TIN', VE: 'RIF', VN: 'MST', YE: 'TIN', ZM: 'TPIN', ZW: 'BP', PK: 'NTN', IL: 'BN', MY: 'TIN', 
-    SG: 'UEN', TH: 'TIN', VN: 'MST', PH: 'TIN', ID: 'NPWP', KR: 'BRN', TW: 'BAN'
+    UY: 'RUT', UZ: 'TIN', VE: 'RIF', VN: 'MST', YE: 'TIN', ZM: 'TPIN', ZW: 'BP'
 };
 
+/** 
+ * COMPREHENSIVE INDUSTRIAL LOGIC DNA (From File 2)
+ */
 const industryMapping: Record<string, string[]> = {
-    "Retail / Wholesale": ["General Supermarket", "Pharmacy", "Electronics", "Boutique", "Hardware", "Agro-vet"],
-    "Restaurant / Cafe": ["Cafe", "Fast Food", "Fine Dining", "Bakery", "Bar / Lounge"],
-    "Professional Services": ["Accounting", "Medical Clinic", "Legal Firm", "Business Consultancy", "IT Services", "Architecture"],
-    "Field Service": ["General Maintenance", "Cleaning Services", "Barber Shop", "Beauty Salon", "Appliance Repair", "Plumbing", "Electrical Services", "HVAC"],
-    "Lending / Microfinance": ["Micro-lending", "Credit Union", "Fintech Lending"],
-    "Telecom Services": ["Mobile Money Agent", "ISP", "Network Infrastructure"],
-    "Distribution": ["FMCG Distribution", "Industrial Supplies", "Pharmaceutical Wholesale"],
-    "Contractor": ["Civil Engineering", "General Building", "Interior Design", "Electrical"],
-    "Rentals / Real Estate": ["Residential Property Mgmt", "Commercial Property Mgmt", "Short-stay / Airbnb"],
-    "SACCO / Co-operative": ["Transport SACCO", "Farmers Co-operative", "Investment Group"],
-    "Nonprofit": ["NGO", "Educational Institution", "Religious Organization"]
+    "Retail / Wholesale": [
+        "Local Shop / Kiosk", "Small-Scale Vendor / Hawker", "Market Stall / Trader", "General Supermarket / Grocery",
+        "Boutique / Fashion & Apparel", "Hardware & Construction Materials", "Pharmacy / Chemist / Drug Store",
+        "Agro-vet & Farm Supplies", "Electronics & Mobile Accessories", "Cosmetics & Beauty Shop",
+        "Auto Spare Parts", "Liquor Store / Wines & Spirits", "Bookshop & Stationery", "Furniture & Home Decor",
+        "Wholesale Distribution (FMCG)", "Pet Shop / Supplies", "Jewelry & Luxury Goods", "Toy Store", "Gas Station Shop"
+    ],
+    "Restaurant / Cafe": [
+        "Local Eatery (Kibanda / Mama Ntilie)", "Coffee Shop / Cafe", "Fast Food / Quick Service", "Fine Dining / Restaurant",
+        "Bakery & Pastry Shop", "Bar / Pub / Lounge", "Nightclub / Entertainment Venue", "Food Truck / Mobile Kitchen",
+        "Catering Services", "Pizzeria", "Ice Cream / Dessert Parlor", "Juice & Smoothie Bar"
+    ],
+    "Contractor": [
+        "Civil Engineering / Roadwork", "General Building Contractor", "Electrical Installation & Repair",
+        "Plumbing & Sanitation", "HVAC / Air Conditioning", "Interior Design & Fit-out", "Carpentry & Joinery",
+        "Roofing & Waterproofing", "Landscaping & Gardening", "Painting & Specialist Finishes", "Masonry & Tiling"
+    ],
+    "Field Service": [
+        "Cleaning & Janitorial Services", "Salon / Barber Shop / Spa", "Laundry & Dry Cleaning", "Security & Surveillance",
+        "Pest Control / Fumigation", "Waste Management / Recycling", "Appliance Repair", "Logistics / Courier / Delivery",
+        "Moving & Storage", "Tailoring & Fashion Design", "Shoe Repair & Cobbler", "Photography & Videography"
+    ],
+    "Professional Services": [
+        "Accounting / Audit / Tax", "Legal Services / Law Firm", "IT Support & Software Development",
+        "Medical Clinic / Private Practice", "Dental Clinic", "Veterinary Services", "Marketing & Digital Agency",
+        "Real Estate Agency / Brokerage", "Architecture & Urban Planning", "HR & Recruitment Consultancy",
+        "Insurance Agency / Brokerage", "Business Consultancy"
+    ],
+    "Distribution": [
+        "FMCG Distribution", "Pharmaceutical Wholesale", "Agricultural Produce Aggregator",
+        "Building Materials Distribution", "Industrial Chemicals / Supplies", "Textile & Fabric Wholesale",
+        "Hardware & Tool Distribution"
+    ],
+    "Lending / Microfinance": [
+        "Micro-lending / Credit Provider", "Savings & Credit Union", "Fintech Lending Platform",
+        "Debt Collection Agency", "Pawn Shop / Collateral Lending", "Leasing & Asset Finance"
+    ],
+    "Rentals / Real Estate": [
+        "Residential Property Management", "Commercial Property Management", "Short-stay / Airbnb Host",
+        "Car & Vehicle Hire", "Event Space / Tent & Chair Hire", "Construction Equipment Rental"
+    ],
+    "SACCO / Co-operative": [
+        "Transport / Matatu SACCO", "Farmers Co-operative", "Investment Group (Chama)",
+        "Housing Co-operative", "Employee Savings SACCO", "Artisan / Trade Co-operative"
+    ],
+    "Telecom Services": [
+        "Cyber Cafe / Business Center", "Mobile Money & Agency Banking", "Internet Service Provider (ISP)",
+        "Network Infrastructure / Fiber", "Satellite & VOIP Services", "Telecom Hardware Sales"
+    ],
+    "Nonprofit": [
+        "NGO (International / National)", "Religious Organization / Church / Mosque", "Foundation / Trust",
+        "Community Based Organization (CBO)", "School / Educational Institution", "Professional Association"
+    ]
 };
 
 const signupSchema = z.object({
-    fullName: z.string().min(2, "Legal name required."),
-    businessName: z.string().min(2, "Business name required."),
-    businessType: z.string().min(1, "Select industry category."),
-    industry: z.string().min(1, "Select specific sector."),
+    fullName: z.string().min(2, "Legal authority name required."),
+    businessName: z.string().min(2, "Enterprise entity name required."),
+    businessType: z.string().min(1, "Select industry classification."),
+    industry: z.string().min(1, "Select specific industrial DNA."),
     country: z.string().min(2),
-    state: z.string().min(1, "Regional selection required for compliance."),
+    state: z.string().min(1, "Regional selection required."),
     currency: z.string().min(3),
-    taxNumber: z.string().min(4, "Registration number required."),
+    taxNumber: z.string().min(4, "Tax registration number required."),
     manualTaxRate: z.coerce.number().min(0).max(100),
-    phone: z.string().min(8, "Valid business phone required."),
-    address: z.string().min(10, "Physical address required."),
-    email: z.string().email("Professional email required."),
+    phone: z.string().min(8, "Valid business contact required."),
+    address: z.string().min(5, "Physical headquarters address required."),
+    email: z.string().email("Professional fiduciary email required."),
     password: z.string().min(8, "Security requirement: 8+ characters."),
 });
 
@@ -91,40 +136,43 @@ export default function SignupPage() {
             industry: '',
             address: '',
             taxNumber: '',
+            state: '',
             email: '',
             password: ''
         } 
     });
 
     const selectedCountryCode = useWatch({ control: form.control, name: 'country' });
+    const selectedType = useWatch({ control: form.control, name: 'businessType' });
     
     const allCountries = useMemo(() => Country.getAllCountries(), []);
     const availableStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode) || [], [selectedCountryCode]);
     const countryDetails = useMemo(() => Country.getCountryByCode(selectedCountryCode), [selectedCountryCode]);
 
+    // Handle Country -> Currency & Tax Logic
     useEffect(() => {
         if (countryDetails) {
             form.setValue('currency', countryDetails.currency);
             form.setValue('phone', `+${countryDetails.phoneCode}`);
             
-            // Comprehensive Tax Rate Logic per Sovereign Jurisdiction
             const c = selectedCountryCode;
             if (c === 'UG') form.setValue('manualTaxRate', 18.0);
             else if (c === 'KE') form.setValue('manualTaxRate', 16.0);
             else if (c === 'TZ') form.setValue('manualTaxRate', 18.0);
             else if (c === 'RW') form.setValue('manualTaxRate', 18.0);
-            else if (c === 'US') form.setValue('manualTaxRate', 8.25);
+            else if (['GB', 'FR', 'DE'].includes(c)) form.setValue('manualTaxRate', 20.0);
             else if (c === 'NG') form.setValue('manualTaxRate', 7.5);
-            else if (['GB', 'FR', 'DE', 'IT', 'ES', 'NL'].includes(c)) form.setValue('manualTaxRate', 20.0);
-            else if (c === 'IN') form.setValue('manualTaxRate', 18.0);
-            else if (c === 'AU') form.setValue('manualTaxRate', 10.0);
             else if (c === 'ZA') form.setValue('manualTaxRate', 15.0);
-            else if (c === 'CN') form.setValue('manualTaxRate', 13.0);
             else form.setValue('manualTaxRate', 0);
             
-            form.setValue('state', ''); // Reset state on country change
+            form.setValue('state', ''); 
         }
     }, [selectedCountryCode, countryDetails, form]);
+
+    // Reset specific industry when category changes
+    useEffect(() => {
+        form.setValue('industry', '');
+    }, [selectedType, form]);
 
     const handleSignup = async (values: SignupFormInput) => {
         setIsLoading(true);
@@ -152,7 +200,7 @@ export default function SignupPage() {
         if (data.session) {
             router.push('/dashboard');
         } else {
-            toast.success('Empire Birthed. Verify your email to access the Ledger.', { id: toastId, duration: 10000 });
+            toast.success('Empire Birthed. Verify email to access the Ledger.', { id: toastId, duration: 10000 });
             router.push('/auth/check-email');
         }
         setIsLoading(false);
@@ -168,10 +216,12 @@ export default function SignupPage() {
                     </CardTitle>
                     <CardDescription className="text-slate-400 font-black text-sm uppercase tracking-[0.5em] mt-6">Enterprise Financial Operating System</CardDescription>
                 </CardHeader>
+                
                 <CardContent className="p-16">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleSignup)} className="space-y-16">
                             
+                            {/* SECTION I: EXECUTIVE IDENTITY */}
                             <div className="space-y-8">
                                 <h3 className="text-[12px] font-black uppercase text-blue-600 tracking-[0.4em] flex items-center gap-4 border-b border-blue-50 pb-4">
                                     <ShieldCheck className="w-5 h-5"/> I. Executive Identity
@@ -180,20 +230,21 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="fullName" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-black uppercase text-slate-400">Managing Authority Legal Name</FormLabel>
-                                            <FormControl><Input placeholder="Legal name as per ID" className="h-16 border-slate-100 bg-slate-50/50 font-black text-lg px-6 rounded-3xl" {...field} /></FormControl>
+                                            <FormControl><Input placeholder="Full Legal Name" className="h-16 border-slate-100 bg-slate-50/50 font-black text-lg px-6 rounded-3xl" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name="businessName" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-black uppercase text-slate-400">Registered Business Entity</FormLabel>
-                                            <FormControl><Input placeholder="Trading name of empire" className="h-16 border-slate-100 bg-slate-50/50 font-black text-lg px-6 rounded-3xl" {...field} /></FormControl>
+                                            <FormControl><Input placeholder="Trading Name of Empire" className="h-16 border-slate-100 bg-slate-50/50 font-black text-lg px-6 rounded-3xl" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                 </div>
                             </div>
 
+                            {/* SECTION II: JURISDICTIONAL MANDATE */}
                             <div className="bg-blue-50/20 p-14 rounded-[3.5rem] border border-blue-100 space-y-12 shadow-inner">
                                 <h3 className="text-[12px] font-black uppercase text-blue-600 tracking-[0.4em] flex items-center gap-4">
                                     <MapPin className="w-5 h-5 text-red-500"/> II. Jurisdictional Mandate
@@ -272,6 +323,7 @@ export default function SignupPage() {
                                 )} />
                             </div>
 
+                            {/* SECTION III: INDUSTRIAL LOGIC DNA */}
                             <div className="space-y-8">
                                 <h3 className="text-[12px] font-black uppercase text-blue-600 tracking-[0.4em] flex items-center gap-4 border-b border-blue-50 pb-4">
                                     <Layers className="w-5 h-5"/> III. Industrial Logic Routing
@@ -281,20 +333,30 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-black uppercase text-slate-400">Industry Classification</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger className="h-16 font-black text-base px-6 rounded-3xl"><SelectValue placeholder="Identify Sector..." /></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-16 font-black text-base px-6 rounded-3xl border-slate-200"><SelectValue placeholder="Identify Sector..." /></SelectTrigger></FormControl>
                                                 <SelectContent className="rounded-[2rem] border-none shadow-2xl">
-                                                    {Object.keys(industryMapping).map(k => <SelectItem key={k} value={k} className="font-black text-slate-700">{k}</SelectItem>)}
+                                                    <SelectGroup>
+                                                        <SelectLabel className="px-4 py-2 text-[10px] uppercase text-slate-400">Primary Categories</SelectLabel>
+                                                        {Object.keys(industryMapping).map(k => (
+                                                            <SelectItem key={k} value={k} className="font-black text-slate-700">{k}</SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
                                     )} />
+                                    
                                     <FormField control={form.control} name="industry" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-black uppercase text-slate-400">Core Architecture DNA</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger className="h-16 font-black text-base px-6 rounded-3xl"><SelectValue placeholder="Select Business DNA..." /></SelectTrigger></FormControl>
-                                                <SelectContent className="rounded-[2rem] border-none shadow-2xl">
-                                                    {(industryMapping[form.getValues('businessType')] || []).map(s => <SelectItem key={s} value={s} className="font-black text-slate-700">{s}</SelectItem>)}
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedType}>
+                                                <FormControl><SelectTrigger className="h-16 font-black text-base px-6 rounded-3xl border-slate-200"><SelectValue placeholder="Select Business DNA..." /></SelectTrigger></FormControl>
+                                                <SelectContent className="rounded-[2rem] border-none shadow-2xl max-h-[400px]">
+                                                    <ScrollArea className="h-80">
+                                                        {(industryMapping[selectedType] || []).map(s => (
+                                                            <SelectItem key={s} value={s} className="font-black text-slate-700">{s}</SelectItem>
+                                                        ))}
+                                                    </ScrollArea>
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -302,12 +364,13 @@ export default function SignupPage() {
                                 </div>
                             </div>
 
+                            {/* SECTION IV: SECURITY & CREDENTIALS */}
                             <div className="space-y-8 border-t border-slate-100 pt-12">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                     <FormField control={form.control} name="email" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-[10px] font-black uppercase text-slate-400">Sovereign Fiduciary Email</FormLabel>
-                                            <FormControl><Input type="email" className="h-16 font-black text-xl px-6 rounded-3xl border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input type="email" placeholder="admin@empire.com" className="h-16 font-black text-xl px-6 rounded-3xl border-slate-200 shadow-sm" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -316,7 +379,9 @@ export default function SignupPage() {
                                             <FormLabel className="text-[10px] font-black uppercase text-slate-400">Kernel Encryption Key</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input type={isVisible ? 'text' : 'password'} className="h-16 pr-16 font-mono font-black text-xl px-6 rounded-3xl border-slate-200 shadow-sm" {...field} /></FormControl>
-                                                <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-6 top-5 text-slate-400 hover:text-blue-600">{isVisible ? <EyeOff size={26}/> : <Eye size={26}/>}</button>
+                                                <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-6 top-5 text-slate-400 hover:text-blue-600">
+                                                    {isVisible ? <EyeOff size={26}/> : <Eye size={26}/>}
+                                                </button>
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -324,7 +389,12 @@ export default function SignupPage() {
                                 </div>
                             </div>
                             
-                            <Button type="submit" className="w-full h-36 text-5xl font-black uppercase tracking-[0.5em] bg-blue-600 hover:bg-blue-700 shadow-[0_40px_100px_rgba(59,130,246,0.6)] rounded-[3rem] border-b-[12px] border-blue-800 transition-all active:scale-95" disabled={isLoading}>
+                            {/* SUBMIT BUTTON */}
+                            <Button 
+                                type="submit" 
+                                className="w-full h-36 text-5xl font-black uppercase tracking-[0.5em] bg-blue-600 hover:bg-blue-700 shadow-[0_40px_100px_rgba(59,130,246,0.6)] rounded-[3rem] border-b-[12px] border-blue-800 transition-all active:scale-95 disabled:opacity-50" 
+                                disabled={isLoading}
+                            >
                                 {isLoading ? <><Loader2 className="mr-8 h-12 w-12 animate-spin" /> ESTABLISHING...</> : "BIRTH EMPIRE"}
                             </Button>
 
@@ -332,7 +402,7 @@ export default function SignupPage() {
                                 <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-4">
                                     <ShieldCheck className="w-6 h-6 text-emerald-500" /> Forensic Mathematical Integrity Verified
                                 </span>
-                                <Link href="/login" className="text-sm font-black text-blue-600 uppercase hover:underline tracking-widest bg-blue-50 px-6 py-2 rounded-full">Access Existing Ledger</Link>
+                                <Link href="/login" className="text-sm font-black text-blue-600 uppercase hover:underline tracking-widest bg-blue-50 px-8 py-3 rounded-full">Access Existing Ledger</Link>
                             </div>
                         </form>
                     </Form>
