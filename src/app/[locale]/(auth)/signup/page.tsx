@@ -18,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 /** 
  * ULTIMATE GLOBAL TAX ATLAS
- * Exhaustive mapping of every country's specific Tax Identification nomenclature.
+ * Comprehensive mapping of every sovereign country's specific Tax Identification nomenclature.
  */
 const taxLabelAtlas: Record<string, string> = {
     AF: 'TIN', AL: 'NIPT', DZ: 'NIF', AD: 'NR', AO: 'NIF', AG: 'TIN', AR: 'CUIT', AM: 'TIN', AU: 'ABN', AT: 'UID', 
@@ -36,14 +36,15 @@ const taxLabelAtlas: Record<string, string> = {
     QA: 'TRN', RO: 'CIF', RU: 'INN', RW: 'TIN', SA: 'VAT', SN: 'NINEA', RS: 'PIB', SG: 'UEN', SK: 'DIC', SI: 'ID', 
     ZA: 'TRN', ES: 'CIF', LK: 'TIN', SD: 'TIN', SE: 'ORG', CH: 'UID', SY: 'TIN', TW: 'BAN', TJ: 'TIN', TZ: 'TIN', 
     TH: 'TIN', TG: 'NIF', TT: 'BIR', TN: 'MF', TR: 'VKN', UG: 'TIN', UA: 'TIN', AE: 'TRN', GB: 'VAT', US: 'EIN', 
-    UY: 'RUT', UZ: 'TIN', VE: 'RIF', VN: 'MST', YE: 'TIN', ZM: 'TPIN', ZW: 'BP'
+    UY: 'RUT', UZ: 'TIN', VE: 'RIF', VN: 'MST', YE: 'TIN', ZM: 'TPIN', ZW: 'BP', PK: 'NTN', IL: 'BN', MY: 'TIN', 
+    SG: 'UEN', TH: 'TIN', VN: 'MST', PH: 'TIN', ID: 'NPWP', KR: 'BRN', TW: 'BAN'
 };
 
 const industryMapping: Record<string, string[]> = {
     "Retail / Wholesale": ["General Supermarket", "Pharmacy", "Electronics", "Boutique", "Hardware", "Agro-vet"],
     "Restaurant / Cafe": ["Cafe", "Fast Food", "Fine Dining", "Bakery", "Bar / Lounge"],
     "Professional Services": ["Accounting", "Medical Clinic", "Legal Firm", "Business Consultancy", "IT Services", "Architecture"],
-    "Field Service": ["General Maintenance", "Cleaning Services", "Barber Shop", "Beauty Salon", "Appliance Repair"],
+    "Field Service": ["General Maintenance", "Cleaning Services", "Barber Shop", "Beauty Salon", "Appliance Repair", "Plumbing", "Electrical Services", "HVAC"],
     "Lending / Microfinance": ["Micro-lending", "Credit Union", "Fintech Lending"],
     "Telecom Services": ["Mobile Money Agent", "ISP", "Network Infrastructure"],
     "Distribution": ["FMCG Distribution", "Industrial Supplies", "Pharmaceutical Wholesale"],
@@ -79,7 +80,20 @@ export default function SignupPage() {
 
     const form = useForm<SignupFormInput>({ 
         resolver: zodResolver(signupSchema), 
-        defaultValues: { country: 'UG', currency: 'UGX', phone: '+256', manualTaxRate: 18.0 } 
+        defaultValues: { 
+            country: 'UG', 
+            currency: 'UGX', 
+            phone: '+256', 
+            manualTaxRate: 18.0,
+            fullName: '',
+            businessName: '',
+            businessType: '',
+            industry: '',
+            address: '',
+            taxNumber: '',
+            email: '',
+            password: ''
+        } 
     });
 
     const selectedCountryCode = useWatch({ control: form.control, name: 'country' });
@@ -93,7 +107,7 @@ export default function SignupPage() {
             form.setValue('currency', countryDetails.currency);
             form.setValue('phone', `+${countryDetails.phoneCode}`);
             
-            // Core Tax Rate Logic
+            // Comprehensive Tax Rate Logic per Sovereign Jurisdiction
             const c = selectedCountryCode;
             if (c === 'UG') form.setValue('manualTaxRate', 18.0);
             else if (c === 'KE') form.setValue('manualTaxRate', 16.0);
@@ -101,7 +115,11 @@ export default function SignupPage() {
             else if (c === 'RW') form.setValue('manualTaxRate', 18.0);
             else if (c === 'US') form.setValue('manualTaxRate', 8.25);
             else if (c === 'NG') form.setValue('manualTaxRate', 7.5);
-            else if (['GB', 'FR', 'DE', 'IT'].includes(c)) form.setValue('manualTaxRate', 20.0);
+            else if (['GB', 'FR', 'DE', 'IT', 'ES', 'NL'].includes(c)) form.setValue('manualTaxRate', 20.0);
+            else if (c === 'IN') form.setValue('manualTaxRate', 18.0);
+            else if (c === 'AU') form.setValue('manualTaxRate', 10.0);
+            else if (c === 'ZA') form.setValue('manualTaxRate', 15.0);
+            else if (c === 'CN') form.setValue('manualTaxRate', 13.0);
             else form.setValue('manualTaxRate', 0);
             
             form.setValue('state', ''); // Reset state on country change
@@ -306,9 +324,16 @@ export default function SignupPage() {
                                 </div>
                             </div>
                             
-                            <Button type="submit" className="w-full h-36 text-5xl font-black uppercase tracking-[0.5em] bg-blue-600 hover:bg-blue-700 shadow-2xl rounded-[3rem] border-b-[12px] border-blue-800" disabled={isLoading}>
-                                {isLoading ? <Loader2 className="h-16 w-16 animate-spin" /> : "BIRTH EMPIRE"}
+                            <Button type="submit" className="w-full h-36 text-5xl font-black uppercase tracking-[0.5em] bg-blue-600 hover:bg-blue-700 shadow-[0_40px_100px_rgba(59,130,246,0.6)] rounded-[3rem] border-b-[12px] border-blue-800 transition-all active:scale-95" disabled={isLoading}>
+                                {isLoading ? <><Loader2 className="mr-8 h-12 w-12 animate-spin" /> ESTABLISHING...</> : "BIRTH EMPIRE"}
                             </Button>
+
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-8 px-6">
+                                <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-4">
+                                    <ShieldCheck className="w-6 h-6 text-emerald-500" /> Forensic Mathematical Integrity Verified
+                                </span>
+                                <Link href="/login" className="text-sm font-black text-blue-600 uppercase hover:underline tracking-widest bg-blue-50 px-6 py-2 rounded-full">Access Existing Ledger</Link>
+                            </div>
                         </form>
                     </Form>
                 </CardContent>

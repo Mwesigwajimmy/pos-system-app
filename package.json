@@ -14,7 +14,7 @@
     "@aws-sdk/client-ses": "^3.918.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
-    "@ducanh2912/next-pwa": "^10.2.9",
+    "@ducanh2912/next-pwa": "^10.2.6",
     "@formatjs/intl-localematcher": "^0.6.2",
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",
@@ -75,9 +75,8 @@
     "langchain": "^1.0.1",
     "lucide-react": "^0.394.0",
     "negotiator": "^1.0.0",
-    "next": "^15.5.12",
+    "next": "^15.1.7",
     "next-intl": "^4.3.12",
-    "next-pwa": "^2.0.2",
     "next-themes": "^0.4.6",
     "papaparse": "^5.5.3",
     "react": "^19.0.1",
@@ -106,6 +105,7 @@
     "use-debounce": "^10.0.6",
     "uuid": "^13.0.0",
     "vm2": "^3.10.0",
+    "workbox-build": "^7.0.0",
     "workbox-webpack-plugin": "^7.0.0",
     "xlsx": "^0.18.5",
     "y-websocket": "^3.0.0",
@@ -138,8 +138,6 @@
     "lodash.template": "^4.5.0",
     "serialize-javascript": "^6.0.2",
     "braces": "^3.0.3",
-    "rollup": "^4.12.1",
-    "workbox-build": "^7.1.1",
-    "workbox-webpack-plugin": "^7.1.1"
+    "rollup": "^4.12.1"
   }
 }
