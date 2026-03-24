@@ -242,6 +242,7 @@ const navSections: NavItem[] = [
             { href: '/compliance/risk-dashboard', label: 'Compliance Risk Dashboard', icon: BarChart3 },
             { href: '/compliance/kyc-aml', label: 'KYC / AML Monitor', icon: UserCheckIcon },
             { href: '/compliance/gdpr', label: 'GDPR Data Requests', icon: FileText },
+            { href: '/compliance/sales-tax', label: 'Sales Tax Intelligence', icon: Calculator },
             { href: '/compliance/regulations', label: 'Regulations Register', icon: ScrollText },
             { href: '/compliance/permits', label: 'Licenses & Permits', icon: KeyRound },
             { href: '/compliance/policy-library', label: 'Policy Document Library', icon: Library },

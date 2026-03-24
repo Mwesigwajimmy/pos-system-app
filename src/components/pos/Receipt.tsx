@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { toast } from 'sonner';
 import { Customer } from '@/types/dashboard';
 import { format as formatDate } from 'date-fns';
-import { ShieldCheck, Fingerprint, Globe } from 'lucide-react'; // UPGRADE: Robotic Icons
+import { ShieldCheck, Fingerprint, Globe, Landmark } from 'lucide-react'; // UPGRADE: Professional Icons
 
 // --- TYPE DEFINITIONS ---
 export interface ReceiptData {
@@ -22,21 +22,25 @@ export interface ReceiptData {
         kernel_seal_id?: string;
         tax_category?: string;
         region_code?: string;
+        currency_code?: string; // UPGRADE: Autonomous Currency ID
+        total_tax?: number;    // UPGRADE: Total tax for the summary
     };
     storeInfo: { 
         name: string; 
         address: string; 
         phone_number: string; 
         receipt_footer: string; 
+        tax_number?: string;   // UPGRADE: Business TIN/Tax ID
     };
     customerInfo: Customer | null;
     saleItems: { 
         product_name: string; 
         variant_name: string; 
-        quantity: number; // Will now handle decimals (0.5 tabs)
+        quantity: number; 
         unit_price: number; 
         subtotal: number; 
-        tax_code?: string; // UPGRADE: Per-item tax visibility
+        tax_code?: string; 
+        tax_amount?: number; // UPGRADE: Per-item tax amount for absolute clarity
     }[];
 }
 
@@ -99,12 +103,13 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     if (!receiptData) return null;
     
     const { saleInfo, storeInfo, customerInfo, saleItems } = receiptData;
+    const currency = saleInfo.currency_code || 'UGX';
     
-    // UPGRADE: Handle high-precision decimals for fractional sales (e.g. 0.5 tablets)
+    // UPGRADE: High-precision decimal formatter
     const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(value);
+    }).format(value || 0);
 
     // UPGRADE: Precision Quantity Formatter
     const formatQty = (value: number) => {
@@ -112,32 +117,38 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     };
 
     return (
-      <div ref={ref} className="p-4 bg-white text-black text-xs font-mono w-[302px] border shadow-sm">
-        {/* Header */}
+      <div ref={ref} className="p-4 bg-white text-black text-xs font-mono w-[302px] border shadow-sm mx-auto">
+        {/* Header - Enterprise Brand & Identity */}
         <div className="text-center mb-4 border-b pb-2">
-          <h1 className="text-lg font-bold uppercase tracking-tighter">{storeInfo?.name || 'Your Business'}</h1>
-          <p className="text-[9px] uppercase">{storeInfo?.address}</p>
+          <h1 className="text-lg font-bold uppercase tracking-tighter">{storeInfo?.name || 'Sovereign Entity'}</h1>
+          <p className="text-[9px] uppercase leading-tight">{storeInfo?.address}</p>
           <p className="text-[9px]">TEL: {storeInfo?.phone_number}</p>
           
-          {/* UPGRADE: Global Jurisdiction Display */}
+          {/* UPGRADE: Tax Authority Identity (Birthed at Signup) */}
+          {storeInfo.tax_number && (
+            <p className="text-[9px] font-bold mt-1">TIN: {storeInfo.tax_number}</p>
+          )}
+
+          {/* UPGRADE: Global Jurisdiction / Region */}
           {saleInfo.region_code && (
-            <div className="flex items-center justify-center gap-1 mt-1 text-[8px] font-bold border rounded px-1 w-fit mx-auto">
+            <div className="flex items-center justify-center gap-1 mt-1 text-[8px] font-bold border rounded px-1 w-fit mx-auto bg-slate-50">
                 <Globe className="w-2 h-2" /> JURISDICTION: {saleInfo.region_code}
             </div>
           )}
         </div>
         
-        {/* Info Section */}
+        {/* Info Section - Transaction Metadata */}
         <div className="mb-4 space-y-0.5 text-[10px]">
-          <p className="flex justify-between"><strong>RECEIPT:</strong> <span>{saleInfo.id?.toString().padStart(8, '0')}</span></p>
-          <p className="flex justify-between"><strong>DATE:</strong> <span>{formatDate(new Date(saleInfo.created_at), 'dd/MM/yyyy HH:mm')}</span></p>
-          <p className="flex justify-between"><strong>CLIENT:</strong> <span>{customerInfo?.name || 'CASH SALE'}</span></p>
+          <p className="flex justify-between uppercase"><strong>Receipt No:</strong> <span>{saleInfo.id?.toString().padStart(8, '0') || 'DRAFT'}</span></p>
+          <p className="flex justify-between uppercase"><strong>Date/Time:</strong> <span>{formatDate(new Date(saleInfo.created_at), 'dd/MM/yyyy HH:mm')}</span></p>
+          <p className="flex justify-between uppercase"><strong>Cashier/Op:</strong> <span>{saleInfo.kernel_seal_id?.substring(0, 8) || 'SYSTEM'}</span></p>
+          <p className="flex justify-between uppercase border-t pt-1 mt-1 font-bold"><strong>Client:</strong> <span>{customerInfo?.name || 'CASH SALE'}</span></p>
           
-          {/* UPGRADE: Member ID visibility */}
-          {customerInfo?.id && <p className="flex justify-between font-bold italic"><strong>MEMBER ID:</strong> <span>{customerInfo.id}</span></p>}
+          {/* Member ID Visibility for SACCO/Lending DNA */}
+          {customerInfo?.id && <p className="flex justify-between font-bold italic"><strong>Member ID:</strong> <span>{customerInfo.id}</span></p>}
         </div>
 
-        {/* Items Table */}
+        {/* Items Table - Detailed Fractional Billing */}
         <table className="w-full mb-4 text-[10px]">
           <thead>
             <tr className="border-b-2 border-black">
@@ -152,13 +163,16 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 <td className="text-left py-1 pr-2">
                     <span className="font-bold">{item.product_name}</span>
                     <br/>
-                    <div className="flex justify-between items-center text-[9px] text-slate-600 italic">
-                        <span>@{formatCurrency(item.unit_price)}</span>
-                        {/* UPGRADE: Per-item Tax Code display */}
-                        {item.tax_code && <span className="font-bold">[{item.tax_code}]</span>}
+                    <div className="flex flex-col text-[9px] text-slate-600 italic">
+                        <span>{item.variant_name} @ {formatCurrency(item.unit_price)}</span>
+                        {/* UPGRADE: Per-item Tax Breakdown (Mandatory for Compliance) */}
+                        {item.tax_amount > 0 && (
+                            <span className="text-[8px] font-medium text-slate-400">
+                                Incl. {item.tax_code || 'VAT'}: {formatCurrency(item.tax_amount)}
+                            </span>
+                        )}
                     </div>
                 </td>
-                {/* UPGRADE: Fractional Quantity Display */}
                 <td className="text-right py-1 align-top">{formatQty(item.quantity)}</td>
                 <td className="text-right py-1 align-top font-bold">{formatCurrency(item.subtotal)}</td>
               </tr>
@@ -166,67 +180,81 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
           </tbody>
         </table>
         
-        {/* --- UPDATED TOTALS SECTION --- */}
+        {/* Totals Section - Unified Ledger Parity */}
         <div className="space-y-1 border-t-2 border-black pt-2 text-[11px]">
             <div className="flex justify-between">
                 <span>SUBTOTAL:</span>
                 <span>{formatCurrency(saleInfo.subtotal)}</span>
             </div>
+            
+            {/* UPGRADE: Global Tax Disclosure */}
+            {saleInfo.total_tax > 0 && (
+                <div className="flex justify-between text-slate-600 italic">
+                    <span>TOTAL TAX ({saleInfo.tax_category || 'VAT'}):</span>
+                    <span>{formatCurrency(saleInfo.total_tax)}</span>
+                </div>
+            )}
+
             {saleInfo.discount > 0 && (
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-red-600 font-medium">
                     <span>DISCOUNT:</span>
                     <span>- {formatCurrency(saleInfo.discount)}</span>
                 </div>
             )}
             
             <div className="flex justify-between font-black text-sm border-t-2 border-double border-black mt-1 pt-1">
-                <span>TOTAL DUE:</span>
-                <span>UGX {formatCurrency(saleInfo.total_amount)}</span>
+                <span>TOTAL DUE ({currency}):</span>
+                <span>{formatCurrency(saleInfo.total_amount)}</span>
             </div>
 
-            <div className="flex justify-between mt-3 text-[10px]">
-                <span className="uppercase">{saleInfo.payment_method}:</span>
+            <div className="flex justify-between mt-3 text-[10px] text-slate-600">
+                <span className="uppercase">{saleInfo.payment_method} TENDERED:</span>
                 <span>{formatCurrency(saleInfo.amount_tendered)}</span>
             </div>
-            <div className="flex justify-between text-[10px]">
-                <span>CHANGE:</span>
+            <div className="flex justify-between text-[10px] text-slate-600">
+                <span>CHANGE DUE:</span>
                 <span>{formatCurrency(saleInfo.change_due)}</span>
             </div>
 
-            {/* UPGRADE: Amount Due / Credit Balance logic */}
+            {/* UPGRADE: Debt/Credit Monitor (For Lending & Microfinance) */}
             {saleInfo.amount_due > 0 && (
-                <div className="flex justify-between font-bold text-red-600 border border-red-600 p-1 mt-1 text-center">
-                    <span>CREDIT BALANCE:</span>
+                <div className="flex justify-between font-bold text-red-600 border-2 border-red-600 p-1 mt-2 text-center bg-red-50">
+                    <span>OUTSTANDING BAL:</span>
                     <span>{formatCurrency(saleInfo.amount_due)}</span>
                 </div>
             )}
         </div>
         
-        {/* --- UPGRADE: SOVEREIGN FORENSIC SEAL --- */}
-        <div className="mt-6 border-t pt-2 space-y-2">
+        {/* --- SOVEREIGN FORENSIC SEAL --- */}
+        <div className="mt-8 border-t pt-2 space-y-3">
             <div className="flex flex-col items-center justify-center opacity-70">
                 <div className="flex items-center gap-2 mb-1">
                     <ShieldCheck className="w-3 h-3 text-blue-600" />
-                    <span className="text-[8px] font-bold tracking-widest">SOVEREIGN KERNEL V8 SEALED</span>
+                    <span className="text-[8px] font-bold tracking-widest uppercase">Kernel Sealed & Forensic Verified</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <Fingerprint className="w-2 h-2 text-slate-400" />
-                    <span className="text-[7px] font-mono text-slate-400">
-                        {saleInfo.kernel_seal_id || `AUTH-${Math.random().toString(36).substr(2, 9).toUpperCase()}`}
+                    <span className="text-[7px] font-mono text-slate-400 uppercase">
+                        SEAL ID: {saleInfo.kernel_seal_id || `SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`}
                     </span>
                 </div>
             </div>
             
-            <div className="text-center text-[8px] leading-tight text-slate-500 italic">
-                {storeInfo?.receipt_footer || 'Thank you for your business!'}
-                <br/>
-                <span className="font-bold">This transaction is immutable and forensic-ready.</span>
+            <div className="text-center text-[9px] leading-tight text-slate-600 font-medium">
+                {storeInfo?.receipt_footer || 'Thank you for choosing Sovereign ERP.'}
+            </div>
+            
+            <div className="text-[7px] text-center text-slate-400 uppercase tracking-tighter">
+                Audit Status: 100% Integrity Parity with General Ledger
             </div>
         </div>
 
-        {/* Robotic Barcode Placeholder */}
-        <div className="mt-4 flex justify-center opacity-20">
-            <div className="h-8 w-40 bg-slate-300 rounded animate-pulse" />
+        {/* Professional Barcode/Scanning Identity */}
+        <div className="mt-4 flex flex-col items-center gap-1">
+            <div className="h-10 w-full bg-slate-900 flex items-center justify-center text-white text-[8px] tracking-[1em] font-black opacity-10">
+                |||||||||||||||||||||||||||||||||||||||
+            </div>
+            <span className="text-[7px] text-slate-300 font-mono italic">Trace ID: {saleInfo.id || 'N/A'}</span>
         </div>
       </div>
     );

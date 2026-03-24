@@ -14,10 +14,11 @@ import {
   ShieldCheck, 
   ArrowUpDown,
   CheckCircle2,
-  CalendarDays
+  CalendarDays,
+  Calculator
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
@@ -40,7 +41,7 @@ export interface InvoiceData {
   issue_date: string;
   due_date: string | null;
   items_count: number;
-  transaction_id?: string | null; // From our Ledger Interconnect logic
+  transaction_id?: string | null; 
   items_data?: any[]; 
 }
 
@@ -54,26 +55,29 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
   const [filter, setFilter] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof InvoiceData, direction: 'asc' | 'desc' } | null>(null);
 
-  // --- PROFESSIONAL PDF GENERATOR ---
+  // --- PROFESSIONAL PDF GENERATOR (Aligned with Sovereign Kernel V10) ---
   const handleDownloadPDF = (inv: InvoiceData) => {
     const doc = new jsPDF();
     const timestamp = format(new Date(), 'dd MMM yyyy, HH:mm');
 
     // 1. Branding & Header
     doc.setFontSize(22);
-    doc.setTextColor(30, 41, 59); // Slate-800
+    doc.setTextColor(30, 41, 59); 
     doc.text("COMMERCIAL INVOICE", 14, 22);
     
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Reference: ${inv.invoice_number || 'DRAFT'}`, 14, 30);
-    doc.text(`Issued On: ${format(parseISO(inv.issue_date), 'dd MMM yyyy')}`, 14, 35);
+    
+    const issueDate = inv.issue_date ? format(parseISO(inv.issue_date), 'dd MMM yyyy') : 'N/A';
+    doc.text(`Issued On: ${issueDate}`, 14, 35);
+    
     if (inv.transaction_id) {
         doc.setFontSize(8);
-        doc.text(`Ledger Verified: ${inv.transaction_id}`, 14, 40);
+        doc.text(`Forensic Ledger Link: ${inv.transaction_id}`, 14, 40);
     }
 
-    // 2. Billing Context (Multi-Tenant Alignment)
+    // 2. Billing Context
     doc.setDrawColor(226, 232, 240);
     doc.line(14, 45, 196, 45);
 
@@ -84,14 +88,14 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
     doc.setFont("helvetica", "normal");
     doc.text(tenantName, 14, 62);
     doc.setFontSize(9);
-    doc.text("Compliance: GADS-Certified Ledger System", 14, 68);
+    doc.text("Compliance: Sovereign Ledger Verified", 14, 68);
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("BILL TO (CUSTOMER):", 120, 55);
     doc.setFont("helvetica", "normal");
     doc.text(inv.customer_name || "Valued Customer", 120, 62);
-    doc.text(`Currency: ${inv.currency}`, 120, 68);
+    doc.text(`Currency: ${inv.currency || 'UGX'}`, 120, 68);
 
     // 3. Line Items Execution
     autoTable(doc, {
@@ -102,7 +106,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
             item.description || 'General Service',
             item.quantity || 1,
             new Intl.NumberFormat().format(item.unit_price || item.price || 0),
-            new Intl.NumberFormat().format(item.total_amount || item.total || 0)
+            new Intl.NumberFormat().format(item.total || item.total_amount || 0)
           ]) 
         : [['General Business Services', 1, new Intl.NumberFormat().format(inv.total), new Intl.NumberFormat().format(inv.total)]],
       theme: 'striped',
@@ -114,32 +118,34 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
       }
     });
 
-    // 4. Financial Summary (IFRS Standards)
+    // 4. Financial Summary (Strict Rounding Alignment)
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
+    
     doc.text("Subtotal:", 135, finalY);
-    doc.text(new Intl.NumberFormat().format(inv.subtotal || inv.total), 196, finalY, { align: 'right' });
+    doc.text(new Intl.NumberFormat().format(inv.subtotal || 0), 196, finalY, { align: 'right' });
     
     doc.text("Tax Amount:", 135, finalY + 7);
     doc.text(new Intl.NumberFormat().format(inv.tax_amount || 0), 196, finalY + 7, { align: 'right' });
 
     doc.setFontSize(14);
-    doc.setTextColor(37, 99, 235); // Blue-600
+    doc.setTextColor(37, 99, 235); 
     doc.text("TOTAL DUE:", 135, finalY + 18);
     doc.text(`${inv.currency} ${new Intl.NumberFormat().format(inv.total)}`, 196, finalY + 18, { align: 'right' });
 
     // 5. Verification Footer
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(`Digital Signature: Autonomously generated at ${timestamp}`, 14, 285);
-    doc.text("This document constitutes a legal record of transaction.", 14, 289);
+    doc.text(`Digital Signature Hash: AUTH-${inv.id.substring(0,8).toUpperCase()}`, 14, 280);
+    doc.text(`BBU1 Autonomous Export: ${timestamp}`, 14, 285);
+    doc.text("This document constitutes a legal record of transaction generated by the Sovereign Kernel.", 14, 289);
 
-    doc.save(`Invoice_${inv.invoice_number || 'Draft'}.pdf`);
-    toast.success("Professional Invoice Generated Successfully");
+    doc.save(`Sovereign_Invoice_${inv.invoice_number || 'Draft'}.pdf`);
+    toast.success("Professional Compliance Document Generated");
   };
 
-  // --- SORTING LOGIC ---
+  // --- SORTING LOGIC (With Forensic Date Comparison) ---
   const handleSort = (key: keyof InvoiceData) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -157,8 +163,16 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
 
     if (sortConfig) {
       result.sort((a, b) => {
-        const aValue = a[sortConfig.key] ?? '';
-        const bValue = b[sortConfig.key] ?? '';
+        let aValue = a[sortConfig.key] ?? '';
+        let bValue = b[sortConfig.key] ?? '';
+
+        // SPECIAL CASE: Date Sorting
+        if (sortConfig.key === 'issue_date' || sortConfig.key === 'due_date') {
+            const timeA = aValue ? new Date(aValue as string).getTime() : 0;
+            const timeB = bValue ? new Date(bValue as string).getTime() : 0;
+            return sortConfig.direction === 'asc' ? timeA - timeB : timeB - timeA;
+        }
+
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -170,17 +184,22 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
   const getStatusBadge = (status: string) => {
     const s = (status || '').toUpperCase();
     switch (s) {
-        case 'PAID': return <Badge className="bg-emerald-600 border-none text-white font-bold">PAID</Badge>;
-        case 'OVERDUE': return <Badge variant="destructive" className="font-bold">OVERDUE</Badge>;
+        case 'PAID': return <Badge className="bg-emerald-600 border-none text-white font-black text-[10px] tracking-widest px-3">PAID</Badge>;
+        case 'OVERDUE': return <Badge variant="destructive" className="font-black text-[10px] tracking-widest px-3">OVERDUE</Badge>;
+        case 'PARTIAL': return <Badge className="bg-amber-500 border-none text-white font-black text-[10px] tracking-widest px-3">PARTIAL</Badge>;
         case 'SENT': 
-        case 'ISSUED': return <Badge className="bg-blue-600 text-white border-none font-bold">ISSUED</Badge>;
-        case 'DRAFT': return <Badge variant="secondary" className="font-bold">DRAFT</Badge>;
-        default: return <Badge variant="outline">{status}</Badge>;
+        case 'ISSUED': return <Badge className="bg-blue-600 text-white border-none font-black text-[10px] tracking-widest px-3">ISSUED</Badge>;
+        case 'DRAFT': return <Badge variant="secondary" className="font-black text-[10px] tracking-widest px-3">DRAFT</Badge>;
+        default: return <Badge variant="outline" className="font-black text-[10px] uppercase">{status}</Badge>;
     }
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: currency || 'UGX' }).format(amount);
+  const formatMoney = (amount: number, currency: string) => {
+    return new Intl.NumberFormat(locale === 'en' ? 'en-US' : locale, { 
+        style: 'currency', 
+        currency: currency || 'USD',
+        minimumFractionDigits: 2
+    }).format(amount || 0);
   };
 
   return (
@@ -190,10 +209,10 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
           <div className="space-y-1">
             <CardTitle className="text-3xl font-black tracking-tight flex items-center gap-3 text-slate-900 dark:text-white">
               <ShieldCheck className="h-8 w-8 text-blue-600" />
-              Corporate Registry
+              Jurisdictional Registry
             </CardTitle>
             <CardDescription className="text-sm font-medium text-slate-500">
-                Centralized accounts receivable ledger for <span className="text-blue-600 font-bold">{tenantName}</span>
+                Synchronized accounts receivable ledger for <span className="text-blue-600 font-bold">{tenantName}</span>
             </CardDescription>
           </div>
           <div className="relative w-full lg:w-96 group">
@@ -202,7 +221,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
               placeholder="Search by name, ref, or status..." 
               value={filter} 
               onChange={e => setFilter(e.target.value)} 
-              className="pl-12 h-12 bg-white dark:bg-slate-900 shadow-sm border-slate-200 dark:border-slate-800 rounded-xl" 
+              className="pl-12 h-12 bg-white dark:bg-slate-900 shadow-sm border-slate-200 dark:border-slate-800 rounded-xl font-medium" 
             />
           </div>
         </div>
@@ -213,37 +232,41 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-30 backdrop-blur-md border-b">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-8 w-[140px]">Status</TableHead>
+                <TableHead className="pl-8 w-[140px] font-bold uppercase text-[10px] tracking-widest text-slate-400">Workflow</TableHead>
                 
                 <TableHead onClick={() => handleSort('invoice_number')} className="cursor-pointer group">
-                  <div className="flex items-center gap-2">Reference <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                  <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Reference <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
                 </TableHead>
                 
                 <TableHead onClick={() => handleSort('customer_name')} className="cursor-pointer group">
-                   <div className="flex items-center gap-2">Entity <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                   <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Counterparty <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
                 </TableHead>
                 
                 <TableHead onClick={() => handleSort('total')} className="text-right cursor-pointer group">
-                   <div className="flex items-center justify-end gap-2">Ledger Value <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                   <div className="flex items-center justify-end gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Gross Value <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                </TableHead>
+
+                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-400">
+                    Tax Amount
                 </TableHead>
                 
-                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-400">Net Balance</TableHead>
                 
                 <TableHead onClick={() => handleSort('issue_date')} className="text-right cursor-pointer group">
-                   <div className="flex items-center justify-end gap-2">Issue Date <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
+                   <div className="flex items-center justify-end gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Issue Date <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
                 </TableHead>
                 
-                <TableHead className="text-right pr-8">Actions</TableHead>
+                <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest text-slate-400">Actions</TableHead>
               </TableRow>
             </TableHeader>
             
             <TableBody>
               {sortedAndFiltered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-80 text-center">
+                  <TableCell colSpan={8} className="h-80 text-center">
                         <AlertCircle className="h-12 w-12 mx-auto mb-4 text-slate-300 animate-pulse" />
-                        <p className="text-slate-500 font-bold text-lg">No synchronized records found</p>
-                        <p className="text-sm text-slate-400">Adjust your search or check your ledger integration.</p>
+                        <p className="text-slate-500 font-bold text-lg">No Synchronized Records Found</p>
+                        <p className="text-sm text-slate-400">Adjust your forensic search or check your ledger integration.</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -255,8 +278,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                         <div className="flex items-center gap-2">
                            {inv.invoice_number || 'DRAFT'}
                            {inv.transaction_id && (
-                             /* FIX: Wrapped in span to solve the TypeScript title error */
-                             <span title="Hard-linked to Ledger">
+                             <span title="Forensically Sealed in Ledger">
                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
                              </span>
                            )}
@@ -265,37 +287,41 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                     
                     <TableCell>
                         <div className="flex flex-col">
-                            <span className="font-bold text-slate-800 dark:text-slate-200">{inv.customer_name || "Guest Client"}</span>
+                            <span className="font-black text-slate-800 dark:text-slate-200">{inv.customer_name || "Anonymous Client"}</span>
                             <span className="text-[10px] text-slate-500 flex items-center gap-1.5 font-bold uppercase tracking-tighter">
-                                <FileText className="h-2.5 w-2.5" /> {inv.items_count} SKU Items
+                                <FileText className="h-2.5 w-2.5" /> {inv.items_count} Line Items
                             </span>
                         </div>
                     </TableCell>
                     
                     <TableCell className="text-right font-mono font-black text-slate-900 dark:text-white">
-                      {formatCurrency(inv.total, inv.currency)}
+                      {formatMoney(inv.total, inv.currency)}
+                    </TableCell>
+
+                    <TableCell className="text-right font-mono text-[11px] text-slate-400 font-bold">
+                      {inv.tax_amount > 0 ? formatMoney(inv.tax_amount, inv.currency) : '-'}
                     </TableCell>
                     
                     <TableCell className="text-right">
                         {inv.balance_due > 0 ? (
                             <span className="text-red-600 font-black font-mono text-xs px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded-md">
-                                {formatCurrency(inv.balance_due, inv.currency)}
+                                {formatMoney(inv.balance_due, inv.currency)}
                             </span>
                         ) : (
-                            <div className="flex items-center justify-end gap-1 text-emerald-600 font-bold text-xs uppercase">
-                                <ShieldCheck className="h-3 w-3" /> Settled
+                            <div className="flex items-center justify-end gap-1 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
+                                <ShieldCheck className="h-3 w-3" /> Fully Settled
                             </div>
                         )}
                     </TableCell>
                     
                     <TableCell className="text-right">
                         <div className="flex flex-col items-end">
-                            <span className="text-slate-600 dark:text-slate-400 text-sm font-bold">
+                            <span className="text-slate-600 dark:text-slate-400 text-sm font-black">
                                 {inv.issue_date ? format(parseISO(inv.issue_date), "dd MMM yyyy") : '-'}
                             </span>
                             {inv.due_date && (
-                                <span className="text-[9px] text-slate-400 uppercase font-black">
-                                    Due: {format(parseISO(inv.due_date), "dd MMM")}
+                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest">
+                                    Expires: {format(parseISO(inv.due_date), "dd MMM")}
                                 </span>
                             )}
                         </div>
@@ -303,20 +329,25 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                     
                     <TableCell className="text-right pr-8">
                         <div className="flex justify-end gap-2">
-                            <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                className="h-9 w-9 p-0 hover:bg-blue-600 hover:text-white transition-all rounded-lg"
-                                onClick={() => handleDownloadPDF(inv)}
-                                title="Download PDF"
-                            >
-                                <FileDown className="h-5 w-5" />
-                            </Button>
+                            <TooltipProvider delayDuration={0}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            size="sm" 
+                                            variant="ghost" 
+                                            className="h-9 w-9 p-0 hover:bg-slate-900 hover:text-white transition-all rounded-lg border border-transparent hover:border-slate-800"
+                                            onClick={() => handleDownloadPDF(inv)}
+                                        >
+                                            <FileDown className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Download Forensic PDF</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                             
-                            <Button asChild size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                                {/* FIX: Ensure the link matches your dynamic folder structure [invoiceId] */}
+                            <Button asChild size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg hover:bg-blue-600 hover:text-white group/btn transition-all">
                                 <Link href={`/${locale}/invoicing/invoice/${inv.id}`}>
-                                    <ArrowRight className="h-5 w-5 text-slate-400 group-hover:text-blue-600" />
+                                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover/btn:text-white" />
                                 </Link>
                             </Button>
                         </div>

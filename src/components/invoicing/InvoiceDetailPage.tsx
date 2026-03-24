@@ -4,27 +4,29 @@ import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { createClient } from '@/lib/supabase/client';
-import { Loader2, Download, Mail, ArrowLeft, Printer, ShieldCheck, ExternalLink, Hash } from "lucide-react";
+import { Loader2, Download, Mail, ArrowLeft, Printer, ShieldCheck, ExternalLink, Hash, Calculator } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
+// --- 1. Schema-Aligned Interfaces (Zero Assumption) ---
 interface InvoiceItem {
   id: string;
   description: string;
   quantity: number;
   unit_price: number;
-  tax_amount: number;
-  total_amount: number;
+  tax_rate: number;   // UPGRADE: Added from schema audit
+  tax_amount: number; // UPGRADE: Added from schema audit
+  total: number;      // Matches DB column name
 }
 
 interface InvoiceDetail {
   id: string;
   invoice_number: string;
-  total_amount: number;
-  subtotal: number;
-  tax_amount: number;
+  total: number;      // Matches DB 'total'
+  subtotal: number;   // Matches DB 'subtotal'
+  tax_total: number;  // Matches DB 'tax_total'
   currency: string;
   issue_date: string;
   due_date: string;
@@ -35,7 +37,7 @@ interface InvoiceDetail {
     name: string;
     email: string;
     phone: string;
-    tin_number?: string;
+    tin_number?: string; // Standardized with your schema
   };
   invoice_items: InvoiceItem[];
 }
@@ -56,24 +58,22 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
     const fetchInvoice = async () => {
       setLoading(true);
       
-      // ENTERPRISE FIX: We use a smarter select that handles the business_id/tenant_id desync
-      // and enforces strict ordering on line items so they don't jump around.
+      // ENTERPRISE FIX: Selecting exact columns verified in the grassroots audit
       const { data, error } = await supabase
         .from('invoices')
         .select(`
-          *,
+          id, invoice_number, total, subtotal, tax_total, currency, issue_date, due_date, status, notes, transaction_id,
           customers ( name, email, phone, tin_number ),
-          invoice_items ( id, description, quantity, unit_price, tax_amount, total_amount )
+          invoice_items ( id, description, quantity, unit_price, tax_rate, tax_amount, total )
         `)
         .eq('id', invoiceId)
-        // Multi-Tenant Guard: Ensures document ownership regardless of column naming
         .or(`business_id.eq.${tenantId},tenant_id.eq.${tenantId}`) 
         .single();
 
       if (error) {
         console.error("Ledger Link Error:", error.message);
       } else if (isMounted && data) {
-        // Sort items by ID to maintain document order
+        // Sort items by numeric ID to maintain original entry sequence
         if (data.invoice_items) {
           data.invoice_items.sort((a: any, b: any) => Number(a.id) - Number(b.id));
         }
@@ -86,11 +86,12 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
     return () => { isMounted = false; };
   }, [invoiceId, tenantId, supabase]);
 
+  // Safe Currency Formatter with fallback to 'USD'
   const formatMoney = (val: number) => 
-    new Intl.NumberFormat(locale, { 
+    new Intl.NumberFormat(locale === 'en' ? 'en-US' : locale, { 
       style: 'currency', 
-      currency: invoice?.currency || 'UGX' 
-    }).format(val);
+      currency: invoice?.currency || 'USD' 
+    }).format(val || 0);
 
   if (loading) {
     return (
@@ -108,7 +109,7 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
         <h3 className="text-2xl font-black text-slate-800 tracking-tight">Interconnect Interrupted</h3>
         <p className="text-slate-500 mb-8 mt-2 font-medium">This document ID is either invalid or outside your authorized organizational scope.</p>
         <Button asChild variant="default" className="font-bold px-8 h-12 rounded-xl bg-blue-600 shadow-xl shadow-blue-600/20">
-          <Link href={`/${locale}/invoicing/all-invoices`}>Return to Registry</Link>
+          <Link href={`/${locale}/invoicing/to-be-issued`}>Return to Registry</Link>
         </Button>
       </div>
     );
@@ -151,7 +152,7 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
                    )}
                 </div>
                 <CardTitle className="text-5xl font-black text-slate-900 tracking-tighter">
-                  #{invoice.invoice_number}
+                  #{invoice.invoice_number || 'DRAFT'}
                 </CardTitle>
               </div>
               
@@ -159,20 +160,22 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
                 <div className="space-y-2">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client / Debtor</span>
                   <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                    <p className="font-black text-slate-900 leading-tight text-lg">{invoice.customers?.name}</p>
-                    <p className="text-sm text-slate-500 mt-1">{invoice.customers?.email}</p>
-                    {invoice.customers?.tin_number && <p className="text-[10px] font-bold text-blue-500 mt-2">TIN: {invoice.customers.tin_number}</p>}
+                    <p className="font-black text-slate-900 leading-tight text-lg">{invoice.customers?.name || 'Walk-in Client'}</p>
+                    <p className="text-sm text-slate-500 mt-1">{invoice.customers?.email || 'No email provided'}</p>
+                    {invoice.customers?.tin_number && <p className="text-[10px] font-bold text-blue-500 mt-2 uppercase">Tax ID: {invoice.customers.tin_number}</p>}
                   </div>
                 </div>
                 <div className="space-y-2">
                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Workflow State</span>
                    <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between">
-                     <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'} className="px-4 py-1 font-black text-xs">
+                     <Badge variant={invoice.status.toLowerCase() === 'paid' ? 'default' : 'secondary'} className="px-4 py-1 font-black text-xs">
                        {invoice.status.toUpperCase()}
                      </Badge>
                      <div className="text-right">
                         <p className="text-[10px] text-slate-400 font-bold uppercase">Balance</p>
-                        <p className="text-sm font-black text-slate-900">0.00</p>
+                        <p className={`text-sm font-black ${invoice.status.toLowerCase() === 'paid' ? 'text-slate-900' : 'text-red-600'}`}>
+                           {invoice.status.toLowerCase() === 'paid' ? '0.00' : formatMoney(invoice.total)}
+                        </p>
                      </div>
                    </div>
                 </div>
@@ -182,11 +185,11 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
             <div className="w-full md:w-auto space-y-6">
                <div className="space-y-1">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Issue Date</span>
-                  <p className="text-xl font-black text-slate-700">{format(new Date(invoice.issue_date), "dd MMM, yyyy")}</p>
+                  <p className="text-xl font-black text-slate-700">{invoice.issue_date ? format(parseISO(invoice.issue_date), "dd MMM, yyyy") : 'N/A'}</p>
                </div>
                <div className="space-y-1">
                   <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">Expiry / Due</span>
-                  <p className="text-xl font-black text-red-600">{format(new Date(invoice.due_date), "dd MMM, yyyy")}</p>
+                  <p className="text-xl font-black text-red-600">{invoice.due_date ? format(parseISO(invoice.due_date), "dd MMM, yyyy") : 'N/A'}</p>
                </div>
             </div>
           </div>
@@ -199,19 +202,27 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
                 <TableHead className="text-slate-900 font-black uppercase text-[10px] tracking-widest">Description</TableHead>
                 <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest">Qty</TableHead>
                 <TableHead className="text-right text-slate-900 font-black uppercase text-[10px] tracking-widest">Rate</TableHead>
+                <TableHead className="text-right text-slate-900 font-black uppercase text-[10px] tracking-widest">VAT/Tax</TableHead>
                 <TableHead className="text-right text-slate-900 font-black uppercase text-[10px] tracking-widest">Line Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invoice.invoice_items?.map((item) => (
                 <TableRow key={item.id} className="border-slate-50 hover:bg-slate-50/30 transition-colors">
-                  <TableCell className="py-6 font-bold text-slate-700">{item.description}</TableCell>
-                  <TableCell className="text-center font-mono font-bold text-slate-500">{item.quantity}</TableCell>
+                  <TableCell className="py-6 font-bold text-slate-700">
+                    {item.description}
+                  </TableCell>
+                  <TableCell className="text-center font-mono font-bold text-slate-500">
+                    {item.quantity}
+                  </TableCell>
                   <TableCell className="text-right font-mono text-slate-500">
                     {formatMoney(item.unit_price)}
                   </TableCell>
+                  <TableCell className="text-right font-mono text-slate-400 italic text-[10px]">
+                    {item.tax_amount > 0 ? formatMoney(item.tax_amount) : '-'}
+                  </TableCell>
                   <TableCell className="text-right font-mono font-black text-slate-900">
-                    {formatMoney(item.total_amount || (item.unit_price * item.quantity))}
+                    {formatMoney(item.total)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -236,12 +247,12 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
               </div>
               <div className="flex justify-between text-xs text-slate-400 font-bold uppercase tracking-widest pb-4 border-b border-slate-800">
                 <span>Value Added Tax</span>
-                <span className="font-mono">{formatMoney(invoice.tax_amount)}</span>
+                <span className="font-mono">{formatMoney(invoice.tax_total)}</span>
               </div>
               <div className="pt-4 flex justify-between items-center">
                 <span className="text-sm font-black uppercase tracking-tighter text-slate-300">Total Indebtedness</span>
                 <span className="text-3xl font-black text-white font-mono tracking-tighter">
-                  {formatMoney(invoice.total_amount)}
+                  {formatMoney(invoice.total)}
                 </span>
               </div>
             </div>
@@ -252,7 +263,7 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
       {/* Audit Footnote */}
       <div className="text-center py-6">
         <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em] flex items-center justify-center gap-2">
-           <Hash size={10} /> Internal System ID: {invoice.id} • Auth Integrity Section 12-A
+           <Hash size={10} /> Forensic Reference: {invoice.id} • Sovereign Ledger v10-A
         </p>
       </div>
     </div>
