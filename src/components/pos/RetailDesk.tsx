@@ -32,7 +32,8 @@ import {
     Fingerprint,  
     ShieldCheck,  
     Loader2,
-    Landmark
+    Landmark,
+    Trash2
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,26 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
             p.variant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
         ), [products, searchTerm]);
+
+    useEffect(() => {
+        let barcode = '';
+        let lastKeyTime = new Date(0);
+        const SCANNER_INPUT_TIMEOUT = 100;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const currentTime = new Date();
+            if (currentTime.getTime() - lastKeyTime.getTime() > SCANNER_INPUT_TIMEOUT) barcode = '';
+            if (e.key === 'Enter') {
+                if (barcode) { onSKUScan(barcode); barcode = ''; }
+            } else if (e.key.length === 1) {
+                barcode += e.key;
+            }
+            lastKeyTime = currentTime;
+        };
+        
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onSKUScan]);
 
     return (
         <div className={cn('flex flex-col h-full bg-card rounded-lg shadow', disabled && 'opacity-50 pointer-events-none')}>
@@ -252,29 +273,25 @@ export default function RetailDesk() {
     const products = useLiveQuery(() => db.products.toArray(), []);
     const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
 
-    // GRASSROOT WELD: Wired directly to useUserProfile to prevent Race Condition
+    // GRASSROOT FETCH: Pulls the professional identity for the current session
     useEffect(() => {
         if (!userProfile?.business_id) return;
 
         const fetchDNA = async () => {
             const supabase = createClient();
-            console.log("Forensic Handshake: Initializing DNA Fetch for business", userProfile.business_id);
-
+            
             const [tenantRes, locationRes, taxRes] = await Promise.all([
                 supabase.from('tenants').select('name, phone, tax_number, currency_code, receipt_footer').eq('id', userProfile.business_id).single(),
                 supabase.from('locations').select('address').eq('business_id', userProfile.business_id).eq('is_primary', true).single(),
                 supabase.from('tax_configurations').select('rate_percentage').eq('business_id', userProfile.business_id).eq('is_active', true).limit(1)
             ]);
 
-            if (tenantRes.error) console.error("Identity Leak in Tenants table:", tenantRes.error.message);
-            if (locationRes.error) console.error("Identity Leak in Locations table:", locationRes.error.message);
-
             setBusinessDNA({
                 name: tenantRes.data?.name || 'Authorized Entity',
                 phone: tenantRes.data?.phone || 'UNREGISTERED',
                 tax_number: tenantRes.data?.tax_number || 'NONE',
-                currency: tenantRes.data?.currency_code || 'USD',
-                footer: tenantRes.data?.receipt_footer || 'BBU1 Sovereign Verified',
+                currency: tenantRes.data?.currency_code || 'UGX',
+                footer: tenantRes.data?.receipt_footer || 'BBU1 Sovereign Ledger Verified',
                 address: locationRes.data?.address || 'NO PHYSICAL ADDRESS RECORDED',
                 globalTaxRate: taxRes.data?.[0]?.rate_percentage || 0
             });
@@ -316,15 +333,24 @@ export default function RetailDesk() {
             return setPaymentModalOpen(false);
         }
 
+        // GRASSROOT MATH: Forcing 2-Decimal Parity with Backend Kernel
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
+        
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const taxRate = businessDNA?.globalTaxRate || 0;
         
+        // Caculate itemized tax for professional receipts
         const saleItemsWithTax = cart.map(item => {
             const itemSubtotal = round(item.price * item.quantity);
             const itemTax = round(itemSubtotal * (taxRate / 100));
-            return { ...item, tax_rate: taxRate, tax_amount: itemTax, subtotal: itemSubtotal, total_with_tax: itemSubtotal + itemTax };
+            return {
+                ...item,
+                tax_rate: taxRate,
+                tax_amount: itemTax,
+                subtotal: itemSubtotal,
+                total_with_tax: itemSubtotal + itemTax
+            };
         });
 
         const totalTax = saleItemsWithTax.reduce((acc, item) => acc + item.tax_amount, 0);
@@ -353,50 +379,78 @@ export default function RetailDesk() {
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
-        setLastCompletedSale({
-            receiptData: {
-                saleInfo: { 
-                    id: saleId, 
-                    created_at: newSale.createdAt, 
-                    payment_method: newSale.paymentMethod, 
-                    total_amount: totalAmount, 
-                    amount_tendered: newSale.amount_paid,
-                    change_due: newSale.amount_paid > totalAmount ? round(newSale.amount_paid - totalAmount) : 0,
-                    subtotal: round(subtotal),
-                    discount: round(discountAmount),
-                    amount_due: newSale.due_amount,
-                    currency_code: businessDNA?.currency || 'UGX',
-                    total_tax: round(totalTax),
-                    kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-                },
-                storeInfo: { 
-                    name: businessDNA?.name || 'Enterprise System', 
-                    address: businessDNA?.address || 'NO PHYSICAL ADDRESS RECORDED', 
-                    phone_number: businessDNA?.phone || 'NO CONTACT RECORDED', 
-                    receipt_footer: businessDNA?.footer || 'Sealed by Sovereign Kernel',
-                    tax_number: businessDNA?.tax_number
-                },
-                customerInfo: selectedCustomer,
-                saleItems: saleItemsWithTax.map(item => ({ 
-                    product_name: item.product_name, 
-                    variant_name: item.variant_name, 
-                    quantity: item.quantity, 
-                    unit_price: item.price, 
-                    subtotal: item.subtotal,
-                    tax_amount: item.tax_amount,
-                    tax_code: 'VAT'
-                }))
-            }
-        });
+        const receiptData: ReceiptData = {
+            saleInfo: { 
+                id: saleId, 
+                created_at: newSale.createdAt, 
+                payment_method: newSale.paymentMethod, 
+                total_amount: totalAmount, 
+                amount_tendered: newSale.amount_paid,
+                change_due: newSale.amount_paid > totalAmount ? round(newSale.amount_paid - totalAmount) : 0,
+                subtotal: round(subtotal),
+                discount: round(discountAmount),
+                amount_due: newSale.due_amount,
+                currency_code: businessDNA?.currency || 'UGX',
+                total_tax: round(totalTax),
+                kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 5).toUpperCase()}${saleId}`
+            },
+            storeInfo: { 
+                name: businessDNA?.name || 'Sovereign Business', 
+                address: businessDNA?.address || 'NO PHYSICAL ADDRESS RECORDED', 
+                phone_number: businessDNA?.phone || 'NO CONTACT RECORDED', 
+                receipt_footer: businessDNA?.footer || 'Thank you for your business!',
+                tax_number: businessDNA?.tax_number
+            },
+            customerInfo: selectedCustomer,
+            saleItems: saleItemsWithTax.map(item => ({ 
+                product_name: item.product_name, 
+                variant_name: item.variant_name, 
+                quantity: item.quantity, 
+                unit_price: item.price, 
+                subtotal: item.subtotal,
+                tax_amount: item.tax_amount,
+                tax_code: 'VAT'
+            }))
+        };
 
-        toast.success(`Registry entry #${saleId} birthed successfully.`);
+        setLastCompletedSale({ receiptData });
+        toast.success(`Entry #${saleId} sealed in Local Ledger.`);
         setCart([]);
         setSelectedCustomer(null);
         setDiscount({ type: 'fixed', value: 0 });
         setPaymentModalOpen(false);
     };
 
-    if (!products || isProfileLoading) {
+    const handleAddToCart = (product: SellableProduct) => setCart(currentCart => { 
+        const existing = currentCart.find(i => i.variant_id === product.variant_id); 
+        return existing ? currentCart.map(i => i.variant_id === product.variant_id ? { ...i, quantity: i.quantity + 1 } : i) : [...currentCart, { ...product, quantity: 1 }]; 
+    });
+    
+    const handleUpdateQuantity = (id: number, qty: number) => { 
+        if (qty <= 0) { handleRemoveItem(id); return; } 
+        setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: qty } : i)); 
+    };
+    
+    const handleRemoveItem = (id: number) => setCart(cart.filter(i => i.variant_id !== id));
+    
+    const handleSKUScan = (sku: string) => { 
+        if (!products) return; 
+        const product = products.find(p => p.sku === sku); 
+        if (product) { 
+            handleAddToCart(product); 
+            toast.success(`Forensic Scan: ${product.product_name}`); 
+        } else { 
+            toast.error(`SKU Invalid: ${sku}`); 
+        } 
+    };
+    
+    const isLoading = !products || isProfileLoading;
+    const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
+    const totalAmount = subtotal - discountAmount;
+    const activeCurrency = businessDNA?.currency || 'UGX';
+
+    if (isLoading) {
         return (
             <div className="p-10 text-center flex flex-col items-center justify-center h-screen bg-slate-900 text-white">
                 <Loader2 className="h-20 w-20 animate-spin text-blue-500 mb-8" />
@@ -420,11 +474,11 @@ export default function RetailDesk() {
                         <CardDescription className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-2">Document #{(lastCompletedSale.receiptData.saleInfo.id as any)?.toString().padStart(8,'0')} immutable in Ledger</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-10 pt-12 pb-12">
-                        <div ref={receiptRef} className="shadow-2xl rounded-xl overflow-hidden mx-auto border scale-110 mb-10 mt-6">
+                        <div ref={receiptRef} className="shadow-2xl rounded-xl overflow-hidden mx-auto border scale-110 mb-10 mt-6 bg-white">
                             <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} defaultPrinterName={defaultPrinter || undefined} />
                         </div>
                         <div className="flex gap-4 no-print px-8">
-                            <Button variant="outline" className="w-full h-16 rounded-2xl font-black uppercase tracking-widest border-2 border-slate-100" onClick={() => setLastCompletedSale(null)}>New Entry</Button>
+                            <Button variant="outline" className="w-full h-16 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-100 hover:bg-slate-50" onClick={() => setLastCompletedSale(null)}>New Entry</Button>
                             <Button className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest shadow-2xl" onClick={() => toast.info('Queueing print engine...')}>
                                 <PrinterIcon className="mr-2 h-5 w-5" />Reprint
                             </Button>
@@ -449,7 +503,7 @@ export default function RetailDesk() {
             
             <div className="absolute top-4 right-6 no-print z-20">
                 <Button onClick={handleSync} variant="outline" size="sm" disabled={isSyncing} className="shadow-2xl border-none bg-white font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl hover:scale-105 transition-all">
-                    <RefreshCcw className={cn("mr-2 h-4 w-4 text-blue-600", isSyncing && 'animate-spin')} />
+                    <RefreshCw className={cn("mr-2 h-4 w-4 text-blue-600", isSyncing && 'animate-spin')} />
                     {isSyncing ? 'Neural Sync...' : 'Sync Kernel'}
                 </Button>
             </div>
@@ -461,7 +515,7 @@ export default function RetailDesk() {
                 <div className="lg:col-span-5 h-full overflow-hidden flex flex-col">
                     <CartDisplay 
                         cart={cart} 
-                        currency={businessDNA?.currency || 'UGX'}
+                        currency={activeCurrency}
                         onUpdateQuantity={handleUpdateQuantity} 
                         onRemoveItem={handleRemoveItem} 
                         selectedCustomer={selectedCustomer} 
