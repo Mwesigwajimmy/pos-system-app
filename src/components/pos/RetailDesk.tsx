@@ -3,10 +3,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, OfflineSale, Printer } from '@/lib/db';
+import { db, OfflineSale } from '@/lib/db';
 import { createClient } from '@/lib/supabase/client';
 import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
 // --- HOOKS ---
@@ -25,20 +25,21 @@ import {
     Minus, 
     Printer as PrinterIcon, 
     RefreshCw, 
-    Barcode, 
+    Search, 
     FileText, 
     Tag,
     Calculator,   
-    Fingerprint,  
-    ShieldCheck,  
+    CheckCircle2,  
     Loader2,
-    Landmark,
-    Trash2
+    ShoppingCart,
+    Trash2,
+    Package,
+    ChevronRight,
+    ArrowLeft
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge'; 
 
 // --- MODULE COMPONENTS ---
@@ -57,7 +58,17 @@ interface Discount {
 
 // --- CHILD COMPONENTS ---
 
-const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, onSKUScan: (sku: string) => void, disabled: boolean }) => {
+const ProductGrid = ({ 
+    products, 
+    onProductSelect, 
+    onSKUScan, 
+    disabled 
+}: { 
+    products: SellableProduct[], 
+    onProductSelect: (product: SellableProduct) => void, 
+    onSKUScan: (sku: string) => void, 
+    disabled: boolean 
+}) => {
     const [searchTerm, setSearchTerm] = useState('');
     const filteredProducts = useMemo(() =>
         products.filter(p =>
@@ -87,34 +98,39 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     }, [onSKUScan]);
 
     return (
-        <div className={cn('flex flex-col h-full bg-card rounded-lg shadow', disabled && 'opacity-50 pointer-events-none')}>
-            <div className="p-4 border-b relative">
-                <Barcode className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input placeholder="Search or scan product SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 h-11" />
+        <div className={cn('flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
+            <div className="p-4 border-b bg-slate-50/50 relative">
+                <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Input 
+                    placeholder="Search product name or scan SKU..." 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className="pl-11 h-12 bg-white border-slate-200 focus:ring-blue-600 rounded-lg shadow-sm" 
+                />
             </div>
-            <ScrollArea className="flex-1">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+            <ScrollArea className="flex-1 p-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredProducts.map(product => (
                         <Card 
                             key={product.variant_id} 
                             onClick={() => onProductSelect(product)} 
-                            className="cursor-pointer hover:shadow-xl transition-all relative overflow-hidden group border-slate-100"
+                            className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden group border-slate-100 bg-white"
                         >
-                            {(product as any).units_per_pack > 1 && (
-                                <div className="absolute top-0 right-0 bg-blue-600 text-white p-1 rounded-bl-lg shadow-sm z-10">
-                                    <Calculator className="w-3 h-3" />
-                                </div>
-                            )}
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                                <p className="font-black text-sm line-clamp-2 text-slate-800 uppercase tracking-tighter">{product.product_name}</p>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{product.variant_name}</p>
-                                <div className="mt-3">
-                                    <p className="font-black text-blue-700 text-base">UGX {product.price.toLocaleString()}</p>
+                            <CardContent className="p-4 flex flex-col h-full">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="p-1.5 bg-slate-50 rounded-md">
+                                        <Package className="w-4 h-4 text-slate-400" />
+                                    </div>
                                     {(product as any).units_per_pack > 1 && (
-                                        <Badge variant="outline" className="text-[8px] mt-1 border-blue-200 text-blue-500 font-black">
-                                            PACK: {(product as any).units_per_pack} UNITS
+                                        <Badge variant="outline" className="text-[9px] border-blue-100 text-blue-600 bg-blue-50">
+                                            Pack: {(product as any).units_per_pack}
                                         </Badge>
                                     )}
+                                </div>
+                                <p className="font-bold text-sm text-slate-800 line-clamp-2 mb-1">{product.product_name}</p>
+                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight mb-4">{product.variant_name}</p>
+                                <div className="mt-auto pt-2 border-t border-slate-50">
+                                    <p className="font-bold text-blue-600 text-base">UGX {product.price.toLocaleString()}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -125,7 +141,29 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     );
 };
 
-const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void, currency: string }) => {
+const CartDisplay = ({ 
+    cart, 
+    onUpdateQuantity, 
+    onRemoveItem, 
+    selectedCustomer, 
+    onSetCustomer, 
+    onCharge, 
+    isProcessing, 
+    discount, 
+    setDiscount, 
+    currency 
+}: { 
+    cart: CartItem[], 
+    onUpdateQuantity: (id: number, newQty: number) => void, 
+    onRemoveItem: (id: number) => void, 
+    selectedCustomer: Customer | null, 
+    onSetCustomer: () => void, 
+    onCharge: () => void, 
+    isProcessing: boolean, 
+    discount: Discount, 
+    setDiscount: (d: Discount) => void, 
+    currency: string 
+}) => {
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
     const discountAmount = useMemo(() => {
         if (discount.type === 'percentage') return (subtotal * discount.value) / 100;
@@ -134,60 +172,68 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     const total = subtotal - discountAmount;
 
     return (
-        <div className="flex flex-col h-full bg-card rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-                <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
-                    <div className="p-2 bg-white rounded-full shadow-sm border">
+        <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            {/* Customer Header */}
+            <div className="p-5 border-b flex justify-between items-center bg-slate-50">
+                <div className="flex items-center gap-3 cursor-pointer group" onClick={onSetCustomer}>
+                    <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 group-hover:border-blue-400 transition-colors">
                         <User className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-black text-xs uppercase tracking-widest leading-none">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
-                        <span className="text-[9px] text-slate-400 font-mono mt-1">{selectedCustomer ? `ID: ${selectedCustomer.id}` : 'ANONYMOUS SALE'}</span>
+                        <span className="font-bold text-sm text-slate-900 leading-none">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
+                        <span className="text-[10px] text-slate-500 font-semibold mt-1 uppercase tracking-tight">
+                            {selectedCustomer ? `Member ID: ${selectedCustomer.id}` : 'Guest Sale'}
+                        </span>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={onSetCustomer} className="font-black text-[10px] uppercase border-slate-300">Switch (F2)</Button>
+                <Button variant="outline" size="sm" onClick={onSetCustomer} className="font-bold text-xs h-8 border-slate-200 hover:bg-white shadow-sm">
+                    Find Customer
+                </Button>
             </div>
             
+            {/* Cart Items List */}
             <ScrollArea className="flex-1 bg-white">
                 {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-300 gap-4">
-                        <ShoppingCart className="h-16 w-16 opacity-10" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Registry Empty</p>
+                    <div className="flex flex-col items-center justify-center h-64 text-slate-300 gap-3">
+                        <ShoppingCart className="h-12 w-12 opacity-20" />
+                        <p className="text-xs font-semibold uppercase tracking-widest opacity-40">Cart is empty</p>
                     </div>
                 ) : (
                     <div className="p-4 space-y-3">
                         {cart.map(item => (
-                            <div key={item.variant_id} className="flex flex-col p-4 rounded-2xl border border-slate-100 gap-2 group hover:bg-slate-50 transition-all shadow-sm">
+                            <div key={item.variant_id} className="flex flex-col p-4 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 transition-colors shadow-sm relative group">
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1">
-                                        <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{item.product_name}</p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">{item.variant_name}</p>
+                                        <p className="text-sm font-bold text-slate-900">{item.product_name}</p>
+                                        <p className="text-[10px] text-slate-500 font-semibold uppercase">{item.variant_name}</p>
                                     </div>
                                     
-                                    <div className="flex items-center gap-2 bg-white border rounded-lg p-1 shadow-inner">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}>
-                                            <Minus className="h-4 w-4" />
+                                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}>
+                                            <Minus className="h-3 w-3" />
                                         </Button>
                                         <Input 
-                                            className="w-16 h-8 text-center font-black text-sm p-0 border-none focus-visible:ring-0 bg-transparent" 
+                                            className="w-12 h-7 text-center font-bold text-xs p-0 border-none bg-transparent" 
                                             type="number" 
-                                            step="0.001"
                                             value={item.quantity}
                                             onChange={(e) => onUpdateQuantity(item.variant_id, parseFloat(e.target.value) || 0)}
                                         />
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => onUpdateQuantity(item.variant_id, item.quantity + 1)}>
-                                            <Plus className="h-4 w-4" />
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" onClick={() => onUpdateQuantity(item.variant_id, item.quantity + 1)}>
+                                            <Plus className="h-3 w-3" />
                                         </Button>
                                     </div>
 
-                                    <div className="w-28 text-right">
-                                        <p className="font-black text-sm font-mono">{currency} {(item.price * item.quantity).toLocaleString()}</p>
-                                        <p className="text-[9px] text-slate-400 font-bold uppercase">@ {item.price.toLocaleString()}</p>
+                                    <div className="w-24 text-right">
+                                        <p className="font-bold text-sm text-slate-900">{currency} {(item.price * item.quantity).toLocaleString()}</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">@ {item.price.toLocaleString()}</p>
                                     </div>
 
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onRemoveItem(item.variant_id)}>
-                                        <X className="h-4 w-4" />
-                                    </Button>
+                                    <button 
+                                        className="absolute -top-2 -right-2 bg-white border border-slate-200 p-1 rounded-full shadow-md text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        onClick={() => onRemoveItem(item.variant_id)}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -195,59 +241,59 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
             
-            <div className="p-6 border-t space-y-6 bg-slate-50/50">
+            {/* Totals Section */}
+            <div className="p-6 border-t space-y-6 bg-slate-50">
                 <div className="space-y-3">
-                    <div className="flex justify-between text-[11px] font-black uppercase text-slate-400 tracking-widest">
-                        <span>Gross Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
+                    <div className="flex justify-between text-xs font-semibold text-slate-500 uppercase">
+                        <span>Subtotal</span>
+                        <span>{currency} {subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button variant="link" size="sm" className="p-0 h-auto text-blue-600 font-black uppercase tracking-widest text-[10px]">
-                                    <Tag className="h-3 w-3 mr-1.5" /> Adjust Pricing
+                                <Button variant="ghost" size="sm" className="p-0 h-auto text-blue-600 font-bold uppercase text-[10px] hover:bg-transparent">
+                                    <Tag className="h-3 w-3 mr-1.5" /> Apply Discount
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-72 p-6 rounded-3xl shadow-2xl border-none animate-in zoom-in-95">
+                            <PopoverContent className="w-64 p-4 rounded-xl shadow-xl border-slate-200">
                                 <div className="space-y-4">
-                                    <div>
-                                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Deduction Method</Label>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Discount Type</Label>
                                         <Select value={discount.type} onValueChange={(v: 'fixed' | 'percentage') => setDiscount({ ...discount, type: v })}>
-                                            <SelectTrigger className="h-11 mt-2 rounded-xl"><SelectValue/></SelectTrigger>
-                                            <SelectContent className="rounded-xl">
-                                                <SelectItem value="fixed">Fixed Value</SelectItem>
+                                            <SelectTrigger className="h-9"><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="fixed">Fixed Amount</SelectItem>
                                                 <SelectItem value="percentage">Percentage (%)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div>
-                                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Deduction Value</Label>
-                                        <Input type="number" value={discount.value} className="h-11 mt-2 rounded-xl font-mono" onChange={(e) => setDiscount({ ...discount, value: Math.max(0, parseFloat(e.target.value) || 0) })}/>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Value</Label>
+                                        <Input type="number" value={discount.value} className="h-9" onChange={(e) => setDiscount({ ...discount, value: Math.max(0, parseFloat(e.target.value) || 0) })}/>
                                     </div>
                                 </div>
                             </PopoverContent>
                         </Popover>
-                        <span className="text-red-600 font-black font-mono">- {currency} {discountAmount.toLocaleString()}</span>
-                    </div>
-
-                    <div className="flex justify-between pt-4 text-[9px] text-slate-300 font-black uppercase tracking-tighter border-t border-slate-200">
-                        <span className="flex items-center gap-1"><Fingerprint className="w-3 h-3 text-blue-400"/> Sovereign Seal Active</span>
-                        <span className="flex items-center gap-1">Audit Enabled <ShieldCheck className="w-3 h-3 text-emerald-500" /></span>
+                        <span className="text-red-600 font-bold text-xs">-{currency} {discountAmount.toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div className="flex justify-between font-black text-4xl text-slate-900 tracking-tighter font-mono">
-                    <span>Total</span><span>{currency} {total.toLocaleString()}</span>
+                <div className="flex justify-between items-end">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Due</span>
+                    <span className="text-4xl font-bold text-slate-900">
+                        {currency} {total.toLocaleString()}
+                    </span>
                 </div>
                 
                 <Button 
-                    className="w-full h-20 text-2xl font-black uppercase tracking-[0.2em] bg-blue-600 hover:bg-blue-700 shadow-2xl shadow-blue-200 rounded-[1.5rem] transition-all hover:scale-[1.02] active:scale-95" 
+                    className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50" 
                     onClick={onCharge} 
                     disabled={cart.length === 0 || isProcessing}
                 >
                     {isProcessing ? (
-                        <><Loader2 className="animate-spin mr-3 h-8 w-8"/>Executing...</>
+                        <><Loader2 className="animate-spin mr-3 h-6 w-6"/>Processing...</>
                     ) : (
-                        "Charge"
+                        "Collect Payment"
                     )}
                 </Button>
             </div>
@@ -273,14 +319,11 @@ export default function RetailDesk() {
     const products = useLiveQuery(() => db.products.toArray(), []);
     const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
 
-    // GRASSROOT WELD: Pulls the professional identity for the current session
-    // This logic now strictly waits for userProfile and pulls HQ address + TIN.
     useEffect(() => {
         if (!userProfile?.business_id) return;
 
         const fetchDNA = async () => {
             const supabase = createClient();
-            
             const [tenantRes, locationRes, taxRes] = await Promise.all([
                 supabase.from('tenants').select('name, phone, tax_number, currency_code, receipt_footer').eq('id', userProfile.business_id).single(),
                 supabase.from('locations').select('address').eq('business_id', userProfile.business_id).eq('is_primary', true).single(),
@@ -288,65 +331,92 @@ export default function RetailDesk() {
             ]);
 
             setBusinessDNA({
-                name: tenantRes.data?.name || 'Authorized Entity',
-                phone: tenantRes.data?.phone || 'UNREGISTERED',
-                tax_number: tenantRes.data?.tax_number || 'NONE',
+                name: tenantRes.data?.name || 'Store Name',
+                phone: tenantRes.data?.phone || '-',
+                tax_number: tenantRes.data?.tax_number || '-',
                 currency: tenantRes.data?.currency_code || 'UGX',
-                footer: tenantRes.data?.receipt_footer || 'BBU1 Sovereign Ledger Verified',
-                address: locationRes.data?.address || 'NO PHYSICAL ADDRESS RECORDED',
+                footer: tenantRes.data?.receipt_footer || 'Thank you for shopping with us.',
+                address: locationRes.data?.address || '-',
                 globalTaxRate: taxRes.data?.[0]?.rate_percentage || 0
             });
         };
         fetchDNA();
     }, [userProfile]);
 
+    const handleAddToCart = (product: SellableProduct) => {
+        setCart(prev => {
+            const existing = prev.find(item => item.variant_id === product.variant_id);
+            if (existing) {
+                return prev.map(item => item.variant_id === product.variant_id 
+                    ? { ...item, quantity: item.quantity + 1 } 
+                    : item
+                );
+            }
+            return [...prev, { 
+                variant_id: product.variant_id,
+                product_name: product.product_name,
+                variant_name: product.variant_name,
+                price: product.price,
+                quantity: 1,
+                sku: product.sku
+            }];
+        });
+    };
+
+    const handleSKUScan = (sku: string) => {
+        const product = products?.find(p => p.sku === sku);
+        if (product) {
+            handleAddToCart(product);
+            toast.success(`${product.product_name} added`);
+        } else {
+            toast.error(`Product not found for SKU: ${sku}`);
+        }
+    };
+
+    const handleUpdateQuantity = (id: number, newQty: number) => {
+        if (newQty <= 0) return handleRemoveItem(id);
+        setCart(prev => prev.map(item => item.variant_id === id ? { ...item, quantity: newQty } : item));
+    };
+
+    const handleRemoveItem = (id: number) => {
+        setCart(prev => prev.filter(item => item.variant_id !== id));
+    };
+
     const handleSync = async () => {
-        if (!userProfile?.id) return toast.error("Identity unknown. Cannot sync.");
-        
+        if (!userProfile?.id) return;
         setIsSyncing(true);
-        const promise = async () => {
+        try {
             const supabase = createClient();
             const { data: productsData } = await supabase.rpc('get_sellable_products');
             await db.products.clear();
             await db.products.bulkAdd(productsData as SellableProduct[] || []);
+            
             const { data: customersData } = await supabase.from('customers').select('*');
             await db.customers.clear();
             await db.customers.bulkAdd(customersData as Customer[] || []);
             
-            // GRASSROOT ISOLATION: Only sync sales belonging to THIS user
             const offlineSales = await db.offlineSales.where('user_id').equals(userProfile.id).toArray();
-            
             if (offlineSales.length > 0) {
                 const { error: syncError } = await supabase.rpc('sync_offline_sales', { sales_data: offlineSales });
-                if (syncError) throw new Error(syncError.message);
-                
+                if (syncError) throw syncError;
                 await db.offlineSales.where('user_id').equals(userProfile.id).delete();
-                return `${offlineSales.length} Ledger entries sealed successfully.`;
             }
-            return 'Kernel Registry Synchronized.';
-        };
-        toast.promise(promise(), { 
-            loading: 'Establishing Neural Sync...', 
-            success: (message) => message, 
-            error: (err: any) => `Sync Exception: ${err.message}`, 
-            finally: () => setIsSyncing(false) 
-        });
+            toast.success('Data synchronized successfully');
+        } catch (error: any) {
+            toast.error(`Sync error: ${error.message}`);
+        } finally {
+            setIsSyncing(false);
+        }
     };
     
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
-        if (!userProfile?.business_id) {
-            toast.error("Handshake Expired. Re-authenticating...");
-            return setPaymentModalOpen(false);
-        }
+        if (!userProfile?.business_id) return;
 
-        // GRASSROOT MATH: Aligned with Database Precision
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
-        
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const taxRate = businessDNA?.globalTaxRate || 0;
         
-        // Itemized tax calculation for professional receipts
         const saleItemsWithTax = cart.map(item => {
             const itemSubtotal = round(item.price * item.quantity);
             const itemTax = round(itemSubtotal * (taxRate / 100));
@@ -365,7 +435,7 @@ export default function RetailDesk() {
         const dueAmount = round(totalAmount - paymentData.amountPaid);
 
         if (dueAmount > 0.01 && !selectedCustomer) {
-            return toast.error("Credit authorization requires customer identification.");
+            return toast.error("Please select a customer for credit sales.");
         }
 
         const newSale: Omit<OfflineSale, 'id'> = {
@@ -400,14 +470,12 @@ export default function RetailDesk() {
                     amount_due: newSale.due_amount,
                     currency_code: businessDNA?.currency || 'UGX',
                     total_tax: round(totalTax),
-                    kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 5).toUpperCase()}${saleId}`
                 },
                 storeInfo: { 
-                    // GRASSROOT LINKAGE: Receipt now matches John Enterprises / Kireka
-                    name: businessDNA?.name || 'Authorized Entity', 
-                    address: businessDNA?.address || 'NO PHYSICAL ADDRESS RECORDED', 
-                    phone_number: businessDNA?.phone || 'NO CONTACT RECORDED', 
-                    receipt_footer: businessDNA?.footer || 'Sealed by Sovereign Kernel',
+                    name: businessDNA?.name, 
+                    address: businessDNA?.address, 
+                    phone_number: businessDNA?.phone, 
+                    receipt_footer: businessDNA?.footer,
                     tax_number: businessDNA?.tax_number
                 },
                 customerInfo: selectedCustomer,
@@ -423,76 +491,85 @@ export default function RetailDesk() {
             }
         });
 
-        toast.success(`Registry entry #${saleId} birthed successfully.`);
         setCart([]);
         setSelectedCustomer(null);
         setDiscount({ type: 'fixed', value: 0 });
         setPaymentModalOpen(false);
     };
 
+    const currentTotal = useMemo(() => {
+        const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
+        const taxRate = businessDNA?.globalTaxRate || 0;
+        const net = subtotal - discountAmount;
+        return net + (net * (taxRate / 100));
+    }, [cart, discount, businessDNA]);
+
     if (!products || isProfileLoading) {
         return (
-            <div className="p-10 text-center flex flex-col items-center justify-center h-screen bg-slate-900 text-white">
-                <Loader2 className="h-20 w-20 animate-spin text-blue-500 mb-8" />
-                <p className="text-2xl font-black uppercase tracking-[0.4em] animate-pulse">Initializing Kernel</p>
-                <p className="text-xs text-slate-500 mt-4 italic">Establishing Sovereign Handshake...</p>
+            <div className="flex flex-col items-center justify-center h-screen bg-white">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading System</p>
             </div>
         );
     }
 
     if (lastCompletedSale) {
         return (
-            <div className="p-4 md:p-12 flex flex-col items-center bg-slate-50 min-h-screen">
-                <Card className="w-full max-w-lg shadow-2xl border-none overflow-hidden rounded-[3rem] bg-white ring-1 ring-slate-100">
-                    <CardHeader className="bg-slate-900 text-white text-center pb-10 pt-12">
-                        <CardTitle className="flex flex-col items-center justify-center gap-4">
-                           <div className="p-4 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20">
-                             <ShieldCheck className="w-12 h-12 text-white"/>
-                           </div>
-                           <span className="text-3xl font-black uppercase tracking-widest">Sealed</span>
-                        </CardTitle>
-                        <CardDescription className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-2">Document #{(lastCompletedSale.receiptData.saleInfo.id as any)?.toString().padStart(8,'0')} immutable in Ledger</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-10 pt-12 pb-12">
-                        <div ref={receiptRef} className="shadow-2xl rounded-xl overflow-hidden mx-auto border scale-110 mb-10 mt-6 bg-white">
-                            <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} defaultPrinterName={defaultPrinter || undefined} />
-                        </div>
-                        <div className="flex gap-4 no-print px-8">
-                            <Button variant="outline" className="w-full h-16 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-100 hover:bg-slate-50" onClick={() => setLastCompletedSale(null)}>New Entry</Button>
-                            <Button className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest shadow-2xl" onClick={() => toast.info('Queueing print engine...')}>
-                                <PrinterIcon className="mr-2 h-5 w-5" />Reprint
-                            </Button>
-                        </div>
-                        <button onClick={handleWebPrint} className="w-full text-slate-300 font-bold uppercase tracking-widest text-[9px] hover:text-blue-500 transition-colors">
-                           Export Forensic Compliance Document (A4)
-                        </button>
-                    </CardContent>
-                </Card>
+            <div className="p-8 flex flex-col items-center justify-center min-h-screen bg-slate-50 animate-in fade-in duration-500">
+                <div className="w-full max-w-lg space-y-8">
+                    <Card className="shadow-xl border-none overflow-hidden rounded-2xl bg-white">
+                        <CardHeader className="bg-emerald-600 text-white text-center py-10">
+                           <CheckCircle2 className="w-16 h-16 text-white mx-auto mb-4"/>
+                           <CardTitle className="text-2xl font-bold uppercase tracking-wide">Sale Complete</CardTitle>
+                           <CardDescription className="text-emerald-100 font-semibold uppercase text-xs mt-1">Transaction recorded successfully</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-8">
+                            <div ref={receiptRef} className="rounded-lg overflow-hidden mx-auto border border-slate-100 shadow-sm bg-white p-4">
+                                <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} defaultPrinterName={defaultPrinter || undefined} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Button variant="outline" className="h-12 rounded-xl font-bold uppercase text-xs border-slate-200" onClick={() => setLastCompletedSale(null)}>
+                                    New Sale
+                                </Button>
+                                <Button className="h-12 rounded-xl bg-blue-600 text-white font-bold uppercase text-xs shadow-md" onClick={() => handleWebPrint()}>
+                                    <PrinterIcon className="mr-2 h-4 w-4" /> Print Receipt
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         );
     }
     
     return (
-        <div className="relative min-h-screen bg-slate-50 font-sans">
-            <div className="absolute top-4 left-6 z-20 flex items-center gap-3">
-                 <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/40" />
-                 <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
-                    EMPIRE: {businessDNA?.name || 'Authenticating...'}
-                 </span>
-            </div>
-            
-            <div className="absolute top-4 right-6 no-print z-20">
-                <Button onClick={handleSync} variant="outline" size="sm" disabled={isSyncing} className="shadow-2xl border-none bg-white font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl hover:scale-105 transition-all">
-                    <RefreshCw className={cn("mr-2 h-4 w-4 text-blue-600", isSyncing && 'animate-spin')} />
-                    {isSyncing ? 'Neural Sync...' : 'Sync Kernel'}
-                </Button>
+        <div className="relative min-h-screen bg-slate-50">
+            {/* Top Navigation */}
+            <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+                <div className="flex items-center gap-3">
+                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Business: {businessDNA?.name || 'Loading...'}
+                     </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    <Button onClick={handleSync} variant="outline" size="sm" disabled={isSyncing} className="h-9 px-4 border-slate-200 font-bold text-xs uppercase tracking-tight">
+                        <RefreshCw className={cn("mr-2 h-3.5 w-3.5 text-blue-600", isSyncing && 'animate-spin')} />
+                        {isSyncing ? 'Syncing...' : 'Sync Data'}
+                    </Button>
+                </div>
             </div>
 
-            <div className="h-screen grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden">
-                <div className="lg:col-span-7 h-full overflow-hidden flex flex-col">
+            <div className="h-[calc(100vh-56px)] grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden">
+                {/* Product Search and Grid */}
+                <div className="lg:col-span-7 h-full flex flex-col min-h-0">
                     <ProductGrid products={products || []} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
-                <div className="lg:col-span-5 h-full overflow-hidden flex flex-col">
+
+                {/* Cart Area */}
+                <div className="lg:col-span-5 h-full flex flex-col min-h-0">
                     <CartDisplay 
                         cart={cart} 
                         currency={businessDNA?.currency || 'UGX'}
@@ -509,7 +586,7 @@ export default function RetailDesk() {
             </div>
             
             <CustomerSearchModal isOpen={isCustomerModalOpen} onClose={() => setCustomerModalOpen(false)} onSelectCustomer={(c) => {setSelectedCustomer(c); setCustomerModalOpen(false);}} />
-            <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} totalAmount={totalAmount} onConfirm={handleProcessPayment} isProcessing={false} />
+            <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} totalAmount={currentTotal} onConfirm={handleProcessPayment} isProcessing={false} />
         </div>
     );
 }

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { Customer } from '@/types/dashboard';
 import { format as formatDate } from 'date-fns';
-import { ShieldCheck, Fingerprint, Globe, Landmark } from 'lucide-react'; // UPGRADE: Professional Icons
+import { CheckCircle2, ShieldCheck, MapPin, Printer } from 'lucide-react';
 
 // --- TYPE DEFINITIONS ---
 export interface ReceiptData {
@@ -18,19 +18,18 @@ export interface ReceiptData {
         subtotal: number;
         discount: number;
         amount_due: number;
-        // --- UPGRADE: FORENSIC METADATA ---
         kernel_seal_id?: string;
         tax_category?: string;
         region_code?: string;
-        currency_code?: string; // UPGRADE: Autonomous Currency ID
-        total_tax?: number;    // UPGRADE: Total tax for the summary
+        currency_code?: string; 
+        total_tax?: number;    
     };
     storeInfo: { 
         name: string; 
         address: string; 
         phone_number: string; 
         receipt_footer: string; 
-        tax_number?: string;   // UPGRADE: Business TIN/Tax ID
+        tax_number?: string;   
     };
     customerInfo: Customer | null;
     saleItems: { 
@@ -40,7 +39,7 @@ export interface ReceiptData {
         unit_price: number; 
         subtotal: number; 
         tax_code?: string; 
-        tax_amount?: number; // UPGRADE: Per-item tax amount for absolute clarity
+        tax_amount?: number; 
     }[];
 }
 
@@ -61,16 +60,16 @@ const useHardwarePrint = () => {
         }).then(response => {
             if (!response.ok) {
                 return response.json().then(err => {
-                    throw new Error(err.error || 'Failed to connect to the hardware bridge.');
+                    throw new Error(err.error || 'Connection failed.');
                 });
             }
             return response.json();
         });
 
         toast.promise(promise, {
-            loading: `Sending to printer "${payload.printerName}"...`,
-            success: 'Print job sent successfully!',
-            error: (err: any) => `Print Error: ${err.message}. Is the bridge app running?`,
+            loading: `Sending to printer...`,
+            success: 'Print successful',
+            error: (err: any) => `Printer Error: ${err.message}`,
         });
     };
 
@@ -85,7 +84,7 @@ interface ReceiptProps {
   autoPrint?: boolean;
 }
 
-// --- ADVANCED RECEIPT COMPONENT ---
+// --- PROFESSIONAL RECEIPT COMPONENT ---
 export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
   ({ receiptData, defaultPrinterName, autoPrint = false }, ref) => {
     
@@ -105,156 +104,142 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     const { saleInfo, storeInfo, customerInfo, saleItems } = receiptData;
     const currency = saleInfo.currency_code || 'UGX';
     
-    // UPGRADE: High-precision decimal formatter
     const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(value || 0);
 
-    // UPGRADE: Precision Quantity Formatter
     const formatQty = (value: number) => {
-        return value % 1 === 0 ? value.toString() : value.toFixed(3);
+        return value % 1 === 0 ? value.toString() : value.toFixed(2);
     };
 
     return (
-      <div ref={ref} className="p-4 bg-white text-black text-xs font-mono w-[302px] border shadow-sm mx-auto">
-        {/* Header - Enterprise Brand & Identity */}
-        <div className="text-center mb-4 border-b pb-2">
-          <h1 className="text-lg font-bold uppercase tracking-tighter">{storeInfo?.name || 'Sovereign Entity'}</h1>
-          <p className="text-[9px] uppercase leading-tight">{storeInfo?.address}</p>
-          <p className="text-[9px]">TEL: {storeInfo?.phone_number}</p>
-          
-          {/* UPGRADE: Tax Authority Identity (Birthed at Signup) */}
+      <div ref={ref} className="p-8 bg-white text-black text-[10px] font-mono w-[310px] border border-slate-200 shadow-sm mx-auto leading-relaxed overflow-hidden">
+        {/* Store Info */}
+        <div className="text-center mb-6 border-b border-black pb-4">
+          <h1 className="text-lg font-bold uppercase tracking-tight mb-1">{storeInfo?.name || 'Business Name'}</h1>
+          <p className="text-[9px] font-medium leading-tight mb-1">{storeInfo?.address || 'Store Address'}</p>
+          <p className="text-[9px] font-medium">TEL: {storeInfo?.phone_number || 'No Contact'}</p>
           {storeInfo.tax_number && (
             <p className="text-[9px] font-bold mt-1">TIN: {storeInfo.tax_number}</p>
           )}
-
-          {/* UPGRADE: Global Jurisdiction / Region */}
-          {saleInfo.region_code && (
-            <div className="flex items-center justify-center gap-1 mt-1 text-[8px] font-bold border rounded px-1 w-fit mx-auto bg-slate-50">
-                <Globe className="w-2 h-2" /> JURISDICTION: {saleInfo.region_code}
-            </div>
-          )}
         </div>
         
-        {/* Info Section - Transaction Metadata */}
-        <div className="mb-4 space-y-0.5 text-[10px]">
-          <p className="flex justify-between uppercase"><strong>Receipt No:</strong> <span>{saleInfo.id?.toString().padStart(8, '0') || 'DRAFT'}</span></p>
-          <p className="flex justify-between uppercase"><strong>Date/Time:</strong> <span>{formatDate(new Date(saleInfo.created_at), 'dd/MM/yyyy HH:mm')}</span></p>
-          <p className="flex justify-between uppercase"><strong>Cashier/Op:</strong> <span>{saleInfo.kernel_seal_id?.substring(0, 8) || 'SYSTEM'}</span></p>
-          <p className="flex justify-between uppercase border-t pt-1 mt-1 font-bold"><strong>Client:</strong> <span>{customerInfo?.name || 'CASH SALE'}</span></p>
+        {/* Metadata */}
+        <div className="mb-6 space-y-1.5 border-b border-dashed border-slate-300 pb-4">
+          <div className="flex justify-between">
+            <span className="font-bold">RECEIPT #:</span> 
+            <span>{saleInfo.id?.toString().padStart(8, '0') || 'DRAFT'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-bold">DATE:</span> 
+            <span>{formatDate(new Date(saleInfo.created_at), 'dd/MM/yyyy HH:mm')}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="font-bold">CASHIER ID:</span> 
+            <span className="uppercase">{saleInfo.kernel_seal_id?.substring(0, 8) || 'STAFF-01'}</span>
+          </div>
           
-          {/* Member ID Visibility for SACCO/Lending DNA */}
-          {customerInfo?.id && <p className="flex justify-between font-bold italic"><strong>Member ID:</strong> <span>{customerInfo.id}</span></p>}
+          <div className="border-t border-slate-100 pt-1.5 mt-1">
+            <div className="flex justify-between">
+                <span className="font-bold">CUSTOMER:</span> 
+                <span className="font-semibold uppercase">{customerInfo?.name || 'GUEST CUSTOMER'}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Items Table - Detailed Fractional Billing */}
-        <table className="w-full mb-4 text-[10px]">
+        {/* Item Table */}
+        <table className="w-full mb-6">
           <thead>
             <tr className="border-b-2 border-black">
-              <th className="text-left pb-1">DESCRIPTION</th>
-              <th className="text-right pb-1">QTY</th>
-              <th className="text-right pb-1">TOTAL</th>
+              <th className="text-left pb-1 font-bold">ITEM</th>
+              <th className="text-center pb-1 font-bold">QTY</th>
+              <th className="text-right pb-1 font-bold">TOTAL</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-dashed divide-slate-200">
             {saleItems?.map((item, index) => (
-              <tr key={index} className="border-b border-dashed border-slate-200">
-                <td className="text-left py-1 pr-2">
-                    <span className="font-bold">{item.product_name}</span>
-                    <br/>
-                    <div className="flex flex-col text-[9px] text-slate-600 italic">
-                        <span>{item.variant_name} @ {formatCurrency(item.unit_price)}</span>
-                        {/* UPGRADE: Per-item Tax Breakdown (Mandatory for Compliance) */}
-                        {item.tax_amount > 0 && (
-                            <span className="text-[8px] font-medium text-slate-400">
-                                Incl. {item.tax_code || 'VAT'}: {formatCurrency(item.tax_amount)}
-                            </span>
-                        )}
+              <tr key={index}>
+                <td className="text-left py-2 pr-2 align-top">
+                    <div className="font-bold uppercase leading-tight mb-1">{item.product_name}</div>
+                    <div className="text-[9px] text-slate-500">
+                        {item.variant_name} @ {formatCurrency(item.unit_price)}
                     </div>
                 </td>
-                <td className="text-right py-1 align-top">{formatQty(item.quantity)}</td>
-                <td className="text-right py-1 align-top font-bold">{formatCurrency(item.subtotal)}</td>
+                <td className="text-center py-2 align-top font-semibold">{formatQty(item.quantity)}</td>
+                <td className="text-right py-2 align-top font-bold">{formatCurrency(item.subtotal)}</td>
               </tr>
             ))}
           </tbody>
         </table>
         
-        {/* Totals Section - Unified Ledger Parity */}
-        <div className="space-y-1 border-t-2 border-black pt-2 text-[11px]">
-            <div className="flex justify-between">
+        {/* Totals Section */}
+        <div className="space-y-1.5 border-t border-black pt-4">
+            <div className="flex justify-between font-medium">
                 <span>SUBTOTAL:</span>
                 <span>{formatCurrency(saleInfo.subtotal)}</span>
             </div>
             
-            {/* UPGRADE: Global Tax Disclosure */}
             {saleInfo.total_tax > 0 && (
-                <div className="flex justify-between text-slate-600 italic">
-                    <span>TOTAL TAX ({saleInfo.tax_category || 'VAT'}):</span>
+                <div className="flex justify-between text-slate-600">
+                    <span>TAX ({saleInfo.tax_category || 'VAT'}):</span>
                     <span>{formatCurrency(saleInfo.total_tax)}</span>
                 </div>
             )}
 
             {saleInfo.discount > 0 && (
-                <div className="flex justify-between text-red-600 font-medium">
+                <div className="flex justify-between font-medium text-slate-600">
                     <span>DISCOUNT:</span>
                     <span>- {formatCurrency(saleInfo.discount)}</span>
                 </div>
             )}
             
-            <div className="flex justify-between font-black text-sm border-t-2 border-double border-black mt-1 pt-1">
+            <div className="flex justify-between font-bold text-sm border-t-2 border-slate-800 mt-2 pt-2 bg-slate-50 px-2">
                 <span>TOTAL DUE ({currency}):</span>
                 <span>{formatCurrency(saleInfo.total_amount)}</span>
             </div>
 
-            <div className="flex justify-between mt-3 text-[10px] text-slate-600">
-                <span className="uppercase">{saleInfo.payment_method} TENDERED:</span>
+            <div className="flex justify-between mt-4 text-slate-500 font-semibold uppercase">
+                <span>{saleInfo.payment_method} PAID:</span>
                 <span>{formatCurrency(saleInfo.amount_tendered)}</span>
             </div>
-            <div className="flex justify-between text-[10px] text-slate-600">
-                <span>CHANGE DUE:</span>
+            <div className="flex justify-between text-slate-500 font-semibold">
+                <span>CHANGE:</span>
                 <span>{formatCurrency(saleInfo.change_due)}</span>
             </div>
 
-            {/* UPGRADE: Debt/Credit Monitor (For Lending & Microfinance) */}
+            {/* Credit Balance */}
             {saleInfo.amount_due > 0 && (
-                <div className="flex justify-between font-bold text-red-600 border-2 border-red-600 p-1 mt-2 text-center bg-red-50">
-                    <span>OUTSTANDING BAL:</span>
-                    <span>{formatCurrency(saleInfo.amount_due)}</span>
+                <div className="p-3 mt-4 text-center bg-red-50 border border-red-200 rounded-lg">
+                    <span className="block text-[9px] font-bold text-red-600 uppercase tracking-widest mb-1">Outstanding Balance</span>
+                    <span className="text-base font-bold text-red-700">{formatCurrency(saleInfo.amount_due)}</span>
                 </div>
             )}
         </div>
         
-        {/* --- SOVEREIGN FORENSIC SEAL --- */}
-        <div className="mt-8 border-t pt-2 space-y-3">
-            <div className="flex flex-col items-center justify-center opacity-70">
-                <div className="flex items-center gap-2 mb-1">
-                    <ShieldCheck className="w-3 h-3 text-blue-600" />
-                    <span className="text-[8px] font-bold tracking-widest uppercase">Kernel Sealed & Forensic Verified</span>
+        {/* Bottom Verification Section */}
+        <div className="mt-8 pt-4 border-t border-slate-100 space-y-4">
+            <div className="flex flex-col items-center justify-center opacity-80">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="text-[9px] font-bold uppercase tracking-tight text-slate-600">Verified Transaction</span>
                 </div>
-                <div className="flex items-center gap-1">
-                    <Fingerprint className="w-2 h-2 text-slate-400" />
-                    <span className="text-[7px] font-mono text-slate-400 uppercase">
-                        SEAL ID: {saleInfo.kernel_seal_id || `SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`}
-                    </span>
-                </div>
+                <p className="text-[8px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                    ID: {saleInfo.kernel_seal_id || `AUTH-${Math.random().toString(36).substr(2, 6).toUpperCase()}`}
+                </p>
             </div>
             
-            <div className="text-center text-[9px] leading-tight text-slate-600 font-medium">
-                {storeInfo?.receipt_footer || 'Thank you for choosing Sovereign ERP.'}
-            </div>
-            
-            <div className="text-[7px] text-center text-slate-400 uppercase tracking-tighter">
-                Audit Status: 100% Integrity Parity with General Ledger
+            <div className="text-center text-[9px] text-slate-600 font-semibold leading-relaxed px-4">
+                {storeInfo?.receipt_footer || 'Thank you for your purchase!'}
             </div>
         </div>
 
-        {/* Professional Barcode/Scanning Identity */}
-        <div className="mt-4 flex flex-col items-center gap-1">
-            <div className="h-10 w-full bg-slate-900 flex items-center justify-center text-white text-[8px] tracking-[1em] font-black opacity-10">
-                |||||||||||||||||||||||||||||||||||||||
+        {/* System Barcode Marker */}
+        <div className="mt-6 flex flex-col items-center">
+            <div className="h-6 w-full bg-slate-100 flex items-center justify-center text-slate-300 text-[6px] tracking-[1em] overflow-hidden">
+                |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
             </div>
-            <span className="text-[7px] text-slate-300 font-mono italic">Trace ID: {saleInfo.id || 'N/A'}</span>
+            <span className="text-[7px] text-slate-300 font-semibold uppercase mt-1">Processed by BBU1 System</span>
         </div>
       </div>
     );

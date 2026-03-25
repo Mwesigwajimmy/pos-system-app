@@ -14,8 +14,8 @@ import {
   Fingerprint, 
   Calculator,  
   ShieldCheck,
-  Barcode,    // UPGRADE: Added for SKU visibility
-  DollarSign  // UPGRADE: Added for Valuation visibility
+  Barcode,
+  DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge"; 
 import { ProductRow } from "@/types/dashboard";
 
-// Advanced TanStack Table meta for enterprise actions
+// Advanced Table Meta
 declare module '@tanstack/react-table' {
   interface TableMeta<TData> {
     onEdit: (product: TData) => void;
@@ -42,28 +42,23 @@ declare module '@tanstack/react-table' {
   }
 }
 
-// Helper for low-stock/expiry indicators
+// Simple stock status helper
 const getStockStatus = (product: ProductRow) => {
-  // GRASSROOT ALIGNMENT: Precision checking matched to DB Kernel v10
   const stock = Number(product.total_stock || 0);
-  if (stock <= 0) return { warning: true, message: "Out of Stock: Critical Replenishment Required.", color: "text-red-600" };
-  if (stock < 5) return { warning: true, message: "Low Stock: Only " + stock + " remaining.", color: "text-amber-500" };
+  if (stock <= 0) return { warning: true, message: "Out of stock", color: "text-red-600" };
+  if (stock < 5) return { warning: true, message: "Low stock: " + stock, color: "text-amber-500" };
   return { warning: false, message: "" };
 };
 
 export const columns: ColumnDef<ProductRow>[] = [
-  // --- 1. SELECTION COLUMN ---
+  // 1. SELECTION
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
-        className="translate-y-[2px]"
       />
     ),
     cell: ({ row }) => (
@@ -71,7 +66,6 @@ export const columns: ColumnDef<ProductRow>[] = [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
-        className="translate-y-[2px]"
       />
     ),
     enableSorting: false,
@@ -79,95 +73,91 @@ export const columns: ColumnDef<ProductRow>[] = [
     size: 40, 
   },
   
-  // --- 2. SKU / BARCODE (UPGRADE: Mandatory for Enterprise) ---
+  // 2. SKU
   {
     accessorKey: "sku",
     header: () => (
-      <div className="flex items-center gap-2">
-        <Barcode className="h-4 w-4 text-slate-400" /> SKU
+      <div className="flex items-center gap-2 text-slate-500">
+        <Barcode className="h-4 w-4" /> SKU
       </div>
     ),
     cell: ({ row }) => (
-      <code className="text-[10px] font-black font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-        {row.original.sku || 'NO-SKU'}
+      <code className="text-[11px] font-medium font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+        {row.original.sku || 'N/A'}
       </code>
     ),
   },
 
+  // 3. PRODUCT NAME
   {
     accessorKey: "name",
     header: ({ column }) => (
       <div className="flex items-center gap-2">
-        <Package className="h-4 w-4 text-primary" /> Product Asset
+        <Package className="h-4 w-4 text-blue-600" /> Product Name
       </div>
     ),
     cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <div className="font-bold text-slate-900">{row.original.name}</div>
-        {row.original.total_stock > 100 && (
-          <ShieldCheck className="h-3.5 w-3.5 text-blue-600 animate-pulse" title="Sovereign Certified High-Volume" />
-        )}
-      </div>
+      <div className="font-semibold text-slate-900">{row.original.name}</div>
     ),
     enableSorting: true,
-    enableGlobalFilter: true,
   },
 
-  // --- 3. VALUATION (UPGRADE: Mandatory for Fiduciary Accuracy) ---
+  // 4. PRICE
   {
     accessorKey: "price",
     header: () => (
       <div className="flex items-center gap-2">
-        <DollarSign className="h-4 w-4 text-emerald-600" /> Price
+        <DollarSign className="h-4 w-4 text-slate-400" /> Price
       </div>
     ),
     cell: ({ row }) => (
-      <div className="font-mono font-black text-xs text-slate-700">
-        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(row.original.price || 0)}
+      <div className="font-medium text-slate-700">
+        {new Intl.NumberFormat('en-UG', { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(row.original.price || 0)}
       </div>
     ),
   },
 
+  // 5. CATEGORY
   {
     accessorKey: "category_name",
     header: () => (
       <div className="flex items-center gap-2">
-        <Tag className="h-4 w-4 text-muted-foreground" /> Category
+        <Tag className="h-4 w-4 text-slate-400" /> Category
       </div>
     ),
     cell: ({ row }) => (
       row.original.category_name ? (
-        <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-tighter">
+        <Badge variant="secondary" className="font-semibold text-slate-600">
           {row.original.category_name}
         </Badge>
-      ) : <span className="italic text-muted-foreground text-[10px]">Unassigned</span>
+      ) : <span className="text-slate-400 text-xs">Unassigned</span>
     ),
-    enableSorting: true,
-    enableGlobalFilter: true,
   },
 
+  // 6. TAX
   {
-    id: "tax_logic",
+    id: "tax_category",
     header: () => (
       <div className="flex items-center gap-2">
-        <Fingerprint className="h-4 w-4 text-blue-500" /> Tax DNA
+        <Fingerprint className="h-4 w-4 text-slate-400" /> Tax Category
       </div>
     ),
     cell: ({ row }) => {
       const rawRow = row.original as any;
       return (
-        <Badge variant="outline" className="text-[9px] font-black font-mono uppercase bg-slate-50 border-blue-100 text-blue-700">
+        <Badge variant="outline" className="text-[10px] font-bold border-slate-200 text-slate-600 bg-white">
           {rawRow.tax_category_code || 'STANDARD'}
         </Badge>
       );
     },
   },
 
+  // 7. STOCK
   {
     accessorKey: "total_stock",
     header: () => (
       <div className="flex items-center gap-2">
-        <ClipboardList className="h-4 w-4 text-yellow-700" /> Ledger Stock
+        <ClipboardList className="h-4 w-4 text-slate-400" /> Stock Level
       </div>
     ),
     cell: ({ row }) => {
@@ -176,124 +166,116 @@ export const columns: ColumnDef<ProductRow>[] = [
       
       return (
         <div className="flex items-center gap-2">
-          {/* GRASSROOT FIX: Precision matched to Database rounding logic (4 decimal places) */}
-          <span className={`font-mono font-black text-sm ${status.warning ? status.color : "text-slate-900"}`}>
-            {stockValue % 1 === 0 ? stockValue : stockValue.toFixed(4)}
+          <span className={`font-semibold ${status.warning ? status.color : "text-slate-900"}`}>
+            {stockValue % 1 === 0 ? stockValue : stockValue.toFixed(2)}
           </span>
-          {status.warning && (
-            <span title={status.message}>
-              <AlertCircle className={`h-4 w-4 ${status.color}`} />
-            </span>
-          )}
+          {status.warning && <AlertCircle className={`h-4 w-4 ${status.color}`} />}
         </div>
       );
     },
-    enableSorting: true,
-    enableGlobalFilter: false,
   },
 
+  // 8. PACKAGING
   {
-    id: "packet_logic",
+    id: "packaging",
     header: () => (
       <div className="flex items-center gap-2">
-        <Calculator className="h-4 w-4 text-slate-500" /> Robotic Pack
+        <Calculator className="h-4 w-4 text-slate-400" /> Packaging
       </div>
     ),
     cell: ({ row }) => {
       const rawRow = row.original as any;
       const uPack = rawRow.units_per_pack || 1;
       return (
-        <span className="text-[10px] font-black font-mono text-slate-400 uppercase tracking-tighter">
-          {uPack > 1 ? `Ratio 1:${uPack}` : 'Whole Unit'}
+        <span className="text-xs font-medium text-slate-500">
+          {uPack > 1 ? `${uPack} units/pack` : 'Single unit'}
         </span>
       );
     },
   },
 
+  // 9. VARIANTS
   {
     accessorKey: "variants_count",
     header: () => (
       <div className="flex items-center gap-2">
-        <Layers className="h-4 w-4 text-blue-600" /> Variants
+        <Layers className="h-4 w-4 text-slate-400" /> Variants
       </div>
     ),
     cell: ({ row }) => (
-      <span className="font-mono text-xs font-bold text-slate-600">{row.original.variants_count}</span>
+      <span className="text-xs font-medium text-slate-600">{row.original.variants_count}</span>
     ),
-    enableSorting: true,
-    enableGlobalFilter: false,
   },
+
+  // 10. BRANCH
   {
-    id: "entity",
+    id: "branch",
     header: () => (
       <div className="flex items-center gap-2">
-        <Building2 className="h-4 w-4 text-green-700" /> Jurisdictional Branch
+        <Building2 className="h-4 w-4 text-slate-400" /> Branch
       </div>
     ),
     cell: ({ row }) => (
-      <span className="text-[9px] uppercase font-black tracking-widest text-slate-400">
-        {row.original.business_entity_name || "CENTRAL HQ"}
+      <span className="text-xs font-semibold text-slate-500">
+        {row.original.business_entity_name || "Main Branch"}
       </span>
     ),
-    enableSorting: true,
-    enableGlobalFilter: true,
   },
+
+  // 11. ACTIONS
   {
     id: "actions",
-    header: "",
     cell: ({ row, table }) => {
       const product = row.original;
-      // UPGRADE: Corrected RBAC logic to include 'owner' and 'architect' for high-authority actions
+      // Fixed Authorization: Managers can now interact
       const isAuthorized = 
         table.options.meta?.userRole === "owner" || 
         table.options.meta?.userRole === "admin" || 
-        table.options.meta?.userRole === "architect";
+        table.options.meta?.userRole === "manager";
       
       return (
         <div className="text-right">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-full" aria-label="Open menu">
+              <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px] rounded-xl shadow-2xl border-none p-2">
-              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2 pb-2">Autonomous Controls</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-[180px] p-2 rounded-lg shadow-xl border-slate-200">
+              <DropdownMenuLabel className="text-[10px] font-bold uppercase text-slate-400 px-2 py-1.5">Actions</DropdownMenuLabel>
               <DropdownMenuItem
-                className="rounded-lg font-bold"
+                className="rounded-md font-semibold cursor-pointer"
                 onClick={() => table.options.meta?.onEdit(product)}
                 disabled={!isAuthorized}
               >
-                <Edit className="mr-2 h-4 w-4 text-blue-500" /> Edit Metadata
+                <Edit className="mr-2 h-4 w-4 text-blue-600" /> Edit Product
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="rounded-lg font-bold"
+                className="rounded-md font-semibold cursor-pointer"
                 onClick={() => table.options.meta?.onAdjust(product)}
                 disabled={!isAuthorized}
               >
-                <Calculator className="mr-2 h-4 w-4 text-emerald-500" /> Ledger Adjustment
+                <Calculator className="mr-2 h-4 w-4 text-emerald-600" /> Adjust Stock
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-100" />
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="rounded-lg font-bold text-destructive focus:text-destructive focus:bg-red-50"
+                className="rounded-md font-semibold text-red-600 cursor-pointer focus:bg-red-50"
                 onClick={() => table.options.meta?.onDelete(product)}
                 disabled={!isAuthorized}
               >
-                <Trash2 className="mr-2 h-4 w-4" /> Purge Asset
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Product
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-slate-100" />
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="rounded-lg font-bold text-slate-600"
+                className="rounded-md font-semibold text-slate-600 cursor-pointer"
                 onClick={() => table.options.meta?.onAudit(product)}
               >
-                <ShieldCheck className="mr-2 h-4 w-4 text-blue-600" /> Forensic Audit
+                <ShieldCheck className="mr-2 h-4 w-4 text-blue-600" /> View Audit Logs
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       );
     },
-    enableSorting: false,
-    enableGlobalFilter: false,
   },
 ];

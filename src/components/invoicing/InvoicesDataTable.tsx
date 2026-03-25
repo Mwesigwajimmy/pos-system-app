@@ -11,17 +11,15 @@ import {
   ArrowRight, 
   AlertCircle, 
   FileDown, 
-  ShieldCheck, 
+  CheckCircle2, 
   ArrowUpDown,
-  CheckCircle2,
-  CalendarDays,
-  Calculator
+  FileSpreadsheet
 } from 'lucide-react';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, parseISO, isValid } from "date-fns";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 
 import { 
   Tooltip, 
@@ -34,7 +32,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// --- Enterprise Data Shape ---
+// --- Interfaces ---
 export interface InvoiceData {
   id: string;
   invoice_number: string | null;
@@ -62,52 +60,49 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
   const [filter, setFilter] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof InvoiceData, direction: 'asc' | 'desc' } | null>(null);
 
-  // --- PROFESSIONAL PDF GENERATOR (Aligned with Sovereign Kernel V10) ---
+  // --- PDF GENERATOR (Professional Standard) ---
   const handleDownloadPDF = (inv: InvoiceData) => {
     const doc = new jsPDF();
     const timestamp = format(new Date(), 'dd MMM yyyy, HH:mm');
 
-    // 1. Branding & Header
+    // 1. Header
     doc.setFontSize(22);
-    doc.setTextColor(30, 41, 59); 
-    doc.text("COMMERCIAL INVOICE", 14, 22);
+    doc.setTextColor(15, 23, 42); 
+    doc.text("INVOICE", 14, 22);
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Reference: ${inv.invoice_number || 'DRAFT'}`, 14, 30);
+    doc.text(`Number: ${inv.invoice_number || 'Draft'}`, 14, 30);
     
     const issueDate = inv.issue_date ? format(parseISO(inv.issue_date), 'dd MMM yyyy') : 'N/A';
-    doc.text(`Issued On: ${issueDate}`, 14, 35);
+    doc.text(`Date: ${issueDate}`, 14, 35);
     
     if (inv.transaction_id) {
         doc.setFontSize(8);
-        doc.text(`Forensic Ledger Link: ${inv.transaction_id}`, 14, 40);
+        doc.text(`Reference: ${inv.transaction_id}`, 14, 40);
     }
 
-    // 2. Billing Context
-    doc.setDrawColor(226, 232, 240);
+    doc.setDrawColor(241, 245, 249);
     doc.line(14, 45, 196, 45);
 
-    doc.setFontSize(12);
+    // 2. Billing Info
+    doc.setFontSize(11);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text("FROM (ISSUER):", 14, 55);
+    doc.text("FROM:", 14, 55);
     doc.setFont("helvetica", "normal");
     doc.text(tenantName, 14, 62);
-    doc.setFontSize(9);
-    doc.text("Compliance: Sovereign Ledger Verified", 14, 68);
 
-    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("BILL TO (CUSTOMER):", 120, 55);
+    doc.text("BILL TO:", 120, 55);
     doc.setFont("helvetica", "normal");
     doc.text(inv.customer_name || "Valued Customer", 120, 62);
     doc.text(`Currency: ${inv.currency || 'UGX'}`, 120, 68);
 
-    // 3. Line Items Execution
+    // 3. Table
     autoTable(doc, {
       startY: 80,
-      head: [['Description', 'Quantity', 'Unit Rate', 'Total']],
+      head: [['Description', 'Qty', 'Unit Price', 'Amount']],
       body: inv.items_data && inv.items_data.length > 0 
         ? inv.items_data.map(item => [
             item.description || 'General Service',
@@ -115,17 +110,14 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
             new Intl.NumberFormat().format(item.unit_price || item.price || 0),
             new Intl.NumberFormat().format(item.total || item.total_amount || 0)
           ]) 
-        : [['General Business Services', 1, new Intl.NumberFormat().format(inv.total), new Intl.NumberFormat().format(inv.total)]],
-      theme: 'striped',
-      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+        : [['General Services', 1, new Intl.NumberFormat().format(inv.total), new Intl.NumberFormat().format(inv.total)]],
+      theme: 'grid',
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255] },
       styles: { fontSize: 9 },
-      columnStyles: {
-        3: { halign: 'right' },
-        2: { halign: 'right' }
-      }
+      columnStyles: { 3: { halign: 'right' }, 2: { halign: 'right' } }
     });
 
-    // 4. Financial Summary (Strict Rounding Alignment)
+    // 4. Totals
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -133,26 +125,24 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
     doc.text("Subtotal:", 135, finalY);
     doc.text(new Intl.NumberFormat().format(inv.subtotal || 0), 196, finalY, { align: 'right' });
     
-    doc.text("Tax Amount:", 135, finalY + 7);
+    doc.text("Tax:", 135, finalY + 7);
     doc.text(new Intl.NumberFormat().format(inv.tax_amount || 0), 196, finalY + 7, { align: 'right' });
 
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setTextColor(37, 99, 235); 
     doc.text("TOTAL DUE:", 135, finalY + 18);
     doc.text(`${inv.currency} ${new Intl.NumberFormat().format(inv.total)}`, 196, finalY + 18, { align: 'right' });
 
-    // 5. Verification Footer
+    // 5. Footer
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(`Digital Signature Hash: AUTH-${inv.id.substring(0,8).toUpperCase()}`, 14, 280);
-    doc.text(`BBU1 Autonomous Export: ${timestamp}`, 14, 285);
-    doc.text("This document constitutes a legal record of transaction generated by the Sovereign Kernel.", 14, 289);
+    doc.text(`Report Generated: ${timestamp}`, 14, 285);
+    doc.text("Thank you for your business.", 14, 290);
 
-    doc.save(`Sovereign_Invoice_${inv.invoice_number || 'Draft'}.pdf`);
-    toast.success("Professional Compliance Document Generated");
+    doc.save(`Invoice_${inv.invoice_number || 'Draft'}.pdf`);
+    toast.success("Invoice PDF Downloaded");
   };
 
-  // --- SORTING LOGIC (With Forensic Date Comparison) ---
   const handleSort = (key: keyof InvoiceData) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -173,7 +163,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
         let aValue = a[sortConfig.key] ?? '';
         let bValue = b[sortConfig.key] ?? '';
 
-        // SPECIAL CASE: Date Sorting
         if (sortConfig.key === 'issue_date' || sortConfig.key === 'due_date') {
             const timeA = aValue ? new Date(aValue as string).getTime() : 0;
             const timeB = bValue ? new Date(bValue as string).getTime() : 0;
@@ -191,179 +180,161 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
   const getStatusBadge = (status: string) => {
     const s = (status || '').toUpperCase();
     switch (s) {
-        case 'PAID': return <Badge className="bg-emerald-600 border-none text-white font-black text-[10px] tracking-widest px-3">PAID</Badge>;
-        case 'OVERDUE': return <Badge variant="destructive" className="font-black text-[10px] tracking-widest px-3">OVERDUE</Badge>;
-        case 'PARTIAL': return <Badge className="bg-amber-500 border-none text-white font-black text-[10px] tracking-widest px-3">PARTIAL</Badge>;
-        case 'SENT': 
-        case 'ISSUED': return <Badge className="bg-blue-600 text-white border-none font-black text-[10px] tracking-widest px-3">ISSUED</Badge>;
-        case 'DRAFT': return <Badge variant="secondary" className="font-black text-[10px] tracking-widest px-3">DRAFT</Badge>;
-        default: return <Badge variant="outline" className="font-black text-[10px] uppercase">{status}</Badge>;
+        case 'PAID': return <Badge className="bg-emerald-500 hover:bg-emerald-600 border-none text-white px-3 py-0.5">Paid</Badge>;
+        case 'OVERDUE': return <Badge variant="destructive" className="px-3 py-0.5">Overdue</Badge>;
+        case 'PARTIAL': return <Badge className="bg-amber-500 hover:bg-amber-600 border-none text-white px-3 py-0.5">Partial</Badge>;
+        case 'ISSUED': return <Badge className="bg-blue-600 hover:bg-blue-700 border-none text-white px-3 py-0.5">Issued</Badge>;
+        default: return <Badge variant="outline" className="px-3 py-0.5 text-slate-500">{status}</Badge>;
     }
   };
 
   const formatMoney = (amount: number, currency: string) => {
     return new Intl.NumberFormat(locale === 'en' ? 'en-US' : locale, { 
         style: 'currency', 
-        currency: currency || 'USD',
-        minimumFractionDigits: 2
+        currency: currency || 'UGX',
+        minimumFractionDigits: 0
     }).format(amount || 0);
   };
 
   return (
-    <Card className="shadow-2xl border-none overflow-hidden bg-white dark:bg-slate-950">
-      <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 pb-8 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <Card className="shadow-sm border border-slate-200 overflow-hidden bg-white">
+      <CardHeader className="bg-slate-50/50 p-6 border-b border-slate-200">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle className="text-3xl font-black tracking-tight flex items-center gap-3 text-slate-900 dark:text-white">
-              <ShieldCheck className="h-8 w-8 text-blue-600" />
-              Jurisdictional Registry
+            <CardTitle className="text-xl font-bold tracking-tight text-slate-900">
+              Invoices
             </CardTitle>
             <CardDescription className="text-sm font-medium text-slate-500">
-                Synchronized accounts receivable ledger for <span className="text-blue-600 font-bold">{tenantName}</span>
+                Manage your billing records for {tenantName}
             </CardDescription>
           </div>
-          <div className="relative w-full lg:w-96 group">
-            <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+          <div className="relative w-full lg:w-80">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder="Search by name, ref, or status..." 
+              placeholder="Search invoices..." 
               value={filter} 
               onChange={e => setFilter(e.target.value)} 
-              className="pl-12 h-12 bg-white dark:bg-slate-900 shadow-sm border-slate-200 dark:border-slate-800 rounded-xl font-medium" 
+              className="pl-10 h-10 bg-white border-slate-200 rounded-lg text-sm" 
             />
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="p-0">
-        <ScrollArea className="h-[650px] relative">
-          <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-30 backdrop-blur-md border-b">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-8 w-[140px] font-bold uppercase text-[10px] tracking-widest text-slate-400">Workflow</TableHead>
-                
-                <TableHead onClick={() => handleSort('invoice_number')} className="cursor-pointer group">
-                  <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Reference <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                </TableHead>
-                
-                <TableHead onClick={() => handleSort('customer_name')} className="cursor-pointer group">
-                   <div className="flex items-center gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Counterparty <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                </TableHead>
-                
-                <TableHead onClick={() => handleSort('total')} className="text-right cursor-pointer group">
-                   <div className="flex items-center justify-end gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Gross Value <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                </TableHead>
-
-                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-400">
-                    Tax Amount
-                </TableHead>
-                
-                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-slate-400">Net Balance</TableHead>
-                
-                <TableHead onClick={() => handleSort('issue_date')} className="text-right cursor-pointer group">
-                   <div className="flex items-center justify-end gap-2 font-bold uppercase text-[10px] tracking-widest text-slate-400">Issue Date <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                </TableHead>
-                
-                <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest text-slate-400">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            
-            <TableBody>
-              {sortedAndFiltered.length === 0 ? (
+        <ScrollArea className="h-[600px] w-full">
+          <div className="min-w-[1000px]"> {/* Ensures horizontal scroll on narrow containers */}
+            <Table>
+              <TableHeader className="bg-slate-50/80 border-b">
                 <TableRow>
-                  <TableCell colSpan={8} className="h-80 text-center">
-                        <AlertCircle className="h-12 w-12 mx-auto mb-4 text-slate-300 animate-pulse" />
-                        <p className="text-slate-500 font-bold text-lg">No Synchronized Records Found</p>
-                        <p className="text-sm text-slate-400">Adjust your forensic search or check your ledger integration.</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sortedAndFiltered.map(inv => (
-                  <TableRow key={inv.id} className="group hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors border-b last:border-0">
-                    <TableCell className="pl-8 py-5">{getStatusBadge(inv.status)}</TableCell>
-                    
-                    <TableCell className="font-black font-mono text-blue-700 dark:text-blue-400 text-sm">
-                        <div className="flex items-center gap-2">
-                           {inv.invoice_number || 'DRAFT'}
-                           {inv.transaction_id && (
-                             <span title="Forensically Sealed in Ledger">
-                               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                             </span>
-                           )}
-                        </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                        <div className="flex flex-col">
-                            <span className="font-black text-slate-800 dark:text-slate-200">{inv.customer_name || "Anonymous Client"}</span>
-                            <span className="text-[10px] text-slate-500 flex items-center gap-1.5 font-bold uppercase tracking-tighter">
-                                <FileText className="h-2.5 w-2.5" /> {inv.items_count} Line Items
-                            </span>
-                        </div>
-                    </TableCell>
-                    
-                    <TableCell className="text-right font-mono font-black text-slate-900 dark:text-white">
-                      {formatMoney(inv.total, inv.currency)}
-                    </TableCell>
+                  <TableHead className="pl-6 w-[120px] text-[11px] font-bold uppercase text-slate-500">Status</TableHead>
+                  
+                  <TableHead onClick={() => handleSort('invoice_number')} className="cursor-pointer hover:text-blue-600 transition-colors">
+                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">Number <ArrowUpDown className="h-3 w-3" /></div>
+                  </TableHead>
+                  
+                  <TableHead onClick={() => handleSort('customer_name')} className="cursor-pointer hover:text-blue-600 transition-colors">
+                     <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-500">Customer <ArrowUpDown className="h-3 w-3" /></div>
+                  </TableHead>
+                  
+                  <TableHead onClick={() => handleSort('total')} className="text-right cursor-pointer hover:text-blue-600 transition-colors">
+                     <div className="flex items-center justify-end gap-2 text-[11px] font-bold uppercase text-slate-500">Amount <ArrowUpDown className="h-3 w-3" /></div>
+                  </TableHead>
 
-                    <TableCell className="text-right font-mono text-[11px] text-slate-400 font-bold">
-                      {inv.tax_amount > 0 ? formatMoney(inv.tax_amount, inv.currency) : '-'}
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                        {inv.balance_due > 0 ? (
-                            <span className="text-red-600 font-black font-mono text-xs px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded-md">
-                                {formatMoney(inv.balance_due, inv.currency)}
-                            </span>
-                        ) : (
-                            <div className="flex items-center justify-end gap-1 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
-                                <ShieldCheck className="h-3 w-3" /> Fully Settled
-                            </div>
-                        )}
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                        <div className="flex flex-col items-end">
-                            <span className="text-slate-600 dark:text-slate-400 text-sm font-black">
-                                {inv.issue_date ? format(parseISO(inv.issue_date), "dd MMM yyyy") : '-'}
-                            </span>
-                            {inv.due_date && (
-                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest">
-                                    Expires: {format(parseISO(inv.due_date), "dd MMM")}
-                                </span>
-                            )}
-                        </div>
-                    </TableCell>
-                    
-                    <TableCell className="text-right pr-8">
-                        <div className="flex justify-end gap-2">
-                            <TooltipProvider delayDuration={0}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            size="sm" 
-                                            variant="ghost" 
-                                            className="h-9 w-9 p-0 hover:bg-slate-900 hover:text-white transition-all rounded-lg border border-transparent hover:border-slate-800"
-                                            onClick={() => handleDownloadPDF(inv)}
-                                        >
-                                            <FileDown className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Download Forensic PDF</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            
-                            <Button asChild size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg hover:bg-blue-600 hover:text-white group/btn transition-all">
-                                <Link href={`/${locale}/invoicing/invoice/${inv.id}`}>
-                                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover/btn:text-white" />
-                                </Link>
-                            </Button>
+                  <TableHead className="text-right text-[11px] font-bold uppercase text-slate-500">Tax</TableHead>
+                  <TableHead className="text-right text-[11px] font-bold uppercase text-slate-500">Balance</TableHead>
+                  
+                  <TableHead onClick={() => handleSort('issue_date')} className="text-right cursor-pointer hover:text-blue-600 transition-colors">
+                     <div className="flex items-center justify-end gap-2 text-[11px] font-bold uppercase text-slate-500">Date <ArrowUpDown className="h-3 w-3" /></div>
+                  </TableHead>
+                  
+                  <TableHead className="text-right pr-6 text-[11px] font-bold uppercase text-slate-500">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              
+              <TableBody>
+                {sortedAndFiltered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-48 text-center">
+                        <div className="flex flex-col items-center justify-center text-slate-400">
+                            <AlertCircle className="h-8 w-8 mb-2 opacity-20" />
+                            <p className="text-sm font-medium">No invoices found</p>
                         </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  sortedAndFiltered.map(inv => (
+                    <TableRow key={inv.id} className="hover:bg-slate-50 transition-colors border-b last:border-0">
+                      <TableCell className="pl-6 py-4">{getStatusBadge(inv.status)}</TableCell>
+                      
+                      <TableCell className="font-semibold text-blue-600 text-sm">
+                          <div className="flex items-center gap-2">
+                             {inv.invoice_number || 'Draft'}
+                             {inv.transaction_id && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                          </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                          <div className="flex flex-col">
+                              <span className="font-semibold text-slate-800">{inv.customer_name || "Customer"}</span>
+                              <span className="text-[10px] text-slate-400 flex items-center gap-1 font-bold">
+                                  <FileSpreadsheet className="h-2.5 w-2.5" /> {inv.items_count} items
+                              </span>
+                          </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-right font-bold text-slate-900">
+                        {formatMoney(inv.total, inv.currency)}
+                      </TableCell>
+
+                      <TableCell className="text-right text-xs text-slate-500">
+                        {inv.tax_amount > 0 ? formatMoney(inv.tax_amount, inv.currency) : '-'}
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                          {inv.balance_due > 0 ? (
+                              <span className="text-red-600 font-bold text-xs bg-red-50 px-2 py-0.5 rounded">
+                                  {formatMoney(inv.balance_due, inv.currency)}
+                              </span>
+                          ) : (
+                              <span className="text-emerald-600 font-bold text-[10px] uppercase">Paid</span>
+                          )}
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                          <div className="flex flex-col items-end">
+                              <span className="text-slate-600 text-sm font-medium">
+                                  {inv.issue_date ? format(parseISO(inv.issue_date), "dd MMM yyyy") : '-'}
+                              </span>
+                          </div>
+                      </TableCell>
+                      
+                      <TableCell className="text-right pr-6">
+                          <div className="flex justify-end gap-1">
+                              <TooltipProvider>
+                                  <Tooltip>
+                                      <TooltipTrigger asChild>
+                                          <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-100" onClick={() => handleDownloadPDF(inv)}>
+                                              <FileDown className="h-4 w-4 text-slate-500" />
+                                          </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Download PDF</TooltipContent>
+                                  </Tooltip>
+                              </TooltipProvider>
+                              
+                              <Button asChild size="icon" variant="ghost" className="h-8 w-8 hover:bg-blue-50">
+                                  <Link href={`/${locale}/invoicing/invoice/${inv.id}`}>
+                                      <ArrowRight className="h-4 w-4 text-blue-600" />
+                                  </Link>
+                              </Button>
+                          </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </CardContent>
     </Card>

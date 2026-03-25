@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { 
   Check, 
@@ -13,12 +13,14 @@ import {
   Landmark, 
   TrendingUp, 
   HandCoins, 
-  FilePenLine,
-  ShieldCheck, // UPGRADE: Forensic Icon
-  Fingerprint, // UPGRADE: Robotic Seal Icon
-  Activity,    // UPGRADE: Real-time Pulse Icon
-  Globe,       // UPGRADE: Global Jurisdiction Icon
-  Plus
+  FileEdit,
+  CheckCircle2,
+  ShieldCheck,
+  Activity,
+  Globe,
+  Plus,
+  ArrowRight,
+  Wallet
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -30,21 +32,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge'; // UPGRADE: Required for status
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Types
+// --- Interfaces ---
 interface MemberOption { 
   value: number; 
   label: string; 
-  currency_code?: string; // UPGRADE: Currency Support
+  currency_code?: string;
 }
 
 interface DeskSummary { 
     dailyStats: {
         deposits_today: number;
         loans_disbursed_today: number;
-        robotic_seals_today?: number; // UPGRADE: Autonomy Tracking
+        total_transactions_today?: number;
     }
 }
 
@@ -56,19 +59,20 @@ const fetchDeskSummary = async (): Promise<DeskSummary> => {
   return data; 
 };
 
+// --- Sub-components ---
+
 const StatCard = ({ title, value, icon: Icon, isVerified }: { title: string; value: string | number; icon: React.ElementType, isVerified?: boolean }) => (
-  <Card className="relative overflow-hidden">
+  <Card className="shadow-sm border-slate-200">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">{title}</span>
         <div className="flex items-center gap-2">
-            {/* UPGRADE: Robotic Integrity Indicator */}
-            {isVerified && <Fingerprint className="h-3 w-3 text-blue-500 animate-pulse" title="Sovereign Kernel Verified" />}
-            <Icon className="h-4 w-4 text-muted-foreground" />
+            {isVerified && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" title="Verified" />}
+            <Icon className="h-4 w-4 text-slate-400" />
         </div>
     </CardHeader>
     <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {isVerified && <p className="text-[10px] text-blue-600 font-mono italic">Validated by Global Kernel</p>}
+        <div className="text-2xl font-bold text-slate-900">{value}</div>
+        {isVerified && <p className="text-[10px] text-blue-600 font-semibold mt-1 uppercase tracking-wider">System Verified</p>}
     </CardContent>
   </Card>
 );
@@ -89,27 +93,32 @@ const MemberSelector = ({ onSelectMember }: { onSelectMember: (member: MemberOpt
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between">
-                    Select Member...
+                <Button variant="outline" role="combobox" className="w-full justify-between h-11 border-slate-200 shadow-sm">
+                    {search ? search : "Find a member..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-xl border-slate-200">
                 <Command>
-                    <CommandInput placeholder="Search member by name..." onValueChange={setSearch} />
+                    <CommandInput placeholder="Search member name..." onValueChange={setSearch} className="h-10" />
                     <CommandList>
-                        {isLoading && <div className="p-2 text-sm">Searching...</div>}
-                        <CommandEmpty>No member found.</CommandEmpty>
-                        <CommandGroup>
-                            {members?.map(member => (
-                                <CommandItem key={member.value} onSelect={() => { onSelectMember(member); setOpen(false); }}>
-                                    <Check className="mr-2 h-4 w-4 opacity-0" />
-                                    {member.label}
-                                    {/* UPGRADE: Visual Currency Indicator */}
-                                    {member.currency_code && <Badge variant="secondary" className="ml-auto text-[9px]">{member.currency_code}</Badge>}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
+                        {isLoading && <div className="p-4 text-xs text-slate-500 font-medium">Searching records...</div>}
+                        <CommandEmpty className="p-4 text-xs">No member found.</CommandEmpty>
+                        <ScrollArea className="h-64">
+                            <CommandGroup>
+                                {members?.map(member => (
+                                    <CommandItem 
+                                        key={member.value} 
+                                        onSelect={() => { onSelectMember(member); setOpen(false); }}
+                                        className="p-3 border-b border-slate-50 last:border-0"
+                                    >
+                                        <User className="mr-3 h-4 w-4 text-slate-400" />
+                                        <span className="font-semibold text-slate-800">{member.label}</span>
+                                        {member.currency_code && <Badge variant="secondary" className="ml-auto text-[10px] bg-slate-100 text-slate-600">{member.currency_code}</Badge>}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </ScrollArea>
                     </CommandList>
                 </Command>
             </PopoverContent>
@@ -118,159 +127,183 @@ const MemberSelector = ({ onSelectMember }: { onSelectMember: (member: MemberOpt
 };
 
 const MemberDashboard = ({ member, onAction }: { member: MemberOption, onAction: (type: string, data?: any) => void }) => {
-    // Member-specific details
     const summary = { accountBalance: 1250000, activeLoan: 5000000 };
     const formatCurrency = (val: number) => `${member.currency_code || 'UGX'} ${val.toLocaleString()}`;
 
     return (
-        <Card className="mt-4 border-l-4 border-blue-500 shadow-lg">
-            <CardHeader className="pb-2">
+        <Card className="mt-6 border-l-4 border-l-blue-600 shadow-sm bg-blue-50/20">
+            <CardHeader className="pb-4">
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle>{member.label}</CardTitle>
-                        <CardDescription className="flex items-center gap-2">
-                            Member ID: {member.value}
-                            <ShieldCheck className="h-3 w-3 text-green-500" title="Identity Verified" />
+                        <CardTitle className="text-lg font-bold text-slate-900">{member.label}</CardTitle>
+                        <CardDescription className="flex items-center gap-2 text-xs font-semibold">
+                            ID: {member.value}
+                            <ShieldCheck className="h-3 w-3 text-emerald-500" />
                         </CardDescription>
                     </div>
-                    <Badge className="bg-blue-50 text-blue-700 border-blue-200">
-                        <Globe className="w-3 h-3 mr-1"/> Global ID
+                    <Badge variant="outline" className="bg-white text-slate-500 border-slate-200">
+                        <Globe className="w-3 h-3 mr-1.5"/> Profile Active
                     </Badge>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-2 bg-slate-50 rounded-md border">
-                        <p className="text-[10px] uppercase font-bold text-slate-400">Account Balance</p>
-                        <p className="font-bold text-lg text-blue-700">{formatCurrency(summary.accountBalance)}</p>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 bg-white rounded-lg border border-slate-100 shadow-sm">
+                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Savings Balance</p>
+                        <p className="font-bold text-lg text-blue-600">{formatCurrency(summary.accountBalance)}</p>
                     </div>
-                    <div className="p-2 bg-slate-50 rounded-md border">
-                        <p className="text-[10px] uppercase font-bold text-slate-400">Active Loan</p>
-                        <p className="font-bold text-lg text-orange-700">{formatCurrency(summary.activeLoan)}</p>
+                    <div className="p-4 bg-white rounded-lg border border-slate-100 shadow-sm">
+                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Loan Balance</p>
+                        <p className="font-bold text-lg text-orange-600">{formatCurrency(summary.activeLoan)}</p>
                     </div>
                 </div>
-                <Button className="w-full h-12" onClick={() => onAction('transaction', member)}>
+                <Button className="w-full h-11 bg-blue-600 hover:bg-blue-700 font-bold shadow-sm" onClick={() => onAction('transaction', member)}>
                     <HandCoins className="mr-2 h-4 w-4" />
-                    Process Deposit / Withdrawal
+                    Process Transaction
                 </Button>
-                {/* UPGRADE: Autonomy Indicator */}
-                <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 italic">
-                    <Activity className="w-3 h-3 animate-pulse text-green-500" />
-                    Ledger connected to Robotic Sovereign Kernel
-                </div>
             </CardContent>
         </Card>
     );
 };
 
+// --- Main Page Component ---
+
 export default function FinancialDesk() {
     const [selectedMember, setSelectedMember] = useState<MemberOption | null>(null);
     const [action, setAction] = useState<{ type: string; data?: any } | null>(null);
     const { data: summary, isLoading } = useQuery({ queryKey: ['financialDeskSummary'], queryFn: fetchDeskSummary });
-    
-    // Transaction mutation
+    const queryClient = useQueryClient();
+
     const transactionMutation = useMutation({
-      mutationFn: async (data: any) => { /* RPC call to process transaction */ console.log("Processing transaction:", data); },
+      mutationFn: async (data: any) => { console.log("Processing:", data); },
       onSuccess: () => { 
-        toast.success("Transaction processed and Sealed by Kernel."); 
+        toast.success("Transaction successfully processed"); 
+        queryClient.invalidateQueries({ queryKey: ['financialDeskSummary'] });
         setAction(null); 
       },
-      onError: (err: any) => toast.error(`Kernel Rejection: ${err.message}`)
+      onError: (err: any) => toast.error(`Error: ${err.message}`)
     });
 
     const formatCurrency = (val: number) => `UGX ${val.toLocaleString()}`;
 
     return (
-        <div className="grid md:grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 animate-in fade-in duration-700">
-            <aside>
-                <Card className="shadow-md">
+        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 pb-12 animate-in fade-in duration-500">
+            {/* Sidebar */}
+            <aside className="space-y-6">
+                <Card className="shadow-sm border-slate-200">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
                             <User className="w-5 h-5 text-blue-600"/>
-                            Member Workspace
+                            Member Search
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <MemberSelector onSelectMember={setSelectedMember} />
-                        {selectedMember ? <MemberDashboard member={selectedMember} onAction={(type, data) => setAction({ type, data })} /> : 
-                            <div className="mt-4 text-center p-8 border-2 border-dashed rounded-md bg-slate-50/50">
-                                <User className="mx-auto h-12 w-12 text-muted-foreground opacity-20" />
-                                <p className="mt-2 text-sm text-muted-foreground">Select a member to activate the Financial Desk.</p>
+                        {selectedMember ? (
+                            <MemberDashboard member={selectedMember} onAction={(type, data) => setAction({ type, data })} />
+                        ) : (
+                            <div className="mt-6 text-center py-12 px-8 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                                <Wallet className="mx-auto h-10 w-10 text-slate-200 mb-3" />
+                                <p className="text-sm font-semibold text-slate-400 uppercase tracking-tight">Select a member to start</p>
                             </div>
-                        }
+                        )}
                     </CardContent>
                 </Card>
-                <Card className="mt-6 border-blue-100 bg-blue-50/30">
-                    <CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader>
+
+                <Card className="border-slate-200 bg-white">
+                    <CardHeader className="pb-3"><CardTitle className="text-xs font-bold uppercase text-slate-400">Common Tasks</CardTitle></CardHeader>
                     <CardContent className="space-y-2">
-                         <Button asChild className="w-full justify-start" variant="secondary">
+                         <Button asChild className="w-full justify-between font-semibold h-10" variant="outline">
                              <Link href="/lending/applications/new">
-                                 <FilePenLine className="mr-2 h-4 w-4" />New Loan Application
+                                 <span className="flex items-center"><FileEdit className="mr-2 h-4 w-4 text-blue-500" /> New Loan App</span>
+                                 <ArrowRight size={14} className="text-slate-300" />
                              </Link>
                          </Button>
-                         <Button asChild className="w-full justify-start" variant="outline">
+                         <Button asChild className="w-full justify-between font-semibold h-10" variant="outline">
                              <Link href="/customers/new">
-                                 <Plus className="mr-2 h-4 w-4" />Register New Member
+                                 <span className="flex items-center"><Plus className="mr-2 h-4 w-4 text-blue-500" /> Register Member</span>
+                                 <ArrowRight size={14} className="text-slate-300" />
                              </Link>
                          </Button>
                     </CardContent>
                 </Card>
             </aside>
-            <main>
-                <Tabs defaultValue="summary">
-                    <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-                        <TabsTrigger value="summary">Autonomous Summary</TabsTrigger>
-                        <TabsTrigger value="pending">Critical Tasks</TabsTrigger>
+
+            {/* Main Area */}
+            <main className="space-y-6">
+                <Tabs defaultValue="summary" className="w-full">
+                    <TabsList className="bg-slate-100 p-1 rounded-xl">
+                        <TabsTrigger value="summary" className="px-8 rounded-lg font-bold text-xs uppercase tracking-tight">Daily Summary</TabsTrigger>
+                        <TabsTrigger value="pending" className="px-8 rounded-lg font-bold text-xs uppercase tracking-tight">Pending Tasks</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="summary" className="mt-4 space-y-4">
-                        {isLoading ? <div className="grid md:grid-cols-2 gap-4"><Skeleton className="h-24"/><Skeleton className="h-24"/></div> :
-                            <div className="grid md:grid-cols-3 gap-4">
-                                <StatCard title="Deposits Today" value={formatCurrency(summary?.dailyStats?.deposits_today || 0)} icon={Landmark} isVerified />
-                                <StatCard title="Loans Disbursed" value={formatCurrency(summary?.dailyStats?.loans_disbursed_today || 0)} icon={TrendingUp} isVerified />
-                                {/* UPGRADE: Robotic Execution Count */}
-                                <StatCard title="Robotic Seals" value={summary?.dailyStats?.robotic_seals_today || 0} icon={Fingerprint} />
+
+                    <TabsContent value="summary" className="mt-6 space-y-6">
+                        {isLoading ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Skeleton className="h-28 rounded-xl"/><Skeleton className="h-28 rounded-xl"/><Skeleton className="h-28 rounded-xl"/>
                             </div>
-                        }
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle>Verified Transaction Ledger</CardTitle>
-                                <Badge variant="outline" className="font-mono text-[10px] text-green-600 border-green-200">LIVE FEED</Badge>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <StatCard title="Today's Deposits" value={formatCurrency(summary?.dailyStats?.deposits_today || 0)} icon={Landmark} isVerified />
+                                <StatCard title="Loans Disbursed" value={formatCurrency(summary?.dailyStats?.loans_disbursed_today || 0)} icon={TrendingUp} isVerified />
+                                <StatCard title="Total Transactions" value={summary?.dailyStats?.total_transactions_today || 0} icon={Activity} />
+                            </div>
+                        )}
+
+                        <Card className="shadow-sm border-slate-200">
+                            <CardHeader className="flex flex-row items-center justify-between border-b bg-slate-50/30">
+                                <CardTitle className="text-base font-bold text-slate-900">Recent Ledger Activity</CardTitle>
+                                <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold px-3">
+                                    LIVE SYNC
+                                </Badge>
                             </CardHeader>
-                            <CardContent className="min-h-[300px] flex items-center justify-center text-slate-300 italic text-sm">
-                                No recent activity in this jurisdiction.
+                            <CardContent className="h-[400px] flex items-center justify-center text-slate-400">
+                                <div className="text-center">
+                                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                    <p className="text-sm font-medium">No transactions found for this branch today</p>
+                                </div>
                             </CardContent>
                         </Card>
                     </TabsContent>
-                    <TabsContent value="pending" className="mt-4">
-                         <Card>
-                            <CardHeader><CardTitle>Pending Compliance Checks</CardTitle></CardHeader>
-                            <CardContent className="min-h-[300px] flex items-center justify-center text-slate-300 italic text-sm">
-                                All departmental checks complete.
+
+                    <TabsContent value="pending" className="mt-6">
+                         <Card className="border-slate-200">
+                            <CardHeader><CardTitle className="text-base font-bold">Pending Reviews</CardTitle></CardHeader>
+                            <CardContent className="h-[400px] flex items-center justify-center text-slate-400">
+                                <p className="text-sm font-medium">All compliance tasks are up to date</p>
                             </CardContent>
                         </Card>
                     </TabsContent>
                 </Tabs>
             </main>
 
-             <Dialog open={!!action && action.type === 'transaction'} onOpenChange={() => setAction(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <HandCoins className="w-5 h-5 text-blue-600"/>
-                            Process {action?.data?.currency_code || 'UGX'} Transaction for {action?.data?.label}
+            {/* Transaction Modal */}
+            <Dialog open={!!action && action.type === 'transaction'} onOpenChange={() => setAction(null)}>
+                <DialogContent className="sm:max-w-[450px] rounded-xl p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-white border-b">
+                        <DialogTitle className="flex items-center gap-3 text-xl font-bold">
+                            <HandCoins className="w-6 h-6 text-blue-600"/>
+                            Process {action?.data?.currency_code || 'UGX'} Transaction
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        <div className="p-3 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-800 flex gap-2">
-                            <Fingerprint className="w-4 h-4 shrink-0"/>
-                            This transaction will be autonomously sealed by the Sovereign Kernel and is immutable once confirmed.
+                    <div className="p-8 space-y-6 bg-white">
+                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-100 text-xs font-medium text-blue-800 flex gap-3">
+                            <ShieldCheck className="w-5 h-5 shrink-0 text-blue-600"/>
+                            <span>All transactions are secured and recorded for auditing. Ensure member details are correct before confirming.</span>
                         </div>
-                        {/* Form for deposit/withdrawal would go here */}
+                        
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-700">Member</Label>
+                                <Input value={action?.data?.label} disabled className="bg-slate-50 border-slate-200 font-semibold" />
+                            </div>
+                            {/* Further Transaction Fields would go here */}
+                        </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setAction(null)}>Cancel</Button>
-                        <Button onClick={() => transactionMutation.mutate({})} className="bg-blue-600 hover:bg-blue-700 text-white">
-                            Execute & Seal
+                    <DialogFooter className="p-6 bg-slate-50 border-t flex justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setAction(null)} className="font-bold text-slate-500">Cancel</Button>
+                        <Button onClick={() => transactionMutation.mutate({})} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 shadow-sm">
+                            {transactionMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : "Confirm Transaction"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

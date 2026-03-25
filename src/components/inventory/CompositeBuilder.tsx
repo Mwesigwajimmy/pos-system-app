@@ -3,23 +3,20 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { 
     Check, 
     ChevronsUpDown, 
     Trash2, 
     Loader2, 
-    AlertCircle, 
     PlusCircle, 
-    Save, 
     Calculator,
-    Zap,
-    ShieldCheck,
-    FlaskConical,
-    UtensilsCrossed,
-    Fingerprint,
+    Package,
+    CheckCircle2,
     Info,
-    TrendingUp
+    TrendingUp,
+    Utensils,
+    Beaker
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -30,9 +27,9 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // --- TYPES ---
 interface ProductOption { 
@@ -48,7 +45,7 @@ interface Ingredient {
     variant_id: number; 
     name: string; 
     quantity_used: number; 
-    unit_cost: number; // UPGRADE: Added for real-time cost calculation
+    unit_cost: number;
     uom_name?: string; 
 }
 
@@ -56,7 +53,7 @@ type SaveRecipePayload = { compositeVariantId: number; ingredients: Omit<Ingredi
 
 const supabase = createClient();
 
-// --- ENTERPRISE DATA ACCESS ---
+// --- DATA ACCESS ---
 
 async function fetchAllVariants(): Promise<ProductOption[]> {
     const { data, error } = await supabase
@@ -79,11 +76,7 @@ async function fetchAllVariants(): Promise<ProductOption[]> {
 async function fetchRecipe(compositeVariantId: number): Promise<Ingredient[]> {
     const { data, error } = await supabase.rpc('get_composite_details_v5', { p_variant_id: compositeVariantId });
     if (error) throw new Error(error.message);
-    
-    const details = data as any;
-    if (!details || !details.components) return [] as any;
-
-    return details; // Returning the whole object so the useEffect can extract .components
+    return data as any;
 }
 
 async function saveRecipe({ compositeVariantId, ingredients }: SaveRecipePayload) {
@@ -93,9 +86,9 @@ async function saveRecipe({ compositeVariantId, ingredients }: SaveRecipePayload
         .eq('id', compositeVariantId)
         .single();
 
-    if (parentError) throw new Error("Fiduciary handshake failed.");
+    if (parentError) throw new Error("Could not retrieve product data.");
 
-    const parentName = (parentData.products as any)?.name || 'Composite Product';
+    const parentName = (parentData.products as any)?.name || 'Product';
     const parentSku = parentData.sku || '';
 
     const componentsPayload = ingredients.map(ing => ({
@@ -120,38 +113,40 @@ const ProductCombobox = ({ options, value, onChange, placeholder, disabled }: an
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between h-11 shadow-sm border-slate-200" disabled={disabled}>
-                    {value ? <span className="font-bold text-slate-900">{value.label}</span> : placeholder}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-primary" />
+                <Button variant="outline" role="combobox" className="w-full justify-between h-10 border-slate-200 bg-white" disabled={disabled}>
+                    {value ? <span className="font-semibold text-slate-900">{value.label}</span> : <span className="text-slate-400">{placeholder}</span>}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[450px] p-0 shadow-2xl border-slate-200" align="start">
+            <PopoverContent className="w-[450px] p-0 shadow-xl border-slate-200" align="start">
                 <Command>
-                    <CommandInput placeholder="Search by name or SKU..." className="h-12" />
+                    <CommandInput placeholder="Search name or SKU..." className="h-10" />
                     <CommandList>
                         <CommandEmpty>No product found.</CommandEmpty>
-                        <CommandGroup className="max-h-[300px] overflow-y-auto">
-                            {options.map((option: ProductOption) => (
-                                <CommandItem 
-                                    key={option.value} 
-                                    value={option.label}
-                                    onSelect={() => { onChange(option); setOpen(false); }}
-                                    className="p-3 border-b last:border-0"
-                                >
-                                    <div className="flex flex-col flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-bold text-sm">{option.label}</span>
-                                            <Badge variant="outline" className="text-[10px] font-mono">{option.sku}</Badge>
+                        <ScrollArea className="h-72">
+                            <CommandGroup>
+                                {options.map((option: ProductOption) => (
+                                    <CommandItem 
+                                        key={option.value} 
+                                        value={option.label}
+                                        onSelect={() => { onChange(option); setOpen(false); }}
+                                        className="p-3 border-b border-slate-50 last:border-0"
+                                    >
+                                        <div className="flex flex-col flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-semibold text-sm text-slate-800">{option.label}</span>
+                                                <Badge variant="secondary" className="text-[10px] font-mono">{option.sku}</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] text-slate-500 font-medium">Cost: {option.cost_price.toLocaleString()} UGX</span>
+                                                {option.uom_name && <Badge variant="outline" className="text-[9px] px-1 h-4 text-blue-600 border-blue-100">{option.uom_name}</Badge>}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Basis: {option.cost_price.toLocaleString()} UGX</span>
-                                            {option.uom_name && <Badge className="text-[8px] h-3.5 bg-blue-50 text-blue-600 border-blue-100">{option.uom_name}</Badge>}
-                                        </div>
-                                    </div>
-                                    <Check className={cn("ml-2 h-4 w-4 text-emerald-500", value?.value === option.value ? "opacity-100" : "opacity-0")} />
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
+                                        <Check className={cn("ml-2 h-4 w-4 text-blue-600", value?.value === option.value ? "opacity-100" : "opacity-0")} />
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </ScrollArea>
                     </CommandList>
                 </Command>
             </PopoverContent>
@@ -176,12 +171,9 @@ export default function CompositeBuilder() {
         enabled: !!selectedComposite
     });
 
-    // UPDATED: Fixed handling for DB object return
     useEffect(() => {
-        // @ts-ignore - handling the object return from DB
-        if (selectedComposite && originalRecipe && originalRecipe.components) {
-            // FIX: We must only set the 'components' array, not the whole object
-            setIngredients(originalRecipe.components); 
+        if (selectedComposite && originalRecipe && (originalRecipe as any).components) {
+            setIngredients((originalRecipe as any).components); 
             setIsDirty(false);
         } else if (selectedComposite && !isLoadingRecipe) {
             setIngredients([]);
@@ -192,14 +184,13 @@ export default function CompositeBuilder() {
     const mutation = useMutation({
         mutationFn: saveRecipe,
         onSuccess: () => {
-            toast.success("Fiduciary Recipe Sealed", { icon: <ShieldCheck className="text-emerald-500" /> });
+            toast.success("Recipe saved successfully");
             queryClient.invalidateQueries({ queryKey: ['recipe', selectedComposite?.value] });
             setIsDirty(false);
         },
-        onError: (error) => toast.error(`Handshake Failed: ${error.message}`),
+        onError: (error) => toast.error(`Error: ${error.message}`),
     });
 
-    // --- ROBOTIC ANALYTICS: Total Production Cost ---
     const totalProductionCost = useMemo(() => {
         return ingredients.reduce((sum, ing) => sum + (ing.unit_cost * ing.quantity_used), 0);
     }, [ingredients]);
@@ -235,99 +226,100 @@ export default function CompositeBuilder() {
         });
     };
 
-    if (isLoadingVariants) return <div className="p-10 text-center animate-pulse text-slate-300">Synchronizing Financial Pillars...</div>;
+    if (isLoadingVariants) return <div className="p-20 text-center text-slate-400">Loading product variants...</div>;
 
     return (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in duration-700 pb-20">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pb-12 animate-in fade-in duration-500">
             
-            {/* LEFT: Builder Workspace */}
+            {/* WORKSPACE */}
             <div className="xl:col-span-8 space-y-6">
-                <Card className="border-none shadow-2xl bg-white/50 backdrop-blur-md overflow-hidden">
-                    <CardHeader className="bg-slate-50/50 border-b pb-6">
+                <Card className="border-slate-200 shadow-sm overflow-hidden">
+                    <CardHeader className="bg-slate-50 border-b p-6">
                         <div className="flex justify-between items-center">
                             <div>
-                                <CardTitle className="text-xl font-black tracking-tighter flex items-center gap-2">
-                                    <Zap className="text-emerald-500 fill-emerald-500 animate-pulse" size={20} />
-                                    NEURAL RECIPE ORCHESTRATOR
+                                <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <Package className="text-blue-600" size={20} />
+                                    Recipe Manager
                                 </CardTitle>
-                                <CardDescription className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                                    Bill of Materials (BOM) & Fractional Math Kernel
+                                <CardDescription className="text-sm mt-1">
+                                    Manage ingredient lists and calculate production costs.
                                 </CardDescription>
                             </div>
-                            <Badge className="bg-slate-900 border-none font-mono text-[10px] px-3">KERNEL v10.2.5</Badge>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                        
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">1. Primary Finished Asset (Saleable)</Label>
+                    
+                    <CardContent className="p-6 md:p-8 space-y-8">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">1. Select Product to Configure</Label>
                             <ProductCombobox 
                                 options={allVariants || []} 
                                 value={selectedComposite} 
                                 onChange={(val: any) => isDirty ? setPendingComposite(val) : setSelectedComposite(val)} 
-                                placeholder="Select a Meal, Drug, or Unit to configure..." 
+                                placeholder="Search product name..." 
                             />
                         </div>
 
-                        <div className={cn("space-y-6 transition-all duration-500", !selectedComposite && "opacity-20 pointer-events-none grayscale")}>
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">2. Ingest Component Ingredients</Label>
-                                <div className="flex gap-3">
+                        <div className={cn("space-y-6 transition-opacity", !selectedComposite && "opacity-40 pointer-events-none")}>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">2. Add Ingredients</Label>
+                                <div className="flex gap-2">
                                     <div className="flex-1">
                                         <ProductCombobox 
                                             options={allVariants?.filter(v => v.value !== selectedComposite?.value && !ingredients.some(i => i.variant_id === v.value)) || []} 
                                             value={selectedIngredient} 
                                             onChange={setSelectedIngredient} 
-                                            placeholder="Search Raw Materials (Flour, Milk, Drug Base...)" 
+                                            placeholder="Search raw materials or components..." 
                                         />
                                     </div>
-                                    <Button onClick={handleAddIngredient} disabled={!selectedIngredient} className="bg-primary font-black shadow-lg shadow-primary/20 h-11 px-6">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> INGEST
+                                    <Button onClick={handleAddIngredient} disabled={!selectedIngredient} className="bg-blue-600 hover:bg-blue-700 h-10 px-6 font-semibold">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add
                                     </Button>
                                 </div>
                             </div>
 
-                            <div className="border rounded-2xl overflow-hidden shadow-inner bg-slate-50/30">
+                            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                                 <Table>
-                                    <TableHeader className="bg-white/80 border-b">
-                                        <TableRow className="hover:bg-transparent">
-                                            <TableHead className="font-black text-[9px] uppercase tracking-widest pl-6">Ingredient Asset</TableHead>
-                                            <TableHead className="font-black text-[9px] uppercase tracking-widest text-right">Unit Basis</TableHead>
-                                            <TableHead className="font-black text-[9px] uppercase tracking-widest w-[160px] text-center">Required Qty</TableHead>
-                                            <TableHead className="font-black text-[9px] uppercase tracking-widest text-right pr-6">Cost Impact</TableHead>
+                                    <TableHeader className="bg-slate-50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 px-4">Ingredient</TableHead>
+                                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-right px-4">Unit Cost</TableHead>
+                                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-center w-[140px] px-4">Qty Needed</TableHead>
+                                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-right px-6">Sub-total</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {ingredients.length === 0 ? (
-                                            <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-300 font-bold uppercase tracking-widest text-xs italic">Awaiting Component Ingestion...</TableCell></TableRow>
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm italic">
+                                                    No ingredients added yet.
+                                                </TableCell>
+                                            </TableRow>
                                         ) : (
                                             ingredients.map((ing, idx) => (
-                                                <TableRow key={ing.variant_id} className="hover:bg-white transition-colors group border-b last:border-0">
-                                                    <TableCell className="pl-6 py-5">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-slate-900 text-sm">{ing.name}</span>
-                                                            {ing.uom_name && <span className="text-[9px] text-blue-500 font-black uppercase tracking-tighter italic">Base: 1.00 {ing.uom_name}</span>}
-                                                        </div>
+                                                <TableRow key={ing.variant_id} className="border-b last:border-0 hover:bg-slate-50/50">
+                                                    <TableCell className="px-4 py-4">
+                                                        <div className="font-semibold text-slate-800 text-sm">{ing.name}</div>
+                                                        {ing.uom_name && <span className="text-[10px] text-blue-500 font-semibold uppercase">{ing.uom_name}</span>}
                                                     </TableCell>
-                                                    <TableCell className="text-right font-mono text-xs text-slate-400">
+                                                    <TableCell className="text-right text-xs text-slate-500 px-4">
                                                         {ing.unit_cost.toLocaleString()}
                                                     </TableCell>
                                                     <TableCell className="px-4">
-                                                        <div className="flex items-center gap-2 bg-white rounded-lg border p-1 shadow-sm focus-within:ring-1 ring-primary/30 transition-all">
+                                                        <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-2 py-1">
                                                             <Input 
                                                                 type="number" 
-                                                                step="0.0001" 
+                                                                step="0.01" 
                                                                 value={ing.quantity_used} 
                                                                 onChange={e => handleUpdateQuantity(idx, Number(e.target.value))} 
-                                                                className="h-8 border-none text-center font-black text-xs focus-visible:ring-0" 
+                                                                className="h-7 border-none text-center font-bold text-xs p-0 focus-visible:ring-0" 
                                                             />
-                                                            <span className="text-[9px] font-bold text-slate-400 pr-2 uppercase">{ing.uom_name || 'U'}</span>
+                                                            <span className="text-[10px] text-slate-400 font-bold uppercase">{ing.uom_name || 'U'}</span>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right pr-6">
+                                                    <TableCell className="text-right px-6">
                                                         <div className="flex items-center justify-end gap-3">
-                                                            <span className="font-black text-slate-900 font-mono text-xs">{(ing.unit_cost * ing.quantity_used).toLocaleString()}</span>
-                                                            <Button variant="ghost" size="icon" onClick={() => { setIngredients(ingredients.filter(i => i.variant_id !== ing.variant_id)); setIsDirty(true); }} className="h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50">
+                                                            <span className="font-bold text-slate-900 text-sm">{(ing.unit_cost * ing.quantity_used).toLocaleString()}</span>
+                                                            <Button variant="ghost" size="icon" onClick={() => { setIngredients(ingredients.filter(i => i.variant_id !== ing.variant_id)); setIsDirty(true); }} className="h-7 w-7 text-slate-400 hover:text-red-500">
                                                                 <Trash2 size={14} />
                                                             </Button>
                                                         </div>
@@ -340,50 +332,50 @@ export default function CompositeBuilder() {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="bg-slate-900 p-6 flex justify-between items-center text-white">
-                        <div className="flex items-center gap-2">
-                            <ShieldCheck className="text-emerald-400 w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ledger Compliance Verified</span>
+                    
+                    <CardFooter className="bg-slate-50 p-6 flex justify-between items-center border-t">
+                        <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                            <CheckCircle2 className="text-emerald-500 w-4 h-4" />
+                            Changes ready to save
                         </div>
                         <Button 
                             onClick={handleSave} 
                             disabled={!isDirty || mutation.isPending || !selectedComposite}
-                            className="bg-emerald-600 hover:bg-emerald-700 font-black h-12 px-12 shadow-xl shadow-emerald-900/20 uppercase tracking-widest"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-10 shadow-sm"
                         >
-                            {mutation.isPending ? <Loader2 className="animate-spin" /> : "Seal Recipe"}
+                            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Recipe"}
                         </Button>
                     </CardFooter>
                 </Card>
             </div>
 
-            {/* RIGHT: Financial Intelligence Panel */}
+            {/* SIDEBAR */}
             <div className="xl:col-span-4 space-y-6">
                 
-                {/* Cost Analysis Card */}
-                <Card className="bg-slate-950 text-white border-none shadow-2xl relative overflow-hidden">
-                    <Fingerprint className="absolute -right-4 -top-4 w-32 h-32 text-emerald-500/10 rotate-12" />
-                    <CardHeader>
-                        <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 flex items-center gap-2">
-                           <TrendingUp size={12}/> Economic Intelligence
+                {/* Cost Analysis */}
+                <Card className="bg-slate-900 text-white border-none shadow-lg">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-bold uppercase text-blue-400 flex items-center gap-2">
+                           <TrendingUp size={14}/> Cost Analysis
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6 relative z-10">
+                    <CardContent className="space-y-6">
                         <div>
-                            <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Total Production Cost</p>
-                            <div className="text-5xl font-black text-white mt-1 tracking-tighter">
-                                {totalProductionCost.toLocaleString()} <span className="text-sm font-bold text-slate-600 uppercase">UGX</span>
+                            <p className="text-xs text-slate-400 font-medium uppercase">Total Cost of Production</p>
+                            <div className="text-3xl font-bold text-white mt-1">
+                                {totalProductionCost.toLocaleString()} <span className="text-xs font-semibold text-slate-500">UGX</span>
                             </div>
                         </div>
                         
                         {selectedComposite && (
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
                                 <div>
-                                    <p className="text-[8px] text-slate-500 uppercase font-bold">Suggested Sale</p>
-                                    <p className="font-black text-emerald-400">{selectedComposite.price.toLocaleString()}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase">Retail Price</p>
+                                    <p className="font-bold text-blue-300">{selectedComposite.price.toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[8px] text-slate-500 uppercase font-bold">Projected Margin</p>
-                                    <p className={cn("font-black", (selectedComposite.price - totalProductionCost) > 0 ? "text-emerald-400" : "text-red-500")}>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase">Profit Margin</p>
+                                    <p className={cn("font-bold", (selectedComposite.price - totalProductionCost) > 0 ? "text-emerald-400" : "text-red-400")}>
                                         {(( (selectedComposite.price - totalProductionCost) / (selectedComposite.price || 1) ) * 100).toFixed(1)}%
                                     </p>
                                 </div>
@@ -392,50 +384,47 @@ export default function CompositeBuilder() {
                     </CardContent>
                 </Card>
 
-                {/* Industry Guidance */}
-                <Card className="border-l-4 border-l-blue-500 shadow-xl bg-blue-50/30">
-                    <CardHeader>
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-blue-900 flex items-center gap-2">
-                           <Info size={14}/> SME Protocol
+                {/* Info Box */}
+                <Card className="border-slate-200 shadow-sm bg-blue-50/20">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-bold text-slate-700 uppercase flex items-center gap-2">
+                           <Info size={14} className="text-blue-600"/> Information
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex gap-3 items-start">
-                            <UtensilsCrossed size={16} className="text-blue-600 mt-1" />
-                            <p className="text-[11px] text-slate-600 leading-relaxed font-medium uppercase italic">
-                                Restaurants: Ingredients will be deducted from warehouse levels the moment the POS Final Seal is triggered.
+                            <Utensils size={14} className="text-slate-400 mt-1" />
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Restaurant inventory will be automatically deducted when a sale is finalized in the POS system.
                             </p>
                         </div>
                         <div className="flex gap-3 items-start">
-                            <FlaskConical size={16} className="text-blue-600 mt-1" />
-                            <p className="text-[11px] text-slate-600 leading-relaxed font-medium uppercase italic">
-                                Medical: Compounding of drugs supports 4-decimal precision for precise dosage management.
+                            <Beaker size={14} className="text-slate-400 mt-1" />
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Supports high-precision quantities (up to 4 decimals) for chemical or pharmaceutical compounding.
                             </p>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Internal Traceability */}
-                <div className="text-[9px] font-mono text-slate-400 text-center uppercase tracking-widest leading-loose p-4">
-                    Blockchain-ready hashing active.<br/> 
-                    Recipe edits are recorded in the Sovereign Audit Log.<br/>
-                    ID: {selectedComposite?.value || 'ORPHANED_LEAF'}
+                <div className="text-[10px] text-slate-400 text-center uppercase tracking-widest px-4">
+                    All recipe updates are logged for tracking.
                 </div>
             </div>
 
             {/* UNSAVED CHANGES ALERT */}
             <AlertDialog open={!!pendingComposite} onOpenChange={() => setPendingComposite(null)}>
-                <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                <AlertDialogContent className="rounded-xl border-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-2xl font-black tracking-tighter">UNSAVED FINANCIAL DATA</AlertDialogTitle>
-                        <AlertDialogDescription className="font-medium text-slate-600">
-                            The current recipe configuration has not been sealed. Discarding will cause a desync between your kitchen/production floor and the general ledger.
+                        <AlertDialogTitle className="text-lg font-bold">Discard Unsaved Changes?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500">
+                            The current recipe hasn't been saved. If you switch products now, your changes will be lost.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="bg-slate-50 p-6 -mx-6 -mb-6 rounded-b-2xl mt-4">
-                        <AlertDialogCancel className="font-bold border-none">KEEP EDITING</AlertDialogCancel>
-                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 font-black px-8" onClick={() => { setSelectedComposite(pendingComposite); setPendingComposite(null); setIsDirty(false); }}>
-                            DISCARD & SWITCH
+                    <AlertDialogFooter className="bg-slate-50 p-6 -mx-6 -mb-6 mt-4">
+                        <AlertDialogCancel className="font-semibold">Keep Editing</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => { setSelectedComposite(pendingComposite); setPendingComposite(null); setIsDirty(false); }}>
+                            Discard Changes
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

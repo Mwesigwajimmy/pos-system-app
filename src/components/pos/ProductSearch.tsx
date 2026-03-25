@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDebounce } from 'use-debounce';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
-import { Loader2, PackageSearch } from 'lucide-react';
+import { Loader2, Search, Package, Hash, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type SearchResult = {
   variant_id: number;
@@ -21,17 +22,16 @@ type ProductSearchProps = {
 
 const cache = new Map<string, SearchResult[]>();
 
+// Professional Highlighter
 const SearchResultHighlighter = ({ text, highlight }: { text: string; highlight: string }) => {
-  if (!highlight.trim()) {
-    return <span>{text}</span>;
-  }
+  if (!highlight.trim()) return <span>{text}</span>;
   const regex = new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   const parts = text.split(regex);
   return (
     <span>
       {parts.map((part, i) =>
         part.toLowerCase() === highlight.toLowerCase() ? (
-          <span key={i} className="font-extrabold text-primary">{part}</span>
+          <span key={i} className="text-blue-600 font-semibold">{part}</span>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -48,7 +48,7 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   
-  const [debouncedSearchTerm] = useDebounce(searchTerm, 250);
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 200);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
   const performSearch = useCallback(async (term: string) => {
@@ -66,7 +66,7 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const { data, error } = await supabase.rpc('search_products_for_pos', { p_search_term: term });
     
     if (error) {
-      console.error('Error searching products:', error);
+      console.error('Search error:', error);
       setResults([]);
     } else {
       const searchData = data || [];
@@ -86,6 +86,7 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
     setSearchTerm('');
     setResults([]);
     setActiveIndex(-1);
+    setIsFocused(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -98,9 +99,12 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
     } else if (e.key === 'Enter' && activeIndex >= 0 && results[activeIndex]) {
       e.preventDefault();
       handleSelect(results[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setIsFocused(false);
     }
   };
 
+  // Ensure selected item is visible while scrolling with keys
   useEffect(() => {
     if (activeIndex >= 0 && resultsContainerRef.current) {
       const activeElement = resultsContainerRef.current.children[activeIndex] as HTMLElement;
@@ -109,56 +113,85 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
   }, [activeIndex]);
 
   return (
-    <div className="relative w-full z-50">
-      <div className="relative">
-        <PackageSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <div className="relative w-full z-[100]">
+      <div className="relative group">
+        <div className={cn(
+          "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
+          isFocused ? "text-blue-600" : "text-slate-400"
+        )}>
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+        </div>
         <Input
           type="text"
-          placeholder="Instantly find any product by name or SKU..."
+          placeholder="Search product name or scan SKU..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           onKeyDown={handleKeyDown}
-          className="pl-10 h-14 text-xl font-medium tracking-wider"
+          className={cn(
+            "pl-12 h-14 text-lg border-slate-200 bg-white shadow-sm transition-all rounded-xl",
+            "focus:ring-2 focus:ring-blue-600 focus:border-blue-600 focus:bg-white",
+            isFocused && "shadow-lg"
+          )}
           autoComplete="off"
         />
       </div>
+
       {isFocused && searchTerm.length > 0 && (
-        <div className="absolute top-full mt-2 w-full bg-card border rounded-lg shadow-2xl max-h-96 overflow-y-auto">
-          {isLoading && results.length === 0 ? (
-            <div className="p-2 space-y-1">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-3">
-                  <div className="h-5 w-3/4 bg-muted rounded-md animate-pulse mb-2"></div>
-                  <div className="h-4 w-1/2 bg-muted rounded-md animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-          ) : results.length > 0 ? (
-            <div ref={resultsContainerRef}>
-              {results.map((product, index) => (
-                <div
-                  key={product.variant_id}
-                  onMouseDown={(e) => { e.preventDefault(); handleSelect(product); }}
-                  className={cn(
-                    "p-3 hover:bg-accent cursor-pointer border-b last:border-b-0",
-                    index === activeIndex && "bg-accent ring-2 ring-primary"
-                  )}
-                >
-                  <div className="font-semibold text-base">
-                    <SearchResultHighlighter text={`${product.product_name} - ${product.variant_name}`} highlight={searchTerm} />
+        <div className="absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden">
+          <ScrollArea className="max-h-[400px]">
+            <div ref={resultsContainerRef} className="p-1">
+              {results.length > 0 ? (
+                results.map((product, index) => (
+                  <div
+                    key={product.variant_id}
+                    onMouseDown={(e) => { e.preventDefault(); handleSelect(product); }}
+                    className={cn(
+                      "flex items-center justify-between p-4 cursor-pointer rounded-lg transition-colors group",
+                      index === activeIndex ? "bg-blue-50" : "hover:bg-slate-50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-100 rounded-md group-hover:bg-white transition-colors">
+                            <Package className="h-4 w-4 text-slate-500" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-slate-900">
+                                <SearchResultHighlighter text={product.product_name} highlight={searchTerm} />
+                            </span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-tight">{product.variant_name}</span>
+                                <span className="text-[10px] text-slate-300">•</span>
+                                <span className="text-[10px] font-mono font-bold text-blue-500 uppercase flex items-center gap-1">
+                                    <Hash className="h-2.5 w-2.5" /> {product.sku || 'No SKU'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <div className="text-base font-bold text-blue-600">
+                                UGX {product.price.toLocaleString()}
+                            </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 transition-colors" />
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>SKU: {product.sku || 'N/A'}</span>
-                    <span className="font-bold">UGX {product.price.toLocaleString()}</span>
+                ))
+              ) : (
+                !isLoading && (
+                  <div className="p-10 text-center">
+                    <div className="inline-flex p-3 bg-slate-50 rounded-full mb-3">
+                        <Search className="h-6 w-6 text-slate-300" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-500">No matching products found</p>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
-          ) : (
-            <div className="p-4 text-center text-muted-foreground">No products found for "{searchTerm}"</div>
-          )}
+          </ScrollArea>
         </div>
       )}
     </div>
