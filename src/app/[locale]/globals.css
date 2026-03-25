@@ -1,6 +1,6 @@
 /* 
-  BBU1 ENTERPRISE STYLESHEET - Version 2.2.1
-  STABLE BUILD VERSION - COMPATIBLE WITH NEXT.JS 15 & TAILWIND 3
+  BBU1 ENTERPRISE STYLESHEET - Version 2.3.0
+  PROFESSIONAL CORPORATE BLUE EDITION
 */
 
 @tailwind base;
@@ -9,48 +9,57 @@
 
 @layer base {
   :root {
-    --background: 240 10% 99%;
-    --foreground: 240 10% 3.9%;
+    /* Professional Corporate Blue Palette */
+    --background: 210 40% 98%; /* Very light blue-tinted white */
+    --foreground: 222 47% 11%;
+    
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222 47% 11%;
+    
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 210 100% 38%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 260 80% 60%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 210 100% 38%;
-    --radius: 0.5rem;
+    --popover-foreground: 222 47% 11%;
+    
+    --primary: 221 83% 45%; /* Deep, trustworthy Corporate Blue */
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 214 32% 91%; /* Light Slate Blue */
+    --secondary-foreground: 222 47% 11%;
+    
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
+    
+    --accent: 217 91% 60%; /* Bright blue for interactions */
+    --accent-foreground: 222 47% 11%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 45%;
+    --radius: 0.75rem; /* Slightly softer corners for a modern feel */
   }
  
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 20% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 20% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 270 70% 70%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 217.2 91.2% 59.8%;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 32% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 224 76% 48%;
   }
 }
  
@@ -58,17 +67,20 @@
   * { @apply border-border; }
   body {
     @apply bg-background text-foreground;
-    background: radial-gradient(at top left, hsl(var(--primary) / 0.05), transparent 50%),
-                radial-gradient(at bottom right, hsl(var(--accent) / 0.05), transparent 50%),
-                linear-gradient(to bottom, hsl(var(--background)), hsl(var(--secondary) / 0.2));
-    background-attachment: fixed;
+    /* Clean dashboard background - No busy gradients */
+    background-color: #F8FAFC;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* 
-  FIXED: Removed var(--spacing(8)) which causes build failures 
-  Replaced with standard CSS variable compatibility
-*/
+/* --- HIGH-END UI UTILITIES --- */
+
+/* Professional Soft Shadow for Cards */
+.shadow-soft {
+  shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Cell size fix for legacy components */
 .\[--cell-size\:--spacing\(8\)\] {
   --cell-size: 2rem !important;
 }
@@ -77,7 +89,7 @@
   --cell-size: 2rem !important;
 }
 
-/* --- MOBILE UI REPAIR ENGINE --- */
+/* --- MOBILE UI REPAIR --- */
 @media (max-width: 768px) {
   .flex.justify-between.items-center, header {
     flex-direction: column !important;
@@ -87,73 +99,42 @@
     padding: 1rem !important;
   }
 
-  .flex.items-center.gap-4, [role="tablist"], .overflow-x-auto {
+  /* Ensure tabs scroll horizontally on mobile without breaking */
+  [role="tablist"] {
     display: flex !important;
-    flex-wrap: nowrap !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
-    gap: 1.25rem !important;
-    padding-bottom: 0.75rem;
+    padding-bottom: 4px;
+    gap: 0.5rem;
   }
 
-  button, span, .truncate, a {
-    flex-shrink: 0 !important;
-    white-space: nowrap !important;
+  [role="tablist"]::-webkit-scrollbar {
+    display: none;
   }
-
-  .grid-cols-4 { grid-template-columns: 1fr !important; }
 }
 
-/* --- HERO & VISUAL ARCHITECTURE --- */
+/* --- HERO VISUALS (For Landing Pages only) --- */
 .hero-visual-background {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
   background: radial-gradient(circle at 50% 10%, hsl(var(--primary) / 0.1), transparent 70%),
               url("/patterns/grid-light.svg");
   background-size: 100% 100%, 60px 60px;
-  animation: hero-gradient 15s ease infinite;
-  opacity: 0.8; z-index: -2;
+  opacity: 0.8; 
+  z-index: -2;
 }
 
-.hero-background-image { animation: ken-burns 20s infinite alternate; }
-
 .bg-features-pattern {
-  background-image: url("/images/showcase/ai-warehouse-logistics.jpg");
-  background-size: cover; background-attachment: fixed;
-  animation: ken-burns-slow 45s infinite alternate;
+  background-size: cover; 
+  background-attachment: fixed;
   opacity: 0.65;
 }
 
-/* --- ANIMATIONS --- */
-@keyframes ken-burns {
-  0% { transform: scale(1) translateX(0%); }
-  100% { transform: scale(1.15) translateX(-5%); }
-}
-
-@keyframes ken-burns-slow {
-  0% { transform: scale(1.0); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1.0); }
-}
-
-@keyframes hero-gradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* --- BRANDING & GRID --- */
+/* --- BRANDING GRADIENTS --- */
 .bg-cta-gradient {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, #1d4ed8 100%);
 }
 
-@media (max-width: 1400px) {
-  .grid-cols-12.items-end {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 1.5rem !important;
-  }
-  .grid-cols-12.items-end > div { width: 100% !important; }
-  .grid-cols-12.items-end > div:last-child { align-self: flex-end; }
+.bg-blue-glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
 }

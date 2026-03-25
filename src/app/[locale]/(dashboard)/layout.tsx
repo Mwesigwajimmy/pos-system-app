@@ -5,28 +5,25 @@
 import React, { memo, ReactNode } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
-  ShieldAlert, Activity, Zap, Fingerprint // Upgrade: Forensic Icons
+  ShieldAlert, Activity, Zap, Fingerprint
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { SyncProvider } from '@/components/core/SyncProvider';
 import BrandingProvider from '@/components/core/BrandingProvider';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client'; // Upgrade: For Trigger Listening
-import { toast } from 'sonner'; // Upgrade: For Real-time Notifications
+import { createClient } from '@/lib/supabase/client'; 
+import { toast } from 'sonner'; 
 
-// --- V-REVOLUTION FIX: IMPORT THE NECESSARY PROVIDERS ---
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
-// --- END OF FIX ---
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 /**
  * --- UPGRADE: SOVEREIGN LIVE GUARD ---
- * This component completes the 'Forensic Ledger Guard' invention.
- * It listens specifically for rows inserted by your SQL triggers.
+ * Listen specifically for rows inserted by SQL triggers.
  */
 const SovereignLiveGuard = () => {
     const supabase = createClient();
@@ -40,7 +37,6 @@ const SovereignLiveGuard = () => {
                 table: 'sovereign_audit_anomalies' 
             }, (payload) => {
                 const anomaly = payload.new;
-                // Parity Check: Only alert on CRITICAL fraud indicators
                 if (anomaly.severity === 'CRITICAL' || anomaly.severity === 'HIGH') {
                     toast.error(`AUTONOMOUS GUARD: ${anomaly.anomaly_type}`, {
                         description: anomaly.description,
@@ -54,10 +50,9 @@ const SovereignLiveGuard = () => {
         return () => { supabase.removeChannel(channel); };
     }, [supabase]);
 
-    return null; // Component stays invisible until a toast is triggered
+    return null;
 }
 
-// --- The Omnipresent AI Toggle Button (No changes needed here) ---
 const CopilotToggleButton = () => {
     const { toggleCopilot, isOpen, isReady } = useCopilot();
 
@@ -68,7 +63,7 @@ const CopilotToggleButton = () => {
         <Button
             onClick={toggleCopilot}
             size="icon"
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95"
+            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110 active:scale-95 bg-blue-600 hover:bg-blue-700 text-white"
             aria-label={isOpen ? "Close AI Co-Pilot" : "Open AI Co-Pilot"}
         >
             <Sparkles className="h-6 w-6" />
@@ -76,7 +71,6 @@ const CopilotToggleButton = () => {
     );
 }
 
-// --- The Main Application Layout (No changes needed here) ---
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
@@ -85,7 +79,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     if (isSidebarOpen) {
       setIsSidebarOpen(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
@@ -93,7 +86,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
         <div className="fixed inset-0 bg-black/60" aria-hidden="true" onClick={onClose}></div>
-        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-card">
+        {/* Mobile Sidebar Background set to white for clarity */}
+        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button type="button" className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" onClick={onClose}>
               <span className="sr-only">Close sidebar</span>
@@ -108,20 +102,28 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   MobileSidebar.displayName = 'MobileSidebar';
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Upgrade: Autonomous Forensic Listener */}
+    // Main Container background changed to light blue-slate for contrast
+    <div className="flex h-screen bg-[#F8FAFC]">
       <SovereignLiveGuard />
       
-      <div className="hidden md:flex md:flex-shrink-0"><Sidebar /></div>
+      {/* Sidebar Wrapper with a thin professional border for split view */}
+      <div className="hidden md:flex md:flex-shrink-0 border-r border-slate-200">
+        <Sidebar />
+      </div>
+
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="relative z-30 flex-shrink-0 flex h-16 bg-card border-b border-border">
-          <button type="button" className="px-4 border-r border-border text-muted-foreground focus:outline-none md:hidden" onClick={() => setIsSidebarOpen(true)}>
+        {/* Header set to pure white to stand out from the slate background */}
+        <header className="relative z-30 flex-shrink-0 flex h-16 bg-white border-b border-slate-200">
+          <button type="button" className="px-4 border-r border-slate-200 text-slate-500 focus:outline-none md:hidden" onClick={() => setIsSidebarOpen(true)}>
             <span className="sr-only">Open sidebar</span>
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
           <Header />
         </header>
+
+        {/* Main Content Area */}
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="p-4 sm:p-6 lg:p-8">
             {children}
@@ -133,42 +135,37 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   );
 }
 
-// --- Gatekeeper Component (Your original, correct logic) ---
-// This component now sits inside the providers and determines if the main UI should render.
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading, error } = useBusiness();
 
     if (isLoading) {
         return (
-            <div className="flex h-screen w-screen items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex h-screen w-screen items-center justify-center bg-white">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
         );
     }
 
     if (error || !profile) {
         return (
-            <div className="flex h-screen w-screen items-center justify-center bg-background text-destructive">
-                <div className="text-center">
+            <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] text-red-600">
+                <div className="text-center p-8 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <h1 className="text-xl font-bold">Application Error</h1>
-                    <p>{error || "Your business profile could not be loaded. Please log in again."}</p>
+                    <p className="text-slate-500 mt-2">{error || "Your business profile could not be loaded. Please log in again."}</p>
                 </div>
             </div>
         );
     }
     
-    // Profile is loaded, render the actual app layout.
     return <AppLayout>{children}</AppLayout>;
 }
 
-// --- The Final, Definitive Dashboard Layout Export (NOW WITH PROVIDERS) ---
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BusinessProvider>
       <GlobalCopilotProvider>
         <BrandingProvider>
           <SyncProvider>
-            {/* The Gatekeeper now protects the UI and has access to the contexts it needs */}
             <DashboardGatekeeper>
               {children}
             </DashboardGatekeeper>

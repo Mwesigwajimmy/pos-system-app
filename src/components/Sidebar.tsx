@@ -38,33 +38,31 @@ interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
 
-// --- MASTER NAVIGATION CONFIGURATION (Full Professional Dataset) ---
+// --- MASTER NAVIGATION CONFIGURATION ---
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
-        title: 'Sovereign Control', 
+        title: 'System Control', 
         icon: ShieldAlert, 
         roles: ['architect', 'commander'], 
-        module: 'System Administration', // ALIGNED: Matches backend module_slug
+        module: 'System Administration',
         subItems: [
-            { href: '/command-center', label: 'War Room Dashboard', icon: Zap },
+            { href: '/command-center', label: 'Command Dashboard', icon: Zap },
             { href: '/sovereign-control', label: 'Control Center', icon: ShieldCheck },
             { href: '/tenants', label: 'Tenant Management', icon: Building2 },
-            { href: '/telemetry', label: 'Global Traffic', icon: Activity },
-            { href: '/billing', label: 'Global Cashflow', icon: Banknote },
+            { href: '/telemetry', label: 'System Traffic', icon: Activity },
+            { href: '/billing', label: 'Global Finance', icon: Banknote },
         ]
     },
 
-    // --- UNIVERSAL TOOLS ---
     { type: 'link', href: '/dashboard', label: 'Overview', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'auditor'] },
-    { type: 'link', href: '/copilot', label: 'AI Co-Pilot', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'] }, 
+    { type: 'link', href: '/copilot', label: 'AI Assistant', icon: Sparkles, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'] }, 
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'waiter_staff', 'pharmacist'] },
     
-    // --- POS & KDS ---
     { 
         type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, 
         roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender'], 
-        module: 'Sales & POS', // ALIGNED: Matches backend module_slug
+        module: 'Sales & POS', 
         businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services']
     },
     { 
@@ -74,57 +72,53 @@ const navSections: NavItem[] = [
         businessTypes: ['Restaurant / Cafe', 'Mixed/Conglomerate']
     },
     
-    // --- ACTIVITIES & LOGS ---
     {
         type: 'accordion', title: 'Activities & Logs', icon: ListChecks, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
-        module: 'Activities & Logs', // ALIGNED
+        module: 'Activities & Logs',
         subItems: [
-            { href: '/activities/timeline', label: 'Global Timeline', icon: Activity },      
-            { href: '/activities/user-feeds', label: 'User Activity Feed', icon: UserCog },  
-            { href: '/activities/workflows', label: 'Workflow Logs', icon: GitGraph },       
-            { href: '/activities/tasks', label: 'Task Activities', icon: ClipboardCheck },
+            { href: '/activities/timeline', label: 'Timeline', icon: Activity },      
+            { href: '/activities/user-feeds', label: 'User Feed', icon: UserCog },  
+            { href: '/activities/workflows', label: 'Workflows', icon: GitGraph },       
+            { href: '/activities/tasks', label: 'Tasks', icon: ClipboardCheck },
             { href: '/activities/notifications', label: 'Notifications', icon: Bell },       
-            { href: '/activities/comments', label: 'Comments History', icon: MessageSquare },
+            { href: '/activities/comments', label: 'Comments', icon: MessageSquare },
         ]
     },
 
-    // --- CRM ---
     {
         type: 'accordion', title: 'CRM', icon: Handshake, roles: ['admin', 'manager', 'owner', 'architect', 'marketing_specialist', 'support_agent'], 
-        module: 'CRM', // ALIGNED
+        module: 'CRM',
         subItems: [ 
             { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 }, 
-            { href: '/crm/marketing', label: 'Marketing Campaigns', icon: Megaphone }, 
-            { href: '/crm/support', label: 'Support Tickets', icon: Users }, 
+            { href: '/crm/marketing', label: 'Marketing', icon: Megaphone }, 
+            { href: '/crm/support', label: 'Support', icon: Users }, 
         ]
     },
 
-    // --- eCOMMERCE ---
     {
         type: 'accordion', title: 'eCommerce', icon: Globe, roles: ['admin', 'manager', 'owner', 'architect', 'ecommerce_manager'], 
-        module: 'eCommerce', // ALIGNED
+        module: 'eCommerce',
         subItems: [ 
             { href: '/ecommerce/orders', label: 'Online Orders', icon: ClipboardCheck }, 
             { href: '/ecommerce/returns', label: 'Order Returns', icon: Undo2 }, 
             { href: '/ecommerce/products', label: 'Online Products', icon: Boxes }, 
-            { href: '/ecommerce/inventory', label: 'Multi-Warehouse Inv.', icon: Building2 }, 
+            { href: '/ecommerce/inventory', label: 'Warehouse Management', icon: Building2 }, 
             { href: '/ecommerce/customers', label: 'Customer 360', icon: Users }, 
-            { href: '/ecommerce/abandoned-carts', label: 'Cart Abandonment', icon: AlertTriangle }, 
+            { href: '/ecommerce/abandoned-carts', label: 'Abandoned Carts', icon: AlertTriangle }, 
             { href: '/ecommerce/marketing', label: 'Promotions', icon: Megaphone }, 
-            { href: '/ecommerce/payments', label: 'Payment Providers', icon: CreditCard }, 
-            { href: '/ecommerce/storefront', label: 'Storefront Settings', icon: Settings }, 
-            { href: '/ecommerce/marketplaces', label: 'Marketplace Integration', icon: Plug }, 
+            { href: '/ecommerce/payments', label: 'Payment Methods', icon: CreditCard }, 
+            { href: '/ecommerce/storefront', label: 'Storefront', icon: Settings }, 
+            { href: '/ecommerce/marketplaces', label: 'Marketplaces', icon: Plug }, 
         ]
     },
 
-    // --- INVOICING ---
     {
         type: 'accordion', title: 'Invoicing', icon: Receipt, roles: ['admin', 'manager', 'accountant', 'cashier', 'owner', 'architect', 'pharmacist', 'legal_counsel'], 
-        module: 'Invoicing Hub', // ALIGNED
+        module: 'Invoicing Hub',
         subItems: [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
             { href: '/invoicing/list', label: 'All Invoices', icon: FileStack }, 
-            { href: '/invoicing/to-be-issued', label: 'To Be Issued', icon: Clock }, 
+            { href: '/invoicing/to-be-issued', label: 'Pending Issuance', icon: Clock }, 
             { href: '/invoicing/credit-notes', label: 'Credit Notes', icon: FileMinus }, 
             { href: '/invoicing/debit-notes', label: 'Debit Notes', icon: FilePlus }, 
             { href: '/invoicing/deferred-revenue', label: 'Deferred Revenue', icon: PiggyBank }, 
@@ -132,10 +126,9 @@ const navSections: NavItem[] = [
         ]
     },
 
-    // --- REPORTS CENTER ---
     {
         type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect'], 
-        module: 'Reports Center', // ALIGNED
+        module: 'Reports Center',
         subItems: [
             { href: '/reports/finance-hub', label: 'Finance Hub', icon: Landmark },
             { href: '/reports/executive-summary', label: 'Executive Summary', icon: Activity },
@@ -144,68 +137,65 @@ const navSections: NavItem[] = [
             { href: '/reports/trial-balance', label: 'Trial Balance', icon: Scale },
             { href: '/reports/fiscal', label: 'Fiscal Report', icon: FileCheck },
             { href: '/reports/cash-flow', label: 'Cash Flow', icon: Banknote },
-            { href: '/reports/aging', label: 'Aged Payables/Receivables', icon: History },
+            { href: '/reports/aging', label: 'Aging Reports', icon: History },
             { href: '/reports/sales', label: 'Sales Reports', icon: BarChart3 },
             { href: '/reports/sales-history', label: 'Sales History', icon: History },
-            { href: '/reports/tax', label: 'Tax Liability Reports', icon: Calculator },
-            { href: '/reports/audit-trail', label: 'Audit Trail Report', icon: ShieldCheck },
+            { href: '/reports/tax', label: 'Tax Liability', icon: Calculator },
+            { href: '/reports/audit-trail', label: 'Audit Trail', icon: ShieldCheck },
             { href: '/reports/esg', label: 'ESG & Impact', icon: Handshake },
             { href: '/reports/benchmarking', label: 'Benchmarking', icon: Activity },
         ]
     },
 
-    // --- SALES & CUSTOMERS ---
     {
         type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist'], 
-        module: 'Sales & POS', // ALIGNED
-        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Distribution', 'Mixed/Conglomerate', 'Professional Services'], // ALIGNED
+        module: 'Sales & POS',
+        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Distribution', 'Mixed/Conglomerate', 'Professional Services'], 
         subItems: [
             { href: '/customers', label: 'Customers', icon: Users },
             { href: '/returns', label: 'Returns', icon: Undo2 },
-            { href: '/dsr', label: 'Daily Sales Report', icon: FileSpreadsheet, roles: ['admin', 'manager', 'owner', 'accountant', 'architect'] },
-            { href: '/sales/pricing-rules', label: 'Price Lists & Rules', icon: Percent },
-            { href: '/sales/orders-to-upsell', label: 'Upsell Opportunities', icon: Activity },
+            { href: '/dsr', label: 'Daily Sales (DSR)', icon: FileSpreadsheet, roles: ['admin', 'manager', 'owner', 'accountant', 'architect'] },
+            { href: '/sales/pricing-rules', label: 'Pricing Rules', icon: Percent },
+            { href: '/sales/orders-to-upsell', label: 'Upsell Leads', icon: Activity },
         ]
     },
 
-    // --- INVENTORY & STOCK ---
     {
         type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager'], 
-        module: 'Inventory Management', // ALIGNED
+        module: 'Inventory Management',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, 
             { href: '/inventory/categories', label: 'Categories', icon: Tags }, 
-            { href: '/inventory/composites', label: 'Manufacturing / Recipe', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution', 'Restaurant / Cafe'] }, 
-            { href: '/inventory/work-center', label: 'Work Center Schedule', icon: CalendarDays, businessTypes: ['Distribution', 'Retail / Wholesale'] },
-            { href: '/inventory/manufacturing-orders', label: 'Manufacturing Orders', icon: Wrench, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
+            { href: '/inventory/composites', label: 'Recipes', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution', 'Restaurant / Cafe'] }, 
+            { href: '/inventory/work-center', label: 'Work Center', icon: CalendarDays, businessTypes: ['Distribution', 'Retail / Wholesale'] },
+            { href: '/inventory/manufacturing-orders', label: 'Manufacturing', icon: Wrench, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
             { href: '/purchases', label: 'Purchase Orders', icon: Truck },
-            { href: '/inventory/adjustments', label: 'Stock Adjustments', icon: ClipboardCheck },
+            { href: '/inventory/adjustments', label: 'Adjustments', icon: ClipboardCheck },
             { href: '/inventory/transfers', label: 'Stock Transfers', icon: ArrowRightLeft }, 
             { href: '/inventory/cycle-counts', label: 'Cycle Counts', icon: ClipboardList },
-            { href: '/inventory/valuation', label: 'Inventory Valuation', icon: Calculator, roles: ['admin', 'manager', 'accountant'] }, 
+            { href: '/inventory/valuation', label: 'Valuation', icon: Calculator, roles: ['admin', 'manager', 'accountant'] }, 
             { href: '/inventory/reorder-points', label: 'Reorder Points', icon: Signal },
-            { href: '/inventory/replenishment', label: 'Stock Replenishment', icon: ShoppingCart },
-            { href: '/inventory/tracking', label: 'Batch & Serial Tracking', icon: Activity }, 
-            { href: '/inventory/maintenance', label: 'Asset Maintenance', icon: Wrench },
+            { href: '/inventory/replenishment', label: 'Replenishment', icon: ShoppingCart },
+            { href: '/inventory/tracking', label: 'Batch/Serial Tracking', icon: Activity }, 
+            { href: '/inventory/maintenance', label: 'Maintenance', icon: Wrench },
             { href: '/inventory/repairs', label: 'Repair Tickets', icon: Wrench }, 
         ]
     },
 
-    // --- PROCUREMENT ---
     {
         type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager', 'owner', 'architect', 'procurement_officer'], 
-        module: 'Procurement', // ALIGNED
+        module: 'Procurement',
         subItems: [
-            { href: '/procurement', label: 'Dashboard', icon: LayoutDashboard },
-            { href: '/procurement/pipeline', label: 'Procurement Pipeline', icon: Activity },
+            { href: '/procurement', label: 'Overview', icon: LayoutDashboard },
+            { href: '/procurement/pipeline', label: 'Pipeline', icon: Activity },
             { href: '/procurement/tenders', label: 'Tenders & Bids', icon: Gavel },
-            { href: '/procurement/contracts', label: 'Contract Management', icon: FileCheck },
-            { href: '/procurement/suppliers', label: 'Supplier Risk Register', icon: ShieldCheck },
-            { href: '/procurement/approvals', label: 'Approval Workflow', icon: CheckSquare },
+            { href: '/procurement/contracts', label: 'Contracts', icon: FileCheck },
+            { href: '/procurement/suppliers', label: 'Supplier Register', icon: ShieldCheck },
+            { href: '/procurement/approvals', label: 'Approvals', icon: CheckSquare },
             { href: '/procurement/spend', label: 'Spend Analysis', icon: PieChart },
             { href: '/procurement/strategy', label: 'Category Strategy', icon: SlidersHorizontal },
-            { href: '/procurement/calendar', label: 'Sourcing Calendar', icon: CalendarDays },
-            { href: '/procurement/agentic-drafts', label: 'Agentic AI Drafts', icon: Zap },
+            { href: '/procurement/calendar', label: 'Calendar', icon: CalendarDays },
+            { href: '/procurement/agentic-drafts', label: 'AI Drafts', icon: Zap },
         ]
     },
 
@@ -215,313 +205,296 @@ const navSections: NavItem[] = [
         title: 'Audit & Assurance', 
         icon: ShieldCheck, 
         roles: ['admin', 'auditor', 'owner', 'architect'], 
-        module: 'Audit & Assurance', // ALIGNED
+        module: 'Audit & Assurance',
         subItems: [
-            { href: '/audit', label: 'Audit Command Center', icon: LayoutDashboard }, 
-            { href: '/audit/sandbox', label: 'Sovereign Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant', 'owner', 'architect'] },
-            { href: '/audit/planning', label: 'Audit Planning Board', icon: CalendarDays },
-            { href: '/audit/findings', label: 'Audit Findings Table', icon: ClipboardList },
-            { href: '/audit/controls', label: 'Internal Controls Matrix', icon: ShieldCheck },
-            { href: '/audit/trail-viewer', label: 'Audit Trail Viewer', icon: Eye },
-            { href: '/audit/ingestion', label: 'Audit Ingestion Portal', icon: UploadCloud },
-            { href: '/audit/kpi-cards', label: 'Audit KPI Cards', icon: Activity },
-            { href: '/audit/logs', label: 'System Audit Log', icon: History }, 
-            { href: '/audit/action-workflow', label: 'Audit Action Workflow', icon: GitGraph },
-            { href: '/audit/assignments', label: 'Auditor Assignments', icon: UserCog },
-            { href: '/audit/files', label: 'Audit File Manager', icon: Archive },
-            { href: '/audit/liveguard', label: 'Sovereign LiveGuard', icon: ShieldAlert },
+            { href: '/audit', label: 'Audit Hub', icon: LayoutDashboard }, 
+            { href: '/audit/sandbox', label: 'Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant', 'owner', 'architect'] },
+            { href: '/audit/planning', label: 'Planning Board', icon: CalendarDays },
+            { href: '/audit/findings', label: 'Audit Findings', icon: ClipboardList },
+            { href: '/audit/controls', label: 'Controls Matrix', icon: ShieldCheck },
+            { href: '/audit/trail-viewer', label: 'Trail Viewer', icon: Eye },
+            { href: '/audit/ingestion', label: 'Data Ingestion', icon: UploadCloud },
+            { href: '/audit/kpi-cards', label: 'KPI Cards', icon: Activity },
+            { href: '/audit/logs', label: 'Audit Logs', icon: History }, 
+            { href: '/audit/action-workflow', label: 'Workflows', icon: GitGraph },
+            { href: '/audit/assignments', label: 'Assignments', icon: UserCog },
+            { href: '/audit/files', label: 'File Manager', icon: Archive },
+            { href: '/audit/liveguard', label: 'LiveGuard', icon: ShieldAlert },
         ]
     },
 
 {
         type: 'accordion', title: 'Compliance Hub', icon: Gavel, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
-        module: 'Compliance Hub', // ALIGNED
+        module: 'Compliance Hub',
         subItems: [
-            { href: '/compliance', label: 'Compliance Hub Main', icon: LayoutDashboard },
-            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
-            { href: '/compliance/risk-dashboard', label: 'Compliance Risk Dashboard', icon: BarChart3 },
-            { href: '/compliance/kyc-aml', label: 'KYC / AML Monitor', icon: UserCheckIcon },
-            { href: '/compliance/gdpr', label: 'GDPR Data Requests', icon: FileText },
-            { href: '/compliance/sales-tax', label: 'Sales Tax Intelligence', icon: Calculator },
-            { href: '/compliance/regulations', label: 'Regulations Register', icon: ScrollText },
+            { href: '/compliance', label: 'Overview', icon: LayoutDashboard },
+            { href: '/compliance/sales-tax', label: 'Sales Tax Intelligence', icon: Calculator, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
+            { href: '/compliance/risk-dashboard', label: 'Risk Dashboard', icon: BarChart3 },
+            { href: '/compliance/kyc-aml', label: 'KYC / AML', icon: UserCheckIcon },
+            { href: '/compliance/gdpr', label: 'Data Requests', icon: FileText },
+            { href: '/compliance/regulations', label: 'Regulations', icon: ScrollText },
             { href: '/compliance/permits', label: 'Licenses & Permits', icon: KeyRound },
-            { href: '/compliance/policy-library', label: 'Policy Document Library', icon: Library },
+            { href: '/compliance/policy-library', label: 'Policy Library', icon: Library },
             { href: '/compliance/sanctions', label: 'Sanctions Screening', icon: BadgeAlert },
-            { href: '/compliance/drilldown', label: 'Compliance Drilldown', icon: Activity },
-            { href: '/compliance/tax-reports', label: 'Tax Report Generator', icon: FileText }, 
-            { href: '/compliance/checklist', label: 'Compliance Checklist', icon: ListChecks },
-            { href: '/compliance/revolutionary-compliance', label: 'Revolutionary Intelligence', icon: Zap },
+            { href: '/compliance/checklist', label: 'Checklist', icon: ListChecks },
         ]
     },
 
 {
         type: 'accordion', 
-        title: 'Accountant Tools', 
+        title: 'Accounting Tools', 
         icon: Calculator, 
-        roles: ['admin', 'accountant', 'architect'], 
-        module: 'Accountant Tools', // ALIGNED
+        roles: ['admin', 'accountant', 'architect', 'manager'], 
+        module: 'Accountant Tools',
         subItems: [
-            { href: '/accountant', label: 'Accountant Command', icon: LayoutDashboard }, 
-            { href: '/accountant/ai-assistant', label: 'AI Audit Assistant', icon: Sparkles },
-            { href: '/accountant/auditor-management', label: 'Auditor Management', icon: UsersRound }, 
+            { href: '/accountant', label: 'Accounting Hub', icon: LayoutDashboard }, 
+            { href: '/accountant/ai-assistant', label: 'AI Assistant', icon: Sparkles },
+            { href: '/accountant/auditor-management', label: 'Auditor Mgmt', icon: UsersRound }, 
             { href: '/accountant/invite-auditor', label: 'Invite Auditor', icon: UserPlus },
-            { href: '/accountant/chart-of-accounts', label: 'Chart of Accounts Table', icon: ListChecks },
-            { href: '/accountant/export', label: 'Full Data Export', icon: UploadCloud },
+            { href: '/accountant/chart-of-accounts', label: 'Chart of Accounts', icon: ListChecks },
+            { href: '/accountant/export', label: 'Data Export', icon: UploadCloud },
         ]
     },
 
-    // --- PROFESSIONAL SERVICES ---
     {
         type: 'accordion', title: 'Professional Services', icon: Briefcase, roles: ['admin', 'manager', 'owner', 'architect', 'lawyer', 'accountant', 'consultant', 'practitioner'], 
-        module: 'Professional Services', // ALIGNED
-        businessTypes: ['Professional Services', 'Mixed/Conglomerate'], // ALIGNED
+        module: 'Professional Services',
+        businessTypes: ['Professional Services', 'Mixed/Conglomerate'],
         subItems: [
-            { href: '/professional-services', label: 'Dashboard', icon: LayoutDashboard },
+            { href: '/professional-services', label: 'Hub', icon: LayoutDashboard },
             { href: '/professional-services/clients', label: 'Client Hub', icon: Users },
-            { href: '/professional-services/projects', label: 'Matter / Project Mgmt', icon: FolderKanban },
+            { href: '/professional-services/projects', label: 'Project Mgmt', icon: FolderKanban },
             { href: '/professional-services/resource-planning', label: 'Resource Planning', icon: UsersRound },
-            { href: '/professional-services/billing', label: 'Time & Fee Billing', icon: Receipt },
+            { href: '/professional-services/billing', label: 'Fee Billing', icon: Receipt },
             { href: '/professional-services/budgets', label: 'Project Budgets', icon: Calculator },
             { href: '/professional-services/documents', label: 'Document Library', icon: Library },
             { href: '/professional-services/reports', label: 'Practice Reports', icon: FileText },
             { href: '/professional-services/expenses', label: 'Expense Mgmt', icon: CreditCard }, 
             { href: '/professional-services/accounting', label: 'General Ledger', icon: BookOpen }, 
             { href: '/professional-services/trust-accounting', label: 'Trust Accounting', icon: Landmark, roles: ['admin', 'accountant', 'lawyer'] },
-            { href: '/professional-services/compliance', label: 'Compliance & Audit', icon: ShieldAlert }, 
+            { href: '/professional-services/compliance', label: 'Compliance', icon: ShieldAlert }, 
         ]
     },
    
-    // --- HUMAN RESOURCES ---
     {
         type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager', 'owner', 'architect', 'hr_manager'], 
-        module: 'Human Resources (HCM)', // ALIGNED
+        module: 'Human Resources (HCM)',
         subItems: [ 
             { href: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard },
-            { href: '/hr/directory', label: 'Employee Directory', icon: Contact },
+            { href: '/hr/directory', label: 'Directory', icon: Contact },
             { href: '/hr/org-chart', label: 'Org Chart', icon: Route },
             { href: '/hr/leave', label: 'Leave Management', icon: CalendarDays }, 
-            { href: '/hr/time-attendance', label: 'Time & Attendance', icon: Clock },
+            { href: '/hr/time-attendance', label: 'Attendance', icon: Clock },
             { href: '/hr/recruitment', label: 'Recruitment', icon: UserCheckIcon }, 
             { href: '/hr/onboarding', label: 'Onboarding', icon: ClipboardCheck }, 
             { href: '/hr/offboarding', label: 'Offboarding', icon: Archive }, 
             { href: '/hr/performance', label: 'Performance', icon: Activity }, 
-            { href: '/hr/benefits', label: 'Benefits Admin', icon: HeartHandshake },
-            { href: '/hr/rewards', label: 'Rewards & Recognition', icon: Sparkles },
+            { href: '/hr/benefits', label: 'Benefits', icon: HeartHandshake },
+            { href: '/hr/rewards', label: 'Rewards', icon: Sparkles },
             { href: '/hr/fleet', label: 'Fleet Management', icon: Truck },
         ]
     },
 
-    // --- FINANCE ---
     {
         type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
-        module: 'Financial Ledger', // ALIGNED
+        module: 'Financial Ledger',
         subItems: [ 
-            { href: '/finance/banking', label: 'Banking & Reconciliation', icon: Landmark },
+            { href: '/finance/banking', label: 'Banking', icon: Landmark },
             { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
             { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
             { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
             { href: '/expenses', label: 'Expenses', icon: Wallet },
-            { href: '/ledger', label: 'General Ledger', icon: BookOpen },
-            { href: '/finance/journal', label: 'General Journal', icon: BookCopy },
+            { href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant', 'owner', 'architect'] },
+            { href: '/finance/journal', label: 'Journal', icon: BookCopy },
             { href: '/finance/tax-returns', label: 'Tax Returns', icon: FileWarning },
             { href: '/finance/fiscal-positions', label: 'Fiscal Positions', icon: Settings },
             { href: '/finance/lock-dates', label: 'Lock Dates', icon: KeyRound },
-            { href: '/finance/chart-of-accounts',label: 'Chart of Accounts',icon: Settings },
+            { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
         ]
     },
 
-    // --- DISTRIBUTION & LOGISTICS ---
     {
-        type: 'accordion', title: 'Distribution & Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
-        module: 'Distribution & Logistics', // ALIGNED
-        businessTypes: ['Distribution', 'Mixed/Conglomerate'], // ALIGNED
+        type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
+        module: 'Distribution & Logistics',
+        businessTypes: ['Distribution', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard }, 
-            { href: '/distribution/routes', label: 'Routes Manager', icon: Route }, 
-            { href: '/distribution/assignments', label: 'Driver Assignments', icon: UserCog },
-            { href: '/distribution/loading', label: 'Van Loading', icon: Boxes },
-            { href: '/distribution/settlement', label: 'Route Settlements', icon: ClipboardCheck },
-            { href: '/distribution/fulfillment', label: 'Order Fulfillment', icon: Package },
+            { href: '/distribution/routes', label: 'Routes', icon: Route }, 
+            { href: '/distribution/assignments', label: 'Assignments', icon: UserCog },
+            { href: '/distribution/loading', label: 'Loading', icon: Boxes },
+            { href: '/distribution/settlement', label: 'Settlements', icon: ClipboardCheck },
+            { href: '/distribution/fulfillment', label: 'Fulfillment', icon: Package },
             { href: '/distribution/fleet-maintenance', label: 'Fleet Maintenance', icon: Wrench },
-            { href: '/distribution/cold-chain', label: 'Cold Chain Monitor', icon: Thermometer },
+            { href: '/distribution/cold-chain', label: 'Cold Chain', icon: Thermometer },
             { href: '/distribution/geofencing', label: 'Geofencing', icon: MapPin },
-            { href: '/distribution/performance', label: 'Delivery Analytics', icon: BarChart3 },
-            { href: '/distribution/returns', label: 'Returns & Claims', icon: Undo2 },
+            { href: '/distribution/performance', label: 'Analytics', icon: BarChart3 },
+            { href: '/distribution/returns', label: 'Returns', icon: Undo2 },
         ]
     },
 
-    // --- SACCO & CO-OPS ---
     {
         type: 'accordion', title: 'SACCO & Co-ops', icon: PiggyBank, roles: ['admin', 'manager', 'owner', 'architect', 'sacco_manager', 'teller', 'loan_officer'], 
-        module: 'SACCO & Co-ops', // ALIGNED
-        businessTypes: ['SACCO / Co-operative', 'Mixed/Conglomerate'], // ALIGNED
+        module: 'SACCO & Co-ops',
+        businessTypes: ['SACCO / Co-operative', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/sacco', label: 'Dashboard', icon: LayoutDashboard }, 
-            { href: '/sacco/analytics', label: 'BI Analytics', icon: BarChart3 },
-            { href: '/sacco/members', label: 'Member Accounts', icon: Users }, 
+            { href: '/sacco/analytics', label: 'Analytics', icon: BarChart3 },
+            { href: '/sacco/members', label: 'Members', icon: Users }, 
             { href: '/sacco/new-member', label: 'Register Member', icon: UserPlus },
             { href: '/sacco/kyc', label: 'KYC Manager', icon: ShieldCheck },
-            { href: '/sacco/groups', label: 'Group Management', icon: UserCog }, 
-            { href: '/sacco/contributions', label: 'Member Contributions', icon: PiggyBank }, 
-            { href: '/sacco/collections', label: 'Group Collections', icon: ClipboardList }, 
-            { href: '/sacco/savings-products', label: 'Savings Products', icon: PiggyBank },
-            { href: '/sacco/shares', label: 'Share Ledger', icon: PieChart },
-            { href: '/sacco/dividends', label: 'Dividend Management', icon: Banknote },
-            { href: '/sacco/loans', label: 'Loan Applications', icon: FileText }, 
+            { href: '/sacco/groups', label: 'Groups', icon: UserCog }, 
+            { href: '/sacco/contributions', label: 'Contributions', icon: PiggyBank }, 
+            { href: '/sacco/collections', label: 'Collections', icon: ClipboardList }, 
+            { href: '/sacco/savings-products', label: 'Savings', icon: PiggyBank },
+            { href: '/sacco/shares', label: 'Shares', icon: PieChart },
+            { href: '/sacco/dividends', label: 'Dividends', icon: Banknote },
+            { href: '/sacco/loans', label: 'Loans', icon: FileText }, 
             { href: '/sacco/transactions', label: 'Transactions', icon: ArrowRightLeft },
             { href: '/sacco/finance', label: 'Financial Ledger', icon: BookOpen },
-            { href: '/sacco/reports', label: 'SACCO Reports', icon: FileText },
+            { href: '/sacco/reports', label: 'Reports', icon: FileText },
             { href: '/sacco/notifications', label: 'Notifications', icon: Bell },
             { href: '/sacco/audit', label: 'Statutory Audit', icon: ShieldCheck, roles: ['auditor', 'admin'] }, 
-            { href: '/sacco/api', label: 'OpenAPI Gateway', icon: Plug },
+            { href: '/sacco/api', label: 'API Gateway', icon: Plug },
             { href: '/sacco/agent-portal', label: 'Agent Portal', icon: Smartphone }, 
             { href: '/sacco/admin', label: 'Administration', icon: Settings, roles: ['admin', 'owner'] }, 
         ]
     },
 
-    // --- LENDING & MICROFINANCE ---
     {
         type: 'accordion', title: 'Lending Portal', icon: Landmark, roles: ['admin', 'manager', 'owner', 'architect', 'loan_officer', 'credit_analyst', 'debt_collector'], 
-        module: 'Lending & Microfinance', // ALIGNED
-        businessTypes: ['Lending / Microfinance', 'Mixed/Conglomerate'], // ALIGNED
+        module: 'Lending & Microfinance',
+        businessTypes: ['Lending / Microfinance', 'Mixed/Conglomerate'],
         subItems: [ 
-            { href: '/lending', label: 'Portfolio Dashboard', icon: LayoutDashboard },
-            { href: '/lending/analytics', label: 'BI Analytics', icon: BarChart3 },
-            { href: '/lending/applications', label: 'Loan Applications', icon: FileText }, 
+            { href: '/lending', label: 'Portfolio', icon: LayoutDashboard },
+            { href: '/lending/analytics', label: 'Analytics', icon: BarChart3 },
+            { href: '/lending/applications', label: 'Applications', icon: FileText }, 
             { href: '/lending/borrowers', label: 'Borrower CRM', icon: Users }, 
-            { href: '/lending/officers', label: 'Loan Officers', icon: UserCheckIcon },
-            { href: '/lending/kyc', label: 'KYC & Due Diligence', icon: ShieldCheck }, 
+            { href: '/lending/officers', label: 'Officers', icon: UserCheckIcon },
+            { href: '/lending/kyc', label: 'KYC Manager', icon: ShieldCheck }, 
             { href: '/lending/loans', label: 'Active Loans', icon: FileCheck },
-            { href: '/lending/collections', label: 'Debt Collections', icon: AlertTriangle },
-            { href: '/lending/risk', label: 'Credit Risk / Scoring', icon: BadgeAlert },
-            { href: '/lending/repayments', label: 'Repayment Plans', icon: CalendarDays },
+            { href: '/lending/collections', label: 'Collections', icon: AlertTriangle },
+            { href: '/lending/risk', label: 'Risk Scoring', icon: BadgeAlert },
+            { href: '/lending/repayments', label: 'Repayments', icon: CalendarDays },
             { href: '/lending/products', label: 'Loan Products', icon: Boxes }, 
             { href: '/lending/audit', label: 'Statutory Audit', icon: ShieldCheck }, 
             { href: '/lending/notifications', label: 'Notifications', icon: Bell }, 
-            { href: '/lending/api', label: 'OpenAPI Gateway', icon: Plug },
+            { href: '/lending/api', label: 'API Gateway', icon: Plug },
             { href: '/lending/agent-portal', label: 'Agent Portal', icon: Smartphone }, 
         ]
     },
 
-    // --- RENTALS & PROPERTY ---
     {
-        type: 'accordion', title: 'Property & Rentals', icon: Home, roles: ['admin', 'manager', 'owner', 'architect', 'property_manager', 'leasing_agent'], 
-        module: 'Rentals & Real Estate', // ALIGNED
-        businessTypes: ['Rentals / Real Estate', 'Mixed/Conglomerate'], // ALIGNED
+        type: 'accordion', title: 'Property', icon: Home, roles: ['admin', 'manager', 'owner', 'architect', 'property_manager', 'leasing_agent'], 
+        module: 'Rentals & Real Estate',
+        businessTypes: ['Rentals / Real Estate', 'Mixed/Conglomerate'],
         subItems: [ 
-            { href: '/rentals/properties', label: 'Properties & Units', icon: Building2 }, 
+            { href: '/rentals/properties', label: 'Units', icon: Building2 }, 
             { href: '/rentals/leases', label: 'Leases', icon: FileText }, 
-            { href: '/rentals/invoices', label: 'Rental Invoices', icon: Receipt }, 
-            { href: '/rentals/maintenance', label: 'Maintenance Tickets', icon: Wrench },
+            { href: '/rentals/invoices', label: 'Invoices', icon: Receipt }, 
+            { href: '/rentals/maintenance', label: 'Maintenance', icon: Wrench },
         ]
     },
 
-    // --- TELECOM SERVICES ---
     {
-        type: 'accordion', title: 'Telecom & Agents', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant', 'owner', 'architect', 'dsr_rep', 'agent', 'float_manager'], 
-        module: 'Telecom & Mobile Money', // ALIGNED
-        businessTypes: ['Telecom Services', 'Mixed/Conglomerate'], // ALIGNED
+        type: 'accordion', title: 'Telecom', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant', 'owner', 'architect', 'dsr_rep', 'agent', 'float_manager'], 
+        module: 'Telecom & Mobile Money',
+        businessTypes: ['Telecom Services', 'Mixed/Conglomerate'],
         subItems: [ 
-            { href: '/telecom', label: 'Admin Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner', 'architect'] }, 
-            { href: '/telecom/operator', label: 'Operator Console', icon: Zap, roles: ['admin', 'float_manager'] }, 
-            { href: '/telecom/agents', label: 'Agent Management', icon: UserCog }, 
-            { href: '/telecom/virtual-agent', label: 'Virtual Agent Form', icon: Smartphone }, 
-            { href: '/telecom/float-requests', label: 'Float Requests', icon: ArrowRightLeft }, 
-            { href: '/telecom/products', label: 'Telecom Products', icon: Boxes, roles: ['admin', 'manager', 'owner'] }, 
-            { href: '/telecom/inventory', label: 'Sim/Device Inventory', icon: Boxes }, 
+            { href: '/telecom', label: 'Admin Hub', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner', 'architect'] }, 
+            { href: '/telecom/operator', label: 'Console', icon: Zap, roles: ['admin', 'float_manager'] }, 
+            { href: '/telecom/agents', label: 'Agents', icon: UserCog }, 
+            { href: '/telecom/virtual-agent', label: 'Agent Form', icon: Smartphone }, 
+            { href: '/telecom/float-requests', label: 'Float', icon: ArrowRightLeft }, 
+            { href: '/telecom/products', label: 'Products', icon: Boxes, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/telecom/inventory', label: 'Device Inventory', icon: Boxes }, 
             { href: '/telecom/tariffs', label: 'Tariff Plans', icon: FileSpreadsheet }, 
-            { href: '/telecom/subscribers', label: 'Subscriber Mgmt', icon: Users }, 
-            { href: '/telecom/channels', label: 'Channel Partners', icon: Handshake },
+            { href: '/telecom/subscribers', label: 'Subscribers', icon: Users }, 
+            { href: '/telecom/channels', label: 'Partners', icon: Handshake },
             { href: '/telecom/reconciliation', label: 'Reconciliation', icon: ClipboardCheck }, 
             { href: '/telecom/financials', label: 'Financials', icon: Banknote, roles: ['admin', 'manager', 'owner'] }, 
-            { href: '/telecom/reports', label: 'Performance Reports', icon: BarChart3, roles: ['admin', 'manager', 'owner'] }, 
-            { href: '/telecom/history', label: 'Financial History', icon: History, roles: ['admin', 'manager', 'accountant', 'owner'] }, 
-            { href: '/telecom/compliance', label: 'Regulatory Compliance', icon: ShieldCheck }, 
-            { href: '/telecom/dsr-dashboard', label: 'DSR Field App', icon: Activity, roles: ['cashier', 'owner', 'dsr_rep', 'architect'] }, 
+            { href: '/telecom/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'manager', 'owner'] }, 
+            { href: '/telecom/history', label: 'History', icon: History, roles: ['admin', 'manager', 'accountant', 'owner'] }, 
+            { href: '/telecom/compliance', label: 'Regulatory', icon: ShieldCheck }, 
+            { href: '/telecom/dsr-dashboard', label: 'Field App', icon: Activity, roles: ['cashier', 'owner', 'dsr_rep', 'architect'] }, 
             { href: '/telecom/agent', label: 'Agent Dashboard', icon: Users, roles: ['cashier', 'owner', 'agent', 'architect'] },
-            { href: '/telecom/bi', label: 'BI Analytics', icon: BarChart3 }
+            { href: '/telecom/bi', label: 'Analytics', icon: BarChart3 }
         ]
     },
 
-    // --- FIELD SERVICE ---
     {
         type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager', 'owner', 'architect', 'field_technician', 'dispatcher'], 
-        module: 'Field Service', // ALIGNED
-        businessTypes: ['Field Service', 'Mixed/Conglomerate'], // ALIGNED
+        module: 'Field Service',
+        businessTypes: ['Field Service', 'Mixed/Conglomerate'],
         subItems: [ 
-            { href: '/field-service/schedule', label: 'Dispatch & Schedule', icon: CalendarDays, roles: ['dispatcher', 'admin'] }, 
-            { href: '/field-service/smart-schedule', label: 'Smart Scheduler', icon: Zap },
+            { href: '/field-service/schedule', label: 'Schedule', icon: CalendarDays, roles: ['dispatcher', 'admin'] }, 
+            { href: '/field-service/smart-schedule', label: 'Smart Schedule', icon: Zap },
             { href: '/field-service/work-orders', label: 'Work Orders', icon: ClipboardList }, 
-            { href: '/field-service/equipment', label: 'Equipment & Assets', icon: Truck }, 
-            { href: '/field-service/technician', label: 'Technician Portal', icon: Smartphone, roles: ['field_technician'] },
-            { href: '/field-service/analytics', label: 'Service Analytics', icon: BarChart3 },
-            { href: '/field-service/compliance', label: 'Compliance & Warranty', icon: ShieldCheck },
+            { href: '/field-service/equipment', label: 'Equipment', icon: Truck }, 
+            { href: '/field-service/technician', label: 'Tech Portal', icon: Smartphone, roles: ['field_technician'] },
+            { href: '/field-service/analytics', label: 'Analytics', icon: BarChart3 },
+            { href: '/field-service/compliance', label: 'Compliance', icon: ShieldCheck },
         ]
     },
 
-    // --- CONTRACTOR TOOLS ---
     {
-        type: 'accordion', title: 'Project & Site Mgmt', icon: Construction, roles: ['admin', 'manager', 'owner', 'architect', 'engineer', 'foreman', 'site_manager'], 
-        module: 'Contractor Tools', // ALIGNED
-        businessTypes: ['Contractor', 'Mixed/Conglomerate'], // ALIGNED
+        type: 'accordion', title: 'Project Management', icon: Construction, roles: ['admin', 'manager', 'owner', 'architect', 'engineer', 'foreman', 'site_manager'], 
+        module: 'Contractor Tools',
+        businessTypes: ['Contractor', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard }, 
             { href: '/contractor/jobs', label: 'Job Management', icon: Briefcase }, 
-            { href: '/contractor/estimates', label: 'Estimates & Bids', icon: FileText }, 
-            { href: '/contractor/blueprints', label: 'Drawing Library', icon: Library },
-            { href: '/contractor/safety', label: 'HSE / Safety Logs', icon: HardHat },
+            { href: '/contractor/estimates', label: 'Estimates', icon: FileText }, 
+            { href: '/contractor/blueprints', label: 'Blueprints', icon: Library },
+            { href: '/contractor/safety', label: 'HSE / Safety', icon: HardHat },
             { href: '/contractor/change-orders', label: 'Change Orders', icon: Undo2 }, 
         ]
     },
 
-    // --- NON-PROFIT & NGO ---
     {
-        type: 'accordion', title: 'Non-Profit & NGO', icon: HeartHandshake, roles: ['admin', 'manager', 'owner', 'architect', 'donor_relations', 'grant_manager', 'volunteer_coordinator'], 
-        module: 'Nonprofit & NGO', // ALIGNED
-        businessTypes: ['Nonprofit', 'Mixed/Conglomerate'], // ALIGNED
+        type: 'accordion', title: 'Non-Profit', icon: HeartHandshake, roles: ['admin', 'manager', 'owner', 'architect', 'donor_relations', 'grant_manager', 'volunteer_coordinator'], 
+        module: 'Nonprofit & NGO',
+        businessTypes: ['Nonprofit', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/nonprofit', label: 'Overview', icon: LayoutDashboard },
-            { href: '/nonprofit/donors', label: 'Donor Management', icon: Users },
-            { href: '/nonprofit/donations', label: 'Donations Ledger', icon: Banknote },
-            { href: '/nonprofit/grants', label: 'Grants Mgmt', icon: FileText },
+            { href: '/nonprofit/donors', label: 'Donors', icon: Users },
+            { href: '/nonprofit/donations', label: 'Donations', icon: Banknote },
+            { href: '/nonprofit/grants', label: 'Grants', icon: FileText },
             { href: '/nonprofit/fundraising', label: 'Campaigns', icon: Sparkles },
             { href: '/nonprofit/volunteering', label: 'Volunteers', icon: Handshake },
-            { href: '/nonprofit/impact', label: 'Impact Reporting', icon: Activity },
-            { href: '/nonprofit/communication', label: 'Communication Hub', icon: Signal }, 
+            { href: '/nonprofit/impact', label: 'Impact Reports', icon: Activity },
+            { href: '/nonprofit/communication', label: 'Communication', icon: Signal }, 
         ]
     },
 
-    // --- BOOKING & COLLABORATION ---
     {
-        type: 'accordion', title: 'Booking', icon: CalendarDays, roles: ['admin', 'manager', 'owner', 'architect'], 
-        module: 'Booking & Appointments', // ALIGNED
-        subItems: [ { href: '/booking', label: 'Calendar', icon: CalendarDays }, { href: '/booking/services', label: 'Manage Services', icon: ClipboardPlus }, ]
+        type: 'accordion', title: 'Appointments', icon: CalendarDays, roles: ['admin', 'manager', 'owner', 'architect'], 
+        module: 'Booking & Appointments',
+        subItems: [ { href: '/booking', label: 'Calendar', icon: CalendarDays }, { href: '/booking/services', label: 'Services', icon: ClipboardPlus }, ]
     },
     {
         type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner', 'architect'], 
-        module: 'Collaboration (Workbooks)', // ALIGNED
-        subItems: [ { href: '/workbooks', label: 'Live Workbooks', icon: FileSpreadsheet }, ]
+        module: 'Collaboration (Workbooks)',
+        subItems: [ { href: '/workbooks', label: 'Workbooks', icon: FileSpreadsheet }, ]
     },
     {
-        type: 'accordion', title: 'Business Hub', icon: Library, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect'], 
-        module: 'Business Hub (Library)', // ALIGNED
-        subItems: [ { href: '/library', label: 'Document Library', icon: Library }, ]
+        type: 'accordion', title: 'Business Library', icon: Library, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect'], 
+        module: 'Business Hub (Library)',
+        subItems: [ { href: '/library', label: 'Documents', icon: Library }, ]
     },
 
-    // --- MANAGEMENT & ADMIN ---
     {
         type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
-        module: 'Management & Settings', // ALIGNED
+        module: 'Management & Settings',
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
-            { href: '/payroll', label: 'Payroll Engine', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
-            { href: '/settings/locations', label: 'Physical Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
-            { href: '/management/locations', label: 'Locations', icon: Building2, roles: ['admin', 'owner'] },
+            { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
+            { href: '/settings/locations', label: 'Branch Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
+            { href: '/management/locations', label: 'Location Mgmt', icon: Building2, roles: ['admin', 'owner'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
-            { href: '/management/comms', label: 'Unified Comms Hub', icon: MessageSquare },   
-            { href: '/management/timecard-report', label: 'Timecard Report', icon: FileSpreadsheet },
-            { href: '/management/sentry-hub', label: 'Sovereign Sentry Hub', icon: ShieldAlert, roles: ['admin', 'owner', 'architect'] },
-            { href: '/management/monitoring', label: 'Live System Monitor', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
+            { href: '/management/comms', label: 'Communication Hub', icon: MessageSquare },   
+            { href: '/management/timecard-report', label: 'Attendance Logs', icon: FileSpreadsheet },
+            { href: '/management/sentry-hub', label: 'Security Hub', icon: ShieldAlert, roles: ['admin', 'owner', 'architect'] },
+            { href: '/management/monitoring', label: 'System Monitor', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
             { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale'] },
             { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner', 'architect'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin', 'owner', 'architect'] },
@@ -529,13 +502,12 @@ const navSections: NavItem[] = [
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin', 'owner', 'architect'] },
             { href: '/settings/currencies', label: 'Currencies', icon: Banknote, roles: ['admin', 'owner', 'architect'] },
             { href: '/settings/migration', label: 'Data Migration', icon: UploadCloud, roles: ['admin', 'owner', 'architect'] },
-            { href: '/marketplace', label: 'App Marketplace', icon: Plug, roles: ['admin', 'owner', 'architect'] },
-            { href: '/settings/integrations', label: 'API Integrations', icon: Plug, roles: ['admin', 'owner', 'architect'] },
-            { href: '/management/api', label: 'API Keys & Gateway', icon: KeyRound, roles: ['admin', 'owner', 'architect'] }, 
+            { href: '/marketplace', label: 'App Store', icon: Plug, roles: ['admin', 'owner', 'architect'] },
+            { href: '/settings/integrations', label: 'Integrations', icon: Plug, roles: ['admin', 'owner', 'architect'] },
+            { href: '/management/api', label: 'API Keys', icon: KeyRound, roles: ['admin', 'owner', 'architect'] }, 
         ]
     },
 ];
-const settingsNav = { href: '/dashboard/settings', label: 'General Settings', Icon: Settings, roles: ['admin', 'architect', 'owner'] };
 
 const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; }) => {
   const pathname = usePathname();
@@ -547,7 +519,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
         <Tooltip>
           <TooltipTrigger asChild>
             <Link href={href}>
-              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className="w-full justify-center" aria-label={label}>
+              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("w-full justify-center transition-all", isActive && "bg-blue-50 text-blue-600")} aria-label={label}>
                 <Icon className="h-5 w-5" />
               </Button>
             </Link>
@@ -560,7 +532,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 
   return (
     <Link href={href}>
-      <Button variant={isActive ? "secondary" : "ghost"} className="w-full justify-start">
+      <Button variant={isActive ? "secondary" : "ghost"} className={cn("w-full justify-start font-semibold transition-all", isActive && "bg-blue-50 text-blue-600 border-l-4 border-blue-600 rounded-l-none")}>
         <Icon className="mr-3 h-5 w-5" />{label}
       </Button>
     </Link>
@@ -580,7 +552,6 @@ export default function Sidebar() {
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
  const finalNavItems = useMemo(() => {
-        // Safety Check: Prevent "Client-side exception" if hooks are still fetching
         if (isLoading || !role || !tenant) return [];
         
         const userRole = role?.toLowerCase() || '';
@@ -589,32 +560,18 @@ export default function Sidebar() {
         const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
         return navSections.filter((item) => {
-            // --- GATE 1: SOVEREIGN BYPASS ---
-            // Architects and Commanders bypass all filters to maintain the global system.
             if (isSovereign) return true;
-
-            // --- GATE 2: ROLE PERMISSION CHECK ---
-            // Ensures staff (cashiers, etc.) only see what their specific role allows.
             const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
-
-            // --- GATE 3: SMART MODULE LICENSE CHECK ---
-            // 1. If user is Admin/Owner: Grant access to all modules for their industry automatically.
-            // 2. If user is Staff: Only show modules the Admin has explicitly enabled in the database.
             if (item.module) {
                 const isModuleEnabled = enabledModules?.includes?.(item.module);
                 if (!isAdminOrOwner && !isModuleEnabled) {
                     return false;
                 }
             }
-
-            // --- GATE 4: INDUSTRY LOCKDOWN ---
-            // Ensures the system stays "clean." A Retailer never sees SACCO or Pharmacy tools.
-            // This allows the system to scale to thousands of tenants automatically.
             if (item.businessTypes && !item.businessTypes.includes(bizType)) {
                 return false;
             }
-
             return true;
         });
     }, [isLoading, role, enabledModules, tenant]);
@@ -641,26 +598,25 @@ export default function Sidebar() {
 
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
-                        // Check sub-item role requirements
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-                        // Check sub-item industry lock requirements
                         const bizOk = !sub.businessTypes || sub.businessTypes.includes(bizType);
-                        
                         return roleOk && bizOk;
                     });
 
                     if (filteredSubItems.length === 0 || !isSidebarOpen) return null;
 
+                    const isModuleActive = activeAccordionValue === item.module;
+
                     return (
                         <AccordionItem key={item.module} value={item.module} className="border-none">
-                            <AccordionTrigger className={cn("px-3 py-2 text-sm font-medium rounded-md hover:bg-accent hover:no-underline", activeAccordionValue === item.module && "text-primary font-bold")}>
+                            <AccordionTrigger className={cn("px-3 py-2 text-sm font-semibold rounded-md hover:bg-slate-50 hover:no-underline transition-colors", isModuleActive && "text-blue-600 bg-blue-50/50")}>
                                 <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
                             </AccordionTrigger>
                             <AccordionContent className="pl-6 pt-1 space-y-1">
                                 {filteredSubItems.map(subItem => {
                                     const isSubItemActive = pathname.startsWith(subItem.href);
                                     return (
-                                        <Link key={subItem.href} href={subItem.href} onClick={(e) => e.stopPropagation()} className={cn("flex items-center py-2 px-3 text-sm font-medium rounded-md transition-colors duration-150", isSubItemActive ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
+                                        <Link key={subItem.href} href={subItem.href} className={cn("flex items-center py-2 px-3 text-[13px] font-medium rounded-md transition-colors", isSubItemActive ? "text-blue-600 font-bold bg-blue-50/30" : "text-slate-500 hover:text-blue-600 hover:bg-blue-50/20")}>
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
                                         </Link>
                                     );
@@ -676,28 +632,33 @@ export default function Sidebar() {
 
     return (
         <aside className={cn(
-            "h-full bg-card border-r flex flex-col transition-all duration-300 ease-in-out",
+            "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm",
             isSidebarOpen ? "w-64" : "w-20"
         )}>
-            <div className="flex items-center justify-between h-16 border-b px-4 flex-shrink-0">
-                {isSidebarOpen && <h1 className="text-lg font-bold tracking-tight text-primary">Sovereign ERP</h1>}
-                <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+            <div className="flex items-center justify-between h-16 border-b border-slate-100 px-4 flex-shrink-0">
+                {isSidebarOpen && <h1 className="text-lg font-bold tracking-tight text-blue-600">BBU1 System</h1>}
+                <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-slate-400 hover:text-blue-600">
                     {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
             </div>
-            <nav className="flex-1 px-2 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
+            <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
                 {isLoading ? (
-                    <div className="p-3 text-sm text-muted-foreground animate-pulse">Initializing Neural Core...</div>
+                    <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Loading Menu...</div>
                 ) : (
                     renderAccordionNav(finalNavItems)
                 )}
             </nav>
-            <div className="p-4 mt-auto border-t space-y-2 flex-shrink-0">
-                <Button variant="outline" className={cn("w-full justify-start", !isSidebarOpen && "justify-center px-0")} onClick={openCopilot}>
-                    <Sparkles className={cn("h-5 w-5 text-primary", isSidebarOpen && "mr-3")} />
-                    {isSidebarOpen && "Ask Aura"}
+            <div className="p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 bg-slate-50/50">
+                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md", !isSidebarOpen && "justify-center px-0")} onClick={openCopilot}>
+                    <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                    {isSidebarOpen && "AI Assistant"}
                 </Button>
-                <NavLinkComponent {...settingsNav} Icon={settingsNav.Icon} isSidebarOpen={isSidebarOpen} />
+                <Link href="/settings" className="block">
+                    <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-semibold", !isSidebarOpen && "justify-center px-0")}>
+                        <Settings className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && "Settings"}
+                    </Button>
+                </Link>
             </div>
         </aside>
     );
