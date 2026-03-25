@@ -1,5 +1,6 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
 import React, { useState, useEffect, useRef, useCallback, ReactNode, forwardRef, ElementRef, ComponentPropsWithoutRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -1225,7 +1226,7 @@ const DynamicPricingSection = () => {
             price = Math.floor(price); // Round to nearest integer for USD, EUR, GBP
         }
 
-        return new Intl.NumberFormat('en-US').format(price);
+        return new Intl.NumberFormat('en').format(price);
     };
 
     return (
@@ -2030,7 +2031,7 @@ const AboutCompanyExecutiveSection = () => {
     );
 };
 // --- HomePage Component ---
-export default function HomePage() {
+export default function HomePage({ params: { locale } }: { params: { locale: string } }) {
     const supabase = createClient();
 const [isSSR, setIsSSR] = useState(true);
     useEffect(() => {

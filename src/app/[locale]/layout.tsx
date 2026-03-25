@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Metadata } from 'next'; // NEW: Required for Google SEO
+import { Metadata } from 'next'; 
 import { Inter as FontSans } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
@@ -14,7 +14,7 @@ import type { Session } from '@supabase/supabase-js';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import Script from 'next/script';
 
-// --- NEW: PROFESSIONAL GLOBAL METADATA (Google Visibility) ---
+// --- PROFESSIONAL GLOBAL METADATA ---
 export const metadata: Metadata = {
   title: {
     default: 'BBU1 Global | Enterprise Business Operating System',
@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'BBU1 Enterprise' }],
   creator: 'BBU1',
   publisher: 'BBU1 Global',
+  metadataBase: new URL('https://www.bbu1.com'), // FIXED: Added proper base URL for SEO
   robots: {
     index: true,
     follow: true,
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://your-domain.com', // Google and social media use this
+    url: 'https://www.bbu1.com', 
     title: 'BBU1 Global | Enterprise Business Operating System',
     description: 'BBU1 is the standard for global business management.',
     siteName: 'BBU1 ERP',
@@ -49,6 +50,9 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
+// List of supported locales for sanitization
+const SUPPORTED_LOCALES = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
+
 export default async function LocaleRootLayout({
   children,
   params: { locale },
@@ -56,18 +60,32 @@ export default async function LocaleRootLayout({
   children: ReactNode;
   params: { locale: string };
 }) {
+  /**
+   * PROFESSIONAL FIX: Locale Sanitization
+   * This prevents the "RangeError: Incorrect locale information provided" crash.
+   * If 'locale' is invalid (e.g. Google hits the root or a junk URL), we force it to 'en'.
+   */
+  const safeLocale = SUPPORTED_LOCALES.includes(locale) ? locale : 'en';
+
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
-  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Safe session fetch (Try/Catch to prevent bot-induced crashes)
+  let session = null;
+  try {
+    const sessionRes = await supabase.auth.getSession();
+    session = sessionRes.data.session;
+  } catch (e) {
+    session = null;
+  }
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={safeLocale} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#ffffff" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         
-        {/* Google tag (gtag.js) */}
         <Script
           async
           src="https://www.googletagmanager.com/gtag/js?id=G-VXKX3Y51MN"
@@ -78,7 +96,6 @@ export default async function LocaleRootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-
             gtag('config', 'G-VXKX3Y51MN');
           `}
         </Script>
@@ -86,11 +103,6 @@ export default async function LocaleRootLayout({
       <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
         <SupabaseProvider session={session}>
           <TanstackProvider>
-            {/* 
-                THEME FIX: 
-                Forced to "light" to ensure the professional blue identity 
-                remains consistent across all devices.
-            */}
             <ThemeProvider
               attribute="class"
               defaultTheme="light" 
