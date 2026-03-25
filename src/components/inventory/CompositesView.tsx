@@ -8,7 +8,7 @@ import {
     PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, Hammer, Check, 
     ChevronsUpDown, CheckCircle2, ShieldCheck, TrendingUp, Calculator, Package, 
     Box, Globe, Activity, Info, Utensils, Beaker,
-    Search, AlertTriangle, ArrowRight, Save, FileText
+    Search, AlertTriangle, ArrowRight, Save, FileText, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,9 +25,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
-// --- ENTERPRISE INTERFACES ---
+// --- INTERFACES ---
 
 interface Component {
   component_variant_id: number;
@@ -121,7 +121,7 @@ async function processAssembly(payload: { p_composite_variant_id: number, p_quan
     if (error) throw error;
 }
 
-// --- SUB-COMPONENT: RECIPE FORM ---
+// --- RECIPE FORM COMPONENT ---
 
 function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { initialData: Partial<CompositeProductDetails> | null; onSave: (data: any) => void; onCancel: () => void; isSaving: boolean; }) {
     const [name, setName] = useState(initialData?.name || '');
@@ -166,113 +166,120 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: { ini
     };
     
     return (
-        <div className="space-y-6 p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
-                <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-700 uppercase">Product Name</Label>
-                    <Input className="bg-white h-10 border-slate-200" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mixed Fruit Juice"/>
-                </div>
-                <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-700 uppercase">SKU / ID</Label>
-                    <Input className="bg-white font-mono uppercase h-10 border-slate-200" value={sku} onChange={e => setSku(e.target.value)} placeholder="Automatic if empty" />
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-700 uppercase">Add Ingredients</Label>
-                <div className="flex gap-2">
-                    <div className="flex-1">
-                        <Popover open={open} onOpenChange={setOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full justify-between h-10 border-slate-200 bg-white">
-                                    {selectedVariantId ? standardVariants?.find((v) => v.value === selectedVariantId)?.label : "Select raw material..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[450px] p-0 shadow-xl border-slate-200" align="start">
-                                <Command>
-                                    <CommandInput placeholder="Search name or SKU..." className="h-10" />
-                                    <CommandList>
-                                        <CommandEmpty>No products found.</CommandEmpty>
-                                        <ScrollArea className="h-64">
-                                            <CommandGroup>
-                                                {standardVariants?.filter(v => !components.some(c => c.component_variant_id === v.value)).map((variant) => (
-                                                    <CommandItem key={variant.value} value={variant.label} onSelect={() => { setSelectedVariantId(variant.value); setOpen(false); }} className="p-3 border-b border-slate-50 last:border-0">
-                                                        <div className="flex flex-col flex-1">
-                                                            <span className="font-semibold text-sm text-slate-800">{variant.label}</span>
-                                                            <span className="text-[10px] text-slate-400 font-medium">Cost: {variant.cost_price.toLocaleString()} UGX</span>
-                                                        </div>
-                                                        <Check className={cn("ml-auto h-4 w-4 text-blue-600", selectedVariantId === variant.value ? "opacity-100" : "opacity-0")} />
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </ScrollArea>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+        <div className="flex flex-col h-full bg-white">
+            <ScrollArea className="flex-1 max-h-[65vh]">
+                <div className="p-6 md:p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-slate-700 uppercase">Product Name</Label>
+                            <Input className="bg-white h-10 border-slate-200 font-semibold" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mixed Fruit Juice"/>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-slate-700 uppercase">SKU / ID</Label>
+                            <Input className="bg-white font-mono uppercase h-10 border-slate-200" value={sku} onChange={e => setSku(e.target.value)} placeholder="Automatic if empty" />
+                        </div>
                     </div>
-                    <Button onClick={handleAddComponent} disabled={!selectedVariantId} className="h-10 px-6 font-bold bg-slate-900 text-white shadow-sm">
-                        Add Item
-                    </Button>
-                </div>
-            </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                <Table>
-                    <TableHeader className="bg-slate-50">
-                        <TableRow>
-                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 px-4">Ingredient</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-right">Unit Cost</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-center w-[130px]">Qty</TableHead>
-                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-right px-4">Sub-total</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {components.length === 0 ? (
-                            <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm italic">Add ingredients to start building the recipe.</TableCell></TableRow>
-                        ) : (
-                            components.map(comp => (
-                                <TableRow key={comp.component_variant_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0 group">
-                                    <TableCell className="font-semibold text-slate-800 px-4 py-4">{comp.component_name}</TableCell>
-                                    <TableCell className="text-right text-xs text-slate-500">{(comp.unit_cost || 0).toLocaleString()}</TableCell>
-                                    <TableCell className="px-4">
-                                        <div className="flex items-center gap-1 bg-white rounded-lg border border-slate-200 p-1">
-                                            <Input 
-                                                type="number" 
-                                                step="0.01" 
-                                                value={comp.quantity} 
-                                                onChange={e => setComponents(prev => prev.map(c => c.component_variant_id === comp.component_variant_id ? { ...c, quantity: Number(e.target.value) } : c))} 
-                                                className="h-7 border-none text-center font-bold text-xs p-0 focus-visible:ring-0" 
-                                            />
-                                            <span className="text-[10px] text-slate-400 font-bold uppercase pr-1">{comp.uom_name || 'U'}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right px-4">
-                                        <div className="flex items-center justify-end gap-3">
-                                            <span className="font-bold text-slate-900 text-sm">{((comp.unit_cost || 0) * comp.quantity).toLocaleString()}</span>
-                                            <Button variant="ghost" size="icon" onClick={() => setComponents(components.filter(i => i.component_variant_id !== comp.component_variant_id))} className="h-8 w-8 text-slate-300 hover:text-red-500">
-                                                <Trash2 size={16} />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                    <div className="space-y-2">
+                        <Label className="text-[11px] font-bold text-slate-700 uppercase">Add Ingredients</Label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="flex-1">
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between h-10 border-slate-200 bg-white">
+                                            {selectedVariantId ? standardVariants?.find((v) => v.value === selectedVariantId)?.label : "Select raw material..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] sm:w-[450px] p-0 shadow-xl border-slate-200" align="start">
+                                        <Command>
+                                            <CommandInput placeholder="Search name or SKU..." className="h-10" />
+                                            <CommandList>
+                                                <CommandEmpty>No products found.</CommandEmpty>
+                                                <ScrollArea className="h-64">
+                                                    <CommandGroup>
+                                                        {standardVariants?.filter(v => !components.some(c => c.component_variant_id === v.value)).map((variant) => (
+                                                            <CommandItem key={variant.value} value={variant.label} onSelect={() => { setSelectedVariantId(variant.value); setOpen(false); }} className="p-3 border-b border-slate-50 last:border-0">
+                                                                <div className="flex flex-col flex-1">
+                                                                    <span className="font-semibold text-sm text-slate-800">{variant.label}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-medium">Cost: {variant.cost_price.toLocaleString()} UGX</span>
+                                                                </div>
+                                                                <Check className={cn("ml-auto h-4 w-4 text-blue-600", selectedVariantId === variant.value ? "opacity-100" : "opacity-0")} />
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </ScrollArea>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <Button onClick={handleAddComponent} disabled={!selectedVariantId} className="h-10 px-6 font-bold bg-slate-900 text-white shadow-sm">
+                                Add Item
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                    <TableHead className="text-[10px] font-bold text-slate-500 uppercase h-10 px-4">Ingredient</TableHead>
+                                    <TableHead className="text-[10px] font-bold text-slate-500 uppercase h-10 text-right">Unit Cost</TableHead>
+                                    <TableHead className="text-[10px] font-bold text-slate-500 uppercase h-10 text-center w-[130px]">Qty</TableHead>
+                                    <TableHead className="text-[10px] font-bold text-slate-500 uppercase h-10 text-right px-4">Sub-total</TableHead>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                            </TableHeader>
+                            <TableBody>
+                                {components.length === 0 ? (
+                                    <TableRow><TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm italic">Add ingredients to start building the recipe.</TableCell></TableRow>
+                                ) : (
+                                    components.map(comp => (
+                                        <TableRow key={comp.component_variant_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0 group">
+                                            <TableCell className="font-semibold text-slate-800 px-4 py-4">{comp.component_name}</TableCell>
+                                            <TableCell className="text-right text-xs text-slate-500">{(comp.unit_cost || 0).toLocaleString()}</TableCell>
+                                            <TableCell className="px-4">
+                                                <div className="flex items-center gap-1 bg-white rounded-lg border border-slate-200 p-1">
+                                                    <Input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        value={comp.quantity} 
+                                                        onChange={e => setComponents(prev => prev.map(c => c.component_variant_id === comp.component_variant_id ? { ...c, quantity: Number(e.target.value) } : c))} 
+                                                        className="h-7 border-none text-center font-bold text-xs p-0 focus-visible:ring-0" 
+                                                    />
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase pr-1">{comp.uom_name || 'U'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right px-4">
+                                                <div className="flex items-center justify-end gap-3">
+                                                    <span className="font-bold text-slate-900 text-sm">{((comp.unit_cost || 0) * comp.quantity).toLocaleString()}</span>
+                                                    <Button variant="ghost" size="icon" onClick={() => setComponents(components.filter(i => i.component_variant_id !== comp.component_variant_id))} className="h-8 w-8 text-slate-300 hover:text-red-500">
+                                                        <Trash2 size={16} />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            </ScrollArea>
 
-            <div className="p-6 bg-blue-600 text-white rounded-xl flex justify-between items-center shadow-lg">
-                 <div className="space-y-1">
-                    <p className="text-xs font-bold text-blue-100 uppercase tracking-widest">Total Production Cost</p>
-                    <div className="text-3xl font-bold">
-                        {currentProductionCost.toLocaleString()} <span className="text-xs font-medium text-blue-100">UGX / Unit</span>
+            <div className="p-6 bg-blue-600 rounded-b-xl flex flex-col sm:flex-row justify-between items-center gap-4 text-white shadow-inner">
+                 <div className="text-center sm:text-left">
+                    <p className="text-[10px] font-bold text-blue-100 uppercase tracking-widest">Total Production Cost</p>
+                    <div className="text-2xl font-bold">
+                        {currentProductionCost.toLocaleString()} <span className="text-xs font-medium text-blue-100 uppercase">UGX / Unit</span>
                     </div>
                  </div>
-                 <Button onClick={handleSubmit} disabled={isSaving} className="bg-white hover:bg-blue-50 text-blue-700 h-11 px-10 font-bold shadow-md rounded-lg">
-                    {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <CheckCircle2 className="mr-2 h-4 w-4"/>} Save Recipe
-                 </Button>
+                 <div className="flex gap-3 w-full sm:w-auto">
+                    <Button variant="ghost" onClick={onCancel} className="flex-1 sm:flex-none text-white hover:bg-white/10 font-semibold">Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={isSaving} className="flex-1 sm:flex-none bg-white hover:bg-blue-50 text-blue-700 font-bold h-10 px-8 rounded-lg shadow-md">
+                        {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <CheckCircle2 className="mr-2 h-4 w-4"/>} Save Recipe
+                    </Button>
+                 </div>
             </div>
         </div>
     );
@@ -403,7 +410,7 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
 
 // --- MAIN COMPONENT ---
 
-export default function CompositesManager() {
+export default function CompositesView() {
     const queryClient = useQueryClient();
     const [isFormOpen, setFormOpen] = useState(false);
     const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -520,77 +527,79 @@ export default function CompositesManager() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-slate-50">
-                            <TableRow>
-                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 pl-8 h-12">Product Name</TableHead>
-                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 h-12">Details</TableHead>
-                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 h-12 text-right">Production Cost</TableHead>
-                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 h-12 text-right">Current Stock</TableHead>
-                                <TableHead className="text-right pr-8 font-bold text-[10px] uppercase text-slate-500 h-12">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                                <TableRow><TableCell colSpan={5} className="h-48 text-center text-slate-400 font-medium italic">Loading recipe ledger...</TableCell></TableRow>
-                            ) : (
-                                composites?.map(product => (
-                                    <TableRow key={product.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0 group">
-                                        <TableCell className="pl-8 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-900 text-sm">{product.name}</span>
-                                                <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">SKU: {product.sku || '-'}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Box size={14} className="text-slate-400" />
-                                                <span className="font-semibold text-xs text-slate-600">{product.total_components} components</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className="font-bold text-slate-800 text-sm">{(product.total_production_cost || 0).toLocaleString()}</span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase">UGX / Unit</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Badge variant="outline" className="font-mono font-bold text-slate-600 border-slate-200">
-                                                {product.current_stock}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right pr-8">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-                                                        <MoreHorizontal size={18} />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-48 shadow-xl border-slate-200 p-2">
-                                                    <DropdownMenuItem className="p-2 font-semibold text-xs uppercase cursor-pointer" onClick={() => handleAssemble(product)}>
-                                                        <Hammer className="mr-2 h-4 w-4 text-orange-500"/> Assemble
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="p-2 font-semibold text-xs uppercase cursor-pointer" onClick={() => handleEdit(product)}>
-                                                        <Edit className="mr-2 h-4 w-4 text-blue-600"/> Edit Recipe
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="p-2 font-semibold text-xs uppercase text-red-600 cursor-pointer" onClick={() => handleDelete(product)}>
-                                                        <Trash2 className="mr-2 h-4 w-4"/> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-500 pl-8 h-12">Product Name</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-500 h-12">Details</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-500 h-12 text-right">Production Cost</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase text-slate-500 h-12 text-right">Current Stock</TableHead>
+                                    <TableHead className="text-right pr-8 font-bold text-[10px] uppercase text-slate-500 h-12">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <TableRow><TableCell colSpan={5} className="h-48 text-center text-slate-400 font-medium italic">Loading recipe ledger...</TableCell></TableRow>
+                                ) : (
+                                    composites?.map(product => (
+                                        <TableRow key={product.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0 group h-20">
+                                            <TableCell className="pl-8 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-900 text-sm">{product.name}</span>
+                                                    <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">SKU: {product.sku || '-'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Box size={14} className="text-slate-400" />
+                                                    <span className="font-semibold text-xs text-slate-600">{product.total_components} components</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="font-bold text-slate-800 text-sm">{(product.total_production_cost || 0).toLocaleString()}</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">UGX / Unit</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge variant="outline" className="font-mono font-bold text-slate-600 border-slate-200">
+                                                    {product.current_stock}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right pr-8">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                                                            <MoreHorizontal size={18} />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-48 shadow-xl border-slate-200 p-2">
+                                                        <DropdownMenuItem className="p-2 font-semibold text-xs uppercase cursor-pointer" onClick={() => handleAssemble(product)}>
+                                                            <Hammer className="mr-2 h-4 w-4 text-orange-500"/> Assemble
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="p-2 font-semibold text-xs uppercase cursor-pointer" onClick={() => handleEdit(product)}>
+                                                            <Edit className="mr-2 h-4 w-4 text-blue-600"/> Edit Recipe
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem className="p-2 font-semibold text-xs uppercase text-red-600 cursor-pointer" onClick={() => handleDelete(product)}>
+                                                            <Trash2 className="mr-2 h-4 w-4"/> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
 
-            {/* RECIPE DIALOG */}
+            {/* RECIPE DIALOG (Width Restricted & Scroll Aware) */}
             <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-                <DialogContent className="sm:max-w-4xl border-none shadow-2xl rounded-xl overflow-hidden p-0 bg-white">
+                <DialogContent className="sm:max-w-3xl border-none shadow-2xl rounded-xl overflow-hidden p-0 bg-white">
                     <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
                         <div className="space-y-1">
                             <h2 className="text-xl font-bold flex items-center gap-3">
@@ -598,7 +607,7 @@ export default function CompositesManager() {
                             </h2>
                             <p className="text-slate-400 text-xs font-medium">Define production components and costs.</p>
                         </div>
-                        <Badge className="bg-blue-600 text-white font-bold border-none px-3">BOM Builder</Badge>
+                        <Badge className="bg-blue-600 text-white font-bold border-none px-3">Standard BOM</Badge>
                     </div>
                     {isLoadingDetails ? (
                         <div className="py-24 text-center">
