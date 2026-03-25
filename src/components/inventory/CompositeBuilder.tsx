@@ -16,7 +16,9 @@ import {
     Info,
     TrendingUp,
     Utensils,
-    Beaker
+    Beaker,
+    Search,
+    AlertCircle
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -226,23 +228,23 @@ export default function CompositeBuilder() {
         });
     };
 
-    if (isLoadingVariants) return <div className="p-20 text-center text-slate-400">Loading product variants...</div>;
+    if (isLoadingVariants) return <div className="p-20 text-center text-slate-400">Loading records...</div>;
 
     return (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pb-12 animate-in fade-in duration-500">
             
-            {/* WORKSPACE */}
+            {/* BUILDER AREA */}
             <div className="xl:col-span-8 space-y-6">
-                <Card className="border-slate-200 shadow-sm overflow-hidden">
+                <Card className="border-slate-200 shadow-sm overflow-hidden rounded-xl">
                     <CardHeader className="bg-slate-50 border-b p-6">
                         <div className="flex justify-between items-center">
                             <div>
                                 <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                    <Package className="text-blue-600" size={20} />
-                                    Recipe Manager
+                                    <Beaker className="text-blue-600" size={20} />
+                                    Recipe Configuration
                                 </CardTitle>
-                                <CardDescription className="text-sm mt-1">
-                                    Manage ingredient lists and calculate production costs.
+                                <CardDescription className="text-xs font-medium text-slate-500 mt-1">
+                                    Define ingredient components and track production costs.
                                 </CardDescription>
                             </div>
                         </div>
@@ -250,29 +252,29 @@ export default function CompositeBuilder() {
                     
                     <CardContent className="p-6 md:p-8 space-y-8">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">1. Select Product to Configure</Label>
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">1. Target Product</Label>
                             <ProductCombobox 
                                 options={allVariants || []} 
                                 value={selectedComposite} 
                                 onChange={(val: any) => isDirty ? setPendingComposite(val) : setSelectedComposite(val)} 
-                                placeholder="Search product name..." 
+                                placeholder="Select product to configure..." 
                             />
                         </div>
 
                         <div className={cn("space-y-6 transition-opacity", !selectedComposite && "opacity-40 pointer-events-none")}>
                             <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">2. Add Ingredients</Label>
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">2. Component Materials</Label>
                                 <div className="flex gap-2">
                                     <div className="flex-1">
                                         <ProductCombobox 
                                             options={allVariants?.filter(v => v.value !== selectedComposite?.value && !ingredients.some(i => i.variant_id === v.value)) || []} 
                                             value={selectedIngredient} 
                                             onChange={setSelectedIngredient} 
-                                            placeholder="Search raw materials or components..." 
+                                            placeholder="Search raw materials..." 
                                         />
                                     </div>
-                                    <Button onClick={handleAddIngredient} disabled={!selectedIngredient} className="bg-blue-600 hover:bg-blue-700 h-10 px-6 font-semibold">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Add
+                                    <Button onClick={handleAddIngredient} disabled={!selectedIngredient} className="bg-blue-600 hover:bg-blue-700 h-10 px-8 font-semibold">
+                                        Add
                                     </Button>
                                 </div>
                             </div>
@@ -283,7 +285,7 @@ export default function CompositeBuilder() {
                                         <TableRow>
                                             <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 px-4">Ingredient</TableHead>
                                             <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-right px-4">Unit Cost</TableHead>
-                                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-center w-[140px] px-4">Qty Needed</TableHead>
+                                            <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-center w-[140px] px-4">Quantity</TableHead>
                                             <TableHead className="text-xs font-bold text-slate-500 uppercase h-10 text-right px-6">Sub-total</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -291,15 +293,15 @@ export default function CompositeBuilder() {
                                         {ingredients.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="h-32 text-center text-slate-400 text-sm italic">
-                                                    No ingredients added yet.
+                                                    No components added yet.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
                                             ingredients.map((ing, idx) => (
-                                                <TableRow key={ing.variant_id} className="border-b last:border-0 hover:bg-slate-50/50">
+                                                <TableRow key={ing.variant_id} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
                                                     <TableCell className="px-4 py-4">
                                                         <div className="font-semibold text-slate-800 text-sm">{ing.name}</div>
-                                                        {ing.uom_name && <span className="text-[10px] text-blue-500 font-semibold uppercase">{ing.uom_name}</span>}
+                                                        {ing.uom_name && <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tight">{ing.uom_name}</span>}
                                                     </TableCell>
                                                     <TableCell className="text-right text-xs text-slate-500 px-4">
                                                         {ing.unit_cost.toLocaleString()}
@@ -319,7 +321,7 @@ export default function CompositeBuilder() {
                                                     <TableCell className="text-right px-6">
                                                         <div className="flex items-center justify-end gap-3">
                                                             <span className="font-bold text-slate-900 text-sm">{(ing.unit_cost * ing.quantity_used).toLocaleString()}</span>
-                                                            <Button variant="ghost" size="icon" onClick={() => { setIngredients(ingredients.filter(i => i.variant_id !== ing.variant_id)); setIsDirty(true); }} className="h-7 w-7 text-slate-400 hover:text-red-500">
+                                                            <Button variant="ghost" size="icon" onClick={() => { setIngredients(ingredients.filter(i => i.variant_id !== ing.variant_id)); setIsDirty(true); }} className="h-7 w-7 text-slate-400 hover:text-red-500 rounded-full">
                                                                 <Trash2 size={14} />
                                                             </Button>
                                                         </div>
@@ -333,15 +335,15 @@ export default function CompositeBuilder() {
                         </div>
                     </CardContent>
                     
-                    <CardFooter className="bg-slate-50 p-6 flex justify-between items-center border-t">
-                        <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                    <CardFooter className="bg-slate-50 p-6 flex justify-between items-center border-t border-slate-200">
+                        <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold">
                             <CheckCircle2 className="text-emerald-500 w-4 h-4" />
-                            Changes ready to save
+                            System ready to save
                         </div>
                         <Button 
                             onClick={handleSave} 
                             disabled={!isDirty || mutation.isPending || !selectedComposite}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-10 shadow-sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 px-12 shadow-sm rounded-lg"
                         >
                             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Recipe"}
                         </Button>
@@ -349,19 +351,19 @@ export default function CompositeBuilder() {
                 </Card>
             </div>
 
-            {/* SIDEBAR */}
+            {/* ANALYTICS SIDEBAR */}
             <div className="xl:col-span-4 space-y-6">
                 
-                {/* Cost Analysis */}
-                <Card className="bg-slate-900 text-white border-none shadow-lg">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-bold uppercase text-blue-400 flex items-center gap-2">
-                           <TrendingUp size={14}/> Cost Analysis
+                {/* Cost Panel */}
+                <Card className="bg-slate-900 text-white border-none shadow-lg rounded-xl overflow-hidden">
+                    <CardHeader className="pb-2 border-b border-white/5 bg-white/5">
+                        <CardTitle className="text-xs font-bold uppercase text-blue-400 flex items-center gap-2 tracking-wider">
+                           <TrendingUp size={14}/> Financial Overview
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent className="p-6 space-y-6">
                         <div>
-                            <p className="text-xs text-slate-400 font-medium uppercase">Total Cost of Production</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Production Cost</p>
                             <div className="text-3xl font-bold text-white mt-1">
                                 {totalProductionCost.toLocaleString()} <span className="text-xs font-semibold text-slate-500">UGX</span>
                             </div>
@@ -369,12 +371,12 @@ export default function CompositeBuilder() {
                         
                         {selectedComposite && (
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-                                <div>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase">Retail Price</p>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase">Target Sale</p>
                                     <p className="font-bold text-blue-300">{selectedComposite.price.toLocaleString()}</p>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase">Profit Margin</p>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase">Estimated Margin</p>
                                     <p className={cn("font-bold", (selectedComposite.price - totalProductionCost) > 0 ? "text-emerald-400" : "text-red-400")}>
                                         {(( (selectedComposite.price - totalProductionCost) / (selectedComposite.price || 1) ) * 100).toFixed(1)}%
                                     </p>
@@ -384,47 +386,47 @@ export default function CompositeBuilder() {
                     </CardContent>
                 </Card>
 
-                {/* Info Box */}
-                <Card className="border-slate-200 shadow-sm bg-blue-50/20">
-                    <CardHeader className="pb-2">
+                {/* System Info */}
+                <Card className="border-slate-200 shadow-sm bg-white rounded-xl">
+                    <CardHeader className="pb-3 border-b border-slate-50">
                         <CardTitle className="text-xs font-bold text-slate-700 uppercase flex items-center gap-2">
-                           <Info size={14} className="text-blue-600"/> Information
+                           <Info size={14} className="text-blue-600"/> Production Logic
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="p-5 space-y-4">
                         <div className="flex gap-3 items-start">
                             <Utensils size={14} className="text-slate-400 mt-1" />
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                                Restaurant inventory will be automatically deducted when a sale is finalized in the POS system.
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                                Inventory will be automatically deducted upon sale finalization in the system.
                             </p>
                         </div>
                         <div className="flex gap-3 items-start">
                             <Beaker size={14} className="text-slate-400 mt-1" />
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                                Supports high-precision quantities (up to 4 decimals) for chemical or pharmaceutical compounding.
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                                Supports 4-decimal precision for exact chemical or pharmaceutical dosing.
                             </p>
                         </div>
                     </CardContent>
                 </Card>
 
-                <div className="text-[10px] text-slate-400 text-center uppercase tracking-widest px-4">
-                    All recipe updates are logged for tracking.
+                <div className="text-[10px] text-slate-400 text-center uppercase tracking-widest font-semibold px-4">
+                    All recipe configurations are logged for tracking.
                 </div>
             </div>
 
-            {/* UNSAVED CHANGES ALERT */}
+            {/* DISCARD ALERT */}
             <AlertDialog open={!!pendingComposite} onOpenChange={() => setPendingComposite(null)}>
                 <AlertDialogContent className="rounded-xl border-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-lg font-bold">Discard Unsaved Changes?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-500">
-                            The current recipe hasn't been saved. If you switch products now, your changes will be lost.
+                        <AlertDialogTitle className="text-lg font-bold">Discard Changes?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-500 text-sm">
+                            You have unsaved changes in the current recipe. Moving away will lose your progress.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="bg-slate-50 p-6 -mx-6 -mb-6 mt-4">
-                        <AlertDialogCancel className="font-semibold">Keep Editing</AlertDialogCancel>
-                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => { setSelectedComposite(pendingComposite); setPendingComposite(null); setIsDirty(false); }}>
-                            Discard Changes
+                    <AlertDialogFooter className="bg-slate-50 p-6 -mx-6 -mb-6 mt-4 border-t">
+                        <AlertDialogCancel className="font-semibold text-xs uppercase">Continue Editing</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 font-bold text-xs uppercase" onClick={() => { setSelectedComposite(pendingComposite); setPendingComposite(null); setIsDirty(false); }}>
+                            Discard Progress
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

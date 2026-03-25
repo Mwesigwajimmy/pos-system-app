@@ -2,8 +2,22 @@
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { 
+  Card, 
+  CardHeader, 
+  CardContent, 
+  CardTitle, 
+  CardDescription, 
+  CardFooter 
+} from "@/components/ui/card";
+import { 
+  Table, 
+  TableHeader, 
+  TableRow, 
+  TableHead, 
+  TableBody, 
+  TableCell 
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,23 +27,20 @@ import {
     Download, 
     Search, 
     Landmark, 
-    CalendarRange, 
-    Filter, 
-    Globe2, 
+    Globe, 
     FileDown, 
     FileSpreadsheet, 
-    ShieldCheck, 
-    Fingerprint, 
+    CheckCircle2, 
     Activity,
     Loader2,
-    RefreshCcw,
-    CheckCircle2
+    Filter,
+    FileText
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 
-// --- ENTERPRISE EXPORT ENGINES ---
+// --- EXPORT ENGINES ---
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -59,10 +70,15 @@ interface TaxReportProps {
   data: TaxLineItem[];
   summaries: TaxSummary[];
   serializedDateRange: { from: string; to: string }; 
-  tenantName?: string; // UPGRADE: Added for legal branding on PDF
+  tenantName?: string;
 }
 
-export default function TaxReportClient({ data, summaries, serializedDateRange, tenantName = "Sovereign Entity" }: TaxReportProps) {
+export default function TaxReportClient({ 
+  data, 
+  summaries, 
+  serializedDateRange, 
+  tenantName = "Business Entity" 
+}: TaxReportProps) {
   const router = useRouter();
   const [filter, setFilter] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -72,12 +88,11 @@ export default function TaxReportClient({ data, summaries, serializedDateRange, 
     to: parseISO(serializedDateRange.to)
   }), [serializedDateRange]);
 
-  // --- ENTERPRISE LOGIC: CONSOLIDATED TOTALS ---
   const consolidatedTotals = useMemo(() => {
     const totals = new Map<string, TaxSummary>();
     summaries.forEach(s => {
       if (!totals.has(s.currency)) {
-        totals.set(s.currency, { ...s, displayLabel: `Company Total (${s.currency})` });
+        totals.set(s.currency, { ...s, displayLabel: `Consolidated Total (${s.currency})` });
       } else {
         const existing = totals.get(s.currency)!;
         existing.total_output_tax += s.total_output_tax;
@@ -116,40 +131,38 @@ export default function TaxReportClient({ data, summaries, serializedDateRange, 
     ).sort((a,b) => b.type.localeCompare(a.type)); 
   }, [data, filter]);
 
-  // --- MASTER EXPORT: PDF (Sealed Jurisdictional Compliance) ---
+  // --- PDF EXPORT (Professional Standard) ---
   const handleExportPDF = () => {
     setIsExporting(true);
     try {
       const doc = new jsPDF();
-      const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm');
       
-      // 1. Branding Header (Enterprise Grade)
-      doc.setFillColor(15, 23, 42); // Slate-900
-      doc.rect(0, 0, 210, 45, 'F');
+      // 1. Header
+      doc.setFillColor(51, 65, 85); // Slate-700
+      doc.rect(0, 0, 210, 40, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(22);
+      doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
-      doc.text("TAX COMPLIANCE CERTIFICATE", 105, 25, { align: 'center' });
-      doc.setFontSize(9);
+      doc.text("TAX COMPLIANCE REPORT", 105, 22, { align: 'center' });
+      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`ISSUED TO: ${tenantName.toUpperCase()}`, 105, 33, { align: 'center' });
-      doc.text(`TRACE ID: SOV-${Math.random().toString(36).substr(2, 9).toUpperCase()}`, 105, 38, { align: 'center' });
+      doc.text(`PREPARED FOR: ${tenantName.toUpperCase()}`, 105, 30, { align: 'center' });
 
-      // 2. Financial Metrics Section
-      doc.setTextColor(30, 41, 59);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Compliance Period:", 14, 55);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${format(dateRange.from, "dd MMM yyyy")} - ${format(dateRange.to, "dd MMM yyyy")}`, 55, 55);
-
-      // 3. Section I: Consolidated Performance
+      // 2. Info Section
+      doc.setTextColor(15, 23, 42);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
-      doc.text("I. CONSOLIDATED ENTERPRISE TOTALS", 14, 70);
+      doc.text("Report Period:", 14, 52);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${format(dateRange.from, "dd MMM yyyy")} - ${format(dateRange.to, "dd MMM yyyy")}`, 45, 52);
+
+      // 3. Consolidated Totals
+      doc.setFont("helvetica", "bold");
+      doc.text("1. CONSOLIDATED TOTALS", 14, 65);
       autoTable(doc, {
-        startY: 75,
-        head: [['Currency', 'Total Output (Liability)', 'Total Input (Recoverable)', 'Net Jurisdictional Liability']],
+        startY: 70,
+        head: [['Currency', 'Tax Collected (Sales)', 'Tax Paid (Expenses)', 'Net Tax Liability']],
         body: consolidatedTotals.map(t => [
             t.currency, 
             formatMoney(t.total_output_tax, t.currency), 
@@ -157,15 +170,15 @@ export default function TaxReportClient({ data, summaries, serializedDateRange, 
             formatMoney(t.net_liability, t.currency)
         ]),
         theme: 'striped',
-        headStyles: { fillColor: [30, 41, 59] },
+        headStyles: { fillColor: [51, 65, 85] },
         styles: { fontSize: 9 }
       });
 
-      // 4. Section II: Granular Ledger
-      doc.text("II. DETAILED JURISDICTIONAL LEDGER", 14, (doc as any).lastAutoTable.finalY + 15);
+      // 4. Ledger Breakdown
+      doc.text("2. DETAILED TAX LEDGER", 14, (doc as any).lastAutoTable.finalY + 15);
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 20,
-        head: [['Jurisdiction', 'Authority Name', 'Type', 'Taxable Base', 'Tax Component']],
+        head: [['Region', 'Tax Name', 'Type', 'Taxable Amount', 'Tax Component']],
         body: filteredData.map(r => [
             r.jurisdiction_code,
             r.tax_name,
@@ -174,139 +187,122 @@ export default function TaxReportClient({ data, summaries, serializedDateRange, 
             formatMoney(r.tax_amount, r.currency)
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246] },
+        headStyles: { fillColor: [37, 99, 235] },
         styles: { fontSize: 8 }
       });
 
-      // 5. Audit Seal (Footer)
-      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      // 5. Footer
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text("CERTIFICATION: This document is an autonomous extract from the Sovereign ERP Financial Kernel.", 14, finalY);
-      doc.text(`Mathematically Sealed At: ${timestamp} | Verified via System-Wide Forensic Lock.`, 14, finalY + 5);
+      doc.text(`Report Date: ${timestamp} | Reference: ${Math.random().toString(36).substr(2, 6).toUpperCase()}`, 14, finalY);
 
-      doc.save(`Sovereign_Tax_Report_${format(dateRange.from, 'yyyyMMdd')}.pdf`);
-      toast.success("Professional Compliance Certificate Downloaded.");
+      doc.save(`Tax_Report_${format(dateRange.from, 'yyyyMMdd')}.pdf`);
+      toast.success("PDF Report Generated");
     } catch (err) {
-      toast.error("Export Error: PDF engine is busy.");
+      toast.error("Export failed.");
     } finally {
       setIsExporting(false);
     }
   };
 
-  // --- MASTER EXPORT: EXCEL (Forensic Data Workbook) ---
+  // --- EXCEL EXPORT ---
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
     
-    // Sheet 1: Consolidated Totals
     const summaryData = consolidatedTotals.map(t => ({
       "Currency": t.currency,
-      "Output Tax (Sales)": t.total_output_tax,
-      "Input Tax (Purchases)": t.total_input_tax,
-      "Net Liability to Gov": t.net_liability
+      "Collected Tax": t.total_output_tax,
+      "Paid Tax": t.total_input_tax,
+      "Net Liability": t.net_liability
     }));
     const summaryWS = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, summaryWS, "Executive Summary");
+    XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
 
-    // Sheet 2: Granular Ledger Items
     const granularData = filteredData.map(r => ({
-      "Jurisdiction": r.jurisdiction_code,
-      "Tax Rule": r.tax_name,
-      "Flow Type": r.type,
-      "Applied Rate": `${r.rate_percentage}%`,
-      "Taxable Base Value": r.taxable_base,
+      "Region": r.jurisdiction_code,
+      "Tax Name": r.tax_name,
+      "Type": r.type,
+      "Rate": `${r.rate_percentage}%`,
+      "Taxable Base": r.taxable_base,
       "Tax Amount": r.tax_amount,
       "Currency": r.currency,
-      "Transaction Volume": r.transaction_count
+      "Trans. Count": r.transaction_count
     }));
     const granularWS = XLSX.utils.json_to_sheet(granularData);
-    XLSX.utils.book_append_sheet(wb, granularWS, "Granular Ledger");
+    XLSX.utils.book_append_sheet(wb, granularWS, "Ledger Details");
 
-    XLSX.writeFile(wb, `Tax_Ledger_Export_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success("Enterprise Data Workbook exported successfully.");
+    XLSX.writeFile(wb, `Tax_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success("Excel Workbook Downloaded");
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       
-      {/* 1. Header & Sovereign Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-8 rounded-2xl border border-slate-200 shadow-xl">
+      {/* 1. Header Section */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-blue-600 font-bold text-xs uppercase tracking-widest">
-            <ShieldCheck size={14}/> Forensic Integrity Verified
+          <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-wider mb-1">
+            <CheckCircle2 size={14}/> Verified Financial Report
           </div>
-          <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">Tax Liability Report</h1>
-          <p className="text-slate-500 font-medium italic">
-            Consolidated analysis for <span className="text-blue-600 font-bold">{tenantName}</span> ending {format(dateRange.to, "MMMM dd, yyyy")}
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Tax Liability Report</h1>
+          <p className="text-sm text-slate-500 font-medium">
+            Analysis for <span className="text-blue-600 font-semibold">{tenantName}</span> ending {format(dateRange.to, "MMMM dd, yyyy")}
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-           {/* EXPORT ACTIONS */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+           {/* Actions */}
            <div className="flex gap-2 mr-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleExportExcel}
-                    className="font-black text-[10px] uppercase tracking-widest border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-sm"
-                >
-                    <FileSpreadsheet className="mr-2 h-4 w-4" /> EXCEL
+                <Button variant="outline" size="sm" onClick={handleExportExcel} className="font-bold text-[11px] border-slate-200 hover:bg-slate-50">
+                    <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" /> Excel
                 </Button>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleExportPDF}
-                    disabled={isExporting}
-                    className="font-black text-[10px] uppercase tracking-widest border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm"
-                >
-                    {isExporting ? <Loader2 className="animate-spin h-4 w-4" /> : <FileDown className="mr-2 h-4 w-4" />}
-                    PDF CERTIFICATE
+                <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={isExporting} className="font-bold text-[11px] border-slate-200 hover:bg-slate-50">
+                    {isExporting ? <Loader2 className="animate-spin h-4 w-4" /> : <FileDown className="mr-2 h-4 w-4 text-blue-600" />}
+                    PDF Report
                 </Button>
            </div>
            
-           <div className="h-10 w-px bg-slate-200 hidden sm:block mx-2" />
+           <div className="h-6 w-px bg-slate-200 hidden lg:block mx-1" />
            
            <DatePickerWithRange date={dateRange} setDate={handleDateChange} />
            
-           <div className="relative w-full md:w-56 group">
-             <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors"/>
+           <div className="relative w-full lg:w-64">
+             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
              <Input 
-                placeholder="Search jurisdictional ledger..." 
+                placeholder="Filter results..." 
                 value={filter} 
                 onChange={e => setFilter(e.target.value)} 
-                className="pl-10 h-10 bg-slate-50 border-slate-200 rounded-xl font-medium"
+                className="pl-10 h-10 border-slate-200 rounded-lg text-sm"
              />
            </div>
         </div>
       </div>
       
-      {/* 2. CONSOLIDATED ENTERPRISE PERFORMANCE */}
+      {/* 2. Consolidated Totals */}
       {consolidatedTotals.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-            <Globe2 className="h-4 w-4 text-blue-500"/> Global Consolidation Handshake Active
+          <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-1 flex items-center gap-2">
+            <Globe className="h-4 w-4 text-blue-500"/> Consolidated Performance
           </h3>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {consolidatedTotals.map((total) => (
-              <Card key={`total-${total.currency}`} className="bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Fingerprint className="w-24 h-24 rotate-12"/>
-                </div>
+              <Card key={`total-${total.currency}`} className="bg-slate-900 text-white border-none shadow-md overflow-hidden group">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Net Jurisdictional Liability ({total.currency})</CardTitle>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net Liability ({total.currency})</span>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-black font-mono tracking-tighter text-emerald-400">
+                  <div className="text-3xl font-bold text-emerald-400">
                     {formatMoney(total.net_liability, total.currency)}
                   </div>
-                  <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 gap-4 text-[10px] font-bold uppercase tracking-widest">
-                    <div className="space-y-1">
-                      <span className="text-slate-500 block">Gross Output</span>
-                      <span className="text-blue-400 font-mono text-sm">{formatMoney(total.total_output_tax, total.currency)}</span>
+                  <div className="mt-6 pt-4 border-t border-white/10 grid grid-cols-2 gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] text-slate-500 uppercase font-bold">Collected Tax</span>
+                      <p className="text-sm font-semibold text-blue-400">{formatMoney(total.total_output_tax, total.currency)}</p>
                     </div>
-                    <div className="text-right space-y-1">
-                      <span className="text-slate-500 block">Input Recoverable</span>
-                      <span className="text-amber-400 font-mono text-sm">{formatMoney(total.total_input_tax, total.currency)}</span>
+                    <div className="text-right space-y-0.5">
+                      <span className="text-[9px] text-slate-500 uppercase font-bold">Paid/Input Tax</span>
+                      <p className="text-sm font-semibold text-amber-400">{formatMoney(total.total_input_tax, total.currency)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -316,77 +312,39 @@ export default function TaxReportClient({ data, summaries, serializedDateRange, 
         </div>
       )}
 
-      {/* 3. Jurisdictional Breakdown Cards */}
-      <div className="space-y-4 pt-4">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">Jurisdictional Ledger Summary</h3>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {summaries.map((summary) => (
-            <Card key={summary.displayLabel} className={cn(
-                "shadow-lg border-none ring-1 ring-slate-200 transition-all hover:shadow-2xl hover:-translate-y-1",
-                summary.net_liability > 0 ? "bg-white" : "bg-emerald-50/20"
-            )}>
-              <CardHeader className="pb-2 border-b border-slate-50">
-                <CardTitle className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <span>{summary.displayLabel}</span>
-                  <Landmark className="h-3.5 w-3.5 text-slate-300"/>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className={cn(
-                    "text-3xl font-black font-mono tracking-tighter",
-                    summary.net_liability > 0 ? 'text-slate-900' : 'text-emerald-700'
-                )}>
-                  {formatMoney(summary.net_liability, summary.currency)}
-                </div>
-                <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-[9px] font-black uppercase tracking-tighter">
-                  <div className="space-y-1">
-                    <span className="text-slate-400 block">Output Tax</span>
-                    <span className="text-slate-700 font-bold">{formatMoney(summary.total_output_tax, summary.currency)}</span>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <span className="text-slate-400 block">Input Tax</span>
-                    <span className="text-slate-700 font-bold">{formatMoney(summary.total_input_tax, summary.currency)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. Granular Transactional Table */}
-      <Card className="shadow-2xl border-none ring-1 ring-slate-200 overflow-hidden bg-white">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-          <CardTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-600">
-            <Activity className="h-4 w-4 text-blue-500"/> Granular Transactional Ledger
+      {/* 3. Jurisdictional Ledger Table */}
+      <Card className="shadow-sm border border-slate-200 rounded-xl overflow-hidden bg-white">
+        <CardHeader className="bg-slate-50/50 border-b border-slate-200 p-6">
+          <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+            <FileText className="h-5 w-5 text-blue-600"/> Detailed Tax Ledger
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
-              <TableHeader className="bg-slate-100/50">
-                <TableRow className="hover:bg-transparent border-slate-200">
-                  <TableHead className="pl-8 font-black uppercase text-[10px] tracking-widest">ID / Zone</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Authority Control</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Flow Protocol</TableHead>
-                  <TableHead className="text-right font-black uppercase text-[10px] tracking-widest">Taxable Base</TableHead>
-                  <TableHead className="text-right pr-8 font-black uppercase text-[10px] tracking-widest">Net Component</TableHead>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="pl-6 text-[10px] font-bold uppercase text-slate-500 h-10 tracking-wider">Region</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10 tracking-wider">Authority</TableHead>
+                  <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500 h-10 tracking-wider">Type</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold uppercase text-slate-500 h-10 tracking-wider">Taxable Base</TableHead>
+                  <TableHead className="text-right pr-6 text-[10px] font-bold uppercase text-slate-500 h-10 tracking-wider">Tax Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-blue-50/30 transition-colors border-slate-50">
-                    <TableCell className="pl-8"><Badge variant="outline" className="font-mono font-black border-slate-300 uppercase">{row.jurisdiction_code}</Badge></TableCell>
-                    <TableCell className="font-black text-slate-700 text-xs">{row.tax_name.toUpperCase()}</TableCell>
+                  <TableRow key={row.id} className="hover:bg-slate-50/50 border-b border-slate-100">
+                    <TableCell className="pl-6"><Badge variant="secondary" className="font-mono font-bold uppercase text-[10px] bg-slate-100 text-slate-600">{row.jurisdiction_code}</Badge></TableCell>
+                    <TableCell className="font-semibold text-slate-800 text-xs">{row.tax_name}</TableCell>
                     <TableCell className="text-center">
                       <Badge className={cn(
-                          "font-black text-[8px] tracking-widest px-2 py-0.5 border-none",
-                          row.type === 'Output' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-white'
-                      )} variant="secondary">
-                        {row.type.toUpperCase()}
+                          "font-bold text-[9px] uppercase px-2 py-0.5",
+                          row.type === 'Output' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                      )} variant="outline">
+                        {row.type}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-slate-500 font-bold">{formatMoney(row.taxable_base, row.currency)}</TableCell>
-                    <TableCell className="text-right pr-8 font-mono font-black text-slate-900">
+                    <TableCell className="text-right font-medium text-slate-500 text-xs">{formatMoney(row.taxable_base, row.currency)}</TableCell>
+                    <TableCell className="text-right pr-6 font-bold text-slate-900 text-xs">
                         {formatMoney(row.tax_amount, row.currency)}
                     </TableCell>
                   </TableRow>
@@ -394,11 +352,14 @@ export default function TaxReportClient({ data, summaries, serializedDateRange, 
               </TableBody>
             </Table>
         </CardContent>
-        <CardFooter className="bg-slate-50 border-t py-4 flex justify-center">
-            <div className="flex items-center gap-6 text-[9px] font-mono text-slate-400 font-black uppercase tracking-widest">
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3 h-3 text-emerald-500"/> MATHEMATICAL PARITY VERIFIED</span>
-                <span className="flex items-center gap-1.5"><Fingerprint className="w-3 h-3"/> LEDGER SEAL: V10.1 IMMUTABLE</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3 text-blue-500"/> GAAP & IFRS ALIGNED</span>
+        <CardFooter className="bg-slate-50 border-t py-4 px-6 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                System Audit: Compliant
+            </div>
+            <div className="flex items-center gap-4">
+                <span>Version 10.2</span>
+                <span>Node: Global</span>
             </div>
         </CardFooter>
       </Card>
