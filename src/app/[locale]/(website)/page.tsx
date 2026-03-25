@@ -1742,290 +1742,171 @@ const PartnerWithUsSection = () => {
 const AboutCompanyExecutiveSection = () => {
     // High-End Animation Variants
     const fadeInUp = {
-        initial: { opacity: 0, y: 40 },
+        initial: { opacity: 0, y: 30 },
         whileInView: { opacity: 1, y: 0 },
         viewport: { once: true, margin: "-100px" },
-        transition: { duration: 1, ease: [0.16, 1, 0.3, 1] }
+        transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
     };
 
     return (
-        <section className="relative w-full bg-[#020617] selection:bg-blue-500/30 font-sans text-slate-300 overflow-hidden">
+        <section className="relative w-full bg-white font-sans text-slate-600 overflow-hidden">
             
-            {/* --- 1. UNIVERSAL BACKDROP --- */}
-            <div className="absolute inset-0 z-0 overflow-hidden">
-                <Image 
-                    src="/images/showcase/ai-warehouse-logistics.jpg" 
-                    alt="BBU1 Universe Background"
-                    fill
-                    className="object-cover opacity-[0.08] fixed"
-                    priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-transparent to-[#020617]" />
+            {/* --- 1. CORPORATE IDENTITY --- */}
+            <div className="relative min-h-[80vh] flex items-center bg-slate-50 border-b border-slate-200 py-24">
+                <div className="container mx-auto px-6 grid lg:grid-cols-12 gap-16 items-center">
+                    
+                    {/* Left: Text Content */}
+                    <div className="lg:col-span-7 space-y-8">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-lg"
+                        >
+                            <Sparkles className="h-4 w-4 text-blue-600" />
+                            <span className="text-blue-700 text-[10px] font-bold uppercase tracking-wider">Company Profile</span>
+                        </motion.div>
+
+                        <motion.h1 
+                            {...fadeInUp}
+                            className="text-4xl md:text-6xl font-bold text-slate-900 tracking-tight leading-tight"
+                        >
+                            Defining the <br /> <span className="text-blue-600">Standard for Business.</span>
+                        </motion.h1>
+
+                        <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="max-w-xl space-y-6">
+                            <p className="text-xl md:text-2xl font-medium text-slate-500 leading-relaxed border-l-4 border-blue-600 pl-6">
+                                BBU1 is the architect of the Business Operating System (BOS)—a unified digital environment where commerce is empowered by a central operating core.
+                            </p>
+                            <p className="text-slate-500 text-lg leading-relaxed">
+                                we bridge the gap between advanced technology and global business utility. Our purpose is to provide a secure foundation for the next generation of digital commerce.
+                            </p>
+                        </motion.div>
+                    </div>
+
+                    {/* Right: Picture Box */}
+                    <motion.div 
+                        initial={{ opacity: 0, x: 30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        className="lg:col-span-5 relative aspect-[4/5] rounded-2xl overflow-hidden border border-slate-200 shadow-2xl"
+                    >
+                        <Image 
+                            src="/images/showcase/Greeting (22).jpeg" 
+                            alt="Corporate Innovation"
+                            fill
+                            className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent" />
+                    </motion.div>
+                </div>
             </div>
 
-            <div className="relative z-10">
-                
-                {/* --- SECTION 1: WHO WE ARE (SPLIT LAYOUT) --- */}
-                <div className="relative min-h-screen flex items-center border-b border-white/5 py-24">
-                    <div className="container mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center">
-                        
-                        {/* Left: Text Content */}
-                        <div className="lg:col-span-7 space-y-10">
-                            <motion.div 
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                className="inline-flex items-center gap-3 px-6 py-2 bg-blue-500/5 border border-blue-500/20 rounded-full"
-                            >
-                                <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
-                                <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.5em]">Corporate Identity</span>
-                            </motion.div>
-
-                            <motion.h1 
-                                {...fadeInUp}
-                                className="text-5xl md:text-8xl font-black text-white tracking-tighter leading-none"
-                            >
-                                WHO WE <br /> <span className="text-blue-600">ARE.</span>
-                            </motion.h1>
-
-                            <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="max-w-xl space-y-8">
-                                <p className="text-2xl md:text-3xl font-light text-slate-400 leading-relaxed italic border-l-4 border-blue-600 pl-8">
-                                    "BBU1 is the architect of the Business Base Universe—a sovereign digital ecosystem where commerce is no longer restricted by disconnected software, but empowered by a unified operating core."
-                                </p>
-                                <p className="text-slate-500 text-xl leading-relaxed">
-                                    We bridge the gap between complex engineering and global business utility. 
-                                    Our purpose is to provide an unbreakable foundation for the next generation of digital commerce.
-                                </p>
-                            </motion.div>
+            {/* --- SECTION 2: MISSION & VISION --- */}
+            <div className="py-32 bg-white border-b border-slate-100">
+                <div className="container mx-auto px-6 grid lg:grid-cols-2 gap-24">
+                    
+                    {/* Mission */}
+                    <motion.div {...fadeInUp} className="space-y-6">
+                        <div className="flex items-center gap-3 text-blue-600 uppercase tracking-widest text-xs font-bold">
+                            <Target className="h-5 w-5" />
+                            <span>Our Mission</span>
                         </div>
+                        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Engineering Operational Certainty</h2>
+                        <p className="text-slate-500 text-lg leading-relaxed font-medium">
+                            To engineer a unified business infrastructure that eliminates friction and enables enterprises to scale with absolute data integrity.
+                        </p>
+                        <p className="text-slate-500 leading-relaxed">
+                            We help businesses remove the hidden costs of disconnected tools, allowing leadership to focus on strategic growth rather than managing technical silos.
+                        </p>
+                    </motion.div>
 
-                        {/* Right: Picture Box (Greeting 22) */}
-                        <motion.div 
-                            initial={{ opacity: 0, x: 50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            className="lg:col-span-5 relative aspect-[4/5] rounded-[4rem] overflow-hidden border border-white/10 shadow-2xl"
-                        >
-                            <Image 
-                                src="/images/showcase/Greeting (22).jpeg" 
-                                alt="BBU1 Innovation"
-                                fill
-                                className="object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/70 via-transparent to-transparent" />
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* --- SECTION 2: MISSION / ENGINEERING CERTAINTY (SPLIT LAYOUT) --- */}
-                <div className="py-48 border-b border-white/5 bg-white/[0.01]">
-                    <div className="container mx-auto px-6 grid lg:grid-cols-12 gap-20 items-center">
-                        
-                        {/* Left: Content */}
-                        <motion.div {...fadeInUp} className="lg:col-span-7 space-y-10">
-                            <div className="flex items-center gap-4 text-blue-500 uppercase tracking-widest text-xs font-black">
-                                <Target className="h-6 w-6" />
-                                <span>Fundamental Mission</span>
-                            </div>
-                            <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">
-                                ENGINEERING <br /> CERTAINTY.
-                            </h2>
-                            <div className="space-y-8 text-slate-400 text-xl leading-relaxed font-light">
-                                <p className="text-white text-3xl font-medium">To engineer a unified, sovereign business infrastructure that eliminates operational friction.</p>
-                                <p>
-                                    We enable enterprises to scale from agile startups to global conglomerates through intelligent automation and absolute data integrity. 
-                                    By removing the "Integration Tax"—the heavy cost businesses pay for using disconnected tools—we allow our clients to focus on pure growth.
-                                </p>
-                            </div>
-                        </motion.div>
-
-                        {/* Right: Picture (Greeting 10) */}
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            className="lg:col-span-5 relative aspect-square rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl rotate-2"
-                        >
-                            <Image 
-                                src="/images/showcase/Greeting (10).jpeg" 
-                                alt="Mission Control"
-                                fill
-                                className="object-cover"
-                            />
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* --- SECTION 3: VISION / THE GLOBAL STANDARD (SPLIT LAYOUT) --- */}
-                <div className="py-48 bg-white/[0.02]">
-                    <div className="container mx-auto px-6 grid lg:grid-cols-12 gap-20 items-center">
-                        
-                        {/* Left: Content */}
-                        <motion.div {...fadeInUp} className="lg:col-span-7 space-y-10">
-                            <div className="flex items-center gap-4 text-indigo-500 uppercase tracking-widest text-xs font-black">
-                                <Globe2 className="h-6 w-6" />
-                                <span>Future Projection</span>
-                            </div>
-                            <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">
-                                THE GLOBAL <br /> STANDARD.
-                            </h2>
-                            <div className="space-y-8 text-slate-400 text-xl leading-relaxed font-light">
-                                <p className="text-white text-3xl font-medium">To define the Business Operating System (BOS) for the modern world.</p>
-                                <p>
-                                    Our vision is to empower the next generation of African and international commerce with an unbreakable 'Business Base' 
-                                    that functions with identical power anywhere on earth—from a village in Uganda to a skyscraper in Manhattan.
-                                </p>
-                            </div>
-                        </motion.div>
-
-                        {/* Right: Picture (Greeting 2) */}
-                        <motion.div 
-                            initial={{ opacity: 0, x: 50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            className="lg:col-span-5 relative aspect-square rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl -rotate-2"
-                        >
-                            <Image 
-                                src="/images/showcase/Greeting (2).jpeg" 
-                                alt="Visionary Scale"
-                                fill
-                                className="object-cover"
-                            />
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* --- SECTION 4: CORE VALUES (TIER 1 CARDS) --- */}
-                <div className="container mx-auto px-6 py-48">
-                    <div className="mb-24">
-                        <div className="flex items-center gap-4 text-emerald-500 mb-6">
-                            <ShieldCheck className="h-8 w-8" />
-                            <span className="text-sm font-black uppercase tracking-[0.3em]">Operational Ethics</span>
+                    {/* Vision */}
+                    <motion.div {...fadeInUp} transition={{ delay: 0.2 }} className="space-y-6">
+                        <div className="flex items-center gap-3 text-indigo-600 uppercase tracking-widest text-xs font-bold">
+                            <Globe2 className="h-5 w-5" />
+                            <span>Our Vision</span>
                         </div>
-                        <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter italic uppercase">CORE VALUES.</h2>
-                    </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {[
-                            { title: "Technical Integrity", desc: "We believe in software as structural engineering. It must be mathematically sound and unbreakable." },
-                            { title: "Data Sovereignty", desc: "Absolute ownership. Your business intelligence remains your ultimate sovereign asset." },
-                            { title: "Innovation with Purpose", desc: "We reject novelty for novelty's sake. Every line of code must serve a strategic goal." },
-                            { title: "Radical Accessibility", desc: "Making elite, Tier-1 enterprise power available to every visionary entrepreneur." }
-                        ].map((v, i) => (
-                            <div key={i} className="group p-12 bg-white/5 border border-white/10 rounded-[3rem] hover:bg-emerald-500/5 transition-all duration-500">
-                                <h4 className="text-white text-2xl font-black mb-6 tracking-tight group-hover:text-emerald-400 transition-colors uppercase italic">{v.title}</h4>
-                                <div className="h-1 w-12 bg-emerald-500/30 mb-6 group-hover:w-full transition-all duration-700" />
-                                <p className="text-slate-500 text-sm leading-relaxed">{v.desc}</p>
-                            </div>
-                        ))}
-                    </div>
+                        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">The Global Business Language</h2>
+                        <p className="text-slate-500 text-lg leading-relaxed font-medium">
+                            To become the standard operating system for modern business globally.
+                        </p>
+                        <p className="text-slate-500 leading-relaxed">
+                            We envision an interconnected world of commerce where even the smallest local enterprise operates with the same digital power as a global conglomerate.
+                        </p>
+                    </motion.div>
                 </div>
+            </div>
 
-                {/* --- SECTION 5: THE FOUR COMMITMENTS (FULL BACKGROUND IMAGE) --- */}
-                <div className="relative py-64 overflow-hidden border-y border-white/5">
-                    {/* COMMITMENTS BACKGROUND IMAGE */}
-                    <div className="absolute inset-0 z-0">
+            {/* --- SECTION 3: CORE VALUES --- */}
+            <div className="container mx-auto px-6 py-32 bg-slate-50/30">
+                <div className="mb-16 text-center max-w-2xl mx-auto">
+                    <div className="flex items-center justify-center gap-3 text-emerald-600 mb-4">
+                        <ShieldCheck className="h-6 w-6" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Company Ethics</span>
+                    </div>
+                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">The Principles of BBU1</h2>
+                </div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {[
+                        { title: "Technical Integrity", desc: "We build software like structural engineering. Every line of code must be mathematically sound." },
+                        { title: "Data Sovereignty", desc: "Absolute privacy. We believe your business intelligence belongs to you and you alone." },
+                        { title: "Strategic Purpose", desc: "We reject novelty. Every feature we build is designed to solve a specific business problem." },
+                        { title: "Global Accessibility", desc: "High-end enterprise power should be accessible to every ambitious entrepreneur on earth." }
+                    ].map((v, i) => (
+                        <div key={i} className="group p-8 bg-white border border-slate-200 rounded-xl hover:border-blue-600 hover:shadow-xl transition-all duration-300">
+                            <h4 className="text-slate-900 text-lg font-bold mb-4 tracking-tight group-hover:text-blue-600 transition-colors uppercase">{v.title}</h4>
+                            <div className="h-1 w-8 bg-blue-600/20 mb-4 group-hover:w-full transition-all duration-500" />
+                            <p className="text-slate-500 text-sm leading-relaxed">{v.desc}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* --- SECTION 4: FOUNDER'S MESSAGE --- */}
+            <div className="py-32 container mx-auto px-6">
+                <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row">
+                    
+                    {/* Left: Founder's Image */}
+                    <div className="lg:w-1/3 relative h-[400px] lg:h-auto bg-slate-800">
                         <Image 
-                            src="/images/showcase/Greeting (33).jpeg" 
-                            alt="BBU1 Commitment Background"
+                            src="/images/showcase/Photo Background Edi (4).jpeg" 
+                            alt="Founder Mwesigwa Jimmy"
                             fill
-                            className="object-cover brightness-[0.12] contrast-[1.1] blur-[2px]"
+                            className="object-cover object-top grayscale hover:grayscale-0 transition-all duration-1000"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-transparent to-[#020617]" />
                     </div>
 
-                    <div className="relative z-10 container mx-auto px-6">
-                        <div className="max-w-4xl mx-auto text-center mb-32">
-                            <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic mb-8">THE FOUR COMMITMENTS</h2>
-                            <p className="text-blue-200/50 text-xl font-light tracking-[0.2em] uppercase">The fundamental DNA of every BBU1 enterprise.</p>
+                    {/* Right: Message */}
+                    <div className="lg:w-2/3 p-8 lg:p-16 space-y-8">
+                        <div className="space-y-2">
+                            <h3 className="text-3xl font-bold text-white tracking-tight">A Message from the Architect</h3>
+                            <p className="text-blue-400 font-bold text-sm uppercase tracking-widest">Mwesigwa Jimmy • Founder & Lead Architect</p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-                            {[
-                                { icon: <Zap />, title: "Velocity", desc: "Real-time decision making enabled by frictionless data flows across the entire organization." },
-                                { icon: <Layers />, title: "Unity", desc: "Total integration of AI, Logistics, and Finance into one single, high-performance nervous system." },
-                                { icon: <Scale />, title: "Elasticity", desc: "An infrastructure that breathes. Scale from one user to one million without a single structural change." },
-                                { icon: <Microscope />, title: "Precision", desc: "Eliminating human error through proprietary Audit-Engineering protocols and AI verification." }
-                            ].map((c, i) => (
-                                <div key={i} className="p-12 bg-black/70 backdrop-blur-2xl border border-white/10 rounded-[4rem] hover:border-blue-500/50 transition-all group">
-                                    <div className="mb-8 text-blue-500 group-hover:scale-125 transition-transform duration-500">{c.icon}</div>
-                                    <h3 className="text-white font-black text-3xl mb-4 tracking-tight uppercase italic">{c.title}</h3>
-                                    <p className="text-slate-400 leading-relaxed text-base font-light">{c.desc}</p>
-                                </div>
-                            ))}
+
+                        <div className="space-y-6 text-slate-300 text-lg leading-relaxed font-light">
+                            <p>
+                                "My journey began with a focus on foundations. Supported by the pillars of my family and my community in Uganda, I realized that growth is only possible when your base is unbreakable."
+                            </p>
+                            <p>
+                                "With a background in Computer Science, I initiated BBU1 to pay that support forward. My mission is to ensure that businesses everywhere—from local markets to high-rise offices—can operate with identical digital power."
+                            </p>
+                        </div>
+
+                        <div className="pt-8 border-t border-white/10">
+                            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 px-10 rounded-xl shadow-lg transition-transform hover:scale-105" asChild>
+                                <a href="mailto:ceo@bbu1.com">
+                                    Strategic Inquiry <ArrowRight className="ml-3 h-5 w-5" />
+                                </a>
+                            </Button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* --- SECTION 6: GIVING BACK & FOUNDER'S LEGACY (SPLIT LAYOUT) --- */}
-                <div className="py-72 container mx-auto px-6">
-                    <div className="grid lg:grid-cols-12 gap-24 items-center">
-                        
-                        {/* Left: The Legacy Narrative & Inquiry */}
-                        <div className="lg:col-span-7 space-y-16">
-                            <div className="space-y-10">
-                                <div className="flex items-center gap-6 text-emerald-500">
-                                    <Heart className="h-8 w-8 animate-pulse" />
-                                    <span className="text-sm font-black uppercase tracking-[0.4em]">The Legacy Responsibility</span>
-                                </div>
-                                <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-[0.85]">
-                                    GIVING BACK <br /> TO THE BASE.
-                                </h2>
-                                
-                                <div className="space-y-8 text-slate-300 text-2xl font-light leading-relaxed">
-                                    <p>
-                                        "My journey into system architecture was born from a deep understanding of what it means to have a strong foundation. 
-                                        I was raised by a beautiful family and with the support from named <span className="text-white font-bold italic">SOS Children's Villages in Uganda</span>. 
-                                        They built the pillars from my youngest years, providing for my needs and paying for my education through university."
-                                    </p>
-                                    <p>
-                                        "Pursuing my degree in <span className="text-white font-black underline decoration-blue-600 underline-offset-8">Computer Science</span> was the final step in preparing me to pay that support forward. 
-                                        On <span className="text-blue-400 font-black tracking-widest">AUGUST 17, 2024</span>, I initiated the full system architecting of BBU1. 
-                                        My mission is to ensure that even the most remote enterprise in Africa operates with the same digital power as a firm in New York and the world at Large."
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Inquiry / Speak to Founder Box (On Left) */}
-                            <div className="p-12 bg-white/5 border border-white/10 rounded-[4rem] backdrop-blur-3xl max-w-2xl shadow-3xl">
-                                <div className="flex items-center gap-8 mb-10">
-                                    <div className="h-24 w-24 rounded-3xl overflow-hidden border border-white/20 relative shadow-2xl bg-slate-900">
-                                        <Image 
-                                            src="/images/showcase/Photo Background Edi (4).jpeg" 
-                                            alt="Mwesigwa Jimmy"
-                                            fill
-                                            className="object-cover object-top"
-                                        />
-                                    </div>
-                                    <div>
-                                        <h5 className="text-2xl font-black text-white uppercase italic">Mwesigwa Jimmy</h5>
-                                        <p className="text-blue-400 text-xs uppercase font-black tracking-widest">Lead Architect & Inventor</p>
-                                    </div>
-                                </div>
-                               <h5 className="text-white font-black text-2xl mb-4 uppercase italic tracking-tight">Strategic Inquiry</h5>
-<p className="text-slate-500 mb-10 text-lg leading-relaxed font-light">
-    Connect directly with the Founder's office for enterprise-tier consultation and strategic partnership.
-</p>
-<Button className="w-full bg-blue-600 text-white font-black py-10 text-xl rounded-[2.5rem] hover:bg-blue-700 hover:scale-[1.02] transition-all group shadow-2xl shadow-blue-600/20" asChild>
-    <a href="mailto:ceo@bbu1.com">
-        Inquire with the Founder
-        <ArrowRight className="ml-6 h-8 w-8 group-hover:translate-x-4 transition-transform" />
-    </a>
-</Button>
-</div>
-</div>
-
-                        {/* Right: Picture (Greeting 39) */}
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            whileInView={{ opacity: 1, scale: 1 }}
-                            className="lg:col-span-5 relative aspect-[4/5] rounded-[5rem] overflow-hidden border border-white/10 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
-                        >
-                            <Image 
-                                src="/images/showcase/Greeting (39).jpeg" 
-                                alt="Foundational Legacy"
-                                fill
-                                className="object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/90 via-transparent to-transparent" />
-                        </motion.div>
-                    </div>
-                </div>
-
+            {/* FOOTER VERIFICATION */}
+            <div className="py-12 border-t border-slate-100 text-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] flex items-center justify-center gap-3">
+                    <ShieldCheck size={14} className="text-emerald-500" /> Operational Integrity Verified • System v10.2
+                </p>
             </div>
         </section>
     );
