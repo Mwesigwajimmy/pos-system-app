@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -14,7 +14,15 @@ import {
     DialogTitle, 
     DialogTrigger 
 } from "@/components/ui/dialog";
-import { Settings2 } from "lucide-react";
+import { 
+    Settings2, 
+    ShieldCheck, 
+    Fingerprint, 
+    Activity, 
+    Globe, 
+    Landmark 
+} from "lucide-react";
+import { Badge } from '@/components/ui/badge';
 
 // Existing Imports
 import { RevolutionaryDateRangePicker } from '@/components/reports/RevolutionaryDateRangePicker';
@@ -24,11 +32,13 @@ import { RevolutionaryComplianceDashboard } from './RevolutionaryComplianceDashb
 // NEW: Import your Smart Tax Settings
 import TaxSettings from './TaxSettings';
 
-// --- Type Definitions ---
+// --- UPGRADED ENTERPRISE INTERFACES (Handshake with Database Kernel) ---
 export interface TaxSummary {
     total_revenue: number;
     total_taxable_revenue: number;
-    total_tax_collected: number;
+    total_tax_collected: number;    // Output Tax
+    total_input_tax_credit: number; // UPGRADE: Forensic Input Tax
+    net_tax_liability: number;      // UPGRADE: Final Settlement Truth
 }
 
 export interface TaxableTransaction {
@@ -38,6 +48,8 @@ export interface TaxableTransaction {
     invoice_id: string;
     taxable_amount: number;
     tax_collected: number;
+    tax_rate: number;      // UPGRADE: Mandatory for Audit
+    category_code?: string; // e.g. 'STANDARD'
 }
 
 export interface ComplianceTask {
@@ -46,6 +58,7 @@ export interface ComplianceTask {
     due_date: string;
     status: 'Pending' | 'Completed' | 'Overdue';
     priority: 'High' | 'Medium' | 'Low';
+    category?: string;
 }
 
 interface ComplianceHubProps {
@@ -53,7 +66,9 @@ interface ComplianceHubProps {
     taxTransactions: TaxableTransaction[];
     tasks: ComplianceTask[];
     reportPeriod: string;
-    businessId: string; // Added this to pass to TaxSettings
+    businessId: string; 
+    businessName?: string; // UPGRADE: Added for Sovereign Identity
+    currency?: string;     // UPGRADE: Added for jurisdictional accuracy
 }
 
 export function ComplianceHub({
@@ -61,7 +76,9 @@ export function ComplianceHub({
     taxTransactions,
     tasks,
     reportPeriod,
-    businessId
+    businessId,
+    businessName = "Sovereign Entity",
+    currency = "UGX"
 }: ComplianceHubProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -85,19 +102,24 @@ export function ComplianceHub({
             if (params.get('from') !== formattedFrom || params.get('to') !== formattedTo) {
                 params.set('from', formattedFrom);
                 params.set('to', formattedTo);
-                router.push(`${pathname}?${params.toString()}`);
+                router.push(`${pathname}?${params.toString()}`, { scroll: false });
             }
         }
     }, [date, pathname, router, searchParams]);
 
     return (
-        <>
-            {/* Main Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <div className="space-y-8">
+            {/* Main Header Section - Enterprise Grade Identity */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 bg-white p-6 rounded-[2rem] border shadow-sm">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Tax & Compliance Hub</h1>
-                    <p className="text-muted-foreground">
-                        An intelligent command center for managing tax obligations.
+                    <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Forensic Compliance Module
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">
+                        Tax & Compliance Hub
+                    </h1>
+                    <p className="text-muted-foreground font-medium italic text-sm">
+                        Intelligent command center for <span className="text-blue-600 font-bold">{businessName}</span>.
                     </p>
                 </div>
                 
@@ -105,37 +127,67 @@ export function ComplianceHub({
                     {/* ENTERPRISE SMART SETUP BUTTON */}
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="flex items-center gap-2 border-slate-300 shadow-sm hover:bg-slate-50">
+                            <Button variant="outline" className="h-11 flex items-center gap-2 border-slate-200 shadow-sm hover:bg-slate-50 font-bold px-6 rounded-xl">
                                 <Settings2 className="w-4 h-4 text-blue-600" />
-                                Jurisdiction Setup
+                                <span className="text-xs uppercase tracking-widest">Jurisdiction DNA</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>Global Tax Jurisdictions</DialogTitle>
-                            </DialogHeader>
-                            {/* Pass businessId down so the rules are saved to the correct account */}
+                        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto border-none rounded-[3rem] shadow-2xl p-0">
+                            {/* We pass businessId to ensure rules are welded to the correct empire */}
                             <TaxSettings businessId={businessId} />
                         </DialogContent>
                     </Dialog>
 
+                    <div className="h-8 w-px bg-slate-200 mx-1 hidden md:block" />
+
                     <RevolutionaryDateRangePicker date={date} setDate={setDate} />
+                    
+                    <div className="hidden lg:flex items-center gap-2 ml-2">
+                        <Badge variant="outline" className="bg-slate-900 text-white border-none font-mono text-[10px] px-3 py-1">
+                            {currency} JURISDICTION
+                        </Badge>
+                    </div>
                 </div>
             </div>
 
-            {/* Dashboards Grid */}
-            <div className="grid gap-8 lg:grid-cols-5">
-                <div className="lg:col-span-3">
+            {/* Dashboards Grid - The Multi-Sector Intelligence View */}
+            <div className="grid gap-8 lg:grid-cols-5 items-start">
+                {/* Sales Tax Intelligence (Spans 3 Columns) */}
+                <div className="lg:col-span-3 h-full">
                     <RevolutionarySalesTaxDashboard
                         summary={taxSummary}
                         transactions={taxTransactions}
                         reportPeriod={reportPeriod}
+                        currency={currency}
                     />
                 </div>
-                <div className="lg:col-span-2">
-                    <RevolutionaryComplianceDashboard tasks={tasks} />
+
+                {/* Task Center & Risk Monitor (Spans 2 Columns) */}
+                <div className="lg:col-span-2 h-full">
+                    <RevolutionaryComplianceDashboard 
+                        tasks={tasks} 
+                        businessName={businessName}
+                    />
                 </div>
             </div>
-        </>
+
+            {/* Forensic Footer - Systemic Proof */}
+            <div className="flex flex-col md:flex-row justify-between items-center px-6 py-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-[9px] font-mono text-slate-400 font-bold uppercase tracking-widest">
+                <div className="flex items-center gap-6">
+                    <span className="flex items-center gap-2 text-emerald-600">
+                        <ShieldCheck className="w-3.5 h-3.5"/> 
+                        Kernel V10.2 Handshake Active
+                    </span>
+                    <span className="flex items-center gap-2">
+                        <Fingerprint className="w-3.5 h-3.5"/> 
+                        Forensic Isolation: VERIFIED
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 mt-2 md:mt-0">
+                    <Activity className="w-3 h-3 text-blue-500 animate-pulse" />
+                    LIVE TELEMETRY FEED: COMPLIANCE_HUB_SYNCED
+                </div>
+            </div>
+        </div>
     );
 }

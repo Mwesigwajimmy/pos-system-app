@@ -231,7 +231,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
 
                     <div className="flex justify-between pt-4 text-[9px] text-slate-300 font-black uppercase tracking-tighter border-t border-slate-200">
                         <span className="flex items-center gap-1"><Fingerprint className="w-3 h-3 text-blue-400"/> Sovereign Seal Active</span>
-                        <span className="flex items-center gap-1">Audit Enabled <ShieldCheck className="w-3 h-3 text-emerald-400" /></span>
+                        <span className="flex items-center gap-1">Audit Enabled <ShieldCheck className="w-3 h-3 text-emerald-500" /></span>
                     </div>
                 </div>
 
@@ -273,7 +273,8 @@ export default function RetailDesk() {
     const products = useLiveQuery(() => db.products.toArray(), []);
     const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
 
-    // GRASSROOT FETCH: Pulls the professional identity for the current session
+    // GRASSROOT WELD: Pulls the professional identity for the current session
+    // This logic now strictly waits for userProfile and pulls HQ address + TIN.
     useEffect(() => {
         if (!userProfile?.business_id) return;
 
@@ -300,6 +301,8 @@ export default function RetailDesk() {
     }, [userProfile]);
 
     const handleSync = async () => {
+        if (!userProfile?.id) return toast.error("Identity unknown. Cannot sync.");
+        
         setIsSyncing(true);
         const promise = async () => {
             const supabase = createClient();
@@ -309,12 +312,15 @@ export default function RetailDesk() {
             const { data: customersData } = await supabase.from('customers').select('*');
             await db.customers.clear();
             await db.customers.bulkAdd(customersData as Customer[] || []);
-            const offlineSales = await db.offlineSales.toArray();
+            
+            // GRASSROOT ISOLATION: Only sync sales belonging to THIS user
+            const offlineSales = await db.offlineSales.where('user_id').equals(userProfile.id).toArray();
             
             if (offlineSales.length > 0) {
                 const { error: syncError } = await supabase.rpc('sync_offline_sales', { sales_data: offlineSales });
                 if (syncError) throw new Error(syncError.message);
-                await db.offlineSales.clear();
+                
+                await db.offlineSales.where('user_id').equals(userProfile.id).delete();
                 return `${offlineSales.length} Ledger entries sealed successfully.`;
             }
             return 'Kernel Registry Synchronized.';
@@ -333,14 +339,14 @@ export default function RetailDesk() {
             return setPaymentModalOpen(false);
         }
 
-        // GRASSROOT MATH: Forcing 2-Decimal Parity with Backend Kernel
+        // GRASSROOT MATH: Aligned with Database Precision
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
         
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const taxRate = businessDNA?.globalTaxRate || 0;
         
-        // Caculate itemized tax for professional receipts
+        // Itemized tax calculation for professional receipts
         const saleItemsWithTax = cart.map(item => {
             const itemSubtotal = round(item.price * item.quantity);
             const itemTax = round(itemSubtotal * (taxRate / 100));
@@ -349,7 +355,8 @@ export default function RetailDesk() {
                 tax_rate: taxRate,
                 tax_amount: itemTax,
                 subtotal: itemSubtotal,
-                total_with_tax: itemSubtotal + itemTax
+                total_with_tax: itemSubtotal + itemTax,
+                tax_code: 'VAT'
             };
         });
 
@@ -379,78 +386,51 @@ export default function RetailDesk() {
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
-        const receiptData: ReceiptData = {
-            saleInfo: { 
-                id: saleId, 
-                created_at: newSale.createdAt, 
-                payment_method: newSale.paymentMethod, 
-                total_amount: totalAmount, 
-                amount_tendered: newSale.amount_paid,
-                change_due: newSale.amount_paid > totalAmount ? round(newSale.amount_paid - totalAmount) : 0,
-                subtotal: round(subtotal),
-                discount: round(discountAmount),
-                amount_due: newSale.due_amount,
-                currency_code: businessDNA?.currency || 'UGX',
-                total_tax: round(totalTax),
-                kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 5).toUpperCase()}${saleId}`
-            },
-            storeInfo: { 
-                name: businessDNA?.name || 'Sovereign Business', 
-                address: businessDNA?.address || 'NO PHYSICAL ADDRESS RECORDED', 
-                phone_number: businessDNA?.phone || 'NO CONTACT RECORDED', 
-                receipt_footer: businessDNA?.footer || 'Thank you for your business!',
-                tax_number: businessDNA?.tax_number
-            },
-            customerInfo: selectedCustomer,
-            saleItems: saleItemsWithTax.map(item => ({ 
-                product_name: item.product_name, 
-                variant_name: item.variant_name, 
-                quantity: item.quantity, 
-                unit_price: item.price, 
-                subtotal: item.subtotal,
-                tax_amount: item.tax_amount,
-                tax_code: 'VAT'
-            }))
-        };
+        setLastCompletedSale({
+            receiptData: {
+                saleInfo: { 
+                    id: saleId, 
+                    created_at: newSale.createdAt, 
+                    payment_method: newSale.paymentMethod, 
+                    total_amount: totalAmount, 
+                    amount_tendered: newSale.amount_paid,
+                    change_due: newSale.amount_paid > totalAmount ? round(newSale.amount_paid - totalAmount) : 0,
+                    subtotal: round(subtotal),
+                    discount: round(discountAmount),
+                    amount_due: newSale.due_amount,
+                    currency_code: businessDNA?.currency || 'UGX',
+                    total_tax: round(totalTax),
+                    kernel_seal_id: `SOV-${Math.random().toString(36).substr(2, 5).toUpperCase()}${saleId}`
+                },
+                storeInfo: { 
+                    // GRASSROOT LINKAGE: Receipt now matches John Enterprises / Kireka
+                    name: businessDNA?.name || 'Authorized Entity', 
+                    address: businessDNA?.address || 'NO PHYSICAL ADDRESS RECORDED', 
+                    phone_number: businessDNA?.phone || 'NO CONTACT RECORDED', 
+                    receipt_footer: businessDNA?.footer || 'Sealed by Sovereign Kernel',
+                    tax_number: businessDNA?.tax_number
+                },
+                customerInfo: selectedCustomer,
+                saleItems: saleItemsWithTax.map(item => ({ 
+                    product_name: item.product_name, 
+                    variant_name: item.variant_name, 
+                    quantity: item.quantity, 
+                    unit_price: item.price, 
+                    subtotal: item.subtotal,
+                    tax_amount: item.tax_amount,
+                    tax_code: 'VAT'
+                }))
+            }
+        });
 
-        setLastCompletedSale({ receiptData });
-        toast.success(`Entry #${saleId} sealed in Local Ledger.`);
+        toast.success(`Registry entry #${saleId} birthed successfully.`);
         setCart([]);
         setSelectedCustomer(null);
         setDiscount({ type: 'fixed', value: 0 });
         setPaymentModalOpen(false);
     };
 
-    const handleAddToCart = (product: SellableProduct) => setCart(currentCart => { 
-        const existing = currentCart.find(i => i.variant_id === product.variant_id); 
-        return existing ? currentCart.map(i => i.variant_id === product.variant_id ? { ...i, quantity: i.quantity + 1 } : i) : [...currentCart, { ...product, quantity: 1 }]; 
-    });
-    
-    const handleUpdateQuantity = (id: number, qty: number) => { 
-        if (qty <= 0) { handleRemoveItem(id); return; } 
-        setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: qty } : i)); 
-    };
-    
-    const handleRemoveItem = (id: number) => setCart(cart.filter(i => i.variant_id !== id));
-    
-    const handleSKUScan = (sku: string) => { 
-        if (!products) return; 
-        const product = products.find(p => p.sku === sku); 
-        if (product) { 
-            handleAddToCart(product); 
-            toast.success(`Forensic Scan: ${product.product_name}`); 
-        } else { 
-            toast.error(`SKU Invalid: ${sku}`); 
-        } 
-    };
-    
-    const isLoading = !products || isProfileLoading;
-    const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
-    const totalAmount = subtotal - discountAmount;
-    const activeCurrency = businessDNA?.currency || 'UGX';
-
-    if (isLoading) {
+    if (!products || isProfileLoading) {
         return (
             <div className="p-10 text-center flex flex-col items-center justify-center h-screen bg-slate-900 text-white">
                 <Loader2 className="h-20 w-20 animate-spin text-blue-500 mb-8" />
@@ -515,7 +495,7 @@ export default function RetailDesk() {
                 <div className="lg:col-span-5 h-full overflow-hidden flex flex-col">
                     <CartDisplay 
                         cart={cart} 
-                        currency={activeCurrency}
+                        currency={businessDNA?.currency || 'UGX'}
                         onUpdateQuantity={handleUpdateQuantity} 
                         onRemoveItem={handleRemoveItem} 
                         selectedCustomer={selectedCustomer} 

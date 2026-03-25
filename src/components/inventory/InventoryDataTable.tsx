@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -34,7 +34,11 @@ import {
   Activity,
   Box,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  Search,
+  Database,
+  History,
+  Archive
 } from 'lucide-react';
 
 import AddProductDialog from '@/components/inventory/AddProductDialog';
@@ -42,8 +46,12 @@ import ImportProductsDialog from '@/components/inventory/ImportProductsDialog';
 import EditProductModal from '@/components/inventory/EditProductModal';
 import AuditLogDialog from '@/components/inventory/AuditLogDialog';
 import CreateAdjustmentForm from '@/components/inventory/CreateAdjustmentForm';
+import { Badge } from '@/components/ui/badge';
 
-// --- ENTERPRISE INTERFACES ---
+// --- ENTERPRISE UTILITIES ---
+const Money = {
+  roundStock: (val: number) => Math.round((val + Number.EPSILON) * 10000) / 10000,
+};
 
 interface DataTableProps {
   columns: ColumnDef<ProductRow>[];
@@ -75,7 +83,7 @@ async function fetchProducts(pagination: PaginationState, searchTerm: string, bu
     p_page_size: pagination.pageSize,
     p_search_text: searchTerm || null,
     p_business_entity_id: businessEntityId || null,
-    p_location_id: locationId || null, // Ensure this is always passed
+    p_location_id: locationId || null, 
   });
   if (error) throw new Error(error.message);
   return data;
@@ -126,7 +134,6 @@ export default function InventoryDataTable({
   const [rowSelection, setRowSelection] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   
-  // UPGRADE: Branch Isolation State
   const [selectedLocationId, setSelectedLocationId] = useState<string>("ALL_BRANCHES");
   const [locations, setLocations] = useState<Location[]>([]);
 
@@ -144,7 +151,7 @@ export default function InventoryDataTable({
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // UPGRADE: Fetch locations for the branch-specific filter
+  // UPGRADE: Location Handshake
   useEffect(() => {
     const fetchLocations = async () => {
         const { data } = await supabase
@@ -156,8 +163,7 @@ export default function InventoryDataTable({
     if (businessEntityId) fetchLocations();
   }, [businessEntityId, supabase]);
 
-  // UPGRADE: Query now depends on selectedLocationId to ensure isolation
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ['inventoryProducts', pagination, debouncedSearchTerm, businessEntityId, selectedLocationId],
     queryFn: () => fetchProducts(
         pagination, 
@@ -174,18 +180,18 @@ export default function InventoryDataTable({
   const bulkDeleteMutation = useMutation({
     mutationFn: bulkDeleteProducts,
     onSuccess: () => {
-      toast.success("Products deleted successfully.");
+      toast.success("Product assets permanently purged from registry.");
       setRowSelection({});
       setIsBulkDeleting(false);
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
     },
-    onError: (err) => toast.error(`Deletion failed: ${err.message}`),
+    onError: (err) => toast.error(`Liquidation Error: ${err.message}`),
   });
 
   const singleDeleteMutation = useMutation({
     mutationFn: (id: number) => bulkDeleteProducts([id]),
     onSuccess: () => {
-        toast.success("Product deleted.");
+        toast.success("SKU variant purged successfully.");
         setDeletingProduct(null);
         queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
     },
@@ -195,7 +201,7 @@ export default function InventoryDataTable({
   const bulkAdjustMutation = useMutation({
       mutationFn: processBulkAdjustment,
       onSuccess: () => {
-          toast.success("Stock adjustment applied successfully.");
+          toast.success("Fiduciary stock adjustment sealed.");
           setRowSelection({});
           setIsBulkAdjustOpen(false);
           setBulkAdjustValue("");
@@ -234,11 +240,11 @@ export default function InventoryDataTable({
     const dataToExport = selectedRows.length > 0 ? selectedRows : (data?.products || []);
 
     if (dataToExport.length === 0) {
-        toast.error("No data available to export.");
+        toast.error("Forensic error: No data discovered in local registry.");
         return;
     }
 
-    const headers = ["ID", "Name", "SKU", "Total Stock", "Category", "Tax Category", "Units/Pack", "Entity"];
+    const headers = ["ID", "Asset_Name", "SKU_Reference", "Stock_Level", "Category_DNA", "Tax_Protocol", "Units_Per_Pack", "Enterprise_Entity"];
     const csvContent = [
       headers.join(","),
       ...dataToExport.map((row: any) => {
@@ -260,24 +266,24 @@ export default function InventoryDataTable({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `sovereign_inventory_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `BBU1_SOVEREIGN_INVENTORY_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported ${dataToExport.length} rows with global metadata.`);
+    toast.success(`Forensic Trace Exported: ${dataToExport.length} assets archived.`);
   };
 
   const handleBulkAdjustSubmit = () => {
       const ids = Object.keys(rowSelection).map(Number);
-      const val = Number(bulkAdjustValue);
+      const val = Money.roundStock(Number(bulkAdjustValue));
       
       if (ids.length === 0) return;
       if (!bulkAdjustReason.trim()) {
-          toast.error("Please provide a reason (e.g., 'Initial Stock').");
+          toast.error("A forensic reason is required for ledger adjustments.");
           return;
       }
       if (isNaN(val) || val === 0) {
-          toast.error("Please enter a valid non-zero quantity.");
+          toast.error("Adjustment magnitude must be a non-zero fractional value.");
           return;
       }
       
@@ -288,105 +294,108 @@ export default function InventoryDataTable({
       });
   };
 
-  // --- RENDER ---
-
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-700">
       
       {/* Search & Actions Header */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-        <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-3">
-            <div className="relative w-full sm:w-80 group">
-                <Activity className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-[2rem] border shadow-sm">
+        <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-4">
+            <div className="relative w-full sm:w-96 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                 <Input
-                    placeholder="Find product by name or SKU..."
+                    placeholder="Search Sovereign Asset Registry..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-11 shadow-sm border-slate-200"
+                    className="pl-12 h-12 bg-slate-50/50 border-slate-100 rounded-2xl font-medium placeholder:text-slate-300"
                 />
             </div>
 
-            {/* UPGRADE: Robotic Branch Isolation Dropdown */}
             <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                <SelectTrigger className="w-full sm:w-[220px] h-11 bg-white border-slate-200 shadow-sm font-bold text-slate-700">
+                <SelectTrigger className="w-full sm:w-[240px] h-12 bg-white border-slate-200 rounded-2xl shadow-sm font-black text-[10px] uppercase tracking-widest text-slate-500">
                     <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-primary" />
-                        <SelectValue placeholder="Filter by Branch" />
+                        <MapPin size={16} className="text-blue-600" />
+                        <SelectValue placeholder="Filter by Jurisdiction" />
                     </div>
                 </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="ALL_BRANCHES" className="font-bold italic">Global System View</SelectItem>
+                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                    <SelectItem value="ALL_BRANCHES" className="font-black text-[10px] uppercase tracking-tighter italic text-slate-400">Total Consolidated View</SelectItem>
                     {locations.map(loc => (
-                        <SelectItem key={loc.id} value={loc.id}>
-                            {loc.name} {loc.is_primary && '(HQ)'}
+                        <SelectItem key={loc.id} value={loc.id} className="font-bold">
+                            {loc.name} {loc.is_primary ? '(HQ)' : ''}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto justify-end">
+        <div className="flex gap-3 w-full sm:w-auto justify-end">
           <ImportProductsDialog />
           <AddProductDialog categories={categories} />
         </div>
       </div>
 
-      {/* Bulk Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center bg-slate-900 text-white p-3 px-4 rounded-xl shadow-2xl border border-slate-800">
-        <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/10 rounded-lg">
-                <Box size={18} className="text-emerald-400" />
+      {/* COMMAND BAR: High-Integrity Bulk Operations */}
+      <div className="flex flex-col sm:flex-row gap-6 sm:items-center bg-slate-900 text-white p-5 px-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+        {/* Subtle Background Glow */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+        
+        <div className="flex items-center gap-4 relative z-10">
+            <div className="p-3 bg-white/10 rounded-2xl">
+                <Archive size={22} className="text-blue-400" />
             </div>
-            <span className="text-xs font-black uppercase tracking-widest text-slate-300">
-                {Object.keys(rowSelection).length} Units Selected
-            </span>
+            <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Selection State</span>
+                <span className="text-xl font-black font-mono text-blue-100">
+                    {Object.keys(rowSelection).length.toString().padStart(2, '0')} <span className="text-xs">SKUs</span>
+                </span>
+            </div>
         </div>
         
-        <div className="h-6 w-[1px] bg-white/10 hidden sm:block mx-2" />
+        <div className="h-10 w-[1px] bg-white/5 hidden sm:block mx-4" />
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3 relative z-10">
             <Button 
                 variant="destructive" 
                 size="sm" 
                 disabled={Object.keys(rowSelection).length === 0}
                 onClick={() => setIsBulkDeleting(true)}
-                className="font-bold h-9 px-4"
+                className="font-black text-[10px] uppercase tracking-widest h-10 px-6 rounded-xl shadow-lg shadow-red-900/40"
             >
-                <Trash className="w-4 h-4 mr-2" /> Delete
+                <Trash className="w-4 h-4 mr-2" /> Liquidate
             </Button>
             <Button 
                 variant="secondary" 
                 size="sm" 
                 disabled={Object.keys(rowSelection).length === 0}
                 onClick={() => setIsBulkAdjustOpen(true)}
-                className="font-bold h-9 px-4 bg-emerald-600 hover:bg-emerald-700 border-none text-white shadow-lg shadow-emerald-900/20"
+                className="font-black text-[10px] uppercase tracking-widest h-10 px-6 bg-blue-600 hover:bg-blue-700 border-none text-white shadow-xl shadow-blue-900/40"
             >
-                <Calculator className="w-4 h-4 mr-2" /> Fractional Adjust
+                <Calculator className="w-4 h-4 mr-2 text-blue-200" /> Adjust DNA
             </Button>
             <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleExportCSV}
-                className="font-bold h-9 px-4 bg-transparent border-slate-700 hover:bg-white/5 text-slate-300"
+                className="font-black text-[10px] uppercase tracking-widest h-10 px-6 bg-transparent border-slate-700 hover:bg-white/5 text-slate-300"
             >
-                <Download className="w-4 h-4 mr-2" /> Export Fiduciary Trace
+                <Download className="w-4 h-4 mr-2" /> Export Audit
             </Button>
         </div>
 
-        <div className="ml-auto hidden xl:flex items-center gap-2 opacity-50">
-            <ShieldCheck size={14} className="text-emerald-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Autonomous Guard Active</span>
+        <div className="ml-auto hidden xl:flex items-center gap-3 opacity-30 relative z-10">
+            <ShieldCheck size={18} className="text-emerald-500" />
+            <span className="text-[10px] font-black uppercase tracking-[0.4em]">Sovereign Guard Enabled</span>
         </div>
       </div>
 
-      {/* Main Data Table */}
-      <div className="rounded-2xl border bg-white shadow-xl shadow-slate-200/50 overflow-hidden ring-1 ring-slate-100">
+      {/* Main Asset Table */}
+      <div className="rounded-[2.5rem] border-none bg-white shadow-2xl shadow-slate-200/60 overflow-hidden ring-1 ring-slate-100">
         <Table>
-          <TableHeader className="bg-slate-50/80">
+          <TableHeader className="bg-slate-50/80 border-b border-slate-100">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent border-b">
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="h-14 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                  <TableHead key={header.id} className="h-16 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 pl-8">
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -396,10 +405,10 @@ export default function InventoryDataTable({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Syncing Ledger...</span>
+                <TableCell colSpan={columns.length} className="h-96 text-center">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                        <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Synchronizing Ledger State...</span>
                     </div>
                 </TableCell>
               </TableRow>
@@ -408,10 +417,10 @@ export default function InventoryDataTable({
                 <TableRow 
                     key={row.id} 
                     data-state={row.getIsSelected() && "selected"} 
-                    className="hover:bg-blue-50/30 transition-all duration-200 h-16 border-b"
+                    className="hover:bg-blue-50/20 transition-all duration-300 h-20 border-b border-slate-50 group"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-4">
+                    <TableCell key={cell.id} className="py-4 pl-8">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -419,10 +428,10 @@ export default function InventoryDataTable({
               ))
             ) : (
               <TableRow>
-                  <TableCell colSpan={columns.length} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center opacity-20 grayscale">
-                        <Zap size={64} className="mb-4" />
-                        <p className="font-black uppercase tracking-[0.3em] text-sm">No Transactional Data Discovered</p>
+                  <TableCell colSpan={columns.length} className="h-96 text-center">
+                    <div className="flex flex-col items-center justify-center opacity-10">
+                        <Database size={80} className="mb-6" />
+                        <p className="font-black uppercase tracking-[0.5em] text-lg">Null Registry</p>
                     </div>
                   </TableCell>
               </TableRow>
@@ -432,109 +441,118 @@ export default function InventoryDataTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 px-2">
-        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-            <Fingerprint size={14} className="text-primary" />
-            Total Fiduciary Records: {data?.total_count ?? 0}
-        </div>
-        <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="h-9 font-bold">PREVIOUS</Button>
-            <div className="bg-slate-100 px-4 py-1.5 rounded-lg text-xs font-black text-slate-600">
-                PAGE {pagination.pageIndex + 1} / {table.getPageCount()}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4 px-4 bg-slate-50/50 p-6 rounded-[2rem] border border-dashed border-slate-200">
+        <div className="flex flex-col gap-1">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                <Fingerprint size={14} className="text-blue-500" />
+                Global Record Integrity: {data?.total_count ?? 0} Assets
             </div>
-            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="h-9 font-bold">NEXT</Button>
+            {dataUpdatedAt && (
+                <span className="text-[9px] font-mono text-slate-400">Last Ledger Handshake: {format(new Date(dataUpdatedAt), 'HH:mm:ss')}</span>
+            )}
+        </div>
+        <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="h-10 font-black text-[10px] uppercase tracking-widest hover:bg-white shadow-sm">PREV</Button>
+            <div className="bg-slate-900 px-6 py-2 rounded-full text-xs font-black text-white shadow-xl font-mono">
+                {pagination.pageIndex + 1} <span className="mx-2 opacity-30">/</span> {table.getPageCount()}
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="h-10 font-black text-[10px] uppercase tracking-widest hover:bg-white shadow-sm">NEXT</Button>
         </div>
       </div>
 
-      {/* --- DIALOGS --- */}
+      {/* --- DIALOGS (SOVEREIGN SEALED) --- */}
 
       <AlertDialog open={isBulkDeleting} onOpenChange={setIsBulkDeleting}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-12">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black tracking-tighter">Liquidate {Object.keys(rowSelection).length} Product Assets?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500 font-medium leading-relaxed">
-                This action initiates a permanent deletion of the selected SKU variants and historical stock movements. This is a terminal operation and cannot be reversed by the kernel.
+            <AlertDialogTitle className="text-3xl font-black tracking-tighter uppercase text-red-600">Forensic Liquidation</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 font-medium text-base leading-relaxed mt-4">
+                You are initiating a terminal operation to purge **{Object.keys(rowSelection).length} assets** from the Sovereign Registry. This will permanently erase all associated SKU metadata and historical ledger links. This action cannot be undone by the kernel.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="bg-slate-50 p-6 -mx-6 -mb-6 rounded-b-2xl mt-4">
-            <AlertDialogCancel className="font-bold border-none bg-transparent">ABORT</AlertDialogCancel>
+          <AlertDialogFooter className="bg-slate-50 p-10 -mx-12 -mb-12 rounded-b-[2.5rem] mt-10 border-t border-slate-100 flex items-center justify-between">
+            <AlertDialogCancel className="font-black text-xs uppercase tracking-widest border-none bg-transparent text-slate-400 hover:text-slate-900">ABORT MISSION</AlertDialogCancel>
             <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700 font-black px-8 shadow-lg shadow-red-200"
+                className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest h-14 px-10 rounded-2xl shadow-2xl shadow-red-200 hover:scale-105 transition-all"
                 onClick={() => {
                     const ids = Object.keys(rowSelection).map(Number);
                     bulkDeleteMutation.mutate(ids);
                 }}
             >
-                {bulkDeleteMutation.isPending ? "DELETING..." : "CONFIRM LIQUIDATION"}
+                {bulkDeleteMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : <Trash className="mr-2 h-4 w-4" />}
+                CONFIRM PURGE
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-10">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black tracking-tight italic uppercase">Purge Product Asset?</AlertDialogTitle>
-            <AlertDialogDescription>
-                System will permanently remove "{deletingProduct?.name}" from the global registry.
+            <AlertDialogTitle className="font-black text-2xl tracking-tight uppercase italic text-slate-900">Purge Individual Asset?</AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 font-medium">
+                Confirming the removal of <span className="text-blue-600 font-bold">"{deletingProduct?.name}"</span> from the global registry.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="font-bold">CANCEL</AlertDialogCancel>
+          <AlertDialogFooter className="mt-8">
+            <AlertDialogCancel className="font-bold border-none rounded-xl">CANCEL</AlertDialogCancel>
             <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700 font-black"
+                className="bg-red-600 hover:bg-red-700 font-black h-12 px-8 rounded-xl shadow-xl shadow-red-100"
                 onClick={() => deletingProduct && singleDeleteMutation.mutate(deletingProduct.id)}
             >
-                {singleDeleteMutation.isPending ? "PURGING..." : "DELETE"}
+                {singleDeleteMutation.isPending ? "PROCESSING..." : "PURGE ASSET"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={isBulkAdjustOpen} onOpenChange={setIsBulkAdjustOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[480px] rounded-[3rem] border-none shadow-2xl p-12">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-3 text-2xl font-black tracking-tighter uppercase italic">
-                  <div className="p-2 bg-emerald-500 rounded-lg shadow-lg">
-                    <Calculator className="w-5 h-5 text-white animate-pulse"/>
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="p-3 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
+                    <Calculator className="w-8 h-8 text-white animate-pulse"/>
                   </div>
-                  Fractional Adjust
-                </DialogTitle>
-                <DialogDescription className="font-medium text-slate-500">
-                    Execute high-precision stock adjustment for {Object.keys(rowSelection).length} assets.
-                </DialogDescription>
+                  <div>
+                    <DialogTitle className="text-3xl font-black tracking-tighter uppercase italic">DNA Adjust</DialogTitle>
+                    <DialogDescription className="font-bold text-[10px] uppercase text-emerald-600 tracking-widest">Fiduciary Precision Engine</DialogDescription>
+                  </div>
+                </div>
+                <p className="text-slate-500 font-medium text-sm leading-relaxed mt-4">
+                    Modify stock magnitude for <span className="text-slate-900 font-black">{Object.keys(rowSelection).length} assets</span>. High-precision fractional rounding is applied autonomously.
+                </p>
             </DialogHeader>
-            <div className="grid gap-6 py-6">
+            <div className="grid gap-8 py-8">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Quantity Change (0.0001 Accuracy)</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Quantity Delta (0.0001 Scale)</Label>
                     <Input 
                         type="number" 
                         step="0.0001" 
-                        placeholder="e.g. +10 or -0.5 (Half Pack)" 
-                        className="h-12 text-lg font-black bg-slate-50 border-none shadow-inner"
+                        placeholder="e.g. +24 or -0.25" 
+                        className="h-16 text-3xl font-mono font-black bg-slate-50 border-none shadow-inner rounded-2xl px-6 text-blue-600"
                         value={bulkAdjustValue}
                         onChange={(e) => setBulkAdjustValue(e.target.value)}
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Forensic Reason for Delta</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Forensic Justification</Label>
                     <Input 
-                        placeholder="e.g. Physical Count Correction" 
-                        className="h-12 bg-slate-50 border-none shadow-inner text-sm font-medium"
+                        placeholder="Describe the nature of this correction..." 
+                        className="h-14 bg-slate-50 border-none shadow-inner text-sm font-bold rounded-xl px-6"
                         value={bulkAdjustReason}
                         onChange={(e) => setBulkAdjustReason(e.target.value)}
                     />
                 </div>
             </div>
-            <DialogFooter className="bg-slate-50 p-6 -mx-6 -mb-6 rounded-b-2xl mt-4">
-                <Button variant="ghost" onClick={() => setIsBulkAdjustOpen(false)} className="font-bold">CANCEL</Button>
+            <DialogFooter className="bg-slate-50 p-10 -mx-12 -mb-12 rounded-b-[3rem] mt-6 border-t border-slate-100 flex items-center justify-between">
+                <Button variant="ghost" onClick={() => setIsBulkAdjustOpen(false)} className="font-black text-xs uppercase tracking-widest text-slate-400">CANCEL</Button>
                 <Button 
                     onClick={handleBulkAdjustSubmit} 
                     disabled={bulkAdjustMutation.isPending}
-                    className="bg-slate-900 text-white font-black px-8 h-12 shadow-xl hover:scale-105 transition-all"
+                    className="bg-slate-900 text-white font-black px-12 h-14 rounded-2xl shadow-2xl hover:scale-105 transition-all"
                 >
-                    {bulkAdjustMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    SEAL ADJUSTMENT
+                    {bulkAdjustMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-3" /> : <ShieldCheck className="w-5 h-5 mr-3 text-emerald-400" />}
+                    SEAL LEDGER
                 </Button>
             </DialogFooter>
         </DialogContent>
