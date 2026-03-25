@@ -13,7 +13,27 @@ import { NextResponse, type NextRequest } from 'next/server';
 const locales = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
 const defaultLocale = 'en';
 
-// 2. Your function to detect the user's preferred language
+// 2. Global Public Paths (Moved to top to prevent ReferenceError)
+const publicPaths = [
+    '/', 
+    '/login', 
+    '/signup', 
+    '/accept-invite', 
+    '/auth/callback', 
+    '/blog', 
+    '/careers', 
+    '/pricing', 
+    '/about', 
+    '/aura-ai', 
+    '/industries', 
+    '/courses', 
+    '/donate', 
+    '/newsletter', 
+    '/help-centre',
+    '/features'
+];
+
+// 3. Your function to detect the user's preferred language
 function getLocale(request: NextRequest): string {
     const negotiatorHeaders: Record<string, string> = {};
     request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
@@ -89,8 +109,9 @@ const rolePermissions: Record<string, string[]> = {
     '/marketplace': ['admin', 'owner', 'architect', 'commander'],
     '/shifts': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander'],
 };
+
 const defaultDashboards: Record<string, string> = {
-        'architect': '/command-center',
+    'architect': '/command-center',
     'commander': '/command-center',
     'cashier': '/pos',
     'pharmacist': '/pos',
@@ -141,34 +162,30 @@ export async function middleware(request: NextRequest) {
 
     let localeInPath: string;
     let pathWithoutLocale: string;
-    let response: NextResponse; // Declare response here, will be modified by Supabase
+    let response: NextResponse; 
 
     // 1. REDIRECT IF LOCALE IS MISSING
     if (pathnameIsMissingLocale) {
-        localeInPath = getLocale(request); // Determine locale based on request headers
-        const newPath = pathname === '/' ? '' : pathname; // Handle root path correctly
+        localeInPath = getLocale(request); 
+        const newPath = pathname === '/' ? '' : pathname; 
         const redirectUrl = new URL(`/${localeInPath}${newPath}`, request.url);
         
-        response = NextResponse.redirect(redirectUrl); // Initialize response for redirect
+        response = NextResponse.redirect(redirectUrl); 
     } else {
-        // If locale is present, extract it and prepare headers for subsequent requests.
         localeInPath = pathname.split('/')[1];
         const requestHeaders = new Headers(request.headers);
         requestHeaders.set('x-next-intl-locale', localeInPath);
         
-        response = NextResponse.next({ request: { headers: requestHeaders } }); // Initialize basic "next" response
+        response = NextResponse.next({ request: { headers: requestHeaders } }); 
     }
     
     pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
     // --- END: next-intl Integration ---
 
-// --- START: GOOGLEBOT / SEO BYPASS ---
-    // Identify search engine bots
+    // --- START: GOOGLEBOT / SEO BYPASS ---
     const userAgent = request.headers.get('user-agent') || '';
     const isBot = /googlebot|bingbot|yandexbot|duckduckbot/i.test(userAgent);
     
-    // If it's a bot and it's looking at a public path, let it through 
-    // immediately without calling Supabase or the Database.
     const isPublicPathForBot = publicPaths.some(pp => 
         pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
     );
@@ -176,6 +193,7 @@ export async function middleware(request: NextRequest) {
     if (isBot && isPublicPathForBot) {
         return response;
     }
+    // --- END: GOOGLEBOT BYPASS ---
 
     // --- SUPABASE & AUTH LOGIC (Your original code, untouched) ---
     const supabase = createServerClient(
@@ -197,29 +215,9 @@ export async function middleware(request: NextRequest) {
     );
     
     await supabase.auth.getSession();
-
     const { data: { user } } = await supabase.auth.getUser();
     
-    const publicPaths = [
-    '/', 
-    '/login', 
-    '/signup', 
-    '/accept-invite', 
-    '/auth/callback', 
-    '/blog', 
-    '/careers', 
-    '/pricing', 
-    '/about', 
-    '/aura-ai', 
-    '/industries', 
-    '/courses', 
-    '/donate', 
-    '/newsletter', 
-    '/help-centre',
-    '/features'
-];
-
- if (!user) {
+    if (!user) {
         const isPublicPath = publicPaths.some(pp => 
             pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
         );
@@ -242,7 +240,6 @@ export async function middleware(request: NextRequest) {
     
     const userContext = userContextData[0];
     if (!userContext) {
-        // This prevents the crash if the RPC returns no data
         const loginUrl = new URL(`/${localeInPath}/login`, request.url);
         loginUrl.searchParams.set('error', 'context_missing');
         return NextResponse.redirect(loginUrl);
@@ -253,25 +250,16 @@ export async function middleware(request: NextRequest) {
     
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
-    // =================================================================================
-    // --- START OF LOGIC REORDERING (THE ONLY FIX NEEDED) ---
-    // The following blocks have been re-ordered to prioritize the setup check.
-    // =================================================================================
-
-    // PRIORITY 1: If setup is NOT complete, the user MUST be on the welcome page.
-    // If they are anywhere else, redirect them there immediately.
+    // PRIORITY 1: Setup completion check
     if (!setupComplete && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
     
-    // PRIORITY 2: If setup IS complete, the user MUST NOT be on the welcome page.
-    // If they land there by mistake, send them to their dashboard.
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-   // PRIORITY 3: Allow logged-in users to stay on public pages and articles.
-    // We only force a redirect if they try to go back to the Login or Signup forms.
+    // PRIORITY 2: Public path check for logged in users
     const isPublicPath = publicPaths.some(pp => 
         pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
     );
@@ -283,31 +271,18 @@ export async function middleware(request: NextRequest) {
         }
         return response; 
     }
-    // =================================================================================
-    // --- END OF LOGIC REORDERING ---
-    // =================================================================================
 
-    // Standard role-based permission check (Your original code, untouched)
+    // Standard role-based permission check
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
-    // If all checks pass, allow the request to proceed.
     return response; 
 }
 
-// --- MATCHER (Your original code, untouched) ---
+// --- MATCHER ---
 export const config = {
-  /*
-   * Match all request paths except for the ones starting with:
-   * - api (API routes)
-   * - _next/static (static files)
-   * - _next/image (image optimization files)
-   * - robots.txt (Required for Google Bot Handshake)
-   * - sitemap.xml (Required for Google Site Indexing)
-   * - any path containing a period '.' (most static assets like .png, .js, .webmanifest)
-   */
   matcher: [
     '/((?!api|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
   ],
