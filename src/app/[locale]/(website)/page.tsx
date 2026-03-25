@@ -2032,7 +2032,11 @@ const AboutCompanyExecutiveSection = () => {
 // --- HomePage Component ---
 export default function HomePage() {
     const supabase = createClient();
-
+const [isSSR, setIsSSR] = useState(true);
+    useEffect(() => {
+        setIsSSR(false);
+    }, []);
+    
     // 1. STATE DECLARATIONS
     const [mounted, setMounted] = useState(false);
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -2125,10 +2129,11 @@ export default function HomePage() {
 
     // 6. MASTER LIFECYCLE EFFECT (Telemetry + Animations)
     useEffect(() => {
+        if (isSSR) return; // Prevent Server-side crash
         setMounted(true);
 
         const trackVisitor = async () => {
-            if (process.env.NODE_ENV === 'development') return;
+            if (typeof window === 'undefined' || process.env.NODE_ENV === 'development') return;
             try {
                 await supabase.from('system_global_telemetry').insert({
                     event_category: 'VISIT',

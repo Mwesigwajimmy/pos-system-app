@@ -162,6 +162,21 @@ export async function middleware(request: NextRequest) {
     pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
     // --- END: next-intl Integration ---
 
+// --- START: GOOGLEBOT / SEO BYPASS ---
+    // Identify search engine bots
+    const userAgent = request.headers.get('user-agent') || '';
+    const isBot = /googlebot|bingbot|yandexbot|duckduckbot/i.test(userAgent);
+    
+    // If it's a bot and it's looking at a public path, let it through 
+    // immediately without calling Supabase or the Database.
+    const isPublicPathForBot = publicPaths.some(pp => 
+        pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
+    );
+
+    if (isBot && isPublicPathForBot) {
+        return response;
+    }
+
     // --- SUPABASE & AUTH LOGIC (Your original code, untouched) ---
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -289,9 +304,11 @@ export const config = {
    * - api (API routes)
    * - _next/static (static files)
    * - _next/image (image optimization files)
+   * - robots.txt (Required for Google Bot Handshake)
+   * - sitemap.xml (Required for Google Site Indexing)
    * - any path containing a period '.' (most static assets like .png, .js, .webmanifest)
    */
   matcher: [
-    '/((?!api|_next/static|_next/image|.*\\..*).*)',
+    '/((?!api|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
   ],
 };
