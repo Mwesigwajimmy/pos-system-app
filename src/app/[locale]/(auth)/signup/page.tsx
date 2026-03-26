@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { Country, State } from 'country-state-city';
+import { motion } from 'framer-motion';
 
 // UI Components
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ import { Loader2, Eye, EyeOff, Globe2, Layers, MapPin, ShieldCheck, Calculator }
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 /** 
- * TAX ATLAS (Logic Preserved)
+ * TAX ATLAS
  */
 const taxLabelAtlas: Record<string, string> = {
     AF: 'TIN', AL: 'NIPT', DZ: 'NIF', AD: 'NR', AO: 'NIF', AG: 'TIN', AR: 'CUIT', AM: 'TIN', AU: 'ABN', AT: 'UID', 
@@ -41,7 +42,7 @@ const taxLabelAtlas: Record<string, string> = {
 };
 
 /** 
- * INDUSTRIAL LOGIC (Logic Preserved)
+ * INDUSTRIAL LOGIC
  */
 const industryMapping: Record<string, string[]> = {
     "Retail / Wholesale": [
@@ -205,8 +206,34 @@ export default function SignupPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 py-12 font-sans antialiased text-slate-900">
-            <Card className="w-full max-w-4xl shadow-xl border-slate-200 rounded-2xl overflow-hidden bg-white">
+        <div className="min-h-screen bg-slate-950 relative flex items-center justify-center p-4 py-12 font-sans antialiased text-slate-900 overflow-hidden">
+            
+            {/* --- PREMIUM MOTION BACKGROUND --- */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <motion.div
+                    animate={{
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 45, 0],
+                        x: [-100, 100, -100],
+                        y: [-50, 50, -50],
+                    }}
+                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] rounded-full bg-blue-600/10 blur-[120px]"
+                />
+                <motion.div
+                    animate={{
+                        scale: [1.3, 1, 1.3],
+                        rotate: [0, -45, 0],
+                        x: [100, -100, 100],
+                        y: [50, -50, 50],
+                    }}
+                    transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
+                    className="absolute bottom-[-20%] right-[-10%] w-[90%] h-[90%] rounded-full bg-blue-900/15 blur-[150px]"
+                />
+                <div className="absolute inset-0 bg-[url('/patterns/grid-light.svg')] opacity-[0.03] bg-[length:40px_40px]" />
+            </div>
+
+            <Card className="relative z-10 w-full max-w-4xl shadow-2xl border-slate-800 bg-white/95 backdrop-blur-xl rounded-2xl overflow-hidden border-none">
                 <CardHeader className="p-8 border-b border-slate-100 text-center">
                     <div className="flex justify-center mb-4">
                         <Globe2 className="w-12 h-12 text-blue-600" /> 
@@ -226,7 +253,7 @@ export default function SignupPage() {
                             {/* SECTION I: PERSONAL */}
                             <div className="space-y-6">
                                 <h3 className="text-sm font-semibold uppercase text-slate-400 tracking-wider flex items-center gap-2">
-                                    <ShieldCheck className="w-4 h-4"/> Personal Information
+                                    <ShieldCheck className="w-4 h-4 text-blue-500"/> Personal Information
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="fullName" render={({ field }) => (
@@ -247,7 +274,7 @@ export default function SignupPage() {
                             </div>
 
                             {/* SECTION II: LOCATION & TAX */}
-                            <div className="bg-slate-50 p-6 md:p-8 rounded-xl border border-slate-100 space-y-6">
+                            <div className="bg-slate-50/50 p-6 md:p-8 rounded-xl border border-slate-100 space-y-6">
                                 <h3 className="text-sm font-semibold uppercase text-slate-400 tracking-wider flex items-center gap-2">
                                     <MapPin className="w-4 h-4 text-blue-500"/> Business Location & Tax
                                 </h3>
@@ -256,7 +283,7 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-bold text-slate-700">Country</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger className="h-11 bg-white border-slate-200"><SelectValue/></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
                                                     <ScrollArea className="h-64">
                                                         {allCountries.map(c => <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>)}
@@ -270,7 +297,7 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-bold text-slate-700">State / Region</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger className="h-11 bg-white border-slate-200"><SelectValue placeholder="Select Region"/></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm"><SelectValue placeholder="Select Region"/></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
                                                     <ScrollArea className="h-64">
                                                         {availableStates.length > 0 ? (
@@ -302,7 +329,7 @@ export default function SignupPage() {
 
                                     <FormField control={form.control} name="manualTaxRate" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700 flex items-center gap-1"><Calculator className="w-3 h-3"/> Tax Rate (%)</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700 flex items-center gap-1"><Calculator className="w-3 h-3 text-blue-500"/> Tax Rate (%)</FormLabel>
                                             <FormControl><Input type="number" step="0.01" className="h-11 bg-white border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -311,7 +338,7 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="phone" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-bold text-slate-700">Phone Number</FormLabel>
-                                            <FormControl><Input className="h-11 border-slate-200" {...field} /></FormControl>
+                                            <FormControl><Input className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -319,7 +346,7 @@ export default function SignupPage() {
                                 <FormField control={form.control} name="address" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-xs font-bold text-slate-700">Business Address</FormLabel>
-                                        <FormControl><Input placeholder="Street, City, Building" className="h-11 bg-white border-slate-200" {...field} /></FormControl>
+                                        <FormControl><Input placeholder="Street, City, Building" className="h-11 bg-white border-slate-200 shadow-sm" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -328,7 +355,7 @@ export default function SignupPage() {
                             {/* SECTION III: INDUSTRY */}
                             <div className="space-y-6">
                                 <h3 className="text-sm font-semibold uppercase text-slate-400 tracking-wider flex items-center gap-2">
-                                    <Layers className="w-4 h-4"/> Industry Details
+                                    <Layers className="w-4 h-4 text-blue-500"/> Industry Details
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="businessType" render={({ field }) => (
@@ -371,7 +398,7 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="email" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-bold text-slate-700">Email Address</FormLabel>
-                                            <FormControl><Input type="email" placeholder="email@example.com" className="h-11 border-slate-200" {...field} /></FormControl>
+                                            <FormControl><Input type="email" placeholder="email@example.com" className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -379,7 +406,7 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-bold text-slate-700">Password</FormLabel>
                                             <div className="relative">
-                                                <FormControl><Input type={isVisible ? 'text' : 'password'} className="h-11 pr-10 border-slate-200" {...field} /></FormControl>
+                                                <FormControl><Input type={isVisible ? 'text' : 'password'} className="h-11 pr-10 border-slate-200 shadow-sm" {...field} /></FormControl>
                                                 <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-3 top-3 text-slate-400">
                                                     {isVisible ? <EyeOff size={18}/> : <Eye size={18}/>}
                                                 </button>
@@ -393,14 +420,14 @@ export default function SignupPage() {
                             {/* SUBMIT */}
                             <Button 
                                 type="submit" 
-                                className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all disabled:opacity-50" 
+                                className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xl transition-all disabled:opacity-50" 
                                 disabled={isLoading}
                             >
-                                {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating Account...</> : "Sign Up"}
+                                {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating Account...</> : "Create Account"}
                             </Button>
 
                             <div className="flex flex-col md:flex-row justify-center items-center gap-4 text-center">
-                                <span className="text-sm text-slate-500">Already have an account?</span>
+                                <span className="text-sm text-slate-500 font-medium">Already have an account?</span>
                                 <Link href="/login" className="text-sm font-bold text-blue-600 hover:underline">Log In</Link>
                             </div>
                         </form>
