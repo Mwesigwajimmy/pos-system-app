@@ -85,6 +85,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+{
+  url: `${baseUrl}/en/download`,
+  lastModified: new Date(),
+  changeFrequency: 'monthly',
+  priority: 0.9, // High priority so Google uses it as a sitelink
+},
     {
       url: `${baseUrl}/en/newsletter`,
       lastModified: new Date(),

@@ -31,6 +31,7 @@ const publicPaths = [
     '/donate', 
     '/newsletter', 
     '/help-centre',
+    '/download',
     '/features'
 ];
 

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'BBU1 Enterprise' }],
   creator: 'BBU1',
   publisher: 'BBU1 Global',
-  metadataBase: new URL('https://www.bbu1.com'), // FIXED: Added proper base URL for SEO
+  metadataBase: new URL('https://www.bbu1.com'), 
   robots: {
     index: true,
     follow: true,
@@ -62,15 +62,13 @@ export default async function LocaleRootLayout({
 }) {
   /**
    * PROFESSIONAL FIX: Locale Sanitization
-   * This prevents the "RangeError: Incorrect locale information provided" crash.
-   * If 'locale' is invalid (e.g. Google hits the root or a junk URL), we force it to 'en'.
    */
   const safeLocale = SUPPORTED_LOCALES.includes(locale) ? locale : 'en';
 
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  // Safe session fetch (Try/Catch to prevent bot-induced crashes)
+  // Safe session fetch
   let session = null;
   try {
     const sessionRes = await supabase.auth.getSession();
@@ -79,6 +77,36 @@ export default async function LocaleRootLayout({
     session = null;
   }
 
+  // --- NEW: PROFESSIONAL APPLICATION SCHEMA (For Google Sitelinks) ---
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BBU1 Global Business OS",
+    "operatingSystem": "Windows, MacOS, Android, iOS, Web",
+    "applicationCategory": "BusinessApplication, FinanceApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "LITONU BUSINESS BASE UNIVERSE LTD",
+      "url": "https://www.bbu1.com",
+      "logo": "https://www.bbu1.com/icons/android-chrome-512x512.png"
+    },
+    "downloadUrl": "https://www.bbu1.com/en/download",
+    "featureList": "Cloud Accounting, Inventory Management, CRM, HR, AI Insights",
+    "installTarget": {
+        "@type": "InstallAction",
+        "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.bbu1.com/en/download",
+            "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/IOSPlatform", "http://schema.org/AndroidPlatform"]
+        }
+    }
+  };
+
   return (
     <html lang={safeLocale} suppressHydrationWarning>
       <head>
@@ -86,6 +114,12 @@ export default async function LocaleRootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         
+        {/* Software Identity Injection for Googlebot */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+
         <Script
           async
           src="https://www.googletagmanager.com/gtag/js?id=G-VXKX3Y51MN"
