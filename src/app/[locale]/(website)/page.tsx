@@ -1982,16 +1982,23 @@ const [isSSR, setIsSSR] = useState(true);
     const [isCustomizingCookies, setIsCustomizingCookies] = useState(false);
     const [toastState, setToastState] = useState<ToastState>({ visible: false, message: '' });
 
-    // 2. DATA ARRAYS
+   // 2. DATA ARRAYS
     const rotatingTexts = ["We are part of your business.", "In.", "Book Keeping.", "Advanced Accounting.", "Business Reports.", "Internal & External Auditing.", "From startup to enterprise.", "For every ambition."];
+    
     const slideshowContent = [
+        { 
+            is_video: true, 
+            src: "/videos/BBU1 inventory management.mp4", 
+            title: "Advanced Inventory Architecture", 
+            description: "Experience the power of real-time SKU tracking and automated stock auditing across your enterprise.", 
+            alt: "BBU1 Inventory Demo" 
+        },
         { src: "/images/showcase/construction-site.jpg", title: "Construction & Project Management", description: "Oversee complex projects on-site with real-time data.", alt: "Construction managers" },
         { src: "/images/showcase/mobile-money-agent.jpg", title: "Telecom & Mobile Money", description: "Empower agents with a fast, secure system for transactions.", alt: "Mobile money agent" },
         { src: "/images/showcase/local-shop-owner.jpg", title: "Local & Retail Commerce", description: "A complete enterprise powerful POS and inventory system to manage sales and stock.", alt: "Shop owner" },
         { src: "/images/showcase/healthcare-team.jpg", title: "Healthcare & Clinic Management", description: "Digitize patient records, manage appointments, and track medical supplies.", alt: "Medical professionals" },
         { src: "/images/showcase/farmers-learning.jpg", title: "Agriculture & Agribusiness", description: "Bring modern management to the field to track crops.", alt: "Farmers" },
     ];
-
     const initialCookiePreferences: CookiePreferences = siteConfig.cookieCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: cat.defaultChecked }), {} as CookiePreferences);
     const [cookiePreferences, setCookiePreferences] = useState<CookiePreferences>(initialCookiePreferences);
 
@@ -2188,29 +2195,52 @@ const [isSSR, setIsSSR] = useState(true);
                 </section>
 
                 {/* IN-ACTION SECTION */}
-                <AnimatedSection id="in-action" className="bg-gray-900 text-white">
-                    <div className="relative z-10 text-center mb-12">
-                        <motion.h2 className="text-3xl sm:text-4xl font-bold text-white">The Engine For Every business from strartup to Enterprise.</motion.h2>
-                        <motion.p className="mt-4 text-lg text-gray-300">From bustling city markets to the digital frontier, BBU1 is built for ambition.</motion.p>
-                    </div>
-                    <motion.div className="relative rounded-xl overflow-hidden shadow-2xl h-[400px] md:h-[700px] bg-black/50">
-                        <AnimatePresence mode="wait">
-                            <motion.div key={currentSlideIndex} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 1.2 }} className="absolute inset-0">
-                                <Image src={memoizedSlideshowContent[currentSlideIndex].src} alt={memoizedSlideshowContent[currentSlideIndex].alt} layout="fill" objectFit="cover" className="filter brightness-[0.7]" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
-                                    <h3 className="text-2xl md:text-4xl font-bold mb-2">{memoizedSlideshowContent[currentSlideIndex].title}</h3>
-                                    <p className="text-base md:text-lg">{memoizedSlideshowContent[currentSlideIndex].description}</p>
-                                </div>
-                            </motion.div>
-                        </AnimatePresence>
-                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
-                            {memoizedSlideshowContent.map((_, idx) => (
-                                <button key={idx} className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} onClick={() => setCurrentSlideIndex(idx)} />
-                            ))}
-                        </div>
-                    </motion.div>
-                </AnimatedSection>
+<AnimatedSection id="in-action" className="bg-gray-900 text-white">
+    <div className="relative z-10 text-center mb-12">
+        <motion.h2 className="text-3xl sm:text-4xl font-bold text-white">The Engine For Every business from strartup to Enterprise.</motion.h2>
+        <motion.p className="mt-4 text-lg text-gray-300">From bustling city markets to the digital frontier, BBU1 is built for ambition.</motion.p>
+    </div>
+    <motion.div className="relative rounded-xl overflow-hidden shadow-2xl h-[400px] md:h-[700px] bg-black/50">
+        <AnimatePresence mode="wait">
+            <motion.div key={currentSlideIndex} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 1.2 }} className="absolute inset-0">
+                
+                {/* --- VIDEO AND IMAGE LOGIC START --- */}
+                {memoizedSlideshowContent[currentSlideIndex].is_video ? (
+                    <video
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.7]"
+                    >
+                        <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
+                        Your browser does not support the video tag.
+                    </video>
+                ) : (
+                    <Image 
+                        src={memoizedSlideshowContent[currentSlideIndex].src} 
+                        alt={memoizedSlideshowContent[currentSlideIndex].alt} 
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        className="filter brightness-[0.7]" 
+                    />
+                )}
+                {/* --- VIDEO AND IMAGE LOGIC END --- */}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 text-white max-w-3xl">
+                    <h3 className="text-2xl md:text-4xl font-bold mb-2">{memoizedSlideshowContent[currentSlideIndex].title}</h3>
+                    <p className="text-base md:text-lg">{memoizedSlideshowContent[currentSlideIndex].description}</p>
+                </div>
+            </motion.div>
+        </AnimatePresence>
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+            {memoizedSlideshowContent.map((_, idx) => (
+                <button key={idx} className={cn("h-2 w-2 rounded-full bg-white/50 transition-all", { "bg-white w-4": currentSlideIndex === idx })} onClick={() => setCurrentSlideIndex(idx)} />
+            ))}
+        </div>
+    </motion.div>
+</AnimatedSection>
                 
                 <DynamicPricingSection />
 
