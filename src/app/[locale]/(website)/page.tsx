@@ -2152,48 +2152,6 @@ const [isSSR, setIsSSR] = useState(true);
 
                 <TrustedBySection />
 
-                {/* PLATFORM SECTION */}
-                <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
-                    <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
-                    <div className="container mx-auto px-4 relative z-10">
-                        <div className="text-center mb-12 md:mb-16">
-                            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">An Operating System <br /> Engineered for Growth</h2>
-                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.</p>
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
-                            <div className="space-y-4 md:space-y-6">
-                                <AnimatePresence mode="wait">
-                                    <motion.div key={activePillarIndex} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.5 }} className="bg-card border rounded-xl p-6 shadow-sm">
-                                        <div className="flex items-start gap-4 mb-4">
-                                            <div className="p-3 bg-blue-600/10 rounded-lg">
-                                                {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-6 w-6 text-blue-600 dark:text-blue-400" })}
-                                            </div>
-                                            <div>
-                                                <h3 className="text-xl font-bold">{memoizedPlatformPillars[activePillarIndex].title}</h3>
-                                                <p className="text-muted-foreground mt-2">{memoizedPlatformPillars[activePillarIndex].description}</p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                </AnimatePresence>
-                                <div className="flex flex-wrap gap-2 md:gap-3">
-                                    {memoizedPlatformPillars.map((pillar, index) => (
-                                        <button key={pillar.title} onClick={() => setActivePillarIndex(index)} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300", activePillarIndex === index ? "bg-blue-600 text-white shadow-sm" : "bg-muted hover:bg-accent text-muted-foreground")}>
-                                            {pillar.title}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="relative h-[300px] md:h-[450px] rounded-xl overflow-hidden shadow-xl">
-                                <AnimatePresence mode="wait">
-                                    <motion.div key={activePillarIndex} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.7 }} className="absolute inset-0">
-                                        <Image src={memoizedPlatformPillars[activePillarIndex].backgroundImage} alt={memoizedPlatformPillars[activePillarIndex].title} fill style={{ objectFit: 'cover' }} className="brightness-90" />
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                {/* HERO SECTION - FIXED ROTATING TEXT MOTION */}
 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[700px] flex items-center justify-center">
     <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
