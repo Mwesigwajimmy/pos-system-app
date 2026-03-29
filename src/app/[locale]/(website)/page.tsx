@@ -2167,7 +2167,47 @@ const [isSSR, setIsSSR] = useState(true);
         </motion.div>
     </div>
 </section>
-<TrustedBySection />
+{/* PLATFORM SECTION - THE 6 CORE PILLARS */}
+<section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
+    <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
+    <div className="container mx-auto px-4 relative z-10">
+        <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 text-slate-900">An Operating System <br /> Engineered for Growth</h2>
+            <p className="text-lg text-slate-500 max-w-2xl mx-auto">BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.</p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
+            <div className="space-y-4 md:space-y-6">
+                <AnimatePresence mode="wait">
+                    <motion.div key={activePillarIndex} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.5 }} className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
+                        <div className="flex items-start gap-5">
+                            <div className="p-3 bg-blue-50 rounded-xl">
+                                {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-7 w-7 text-blue-600" })}
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-900">{memoizedPlatformPillars[activePillarIndex].title}</h3>
+                                <p className="text-slate-500 mt-3 leading-relaxed">{memoizedPlatformPillars[activePillarIndex].description}</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                </AnimatePresence>
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                    {memoizedPlatformPillars.map((pillar, index) => (
+                        <button key={pillar.title} onClick={() => setActivePillarIndex(index)} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all duration-300", activePillarIndex === index ? "bg-blue-600 text-white shadow-lg" : "bg-slate-50 hover:bg-slate-100 text-slate-600")}>
+                            {pillar.title}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <div className="relative h-[300px] md:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-100">
+                <AnimatePresence mode="wait">
+                    <motion.div key={activePillarIndex} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.7 }} className="absolute inset-0">
+                        <Image src={memoizedPlatformPillars[activePillarIndex].backgroundImage} alt="Platform Capability" fill style={{ objectFit: 'cover' }} />
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+        </div>
+    </div>
+</section>
 
 {/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | BROWSER SHELL FIX */}
 <AnimatedSection id="in-action" className="bg-white text-slate-900 py-24 border-t border-slate-100">
