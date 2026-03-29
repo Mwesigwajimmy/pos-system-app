@@ -2141,7 +2141,7 @@ const [isSSR, setIsSSR] = useState(true);
             </motion.span>
             
             {/* THE 4-LINE HEADER STACK */}
-            <div className="flex flex-col items-center gap-6 mb-10"> {/* Fixed: Increased gap to prevent overlap */}
+            <div className="flex flex-col items-center gap-10 mb-10"> {/* Fixed: Increased gap to 10 for maximum safety */}
                 
                 {/* LINE 1: Static */}
                 <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
@@ -2149,20 +2149,21 @@ const [isSSR, setIsSSR] = useState(true);
                 </motion.span>
 
                 {/* LINE 2: Static "In." */}
-                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400"> {/* Fixed: Removed 'italic' */}
+                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400"> {/* Fixed: No 'italic' class here, ensures text is straight */}
                     In.
                 </motion.span>
 
                 {/* LINE 3: Dynamic (The Slide Show) */}
-                <div className="relative h-[1.5em] sm:h-[1.8em] w-full overflow-hidden flex justify-center items-center"> {/* Fixed: Height adjusted for moving words */}
+                {/* Fixed: Height increased significantly (h-[80px] to h-[130px]) to prevent overlapping during animation */}
+                <div className="relative h-[80px] sm:h-[110px] lg:h-[130px] w-full overflow-hidden">
                     <AnimatePresence mode="wait">
                         <motion.span 
                             key={currentTextIndex} 
-                            initial={{ opacity: 0, y: 30 }}
+                            initial={{ opacity: 0, y: 40 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -30 }}
+                            exit={{ opacity: 0, y: -40 }}
                             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute block text-3xl sm:text-5xl lg:text-6xl font-extrabold text-blue-300 drop-shadow-lg whitespace-nowrap"
+                            className="absolute inset-0 flex items-center justify-center text-3xl sm:text-5xl lg:text-6xl font-extrabold text-blue-300 drop-shadow-lg whitespace-nowrap"
                         >
                             {memoizedRotatingTexts[currentTextIndex]}
                         </motion.span>
@@ -2170,7 +2171,7 @@ const [isSSR, setIsSSR] = useState(true);
                 </div>
 
                 {/* LINE 4: Static Footer */}
-                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-gray-200 mt-2">
+                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-gray-200">
                     From startup to enterprise. For every ambition.
                 </motion.span>
             </div>
