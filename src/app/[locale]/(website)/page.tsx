@@ -2104,7 +2104,7 @@ const [isSSR, setIsSSR] = useState(true);
         const pillarInt = setInterval(() => setActivePillarIndex(p => (p + 1) % memoizedPlatformPillars.length), PILLAR_INTERVAL);
         
         return () => { clearInterval(textInt); clearInterval(imageInt); clearInterval(pillarInt); };
-    }, [supabase, memoizedRotatingTexts.length, memoizedSlideshowContent.length, memoizedPlatformPillars.length]);
+    }, [supabase, isSSR, memoizedRotatingTexts.length, memoizedSlideshowContent.length, memoizedPlatformPillars.length]);
 
     // 7. COOKIE INITIALIZATION
     useEffect(() => {
@@ -2141,7 +2141,7 @@ const [isSSR, setIsSSR] = useState(true);
             </motion.span>
             
             {/* THE 4-LINE HEADER STACK */}
-            <div className="flex flex-col items-center gap-10 mb-10"> {/* Fixed: Increased gap to 10 for maximum safety */}
+            <div className="flex flex-col items-center gap-10 mb-10"> {/* Fixed: Increased gap for professional spacing */}
                 
                 {/* LINE 1: Static */}
                 <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
@@ -2149,12 +2149,12 @@ const [isSSR, setIsSSR] = useState(true);
                 </motion.span>
 
                 {/* LINE 2: Static "In." */}
-                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400"> {/* Fixed: No 'italic' class here, ensures text is straight */}
+                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400"> {/* Fixed: Removed 'italic' - text is now straight */}
                     In.
                 </motion.span>
 
                 {/* LINE 3: Dynamic (The Slide Show) */}
-                {/* Fixed: Height increased significantly (h-[80px] to h-[130px]) to prevent overlapping during animation */}
+                {/* Fixed: Height and flex centering ensure moving words never overlap other lines */}
                 <div className="relative h-[80px] sm:h-[110px] lg:h-[130px] w-full overflow-hidden">
                     <AnimatePresence mode="wait">
                         <motion.span 
