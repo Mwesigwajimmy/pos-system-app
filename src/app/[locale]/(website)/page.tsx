@@ -2194,11 +2194,59 @@ const [isSSR, setIsSSR] = useState(true);
                     </div>
                 </section>
 
-               {/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | BROWSER SHELL FIX */}
+               {/* HERO SECTION - FIXED ROTATING TEXT MOTION */}
+<section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[700px] flex items-center justify-center">
+    <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
+        <Image src="/images/showcase/Greeting (41).jpeg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
+        <div className="absolute inset-0 bg-black/70"></div>
+    </motion.div>
+    
+    <div className="container mx-auto relative z-10 text-white px-4">
+        <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
+            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20">
+                <Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS
+            </motion.span>
+            
+            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl mt-6 leading-tight" variants={itemVariants}>
+                The One Platform <br />
+                {/* Fixed container for rotating text */}
+                <div className="relative inline-block w-full h-[1.2em] overflow-hidden align-middle">
+                    <AnimatePresence mode="wait">
+                        <motion.span 
+                            key={currentTextIndex} 
+                            variants={textVariants} 
+                            initial="hidden" 
+                            animate="visible" 
+                            exit="exit" 
+                            className="absolute inset-x-0 block text-blue-300 drop-shadow-md whitespace-nowrap"
+                        >
+                            {rotatingTexts[currentTextIndex]}
+                        </motion.span>
+                    </AnimatePresence>
+                </div>
+            </motion.h1>
+
+            <motion.p className="mt-8 text-xl leading-8 text-gray-200 max-w-2xl mx-auto font-medium" variants={itemVariants}>
+                Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.
+            </motion.p>
+            
+            <motion.div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4" variants={itemVariants}>
+                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-14 text-lg font-bold rounded-xl shadow-lg">
+                    <Link href="/signup">Start Free Trial</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm px-8 h-14 text-lg font-bold rounded-xl">
+                    <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-5 w-5" /></a>
+                </Button>
+            </motion.div>
+        </motion.div>
+    </div>
+</section>
+
+{/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | BROWSER SHELL FIX */}
 <AnimatedSection id="in-action" className="bg-white text-slate-900 py-24 border-t border-slate-100">
     <div className="container mx-auto px-4">
         
-        {/* 1. MAIN SECTION HEADER - Centered at the top */}
+        {/* 1. MAIN SECTION HEADER */}
         <div className="relative z-10 text-center mb-16 max-w-4xl mx-auto">
             <motion.h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
                 The Engine For Every business from strartup to Enterprise.
@@ -2208,14 +2256,14 @@ const [isSSR, setIsSSR] = useState(true);
             </motion.p>
         </div>
 
-        {/* 2. SPLIT GRID: Media on the Left, Dynamic text on the Right */}
+        {/* 2. SPLIT GRID LAYOUT */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center max-w-7xl mx-auto">
             
-            {/* LEFT SIDE: THE MEDIA BOX (REFACTORED TO PREVENT CROPPING) */}
+            {/* LEFT SIDE: THE MEDIA BOX (Containment Fix) */}
             <div className="lg:col-span-7 relative">
                 <motion.div className="relative rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] h-[350px] md:h-[550px] bg-white border border-slate-200">
                     
-                    {/* BROWSER TOP BAR - Makes "object-contain" look like a professional window */}
+                    {/* BROWSER TOP BAR (Professional Detail) */}
                     <div className="absolute top-0 left-0 right-0 h-8 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-1.5 z-30">
                         <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
                         <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
@@ -2230,7 +2278,6 @@ const [isSSR, setIsSSR] = useState(true);
                             animate={{ opacity: 1, x: 0 }} 
                             exit={{ opacity: 0, x: 20 }} 
                             transition={{ duration: 0.6, ease: "easeOut" }} 
-                            /* pt-8 offsets the content so it doesn't hide behind the browser bar */
                             className="absolute inset-0 pt-8 bg-white flex items-center justify-center"
                         >
                             {memoizedSlideshowContent[currentSlideIndex].is_video ? (
@@ -2239,7 +2286,6 @@ const [isSSR, setIsSSR] = useState(true);
                                     muted
                                     loop
                                     playsInline
-                                    /* CHANGED TO object-contain: Shows 100% of the video without cutting edges */
                                     className="w-full h-full object-contain" 
                                 >
                                     <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
@@ -2250,9 +2296,8 @@ const [isSSR, setIsSSR] = useState(true);
                                     src={memoizedSlideshowContent[currentSlideIndex].src} 
                                     alt={memoizedSlideshowContent[currentSlideIndex].alt} 
                                     fill
-                                    /* CHANGED TO contain: Shows 100% of the image */
                                     style={{ objectFit: 'contain' }}
-                                    className="p-4 transition-all duration-700" 
+                                    className="p-4" 
                                 />
                             )}
                         </motion.div>
@@ -2260,7 +2305,7 @@ const [isSSR, setIsSSR] = useState(true);
                 </motion.div>
             </div>
 
-            {/* RIGHT SIDE: DYNAMIC SUB-CONTENT (Text appears here) */}
+            {/* RIGHT SIDE: DYNAMIC SUB-CONTENT */}
             <div className="lg:col-span-5 flex flex-col justify-center">
                 <AnimatePresence mode="wait">
                     <motion.div
@@ -2271,31 +2316,27 @@ const [isSSR, setIsSSR] = useState(true);
                         transition={{ duration: 0.5 }}
                         className="space-y-6"
                     >
-                        {/* FEATURE CATEGORY TAG */}
                         <div className="inline-block px-3 py-1 rounded-md bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest mb-2">
-                            Platform Feature
+                            Platform Module
                         </div>
 
-                        {/* THE TITLE (Black) */}
                         <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
                             {memoizedSlideshowContent[currentSlideIndex].title}
                         </h3>
 
-                        {/* THE DESCRIPTION (Slate Grey) */}
                         <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-medium">
                             {memoizedSlideshowContent[currentSlideIndex].description}
                         </p>
 
-                        {/* CTA ACTION */}
                         <div className="pt-4">
-                            <button className="flex items-center gap-2 text-blue-600 font-bold hover:gap-4 transition-all">
-                                Explore this module <ArrowRight size={20} />
+                            <button className="group flex items-center gap-2 text-blue-600 font-bold hover:gap-4 transition-all">
+                                Explore this module <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
                             </button>
                         </div>
                     </motion.div>
                 </AnimatePresence>
 
-                {/* 3. SLIDE INDICATORS (DOTS) */}
+                {/* SLIDE INDICATORS (DOTS) */}
                 <div className="mt-12 flex gap-3">
                     {memoizedSlideshowContent.map((_, idx) => (
                         <button 
@@ -2312,7 +2353,7 @@ const [isSSR, setIsSSR] = useState(true);
         </div>
     </div>
 </AnimatedSection>
-                
+
                 <DynamicPricingSection />
 
                 {/* --- ENTERPRISE LEAD CAPTURE SECTION (MOVED TO CORRECT POSITION) --- */}
