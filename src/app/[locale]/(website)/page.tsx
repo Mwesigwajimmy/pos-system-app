@@ -2194,7 +2194,7 @@ const [isSSR, setIsSSR] = useState(true);
                     </div>
                 </section>
 
-               {/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | WHITE THEME */}
+               {/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | BROWSER SHELL FIX */}
 <AnimatedSection id="in-action" className="bg-white text-slate-900 py-24 border-t border-slate-100">
     <div className="container mx-auto px-4">
         
@@ -2211,9 +2211,18 @@ const [isSSR, setIsSSR] = useState(true);
         {/* 2. SPLIT GRID: Media on the Left, Dynamic text on the Right */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center max-w-7xl mx-auto">
             
-            {/* LEFT SIDE: THE MEDIA BOX (Larger weight for visuals) */}
+            {/* LEFT SIDE: THE MEDIA BOX (REFACTORED TO PREVENT CROPPING) */}
             <div className="lg:col-span-7 relative">
-                <motion.div className="relative rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] h-[350px] md:h-[550px] bg-slate-50 border border-slate-200">
+                <motion.div className="relative rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] h-[350px] md:h-[550px] bg-white border border-slate-200">
+                    
+                    {/* BROWSER TOP BAR - Makes "object-contain" look like a professional window */}
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-slate-50 border-b border-slate-200 flex items-center px-4 gap-1.5 z-30">
+                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+                        <div className="ml-4 h-3 w-1/3 bg-slate-200/50 rounded-sm" />
+                    </div>
+
                     <AnimatePresence mode="wait">
                         <motion.div 
                             key={currentSlideIndex} 
@@ -2221,7 +2230,8 @@ const [isSSR, setIsSSR] = useState(true);
                             animate={{ opacity: 1, x: 0 }} 
                             exit={{ opacity: 0, x: 20 }} 
                             transition={{ duration: 0.6, ease: "easeOut" }} 
-                            className="absolute inset-0"
+                            /* pt-8 offsets the content so it doesn't hide behind the browser bar */
+                            className="absolute inset-0 pt-8 bg-white flex items-center justify-center"
                         >
                             {memoizedSlideshowContent[currentSlideIndex].is_video ? (
                                 <video
@@ -2229,8 +2239,8 @@ const [isSSR, setIsSSR] = useState(true);
                                     muted
                                     loop
                                     playsInline
-                                    /* High Clarity: No filters, full original white/bright colors */
-                                    className="absolute inset-0 w-full h-full object-cover" 
+                                    /* CHANGED TO object-contain: Shows 100% of the video without cutting edges */
+                                    className="w-full h-full object-contain" 
                                 >
                                     <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
                                     Your browser does not support the video tag.
@@ -2240,8 +2250,9 @@ const [isSSR, setIsSSR] = useState(true);
                                     src={memoizedSlideshowContent[currentSlideIndex].src} 
                                     alt={memoizedSlideshowContent[currentSlideIndex].alt} 
                                     fill
-                                    style={{ objectFit: 'cover' }}
-                                    className="transition-all duration-700" 
+                                    /* CHANGED TO contain: Shows 100% of the image */
+                                    style={{ objectFit: 'contain' }}
+                                    className="p-4 transition-all duration-700" 
                                 />
                             )}
                         </motion.div>
@@ -2284,7 +2295,7 @@ const [isSSR, setIsSSR] = useState(true);
                     </motion.div>
                 </AnimatePresence>
 
-                {/* 3. SLIDE INDICATORS (DOTS) - Now aligned with the text for a balanced look */}
+                {/* 3. SLIDE INDICATORS (DOTS) */}
                 <div className="mt-12 flex gap-3">
                     {memoizedSlideshowContent.map((_, idx) => (
                         <button 
