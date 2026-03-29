@@ -2141,7 +2141,7 @@ const [isSSR, setIsSSR] = useState(true);
             </motion.span>
             
             {/* THE 4-LINE HEADER STACK */}
-            <div className="flex flex-col items-center gap-3 mb-10">
+            <div className="flex flex-col items-center gap-6 mb-10"> {/* Fixed: Increased gap to prevent overlap */}
                 
                 {/* LINE 1: Static */}
                 <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
@@ -2149,12 +2149,12 @@ const [isSSR, setIsSSR] = useState(true);
                 </motion.span>
 
                 {/* LINE 2: Static "In." */}
-                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400 italic">
+                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400"> {/* Fixed: Removed 'italic' */}
                     In.
                 </motion.span>
 
                 {/* LINE 3: Dynamic (The Slide Show) */}
-                <div className="relative h-[1.4em] w-full overflow-hidden flex justify-center items-center">
+                <div className="relative h-[1.5em] sm:h-[1.8em] w-full overflow-hidden flex justify-center items-center"> {/* Fixed: Height adjusted for moving words */}
                     <AnimatePresence mode="wait">
                         <motion.span 
                             key={currentTextIndex} 
@@ -2170,7 +2170,7 @@ const [isSSR, setIsSSR] = useState(true);
                 </div>
 
                 {/* LINE 4: Static Footer */}
-                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-gray-200 mt-4">
+                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-gray-200 mt-2">
                     From startup to enterprise. For every ambition.
                 </motion.span>
             </div>
