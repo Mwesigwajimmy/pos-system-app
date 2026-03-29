@@ -2120,39 +2120,7 @@ const [isSSR, setIsSSR] = useState(true);
         <div className="flex flex-col min-h-screen">
             <MegaMenuHeader />
             <main className="flex-grow">
-                {/* HERO SECTION */}
-                <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[600px] flex items-center justify-center">
-                    <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
-                        <Image src="/images/showcase/Greeting (41).jpeg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
-                        <div className="absolute inset-0 bg-black/70"></div>
-                    </motion.div>
-                    <div className="container mx-auto relative z-10 text-white">
-                        <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
-                            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20"><Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS</motion.span>
-                            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mt-6 leading-tight" variants={itemVariants}>
-                                The One Platform <br />
-                                <div className="inline-block h-[1.2em] overflow-hidden">
-                                    <AnimatePresence mode="wait">
-                                        <motion.span key={currentTextIndex} variants={textVariants} initial="hidden" animate="visible" exit="exit" className="block text-blue-300 drop-shadow-md">{memoizedRotatingTexts[currentTextIndex]}</motion.span>
-                                    </AnimatePresence>
-                                </div>
-                            </motion.h1>
-                            <motion.p className="mt-6 text-xl leading-8 text-gray-200 max-w-2xl mx-auto" variants={itemVariants}>Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.</motion.p>
-                            <motion.div className="mt-10 flex items-center justify-center gap-x-4" variants={itemVariants}>
-                                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 transition-all duration-200">
-                                    <Link href="/signup">Start Free Trial</Link>
-                                </Button>
-                                <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm hover:scale-105 transition-all duration-200">
-                                    <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a>
-                                </Button>
-                            </motion.div>
-                        </motion.div>
-                    </div>
-                </section>
-
-                <TrustedBySection />
-
-               {/* HERO SECTION - FIXED ROTATING TEXT MOTION */}
+               {/* HERO SECTION - ANIMATION FIXED VERSION */}
 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[700px] flex items-center justify-center">
     <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
         <Image src="/images/showcase/Greeting (41).jpeg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
@@ -2167,7 +2135,7 @@ const [isSSR, setIsSSR] = useState(true);
             
             <motion.h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl mt-6 leading-tight" variants={itemVariants}>
                 The One Platform <br />
-                {/* Fixed container for rotating text */}
+                {/* This container below keeps the animation stable */}
                 <div className="relative inline-block w-full h-[1.2em] overflow-hidden align-middle">
                     <AnimatePresence mode="wait">
                         <motion.span 
