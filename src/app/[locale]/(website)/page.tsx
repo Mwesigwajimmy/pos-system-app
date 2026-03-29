@@ -1983,8 +1983,12 @@ const [isSSR, setIsSSR] = useState(true);
     const [toastState, setToastState] = useState<ToastState>({ visible: false, message: '' });
 
    // 2. DATA ARRAYS
-    const rotatingTexts = ["We are part of your business.", "In.", "Book Keeping.", "Advanced Accounting.", "Business Reports.", "Internal & External Auditing.", "From startup to enterprise.", "For every ambition."];
-    
+    const rotatingTexts = [
+    "Book Keeping.", 
+    "Advanced Accounting.", 
+    "Business Reports.", 
+    "Internal & External Auditing."
+];
     const slideshowContent = [
         { 
             is_video: true, 
@@ -2120,53 +2124,75 @@ const [isSSR, setIsSSR] = useState(true);
         <div className="flex flex-col min-h-screen">
             <MegaMenuHeader />
             <main className="flex-grow">
-               {/* HERO SECTION - ANIMATION FIXED VERSION */}
-<section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[700px] flex items-center justify-center">
+
+               {/* HERO SECTION - 4-LINE PROFESSIONAL STRUCTURE */}
+<section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[850px] flex items-center justify-center">
     <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
-        <Image src="/images/showcase/Greeting (41).jpeg" alt="Modern office analyzing data" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
-        <div className="absolute inset-0 bg-black/70"></div>
+        <Image src="/images/showcase/Greeting (41).jpeg" alt="BBU1 Business OS" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
+        <div className="absolute inset-0 bg-black/75"></div>
     </motion.div>
     
     <div className="container mx-auto relative z-10 text-white px-4">
         <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
-            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20">
+            
+            {/* TAGLINE */}
+            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20 mb-8">
                 <Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS
             </motion.span>
             
-            <motion.h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl mt-6 leading-tight" variants={itemVariants}>
-                The One Platform <br />
-                {/* This container below keeps the animation stable */}
-                <div className="relative inline-block w-full h-[1.2em] overflow-hidden align-middle">
+            {/* THE 4-LINE HEADER STACK */}
+            <div className="flex flex-col items-center gap-3 mb-10">
+                
+                {/* LINE 1: Static */}
+                <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                    We are part of your business.
+                </motion.span>
+
+                {/* LINE 2: Static "In." */}
+                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400 italic">
+                    In.
+                </motion.span>
+
+                {/* LINE 3: Dynamic (The Slide Show) */}
+                <div className="relative h-[1.4em] w-full overflow-hidden flex justify-center items-center">
                     <AnimatePresence mode="wait">
                         <motion.span 
                             key={currentTextIndex} 
-                            variants={textVariants} 
-                            initial="hidden" 
-                            animate="visible" 
-                            exit="exit" 
-                            className="absolute inset-x-0 block text-blue-300 drop-shadow-md whitespace-nowrap"
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -30 }}
+                            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                            className="absolute block text-3xl sm:text-5xl lg:text-6xl font-extrabold text-blue-300 drop-shadow-lg whitespace-nowrap"
                         >
-                            {rotatingTexts[currentTextIndex]}
+                            {memoizedRotatingTexts[currentTextIndex]}
                         </motion.span>
                     </AnimatePresence>
                 </div>
-            </motion.h1>
 
-            <motion.p className="mt-8 text-xl leading-8 text-gray-200 max-w-2xl mx-auto font-medium" variants={itemVariants}>
+                {/* LINE 4: Static Footer */}
+                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-gray-200 mt-4">
+                    From startup to enterprise. For every ambition.
+                </motion.span>
+            </div>
+
+            {/* SECONDARY SUBTEXT */}
+            <motion.p className="mt-6 text-lg sm:text-xl leading-8 text-gray-300 max-w-2xl mx-auto font-medium" variants={itemVariants}>
                 Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.
             </motion.p>
             
-            <motion.div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4" variants={itemVariants}>
-                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-14 text-lg font-bold rounded-xl shadow-lg">
+            {/* BUTTONS */}
+            <motion.div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4" variants={itemVariants}>
+                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 text-lg font-bold rounded-xl shadow-lg transition-transform hover:scale-105">
                     <Link href="/signup">Start Free Trial</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm px-8 h-14 text-lg font-bold rounded-xl">
-                    <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-5 w-5" /></a>
+                <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm px-10 h-14 text-lg font-bold rounded-xl transition-transform hover:scale-105">
+                    <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a>
                 </Button>
             </motion.div>
         </motion.div>
     </div>
 </section>
+
 {/* PLATFORM SECTION - THE 6 CORE PILLARS */}
 <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
     <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
