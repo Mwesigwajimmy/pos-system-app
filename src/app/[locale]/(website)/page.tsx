@@ -2194,92 +2194,110 @@ const [isSSR, setIsSSR] = useState(true);
                     </div>
                 </section>
 
-               {/* IN-ACTION SECTION - REFACTORED FOR HIGH CLARITY & SEPARATED CONTENT */}
-<AnimatedSection id="in-action" className="bg-gray-900 text-white pb-20">
+               {/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | WHITE THEME */}
+<AnimatedSection id="in-action" className="bg-white text-slate-900 py-24 border-t border-slate-100">
     <div className="container mx-auto px-4">
         
-        {/* 1. STATIC SECTION HEADER */}
-        <div className="relative z-10 text-center mb-10">
-            <motion.h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+        {/* 1. MAIN SECTION HEADER - Centered at the top */}
+        <div className="relative z-10 text-center mb-16 max-w-4xl mx-auto">
+            <motion.h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
                 The Engine For Every business from strartup to Enterprise.
             </motion.h2>
-            <motion.p className="mt-4 text-lg text-gray-400">
+            <motion.p className="mt-6 text-lg md:text-xl text-slate-500 font-medium">
                 From bustling city markets to the digital frontier, BBU1 is built for ambition.
             </motion.p>
         </div>
 
-        {/* 2. DYNAMIC TEXT AREA (Appears in the dark background, above the media) */}
-        <div className="max-w-4xl mx-auto text-center mb-12 h-[120px] flex flex-col justify-center">
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={currentSlideIndex}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <h3 className="text-2xl md:text-3xl font-bold text-blue-400 mb-3">
-                        {memoizedSlideshowContent[currentSlideIndex].title}
-                    </h3>
-                    <p className="text-base md:text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto">
-                        {memoizedSlideshowContent[currentSlideIndex].description}
-                    </p>
-                </motion.div>
-            </AnimatePresence>
-        </div>
-
-        {/* 3. MEDIA CONTAINER (Fully clear, original brightness) */}
-        <motion.div className="relative rounded-2xl overflow-hidden shadow-2xl h-[400px] md:h-[700px] bg-black border border-white/5 max-w-6xl mx-auto">
-            <AnimatePresence mode="wait">
-                <motion.div 
-                    key={currentSlideIndex} 
-                    initial={{ opacity: 0, scale: 1.02 }} 
-                    animate={{ opacity: 1, scale: 1 }} 
-                    exit={{ opacity: 0, scale: 0.98 }} 
-                    transition={{ duration: 0.8 }} 
-                    className="absolute inset-0"
-                >
-                    {/* --- VIDEO AND IMAGE LOGIC (Filters Removed for Clarity) --- */}
-                    {memoizedSlideshowContent[currentSlideIndex].is_video ? (
-                        <video
-                            autoPlay
-                            muted
-                            loop
-                            playsInline
-                            /* Removed brightness-[0.7] - video is now fully clear */
-                            className="absolute inset-0 w-full h-full object-cover" 
+        {/* 2. SPLIT GRID: Media on the Left, Dynamic text on the Right */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center max-w-7xl mx-auto">
+            
+            {/* LEFT SIDE: THE MEDIA BOX (Larger weight for visuals) */}
+            <div className="lg:col-span-7 relative">
+                <motion.div className="relative rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.1)] h-[350px] md:h-[550px] bg-slate-50 border border-slate-200">
+                    <AnimatePresence mode="wait">
+                        <motion.div 
+                            key={currentSlideIndex} 
+                            initial={{ opacity: 0, x: -20 }} 
+                            animate={{ opacity: 1, x: 0 }} 
+                            exit={{ opacity: 0, x: 20 }} 
+                            transition={{ duration: 0.6, ease: "easeOut" }} 
+                            className="absolute inset-0"
                         >
-                            <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
-                            Your browser does not support the video tag.
-                        </video>
-                    ) : (
-                        <Image 
-                            src={memoizedSlideshowContent[currentSlideIndex].src} 
-                            alt={memoizedSlideshowContent[currentSlideIndex].alt} 
-                            fill
-                            style={{ objectFit: 'cover' }}
-                            /* Removed brightness-[0.7] - images are now fully clear */
-                            className="transition-all duration-700" 
-                        />
-                    )}
+                            {memoizedSlideshowContent[currentSlideIndex].is_video ? (
+                                <video
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                    /* High Clarity: No filters, full original white/bright colors */
+                                    className="absolute inset-0 w-full h-full object-cover" 
+                                >
+                                    <source src={memoizedSlideshowContent[currentSlideIndex].src} type="video/mp4" />
+                                    Your browser does not support the video tag.
+                                </video>
+                            ) : (
+                                <Image 
+                                    src={memoizedSlideshowContent[currentSlideIndex].src} 
+                                    alt={memoizedSlideshowContent[currentSlideIndex].alt} 
+                                    fill
+                                    style={{ objectFit: 'cover' }}
+                                    className="transition-all duration-700" 
+                                />
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
                 </motion.div>
-            </AnimatePresence>
+            </div>
 
-            {/* Note: The dark gradient overlay was removed to keep the video clear as requested */}
-        </motion.div>
+            {/* RIGHT SIDE: DYNAMIC SUB-CONTENT (Text appears here) */}
+            <div className="lg:col-span-5 flex flex-col justify-center">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={currentSlideIndex}
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.5 }}
+                        className="space-y-6"
+                    >
+                        {/* FEATURE CATEGORY TAG */}
+                        <div className="inline-block px-3 py-1 rounded-md bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-widest mb-2">
+                            Platform Feature
+                        </div>
 
-        {/* 4. SLIDE INDICATORS (DOTS) */}
-        <div className="mt-8 flex justify-center gap-3">
-            {memoizedSlideshowContent.map((_, idx) => (
-                <button 
-                    key={idx} 
-                    className={cn(
-                        "h-1.5 transition-all duration-500 rounded-full", 
-                        currentSlideIndex === idx ? "bg-blue-500 w-8" : "bg-gray-700 w-3 hover:bg-gray-500"
-                    )} 
-                    onClick={() => setCurrentSlideIndex(idx)} 
-                />
-            ))}
+                        {/* THE TITLE (Black) */}
+                        <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
+                            {memoizedSlideshowContent[currentSlideIndex].title}
+                        </h3>
+
+                        {/* THE DESCRIPTION (Slate Grey) */}
+                        <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-medium">
+                            {memoizedSlideshowContent[currentSlideIndex].description}
+                        </p>
+
+                        {/* CTA ACTION */}
+                        <div className="pt-4">
+                            <button className="flex items-center gap-2 text-blue-600 font-bold hover:gap-4 transition-all">
+                                Explore this module <ArrowRight size={20} />
+                            </button>
+                        </div>
+                    </motion.div>
+                </AnimatePresence>
+
+                {/* 3. SLIDE INDICATORS (DOTS) - Now aligned with the text for a balanced look */}
+                <div className="mt-12 flex gap-3">
+                    {memoizedSlideshowContent.map((_, idx) => (
+                        <button 
+                            key={idx} 
+                            className={cn(
+                                "h-1.5 transition-all duration-500 rounded-full", 
+                                currentSlideIndex === idx ? "bg-blue-600 w-10" : "bg-slate-200 w-3 hover:bg-slate-300"
+                            )} 
+                            onClick={() => setCurrentSlideIndex(idx)} 
+                        />
+                    ))}
+                </div>
+            </div>
         </div>
     </div>
 </AnimatedSection>
