@@ -2167,6 +2167,7 @@ const [isSSR, setIsSSR] = useState(true);
         </motion.div>
     </div>
 </section>
+<TrustedBySection />
 
 {/* IN-ACTION SECTION - REFACTORED: MEDIA LEFT | CONTENT RIGHT | BROWSER SHELL FIX */}
 <AnimatedSection id="in-action" className="bg-white text-slate-900 py-24 border-t border-slate-100">
