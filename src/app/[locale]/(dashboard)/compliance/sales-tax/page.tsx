@@ -4,30 +4,40 @@ import { redirect } from 'next/navigation';
 import { RevolutionarySalesTaxDashboard } from '@/components/compliance/RevolutionarySalesTaxDashboard';
 import { Calculator, Globe } from 'lucide-react';
 
-export default async function SalesTaxIntelligencePage() {
+interface PageProps {
+  params: {
+    locale: string;
+  };
+}
+
+export default async function SalesTaxIntelligencePage({ params }: PageProps) {
+    // 1. Resolve Locale for Redirects
+    const { locale } = params;
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
+    // 2. SECURE AUTHENTICATION (Fixed Redirect Paths)
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) redirect(`/${locale}/auth/login`);
 
-    // GRASSROOT FIX: Using 'profiles' table (Verified) and 'business_id' (Verified)
-    const { data: profile } = await supabase
+    // 3. SOVEREIGN CONTEXT RESOLUTION
+    const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("business_id, tenants(name, currency_code)")
         .eq("id", user.id)
         .single();
 
-    if (!profile?.business_id) redirect('/welcome');
+    // Safety: If profile lookup failed or business not linked
+    if (profileError || !profile?.business_id) redirect(`/${locale}/welcome`);
 
     const businessId = profile.business_id;
     const currency = (profile.tenants as any)?.currency_code || 'UGX';
 
-    // GRASSROOT FETCH: Fetch Real Tax Totals linked to the Business Empire
+    // 4. GRASSROOT FETCH: Fetch Real Tax Totals
     const { data: reportData } = await supabase.rpc('generate_tax_report', { 
         p_start_date: '2024-01-01', 
-        p_end_date: '2026-12-31', // Expanded to cover our March 2026 testing
-        p_entity_id: businessId     // FIXED: Passing business_id, not user_id
+        p_end_date: '2026-12-31', 
+        p_entity_id: businessId     
     });
 
     return (
@@ -50,12 +60,12 @@ export default async function SalesTaxIntelligencePage() {
                     total_revenue: reportData?.taxable_sales || 0,
                     total_taxable_revenue: reportData?.taxable_sales || 0,
                     total_tax_collected: reportData?.tax_liability || 0,
-                    total_input_tax_credit: reportData?.payments_made || 0, // ADDED: New global mandate field
-                    net_tax_liability: reportData?.balance_due || 0        // ADDED: New global mandate field
+                    total_input_tax_credit: reportData?.payments_made || 0,
+                    net_tax_liability: reportData?.balance_due || 0
                 }}
                 transactions={[]} 
                 reportPeriod="Full Operational History"
-                currency={currency} // FIXED: Now dynamic from database
+                currency={currency} 
             />
         </div>
     );

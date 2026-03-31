@@ -228,11 +228,21 @@ const navSections: NavItem[] = [
     },
 
 {
-        type: 'accordion', title: 'Compliance Hub', icon: Gavel, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
+        type: 'accordion', 
+        title: 'Compliance Hub', 
+        icon: Gavel, 
+        // ADDED: 'accountant' and 'commander'
+        roles: ['admin', 'manager', 'auditor', 'owner', 'architect', 'accountant', 'commander'], 
         module: 'Compliance Hub',
         subItems: [
             { href: '/compliance', label: 'Overview', icon: LayoutDashboard },
-            { href: '/compliance/sales-tax', label: 'Sales Tax Intelligence', icon: Calculator, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
+            { 
+                href: '/compliance/sales-tax', 
+                label: 'Sales Tax Intelligence', 
+                icon: Calculator, 
+                // ADDED: 'accountant' and 'commander'
+                roles: ['admin', 'manager', 'auditor', 'owner', 'architect', 'accountant', 'commander'] 
+            },
             { href: '/compliance/risk-dashboard', label: 'Risk Dashboard', icon: BarChart3 },
             { href: '/compliance/kyc-aml', label: 'KYC / AML', icon: UserCheckIcon },
             { href: '/compliance/gdpr', label: 'Data Requests', icon: FileText },

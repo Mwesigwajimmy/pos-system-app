@@ -3,27 +3,44 @@
 import React, { useState, useEffect } from 'react';
 import { useCopilot } from '@/context/CopilotContext';
 import { 
-  ShieldCheck, Globe, Activity, Zap, 
-  FileText, TrendingUp, Presentation, Mic2,
-  Search, Download, Bell, RefreshCcw, ArrowUpRight, ArrowDownRight,
-  MoreHorizontal, ChevronRight
+  ShieldCheck, Globe, Activity, 
+  TrendingUp, Mic2, Search, Download, 
+  Bell, RefreshCcw, ArrowUpRight, 
+  ArrowDownRight, ChevronRight 
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 
-// New specialized components
+// Specialized Sub-components
 import ForensicCustomsHub from './ForensicCustomsHub';
 import StrategicRouteAudit from './StrategicRouteAudit';
 import GlobalMarketScout from './GlobalMarketScout';
 
 export default function AuraLogisticsMaster() {
     const { isReady, openCopilot } = useCopilot();
-    const [lastSync, setLastSync] = useState(new Date().toLocaleTimeString());
+    
+    // FIX: Initialize with empty string to prevent "Illegal constructor / Hydration" error
+    const [lastSync, setLastSync] = useState('');
+
+    useEffect(() => {
+        // Only set the time once the component is mounted in the browser
+        setLastSync(new Date().toLocaleTimeString());
+        
+        // Optional: Refresh the sync time every minute
+        const timer = setInterval(() => {
+            setLastSync(new Date().toLocaleTimeString());
+        }, 60000);
+        
+        return () => clearInterval(timer);
+    }, []);
 
     return (
         <div className="p-0 bg-slate-50/80 min-h-screen animate-in fade-in duration-700 selection:bg-emerald-500/30">
@@ -38,13 +55,13 @@ export default function AuraLogisticsMaster() {
                     </div>
                     <div className="relative w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <Input className="h-9 pl-10 bg-slate-100/50 border-none rounded-full text-xs" placeholder="Search Sovereign Nodes, Shipments, or Audit IDs..." />
+                        <Input className="h-9 pl-10 bg-slate-100/50 border-none rounded-full text-xs" placeholder="Search Sovereign Nodes..." />
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase mr-4">
-                        <RefreshCcw size={12} className="animate-spin-slow" />
-                        Live Sync: {lastSync}
+                        <RefreshCcw size={12} className="animate-spin" />
+                        Live Sync: {lastSync || 'Connecting...'}
                     </div>
                     <Button variant="ghost" size="icon" className="relative rounded-full">
                         <Bell size={20} className="text-slate-600" />
@@ -57,9 +74,9 @@ export default function AuraLogisticsMaster() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem className="font-medium">Boardroom PDF</DropdownMenuItem>
-                            <DropdownMenuItem className="font-medium">Financial Excel</DropdownMenuItem>
-                            <DropdownMenuItem className="font-medium">Customs Manifest</DropdownMenuItem>
+                            <DropdownMenuItem className="font-medium cursor-pointer">Boardroom PDF</DropdownMenuItem>
+                            <DropdownMenuItem className="font-medium cursor-pointer">Financial Excel</DropdownMenuItem>
+                            <DropdownMenuItem className="font-medium cursor-pointer">Customs Manifest</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -84,7 +101,7 @@ export default function AuraLogisticsMaster() {
                     </div>
                     <div className="flex gap-4">
                         <Button 
-                            onClick={() => openCopilot()} 
+                            onClick={() => openCopilot && openCopilot()} 
                             className="h-16 px-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-2xl shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 group"
                         >
                             <Mic2 className="mr-3 h-5 w-5 group-hover:animate-pulse" /> 
@@ -96,7 +113,7 @@ export default function AuraLogisticsMaster() {
                     </div>
                 </div>
 
-                {/* --- 3. AGENT STATUS HUD (WITH TREND INDICATORS) --- */}
+                {/* --- 3. AGENT STATUS HUD --- */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="bg-white border border-slate-200 shadow-xl rounded-[2rem] p-8 relative overflow-hidden group hover:border-emerald-500/50 transition-all">
                         <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">

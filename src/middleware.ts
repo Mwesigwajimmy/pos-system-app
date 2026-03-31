@@ -91,7 +91,8 @@ const rolePermissions: Record<string, string[]> = {
     '/ledger': ['admin', 'manager', 'accountant', 'architect', 'commander'],
     '/expenses': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander'],
     '/accountant': ['admin', 'accountant', 'architect', 'commander', 'owner'],
-    '/compliance': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander'],
+    '/compliance/sales-tax': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
+    '/compliance': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander', 'accountant'],
     '/audit': ['admin', 'auditor', 'architect', 'commander', 'owner'],
 
     // --- INVENTORY & PROCUREMENT ---

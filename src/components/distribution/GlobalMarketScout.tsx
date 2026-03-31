@@ -4,7 +4,7 @@ import React from 'react';
 import { 
   Globe, TrendingUp, AlertCircle, 
   Zap, BarChart3, Search, 
-  ArrowUpRight, ShieldCheck, Timer
+  ArrowUpRight, ShieldCheck, Timer, Presentation
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button'; // Fixed missing import
