@@ -23,7 +23,7 @@ import {
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
     CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
-    Bus, RefreshCcw, Fingerprint
+    Bus, RefreshCcw, Anchor, Fingerprint
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -334,6 +334,7 @@ const navSections: NavItem[] = [
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/distribution/aura-master', label: 'Aura Master HUD', icon: Zap },
+            { href: '/distribution/manifest-entry', label: 'Global Manifest', icon: Anchor },
             { href: '/distribution/customs', label: 'Forensic Customs', icon: Fingerprint },
             { href: '/distribution/market-intel', label: 'Market Scout', icon: Globe }, 
             { href: '/distribution/routes', label: 'Routes', icon: Route }, 

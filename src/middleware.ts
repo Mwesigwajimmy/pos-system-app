@@ -110,6 +110,7 @@ const rolePermissions: Record<string, string[]> = {
     '/lending': ['admin', 'manager', 'owner', 'architect', 'commander', 'loan_officer', 'credit_analyst', 'debt_collector'],
     '/telecom': ['admin', 'manager', 'owner', 'architect', 'commander', 'agent', 'dsr_rep', 'float_manager', 'cashier'],
     '/distribution/aura-master': ['admin', 'manager', 'owner', 'architect', 'commander'],
+    '/distribution/manifest-entry': ['admin', 'manager', 'owner', 'architect', 'commander'],
     '/distribution/customs': ['admin', 'manager', 'owner', 'architect', 'commander', 'auditor'],
     '/distribution/market-intel': ['admin', 'manager', 'owner', 'architect', 'commander'],
     '/distribution': ['admin', 'manager', 'owner', 'architect', 'commander', 'fleet_manager', 'driver', 'warehouse_manager'],
