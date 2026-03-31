@@ -83,6 +83,9 @@ const rolePermissions: Record<string, string[]> = {
     '/loyalty': ['admin', 'owner', 'architect', 'commander'],
 
     // --- INVOICING & FINANCE ---
+    '/invoicing/fx-audit': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor'],
+    '/invoicing/compliance': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor'],
+    '/invoicing/recurring': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander'],
     '/invoicing': ['admin', 'manager', 'accountant', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'legal_counsel'],
     '/finance': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor'],
     '/ledger': ['admin', 'manager', 'accountant', 'architect', 'commander'],
@@ -105,6 +108,9 @@ const rolePermissions: Record<string, string[]> = {
     '/sacco': ['admin', 'manager', 'owner', 'architect', 'commander', 'sacco_manager', 'teller', 'loan_officer'],
     '/lending': ['admin', 'manager', 'owner', 'architect', 'commander', 'loan_officer', 'credit_analyst', 'debt_collector'],
     '/telecom': ['admin', 'manager', 'owner', 'architect', 'commander', 'agent', 'dsr_rep', 'float_manager', 'cashier'],
+    '/distribution/aura-master': ['admin', 'manager', 'owner', 'architect', 'commander'],
+    '/distribution/customs': ['admin', 'manager', 'owner', 'architect', 'commander', 'auditor'],
+    '/distribution/market-intel': ['admin', 'manager', 'owner', 'architect', 'commander'],
     '/distribution': ['admin', 'manager', 'owner', 'architect', 'commander', 'fleet_manager', 'driver', 'warehouse_manager'],
     '/professional-services': ['admin', 'manager', 'owner', 'architect', 'commander', 'lawyer', 'accountant', 'consultant', 'practitioner'],
     '/rentals': ['admin', 'manager', 'owner', 'architect', 'commander', 'property_manager', 'leasing_agent'],

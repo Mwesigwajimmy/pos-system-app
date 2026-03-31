@@ -22,7 +22,8 @@ import {
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
     CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
-    Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, Bus
+    Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
+    Bus, RefreshCcw, Fingerprint
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -118,6 +119,9 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
             { href: '/invoicing/list', label: 'All Invoices', icon: FileStack }, 
+            { href: '/invoicing/fx-audit', label: 'FX Forensic Audit', icon: RefreshCcw },
+            { href: '/invoicing/compliance', label: 'Compliance Bridge', icon: Landmark },
+            { href: '/invoicing/recurring', label: 'Revenue Streams', icon: Repeat },
             { href: '/invoicing/to-be-issued', label: 'Pending Issuance', icon: Clock }, 
             { href: '/invoicing/credit-notes', label: 'Credit Notes', icon: FileMinus }, 
             { href: '/invoicing/debit-notes', label: 'Debit Notes', icon: FilePlus }, 
@@ -318,7 +322,10 @@ const navSections: NavItem[] = [
         module: 'Distribution & Logistics',
         businessTypes: ['Distribution', 'Mixed/Conglomerate'],
         subItems: [ 
-            { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard }, 
+            { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard },
+            { href: '/distribution/aura-master', label: 'Aura Master HUD', icon: Zap },
+            { href: '/distribution/customs', label: 'Forensic Customs', icon: Fingerprint },
+            { href: '/distribution/market-intel', label: 'Market Scout', icon: Globe }, 
             { href: '/distribution/routes', label: 'Routes', icon: Route }, 
             { href: '/distribution/assignments', label: 'Assignments', icon: UserCog },
             { href: '/distribution/loading', label: 'Loading', icon: Boxes },

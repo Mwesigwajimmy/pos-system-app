@@ -16,7 +16,11 @@ import {
   ArrowUpRight, 
   Landmark,
   Layers,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCcw,
+  Globe,
+  Zap,
+  Fingerprint
 } from "lucide-react";
 
 // --- Enterprise Metadata ---
@@ -66,7 +70,7 @@ export default async function InvoicingDashboardPage({ params: { locale } }: Pag
 
   // 3. ENTERPRISE STATS AUDIT (Financial Integrity Fetching)
   // We fetch counts that distinguish between "Drafts" and "Ledger-Sealed" documents.
-  const [invoicesRes, pendingRes, deferredRes, revenueSumRes] = await Promise.all([
+  const [invoicesRes, pendingRes, deferredRes, revenueSumRes, fxAuditRes, complianceRes] = await Promise.all([
     // Total "Real" Invoices (Issued or Paid)
     supabase.from("invoices").select("id", { count: 'exact', head: true }).eq("business_id", activeTenantId).in("status", ["ISSUED", "paid"]),
     // Items stuck in the "To Be Issued" Queue (Transaction ID is NULL)
@@ -74,10 +78,16 @@ export default async function InvoicingDashboardPage({ params: { locale } }: Pag
     // Active Deferred Revenue Schedules
     supabase.from("deferred_revenue").select("id", { count: 'exact', head: true }).eq("tenant_id", activeTenantId),
     // Sum of Booked Revenue (100% Interconnected)
-    supabase.from("invoices").select("total_amount").eq("business_id", activeTenantId).in("status", ["ISSUED", "paid"])
+    supabase.from("invoices").select("total_amount").eq("business_id", activeTenantId).in("status", ["ISSUED", "paid"]),
+    
+    // --- NEW UPGRADES (Forensic Intelligence Data) ---
+    supabase.from("invoice_fx_audit").select("unrealized_variance").not("unrealized_variance", "is", null),
+    supabase.from("invoice_fiscal_validation").select("id", { count: 'exact', head: true }).eq("sync_status", "PENDING")
   ]);
 
   const totalBookedRevenue = (revenueSumRes.data || []).reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0);
+  const totalFXVariance = (fxAuditRes.data || []).reduce((acc, curr) => acc + (Number(curr.unrealized_variance) || 0), 0);
+  
   const formatCurrency = (val: number) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'UGX', maximumFractionDigits: 0 }).format(val);
 
   return (
@@ -99,8 +109,10 @@ export default async function InvoicingDashboardPage({ params: { locale } }: Pag
         </div>
         <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 mr-2">
-                <CheckCircle2 size={14} className="text-emerald-600" />
-                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tight">Ledger Synchronized</span>
+                <div className="flex items-center gap-2">
+                   <CheckCircle2 size={14} className="text-emerald-600" />
+                   <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tight">Ledger Synchronized</span>
+                </div>
             </div>
             <Button asChild size="lg" className="h-14 px-8 bg-blue-600 hover:bg-blue-700 shadow-2xl shadow-blue-500/20 font-black uppercase text-xs tracking-widest rounded-2xl">
               <Link href={`/${locale}/invoicing/create`}>
@@ -108,6 +120,40 @@ export default async function InvoicingDashboardPage({ params: { locale } }: Pag
               </Link>
             </Button>
         </div>
+      </div>
+
+      {/* --- NEW UPGRADE: FORENSIC INTELLIGENCE LAYER --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link href={`/${locale}/invoicing/fx-audit`} className="group p-6 bg-slate-950 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden transition-all hover:scale-[1.01]">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-30"><RefreshCcw size={60} className="text-blue-400 animate-spin-slow" /></div>
+            <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2"><Fingerprint size={12} /> Forensic FX Variance</p>
+            <div className={`text-2xl font-black mt-2 ${totalFXVariance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {totalFXVariance >= 0 ? '+' : ''}{formatCurrency(totalFXVariance)}
+            </div>
+            <p className="text-[9px] text-slate-400 mt-4 uppercase font-bold flex items-center gap-2">
+                <ShieldCheck size={12} className="text-emerald-500" /> Live Sovereign Market Audit
+            </p>
+          </Link>
+
+          <Link href={`/${locale}/invoicing/compliance`} className="group p-6 bg-white rounded-3xl border border-slate-200 shadow-xl transition-all hover:border-blue-600">
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Statutory Compliance</p>
+            <div className="text-2xl font-black text-slate-900 mt-2 flex items-center gap-3">
+                {complianceRes.count || 0} <span className="text-xs text-amber-500 uppercase font-bold">Pending Sync</span>
+            </div>
+            <p className="text-[9px] text-slate-500 mt-4 uppercase font-bold flex items-center gap-2 italic">
+                <Globe size={12} className="text-blue-500" /> National Authority Handshake Active
+            </p>
+          </Link>
+
+          <Link href={`/${locale}/invoicing/recurring`} className="group p-6 bg-blue-600 rounded-3xl shadow-xl transition-all hover:bg-blue-700">
+            <p className="text-[10px] font-black uppercase text-blue-100 tracking-widest">Revenue Streams</p>
+            <div className="text-2xl font-black text-white mt-2">
+                {deferredRes.count || 0} <span className="text-xs uppercase opacity-70 italic font-bold ml-1">Active Subs</span>
+            </div>
+            <p className="text-[9px] text-blue-200 mt-4 uppercase font-bold flex items-center gap-2">
+                <Zap size={12} className="fill-current" /> Automation Scheduler Engaged
+            </p>
+          </Link>
       </div>
 
       {/* Stats Command Center */}

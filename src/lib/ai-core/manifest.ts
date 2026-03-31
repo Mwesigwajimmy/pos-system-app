@@ -85,6 +85,18 @@ export const AI_CAPABILITIES: ITool[] = [
         'generate_growth_strategy'
     ),
 
+    SupabaseToolFactory.create(
+        "pm_audit_landed_cost",
+        "Performs a deep forensic audit of a shipment's total landed cost, including Customs Duty, Levies, and VAT. Presents the results in the visual boardroom.",
+        z.object({
+            shipment_ref: z.string(),
+            country_code: z.string(),
+            cif_value_usd: z.number(),
+            duty_rate: z.number()
+        }),
+        'aura_calculate_landed_cost'
+    ),
+
    SupabaseToolFactory.create(
         "execute_erp_operation",
         "General tool for creating invoices, processing sales, or creating routes for distribution. Aura has full brain access to all 11 modules.",
