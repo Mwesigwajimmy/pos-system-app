@@ -2,12 +2,26 @@
 
 import React, { useState } from 'react';
 import { 
-  Ship, Plane, Truck, Globe, 
-  FileText, Plus, Trash2, Save, 
-  Anchor, Landmark, CheckCircle2, RefreshCw,
-  Box, Info, MapPin, ClipboardList,
+  Ship, 
+  Plane, 
+  Truck, 
+  Globe, 
+  FileText, 
+  Plus, 
+  Trash2, 
+  Save, 
+  Anchor, 
+  Landmark, 
+  CheckCircle2, 
+  RefreshCw,
+  Box, 
+  Info, 
+  MapPin, 
+  ClipboardList,
   AlertCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ShieldCheck, // FIXED: Added missing import to resolve ReferenceError
+  Globe2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -123,7 +137,7 @@ export default function CargoManifestEntry() {
 
                 {/* 3. TAX & VALUE ESTIMATION SUMMARY */}
                 <Card className="bg-slate-900 border-none shadow-lg rounded-xl p-8 flex flex-col justify-between text-white relative overflow-hidden">
-                    <Globe size={100} className="absolute -right-4 -top-4 text-blue-500 opacity-5 rotate-12" />
+                    <Globe2 size={100} className="absolute -right-4 -top-4 text-blue-500 opacity-5 rotate-12" />
                     <div className="space-y-6 relative z-10">
                         <div>
                             <p className="text-[10px] font-bold uppercase text-blue-400 tracking-widest">Estimated CIF Base</p>

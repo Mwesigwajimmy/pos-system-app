@@ -11,7 +11,33 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+
+// UI Components - FIXED: Added missing imports
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from "@/components/ui/dialog";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 
 // --- 1. Financial Utilities (Logic Preserved) ---
 const Money = {
@@ -170,6 +196,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
     mode: 'onBlur'
   });
 
+  // Sync form defaults
   useEffect(() => {
     if (businessConfig.currency) {
       setValue('currency', businessConfig.currency);
@@ -183,7 +210,6 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
   // --- 7. Dynamic Calculations ---
   const items = watch("items");
   const selectedCurrency = watch("currency");
-  const currentExchangeRate = watch("exchangeRate");
   const currencyMeta = CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
 
   const totals = useMemo(() => {
@@ -211,7 +237,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
   }, [items]);
 
   const formatCurrency = (val: number) => 
-    new Intl.NumberFormat(currencyMeta.locale, { style: 'currency', currency: currencyMeta.code, minimumFractionDigits: 0 }).format(val);
+    new Intl.NumberFormat(currencyMeta.locale, { style: 'currency', currency: currencyMeta.code }).format(val);
 
   // --- 8. Submission Handler ---
   const onSubmit: SubmitHandler<InvoiceFormValues> = async (data) => {
@@ -278,7 +304,8 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
       router.refresh();
 
     } catch (error: any) {
-      setSubmitError(error.message || "Failed to finalize invoice.");
+      console.error(error);
+      setSubmitError(error.message || "Financial handshake failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -367,7 +394,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
             <div className="p-8 bg-slate-900 rounded-2xl flex flex-wrap items-center gap-8 text-white shadow-lg">
                 <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Billing Currency</label>
-                    <select {...register("currency")} className="bg-white/10 border-none rounded-lg h-10 px-4 text-sm font-bold outline-none w-40">
+                    <select {...register("currency")} className="bg-white/10 border-none rounded-lg h-10 px-4 text-sm font-bold outline-none">
                         {CURRENCIES.map(c => <option key={c.code} value={c.code} className="text-black font-semibold">{c.code} ({c.symbol})</option>)}
                     </select>
                 </div>
@@ -375,7 +402,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
                 {selectedCurrency !== businessConfig.currency && (
                     <div className="space-y-2 animate-in slide-in-from-left-2 duration-500">
                         <label className="text-[10px] font-bold uppercase text-blue-400 tracking-widest flex items-center gap-2">
-                            <RefreshCcw size={14} /> Currency Exchange Rate
+                            <RefreshCcw size={14} /> Exchange Rate
                         </label>
                         <div className="flex items-center gap-4">
                             <input 

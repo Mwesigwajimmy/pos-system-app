@@ -11,7 +11,14 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+
+// UI Components
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from "@/components/ui/badge";
 import toast from 'react-hot-toast';
 
 // --- 1. Financial Utilities (Logic Preserved) ---
@@ -37,7 +44,10 @@ const getLocalDateString = () => {
 const getFutureDateString = (daysToAdd: number) => {
   const date = new Date();
   date.setDate(date.getDate() + daysToAdd);
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // --- 3. Validation Schema ---
