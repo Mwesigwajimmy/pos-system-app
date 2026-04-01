@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   ArrowRight,
   Beaker,
-  Utensils
+  Utensils,
+  BarChart3 // FIXED: Added missing import to resolve ReferenceError
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -205,7 +206,7 @@ export default function IncomeStatementMaster({ from, to }: { from: string, to: 
                         className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-[10px] font-bold uppercase px-4 shadow-sm"
                     >
                         {isExporting ? <Loader2 size={12} className="mr-2 animate-spin" /> : <Download size={12} className="mr-2" />}
-                        Export Bundle
+                        Export PDF
                     </Button>
                 </div>
             </div>
@@ -365,7 +366,7 @@ export default function IncomeStatementMaster({ from, to }: { from: string, to: 
             </div>
 
             {/* --- EXECUTIVE ADVISORY FOOTER --- */}
-            <div className="bg-slate-50 p-10 border-t flex flex-col md:flex-row gap-10 items-center">
+            <div className="bg-slate-50 p-10 border-t flex flex-col md:flex-row gap-8 items-center">
                 <div className="h-20 w-20 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm">
                     <BarChart3 className="text-blue-600 h-10 w-10" />
                 </div>
