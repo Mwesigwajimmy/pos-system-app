@@ -22,7 +22,7 @@ import {
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
     CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
-    Bell, MessageSquare, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
+    Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Anchor, Fingerprint
 } from 'lucide-react';
 
@@ -136,6 +136,7 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/reports/finance-hub', label: 'Finance Hub', icon: Landmark },
             { href: '/reports/executive-summary', label: 'Executive Summary', icon: Activity },
+            { href: '/reports/income-statement', label: 'Income Statement', icon: TrendingUp },
             { href: '/reports/profit-loss', label: 'Profit & Loss', icon: FileText },
             { href: '/reports/balance-sheet', label: 'Balance Sheet', icon: Scale },
             { href: '/reports/trial-balance', label: 'Trial Balance', icon: Scale },
