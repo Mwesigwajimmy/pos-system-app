@@ -4,392 +4,378 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { 
-  TrendingUp, 
-  Landmark, 
-  CheckCircle2, 
-  Printer, 
-  Download, 
-  Globe, 
-  RefreshCw, 
-  AlertCircle, 
-  Info, 
-  Zap, 
-  ArrowRightLeft, 
-  Briefcase, 
-  Activity,
-  FileText,
-  ShieldCheck,
-  ArrowRight,
-  Beaker,
-  Utensils,
-  BarChart3,
-  Calendar,
-  Calculator,
-  Loader2,
-  ChevronDown,
-  MessageSquareText
+  TrendingUp, Landmark, CheckCircle2, Printer, Download, 
+  Globe, RefreshCw, AlertCircle, Info, Calculator, 
+  ArrowRightLeft, Briefcase, Activity, FileText, ShieldCheck,
+  ArrowRight, Beaker, FileSpreadsheet, Percent, Search,
+  ChevronDown, Layers, MousePointerClick, Clock, Loader2,
+  TrendingDown, Hash, Scale
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableRow, TableHeader, TableHead } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { cn } from '@/lib/utils';
 import { useCopilot } from '@/context/CopilotContext';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 
-// PDF Export Engines
+// Export Engines
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
-export default function IncomeStatementMaster() {
+// --- Formatters ---
+const formatMoney = (val: number, currency: string) => 
+    new Intl.NumberFormat('en-US', { 
+        style: 'currency', 
+        currency: currency, 
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0 
+    }).format(val || 0);
+
+export default function IncomeStatementMaster({ from, to }: { from: string, to: string }) {
     const supabase = createClient();
-    const { openCopilot, businessId } = useCopilot();
-    
-    // 1. DATE RANGE STATE (Default to current full month)
-    const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-    const [dateTo, setDateTo] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+    const { businessId, openCopilot } = useCopilot();
+    const [commonSizeView, setCommonSizeView] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
-    const [viewCurrency, setViewCurrency] = useState<'LOCAL' | 'USD'>('LOCAL');
 
-    // 2. DATA ACQUISITION: Direct General Ledger Handshake
-    // This pulls from the specific business accounts (Isolated logic)
+    // 1. DATA FETCHING (Executive Kernel Call v11 Logic)
     const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ['professional-pnl', dateFrom, dateTo, businessId],
+        queryKey: ['enterprise-pnl-v11', from, to, businessId],
         queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_professional_income_statement', {
+            const { data, error } = await supabase.rpc('get_enterprise_pnl_v11', {
                 p_business_id: businessId,
-                p_start_date: dateFrom,
-                p_end_date: dateTo
+                p_start_date: from,
+                p_end_date: to,
+                // Comparison period defaults to previous month if logic is added to props
             });
             if (error) throw error;
             return data;
         },
         enabled: !!businessId,
-        staleTime: 1000 * 60 * 5, 
     });
 
-    const currencyCode = data?.metadata?.currency || 'UGX';
-    const businessName = data?.metadata?.business_name || 'Active Enterprise';
-    const exchangeRate = data?.metadata?.exchange_rate || 3800;
+    const currency = data?.metadata?.currency || 'USD';
+    const totalRev = data?.summary?.revenue || 1;
 
-    // 3. FINANCIAL FORMATTING ENGINE
-    const displayVal = (val: number) => {
-        const amount = viewCurrency === 'LOCAL' ? (val || 0) : (val / exchangeRate);
-        const code = viewCurrency === 'LOCAL' ? currencyCode : 'USD';
-        
-        return new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: code,
-            minimumFractionDigits: 0 
-        }).format(amount);
+    // --- Helper for % of Revenue (Common Size) ---
+    const getPct = (val: number) => ((Math.abs(val) / totalRev) * 100).toFixed(1) + '%';
+    const display = (val: number) => commonSizeView ? getPct(val) : formatMoney(val, currency);
+
+    // --- Trend Indicator ---
+    const Trend = ({ val }: { val?: number }) => {
+        if (!val) return null;
+        return val > 0 ? 
+            <span className="text-emerald-500 flex items-center text-[10px] font-bold ml-2"><TrendingUp size={10} className="mr-1"/>+{val.toFixed(1)}%</span> : 
+            <span className="text-red-500 flex items-center text-[10px] font-bold ml-2"><TrendingDown size={10} className="mr-1"/>{val.toFixed(1)}%</span>;
     };
 
-    // 4. PROFESSIONAL PDF GENERATION
-    const handleExportPDF = () => {
-        if (!data) return;
-        setIsExporting(true);
-        try {
-            const doc = new jsPDF();
-            const timestamp = format(new Date(), 'dd MMM yyyy, HH:mm');
-
-            doc.setFontSize(22);
-            doc.setTextColor(15, 23, 42); 
-            doc.text("INCOME STATEMENT", 14, 22);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text(`Entity: ${businessName}`, 14, 30);
-            doc.text(`Period: ${dateFrom} to ${dateTo}`, 14, 35);
-            doc.text(`Currency: ${viewCurrency === 'LOCAL' ? currencyCode : 'USD'}`, 14, 40);
-
-            autoTable(doc, {
-                startY: 50,
-                head: [['Account Details', 'Amount']],
-                body: [
-                    ['Total Operating Revenue', displayVal(data.revenue.total)],
-                    ['Cost of Goods Sold (COGS)', `(${displayVal(data.cogs)})`],
-                    ['Operating Expenses (OPEX)', `(${displayVal(data.opex.total)})`],
-                    ['Tax Provisions', `(${displayVal(data.tax_provision)})`],
-                    ['NET INCOME FOR PERIOD', displayVal(data.net_income)],
-                ],
-                theme: 'striped',
-                headStyles: { fillColor: [51, 65, 85] }
-            });
-
-            const finalY = (doc as any).lastAutoTable.finalY + 20;
-            doc.setFontSize(8);
-            doc.text(`Authenticated by BBU1 System • ID: ${businessId.slice(0,12)}`, 14, finalY);
-
-            doc.save(`Income_Statement_${dateFrom}_to_${dateTo}.pdf`);
-            toast.success("Professional Statement Downloaded");
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsExporting(false);
-        }
+    // --- EXCEL EXPORT ENGINE ---
+    const handleExportExcel = () => {
+        const wb = XLSX.utils.book_new();
+        const wsData = [
+            ["BBU1 ENTERPRISE PERFORMANCE REPORT"],
+            [`Entity: ${data?.metadata?.entity}`],
+            [`Jurisdiction: ${data?.audit?.jurisdiction}`],
+            [`Period: ${from} to ${to}`],
+            [`Compliance: ${data?.audit?.compliance_standard}`],
+            [],
+            ["Financial Line Item", "Value", "% of Revenue", "Notes"],
+            ["Total Revenue", data?.summary?.revenue, "100%", "Operating Inflow"],
+            ["Cost of Sales", -data?.summary?.cogs, getPct(data?.summary?.cogs), "Direct Costs"],
+            ["Gross Profit", data?.summary?.gross_profit, getPct(data?.summary?.gross_profit), ""],
+            ["Operating Expenses", -data?.summary?.opex, getPct(data?.summary?.opex), "OPEX Burn"],
+            ["EBITDA", data?.summary?.ebitda, getPct(data?.summary?.ebitda), "Cash Flow Proxy"],
+            ["D&A", -data?.summary?.da, getPct(data?.summary?.da), "Non-Cash"],
+            ["EBIT", data?.summary?.ebit, getPct(data?.summary?.ebit), "Operating Income"],
+            ["Interest/Finance", -data?.summary?.interest, getPct(data?.summary?.interest), ""],
+            ["Other Income/FX", data?.summary?.other_income, getPct(data?.summary?.other_income), "Non-Operating"],
+            ["Taxes (Total)", -data?.summary?.total_tax, getPct(data?.summary?.total_tax), "Statutory Liability"],
+            ["NET INCOME", data?.summary?.net_income, getPct(data?.summary?.net_income), "Final Surplus"]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Financial Statement");
+        XLSX.writeFile(wb, `BBU1_Executive_Report_${from}.xlsx`);
+        toast.success("Excel Ledger Exported");
     };
+
+    if (isLoading) return (
+        <div className="max-w-6xl mx-auto p-20 space-y-8">
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-[600px] w-full rounded-3xl" />
+        </div>
+    );
 
     if (error) return (
-        <div className="max-w-5xl mx-auto p-12 text-center bg-white rounded-xl border border-red-100 shadow-sm mt-10">
+        <div className="max-w-xl mx-auto my-20 p-10 border-2 border-dashed border-red-200 rounded-3xl text-center bg-red-50">
             <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
-            <h2 className="text-lg font-bold text-red-900 uppercase">Accounting Ledger Sync Error</h2>
-            <p className="text-slate-500 text-sm mt-2">{error.message}</p>
-            <Button onClick={() => refetch()} className="mt-6 bg-blue-600 hover:bg-blue-700">Reconnect Statement</Button>
+            <h2 className="text-lg font-bold text-red-900 uppercase">Statement Sync Failed</h2>
+            <p className="text-sm text-red-600/70 mt-2">{error.message}</p>
+            <Button onClick={() => refetch()} className="mt-6 bg-red-600 hover:bg-red-700 text-white rounded-xl">Re-establish Handshake</Button>
         </div>
     );
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500 font-sans antialiased">
             
-            {/* --- TOP BAR: CONTROLS & DATE SELECTION --- */}
-            <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm flex flex-col lg:flex-row justify-between items-center gap-6 print:hidden">
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+            {/* --- EXECUTIVE TOOLBAR --- */}
+            <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 print:hidden">
+                <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
-                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Period From</Label>
-                        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 w-40 text-xs font-semibold border-slate-200" />
+                        <Switch checked={commonSizeView} onCheckedChange={setCommonSizeView} />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Common Size Analysis</span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase">Toggle % of Revenue</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">To</Label>
-                        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 w-40 text-xs font-semibold border-slate-200" />
+                    <div className="h-6 w-px bg-slate-200" />
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-blue-600 bg-blue-50 border-blue-100 font-bold px-3 py-1">
+                            <Scale size={12} className="mr-1.5" /> {data?.audit?.jurisdiction || 'Global'} Compliance
+                        </Badge>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-blue-600 h-9 px-2 hover:bg-blue-50">
-                        <RefreshCw size={14} className={cn(isLoading && "animate-spin")} />
-                    </Button>
                 </div>
-
-                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setViewCurrency(viewCurrency === 'LOCAL' ? 'USD' : 'LOCAL')}
-                        className="text-[10px] font-bold uppercase border-slate-200 h-9"
-                    >
-                        <ArrowRightLeft size={12} className="mr-2" /> Display in {viewCurrency === 'LOCAL' ? 'USD' : currencyCode}
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleExportExcel} className="h-10 font-bold border-slate-200 rounded-lg px-4 hover:bg-slate-50 transition-all">
+                        <FileSpreadsheet size={14} className="mr-2 text-emerald-600" /> Export XLSX
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 border-slate-200 font-bold text-xs"><Printer size={14} className="mr-2" /> Print</Button>
-                    <Button 
-                        onClick={handleExportPDF} 
-                        disabled={isExporting || isLoading}
-                        className="h-9 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm"
-                    >
-                        {isExporting ? <Loader2 size={14} className="animate-spin mr-2" /> : <Download size={14} className="mr-2" />}
-                        Export PDF
+                    <Button className="h-10 px-6 bg-slate-950 hover:bg-slate-900 text-white font-bold rounded-lg shadow-sm" onClick={() => window.print()}>
+                        <Printer size={14} className="mr-2" /> Final Print
                     </Button>
                 </div>
             </div>
 
-            {/* --- MASTER REPORT CARD --- */}
-            {isLoading ? (
-                <div className="space-y-6">
-                    <Skeleton className="h-40 w-full rounded-xl" />
-                    <Skeleton className="h-96 w-full rounded-xl" />
-                </div>
-            ) : (
-                <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                    <CardHeader className="bg-slate-50/50 border-b p-8">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <CheckCircle2 size={16} className="text-emerald-500" />
-                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Accounting Integrity Verified</span>
-                                </div>
-                                <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">Income Statement</h1>
-                                <p className="text-sm text-slate-500 font-medium ml-1">Company: <span className="font-bold text-slate-800">{businessName}</span></p>
-                            </div>
-                            <div className="text-left md:text-right space-y-1.5">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reporting Period</p>
-                                <p className="text-sm font-semibold text-slate-700">{format(new Date(dateFrom), "dd MMM yyyy")} — {format(new Date(dateTo), "dd MMM yyyy")}</p>
-                                <div className="flex md:justify-end">
-                                    <Badge variant="outline" className="mt-2 border-blue-200 text-blue-700 bg-blue-50 font-bold px-3 py-0.5">
-                                        Currency: {viewCurrency === 'LOCAL' ? currencyCode : 'USD'}
-                                    </Badge>
-                                </div>
-                            </div>
+            {/* --- THE INCOME STATEMENT --- */}
+            <Card className="border-slate-200 shadow-2xl rounded-[2rem] overflow-hidden bg-white">
+                <CardHeader className="bg-slate-50/50 border-b p-8 md:p-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-emerald-600">
+                            <div className="bg-emerald-100 p-1 rounded-md"><CheckCircle2 size={12} /></div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Validated General Ledger Data</span>
                         </div>
-                    </CardHeader>
-
-                    <CardContent className="p-8 md:p-12 space-y-12">
-                        
-                        {/* 1. REVENUE SECTION */}
-                        <section className="space-y-4">
-                            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-2">
-                                <h2 className="text-sm font-bold uppercase tracking-tight text-slate-900">I. Operating Revenue</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Cash Inflow</span>
-                            </div>
-                            <Table>
-                                <TableBody>
-                                    {data.revenue.accounts?.length > 0 ? (
-                                        data.revenue.accounts.map((acc: any, i: number) => (
-                                            <TableRow key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                                <TableCell className="py-4 font-semibold text-slate-600 text-sm pl-6">{acc.label}</TableCell>
-                                                <TableCell className="text-right py-4 pr-6 font-bold text-slate-900">{displayVal(acc.value)}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow><TableCell colSpan={2} className="py-10 text-center text-slate-400 text-sm italic">No revenue discovered in ledger for this period.</TableCell></TableRow>
-                                    )}
-                                    <TableRow className="bg-slate-50 font-bold border-t-2 border-slate-200">
-                                        <TableCell className="py-5 text-slate-900 uppercase text-xs pl-6">Total Gross Operating Revenue</TableCell>
-                                        <TableCell className="text-right py-5 pr-6 text-slate-900 text-lg font-bold">{displayVal(data.revenue.total)}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </section>
-
-                        {/* 2. COST OF SALES SECTION */}
-                        <section className="space-y-4">
-                            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-2">
-                                <h2 className="text-sm font-bold uppercase tracking-tight text-slate-900">II. Cost of Goods Sold</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Direct Costs</span>
-                            </div>
-                            <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center group">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-bold text-slate-700">Direct Inventory Consumption</p>
-                                    <p className="text-[10px] text-slate-400 font-medium uppercase">Reconciled from production and sales ledger</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xl font-bold text-red-600">({displayVal(data.cogs)})</p>
-                                    <Badge variant="secondary" className="bg-white text-slate-400 border-slate-200 text-[9px] font-bold mt-1">Audit Check: Pass</Badge>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* 3. MARGIN & HEALTH SUMMARY */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <Card className="bg-emerald-600 text-white border-none shadow-md rounded-xl p-8 relative overflow-hidden">
-                                <TrendingUp size={80} className="absolute -right-4 -top-4 opacity-10" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-100">Gross Trading Margin</span>
-                                <p className="text-4xl font-bold mt-2">{displayVal(data.revenue.total - data.cogs)}</p>
-                                <div className="h-px bg-white/20 w-full my-4" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Margin %: {data.revenue.total > 0 ? (((data.revenue.total - data.cogs) / data.revenue.total) * 100).toFixed(2) : 0}%</p>
-                             </Card>
-                             <Card className="bg-white border border-slate-200 shadow-sm rounded-xl p-8 flex flex-col justify-center">
-                                <div className="flex items-start gap-4">
-                                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600 shadow-sm"><ShieldCheck size={24} /></div>
-                                    <div>
-                                        <h4 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Account Validation</h4>
-                                        <p className="text-sm font-semibold text-slate-800 mt-1 leading-relaxed">
-                                            "Statement data is synchronized with the General Ledger. All industry-specific accounts for <span className="text-blue-600">{businessName}</span> have been consolidated."
-                                        </p>
-                                    </div>
-                                </div>
-                             </Card>
+                        <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">Income Statement</h1>
+                        <div className="flex items-center gap-4">
+                            <p className="text-sm font-bold text-slate-500 uppercase tracking-tight">{data?.metadata?.entity}</p>
+                            <div className="h-1 w-1 bg-slate-300 rounded-full" />
+                            <p className="text-sm font-medium text-slate-400 italic">Fiscal Period: {from} — {to}</p>
                         </div>
-
-                        {/* 4. EXPENSES SECTION */}
-                        <section className="space-y-4">
-                            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-2">
-                                <h2 className="text-sm font-bold uppercase tracking-tight text-red-600">III. Operating Expenses (OPEX)</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Operational Burn</span>
-                            </div>
-                            <Table>
-                                <TableBody>
-                                    {data.opex.accounts?.length > 0 ? (
-                                        data.opex.accounts.map((acc: any, i: number) => (
-                                            <TableRow key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                                <TableCell className="py-4 font-semibold text-slate-600 text-sm pl-6">{acc.label}</TableCell>
-                                                <TableCell className="text-right py-4 pr-6 font-bold text-slate-900">{displayVal(acc.value)}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow><TableCell colSpan={2} className="py-10 text-center text-slate-400 text-sm italic">No operating expenses recorded.</TableCell></TableRow>
-                                    )}
-                                    <TableRow className="bg-slate-50 font-bold border-t-2 border-slate-200">
-                                        <TableCell className="py-5 text-red-600 uppercase text-xs pl-6">Total Operating Expenses</TableCell>
-                                        <TableCell className="text-right py-5 pr-6 text-red-600 font-bold text-lg">({displayVal(data.opex.total)})</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </section>
-
-                        {/* 5. TAX & NET PERFORMANCE HERO CARD */}
-                        <section className="space-y-6 pt-6">
-                            <div className="flex justify-between items-center border-b border-slate-200 pb-4 px-2">
-                                <div className="flex items-center gap-2">
-                                    <Landmark size={14} className="text-slate-400" />
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">Statutory Tax Provision</span>
-                                </div>
-                                <span className="text-sm font-bold text-red-500">-{displayVal(data.tax_provision)}</span>
-                            </div>
-
-                            <div className="bg-slate-950 rounded-xl p-10 md:p-16 text-white shadow-xl relative overflow-hidden border-t-8 border-t-blue-600">
-                                <Calculator className="absolute -right-8 -top-8 w-48 h-48 text-blue-500 opacity-5 rotate-12" />
-                                <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-12">
-                                    <div className="space-y-6 flex-1">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2.5 bg-blue-600 rounded-lg shadow-lg">
-                                                <Activity size={22} className="text-white" />
-                                            </div>
-                                            <h2 className="text-2xl font-bold uppercase tracking-tight">Net Earnings Summary</h2>
-                                        </div>
-                                        <p className="max-w-md text-slate-400 text-xs font-medium leading-relaxed uppercase tracking-wider">
-                                            THE FINAL CERTIFIED SURPLUS FOR <span className="text-white font-bold">{businessName}</span> AFTER ALL EXPENDITURES, DEBT REPAYMENTS, AND TAX LIABILITIES.
-                                        </p>
-                                        <div className="flex gap-3">
-                                            <Badge variant="secondary" className="bg-white/10 text-slate-300 border-none font-bold text-[9px] uppercase tracking-widest px-3">Sync Status: 100%</Badge>
-                                            <Badge variant="secondary" className="bg-white/10 text-slate-300 border-none font-bold text-[9px] uppercase tracking-widest px-3">Audit Score: AAA</Badge>
-                                        </div>
-                                    </div>
-                                    <div className="text-center md:text-right">
-                                        <div className={cn(
-                                            "text-5xl lg:text-8xl font-bold tracking-tighter",
-                                            data.net_income >= 0 ? "text-emerald-400" : "text-red-400"
-                                        )}>
-                                            {displayVal(data.net_income)}
-                                        </div>
-                                        <div className={cn(
-                                            "h-1.5 w-32 ml-auto mt-4 rounded-full",
-                                            data.net_income >= 0 ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]" : "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
-                                        )} />
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500 mt-4">Verified Net Position</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    </CardContent>
-
-                    {/* --- EXECUTIVE ADVISORY SECTION --- */}
-                    <div className="bg-slate-50 p-10 border-t flex flex-col md:flex-row gap-10 items-center">
-                        <div className="h-20 w-20 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm">
-                            <BarChart3 className="text-blue-600 h-10 w-10" />
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-2">
+                        <Badge variant="secondary" className="bg-white border shadow-sm text-slate-500 font-mono text-[10px]">
+                            <Hash size={10} className="mr-1" /> {data?.audit?.hash?.slice(0, 12)}
+                        </Badge>
+                        <div className="text-right">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Functional Currency</p>
+                            <p className="text-2xl font-black text-slate-900">{currency}</p>
                         </div>
-                        <div className="space-y-4 flex-1 text-center md:text-left">
-                            <div className="flex flex-col md:flex-row md:items-center gap-2">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">System Performance Insights</p>
-                                <Badge variant="outline" className="w-fit mx-auto md:mx-0 text-[8px] border-emerald-200 text-emerald-600 uppercase font-bold px-2 py-0">Status: Optimized</Badge>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="p-8 md:p-14 space-y-12">
+                    
+                    {/* 1. REVENUE TIER */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-end border-b-2 border-slate-900 pb-3">
+                            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">I. Operating Revenue</h2>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">Accrual Basis</span>
+                        </div>
+                        <div className="flex justify-between py-4 hover:bg-slate-50 px-4 rounded-xl transition-all group">
+                            <div className="flex items-center">
+                                <span className="font-bold text-slate-700 uppercase text-sm tracking-tight">Total Gross Sales</span>
+                                <Trend val={data?.variance?.revenue_change_pct} />
                             </div>
-                            <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                                Analysis for <span className="text-slate-900 font-bold">{businessName}</span> complete. 
-                                Your <span className="text-blue-600 font-bold">Revenue-to-OPEX ratio</span> is within the healthy enterprise target. 
-                                {data.net_income > 0 ? 'Profitability is scaling favorably.' : 'Current burn rate requires overhead optimization.'} 
-                                All figures are reconciled with your local tax jurisdiction rules.
-                            </p>
-                            <Button 
-                                onClick={() => openCopilot()} 
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-[10px] tracking-widest h-9 px-8 rounded-lg shadow-md transition-all active:scale-95"
-                            >
-                                Discuss Strategic Growth <ArrowRight size={12} className="ml-2" />
-                            </Button>
+                            <span className="font-black text-slate-900 text-lg">{display(data?.summary?.revenue)}</span>
+                        </div>
+                        <div className="flex justify-between py-4 bg-slate-50/50 px-6 rounded-xl border border-slate-100 italic">
+                            <span className="text-slate-500 font-semibold text-sm">Direct Cost of Goods Sold (COGS)</span>
+                            <span className="text-red-500 font-bold">{display(-data?.summary?.cogs)}</span>
+                        </div>
+                        <div className="flex justify-between py-6 bg-emerald-50 px-8 rounded-2xl font-black border border-emerald-100 shadow-sm">
+                            <div className="flex flex-col">
+                                <span className="text-emerald-700 uppercase text-[10px] tracking-widest mb-1">Gross Trading Profit</span>
+                                <span className="text-[10px] text-emerald-600/60 uppercase">Margin: {data?.ratios?.gross_margin?.toFixed(1)}%</span>
+                            </div>
+                            <span className="text-emerald-900 text-2xl tracking-tighter">{display(data?.summary?.gross_profit)}</span>
                         </div>
                     </div>
 
-                    <CardFooter className="bg-white border-t py-6 px-10 flex justify-between items-center text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                    {/* 2. OPERATIONAL TIER (EBITDA) */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-end border-b border-slate-200 pb-3">
+                            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">II. Operating Expenditures</h2>
+                        </div>
+                        <div className="flex justify-between py-4 hover:bg-slate-50 px-4 rounded-xl transition-all">
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-600 font-bold uppercase text-xs tracking-tight">Selling, General & Admin (SG&A)</span>
+                                <TooltipProvider><Tooltip><TooltipTrigger><Info size={12} className="text-slate-300"/></TooltipTrigger><TooltipContent>Includes payroll, rent, and marketing</TooltipContent></Tooltip></TooltipProvider>
+                            </div>
+                            <span className="text-red-500 font-bold tracking-tight">{display(-data?.summary?.opex)}</span>
+                        </div>
+
+                        {/* EBITDA - THE GOLD STANDARD */}
+                        <div className="flex justify-between py-8 bg-slate-950 text-white px-10 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                            <Activity className="absolute -left-4 -top-4 text-blue-500 h-24 w-24 opacity-10 rotate-12 transition-transform group-hover:scale-110" />
+                            <div className="relative z-10 flex flex-col justify-center">
+                                <div className="flex items-center gap-3">
+                                    <span className="uppercase text-xs font-black tracking-[0.3em] text-blue-400">EBITDA</span>
+                                    <Badge className="bg-blue-500/20 text-blue-300 border-none text-[8px] font-bold uppercase">Operational Cashflow</Badge>
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase mt-2 tracking-widest">Earnings Before Interest, Taxes, Depr, Amort</p>
+                            </div>
+                            <div className="relative z-10 text-right">
+                                <span className="text-emerald-400 font-black text-4xl tracking-tighter block">{display(data?.summary?.ebitda)}</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Op Margin: {data?.ratios?.operating_margin?.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. ASSET DEPLETION & FINANCE */}
+                    <div className="space-y-3 pt-4">
+                        <div className="flex justify-between items-center py-4 px-4 hover:bg-slate-50 rounded-xl transition-all">
+                            <span className="text-slate-500 font-bold uppercase text-xs">Depreciation & Amortization (Non-Cash)</span>
+                            <span className="text-slate-400 font-bold">{display(-data?.summary?.da)}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-4 px-4 border-t border-slate-100 hover:bg-slate-50 rounded-xl transition-all">
+                            <div className="flex flex-col">
+                                <span className="text-slate-500 font-bold uppercase text-xs tracking-tight">Finance Costs & Net Interest</span>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase">Adjusted for FX Gains/Losses</span>
+                            </div>
+                            <span className="text-slate-400 font-bold">{display(-(data?.summary?.interest || 0) + (data?.summary?.other_income || 0))}</span>
+                        </div>
+                        <div className="flex justify-between py-6 bg-slate-100 px-8 rounded-2xl font-black border border-slate-200">
+                            <span className="text-slate-900 uppercase text-xs tracking-widest">EBT (Earnings Before Tax)</span>
+                            <span className="text-slate-900 text-xl tracking-tighter">{display(data?.summary?.ebt)}</span>
+                        </div>
+                    </div>
+
+                    {/* 4. DYNAMIC TAX & NET POSITION */}
+                    <div className="pt-8 border-t-2 border-slate-900 space-y-8">
+                         <div className="space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Receipt size={14} className="text-red-500" />
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Statutory Breakdown ({data?.audit?.jurisdiction})</span>
+                            </div>
+                            {data?.summary?.taxes?.length > 0 ? (
+                                data.summary.taxes.map((t: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-center px-6 py-2 border-l-2 border-red-100">
+                                        <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">{t.label}</span>
+                                        <span className="text-xs font-bold text-red-500">{display(-t.value)}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="px-6 text-xs italic text-slate-400">No statutory tax lines discovered in this period.</div>
+                            )}
+                         </div>
+
+                         {/* FINAL BOTTOM LINE HERO */}
+                         <div className={cn(
+                            "rounded-[2.5rem] p-12 text-white shadow-2xl flex flex-col md:flex-row justify-between items-center gap-10 relative overflow-hidden transition-all duration-700",
+                            (data?.summary?.net_income || 0) >= 0 ? "bg-blue-600 shadow-blue-200" : "bg-red-600 shadow-red-200"
+                         )}>
+                            <ShieldCheck size={200} className="absolute -right-10 -top-10 opacity-10 rotate-12" />
+                            <div className="relative z-10 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md"><Briefcase size={24} /></div>
+                                    <h3 className="text-2xl font-black uppercase tracking-tight">Net Period Income</h3>
+                                </div>
+                                <p className="text-xs text-white/70 max-w-sm font-medium uppercase leading-relaxed tracking-wider">
+                                    This figure represents the final audited surplus for <span className="text-white font-bold">{data?.metadata?.entity}</span> after all operational, financial, and statutory liabilities.
+                                </p>
+                                <div className="flex gap-2 pt-2">
+                                    <Badge className="bg-white/10 text-white border-none font-bold text-[9px] uppercase tracking-widest px-3">Etr: {data?.ratios?.net_margin?.toFixed(1)}%</Badge>
+                                    <Badge className="bg-white/10 text-white border-none font-bold text-[9px] uppercase tracking-widest px-3">Status: Finalized</Badge>
+                                </div>
+                            </div>
+                            <div className="text-center md:text-right relative z-10">
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50 mb-2">Bottom Line Surplus</p>
+                                <div className="text-6xl lg:text-8xl font-black tracking-tighter drop-shadow-xl">
+                                    {display(data?.summary?.net_income)}
+                                </div>
+                                <div className="h-2 w-32 bg-white/30 ml-auto mt-6 rounded-full shadow-inner" />
+                            </div>
+                         </div>
+                    </div>
+
+                </CardContent>
+
+                {/* --- EXECUTIVE DRILL-DOWN & AI --- */}
+                <div className="px-8 md:px-14 pb-12">
+                    <Card className="bg-slate-50 border-slate-200 rounded-3xl overflow-hidden shadow-inner">
+                        <CardHeader className="pb-4 pt-8 px-10">
+                            <CardTitle className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2 tracking-[0.2em]">
+                                <Layers size={14} className="text-blue-600" />
+                                Intelligent Ledger Investigation
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="px-10 pb-10">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                                <p className="text-xs text-slate-500 max-w-md font-medium leading-relaxed">
+                                    BBU1 allows deep-trace investigation. You can click to see the specific ledger entries for any account movement reflected in this statement.
+                                </p>
+                                <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                                    <Sheet>
+                                        <SheetTrigger asChild>
+                                            <Button variant="outline" className="h-12 px-6 rounded-xl text-[10px] font-black uppercase bg-white border-slate-200 shadow-sm hover:shadow-md transition-all">
+                                                <Search size={14} className="mr-2 text-blue-600" /> Audit Accounts
+                                            </Button>
+                                        </SheetTrigger>
+                                        <SheetContent className="w-[400px] sm:w-[600px] border-l-0 shadow-2xl p-0">
+                                            <div className="bg-slate-900 p-8 text-white">
+                                                <SheetHeader>
+                                                    <SheetTitle className="text-white text-2xl font-black uppercase">Ledger Drill-down</SheetTitle>
+                                                    <SheetDescription className="text-slate-400 font-bold uppercase text-[10px]">Granular Account Breakdown</SheetDescription>
+                                                </SheetHeader>
+                                            </div>
+                                            <div className="p-8 space-y-3 overflow-y-auto max-h-[calc(100vh-160px)]">
+                                                {data?.drill_down ? Object.entries(data.drill_down).map(([name, val]: any) => (
+                                                    <div key={name} className="flex justify-between items-center p-5 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-blue-200 transition-colors">
+                                                        <span className="font-bold text-slate-700 text-xs uppercase tracking-tight">{name}</span>
+                                                        <span className={cn("font-black font-mono", val < 0 ? "text-red-500" : "text-blue-600")}>
+                                                            {formatMoney(val, currency)}
+                                                        </span>
+                                                    </div>
+                                                )) : <div className="text-center py-20 text-slate-400">Loading audit trail...</div>}
+                                            </div>
+                                        </SheetContent>
+                                    </Sheet>
+                                    
+                                    <Button onClick={() => openCopilot()} className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-200 active:scale-95 transition-all">
+                                        <Zap size={14} className="mr-2" /> Discuss Growth Strategy <ArrowRight size={14} className="ml-2" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <CardFooter className="bg-white border-t py-6 px-12 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                    <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
                             <ShieldCheck size={14} className="text-emerald-500" />
-                            Global Compliance Standard v10.2
+                            Data Integrity Certified
                         </div>
-                        <div className="flex items-center gap-4 font-mono">
-                            <span>Ref ID: {new Date().getTime().toString().slice(-10)}</span>
-                            <div className="h-3 w-px bg-slate-200" />
-                            <span>Node: Main Terminal</span>
+                        <div className="h-4 w-px bg-slate-200 hidden md:block" />
+                        <div className="flex items-center gap-2">
+                            <Clock size={14} />
+                            Generated {format(new Date(), 'MMM dd, HH:mm')}
                         </div>
-                    </CardFooter>
-                </Card>
-            )}
+                    </div>
+                    <div className="flex items-center gap-4 font-mono text-slate-300">
+                        <span>Node: {data?.metadata?.node || 'Primary Terminal'}</span>
+                        <span>v11.0.4-LTS</span>
+                    </div>
+                </CardFooter>
+            </Card>
         </div>
     );
+}
+
+// Sub-component for dynamic icons
+function Receipt({ className, size }: { className?: string, size?: number }) {
+    return <FileText className={className} size={size} />;
 }
