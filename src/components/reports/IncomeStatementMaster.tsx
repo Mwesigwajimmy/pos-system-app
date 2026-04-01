@@ -8,7 +8,7 @@ import {
   Globe, RefreshCw, AlertCircle, Info, Calculator, 
   ArrowRightLeft, Briefcase, Activity, FileText, ShieldCheck,
   ArrowRight, Beaker, FileSpreadsheet, Percent, Search,
-  ChevronDown, Layers, MousePointerClick, Clock, Loader2,
+  ChevronDown, Layers, MousePointerClick, Clock, Zap, Loader2,
   TrendingDown, Hash, Scale
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
