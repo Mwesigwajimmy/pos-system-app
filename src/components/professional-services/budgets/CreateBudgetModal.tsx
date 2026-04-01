@@ -34,14 +34,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 // Icons & Utilities
 import { 
     PlusCircle, Sparkles, Loader2, 
-    ArrowRight, ArrowLeft, ShieldCheck, Target, 
-    DatabaseZap, Calculator 
+    ArrowRight, ArrowLeft, CheckCircle2, Target, 
+    BarChart3, Calculator, TrendingUp, TrendingDown, DollarSign
 } from 'lucide-react';
 
-/**
- * ENTERPRISE VALIDATION SCHEMA
- * Ensures data integrity before ledger operations.
- */
+// --- Validation Schema ---
 const BudgetLineSchema = z.object({
   accountId: z.string().uuid(),
   accountName: z.string(),
@@ -50,30 +47,29 @@ const BudgetLineSchema = z.object({
 });
 
 const formSchema = z.object({
-    name: z.string().min(3, "Budget designation must be at least 3 characters."),
+    name: z.string().min(3, "Budget name must be at least 3 characters."),
     year: z.coerce.number().int().min(2020), 
-    lines: z.array(BudgetLineSchema).min(1, "At least one ledger account must be mapped.")
+    lines: z.array(BudgetLineSchema).min(1, "At least one account must be mapped.")
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 /**
- * SUB-COMPONENT: STRATEGIC SUBMIT BUTTON
- * Handles the 'pending' state via React DOM status.
+ * SUB-COMPONENT: SUBMIT BUTTON
  */
 function SubmitButton() {
     const { pending } = useFormStatus();
     return (
-        <Button type="submit" className="bg-blue-700 hover:bg-blue-800 shadow-lg px-10 font-black uppercase tracking-tighter" disabled={pending}>
+        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 h-11 px-10 font-bold shadow-md" disabled={pending}>
             {pending ? (
                 <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Syncing Ledger...
+                    Saving...
                 </>
             ) : (
                 <>
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    Commit and Activate Budget
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Save & Activate Budget
                 </>
             )}
         </Button>
@@ -91,13 +87,12 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
     const [step, setStep] = useState(1);
     const [isGenerating, setIsGenerating] = useState(false);
     
-    // AI Forecast Parameter States
+    // AI Forecast States
     const [historicalYear, setHistoricalYear] = useState(new Date().getFullYear());
     const [growthFactor, setGrowthFactor] = useState(10);
     
     const formRef = useRef<HTMLFormElement>(null);
 
-    // 1. Form Initialization with Type-Safe Resolver
     const { register, control, handleSubmit, formState: { errors }, watch, reset } = useForm<FormData>({
         resolver: zodResolver(formSchema) as Resolver<FormData>, 
         defaultValues: { 
@@ -110,7 +105,6 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
     const { fields, replace } = useFieldArray({ control, name: "lines" });
     const watchedLines = watch("lines");
 
-    // 2. Real-time GAAP Calculation Engine
     const { totalRevenue, totalExpenses, netProfit } = useMemo(() => {
         const lines = watchedLines || [];
         const revenue = lines
@@ -123,13 +117,11 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
         return { totalRevenue: revenue, totalExpenses: expenses, netProfit: revenue - expenses };
     }, [watchedLines]);
 
-    // 3. Server Action Transition Management
     const initialState: FormState = { success: false, message: '' };
     const [formState, formAction] = useFormState(createBudgetAction, initialState);
 
     const onFormSubmit = (data: FormData) => {
         const formData = new FormData(formRef.current!);
-        // Ensure business_id is passed for multi-tenant isolation
         formData.append('business_id', businessId);
         formData.set('lines', JSON.stringify(data.lines));
         formAction(formData);
@@ -138,38 +130,29 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
     useEffect(() => {
         if (formState.message) {
             if (formState.success) {
-                toast({ title: "Budget Operational", description: "Strategic fiscal blueprint synchronized successfully." });
+                toast({ title: "Success", description: "Budget created successfully." });
                 setIsOpen(false); 
                 reset(); 
                 setStep(1);
             } else {
-                toast({ title: "ERP Engine Error", description: formState.message, variant: 'destructive' });
+                toast({ title: "Error", description: formState.message, variant: 'destructive' });
             }
         }
     }, [formState, toast, reset]);
 
-    /**
-     * AI STRATEGIC FORECAST ENGINE
-     * FIXED: Utilizing full 3-argument signature (businessId, historicalYear, growthFactor).
-     */
     const handleGenerateDraft = async () => {
         setIsGenerating(true);
         try {
             const result = await generateDraftBudgetAction(businessId, historicalYear, growthFactor);
-            
             if (result.success && result.data) {
                 replace(result.data as FormData['lines']);
                 setStep(3);
-                toast({ title: "AI Draft Ready", description: "Ledger historical patterns projected successfully." });
+                toast({ title: "Draft Ready", description: "Forecast generated from history." });
             } else {
-                toast({ 
-                    title: "AI Analysis Failed", 
-                    description: result.message || "Could not access historical ledger data.", 
-                    variant: 'destructive' 
-                });
+                toast({ title: "Analysis Failed", description: result.message || "Could not access data.", variant: 'destructive' });
             }
         } catch (error) {
-            toast({ title: "Ledger Connection Interrupt", description: "Failed to connect to the ERP backend.", variant: 'destructive' });
+            toast({ title: "Connection Error", description: "Backend synchronization failed.", variant: 'destructive' });
         } finally {
             setIsGenerating(false);
         }
@@ -178,151 +161,173 @@ export function CreateBudgetModal({ accounts, businessId }: CreateBudgetModalPro
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-slate-900 shadow-2xl hover:bg-slate-800 transition-all font-black uppercase tracking-tighter">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Initialize New Budget
+                <Button className="bg-blue-600 hover:bg-blue-700 shadow-sm font-bold h-10 px-6">
+                    <PlusCircle className="mr-2 h-4 w-4" /> New Budget
                 </Button>
             </DialogTrigger>
             
-            <DialogContent className="max-w-5xl border-t-8 border-t-blue-600 shadow-2xl rounded-2xl overflow-hidden">
-                <form ref={formRef} onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-                    <DialogHeader>
-                        <div className="flex items-center justify-between border-b pb-4">
-                            <div className="flex items-center gap-2">
-                                <Target className="w-7 h-7 text-blue-600" />
-                                <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Strategic Budgeting Wizard</DialogTitle>
+            <DialogContent className="sm:max-w-4xl p-0 border-none rounded-xl overflow-hidden shadow-2xl bg-white">
+                <form ref={formRef} onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col h-full max-h-[90vh]">
+                    <DialogHeader className="p-8 border-b bg-slate-50/50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-600 rounded-lg">
+                                    <BarChart3 className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-xl font-bold text-slate-900 uppercase tracking-tight">Budget Setup</DialogTitle>
+                                    <Badge variant="secondary" className="mt-1 text-[10px] font-bold uppercase tracking-wider bg-white text-blue-600 border border-blue-100">
+                                        Tenant: {businessId.slice(0,8)}
+                                    </Badge>
+                                </div>
                             </div>
-                            <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest text-blue-600 border-blue-200 bg-blue-50">
-                                Tenant Auth: {businessId.slice(0,8)}
-                            </Badge>
                         </div>
-                        <DialogDescription className="pt-2 text-slate-500 font-medium">
-                            Authorized ERP environment. Follow the high-performance 3-step protocol to establish data-driven financial targets.
-                        </DialogDescription>
                     </DialogHeader>
 
-                    {/* PHASE 1: METADATA & OBJECTIVES */}
-                    {step === 1 && (
-                        <div className="py-6 space-y-8 animate-in slide-in-from-right-4 duration-500">
-                            <div className="grid grid-cols-2 gap-8 bg-slate-50 p-8 rounded-3xl border border-slate-200 shadow-inner">
-                                <div className="space-y-3">
-                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Strategic Plan Designation</Label>
-                                    <Input placeholder="e.g., FY25 Global Expansion Plan" {...register("name")} className="bg-white h-14 text-xl font-bold border-slate-200 focus:ring-blue-500" />
-                                    {errors.name && <p className="text-xs text-red-600 font-bold italic">{errors.name.message}</p>}
+                    <div className="flex-1 overflow-y-auto p-8">
+                        {/* STEP 1: INITIALIZATION */}
+                        {step === 1 && (
+                            <div className="space-y-8 animate-in fade-in duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Budget Name</Label>
+                                        <Input placeholder="e.g., Annual Budget 2025" {...register("name")} className="bg-white h-11 font-semibold" />
+                                        {errors.name && <p className="text-xs text-red-600 font-semibold">{errors.name.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Fiscal Year</Label>
+                                        <Input type="number" {...register("year")} className="bg-white h-11 font-mono font-bold" />
+                                        {errors.year && <p className="text-xs text-red-600 font-semibold">{errors.year.message}</p>}
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Target Fiscal Year</Label>
-                                    <Input type="number" {...register("year")} className="bg-white h-14 font-mono text-xl font-bold border-slate-200" />
-                                    {errors.year && <p className="text-xs text-red-600 font-bold italic">{errors.year.message}</p>}
+                                <div className="flex justify-end">
+                                    <Button type="button" onClick={() => setStep(2)} className="h-11 px-10 bg-slate-900 text-white font-bold rounded-lg shadow-sm">
+                                        Continue <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
                                 </div>
                             </div>
-                            <DialogFooter className="pt-4">
-                                <Button type="button" onClick={() => setStep(2)} className="h-14 px-14 text-lg font-black uppercase tracking-tighter shadow-blue-500/20 shadow-2xl">
-                                    Configure Strategy <ArrowRight className="ml-2 h-6 w-6" />
-                                </Button>
-                            </DialogFooter>
-                        </div>
-                    )}
-                    
-                    {/* PHASE 2: AI TREND ANALYSIS */}
-                    {step === 2 && (
-                        <div className="py-6 space-y-8 animate-in slide-in-from-right-4 duration-500">
-                            <div className="p-10 bg-purple-50/50 border border-purple-100 rounded-3xl space-y-10 relative overflow-hidden">
-                                <div className="absolute -right-6 -top-6 opacity-5">
-                                    <DatabaseZap className="w-40 h-40 text-purple-900" />
-                                </div>
-                                <div className="flex items-center gap-3 text-purple-900">
-                                    <Sparkles className="w-7 h-7" />
-                                    <h3 className="font-black uppercase text-xl tracking-tight">AI Forecasting Engine</h3>
-                                </div>
-                                <div className="grid grid-cols-2 gap-10 relative z-10">
-                                    <div className="space-y-3">
-                                        <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest font-mono">Historical Benchmark (Year)</Label>
-                                        <Select value={String(historicalYear)} onValueChange={(val) => setHistoricalYear(Number(val))}>
-                                            <SelectTrigger className="bg-white h-14 font-black text-lg"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value={String(new Date().getFullYear())} className="font-bold">{new Date().getFullYear()} Current Performance</SelectItem>
-                                                <SelectItem value={String(new Date().getFullYear() - 1)} className="font-bold">{new Date().getFullYear() - 1} Actual Ledger History</SelectItem>
-                                                <SelectItem value={String(new Date().getFullYear() - 2)} className="font-bold">{new Date().getFullYear() - 2} Actual Ledger History</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                        )}
+                        
+                        {/* STEP 2: AI FORECASTING */}
+                        {step === 2 && (
+                            <div className="space-y-8 animate-in fade-in duration-300">
+                                <div className="p-8 bg-blue-50/30 border border-blue-100 rounded-xl space-y-6">
+                                    <div className="flex items-center gap-3 text-blue-700">
+                                        <Sparkles className="w-5 h-5" />
+                                        <h3 className="font-bold text-lg">Smart Forecasting Engine</h3>
                                     </div>
-                                    <div className="space-y-3">
-                                        <Label className="text-[10px] font-black uppercase text-purple-700 tracking-widest font-mono">Projected Strategic Variance (%)</Label>
-                                        <div className="relative">
-                                            <Calculator className="absolute left-5 top-4.5 h-6 w-6 text-purple-300" />
-                                            <Input type="number" value={growthFactor} onChange={(e) => setGrowthFactor(Number(e.target.value))} className="pl-14 h-14 bg-white font-mono text-xl font-black text-purple-700 border-purple-200" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                                        <div className="space-y-2">
+                                            <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Historical Benchmark</Label>
+                                            <Select value={String(historicalYear)} onValueChange={(val) => setHistoricalYear(Number(val))}>
+                                                <SelectTrigger className="bg-white h-11 font-semibold border-slate-200"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value={String(new Date().getFullYear())} className="font-medium">{new Date().getFullYear()} Actuals</SelectItem>
+                                                    <SelectItem value={String(new Date().getFullYear() - 1)} className="font-medium">{new Date().getFullYear() - 1} Actuals</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Growth Projection (%)</Label>
+                                            <div className="relative">
+                                                <Calculator className="absolute left-3 top-3 h-5 w-5 text-slate-300" />
+                                                <Input type="number" value={growthFactor} onChange={(e) => setGrowthFactor(Number(e.target.value))} className="pl-10 h-11 bg-white font-bold border-slate-200" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <DialogFooter className="flex justify-between w-full pt-4">
-                                <Button type="button" variant="outline" onClick={() => setStep(1)} className="h-14 font-bold border-2"><ArrowLeft className="mr-2 h-5 w-5" /> Previous</Button>
-                                <Button type="button" onClick={handleGenerateDraft} disabled={isGenerating} className="h-14 bg-purple-700 hover:bg-purple-800 text-white font-black uppercase tracking-tighter px-12 shadow-purple-500/20 shadow-2xl">
-                                    {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
-                                    Sync AI Forecast
-                                </Button>
-                            </DialogFooter>
-                        </div>
-                    )}
-
-                    {/* PHASE 3: FINANCIAL RECONCILIATION */}
-                    {step === 3 && (
-                        <div className="py-6 space-y-8 animate-in slide-in-from-right-4 duration-500">
-                            {/* EXECUTIVE PERFORMANCE SUMMARY */}
-                            <div className="grid grid-cols-3 gap-8 bg-slate-900 text-white p-10 rounded-3xl shadow-2xl border border-slate-700">
-                                <div className="space-y-1"><p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Projected Revenue</p><p className="font-mono text-3xl font-black text-blue-400">{formatCurrency(totalRevenue, 'USD')}</p></div>
-                                <div className="border-x border-slate-700 px-8"><p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Ceiling Expenses</p><p className="font-mono text-3xl font-black text-red-400">{formatCurrency(totalExpenses, 'USD')}</p></div>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-1">Net ERP Delta</p>
-                                    <p className={cn("font-mono text-3xl font-black", netProfit >= 0 ? "text-green-400" : "text-red-500")}>
-                                        {formatCurrency(netProfit, 'USD')}
-                                    </p>
+                                <div className="flex justify-between items-center">
+                                    <Button type="button" variant="outline" onClick={() => setStep(1)} className="h-11 font-semibold border-slate-200">
+                                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                    </Button>
+                                    <Button type="button" onClick={handleGenerateDraft} disabled={isGenerating} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-10 shadow-sm">
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                        Generate Draft
+                                    </Button>
                                 </div>
                             </div>
+                        )}
 
-                            {/* ACCOUNT-LEVEL ALLOCATION GRID */}
-                            <ScrollArea className="h-[450px] rounded-3xl border bg-white shadow-inner overflow-hidden">
-                                <Table>
-                                    <TableHeader className="bg-slate-50 sticky top-0 z-20 shadow-md">
-                                        <TableRow className="border-none">
-                                            <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest pl-8 text-slate-400">General Ledger Account</TableHead>
-                                            <TableHead className="text-right py-6 font-black uppercase text-[10px] tracking-widest pr-8 text-slate-400">Allocated Blueprint</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {fields.map((field, index) => (
-                                            <TableRow key={field.id} className="hover:bg-slate-50/80 transition-colors border-slate-100">
-                                                <TableCell className="pl-8">
-                                                    <div className="flex flex-col py-2">
-                                                        <span className="font-black text-slate-800 text-base tracking-tight">{field.accountName}</span>
-                                                        <Badge variant="secondary" className="w-fit text-[8px] uppercase tracking-widest h-5 bg-slate-100 font-black text-slate-500 border-none px-2 mt-1">
-                                                            {field.accountType}
-                                                        </Badge>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="pr-8">
-                                                    <div className="relative w-56 ml-auto">
-                                                        <span className="absolute left-5 top-3.5 text-base text-slate-300 font-black">$</span>
-                                                        <Input 
-                                                            type="number" 
-                                                            step="0.01" 
-                                                            {...register(`lines.${index}.budgetedAmount`)} 
-                                                            className="text-right font-mono pl-10 h-14 font-black text-xl text-slate-900 bg-white border-2 border-slate-100 focus:border-blue-500 transition-all rounded-2xl shadow-sm" 
-                                                        />
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </ScrollArea>
+                        {/* STEP 3: ALLOCATION */}
+                        {step === 3 && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                {/* Summary Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                        <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                            <TrendingUp size={14} className="text-blue-500" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Planned Revenue</span>
+                                        </div>
+                                        <p className="text-xl font-bold text-slate-900">{formatCurrency(totalRevenue, 'UGX')}</p>
+                                    </div>
+                                    <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                        <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                            <TrendingDown size={14} className="text-red-500" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Planned Expenses</span>
+                                        </div>
+                                        <p className="text-xl font-bold text-slate-900">{formatCurrency(totalExpenses, 'UGX')}</p>
+                                    </div>
+                                    <div className="p-5 bg-slate-900 rounded-xl shadow-lg border-none text-white">
+                                        <div className="flex items-center gap-2 text-slate-500 mb-1">
+                                            <DollarSign size={14} className="text-emerald-400" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Net Income</span>
+                                        </div>
+                                        <p className={cn("text-xl font-bold", netProfit >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                            {formatCurrency(netProfit, 'UGX')}
+                                        </p>
+                                    </div>
+                                </div>
 
-                            <DialogFooter className="pt-8 border-t flex justify-between items-center w-full">
-                                <Button type="button" variant="ghost" onClick={() => setStep(2)} className="h-14 font-black uppercase tracking-tighter"><ArrowLeft className="mr-2 h-6 w-6" /> Back to AI Analysis</Button>
-                                <SubmitButton />
-                            </DialogFooter>
-                        </div>
-                    )}
+                                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                    <ScrollArea className="h-[350px]">
+                                        <Table>
+                                            <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b">
+                                                <TableRow className="hover:bg-transparent">
+                                                    <TableHead className="py-4 text-[10px] font-bold uppercase text-slate-500 pl-8 tracking-wider">Ledger Account</TableHead>
+                                                    <TableHead className="text-right py-4 text-[10px] font-bold uppercase text-slate-500 pr-8 tracking-wider">Allocation (UGX)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {fields.map((field, index) => (
+                                                    <TableRow key={field.id} className="hover:bg-slate-50 transition-colors border-slate-100 last:border-0">
+                                                        <TableCell className="pl-8 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-800 text-sm tracking-tight">{field.accountName}</span>
+                                                                <Badge variant="secondary" className="w-fit text-[9px] font-bold uppercase mt-1 px-1.5 h-4 bg-slate-100 text-slate-500 border-none">
+                                                                    {field.accountType}
+                                                                </Badge>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="pr-8">
+                                                            <div className="relative w-40 ml-auto">
+                                                                <Input 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    {...register(`lines.${index}.budgetedAmount`)} 
+                                                                    className="text-right h-10 font-bold border-slate-200 focus:ring-blue-600 rounded-lg pr-3" 
+                                                                />
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="p-6 bg-slate-50 border-t flex flex-col sm:flex-row justify-between items-center gap-3">
+                        {step > 1 ? (
+                            <Button type="button" variant="ghost" onClick={() => setStep(prev => prev - 1)} className="font-semibold text-slate-500 h-11 px-8">
+                                <ArrowLeft className="mr-2 h-4 w-4" /> Previous Step
+                            </Button>
+                        ) : (
+                            <div />
+                        )}
+                        {step === 3 && <SubmitButton />}
+                    </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>

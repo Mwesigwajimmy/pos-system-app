@@ -7,14 +7,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   Plus, Trash2, Loader2, Save, Calendar, User, 
   AlertCircle, ArrowLeft, Receipt, Landmark, 
-  Globe, Ship, RefreshCcw, Repeat 
+  Globe, Ship, RefreshCcw, Repeat, FileText, CheckCircle2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import toast from 'react-hot-toast';
 
-// --- 1. Enterprise Financial Utilities (Aligned with Sovereign Kernel) ---
+// --- 1. Financial Utilities (Logic Preserved) ---
 const Money = {
   round: (val: number) => Math.round((val + Number.EPSILON) * 100) / 100,
   multiply: (amount: number, quantity: number) => {
@@ -40,11 +40,11 @@ const getFutureDateString = (daysToAdd: number) => {
   return date.toISOString().split('T')[0];
 };
 
-// --- 3. Validation Schema (UPGRADED FOR INTERNATIONAL TRADE) ---
+// --- 3. Validation Schema ---
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Customer selection is required"),
   currency: z.string().min(1, "Currency is required"),
-  exchangeRate: z.coerce.number().min(0.000001, "Manual rate required"), // Forensic anchor
+  exchangeRate: z.coerce.number().min(0.000001, "Manual rate required"), 
   originCountry: z.string().min(2, "Required for Compliance"),
   destinationCountry: z.string().min(2, "Required for Compliance"),
   incoterm: z.string().default('CIF'),
@@ -54,7 +54,7 @@ const invoiceSchema = z.object({
   notes: z.string().default(''), 
   items: z.array(z.object({
     description: z.string().min(1, "Description is required"),
-    hsCode: z.string().optional(), // For forensic tax mapping
+    hsCode: z.string().optional(), 
     quantity: z.coerce.number().min(0.001, "Qty must be greater than 0"),
     unitPrice: z.coerce.number().min(0, "Price cannot be negative"),
     taxRate: z.coerce.number().min(0).max(100, "Tax cannot exceed 100%").default(0),
@@ -68,7 +68,7 @@ const invoiceSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
-// --- 4. Configuration & Types ---
+// --- 4. Configuration ---
 const CURRENCIES = [
   { code: 'USD', symbol: '$', locale: 'en-US' },
   { code: 'EUR', symbol: '€', locale: 'de-DE' },
@@ -103,7 +103,6 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
   const supabase = createClient();
   const router = useRouter();
 
-  // --- 5. Data Fetching ---
   useEffect(() => {
     let isMounted = true;
     const fetchEnterpriseContext = async () => {
@@ -127,7 +126,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
           }
         }
       } catch (err: any) {
-        console.error("Forensic Retrieval Error:", err);
+        console.error("Data Fetch Error:", err);
       } finally {
         if (isMounted) setIsLoadingCustomers(false);
       }
@@ -137,7 +136,6 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
     return () => { isMounted = false; };
   }, [tenantId, supabase]);
 
-  // --- 6. Form Initialization ---
   const { 
     register, control, handleSubmit, watch, setValue,
     formState: { errors } 
@@ -159,7 +157,6 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
     mode: 'onBlur'
   });
 
-  // Sync default values
   useEffect(() => {
      if (businessDNA.currency) {
         setValue('currency', businessDNA.currency);
@@ -170,7 +167,6 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   
-  // --- 7. Real-time Calculations ---
   const items = watch("items");
   const selectedCurrency = watch("currency");
   const currencyMeta = CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
@@ -184,10 +180,8 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
       const qty = Number(item.quantity) || 0;
       const price = Number(item.unitPrice) || 0;
       const taxRate = Number(item.taxRate) || 0;
-
       const lineSubtotal = Money.multiply(price, qty);
       const lineTax = Money.calculateTax(lineSubtotal, taxRate);
-
       subtotal += lineSubtotal;
       taxTotal += lineTax;
     });
@@ -200,16 +194,14 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
   }, [items]);
 
   const formatCurrency = (val: number) => 
-    new Intl.NumberFormat(currencyMeta.locale, { style: 'currency', currency: currencyMeta.code }).format(val);
+    new Intl.NumberFormat(currencyMeta.locale, { style: 'currency', currency: currencyMeta.code, minimumFractionDigits: 0 }).format(val);
 
-  // --- 8. Submission Handler (Enterprise Weld) ---
   const onSubmit: SubmitHandler<InvoiceFormValues> = async (data) => {
     setIsSubmitting(true);
     setSubmitError(null);
     let createdInvoiceId: string | null = null;
 
     try {
-      // Step A: Header (Dynamic Columns for FX Audit & Trade)
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
@@ -217,7 +209,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
           business_id: tenantId,
           customer_id: data.customerId,
           currency_code: data.currency,
-          exchange_rate_at_issue: data.exchangeRate, // Critical for FX Forensic Audit
+          exchange_rate_at_issue: data.exchangeRate, 
           origin_country_code: data.originCountry,
           destination_country_code: data.destinationCountry,
           incoterm: data.incoterm,
@@ -239,7 +231,6 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
       if (invoiceError) throw new Error(invoiceError.message);
       createdInvoiceId = invoiceData.id;
 
-      // Step B: Itemized Tax Recognition with HS-Codes
       const lineItems = data.items.map(item => {
           const lineSub = Money.multiply(item.unitPrice, item.quantity);
           return {
@@ -260,286 +251,249 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
 
       if (itemsError) {
         await supabase.from('invoices').delete().eq('id', createdInvoiceId);
-        throw new Error(`Item Sync Error: ${itemsError.message}`);
+        throw new Error(`Data Sync Error: ${itemsError.message}`);
       }
 
-      toast.success("Document Sealed & Compliance Bridge Active.");
+      toast.success("Invoice created successfully");
       router.push(`/${locale}/invoicing/to-be-issued`);
       router.refresh();
 
     } catch (error: any) {
-      console.error(error);
-      setSubmitError(error.message || "Fiduciary Handshake Failed.");
+      setSubmitError(error.message || "Failed to save invoice.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-8 bg-slate-50/30 min-h-screen">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 gap-6">
-        <div>
-          <h1 className="text-4xl font-black tracking-tighter text-slate-900 dark:text-white flex items-center gap-4 italic uppercase">
-            <Receipt className="h-10 w-10 text-blue-600" />
-            Sovereign <span className="text-blue-600">Invoicing</span>
-          </h1>
-          <p className="text-slate-400 mt-2 font-black uppercase tracking-[0.3em] text-[10px]">
-            International Trade Compliance Mode • Node: {businessDNA.country}
-          </p>
+    <div className="max-w-6xl mx-auto py-10 px-4 md:px-6 animate-in fade-in duration-500 bg-slate-50/30">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 border-b border-slate-200 pb-8">
+        <div className="space-y-1">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
+                    <Receipt className="text-white w-7 h-7" />
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                    Create Invoice
+                </h1>
+            </div>
+            <p className="text-sm text-slate-500 font-medium ml-1">
+                Generate professional billing documents with trade compliance.
+            </p>
         </div>
-        <button 
-          onClick={() => router.back()} 
-          type="button"
-          disabled={isSubmitting}
-          className="px-6 py-3 text-[11px] font-black uppercase tracking-widest text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 flex items-center gap-2 transition-all disabled:opacity-50 shadow-sm active:scale-95"
-        >
-          <ArrowLeft size={16} /> Abort Operation
-        </button>
+        <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting} className="font-semibold border-slate-200 h-10 px-6 bg-white">
+          <ArrowLeft size={16} className="mr-2" /> Cancel
+        </Button>
       </div>
 
       {submitError && (
-        <div className="mb-8 p-5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-4 text-red-800 shadow-lg">
-          <AlertCircle className="w-6 h-6 mt-0.5 flex-shrink-0" />
-          <div className="flex-1">
-            <h3 className="text-sm font-black uppercase tracking-tight">Kernel Rejection</h3>
-            <p className="text-xs mt-1 font-bold">{submitError}</p>
-          </div>
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-800 shadow-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm font-semibold">{submitError}</p>
         </div>
       )}
 
-      <Card className="shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-none rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="pb-6 border-b border-slate-100 bg-slate-950 text-white">
-          <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-3">
-              <Landmark className="w-5 h-5 text-blue-400" />
-              Manifest Configuration & Compliance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-10 px-8 pb-10">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
-            
-            {/* COMPLIANCE & IDENTITY GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 ml-1">
-                  <User size={14} className="text-blue-500" /> Client Entity
-                </label>
-                <select 
-                  {...register("customerId")} 
-                  disabled={isLoadingCustomers || isSubmitting}
-                  className="w-full h-12 px-4 border border-slate-200 rounded-xl bg-slate-50 font-bold text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none"
-                >
-                  <option value="">{isLoadingCustomers ? "Syncing..." : "Select Client..."}</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                {errors.customerId && <p className="text-red-600 text-[10px] font-black uppercase mt-1 ml-1">{errors.customerId.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 ml-1">
-                  <Globe size={14} /> Origin / Destination
-                </label>
-                <div className="flex gap-2">
-                    <input {...register("originCountry")} placeholder="Origin" className="w-1/2 h-12 px-4 border border-slate-200 rounded-xl bg-slate-50 text-sm font-mono font-bold" />
-                    <input {...register("destinationCountry")} placeholder="Dest" className="w-1/2 h-12 px-4 border border-slate-200 rounded-xl bg-slate-50 text-sm font-mono font-bold" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 ml-1">
-                  <Ship size={14} /> Incoterm
-                </label>
-                <select {...register("incoterm")} className="w-full h-12 px-4 border border-slate-200 rounded-xl bg-slate-50 text-sm font-bold">
-                  {INCOTERMS.map(term => <option key={term} value={term}>{term}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 ml-1">
-                  <Repeat size={14} /> Revenue Automation
-                </label>
-                <div className="flex items-center h-12 px-5 border border-slate-200 rounded-xl bg-slate-50 justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Recurring?</span>
-                    <input type="checkbox" {...register("isRecurring")} className="w-5 h-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500" />
-                </div>
-              </div>
-            </div>
-
-            {/* FORENSIC FX SECTION */}
-            <div className="p-8 bg-slate-950 rounded-[2rem] flex flex-wrap items-center gap-10 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute right-0 top-0 opacity-5 p-4"><RefreshCcw size={120} /></div>
+      {/* FORM START */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-20">
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white rounded-xl">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-200 p-6">
+                <CardTitle className="text-base font-bold text-slate-700 flex items-center gap-2">
+                    <Landmark className="w-4 h-4 text-blue-600" />
+                    Configuration & Compliance
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 md:p-8 space-y-10">
                 
-                <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em]">Transaction Currency</label>
-                    <select {...register("currency")} className="bg-white/10 border-none rounded-lg h-12 px-4 text-sm font-black outline-none w-40">
-                        {CURRENCIES.map(c => <option key={c.code} value={c.code} className="text-black">{c.code} ({c.symbol})</option>)}
-                    </select>
-                </div>
+                {/* 1. IDENTITY GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Client Name</Label>
+                        <select 
+                            {...register("customerId")} 
+                            disabled={isLoadingCustomers || isSubmitting}
+                            className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-semibold focus:ring-2 focus:ring-blue-600 transition-all outline-none"
+                        >
+                            <option value="">{isLoadingCustomers ? "Loading..." : "Select Client"}</option>
+                            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        {errors.customerId && <p className="text-red-500 text-[11px] font-bold mt-1 ml-1">{errors.customerId.message}</p>}
+                    </div>
 
-                {selectedCurrency !== businessDNA.currency && (
-                    <div className="space-y-2 animate-in slide-in-from-left duration-500">
-                        <label className="text-[9px] font-black uppercase text-emerald-500 tracking-[0.3em] flex items-center gap-2">
-                            <RefreshCcw size={12} /> Forensic Exchange Rate (1 {selectedCurrency} =)
-                        </label>
-                        <div className="flex items-center gap-4">
-                            <input 
-                                type="number" 
-                                step="0.000001" 
-                                {...register("exchangeRate")} 
-                                className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl h-12 px-5 text-base font-mono font-black w-56 outline-none focus:ring-2 focus:ring-emerald-500" 
-                            />
-                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{businessDNA.currency} BASE</span>
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Trade Origin/Destination</Label>
+                        <div className="flex gap-2">
+                            <input {...register("originCountry")} placeholder="From" className="w-1/2 h-10 px-3 border border-slate-200 rounded-lg text-sm font-mono font-bold" />
+                            <input {...register("destinationCountry")} placeholder="To" className="w-1/2 h-10 px-3 border border-slate-200 rounded-lg text-sm font-mono font-bold" />
                         </div>
                     </div>
-                )}
 
-                <div className="lg:ml-auto flex gap-6">
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em]">Issue Date</label>
-                        <input type="date" {...register("issueDate")} className="bg-white/10 border-none rounded-lg h-12 px-4 text-sm font-mono font-bold outline-none" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Incoterm</Label>
+                        <select {...register("incoterm")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-bold">
+                            {INCOTERMS.map(term => <option key={term} value={term}>{term}</option>)}
+                        </select>
                     </div>
+
                     <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em]">Due Date</label>
-                        <input type="date" {...register("dueDate")} className="bg-white/10 border-none rounded-lg h-12 px-4 text-sm font-mono font-bold outline-none" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Automation</Label>
+                        <div className="flex items-center h-10 px-4 border border-slate-200 rounded-lg bg-white justify-between">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase">Recurring?</span>
+                            <input type="checkbox" {...register("isRecurring")} className="w-4 h-4 rounded border-slate-300 text-blue-600" />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* LINE MANIFEST TABLE */}
-            <div className="border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm bg-white">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 font-black uppercase tracking-widest text-[9px]">
-                  <tr>
-                    <th className="px-8 py-5 w-[40%]">Item Description / HS-Code</th>
-                    <th className="px-2 py-5 w-28 text-center">Quantity</th>
-                    <th className="px-2 py-5 w-40 text-right">Unit Price</th>
-                    <th className="px-2 py-5 w-28 text-center">Tax %</th>
-                    <th className="px-8 py-5 w-40 text-right">Total</th>
-                    <th className="px-4 py-5 w-12"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {fields.map((field, index) => {
-                    const qty = items?.[index]?.quantity || 0;
-                    const price = items?.[index]?.unitPrice || 0;
-                    const lineTotal = Money.multiply(Number(price), Number(qty));
+                {/* 2. CURRENCY & DATES */}
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Invoice Currency</Label>
+                        <select {...register("currency")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-bold outline-none">
+                            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                        </select>
+                    </div>
 
-                    return (
-                      <tr key={field.id} className="group hover:bg-slate-50 transition-colors">
-                        <td className="p-6 align-top space-y-2">
-                          <input 
-                            {...register(`items.${index}.description` as const)} 
-                            placeholder="Managed Service or Product..." 
-                            className="w-full h-11 px-4 border border-slate-200 rounded-xl focus:ring-1 focus:ring-blue-500 font-bold placeholder:text-slate-300" 
-                          />
-                          <input 
-                            {...register(`items.${index}.hsCode` as const)} 
-                            placeholder="HS-Code (For Customs Forensic Mapping)" 
-                            className="w-full h-8 px-4 bg-blue-50/50 border-none rounded-lg text-[10px] font-mono font-black text-blue-600 outline-none" 
-                          />
-                        </td>
-                        <td className="p-6 align-top">
-                          <input type="number" step="0.001" {...register(`items.${index}.quantity` as const)} className="w-full h-11 px-2 border border-slate-200 rounded-xl text-center font-mono font-black text-slate-900" />
-                        </td>
-                        <td className="p-6 align-top">
-                          <div className="relative">
-                            <span className="absolute left-4 top-3.5 text-slate-400 font-black text-xs">{currencyMeta.symbol}</span>
-                            <input 
-                              type="number" 
-                              step="0.01" 
-                              {...register(`items.${index}.unitPrice` as const)} 
-                              className="w-full h-11 pl-10 pr-4 border border-slate-200 rounded-xl text-right font-mono font-black text-slate-900" 
-                            />
-                          </div>
-                        </td>
-                        <td className="p-6 align-top">
-                          <input type="number" step="0.1" {...register(`items.${index}.taxRate` as const)} className="w-full h-11 border-none bg-blue-50 text-blue-600 rounded-xl text-center font-mono font-black text-sm" />
-                        </td>
-                        <td className="p-6 text-right align-top pt-9 font-black text-slate-900 text-lg font-mono tracking-tighter">
-                          {formatCurrency(lineTotal)}
-                        </td>
-                        <td className="p-6 text-center align-top pt-8">
-                          <button 
-                            type="button" 
-                            onClick={() => remove(index)} 
-                            disabled={fields.length === 1} 
-                            className="p-2 text-slate-300 hover:text-red-500 transition-colors active:scale-90"
-                          >
-                            <Trash2 size={20} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                 <button 
-                  type="button" 
-                  onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessDNA.taxRate })} 
-                  className="flex items-center gap-3 px-8 py-3 text-[11px] font-black uppercase tracking-widest text-blue-600 bg-white hover:bg-blue-600 hover:text-white rounded-xl border-2 border-blue-600 transition-all shadow-md active:scale-95"
-                >
-                  <Plus size={16} /> Add Line Manifest
-                </button>
-                <div className="flex items-center gap-3 text-slate-400">
-                    <RefreshCcw size={14} className="animate-spin-slow" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter italic">Ledger Parity Guaranteed</span>
-                </div>
-              </div>
-            </div>
+                    {selectedCurrency !== businessDNA.currency && (
+                        <div className="space-y-2 animate-in slide-in-from-top-1 duration-300">
+                            <Label className="text-xs font-bold text-emerald-600 uppercase tracking-tight flex items-center gap-1.5">
+                                <RefreshCcw size={12} /> Exchange Rate
+                            </Label>
+                            <div className="flex items-center gap-3">
+                                <input type="number" step="0.0001" {...register("exchangeRate")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-mono font-bold" />
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">{businessDNA.currency} Base</span>
+                            </div>
+                        </div>
+                    )}
 
-            <div className="flex flex-col lg:flex-row gap-10 pt-6">
-              <div className="flex-1 space-y-3">
-                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-2">
-                    Internal Notes & Trade Terms
-                </label>
-                <textarea 
-                  {...register("notes")} 
-                  className="w-full p-6 border border-slate-200 rounded-[2rem] text-sm h-56 focus:ring-1 focus:ring-blue-500 transition-all resize-none bg-white font-medium" 
-                  placeholder="Insert payment cycles, trade terms (Incoterms), or specific localized compliance clauses..."
-                ></textarea>
-              </div>
-
-              <div className="w-full lg:w-[450px] space-y-6">
-                <div className="bg-slate-900 rounded-[2.5rem] p-10 shadow-2xl text-white relative overflow-hidden">
-                   <div className="absolute top-0 right-0 p-8 opacity-10"><Landmark size={150} /></div>
-                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 relative z-10">Fiduciary Summary</h3>
-                   
-                   <div className="space-y-6 relative z-10">
-                       <div className="flex justify-between items-center text-sm font-mono opacity-60">
-                          <span className="uppercase tracking-widest">Gross Subtotal</span> 
-                          <span className="font-black">{formatCurrency(totals.subtotal)}</span>
-                       </div>
-                       <div className="flex justify-between items-center text-sm font-mono text-blue-400">
-                          <span className="uppercase tracking-widest">Statutory VAT/GST</span> 
-                          <span className="font-black">+{formatCurrency(totals.taxTotal)}</span>
-                       </div>
-                       
-                       <div className="border-t border-white/10 pt-8 mt-8 space-y-2">
-                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500">Balance Due (Sovereign Debt)</span>
-                         <div className="flex justify-between items-end">
-                            <span className="font-black text-5xl tracking-tighter text-white font-mono">{formatCurrency(totals.grandTotal)}</span>
-                         </div>
-                       </div>
-                   </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Issue Date</Label>
+                            <input type="date" {...register("issueDate")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-xs font-mono font-semibold" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-500 uppercase">Due Date</Label>
+                            <input type="date" {...register("dueDate")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-xs font-mono font-semibold" />
+                        </div>
+                    </div>
                 </div>
 
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting} 
-                  className="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] rounded-[2rem] shadow-2xl shadow-blue-600/30 flex justify-center items-center gap-5 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 group"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="animate-spin h-8 w-8" />
-                  ) : (
-                    <Save className="h-7 w-7 text-emerald-400 group-hover:scale-110 transition-transform" />
-                  )} 
-                  <span className="text-lg">{isSubmitting ? 'Finalizing Genesis...' : 'Execute & Seal Manifest'}</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {/* 3. ITEMIZED TABLE */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                    <Table>
+                        <TableHeader className="bg-slate-50">
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 pl-6 h-12">Item Details</TableHead>
+                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-center h-12 w-24">Qty</TableHead>
+                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-right h-12 w-32">Rate</TableHead>
+                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-center h-12 w-24">Tax %</TableHead>
+                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-right h-12 pr-6 w-32">Total</TableHead>
+                                <TableHead className="w-12"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {fields.map((field, index) => {
+                                const qty = items?.[index]?.quantity || 0;
+                                const price = items?.[index]?.unitPrice || 0;
+                                const lineTotal = Money.multiply(Number(price), Number(qty));
+
+                                return (
+                                    <TableRow key={field.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
+                                        <TableCell className="p-4 pl-6 align-top space-y-2">
+                                            <Input {...register(`items.${index}.description` as const)} placeholder="Service description..." className="h-9 font-semibold" />
+                                            <Input {...register(`items.${index}.hsCode` as const)} placeholder="HS-Code (Optional)" className="h-7 text-[10px] font-mono bg-blue-50 border-none rounded-md" />
+                                        </TableCell>
+                                        <TableCell className="p-4 align-top">
+                                            <Input type="number" step="0.01" {...register(`items.${index}.quantity` as const)} className="h-9 text-center font-mono font-bold" />
+                                        </TableCell>
+                                        <TableCell className="p-4 align-top">
+                                            <div className="relative">
+                                                <span className="absolute left-2.5 top-2.5 text-[10px] text-slate-400 font-bold">{currencyMeta.symbol}</span>
+                                                <Input type="number" step="0.01" {...register(`items.${index}.unitPrice` as const)} className="h-9 pl-7 text-right font-mono font-bold" />
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="p-4 align-top">
+                                            <Input type="number" step="0.1" {...register(`items.${index}.taxRate` as const)} className="h-9 text-center font-mono font-bold bg-slate-50" />
+                                        </TableCell>
+                                        <TableCell className="p-4 text-right align-top pt-5 font-bold text-slate-900">
+                                            {formatCurrency(lineTotal)}
+                                        </TableCell>
+                                        <TableCell className="p-4 text-center align-top pt-4">
+                                            <Button variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="text-slate-300 hover:text-red-500 h-8 w-8">
+                                                <Trash2 size={18} />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                        <Button type="button" variant="outline" onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessDNA.taxRate })} className="bg-white border-blue-200 text-blue-600 font-bold h-9 px-6 rounded-lg hover:bg-blue-50">
+                            <Plus size={16} className="mr-2" /> Add Item
+                        </Button>
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <CheckCircle2 size={14} className="text-emerald-500" />
+                            <span className="text-[10px] font-bold uppercase tracking-tight">Ledger Logic Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-10 pt-4">
+                    {/* NOTES */}
+                    <div className="flex-1 space-y-2">
+                        <Label className="text-xs font-bold text-slate-500 uppercase ml-1">Additional Notes</Label>
+                        <textarea 
+                            {...register("notes")} 
+                            className="w-full p-4 border border-slate-200 rounded-xl text-sm min-h-[180px] focus:ring-1 focus:ring-blue-600 transition-all outline-none bg-white font-medium text-slate-700" 
+                            placeholder="Add payment terms or bank details..."
+                        />
+                    </div>
+
+                    {/* TOTALS & SUBMIT */}
+                    <div className="w-full lg:w-[400px] space-y-6">
+                        <Card className="bg-slate-900 text-white border-none shadow-lg rounded-xl overflow-hidden">
+                            <CardHeader className="pb-4 border-b border-white/5">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Invoice Summary</span>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-4">
+                                <div className="flex justify-between items-center text-sm font-medium text-slate-400">
+                                    <span>Subtotal</span> 
+                                    <span className="font-mono">{formatCurrency(totals.subtotal)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm font-medium text-blue-400">
+                                    <span>Total Tax</span> 
+                                    <span className="font-mono">+{formatCurrency(totals.taxTotal)}</span>
+                                </div>
+                                <div className="border-t border-white/10 pt-6 flex justify-between items-end">
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Amount</span>
+                                    <span className="text-3xl font-bold text-white font-mono tracking-tighter">{formatCurrency(totals.grandTotal)}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Button 
+                            type="submit" 
+                            disabled={isSubmitting} 
+                            className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest text-base rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {isSubmitting ? (
+                                <><Loader2 className="animate-spin mr-3 h-6 w-6" /> Saving...</>
+                            ) : (
+                                <><Save className="mr-3 h-5 w-5" /> Save & Issue Invoice</>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* FOOTNOTE */}
+        <div className="text-center pt-8 opacity-40">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] flex items-center justify-center gap-2">
+                <FileText size={12} /> System Reference: BBU1 INV-ENG-10
+            </p>
+        </div>
+      </form>
     </div>
   );
 }

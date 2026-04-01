@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { 
   Ship, Plane, Truck, Globe, 
   FileText, Plus, Trash2, Save, 
-  Anchor, Landmark, ShieldCheck, RefreshCcw,
-  Container, ShieldAlert, BadgeDollarSign,
-  Scale, Box, Info
+  Anchor, Landmark, CheckCircle2, RefreshCw,
+  Box, Info, MapPin, ClipboardList,
+  AlertCircle,
+  FileSpreadsheet
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,194 +26,219 @@ export default function CargoManifestEntry() {
     };
 
     return (
-        <div className="p-8 space-y-8 bg-slate-50/50 min-h-screen animate-in fade-in duration-700">
+        <div className="p-6 md:p-10 space-y-8 bg-[#F8FAFC] min-h-screen animate-in fade-in duration-500">
+            
             {/* --- TOP HEADER --- */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200 pb-8">
                 <div className="space-y-1">
-                    <h1 className="text-4xl font-black tracking-tighter text-slate-900 flex items-center gap-3 italic uppercase">
-                        Global <span className="text-blue-600">Cargo Manifest</span>
-                    </h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-                        Registry for International Trade & ASYCUDA Synchronization
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-600 rounded-lg shadow-sm">
+                            <Ship className="text-white w-7 h-7" />
+                        </div>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                            Cargo Manifest Management
+                        </h1>
+                    </div>
+                    <p className="text-sm text-slate-500 font-medium ml-1">
+                        Systemized registry for international trade and customs synchronization.
                     </p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex items-center gap-3">
                     <Select value={shipmentType} onValueChange={setShipmentType}>
-                        <SelectTrigger className="w-40 h-12 bg-slate-950 text-white border-none rounded-xl font-black uppercase text-[10px] tracking-widest">
+                        <SelectTrigger className="w-44 h-10 bg-white border-slate-200 font-bold text-slate-700">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="IMPORT">IMPORT (Entry)</SelectItem>
-                            <SelectItem value="EXPORT">EXPORT (Exit)</SelectItem>
+                            <SelectItem value="IMPORT" className="font-semibold">Import (Entry)</SelectItem>
+                            <SelectItem value="EXPORT" className="font-semibold">Export (Exit)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </div>
 
-            {/* --- SHIPMENT MASTER DETAILS --- */}
-            <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
-                <CardHeader className="bg-slate-950 text-white p-8">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 text-blue-400">
-                        <Anchor size={18} /> Primary Consignment Data
+            {/* --- PRIMARY SHIPMENT DETAILS --- */}
+            <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 p-6">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-slate-600">
+                        <Anchor size={16} className="text-blue-600" /> General Consignment Information
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Master B/L or AWB No.</Label>
-                        <Input className="h-12 rounded-xl bg-slate-50 font-mono font-bold" placeholder="e.g. MSKU9928110" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Bill of Lading / AWB No.</Label>
+                        <Input className="h-10 border-slate-200 font-mono font-semibold uppercase" placeholder="e.g. MSKU9928110" />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Origin Country</Label>
-                        <Input className="h-12 rounded-xl bg-slate-50 font-bold" placeholder="e.g. United Arab Emirates" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Origin Jurisdiction</Label>
+                        <div className="relative">
+                            <Globe className="absolute left-3 top-3 text-slate-400" size={14} />
+                            <Input className="h-10 pl-9 border-slate-200 font-semibold" placeholder="e.g. United Arab Emirates" />
+                        </div>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Port of Entry/Exit</Label>
-                        <Input className="h-12 rounded-xl bg-slate-50 font-bold" placeholder="e.g. Mombasa (KE) / Entebbe (UG)" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Designated Port</Label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-3 text-slate-400" size={14} />
+                            <Input className="h-10 pl-9 border-slate-200 font-semibold" placeholder="e.g. Mombasa (KE)" />
+                        </div>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Mode of Transport</Label>
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Transport Mode</Label>
                         <div className="flex gap-2">
-                            <Button variant="outline" className="flex-1 h-12 rounded-xl border-slate-200"><Ship size={18}/></Button>
-                            <Button variant="outline" className="flex-1 h-12 rounded-xl border-slate-200"><Plane size={18}/></Button>
-                            <Button variant="outline" className="flex-1 h-12 rounded-xl border-slate-200"><Truck size={18}/></Button>
+                            <Button variant="outline" className="flex-1 h-10 border-slate-200 bg-slate-50 hover:bg-white transition-colors" title="Sea"><Ship size={16} className="text-blue-600"/></Button>
+                            <Button variant="outline" className="flex-1 h-10 border-slate-200 bg-slate-50 hover:bg-white transition-colors" title="Air"><Plane size={16}/></Button>
+                            <Button variant="outline" className="flex-1 h-10 border-slate-200 bg-slate-50 hover:bg-white transition-colors" title="Land"><Truck size={16}/></Button>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* --- NEW: FIDUCIARY COST STACK & IDENTIFICATION --- */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* --- COST & IDENTIFICATION METRICS --- */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* 1. SHIPPING COSTS */}
-                <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden border border-slate-100">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row items-center gap-2">
-                        <BadgeDollarSign size={16} className="text-blue-600" />
-                        <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Shipping Cost Stack (USD)</CardTitle>
+                <Card className="border-slate-200 shadow-sm rounded-xl bg-white overflow-hidden">
+                    <CardHeader className="bg-slate-50 border-b border-slate-200 p-5 flex flex-row items-center gap-2">
+                        <ClipboardList size={16} className="text-blue-600" />
+                        <CardTitle className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Logistics Cost Center (USD)</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-5">
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase text-slate-500">Ocean / Air Freight</Label><Input type="number" className="h-11 rounded-xl bg-slate-50 font-black" placeholder="0.00" /></div>
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase text-slate-500">Insurance Premium</Label><Input type="number" className="h-11 rounded-xl bg-slate-50 font-black" placeholder="0.00" /></div>
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase text-slate-500">Other Terminal Handling</Label><Input type="number" className="h-11 rounded-xl bg-slate-50 font-black" placeholder="0.00" /></div>
+                    <CardContent className="p-6 space-y-4">
+                        <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-slate-400">Total Freight</Label><Input type="number" className="h-10 border-slate-200 font-bold" placeholder="0.00" /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-slate-400">Insurance Value</Label><Input type="number" className="h-10 border-slate-200 font-bold" placeholder="0.00" /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-slate-400">Handling Fees</Label><Input type="number" className="h-10 border-slate-200 font-bold" placeholder="0.00" /></div>
                     </CardContent>
                 </Card>
 
                 {/* 2. UNIT IDENTIFICATION */}
-                <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden border border-slate-100">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 flex flex-row items-center gap-2">
+                <Card className="border-slate-200 shadow-sm rounded-xl bg-white overflow-hidden">
+                    <CardHeader className="bg-slate-50 border-b border-slate-200 p-5 flex flex-row items-center gap-2">
                         <Box size={16} className="text-blue-600" />
-                        <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cargo Identification</CardTitle>
+                        <CardTitle className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Tracking & Weight</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-5">
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase text-slate-500">Container Number</Label><Input className="h-11 rounded-xl bg-slate-50 font-mono font-black text-blue-600" placeholder="MSKU 123456-7" /></div>
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase text-slate-500">Customs Seal Number</Label><Input className="h-11 rounded-xl bg-slate-50 font-mono font-black" placeholder="S-99281" /></div>
-                        <div className="space-y-1.5"><Label className="text-[9px] font-black uppercase text-slate-500">Total Gross Weight (KG)</Label><Input type="number" className="h-11 rounded-xl bg-slate-50 font-black" placeholder="0.00" /></div>
+                    <CardContent className="p-6 space-y-4">
+                        <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-slate-400">Container Number</Label><Input className="h-10 border-slate-200 font-mono font-bold text-blue-600" placeholder="e.g. MSKU 123456" /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-slate-400">Seal Reference</Label><Input className="h-10 border-slate-200 font-mono font-bold" placeholder="S-99281" /></div>
+                        <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-slate-400">Gross Weight (KG)</Label><Input type="number" className="h-10 border-slate-200 font-bold" placeholder="0.00" /></div>
                     </CardContent>
                 </Card>
 
-                {/* 3. AURA FORENSIC PRE-AUDIT SUMMARY */}
-                <div className="bg-slate-950 rounded-[2.5rem] p-10 text-white flex flex-col justify-between shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity"><Landmark size={150} /></div>
+                {/* 3. TAX & VALUE ESTIMATION SUMMARY */}
+                <Card className="bg-slate-900 border-none shadow-lg rounded-xl p-8 flex flex-col justify-between text-white relative overflow-hidden">
+                    <Globe size={100} className="absolute -right-4 -top-4 text-blue-500 opacity-5 rotate-12" />
                     <div className="space-y-6 relative z-10">
                         <div>
-                            <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.3em]">CIF Base Calculation</p>
+                            <p className="text-[10px] font-bold uppercase text-blue-400 tracking-widest">Estimated CIF Base</p>
                             <div className="flex items-baseline gap-2 mt-1">
-                                <span className="text-4xl font-black tracking-tighter">$14,500.00</span>
-                                <span className="text-xs font-bold text-slate-500 uppercase">USD</span>
+                                <span className="text-3xl font-bold tracking-tight">$14,500.00</span>
+                                <span className="text-xs font-semibold text-slate-500">USD</span>
                             </div>
                         </div>
                         <div className="h-px bg-white/10 w-full" />
                         <div>
-                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                                <ShieldCheck size={12}/> Est. Statutory Liability
+                            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                <ShieldCheck size={14}/> Projected Tax Liability
                             </p>
-                            <p className="text-2xl font-black mt-1">UGX 9,657,000</p>
-                            <div className="flex items-center gap-2 mt-3 p-3 bg-white/5 rounded-xl border border-white/5">
-                                <Info size={14} className="text-blue-400" />
-                                <p className="text-[9px] text-slate-400 leading-relaxed italic">
-                                    "Computed via Sovereign Tax Engine using current Tariff rules."
+                            <p className="text-2xl font-bold mt-1">UGX 9,657,000</p>
+                            <div className="flex items-start gap-2 mt-4 p-3 bg-white/5 rounded-lg border border-white/5">
+                                <Info size={14} className="text-blue-400 shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-slate-400 leading-relaxed font-medium">
+                                    "Estimated value calculated using standard jurisdictional tariff rules."
                                 </p>
                             </div>
                         </div>
                     </div>
-                </div>
+                </Card>
             </div>
 
             {/* --- LINE ITEM CONTENT --- */}
-            <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
-                <CardHeader className="bg-white border-b border-slate-100 p-8 flex flex-row justify-between items-center">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3 text-slate-900">
-                        <FileText size={18} className="text-blue-600" /> Declared Cargo Items
-                    </CardTitle>
-                    <Button onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase rounded-xl px-6">
-                        <Plus className="mr-2" size={14} /> Add Cargo Line
+            <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                <CardHeader className="bg-white border-b border-slate-100 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-slate-900">
+                            <FileSpreadsheet size={16} className="text-blue-600" /> Declared Cargo Items
+                        </CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-500 mt-1">Itemized list of goods for customs declaration.</CardDescription>
+                    </div>
+                    <Button onClick={handleAddItem} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-10 px-6 rounded-lg shadow-sm">
+                        <Plus className="mr-2" size={16} /> Add Line
                     </Button>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-slate-50">
-                            <TableRow className="border-none">
-                                <TableHead className="text-[10px] font-black uppercase py-6 pl-10">HS Code / Description</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase text-center">Net Weight (KG)</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase text-right">FOB Value (USD)</TableHead>
-                                <TableHead className="w-20"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {items.length === 0 ? (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-48 text-center text-slate-400 font-medium italic">
-                                        No items registered. Click "Add Cargo Line" to start inputting manifest data.
-                                    </TableCell>
+                                    <TableHead className="text-[10px] font-bold uppercase pl-8 h-12">Item Details (HS Code / Desc)</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-center h-12">Net Weight (KG)</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase text-right h-12">FOB Value (USD)</TableHead>
+                                    <TableHead className="w-20"></TableHead>
                                 </TableRow>
-                            ) : (
-                                items.map((item) => (
-                                    <TableRow key={item.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                        <TableCell className="pl-10 py-6">
-                                            <div className="flex gap-4">
-                                                <Input className="w-32 h-10 font-mono font-black text-blue-600 bg-blue-50 border-none" placeholder="HS CODE" />
-                                                <Input className="flex-1 h-10 font-bold bg-transparent border-slate-200" placeholder="Goods Description..." />
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input type="number" className="w-32 mx-auto h-10 text-center font-black rounded-lg" placeholder="0.00" />
-                                        </TableCell>
-                                        <TableCell className="text-right pr-10">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <span className="text-[10px] font-black text-slate-400">$</span>
-                                                <Input type="number" className="w-40 h-10 text-right font-black rounded-lg" placeholder="0.00" />
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="pr-10">
-                                            <Button variant="ghost" size="icon" onClick={() => setItems(items.filter(i => i.id !== item.id))}>
-                                                <Trash2 size={16} className="text-red-500" />
-                                            </Button>
+                            </TableHeader>
+                            <TableBody>
+                                {items.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-48 text-center text-slate-400 font-medium italic">
+                                            No items registered. Click "Add Line" to begin entry.
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    items.map((item) => (
+                                        <TableRow key={item.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                            <TableCell className="pl-8 py-5">
+                                                <div className="flex gap-4 max-w-xl">
+                                                    <Input className="w-32 h-10 font-mono font-bold text-blue-600 bg-slate-50 border-slate-200" placeholder="HS CODE" />
+                                                    <Input className="flex-1 h-10 font-semibold bg-white border-slate-200" placeholder="Goods Description..." />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input type="number" className="w-32 mx-auto h-10 text-center font-bold border-slate-200" placeholder="0.00" />
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-400">$</span>
+                                                    <Input type="number" className="w-40 h-10 text-right font-bold border-slate-200" placeholder="0.00" />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="pr-8 text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => setItems(items.filter(i => i.id !== item.id))} className="text-slate-300 hover:text-red-600 transition-colors">
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
 
             {/* --- FINAL ACTIONS --- */}
-            <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-8 rounded-[2rem] shadow-2xl text-white relative overflow-hidden">
-                <div className="absolute left-0 top-0 h-full w-2 bg-blue-600" />
-                <div className="flex items-center gap-6 mb-6 md:mb-0">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Compliance Status</span>
-                        <div className="flex items-center gap-2 text-emerald-400 mt-1 font-black">
-                            <ShieldCheck size={16} /> AURA-CFO AUDIT READY
-                        </div>
+            <div className="flex flex-col lg:flex-row justify-between items-center bg-white border border-slate-200 p-8 rounded-xl shadow-sm gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-50 rounded-full">
+                        <CheckCircle2 size={24} className="text-emerald-500" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">System Status</p>
+                        <p className="text-sm font-bold text-slate-900 mt-1 uppercase">Ready for Validation</p>
                     </div>
                 </div>
-                <div className="flex gap-4 w-full md:w-auto">
-                    <Button className="flex-1 md:flex-none h-16 px-10 bg-white/10 hover:bg-white/20 text-white font-black uppercase text-[11px] tracking-widest rounded-2xl border border-white/10">
-                        <RefreshCcw className="mr-2" size={16} /> Save as Draft
+                
+                <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+                    <Button variant="outline" className="flex-1 lg:flex-none h-11 px-8 border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider hover:bg-slate-50 transition-all">
+                        <RefreshCw className="mr-2" size={14} /> Save Draft
                     </Button>
-                    <Button className="flex-1 md:flex-none h-16 px-16 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[11px] tracking-[0.2em] rounded-2xl shadow-2xl shadow-blue-600/30 active:scale-95 transition-all">
-                        Finalize & Push to Customs
+                    <Button className="flex-1 lg:flex-none h-11 px-12 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-[11px] tracking-widest shadow-md transition-all active:scale-95">
+                        <Save className="mr-2" size={16} /> Finalize Manifest
                     </Button>
                 </div>
+            </div>
+
+            {/* Global system status footer */}
+            <div className="text-center py-6 opacity-30">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] flex items-center justify-center gap-2">
+                   <Landmark size={12} /> System Node: Global Compliance Standard
+                </p>
             </div>
         </div>
     );

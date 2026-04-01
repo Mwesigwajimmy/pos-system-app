@@ -2,11 +2,16 @@
 
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { 
+    Card, 
+    CardHeader, 
+    CardTitle, 
+    CardContent, 
+    CardDescription 
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from "@/components/ui/progress";
-// FIXED: Added DialogDescription to the import list below
 import { 
     Dialog, 
     DialogContent, 
@@ -19,18 +24,20 @@ import {
 import { Label } from '@/components/ui/label';
 import { Badge } from "@/components/ui/badge";
 import { createClient } from '@/lib/supabase/client';
-import { toast } from 'sonner'; 
+import toast from 'react-hot-toast'; 
 import { 
     Loader2, 
     Plus, 
     PieChart, 
-    AlertTriangle, 
+    AlertCircle, 
     TrendingUp, 
     Wallet, 
-    ShieldCheck,
-    Target
+    CheckCircle2,
+    Target,
+    BarChart3
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProjectBudget {
   id: string;
@@ -42,8 +49,7 @@ interface ProjectBudget {
 }
 
 /**
- * Enterprise API Layer
- * Strictly isolated by businessId
+ * API Logic (Preserved)
  */
 async function fetchProjectBudgets(businessId: string): Promise<ProjectBudget[]> {
   const supabase = createClient();
@@ -59,7 +65,7 @@ async function fetchProjectBudgets(businessId: string): Promise<ProjectBudget[]>
 
 export default function ProjectBudgetManager({ 
     businessId, 
-    currency = 'USD' 
+    currency = 'UGX' 
 }: { 
     businessId: string, 
     currency?: string 
@@ -69,14 +75,12 @@ export default function ProjectBudgetManager({
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // 1. Data Synchronization
   const { data: budgets, isLoading } = useQuery({
     queryKey: ['project-budgets', businessId],
     queryFn: () => fetchProjectBudgets(businessId),
     enabled: !!businessId
   });
 
-  // 2. Performance Aggregation
   const totals = useMemo(() => {
     if (!budgets) return { totalAllocated: 0, totalSpent: 0, utilization: 0 };
     const allocated = budgets.reduce((s, b) => s + b.amount, 0);
@@ -88,7 +92,6 @@ export default function ProjectBudgetManager({
     };
   }, [budgets]);
 
-  // 3. Mutation Engine
   const createMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('project_budgets').insert({
@@ -101,70 +104,71 @@ export default function ProjectBudgetManager({
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Strategic budget proposal initialized');
+      toast.success('Project budget initialized');
       setIsOpen(false);
       setNewProject({ name: '', amount: 0 });
       queryClient.invalidateQueries({ queryKey: ['project-budgets', businessId] });
     },
-    onError: (e: Error) => toast.error(`Ledger Error: ${e.message}`)
+    onError: (e: Error) => toast.error(`Error: ${e.message}`)
   });
 
   return (
-    <Card className="shadow-2xl border-none overflow-hidden rounded-2xl bg-white">
-      <CardHeader className="flex flex-row items-center justify-between bg-slate-50/50 border-b pb-6">
+    <Card className="shadow-sm border-slate-200 overflow-hidden rounded-xl bg-white animate-in fade-in duration-500">
+      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between bg-slate-50/50 border-b p-6 gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-xl font-black tracking-tight flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-blue-600"/> 
-                Project Allocation Matrix
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
+                <BarChart3 className="w-5 h-5 text-white"/> 
+            </div>
+            <CardTitle className="text-xl font-bold tracking-tight text-slate-900">
+                Project Budgets
             </CardTitle>
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">v3.5 Interconnect</Badge>
           </div>
-          <CardDescription className="font-medium text-slate-500">
-            Real-time capital utilization tracking against project milestones.
+          <CardDescription className="text-sm font-medium text-slate-500 ml-1">
+            Tracking capital utilization across active project milestones.
           </CardDescription>
         </div>
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-slate-900 shadow-lg hover:bg-slate-800 transition-all">
+            <Button className="bg-blue-600 hover:bg-blue-700 font-bold shadow-sm rounded-lg h-10 px-6">
                 <Plus className="w-4 h-4 mr-2"/> Initialize Project
             </Button>
           </DialogTrigger>
-          <DialogContent className="border-t-8 border-t-blue-600">
-            <DialogHeader>
-                <DialogTitle className="text-2xl font-black">Create Capital Budget</DialogTitle>
-                <DialogDescription>Define the financial ceiling for new project initiatives.</DialogDescription>
+          <DialogContent className="sm:max-w-[450px] p-0 border-none rounded-xl shadow-2xl overflow-hidden">
+            <DialogHeader className="p-8 bg-white border-b">
+                <DialogTitle className="text-xl font-bold text-slate-900">New Project Budget</DialogTitle>
+                <DialogDescription className="text-sm">Set the financial limit for a new company initiative.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-6 py-4">
+            <div className="p-8 space-y-6 bg-white">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Project Nomenclature</Label>
+                <Label className="text-xs font-bold text-slate-700 uppercase">Project Name</Label>
                 <Input 
                     value={newProject.name} 
                     onChange={e => setNewProject({...newProject, name: e.target.value})} 
-                    placeholder="e.g. Q4 Infrastructure Expansion"
-                    className="bg-slate-50"
+                    placeholder="e.g. Q4 Marketing Campaign"
+                    className="h-10 border-slate-200 font-semibold"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Capital Allocation ({currency})</Label>
+                <Label className="text-xs font-bold text-slate-700 uppercase">Total Allocation ({currency})</Label>
                 <Input 
                     type="number" 
                     value={newProject.amount} 
                     onChange={e => setNewProject({...newProject, amount: Number(e.target.value)})}
-                    className="bg-slate-50 font-mono font-bold"
+                    className="h-10 border-slate-200 font-bold"
                 />
               </div>
             </div>
-            <DialogFooter className="bg-slate-50 -mx-6 -mb-6 p-6 border-t mt-4">
-              <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <DialogFooter className="bg-slate-50 p-6 border-t flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIsOpen(false)} className="font-bold text-slate-500">Cancel</Button>
               <Button 
                 onClick={() => createMutation.mutate()} 
                 disabled={!newProject.name || newProject.amount <= 0 || createMutation.isPending}
-                className="bg-blue-700 px-8"
+                className="bg-blue-600 hover:bg-blue-700 font-bold px-8 h-10 rounded-lg shadow-sm"
               >
-                {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <ShieldCheck className="w-4 h-4 mr-2"/>} 
-                Authorize Budget
+                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <CheckCircle2 className="w-4 h-4 mr-2"/>} 
+                Create Budget
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -172,39 +176,40 @@ export default function ProjectBudgetManager({
       </CardHeader>
       
       <CardContent className="p-6 space-y-8">
-        {/* HIGH-VALUE SNAPSHOT BAR */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+        {/* KPI OVERVIEW */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                    <Wallet className="w-4 h-4 text-blue-600" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Total Capital</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Total Allocated</span>
+                    <Wallet className="w-4 h-4 text-blue-600 opacity-60" />
                 </div>
-                <p className="text-xl font-black">{formatCurrency(totals.totalAllocated, currency)}</p>
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(totals.totalAllocated, currency)}</p>
             </div>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                    <TrendingUp className="w-4 h-4 text-purple-600" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Realized Spend</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Total Spent</span>
+                    <TrendingUp className="w-4 h-4 text-purple-600 opacity-60" />
                 </div>
-                <p className="text-xl font-black">{formatCurrency(totals.totalSpent, currency)}</p>
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(totals.totalSpent, currency)}</p>
             </div>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm border-l-4 border-l-emerald-500">
                 <div className="flex items-center justify-between mb-2">
-                    <Target className="w-4 h-4 text-green-600" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Avg Utilization</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Utilization</span>
+                    <Target className="w-4 h-4 text-emerald-600 opacity-60" />
                 </div>
-                <p className="text-xl font-black">{totals.utilization.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-slate-900">{totals.utilization.toFixed(1)}%</p>
             </div>
         </div>
 
+        {/* PROJECT LIST */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-600"/>
-              <span className="font-bold text-sm">Syncing Capital Ledgers...</span>
+          <div className="py-32 text-center flex flex-col items-center">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600 mb-4"/>
+              <span className="font-semibold text-slate-400 uppercase tracking-widest text-xs">Syncing Ledger Data...</span>
           </div>
         ) : budgets?.length === 0 ? (
-          <div className="text-center py-24 border-2 border-dashed rounded-3xl bg-slate-50/50">
-              <p className="text-muted-foreground font-medium italic">No active capital projects detected in this business tenant.</p>
+          <div className="py-32 text-center bg-slate-50/50 border border-dashed border-slate-200 rounded-xl">
+              <p className="text-slate-400 font-medium italic">No active project budgets found.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -214,37 +219,34 @@ export default function ProjectBudgetManager({
               const isDanger = percent > 90 || isOverBudget;
               
               return (
-                <div key={budget.id} className="p-5 border-2 border-slate-100 rounded-2xl bg-white hover:border-blue-200 transition-all group">
-                  <div className="flex justify-between items-start mb-4">
+                <div key={budget.id} className="p-6 border border-slate-200 rounded-xl bg-white hover:border-blue-500 transition-all shadow-sm group">
+                  <div className="flex justify-between items-start mb-5">
                     <div className="space-y-1">
-                        <span className="text-xs font-black uppercase text-slate-400 tracking-tighter">Project Name</span>
-                        <h4 className="font-extrabold text-slate-900 group-hover:text-blue-700 transition-colors">{budget.project_name}</h4>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-tight">Project Name</span>
+                        <h4 className="font-bold text-slate-900 text-base">{budget.project_name}</h4>
                     </div>
-                    <Badge className={cn(
-                        "text-[10px] font-black tracking-widest uppercase px-2 py-0.5",
-                        isOverBudget ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200"
-                    )}>
+                    <Badge variant={isOverBudget ? "destructive" : "secondary"} className="text-[10px] font-bold tracking-tight uppercase px-2.5 py-0.5">
                         {isOverBudget ? 'Critical' : 'Operational'}
                     </Badge>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                       <div className="flex justify-between items-end">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-slate-400">Funds Consumed</span>
-                            <span className={cn("font-mono font-bold", isOverBudget ? "text-red-600" : "text-slate-900")}>
+                        <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase text-slate-400">Total Spent</span>
+                            <p className={cn("text-base font-bold", isOverBudget ? "text-red-600" : "text-slate-900")}>
                                 {formatCurrency(budget.spent, currency)}
-                            </span>
+                            </p>
                         </div>
-                        <div className="text-right flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-slate-400">Allocation Ceiling</span>
-                            <span className="font-mono text-slate-500 font-medium">
+                        <div className="text-right space-y-0.5">
+                            <span className="text-[10px] font-bold uppercase text-slate-400">Limit</span>
+                            <p className="text-base font-semibold text-slate-500">
                                 {formatCurrency(budget.amount, currency)}
-                            </span>
+                            </p>
                         </div>
                       </div>
 
-                      <div className="relative pt-1">
+                      <div className="pt-2">
                         <Progress 
                             value={percent} 
                             className={cn(
@@ -254,21 +256,21 @@ export default function ProjectBudgetManager({
                         />
                       </div>
                       
-                      <div className="flex justify-between items-center mt-2">
-                        <div className="flex items-center gap-1.5">
-                            {isOverBudget && <AlertTriangle className="w-3.5 h-3.5 text-red-500 animate-pulse" />}
+                      <div className="flex justify-between items-center mt-1">
+                        <div className="flex items-center gap-2">
+                            {isOverBudget && <AlertCircle className="w-4 h-4 text-red-500" />}
                             <span className={cn(
-                                "text-[10px] font-black uppercase tracking-widest",
+                                "text-[10px] font-bold uppercase tracking-tight",
                                 isOverBudget ? "text-red-600" : "text-slate-400"
                             )}>
-                                {isOverBudget ? "Budget Breach Detected" : "Within Parameters"}
+                                {isOverBudget ? "Over Budget" : "Healthy Status"}
                             </span>
                         </div>
                         <span className={cn(
-                            "text-xs font-mono font-black",
+                            "text-xs font-bold",
                             isDanger ? "text-red-600" : "text-blue-600"
                         )}>
-                            {percent.toFixed(1)}% UTILIZED
+                            {percent.toFixed(1)}% USED
                         </span>
                       </div>
                   </div>

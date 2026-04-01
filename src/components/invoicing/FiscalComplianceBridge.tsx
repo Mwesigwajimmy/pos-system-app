@@ -1,63 +1,75 @@
 'use client';
 
 import React from 'react';
-import { Landmark, ShieldAlert, CheckCircle2, QrCode, Globe } from 'lucide-react';
+import { Landmark, CheckCircle2, QrCode, Globe, ShieldCheck, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 export default function FiscalComplianceBridge() {
     return (
-        <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-200 shadow-xl space-y-8">
-            <div className="flex justify-between items-center">
+        <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-6">
+            {/* Header section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-slate-950 rounded-xl text-white">
-                        <Landmark size={22} />
+                    <div className="p-2 bg-blue-600 rounded-lg text-white shadow-sm">
+                        <Landmark size={20} />
                     </div>
-                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-900">Statutory Compliance Node</h2>
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">Tax Compliance Bridge</h2>
+                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">Active Connection</p>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Badge className="bg-emerald-100 text-emerald-700 border-none font-bold uppercase text-[9px]">Server: ONLINE</Badge>
-                </div>
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-bold uppercase text-[9px] px-2 py-1">
+                    <Activity size={10} className="mr-1.5" /> Service: Online
+                </Badge>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="p-6 bg-white rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5">
-                        <div className="h-16 w-16 bg-slate-100 rounded-2xl flex items-center justify-center">
-                            <QrCode size={32} className="text-slate-400" />
+                <div className="lg:col-span-2 space-y-4">
+                    {/* Validation ID Card */}
+                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-5">
+                        <div className="h-14 w-14 bg-white border border-slate-200 rounded-lg flex items-center justify-center shadow-sm">
+                            <QrCode size={28} className="text-slate-400" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] font-black uppercase text-slate-400">Government Validation ID</p>
-                            <p className="text-lg font-mono font-black text-slate-900 tracking-tight">FDN-7742-99-BBU1</p>
+                            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Validation Identifier</p>
+                            <p className="text-lg font-mono font-bold text-slate-900 tracking-tight">FDN-7742-99-BBU1</p>
                             <div className="flex items-center gap-2 mt-1">
                                 <CheckCircle2 size={12} className="text-emerald-500" />
-                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Verified by National Revenue Authority</span>
+                                <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-tight">Verified by Revenue Authority</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-6 bg-white rounded-3xl shadow-sm border border-slate-100">
-                        <p className="text-[10px] font-black uppercase text-slate-400 mb-4">Localized Tax Breakdown</p>
+                    {/* Tax Breakdown Card */}
+                    <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold uppercase text-slate-400 mb-4 tracking-wider">Current Tax Rules</p>
                         <div className="space-y-3">
-                            <div className="flex justify-between text-xs font-bold">
-                                <span className="text-slate-500 uppercase">Regional VAT (Rule: UG-01)</span>
-                                <span className="text-slate-900">18.00%</span>
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-semibold uppercase tracking-tight">Regional VAT (UG-01)</span>
+                                <span className="font-bold text-slate-900">18.00%</span>
                             </div>
-                            <div className="flex justify-between text-xs font-bold">
-                                <span className="text-slate-500 uppercase">Infrastructure Levy</span>
-                                <span className="text-slate-900">1.50%</span>
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-slate-500 font-semibold uppercase tracking-tight">Standard Levy</span>
+                                <span className="font-bold text-slate-900">1.50%</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-slate-950 rounded-3xl p-6 flex flex-col justify-between text-white">
-                    <Globe size={32} className="text-emerald-400 opacity-20" />
-                    <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Market Sovereignty</p>
-                        <p className="text-[11px] text-slate-400 mt-2 italic leading-relaxed">
-                            "Aura has localized the tax logic for this invoice based on the destination HS-Code. No manual adjustments required."
+                {/* Automation Intelligence Card */}
+                <div className="bg-slate-900 rounded-xl p-6 flex flex-col justify-between text-white shadow-lg border-none relative overflow-hidden">
+                    <Globe size={48} className="absolute -right-4 -top-4 text-blue-500 opacity-10 rotate-12" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-4">
+                            <ShieldCheck size={16} className="text-blue-400" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">System Localization</p>
+                        </div>
+                        <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                            Tax logic has been applied automatically based on the destination identifiers. No manual calculation is required.
                         </p>
+                    </div>
+                    <div className="mt-8 pt-4 border-t border-white/5">
+                        <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Protocol Version: 10.2</p>
                     </div>
                 </div>
             </div>

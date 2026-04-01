@@ -6,10 +6,11 @@ import { useFormState } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2, Save, ShieldCheck, Layers, Calculator,
-  ArrowRight, Trash2, Plus, Activity, Cpu, Target,
+  ArrowRight, Trash2, Plus, Activity, Target,
   Settings2, BarChart3, ArrowUpRight, Scale,
   History, Globe, Landmark, FileCode, BadgeCheck,
-  ShieldAlert, Database, BoxSelect, RefreshCw, Search, ChevronRight
+  ShieldAlert, Database, BoxSelect, RefreshCw, Search, ChevronRight,
+  TrendingUp, FileText, Layout
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -23,8 +24,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { createOrUpdatePricingRule } from '@/app/actions/pricing';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-// --- ENTERPRISE BUSINESS INTERFACES ---
+// --- Interfaces ---
 interface TierBreak {
   min_qty: number;
   max_qty: number | null;
@@ -66,22 +69,18 @@ interface BuilderProps {
   locale: string;
 }
 
-/**
- * HIGH-SECURITY FINANCIAL CALCULATION ENGINE
- * Uses a strict white-list character parser to prevent Code Injection.
- */
+// Formula Engine (Logic Preserved)
 const evaluateEnterpriseFormula = (formula: string, base: number, qty: number): number => {
   try {
     if (!formula) return base;
     const sanitized = formula
       .replace(/BASE/g, base.toString())
       .replace(/QTY/g, qty.toString())
-      .replace(/[^-?\d+/*().\s]/g, ''); // High-security filter
+      .replace(/[^-?\d+/*().\s]/g, ''); 
     
     const compute = new Function(`return (${sanitized})`);
     return Number(compute()) || 0;
   } catch (e) {
-    console.error("Financial Engine Error: Illegal formula syntax detected.");
     return base;
   }
 };
@@ -113,7 +112,7 @@ export function PricingRuleBuilder({
       actions: initialData?.actions || [{ 
           type: 'PERCENTAGE_DISCOUNT', 
           value: 0, 
-          currency_code: currencies[0] || 'USD',
+          currency_code: currencies[0] || 'UGX',
           tiers: [{ min_qty: 1, max_qty: null, value: 0 }] 
       }],
     },
@@ -124,29 +123,24 @@ export function PricingRuleBuilder({
   const { fields: actFields, append: addAct, remove: remAct } = useFieldArray({ control, name: "actions" });
   const [state, formAction] = useFormState(createOrUpdatePricingRule, { success: false, message: '' });
 
-  // --- ERP INTEGRITY MONITOR ---
   const systemReadiness = useMemo(() => {
     const steps = [];
     if (watchedData.name?.length >= 3) steps.push('config');
     if (watchedData.conditions?.every(c => !!c.target_id)) steps.push('logic');
-    
     const actionsValid = watchedData.actions?.every(a => {
         if (a.type === 'FORMULA') return !!a.formula_string && a.formula_string.includes('BASE');
         if (a.type === 'VOLUME_TIER') return (a.tiers?.length ?? 0) > 0;
         return !isNaN(Number(a.value)) && a.value !== null;
     });
     if (actionsValid) steps.push('outcomes');
-    
     return steps;
   }, [watchedData]);
 
   const isAuthorizedForCommit = systemReadiness.length >= 3;
 
-  // --- REAL-TIME YIELD IMPACT ANALYTICS ---
   const yieldAnalytics = useMemo(() => {
     const productMapping = watchedData.conditions?.find(c => c.type === 'PRODUCT');
     const resolvedProduct = products.find(p => p.id.toString() === productMapping?.target_id);
-    
     const baseUnitCost = resolvedProduct?.price || 0;
     let adjustedPrice = baseUnitCost;
     let cumulativeSavings = 0;
@@ -161,9 +155,7 @@ export function PricingRuleBuilder({
             cumulativeSavings = baseUnitCost - val;
             adjustedPrice = val;
         } else if (action.type === 'VOLUME_TIER') {
-            const activeTier = action.tiers?.find(t => 
-                simulatedQty >= t.min_qty && (!t.max_qty || simulatedQty <= t.max_qty)
-            );
+            const activeTier = action.tiers?.find(t => simulatedQty >= t.min_qty && (!t.max_qty || simulatedQty <= t.max_qty));
             if (activeTier) {
                 const impact = (baseUnitCost * (activeTier.value || 0)) / 100;
                 cumulativeSavings += impact;
@@ -177,55 +169,49 @@ export function PricingRuleBuilder({
     });
 
     return {
-        basePrice: Number(baseUnitCost.toFixed(4)),
-        finalPrice: Number(Math.max(0, adjustedPrice).toFixed(4)),
-        deltaSavings: Number(Math.max(0, cumulativeSavings).toFixed(4)),
+        basePrice: baseUnitCost,
+        finalPrice: Math.max(0, adjustedPrice),
+        deltaSavings: Math.max(0, cumulativeSavings),
         efficiencyScore: baseUnitCost > 0 ? (cumulativeSavings / baseUnitCost) * 100 : 0,
-        targetDescriptor: resolvedProduct?.name || 'DIMENSIONAL_REFERENCE_PENDING'
+        targetDescriptor: resolvedProduct?.name || 'No Product Selected'
     };
   }, [watchedData, products, simulatedQty]);
 
   const onExecuteCommit = async (data: PricingRuleFormValues) => {
     const isValid = await trigger();
     if (!isValid) return;
-
     const formData = new FormData();
     formData.append('ruleData', JSON.stringify({ ...data, id: initialData?.id }));
     formData.append('locale', locale);
-    
-    toast({ title: "ERP Master Synchronizing", description: "Committing logical parameters to Master Pricing Database." });
+    toast({ title: "Saving Strategy", description: "Applying pricing parameters to the global database." });
     formAction(formData);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-blue-100">
-      <form onSubmit={handleSubmit(onExecuteCommit)} className="w-full max-w-[1440px] mx-auto space-y-6 px-4 py-6 md:px-8 md:py-10">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased">
+      <form onSubmit={handleSubmit(onExecuteCommit)} className="w-full max-w-[1400px] mx-auto space-y-8 p-6 md:p-10">
           
-          {/* --- GLOBAL ERP HEADER --- */}
+          {/* HEADER */}
           <header className="flex flex-col lg:flex-row items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-sm">
-              <div className="flex items-center gap-5 w-full lg:w-auto">
-                  <div className="w-12 h-12 md:w-14 md:h-14 bg-slate-900 rounded-lg flex items-center justify-center shrink-0 shadow-lg">
-                      <Database className="text-white w-6 h-6 md:w-7 md:h-7" />
+              <div className="flex items-center gap-4 w-full lg:w-auto">
+                  <div className="p-3 bg-blue-600 rounded-lg shadow-md">
+                      <Scale className="text-white w-7 h-7" />
                   </div>
                   <div>
-                      <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                          PRICING CONTROLLER
-                      </h1>
-                      <div className="flex items-center gap-2">
-                          <BadgeCheck className="w-4 h-4 text-blue-500" />
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Tenant ID: {tenantId}</p>
+                      <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Pricing Strategy Builder</h1>
+                      <div className="flex items-center gap-2 mt-1">
+                          <CheckCircle2 className="w-4 h-4 text-blue-500" />
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-tight">Active Tenant: {tenantId.slice(0, 8)}</p>
                       </div>
                   </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-end">
-                  <div className="hidden md:flex flex-col justify-center px-5 py-2.5 bg-slate-50 rounded-lg border border-slate-100 min-w-[180px]">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
-                          <Activity className="w-3 h-3" /> System Integrity
-                      </span>
+                  <div className="hidden md:flex flex-col justify-center px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg min-w-[150px]">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Configuration Status</span>
                       <div className="flex items-center gap-2">
                           <div className={cn("w-2 h-2 rounded-full", isAuthorizedForCommit ? "bg-emerald-500" : "bg-amber-500")} />
-                          <span className="text-xs font-bold text-slate-700">{systemReadiness.length}/3 Validated</span>
+                          <span className="text-xs font-bold text-slate-700">{systemReadiness.length}/3 Complete</span>
                       </div>
                   </div>
                   
@@ -233,84 +219,78 @@ export function PricingRuleBuilder({
                       type="submit" 
                       disabled={!isAuthorizedForCommit || isSubmitting}
                       className={cn(
-                          "h-12 px-8 font-bold text-xs uppercase tracking-widest transition-all rounded-lg w-full sm:w-auto shadow-md",
-                          isAuthorizedForCommit 
-                          ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                          : "bg-slate-100 text-slate-400 border border-slate-200"
+                          "h-11 px-8 font-bold text-sm shadow-sm transition-all rounded-lg w-full sm:w-auto",
+                          isAuthorizedForCommit ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-slate-100 text-slate-400"
                       )}
                   >
-                      {isAuthorizedForCommit ? <Save className="w-4 h-4 mr-3" /> : <ShieldAlert className="w-4 h-4 mr-3" />}
-                      Execute Deployment
+                      {isAuthorizedForCommit ? <Save className="w-4 h-4 mr-2" /> : <ShieldAlert className="w-4 h-4 mr-2" />}
+                      Save Strategy
                   </Button>
               </div>
           </header>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
               
-              {/* --- BUSINESS LOGIC WORKSPACE --- */}
+              {/* BUILDER WORKSPACE */}
               <div className="xl:col-span-8 space-y-6">
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                      <TabsList className="grid grid-cols-3 w-full bg-white border border-slate-200 p-1 rounded-xl h-14 md:h-16 shadow-sm mb-6">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+                      <TabsList className="bg-white border border-slate-200 p-1.5 rounded-xl w-full h-14 shadow-sm">
                           {[
-                              { id: 'config', label: '1. Strategy Context', icon: Settings2 },
-                              { id: 'logic', label: '2. Dimension Map', icon: Layers },
-                              { id: 'outcomes', label: '3. Calculations', icon: Calculator },
+                              { id: 'config', label: '1. Settings', icon: Settings2 },
+                              { id: 'logic', label: '2. Targeting', icon: Layers },
+                              { id: 'outcomes', label: '3. Logic', icon: Calculator },
                           ].map(tab => (
                               <TabsTrigger 
                                   key={tab.id} 
                                   value={tab.id} 
-                                  className="rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white flex items-center justify-center gap-2 md:gap-3"
+                                  className="rounded-lg font-bold text-xs uppercase tracking-tight h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all flex items-center justify-center gap-2 px-6"
                               >
-                                  <tab.icon className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">{tab.label}</span>
-                                  {systemReadiness.includes(tab.id) && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 ml-1" />}
+                                  <tab.icon size={16} />
+                                  <span>{tab.label}</span>
                               </TabsTrigger>
                           ))}
                       </TabsList>
 
                       <AnimatePresence mode="wait">
-                          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.15 }}>
+                          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
                               
-                              {/* SECTION 1: SYSTEM PARAMETERS */}
+                              {/* TAB 1: CONFIG */}
                               <TabsContent value="config" className="m-0">
                                   <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                                      <CardHeader className="p-6 md:p-8 border-b border-slate-50 bg-slate-50/50">
-                                          <div className="flex items-center gap-3">
-                                              <ShieldCheck className="w-5 h-5 text-slate-700" />
-                                              <CardTitle className="text-lg font-bold text-slate-900 uppercase">Logic Context</CardTitle>
-                                          </div>
-                                          <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Define precedence and master metadata.</CardDescription>
+                                      <CardHeader className="p-8 border-b bg-slate-50/50">
+                                          <CardTitle className="text-lg font-bold text-slate-800">Strategy Configuration</CardTitle>
+                                          <CardDescription className="text-sm">Set the baseline parameters for this pricing rule.</CardDescription>
                                       </CardHeader>
-                                      <CardContent className="p-6 md:p-8 space-y-8">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                                      <CardContent className="p-8 space-y-8">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                               <div className="space-y-2">
-                                                  <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Strategy Identifier</Label>
-                                                  <Input {...register('name', { required: true })} placeholder="STRATEGY_REF_001" className="h-12 border-slate-200 rounded-lg font-semibold bg-white" />
+                                                  <Label className="text-xs font-bold text-slate-600 uppercase">Strategy Name</Label>
+                                                  <Input {...register('name', { required: true })} placeholder="e.g. Summer Discount 2025" className="h-10 border-slate-200 focus:ring-blue-600" />
                                               </div>
                                               <div className="space-y-2">
-                                                  <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Precedence Rank</Label>
-                                                  <Input type="number" {...register('priority', { valueAsNumber: true })} className="h-12 border-slate-200 rounded-lg font-semibold bg-white" />
+                                                  <Label className="text-xs font-bold text-slate-600 uppercase">Priority Rank</Label>
+                                                  <Input type="number" {...register('priority', { valueAsNumber: true })} className="h-10 border-slate-200" />
                                               </div>
                                           </div>
 
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                              <div className="flex items-center justify-between p-5 bg-white rounded-lg border border-slate-200 hover:border-blue-200 transition-colors">
-                                                  <div className="space-y-1">
-                                                      <p className="font-bold text-slate-900 text-xs uppercase">Exclusive Application</p>
-                                                      <p className="text-[9px] text-slate-400 font-semibold uppercase">Blocks subsequent rule logic.</p>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                                  <div className="space-y-0.5">
+                                                      <p className="font-bold text-slate-900 text-sm">Exclusive Rule</p>
+                                                      <p className="text-xs text-slate-500">Stops other rules from applying.</p>
                                                   </div>
                                                   <Controller control={control} name="is_exclusive" render={({ field }) => (
                                                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                   )} />
                                               </div>
-                                              <div className="flex items-center justify-between p-5 bg-white rounded-lg border border-slate-200">
-                                                  <div className="space-y-1">
-                                                      <p className="font-bold text-slate-900 text-xs uppercase">Tax Context</p>
-                                                      <p className="text-[9px] text-slate-400 font-semibold uppercase">Financial Calculation Protocol.</p>
+                                              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                                  <div className="space-y-0.5">
+                                                      <p className="font-bold text-slate-900 text-sm">Tax Strategy</p>
+                                                      <p className="text-xs text-slate-500">Apply to Net or Gross price.</p>
                                                   </div>
                                                   <Controller control={control} name="tax_strategy" render={({ field }) => (
                                                       <Select onValueChange={field.onChange} value={field.value}>
-                                                          <SelectTrigger className="h-10 w-[110px] bg-slate-50 border-slate-200 rounded-lg font-bold text-[10px] uppercase">
+                                                          <SelectTrigger className="w-[100px] h-9 border-slate-200 bg-white font-bold text-xs uppercase">
                                                               <SelectValue />
                                                           </SelectTrigger>
                                                           <SelectContent>
@@ -322,162 +302,166 @@ export function PricingRuleBuilder({
                                               </div>
                                           </div>
 
-                                          <div className="flex justify-end pt-6 border-t border-slate-50">
-                                              <Button type="button" onClick={async () => { if(await trigger(['name', 'priority'])) setActiveTab('logic'); }} className="h-12 px-8 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-lg">
-                                                  Continue to Logic Map <ArrowRight className="ml-2 w-4 h-4" />
+                                          <div className="flex justify-end pt-6 border-t">
+                                              <Button type="button" onClick={async () => { if(await trigger(['name', 'priority'])) setActiveTab('logic'); }} className="bg-slate-900 h-10 px-8 font-bold rounded-lg text-white">
+                                                  Continue <ArrowRight className="ml-2 w-4 h-4" />
                                               </Button>
                                           </div>
                                       </CardContent>
                                   </Card>
                               </TabsContent>
 
-                              {/* SECTION 2: DIMENSION MAPPING */}
+                              {/* TAB 2: LOGIC */}
                               <TabsContent value="logic" className="m-0">
-                                  <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                                      <CardHeader className="p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/50">
+                                  <Card className="border-slate-200 shadow-sm rounded-xl bg-white overflow-hidden">
+                                      <CardHeader className="p-8 border-b bg-slate-50/50 flex flex-row items-center justify-between">
                                           <div>
-                                              <CardTitle className="text-lg font-bold text-slate-900 uppercase">Targeting Criteria</CardTitle>
-                                              <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Assign rule logic to dimensional nodes.</CardDescription>
+                                              <CardTitle className="text-lg font-bold">Targeting Criteria</CardTitle>
+                                              <CardDescription className="text-sm">Define exactly where this pricing rule applies.</CardDescription>
                                           </div>
-                                          <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-6 bg-white shadow-sm">
-                                              <Plus className="w-4 h-4 mr-2" /> Add Rule Node
+                                          <Button type="button" variant="outline" onClick={() => addCond({ type: 'PRODUCT', target_id: '', location_id: 'GLOBAL' })} className="h-9 font-bold text-xs border-slate-300">
+                                              <Plus className="w-3.5 h-3.5 mr-2" /> Add Criteria
                                           </Button>
                                       </CardHeader>
-                                      <CardContent className="p-6 md:p-8 space-y-4">
+                                      <CardContent className="p-8 space-y-4">
                                           {condFields.map((field, index) => (
-                                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm relative group">
-                                                  <div className="md:col-span-3 space-y-2">
-                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Dimension</Label>
+                                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
+                                                  <div className="md:col-span-3 space-y-1.5">
+                                                      <Label className="text-[10px] font-bold uppercase text-slate-500">Dimension</Label>
                                                       <Controller control={control} name={`conditions.${index}.type`} render={({ field }) => (
                                                           <Select onValueChange={(val) => { field.onChange(val); setValue(`conditions.${index}.target_id`, ''); }} value={field.value}>
-                                                              <SelectTrigger className="h-10 border-slate-200 bg-slate-50 rounded-lg font-bold text-[10px] uppercase"><SelectValue /></SelectTrigger>
+                                                              <SelectTrigger className="h-10 border-slate-200 bg-white font-bold text-[11px] uppercase"><SelectValue /></SelectTrigger>
                                                               <SelectContent>
-                                                                  <SelectItem value="PRODUCT">SKU Code</SelectItem>
-                                                                  <SelectItem value="CUSTOMER">Client Seg</SelectItem>
-                                                                  <SelectItem value="LOCATION">Retail Hub</SelectItem>
+                                                                  <SelectItem value="PRODUCT">Product</SelectItem>
+                                                                  <SelectItem value="CUSTOMER">Customer</SelectItem>
+                                                                  <SelectItem value="LOCATION">Branch</SelectItem>
                                                               </SelectContent>
                                                           </Select>
                                                       )}/>
                                                   </div>
-                                                  <div className="md:col-span-5 space-y-2">
-                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">System Identifier</Label>
+                                                  <div className="md:col-span-5 space-y-1.5">
+                                                      <Label className="text-[10px] font-bold uppercase text-slate-500">Selection</Label>
                                                       <Controller control={control} name={`conditions.${index}.target_id`} render={({ field: tField }) => (
                                                           <Select onValueChange={tField.onChange} value={tField.value}>
-                                                              <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase"><SelectValue placeholder="System Lookup..." /></SelectTrigger>
-                                                              <SelectContent className="max-h-[300px]">
-                                                                  {watch(`conditions.${index}.type`) === 'PRODUCT' 
-                                                                      ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name} [${p.price}]</SelectItem>)
-                                                                      : customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)
-                                                                  }
+                                                              <SelectTrigger className="h-10 border-slate-200 bg-white font-semibold text-[11px]"><SelectValue placeholder="Search..." /></SelectTrigger>
+                                                              <SelectContent>
+                                                                  <ScrollArea className="h-64">
+                                                                      {watch(`conditions.${index}.type`) === 'PRODUCT' 
+                                                                          ? products.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>)
+                                                                          : customers.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)
+                                                                      }
+                                                                  </ScrollArea>
                                                               </SelectContent>
                                                           </Select>
                                                       )}/>
                                                   </div>
-                                                  <div className="md:col-span-3 space-y-2">
-                                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Regional Scope</Label>
+                                                  <div className="md:col-span-3 space-y-1.5">
+                                                      <Label className="text-[10px] font-bold uppercase text-slate-500">Regional Scope</Label>
                                                       <Controller control={control} name={`conditions.${index}.location_id`} render={({ field }) => (
                                                           <Select onValueChange={field.onChange} value={field.value}>
-                                                              <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase"><SelectValue placeholder="Global" /></SelectTrigger>
+                                                              <SelectTrigger className="h-10 border-slate-200 bg-white font-semibold text-[11px]"><SelectValue placeholder="Global" /></SelectTrigger>
                                                               <SelectContent>
-                                                                  <SelectItem value="GLOBAL">Master Cluster</SelectItem>
+                                                                  <SelectItem value="GLOBAL">All Branches</SelectItem>
                                                                   {locations.map(l => <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>)}
                                                               </SelectContent>
                                                           </Select>
                                                       )}/>
                                                   </div>
-                                                  <div className="md:col-span-1 flex justify-center items-end pb-1">
-                                                      <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></Button>
+                                                  <div className="md:col-span-1 flex items-end pb-1 justify-center">
+                                                      <Button variant="ghost" size="icon" onClick={() => remCond(index)} className="text-slate-300 hover:text-red-600"><Trash2 size={16} /></Button>
                                                   </div>
                                               </div>
                                           ))}
-                                          <div className="flex flex-col sm:flex-row justify-between gap-4 pt-10">
-                                              <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-bold text-[10px] uppercase text-slate-400 h-12 px-8">Back to Parameters</Button>
-                                              <Button type="button" onClick={async () => { if(await trigger('conditions')) setActiveTab('outcomes'); }} className="h-12 px-10 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded-lg">
-                                                  Configure Adjustments <ArrowUpRight className="ml-2 w-4 h-4" />
+                                          <div className="flex justify-between pt-8 border-t">
+                                              <Button type="button" variant="ghost" onClick={() => setActiveTab('config')} className="font-bold text-xs uppercase text-slate-400">Previous</Button>
+                                              <Button type="button" onClick={async () => { if(await trigger('conditions')) setActiveTab('outcomes'); }} className="bg-slate-900 h-10 px-8 font-bold rounded-lg text-white shadow-sm">
+                                                  Next Step <ArrowUpRight className="ml-2 w-4 h-4" />
                                               </Button>
                                           </div>
                                       </CardContent>
                                   </Card>
                               </TabsContent>
 
-                              {/* SECTION 3: CALCULATION ADJUSTMENTS */}
+                              {/* TAB 3: OUTCOMES */}
                               <TabsContent value="outcomes" className="m-0">
-                                  <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                                      <CardHeader className="p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-50 bg-slate-50/50">
+                                  <Card className="border-slate-200 shadow-sm rounded-xl bg-white overflow-hidden">
+                                      <CardHeader className="p-8 border-b bg-slate-50/50 flex flex-row items-center justify-between">
                                           <div>
-                                              <CardTitle className="text-lg font-bold text-slate-900 uppercase">Price Adjustments</CardTitle>
-                                              <CardDescription className="text-slate-500 font-semibold text-[10px] uppercase tracking-widest">Master calculation logic: Formulas or Scaling.</CardDescription>
+                                              <CardTitle className="text-lg font-bold">Calculation Logic</CardTitle>
+                                              <CardDescription className="text-sm">Define how the final price is calculated.</CardDescription>
                                           </div>
-                                          <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] || 'USD', tiers: [] })} className="rounded-lg border-slate-200 font-bold text-[10px] uppercase h-10 px-6 bg-white shadow-sm"><Plus className="w-4 h-4 mr-2" /> Add Operation</Button>
+                                          <Button type="button" variant="outline" onClick={() => addAct({ type: 'PERCENTAGE_DISCOUNT', value: 0, currency_code: currencies[0] || 'UGX', tiers: [] })} className="h-9 font-bold text-xs border-slate-300">
+                                              <Plus className="w-3.5 h-3.5 mr-2" /> Add Operation
+                                          </Button>
                                       </CardHeader>
-                                      <CardContent className="p-6 md:p-8 space-y-6">
+                                      <CardContent className="p-8 space-y-6">
                                           {actFields.map((field, index) => {
                                               const actionType = watch(`actions.${index}.type`);
                                               return (
-                                                  <div key={field.id} className="bg-slate-50/50 p-6 rounded-xl border border-slate-200 space-y-6 shadow-sm">
+                                                  <div key={field.id} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-6">
                                                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                                                          <div className="md:col-span-4 space-y-2">
-                                                              <Label className="text-[10px] font-bold text-slate-400 uppercase">Processor</Label>
+                                                          <div className="md:col-span-4 space-y-1.5">
+                                                              <Label className="text-[10px] font-bold uppercase text-slate-500">Adjustment Type</Label>
                                                               <Controller control={control} name={`actions.${index}.type`} render={({ field }) => (
                                                                   <Select onValueChange={field.onChange} value={field.value}>
-                                                                      <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-bold text-[10px] uppercase"><SelectValue /></SelectTrigger>
+                                                                      <SelectTrigger className="h-10 border-slate-200 bg-white font-bold text-[11px] uppercase"><SelectValue /></SelectTrigger>
                                                                       <SelectContent>
-                                                                          <SelectItem value="PERCENTAGE_DISCOUNT">Markdown (%)</SelectItem>
-                                                                          <SelectItem value="FIXED_PRICE">Fixed Price</SelectItem>
-                                                                          <SelectItem value="FORMULA">Algorithm</SelectItem>
-                                                                          <SelectItem value="VOLUME_TIER">Scaling Tiers</SelectItem>
+                                                                          <SelectItem value="PERCENTAGE_DISCOUNT">Discount (%)</SelectItem>
+                                                                          <SelectItem value="FIXED_PRICE">Set Fixed Price</SelectItem>
+                                                                          <SelectItem value="FORMULA">Custom Formula</SelectItem>
+                                                                          <SelectItem value="VOLUME_TIER">Volume Tiers</SelectItem>
                                                                       </SelectContent>
                                                                   </Select>
                                                               )}/>
                                                           </div>
 
-                                                          <div className="md:col-span-7 space-y-2">
+                                                          <div className="md:col-span-7">
                                                               {actionType === 'FORMULA' ? (
                                                                   <div className="relative">
-                                                                      <Input {...register(`actions.${index}.formula_string`)} placeholder="e.g. (BASE * 0.95)" className="h-10 border-slate-200 bg-white rounded-lg font-mono font-bold text-xs px-4 pr-10" />
-                                                                      <Calculator className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                                                                      <Input {...register(`actions.${index}.formula_string`)} placeholder="e.g. (BASE * 0.90)" className="h-10 font-mono text-sm border-slate-200" />
+                                                                      <Calculator className="absolute right-3 top-3 text-slate-300 w-4 h-4" />
                                                                   </div>
                                                               ) : actionType === 'VOLUME_TIER' ? (
-                                                                  <div className="h-10 flex items-center px-4 bg-white rounded-lg border border-slate-100"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tier Mapping Active</p></div>
+                                                                  <div className="h-10 flex items-center px-4 bg-slate-100 rounded-lg text-slate-400 font-bold text-[10px] uppercase">Tier configuration enabled below</div>
                                                               ) : (
-                                                                  <Input type="number" step="0.0001" {...register(`actions.${index}.value`, { valueAsNumber: true })} className="h-10 border-slate-200 bg-white rounded-lg font-bold text-xs px-4" />
+                                                                  <Input type="number" step="0.01" {...register(`actions.${index}.value`, { valueAsNumber: true })} className="h-10 font-bold border-slate-200" />
                                                               )}
                                                           </div>
-                                                          <div className="md:col-span-1 flex justify-center items-end pb-1">
-                                                              <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-white rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></Button>
+                                                          <div className="md:col-span-1 flex items-end pb-1 justify-center">
+                                                              <Button variant="ghost" size="icon" onClick={() => remAct(index)} className="text-slate-300 hover:text-red-600"><Trash2 size={16} /></Button>
                                                           </div>
                                                       </div>
 
                                                       {actionType === 'VOLUME_TIER' && (
-                                                          <div className="pt-6 border-t border-slate-200/60 space-y-4">
+                                                          <div className="pt-6 border-t border-slate-200 space-y-4">
                                                               <div className="flex items-center justify-between">
-                                                                  <h4 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Tier Threshold Matrix</h4>
+                                                                  <h4 className="text-[10px] font-bold text-slate-700 uppercase">Threshold Matrix</h4>
                                                                   <Button type="button" variant="outline" size="sm" onClick={() => {
                                                                       const cur = watch(`actions.${index}.tiers`) || [];
                                                                       setValue(`actions.${index}.tiers`, [...cur, { min_qty: 1, max_qty: null, value: 0 }]);
-                                                                  }} className="rounded-md font-bold text-[9px] uppercase px-4 h-8 bg-white border-slate-200">Add Threshold</Button>
+                                                                  }} className="h-8 text-[10px] font-bold border-slate-300">Add Row</Button>
                                                               </div>
-                                                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                                   {(watch(`actions.${index}.tiers`) || []).map((_, tIdx) => (
-                                                                      <div key={tIdx} className="bg-white p-4 rounded-lg border border-slate-200 relative group shadow-sm animate-in zoom-in-95">
+                                                                      <div key={tIdx} className="bg-white p-4 rounded-xl border border-slate-200 relative shadow-sm">
                                                                           <div className="grid grid-cols-2 gap-3 mb-3">
                                                                               <div className="space-y-1">
-                                                                                  <Label className="text-[8px] font-bold text-slate-400 uppercase">Min</Label>
-                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} className="h-8 rounded-md text-[10px] font-bold border-slate-100" />
+                                                                                  <Label className="text-[9px] font-bold text-slate-400 uppercase">Min Qty</Label>
+                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.min_qty`, { valueAsNumber: true })} className="h-8 text-xs font-bold" />
                                                                               </div>
                                                                               <div className="space-y-1">
-                                                                                  <Label className="text-[8px] font-bold text-slate-400 uppercase">Max</Label>
-                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="INF" className="h-8 rounded-md text-[10px] font-bold border-slate-100" />
+                                                                                  <Label className="text-[9px] font-bold text-slate-400 uppercase">Max Qty</Label>
+                                                                                  <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.max_qty`, { valueAsNumber: true })} placeholder="Max" className="h-8 text-xs font-bold" />
                                                                               </div>
                                                                           </div>
                                                                           <div className="space-y-1">
-                                                                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Mutation (%)</Label>
-                                                                              <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} className="h-8 rounded-md text-[10px] font-bold bg-slate-50" />
+                                                                              <Label className="text-[9px] font-bold text-slate-400 uppercase">Reduction (%)</Label>
+                                                                              <Input type="number" {...register(`actions.${index}.tiers.${tIdx}.value`, { valueAsNumber: true })} className="h-8 text-xs font-bold bg-blue-50/50" />
                                                                           </div>
                                                                           <button type="button" onClick={() => {
                                                                               const cur = watch(`actions.${index}.tiers`) || [];
                                                                               setValue(`actions.${index}.tiers`, cur.filter((__, i) => i !== tIdx));
-                                                                          }} className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white border border-slate-200 text-red-500 shadow-sm flex items-center justify-center transition-colors hover:bg-red-50"><Trash2 className="w-3 h-3" /></button>
+                                                                          }} className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white border border-slate-200 text-red-500 shadow-sm flex items-center justify-center hover:bg-red-50"><X size={12} /></button>
                                                                       </div>
                                                                   ))}
                                                               </div>
@@ -487,9 +471,11 @@ export function PricingRuleBuilder({
                                               );
                                           })}
                                           
-                                          <div className="flex flex-col sm:flex-row justify-between gap-4 pt-10 border-t border-slate-50">
-                                              <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-bold text-[10px] uppercase text-slate-400 h-12 px-8">Back</Button>
-                                              <Button type="submit" disabled={!isAuthorizedForCommit || isSubmitting} className={cn("h-14 px-12 font-bold text-[11px] uppercase tracking-widest rounded-lg transition-all", isAuthorizedForCommit ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-100" : "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed")}>Finalize Deployment <CheckCircle2 className="ml-3 w-4 h-4" /></Button>
+                                          <div className="flex justify-between pt-8 border-t">
+                                              <Button type="button" variant="ghost" onClick={() => setActiveTab('logic')} className="font-bold text-xs uppercase text-slate-400">Previous</Button>
+                                              <Button type="submit" disabled={!isAuthorizedForCommit || isSubmitting} className={cn("h-12 px-10 font-bold text-xs uppercase tracking-widest rounded-lg transition-all shadow-md", isAuthorizedForCommit ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-slate-100 text-slate-300 cursor-not-allowed")}>
+                                                  Finalize Strategy <CheckCircle2 className="ml-2 w-4 h-4" />
+                                              </Button>
                                           </div>
                                       </CardContent>
                                   </Card>
@@ -499,88 +485,78 @@ export function PricingRuleBuilder({
                   </Tabs>
               </div>
 
-              {/* --- ENTERPRISE YIELD ANALYTICS SIDEBAR --- */}
-              <div className="xl:col-span-4 space-y-6 lg:sticky lg:top-10">
-                  <Card className="bg-slate-900 border-none rounded-2xl overflow-hidden shadow-2xl text-white">
-                      <CardHeader className="p-8 pb-4">
-                          <div className="flex items-center gap-3 mb-4">
-                              <div className="p-2 bg-white/10 rounded-lg">
-                                  <BarChart3 className="w-5 h-5 text-blue-400" />
-                              </div>
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Yield Impact Analytics</span>
+              {/* ANALYTICS SIDEBAR */}
+              <div className="xl:col-span-4 space-y-6 lg:sticky lg:top-8">
+                  <Card className="bg-slate-950 border-none rounded-xl overflow-hidden shadow-xl text-white">
+                      <CardHeader className="p-8 border-b border-white/5">
+                          <div className="flex items-center gap-3 mb-3">
+                              <TrendingUp className="text-blue-400 h-5 w-5" />
+                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Yield Impact Summary</span>
                           </div>
-                          <CardTitle className="text-xl font-bold uppercase tracking-tight truncate leading-none">{watchedData.name || 'STRATEGY_REF_PENDING'}</CardTitle>
+                          <CardTitle className="text-xl font-bold tracking-tight truncate uppercase">{watchedData.name || 'Strategy Name'}</CardTitle>
                           <div className="flex items-center gap-2 mt-4">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Engine Ready</span>
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logic Ready</span>
                           </div>
                       </CardHeader>
                       
-                      <CardContent className="p-8 pt-4 space-y-8">
-                          <div className="space-y-6 p-6 bg-white/5 rounded-xl border border-white/5 shadow-inner">
-                              <div className="flex justify-between items-center">
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase">Base Unit Price</span>
-                                  <span className="text-xl font-bold font-mono">${yieldAnalytics.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      <CardContent className="p-8 space-y-6">
+                          <div className="space-y-5 p-5 bg-white/5 rounded-xl border border-white/10">
+                              <div className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold text-slate-400">Current Unit Price</span>
+                                  <span className="font-bold font-mono">UGX {yieldAnalytics.basePrice.toLocaleString()}</span>
                               </div>
-                              <div className="flex justify-between items-center">
-                                  <span className="text-[10px] font-bold text-blue-400 uppercase">Adjustment Applied</span>
-                                  <span className="text-xl font-bold text-blue-400 font-mono">-${yieldAnalytics.deltaSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                              <div className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold text-blue-400">Adjustment Applied</span>
+                                  <span className="font-bold text-blue-400 font-mono">-UGX {yieldAnalytics.deltaSavings.toLocaleString()}</span>
                               </div>
                               <Separator className="bg-white/10" />
-                              <div className="space-y-4 pt-2">
+                              <div className="space-y-4 pt-1">
                                   <div className="flex justify-between items-end">
-                                      <div className="space-y-1">
-                                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Projected Net Yield</span>
-                                          <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-md border border-white/10">
-                                              <span className="text-[9px] font-bold text-slate-400 uppercase truncate max-w-[120px]">{yieldAnalytics.targetDescriptor}</span>
-                                          </div>
+                                      <div>
+                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Projected Yield</p>
+                                          <p className="text-[11px] font-bold text-slate-300 mt-1 truncate max-w-[150px]">{yieldAnalytics.targetDescriptor}</p>
                                       </div>
-                                      <span className="text-4xl font-bold tracking-tighter font-mono text-white">${yieldAnalytics.finalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                      <span className="text-3xl font-bold font-mono text-white">UGX {yieldAnalytics.finalPrice.toLocaleString()}</span>
                                   </div>
-                                  <div className="flex items-center justify-between gap-4 p-4 bg-black/40 rounded-xl border border-white/5">
-                                      <Label className="text-[10px] font-bold text-slate-500 uppercase">Simulation Qty</Label>
-                                      <Input type="number" value={simulatedQty} onChange={(e) => setSimulatedQty(Math.max(1, Number(e.target.value)))} className="w-24 h-10 bg-white/10 border-white/10 text-white font-bold text-center text-xs rounded-lg" />
+                                  <div className="flex items-center justify-between p-4 bg-black/30 rounded-xl border border-white/5">
+                                      <Label className="text-[10px] font-bold text-slate-400 uppercase">Simulation Qty</Label>
+                                      <Input type="number" value={simulatedQty} onChange={(e) => setSimulatedQty(Math.max(1, Number(e.target.value)))} className="w-20 h-9 bg-white/5 border-white/10 text-white font-bold text-center text-xs" />
                                   </div>
                               </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
-                              <div className="p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col items-center">
-                                  <History className="w-4 h-4 text-slate-500 mb-2" />
-                                  <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">State</p>
-                                  <p className={cn("text-[10px] font-bold uppercase tracking-wider", isAuthorizedForCommit ? "text-emerald-400" : "text-amber-400")}>{isAuthorizedForCommit ? "Validated" : "Staging"}</p>
+                              <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-center">
+                                  <History className="w-4 h-4 text-slate-500 mx-auto mb-2" />
+                                  <p className="text-[9px] font-bold text-slate-500 uppercase">Status</p>
+                                  <p className={cn("text-[10px] font-bold uppercase mt-1", isAuthorizedForCommit ? "text-emerald-400" : "text-amber-400")}>{isAuthorizedForCommit ? "Valid" : "Incomplete"}</p>
                               </div>
-                              <div className="p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col items-center">
-                                  <Scale className="text-slate-400 mb-2 w-4 h-4" />
-                                  <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Efficiency</p>
-                                  <p className="text-[10px] font-bold text-white">{yieldAnalytics.efficiencyScore.toFixed(2)}%</p>
+                              <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-center">
+                                  <Scale className="text-slate-500 mx-auto mb-2 w-4 h-4" />
+                                  <p className="text-[9px] font-bold text-slate-500 uppercase">Efficiency</p>
+                                  <p className="text-[10px] font-bold text-white mt-1">{yieldAnalytics.efficiencyScore.toFixed(2)}%</p>
                               </div>
                           </div>
                       </CardContent>
                   </Card>
 
-                  {/* LOGISTICS NODES */}
                   <div className="grid grid-cols-3 gap-3">
                       {[
                           { icon: Globe, label: 'Geo-Logic' },
                           { icon: Landmark, label: 'Compliance' },
-                          { icon: FileCode, label: 'Schema' }
+                          { icon: FileText, label: 'Audit Log' }
                       ].map((item, i) => (
-                          <button 
-                              key={i} 
-                              type="button"
-                              onClick={() => toast({ title: "Module Loaded", description: `Accessing ${item.label} subsystem.` })}
-                              className="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-blue-400 transition-all active:scale-95 group"
-                          >
-                              <item.icon className="w-5 h-5 text-slate-400 mb-2 group-hover:text-blue-600 transition-colors" />
-                              <span className="text-[9px] font-bold text-slate-500 uppercase text-center leading-tight tracking-widest">{item.label}</span>
-                          </button>
+                          <div key={i} className="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-slate-200 shadow-sm transition-all hover:border-blue-300 group cursor-default">
+                              <item.icon size={18} className="text-slate-300 mb-2 group-hover:text-blue-600 transition-colors" />
+                              <span className="text-[10px] font-bold text-slate-400 uppercase group-hover:text-slate-600 transition-colors">{item.label}</span>
+                          </div>
                       ))}
                   </div>
 
-                  <div className="flex items-center justify-center gap-3 py-4 text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em] opacity-60">
+                  <div className="flex items-center justify-center gap-2 pt-4 opacity-50">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      ERP SYNC STATUS: 100%
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">System Sync: 100%</span>
                   </div>
               </div>
           </div>

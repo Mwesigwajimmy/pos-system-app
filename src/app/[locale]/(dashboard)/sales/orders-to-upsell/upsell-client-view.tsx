@@ -19,7 +19,7 @@ import {
   Mail,
   ChevronLeft,
   ChevronRight,
-  History,
+  Clock,
   Target,
   Zap,
   ShieldCheck,
@@ -28,7 +28,9 @@ import {
   Layers,
   Activity,
   Database,
-  Search
+  Search,
+  CheckCircle2,
+  Package
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -81,41 +83,37 @@ export default function UpsellClientView({
   const columns = useMemo<ColumnDef<UpsellOpportunity>[]>(() => [
     {
       accessorKey: "order_uid",
-      header: "System Node",
+      header: "Order ID",
       cell: ({ row }) => {
         const uid = String(row.getValue("order_uid") || "");
         return (
-          <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-blue-500 transition-colors" />
-              <span className="font-mono text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                  {uid.split('-')[0] || "NODE_0"}
-              </span>
-          </div>
+          <code className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider">
+              {uid.split('-')[0] || "REF"}
+          </code>
         );
       },
     },
     {
       accessorKey: "customer_name",
-      header: "Identity Profile",
+      header: "Customer Details",
       cell: ({ row }) => {
-        const name = String(row.getValue("customer_name") || "Anonymous");
+        const name = String(row.getValue("customer_name") || "Guest");
         return (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 text-sm tracking-tight">
+              <span className="font-bold text-slate-900 text-sm">
                   {name}
               </span>
               {row.original.customer_segment === 'VIP' && (
-                <Badge className="bg-blue-50 text-blue-600 border-none h-5 px-1.5 text-[9px] font-bold">
-                  <ShieldCheck className="w-3 h-3 mr-1" /> VIP_STATUS
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 h-5 px-1.5 text-[9px] font-bold">
+                  VIP
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
-                <History className="w-3 h-3" /> 
-                LTV: {currencyFormatter.format(row.original.total_spent_history || 0)}
-                <span className="text-slate-200">•</span>
-                <span className="text-blue-600 font-bold uppercase tracking-tight">{row.original.customer_segment || 'Standard'}</span>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
+                <span>LTV: {currencyFormatter.format(row.original.total_spent_history || 0)}</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-slate-400 uppercase">{row.original.customer_segment || 'Standard'}</span>
             </div>
           </div>
         );
@@ -123,17 +121,17 @@ export default function UpsellClientView({
     },
     {
       accessorKey: "order_date",
-      header: "Temporal Context",
+      header: "Recency",
       cell: ({ row }) => {
         const dateStr = String(row.getValue("order_date"));
         return (
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-slate-700">
+            <p className="text-xs font-semibold text-slate-600">
                 {formatDistanceToNow(new Date(dateStr), { addSuffix: true })}
             </p>
-            <Badge variant="outline" className="text-[9px] font-medium py-0 px-1.5 text-slate-400 border-slate-200 bg-slate-50">
-                {currencyFormatter.format(row.original.current_order_amount || 0)} Base
-            </Badge>
+            <p className="text-[10px] font-medium text-slate-400 uppercase">
+                Last Order: {currencyFormatter.format(row.original.current_order_amount || 0)}
+            </p>
           </div>
         );
       },
@@ -143,10 +141,10 @@ export default function UpsellClientView({
       header: ({ column }) => (
         <Button 
             variant="ghost" 
-            className="-ml-4 h-8 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors" 
+            className="-ml-4 h-8 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 transition-colors" 
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Propensity <ArrowUpDown className="ml-2 h-3 w-3" />
+          Opportunity Score <ArrowUpDown className="ml-2 h-3 w-3" />
         </Button>
       ),
       cell: ({ row }) => {
@@ -156,8 +154,8 @@ export default function UpsellClientView({
         
         return (
           <div className="w-[140px] space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Score</span>
+            <div className="flex justify-between items-center px-0.5">
+              <span className="text-[9px] font-bold uppercase text-slate-400">Probability</span>
               <span className={cn("text-xs font-bold", textClass)}>{score}%</span>
             </div>
             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -173,7 +171,7 @@ export default function UpsellClientView({
     },
     {
       accessorKey: "potential_revenue",
-      header: () => <div className="text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">Impact Forecast</div>,
+      header: () => <div className="text-right text-[10px] font-bold uppercase tracking-wider text-slate-500">Estimated Uplift</div>,
       cell: ({ row }) => {
         const potential = Number(row.getValue("potential_revenue") || 0);
         return (
@@ -181,7 +179,7 @@ export default function UpsellClientView({
             <div className="text-sm font-bold text-emerald-600">
               +{currencyFormatter.format(potential)}
             </div>
-            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Projected Uplift</div>
+            <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-tight">Projected</div>
           </div>
         );
       },
@@ -192,25 +190,25 @@ export default function UpsellClientView({
         <div className="text-right">
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 w-9 p-0 hover:bg-blue-600 hover:text-white transition-all rounded-lg border border-slate-100 shadow-sm">
-                    <Zap className="h-4 w-4" />
+                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-slate-100">
+                    <Activity className="h-4 w-4 text-slate-400" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl border-slate-200 shadow-xl">
-                <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3 py-2">Intelligence Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-100" />
-                <DropdownMenuItem className="cursor-pointer rounded-lg focus:bg-blue-50 focus:text-blue-700 py-2.5 transition-colors">
-                    <Sparkles className="mr-2.5 h-4 w-4 text-blue-500" /> 
-                    <span className="font-semibold text-xs">Generate Smart Pitch</span>
+              <DropdownMenuContent align="end" className="w-52 p-2 border-slate-200 shadow-xl rounded-lg">
+                <DropdownMenuLabel className="text-[10px] font-bold uppercase text-slate-400 px-2 py-1.5">Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer rounded-md font-semibold text-xs py-2 focus:bg-blue-50">
+                    <Sparkles className="mr-2 h-4 w-4 text-blue-600" /> 
+                    AI Pitch Generation
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer rounded-lg focus:bg-emerald-50 focus:text-emerald-700 py-2.5 transition-colors">
-                    <Mail className="mr-2.5 h-4 w-4 text-emerald-500" /> 
-                    <span className="font-semibold text-xs">Send Precision Email</span>
+                <DropdownMenuItem className="cursor-pointer rounded-md font-semibold text-xs py-2 focus:bg-emerald-50">
+                    <Mail className="mr-2 h-4 w-4 text-emerald-600" /> 
+                    Send Promotion
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-100" />
-                <DropdownMenuItem className="cursor-pointer rounded-lg focus:bg-slate-100 py-2.5 transition-colors">
-                    <MousePointerClick className="mr-2.5 h-4 w-4 text-slate-400" /> 
-                    <span className="font-semibold text-xs text-slate-600">Review Order Details</span>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer rounded-md font-semibold text-xs py-2 text-slate-600">
+                    <MousePointerClick className="mr-2 h-4 w-4" /> 
+                    View Profile
                 </DropdownMenuItem>
               </DropdownMenuContent>
           </DropdownMenu>
@@ -236,86 +234,67 @@ export default function UpsellClientView({
   );
 
   return (
-    <div className="flex-1 space-y-8 p-4 md:p-8 lg:p-10 bg-[#f8fafc] min-h-screen">
+    <div className="flex-1 space-y-8 p-6 md:p-10 animate-in fade-in duration-500 bg-[#F8FAFC]">
       
-      {/* COMMAND HEADER */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-        <div className="space-y-3">
+      {/* HEADER */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 border-b border-slate-200 pb-8">
+        <div className="space-y-1">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600 shadow-xl shadow-blue-100 rounded-xl">
-              <Target className="w-7 h-7 text-white" />
+            <div className="p-2.5 bg-blue-600 rounded-lg shadow-sm">
+              <Target className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge className="bg-blue-50 text-blue-600 border-none font-bold text-[10px] tracking-widest px-2 py-0">
-                  REV_ENGINE v4.2
-                </Badge>
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-600 tracking-wide">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Cluster Online
-                </div>
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 leading-none">
-                Expansion Intel
-              </h2>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              Sales Opportunities
+            </h1>
           </div>
-          <p className="text-slate-500 font-medium max-w-xl text-sm leading-relaxed border-l-4 border-blue-100 pl-4">
-            High-velocity expansion targets identified via pattern recognition. Automated scoring prioritizes accounts with high retention propensity and uplift potential.
+          <p className="text-sm text-slate-500 font-medium ml-1">
+            Data-driven targets identified through customer purchase patterns and behavior analytics.
           </p>
         </div>
         
-        {/* KPI TELEMETRY */}
-        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-            <div className="hidden sm:flex bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm items-center gap-6 transition-all hover:border-blue-200">
-                <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Impact</p>
-                    <div className="flex items-center gap-2 justify-end">
-                        <span className="text-xl font-bold text-slate-900 tracking-tight">
+        {/* KPI CARDS */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <div className="flex bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm items-center gap-6">
+                <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Estimated Impact</p>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold text-slate-900">
                             {currencyFormatter.format(totalPotential)}
                         </span>
                         <ArrowUpRight className="w-4 h-4 text-emerald-500" />
                     </div>
                 </div>
                 <div className="h-8 w-px bg-slate-100" />
-                <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Targets</p>
-                    <p className="text-xl font-bold text-slate-900 leading-none">{opportunities.length}</p>
+                <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Active Targets</p>
+                    <p className="text-xl font-bold text-slate-900">{opportunities.length}</p>
                 </div>
             </div>
-            <Button className="flex-1 lg:flex-none h-14 px-8 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white border-none shadow-xl font-bold uppercase tracking-wider text-xs transition-all active:scale-95">
-                Bulk Execute Logic
+            <Button className="flex-1 lg:flex-none h-11 px-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition-all active:scale-95">
+                Process Queue
             </Button>
         </div>
       </div>
 
-      {/* MATRIX WORKSPACE */}
-      <Card className="border-slate-200 shadow-sm bg-white rounded-3xl overflow-hidden">
-        <CardHeader className="p-6 md:p-8 border-b border-slate-50">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="space-y-1">
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800">
-                    <Layers className="w-5 h-5 text-blue-600" />
-                    Propensity Matrix
-                </CardTitle>
-                <CardDescription className="text-slate-500 text-xs font-medium">
-                    Identifying high-LTV customers with optimized expansion probabilities.
-                </CardDescription>
+      {/* DATA TABLE */}
+      <Card className="border-slate-200 shadow-sm bg-white rounded-xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
+            <div className="space-y-0.5">
+                <CardTitle className="text-lg font-bold text-slate-900 uppercase tracking-tight">Upsell Opportunities</CardTitle>
+                <CardDescription className="text-xs font-medium text-slate-500">Prioritized list based on expansion probability.</CardDescription>
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
-                <Button variant="ghost" size="sm" className="h-8 rounded-lg font-bold text-[10px] uppercase bg-white shadow-sm text-blue-600">Queue</Button>
-                <Button variant="ghost" size="sm" className="h-8 rounded-lg font-bold text-[10px] uppercase text-slate-400">Processed</Button>
-            </div>
-          </div>
+            <Badge variant="outline" className="bg-white text-blue-600 border-slate-200 font-bold px-3">
+                System Version 4.2
+            </Badge>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table className="min-w-[1000px]">
-              <TableHeader className="bg-slate-50/50">
+            <Table>
+              <TableHeader className="bg-slate-50">
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="border-slate-100">
+                  <TableRow key={headerGroup.id} className="hover:bg-transparent">
                     {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="h-14 px-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <TableHead key={header.id} className="h-12 px-8 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     ))}
@@ -323,82 +302,77 @@ export default function UpsellClientView({
                 ))}
               </TableHeader>
               <TableBody>
-                <AnimatePresence mode='wait'>
-                    {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                        <TableRow 
-                            key={row.id} 
-                            className="group hover:bg-blue-50/30 transition-colors border-slate-50"
-                        >
-                        {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id} className="py-5 px-8">
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                        ))}
-                        </TableRow>
-                    ))
-                    ) : (
-                    <TableRow>
-                        <TableCell colSpan={columns.length} className="h-64 text-center">
-                          <div className="flex flex-col items-center justify-center opacity-20">
-                              <Sparkles className="w-12 h-12 mb-4" />
-                              <p className="font-bold uppercase tracking-widest text-xs">No active targets identified</p>
-                          </div>
+                {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+                    {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="py-4 px-8">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
+                    ))}
                     </TableRow>
-                    )}
-                </AnimatePresence>
+                ))
+                ) : (
+                <TableRow>
+                    <TableCell colSpan={columns.length} className="h-64 text-center">
+                      <div className="flex flex-col items-center justify-center text-slate-300 gap-3">
+                          <Package className="w-12 h-12 opacity-20" />
+                          <p className="font-semibold uppercase tracking-widest text-xs">No active opportunities found</p>
+                      </div>
+                    </TableCell>
+                </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
           
-          {/* PAGINATION ENGINE */}
-          <div className="flex items-center justify-between p-6 md:p-8 border-t border-slate-50 bg-slate-50/30">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                Matrix Display: {table.getRowModel().rows.length} of {opportunities.length} Nodes
-            </p>
-            <div className="flex items-center gap-3">
+          {/* PAGINATION */}
+          <div className="flex items-center justify-between p-6 border-t border-slate-100 bg-slate-50/30">
+            <span className="text-[11px] text-slate-500 font-semibold uppercase">
+                Showing {table.getRowModel().rows.length} of {opportunities.length} Results
+            </span>
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
-                className="h-10 px-4 rounded-xl border-slate-200 font-bold text-xs active:scale-95 shadow-sm"
+                className="h-9 px-4 border-slate-200 font-bold"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" /> Prev
+                <ChevronLeft className="h-4 w-4 mr-1" /> Prev
               </Button>
-              <div className="bg-white border border-slate-200 h-10 px-4 flex items-center rounded-xl text-[11px] font-bold text-slate-700 shadow-sm font-mono">
-                P{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+              <div className="h-9 px-4 flex items-center rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-sm">
+                Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
-                className="h-10 px-4 rounded-xl border-slate-200 font-bold text-xs active:scale-95 shadow-sm"
+                className="h-9 px-4 border-slate-200 font-bold"
               >
-                Next <ChevronRight className="h-4 w-4 ml-2" />
+                Next <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
       
-      {/* SYSTEM STATUS FOOTER */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 bg-slate-900 rounded-[2rem] shadow-xl text-white/50 font-mono text-[10px] uppercase tracking-widest border-t-4 border-blue-600">
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-8">
+      {/* SYSTEM STATUS */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 border border-slate-200 rounded-xl bg-white shadow-sm opacity-60">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
               <span className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" /> Network Secure
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" /> Secure Analysis
               </span>
               <span className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-blue-500" /> Data Verified
+                  <Database className="w-4 h-4 text-blue-500" /> Ledger Verified
               </span>
               <span className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-yellow-500" /> Intelligence V4.2
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" /> BBU1 Integrity Protocol
               </span>
           </div>
-          <div className="px-5 py-2 bg-white/5 rounded-lg border border-white/10 text-white/30">
-              Refresh Cluster: {new Date().toLocaleTimeString()}
+          <div className="text-[10px] font-mono font-bold text-slate-400">
+              {new Date().toLocaleDateString()} // STATUS: SYNCHRONIZED
           </div>
       </div>
     </div>
