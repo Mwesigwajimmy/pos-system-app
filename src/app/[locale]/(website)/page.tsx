@@ -1208,31 +1208,42 @@ const DynamicPricingSection = () => {
         }
     ];
 
-    useEffect(() => {
+useEffect(() => {
         const detectLocation = async () => {
             try {
                 // --- 1. SET UP ABORT CONTROLLER (Prevents hanging) ---
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second limit
 
-                // --- 2. PRIMARY ATTEMPT (ipapi.co) ---
-                let response = await fetch('https://ipapi.co/json/', { signal: controller.signal });
-                let data;
+                // --- 2. PROFESSIONAL GLOBAL HANDSHAKE (CORS-SAFE BYPASS) ---
+                // We utilize a high-availability loop to ensure location detection 
+                // never triggers a 403 Forbidden or Network crash.
+                let data = null;
+                const endpoints = [
+                    'https://api.country.is',
+                    'https://ipapi.co/json/',
+                    'https://ip-api.com/json'
+                ];
 
-                if (response.ok) {
-                    data = await response.json();
-                    clearTimeout(timeoutId);
-                } else {
-                    // --- 3. SECONDARY ATTEMPT (ip-api.com) ---
-                    // This runs if ipapi.co hits its daily limit or fails
-                    const fallbackResponse = await fetch('https://ipapi.com/json_api/check'); 
-                    // Note: If above fails, we try a public non-key alternative
-                    const altResponse = await fetch('https://api.country.is');
-                    data = await altResponse.json();
+                for (const url of endpoints) {
+                    try {
+                        const response = await fetch(url, { 
+                            signal: controller.signal,
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        if (response.ok) {
+                            data = await response.json();
+                            break; // Handshake successful
+                        }
+                    } catch (e) {
+                        continue; // Failover to next node
+                    }
                 }
+                clearTimeout(timeoutId);
+
+                if (!data) throw new Error("Nodes unreachable");
 
                 // --- 4. NORMALIZE COUNTRY CODE ---
-                // Different APIs use different keys (country_code vs country)
                 const countryCode = (data.country_code || data.country || data.ip_country || '').toUpperCase();
 
                 console.log(`BBU1 Smart Pricing: User detected in [${countryCode}]`);
@@ -1241,24 +1252,45 @@ const DynamicPricingSection = () => {
                 let detectedCurrency;
 
                 if (!countryCode || countryCode === 'RESERVED' || countryCode === 'LOCALHOST') {
-                    // Handle local development or failed detection
                     detectedCurrency = GEO_CURRENCIES['DEFAULT'];
                 } else if (EUROZONE_COUNTRIES.includes(countryCode)) {
-                    // Handle all 20+ Eurozone countries automatically
                     detectedCurrency = GEO_CURRENCIES['EU'];
                 } else if (GEO_CURRENCIES[countryCode]) {
-                    // Handle specific mapped countries (UG, KE, NG, etc.)
                     detectedCurrency = GEO_CURRENCIES[countryCode];
                 } else {
-                    // Fallback for countries not explicitly in your list
                     detectedCurrency = GEO_CURRENCIES['DEFAULT'];
                 }
 
                 setCurrency(detectedCurrency);
 
+                // --- 6. AUTO-LANGUAGE TRANSFORMATION ENGINE ---
+                // Maps detected country to the correct Language Code for the Orchestrator
+                const languageMap = {
+                    'CN': 'zh-CN', // China
+                    'FR': 'fr',    // France
+                    'AE': 'ar',    // UAE/Arabic
+                    'DE': 'de',    // Germany
+                    'NL': 'nl',    // Netherlands
+                    'BR': 'pt',    // Brazil
+                };
+
+                const targetLang = languageMap[countryCode];
+
+                if (targetLang) {
+                    const checkEngine = setInterval(() => {
+                        const select = document.querySelector('.goog-te-combo');
+                        if (select) {
+                            select.value = targetLang;
+                            select.dispatchEvent(new Event('change'));
+                            clearInterval(checkEngine); 
+                            console.log(`BBU1 OS: System transformed to [${targetLang}]`);
+                        }
+                    }, 500); 
+                    setTimeout(() => clearInterval(checkEngine), 10000);
+                }
+
             } catch (error) {
-                // This catches Ad-Blocker interference or total network failure
-                console.warn("BBU1 Smart Pricing: Geolocation blocked. Defaulting to Global (USD).", error);
+                console.warn("BBU1 Smart Pricing: Geolocation blocked. Defaulting to Global (USD).");
                 setCurrency(GEO_CURRENCIES['DEFAULT']);
             } finally {
                 setLoading(false);
@@ -1266,24 +1298,23 @@ const DynamicPricingSection = () => {
         };
 
         detectLocation();
-    }, [setCurrency]); // Added dependency for best practice
-    const formatPrice = (base: number) => {
+    }, [setCurrency]); 
+
+    const formatPrice = (base) => {
         let price = base * currency.rate;
         if (billingCycle === 'yearly') price = price * 0.8; // 20% Discount
         
-        // Smart Rounding for cleaner numbers
         if (currency.code === 'UGX' || currency.code === 'TZS' || currency.code === 'RWF') {
-            price = Math.floor(price / 1000) * 1000; // Round to nearest 1000 for high-denom currencies
+            price = Math.floor(price / 1000) * 1000; 
         } else if (currency.code === 'NGN' || currency.code === 'KES') {
-            price = Math.floor(price / 100) * 100; // Round to nearest 100
+            price = Math.floor(price / 100) * 100; 
         } else {
-            price = Math.floor(price); // Round to nearest integer for USD, EUR, GBP
+            price = Math.floor(price); 
         }
 
         return new Intl.NumberFormat('en').format(price);
     };
-
-    return (
+return (
         <>
             {/* SECTION 1: Standard Pricing (Light Background) */}
             <section id="pricing" className="py-24 bg-background relative overflow-hidden">

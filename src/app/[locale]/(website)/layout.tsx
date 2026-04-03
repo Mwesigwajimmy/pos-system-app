@@ -7,6 +7,7 @@ import Providers from "@/components/Providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import LanguageOrchestrator from "@/components/core/LanguageOrchestrator";
 import { 
   Rocket, Menu, X, Mail, Linkedin, Twitter, Facebook, 
   Leaf, DownloadCloud, Sparkles, ChevronDown, MessageSquareText,
