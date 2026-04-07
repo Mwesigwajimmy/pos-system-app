@@ -237,21 +237,19 @@ const navSections: NavItem[] = [
         module: 'Compliance Hub',
         subItems: [
             { href: '/compliance', label: 'Overview', icon: LayoutDashboard },
-            { 
-                href: '/compliance/sales-tax', 
-                label: 'Sales Tax Intelligence', 
-                icon: Calculator, 
-                // ADDED: 'accountant' and 'commander'
-                roles: ['admin', 'manager', 'auditor', 'owner', 'architect', 'accountant', 'commander'] 
-            },
+            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
             { href: '/compliance/risk-dashboard', label: 'Risk Dashboard', icon: BarChart3 },
+            { href: '/compliance/tax-reports', label: 'Tax Report Generator', icon: FileText },
             { href: '/compliance/kyc-aml', label: 'KYC / AML', icon: UserCheckIcon },
             { href: '/compliance/gdpr', label: 'Data Requests', icon: FileText },
+            { href: '/compliance/sales-tax', label: 'Sales Tax Intelligence', icon: Calculator },
             { href: '/compliance/regulations', label: 'Regulations', icon: ScrollText },
             { href: '/compliance/permits', label: 'Licenses & Permits', icon: KeyRound },
             { href: '/compliance/policy-library', label: 'Policy Library', icon: Library },
             { href: '/compliance/sanctions', label: 'Sanctions Screening', icon: BadgeAlert },
+            { href: '/compliance/drilldown', label: 'Compliance Drilldown', icon: Activity },
             { href: '/compliance/checklist', label: 'Checklist', icon: ListChecks },
+            { href: '/compliance/revolutionary-compliance', label: 'Revolutionary Intelligence', icon: Zap },
         ]
     },
 
