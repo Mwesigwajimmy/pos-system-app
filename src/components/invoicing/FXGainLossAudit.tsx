@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TrendingUp, RefreshCw, CheckCircle2, Activity, Download } from 'lucide-react';
+import { TrendingUp, RefreshCw, CheckCircle2, Activity, Download, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,83 +18,62 @@ interface AuditRow {
     unrealized_gain_loss: number;
 }
 
-export default function FXGainLossAudit({ data, totalGain, currency }: { data: AuditRow[], totalGain: number, currency: string }) {
+interface ComponentProps {
+    auditData: AuditRow[];
+    totalGain: number;
+    homeCurrency?: string | null;
+}
+
+export default function FXGainLossAudit({ auditData, totalGain, homeCurrency }: ComponentProps) {
     
-    // Formatter for currency handling
+    // DATA INTEGRITY GUARD: Prevent Intl.NumberFormat crash if currency is missing in DB
+    const isValidCurrency = homeCurrency && homeCurrency.length === 3;
+
+    if (!isValidCurrency) {
+        return (
+            <div className="p-12 border-2 border-dashed border-rose-200 rounded-3xl bg-rose-50 text-center animate-in zoom-in-95 duration-500">
+                <AlertTriangle className="mx-auto text-rose-500 mb-4" size={48} />
+                <h2 className="text-xl font-black text-rose-900 uppercase tracking-tight">Configuration Required</h2>
+                <p className="text-rose-700 mt-2 font-medium">
+                    The Business Profile is missing a valid ISO Currency Code.<br/>
+                    Please update your <span className="font-bold underline">Business Settings</span> to enable forensic auditing.
+                </p>
+            </div>
+        );
+    }
+
+    // Professional Formatter
     const fmt = (val: number) => new Intl.NumberFormat('en-US', { 
         style: 'currency', 
-        currency: currency, 
+        currency: homeCurrency!, 
         signDisplay: 'always' 
     }).format(val);
 
-    // PROFESSIONAL PDF GENERATION ENGINE
-    const downloadForensicReport = () => {
+    // PROFESSIONAL PDF GENERATION
+    const downloadPDF = () => {
         const doc = new jsPDF();
-        const timestamp = new Date().toLocaleString();
-        
-        // 1. Branding & Title
         doc.setFontSize(22);
-        doc.setTextColor(15, 23, 42); // Slate 900
         doc.text("FORENSIC FX VARIANCE AUDIT", 14, 22);
-        
-        doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139); // Slate 500
-        doc.text(`REPORT GENERATED: ${timestamp}`, 14, 30);
-        doc.text(`SYSTEM LOGIC: SOVEREIGN LEDGER V2.0 ENGINE`, 14, 35);
-
-        // 2. Executive Summary Box
-        doc.setFillColor(248, 250, 252); // Slate 50
-        doc.rect(14, 45, 182, 25, 'F');
-        
         doc.setFontSize(10);
-        doc.setTextColor(71, 85, 105); // Slate 600
-        doc.text("TOTAL UNREALIZED GAIN/LOSS PORTFOLIO:", 20, 55);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
         
-        doc.setFontSize(16);
-        doc.setTextColor(totalGain >= 0 ? [5, 150, 105] : [225, 29, 72]); // Emerald 600 or Rose 600
-        doc.text(`${fmt(totalGain)} ${currency}`, 20, 64);
-
-        // 3. Audit Table Data
         autoTable(doc, {
-            startY: 80,
-            head: [['REFERENCE', 'INVOICE CCY', 'RATE @ ISSUE', 'MARKET RATE', 'NET VARIANCE']],
-            body: data.map(r => [
+            startY: 45,
+            head: [['REFERENCE', 'ISSUE RATE', 'MARKET RATE', 'VARIANCE']],
+            body: auditData.map(r => [
                 r.invoice_ref,
-                r.invoice_ccy,
-                `${r.rate_at_issue.toLocaleString()} ${currency}`,
-                `${r.current_mkt_rate.toLocaleString()} ${currency}`,
-                `${r.unrealized_gain_loss >= 0 ? '+' : ''}${r.variance_per_unit.toFixed(2)} / ${r.invoice_ccy}`
+                `1 ${r.invoice_ccy} = ${r.rate_at_issue} ${homeCurrency}`,
+                `1 ${r.invoice_ccy} = ${r.current_mkt_rate} ${homeCurrency}`,
+                `${r.unrealized_gain_loss >= 0 ? '+' : ''}${r.variance_per_unit.toFixed(2)}`
             ]),
-            headStyles: { 
-                fillColor: [30, 41, 59], // Slate 800
-                fontSize: 8,
-                fontStyle: 'bold',
-                halign: 'left'
-            },
-            bodyStyles: { 
-                fontSize: 8,
-                textColor: [51, 65, 85] // Slate 700
-            },
-            alternateRowStyles: { 
-                fillColor: [249, 250, 251] 
-            },
-            margin: { top: 80 }
+            headStyles: { fillColor: [30, 41, 59] }
         });
-
-        // 4. Footer & Legal Verification
-        const finalY = (doc as any).lastAutoTable.finalY || 150;
-        doc.setFontSize(7);
-        doc.setTextColor(148, 163, 184); // Slate 400
-        doc.text("MATHEMATICAL PARITY VERIFIED • SECURE SYSTEM LINK • NOT AN OFFICIAL TAX DOCUMENT", 14, finalY + 15);
-        doc.text("This forensic audit calculates variances based on live mid-market rate feeds synced with the Sovereign Ledger Engine.", 14, finalY + 20);
-
-        // Save file
-        doc.save(`FX_Forensic_Audit_${new Date().toISOString().slice(0,10)}.pdf`);
+        doc.save(`FX_Audit_${new Date().toISOString().slice(0,10)}.pdf`);
     };
 
     return (
         <div className="p-6 md:p-8 space-y-6 bg-white rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
-            {/* Header Section */}
+            {/* Header section */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div className="space-y-1">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Exchange Rate Analytics</p>
@@ -104,7 +83,7 @@ export default function FXGainLossAudit({ data, totalGain, currency }: { data: A
                 </div>
                 <div className="flex items-center gap-3">
                     <Button 
-                        onClick={downloadForensicReport}
+                        onClick={downloadPDF}
                         variant="outline" 
                         className="hidden sm:flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-[10px] uppercase h-9 px-4 shadow-sm"
                     >
@@ -151,19 +130,19 @@ export default function FXGainLossAudit({ data, totalGain, currency }: { data: A
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {data.length === 0 ? (
+                        {auditData.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center py-10 text-slate-400 font-medium">No active currency drift detected.</TableCell>
+                                <TableCell colSpan={4} className="text-center py-12 text-slate-400 font-medium italic">No active currency drift detected.</TableCell>
                             </TableRow>
                         ) : (
-                            data.map((row) => (
+                            auditData.map((row) => (
                                 <TableRow key={row.invoice_ref} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                                     <TableCell className="font-bold text-xs pl-6 py-4">{row.invoice_ref}</TableCell>
                                     <TableCell className="text-xs font-medium text-slate-600">
-                                        1 {row.invoice_ccy} = {Number(row.rate_at_issue).toLocaleString()} {row.reporting_ccy}
+                                        1 {row.invoice_ccy} = {row.rate_at_issue.toLocaleString()} {homeCurrency}
                                     </TableCell>
                                     <TableCell className="text-xs font-medium text-slate-600">
-                                        1 {row.invoice_ccy} = {Number(row.current_mkt_rate).toLocaleString()} {row.reporting_ccy}
+                                        1 {row.invoice_ccy} = {row.current_mkt_rate.toLocaleString()} {homeCurrency}
                                     </TableCell>
                                     <TableCell className={`text-right pr-6 font-bold text-xs uppercase ${row.unrealized_gain_loss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                         {row.unrealized_gain_loss >= 0 ? '+' : ''}{row.variance_per_unit.toFixed(2)} / {row.invoice_ccy}
@@ -183,8 +162,8 @@ export default function FXGainLossAudit({ data, totalGain, currency }: { data: A
                 <div>
                     <p className="text-[10px] font-bold uppercase text-blue-700 tracking-wider mb-1">Accounting Insight</p>
                     <p className="text-xs text-blue-800 leading-relaxed font-medium">
-                        Your foreign-denominated receivables have shifted by {totalGain >= 0 ? 'favorable' : 'unfavorable'} exchange rate movement. 
-                        We recommend monitoring these outstanding {currency} balances to manage volatility and lock in gains where possible.
+                        Forensic monitoring for outstanding <span className="font-bold">{homeCurrency}</span> balances is active. 
+                        Historical parity is verified against your local reporting base via live market liquidity feeds.
                     </p>
                 </div>
             </div>
