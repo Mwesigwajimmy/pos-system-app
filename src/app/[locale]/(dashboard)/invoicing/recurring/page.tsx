@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import RecurringBillingSchedules from "@/components/invoicing/RecurringBillingSchedules";
-import { Zap, CalendarDays, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Zap, ShieldCheck, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -21,10 +21,22 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  const { data: profile } = await supabase.from("profiles").select("business_id, organization_id").eq("id", user.id).single();
-  const activeTenantId = profile?.business_id || profile?.organization_id;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("business_id, organization_id")
+    .eq("id", user.id)
+    .single();
 
+  const activeTenantId = profile?.business_id || profile?.organization_id;
   if (!activeTenantId) redirect(`/${locale}/dashboard`);
+
+  // CALL REVENUE FORECASTING ENGINE
+  const { data: streams, error } = await supabase
+    .rpc('get_revenue_stream_forecast', { 
+        p_business_id: activeTenantId 
+    });
+
+  const activeCount = streams?.[0]?.total_active_count || 0;
 
   return (
     <div className="container mx-auto py-10 max-w-7xl px-6">
@@ -38,7 +50,8 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
               <Zap size={28} strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Revenue Streams</h1>
+              {/* FIXED: Removed 'italic' for a professional straight look */}
+              <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Revenue Streams</h1>
               <p className="text-slate-500 font-medium mt-1">Automated <span className="text-blue-600 font-bold">Subscription logic</span> and settlement forecasting.</p>
             </div>
           </div>
@@ -52,7 +65,11 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
         </div>
       </div>
       <div className="max-w-4xl">
-         <RecurringBillingSchedules />
+         {/* Passing REAL data to the component */}
+         <RecurringBillingSchedules 
+            schedules={streams || []} 
+            activeCount={Number(activeCount)} 
+         />
       </div>
     </div>
   );
