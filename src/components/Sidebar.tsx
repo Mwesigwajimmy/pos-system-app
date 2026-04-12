@@ -118,6 +118,8 @@ const navSections: NavItem[] = [
         module: 'Invoicing Hub',
         subItems: [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
+            { href: '/invoicing/estimates', label: 'Estimate Terminal', icon: FileText },
+            { href: '/invoicing/payments', label: 'Payment Registry', icon: Handshake },
             { href: '/invoicing/list', label: 'All Invoices', icon: FileStack }, 
             { href: '/invoicing/fx-audit', label: 'FX Forensic Audit', icon: RefreshCcw },
             { href: '/invoicing/compliance', label: 'Compliance Bridge', icon: Landmark },
