@@ -18,9 +18,11 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
+  // 1. AUTHENTICATION HANDSHAKE
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
+  // 2. TENANT RESOLUTION
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_id, organization_id")
@@ -30,11 +32,19 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
   const activeTenantId = profile?.business_id || profile?.organization_id;
   if (!activeTenantId) redirect(`/${locale}/dashboard`);
 
-  // CALL REVENUE FORECASTING ENGINE
-  const { data: streams, error } = await supabase
+  // 3. FETCH REVENUE FORECASTING DATA (RPC)
+  const { data: streams } = await supabase
     .rpc('get_revenue_stream_forecast', { 
         p_business_id: activeTenantId 
     });
+
+  // 4. FETCH MASTER DOCUMENTS (Templates for the Scheduler)
+  // This ensures the "New Billing Schedule" terminal is fully functional and not mock
+  const { data: templateInvoices } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, total_amount, currency, customer_name")
+    .eq("business_id", activeTenantId)
+    .order("created_at", { ascending: false });
 
   const activeCount = streams?.[0]?.total_active_count || 0;
 
@@ -50,7 +60,7 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
               <Zap size={28} strokeWidth={2.5} />
             </div>
             <div>
-              {/* FIXED: Removed 'italic' for a professional straight look */}
+              {/* FIXED: Removed 'italic' for professional enterprise look */}
               <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Revenue Streams</h1>
               <p className="text-slate-500 font-medium mt-1">Automated <span className="text-blue-600 font-bold">Subscription logic</span> and settlement forecasting.</p>
             </div>
@@ -65,10 +75,10 @@ export default async function RecurringPage({ params: { locale } }: PageProps) {
         </div>
       </div>
       <div className="max-w-4xl">
-         {/* Passing REAL data to the component */}
          <RecurringBillingSchedules 
             schedules={streams || []} 
             activeCount={Number(activeCount)} 
+            availableTemplates={templateInvoices || []}
          />
       </div>
     </div>
