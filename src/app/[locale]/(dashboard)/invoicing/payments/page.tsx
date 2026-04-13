@@ -4,7 +4,17 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import PaymentRegistry from "@/components/invoicing/PaymentRegistry";
-import { Landmark, ArrowLeft, CheckCircle2, History, AlertCircle, Wrench, ShieldCheck } from "lucide-react";
+import { 
+    Landmark, 
+    ArrowLeft, 
+    CheckCircle2, 
+    History, 
+    AlertCircle, 
+    Wrench, 
+    ShieldCheck,
+    Activity,
+    Zap
+} from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -36,7 +46,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
     return (
       <div className="flex flex-col h-[70vh] items-center justify-center p-6 text-center animate-in fade-in">
         <div className="bg-red-50 p-12 rounded-[40px] border-2 border-dashed border-red-200 max-w-md shadow-2xl shadow-red-500/10">
-          <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-6 animate-pulse" />
+          <ShieldCheck className="h-16 w-16 text-red-600 mx-auto mb-6 animate-pulse" />
           <h2 className="text-2xl font-black text-red-900 uppercase tracking-tighter leading-none">Forensic Lock</h2>
           <p className="text-red-700 mt-4 font-medium leading-relaxed uppercase text-[11px] tracking-widest">
             Profile not linked to a Sovereign Business Unit. Access restricted.
@@ -48,7 +58,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
   }
 
   // 3. INFRASTRUCTURE AUDIT: Verify required ledger components exist
-  // We check for Journal 'GEN' and Account '1210' because the backend handshake requires them.
+  // This forensic check ensures that Account 1210 and Journal GEN are ready for double-entry posting.
   const [arRes, journalRes] = await Promise.all([
     supabase.from("accounting_accounts").select("id").eq("business_id", activeBusinessId).eq("code", "1210").maybeSingle(),
     supabase.from("accounting_journals").select("id").eq("business_id", activeBusinessId).eq("code", "GEN").maybeSingle()
@@ -58,13 +68,22 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
     return (
         <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in zoom-in-95">
             <div className="bg-amber-50 p-12 rounded-[40px] border-2 border-dashed border-amber-200 max-w-lg shadow-2xl shadow-amber-500/10">
-                <Wrench className="h-16 w-16 text-amber-600 mx-auto mb-6" />
+                <div className="relative mb-6">
+                    <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full animate-pulse" />
+                    <Wrench className="h-16 w-16 text-amber-600 mx-auto relative z-10" />
+                </div>
                 <h2 className="text-2xl font-black text-amber-900 uppercase tracking-tighter">Handshake Interrupted</h2>
                 <p className="text-amber-800 mt-4 font-medium leading-relaxed">
-                    The General Ledger for <strong>{profile.business_name}</strong> is not fully initialized. Account 1210 (Receivables) and Journal GEN are required for settlement synchronization.
+                    The General Ledger for <span className="font-bold underline">{profile.business_name || 'this unit'}</span> is not fully initialized. 
+                    Standard Accounts (1210) and Journals (GEN) are required for protocol synchronization.
                 </p>
                 <div className="mt-8 flex gap-3 justify-center">
-                    <Link href={`/${locale}/settings/accounting`} className="px-8 h-12 bg-amber-600 text-white rounded-2xl flex items-center font-bold uppercase text-[11px] tracking-widest hover:bg-amber-700 transition-all">Initialize Ledger</Link>
+                    <Link 
+                        href={`/${locale}/settings/accounting`} 
+                        className="px-10 h-14 bg-amber-600 text-white rounded-2xl flex items-center font-bold uppercase text-[11px] tracking-[0.2em] hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20 active:scale-95"
+                    >
+                        Initialize Ledger Infrastructure
+                    </Link>
                 </div>
             </div>
         </div>
@@ -72,6 +91,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
   }
 
   // 4. TRANSACTIONAL DATA ACQUISITION (Multi-Tenant Secured)
+  // Fetching real-time debt and recipient liquidity accounts in parallel
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
@@ -84,7 +104,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
       .from("accounting_accounts")
       .select("id, name, code")
       .eq("business_id", activeBusinessId)
-      .eq("code", "1000") // Liquidity account discovery
+      .eq("code", "1000") // Discovery of Bank/Cash clearing pools
       .eq("is_active", true)
   ]);
 
@@ -111,8 +131,8 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
         <div className="flex items-center gap-4 bg-slate-950 px-5 py-3 rounded-2xl border border-white/10 shadow-lg">
            <ShieldCheck size={16} className="text-emerald-400" />
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Type</span>
-             <span className="text-xs font-bold text-emerald-400 uppercase leading-none mt-1">Ledger Direct Sync</span>
+             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Protocol Type</span>
+             <span className="text-xs font-bold text-emerald-400 uppercase mt-1">Ledger Direct Sync</span>
            </div>
         </div>
       </div>
@@ -149,7 +169,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-2">
                     <div className="p-2 bg-blue-600 rounded-lg">
-                        <History size={16} className="text-white" />
+                        <Activity size={16} className="text-white" />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Forensic Audit</span>
                 </div>
@@ -168,13 +188,19 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
                <AlertCircle className="text-amber-600 shrink-0 mt-1" size={20} />
                <div className="space-y-1">
                  <p className="text-[11px] text-amber-900 font-black uppercase tracking-widest leading-none">Liquidity Warning</p>
-                 <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
-                   No active recipient account found with **Code 1000**. Please register your Bank or Cash accounts in settings to finalize settlements.
+                 <p className="text-[10px] text-amber-700 font-medium leading-relaxed mt-1 uppercase tracking-tight">
+                   No active recipient account found with **Code 1000**. Please register Bank or Cash assets in settings.
                  </p>
                </div>
              </div>
            )}
         </div>
+      </div>
+
+      {/* SYSTEM FOOTER */}
+      <div className="mt-20 pt-8 border-t border-slate-100 flex justify-between items-center opacity-30">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Sovereign Ledger System Protocol v10.2</p>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Multi-Tenant • Cloud-Anchored</p>
       </div>
     </div>
   );
