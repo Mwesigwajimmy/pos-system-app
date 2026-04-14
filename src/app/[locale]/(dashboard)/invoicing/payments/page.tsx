@@ -16,6 +16,7 @@ import {
     Zap,
     ShieldAlert,
     Database,
+    Loader2,
     Fingerprint
 } from "lucide-react";
 import Link from "next/link";
