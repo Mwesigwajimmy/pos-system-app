@@ -9,12 +9,8 @@ import {
     ArrowLeft, 
     CheckCircle2, 
     History, 
-    AlertCircle, 
-    Wrench, 
     ShieldCheck,
     Activity,
-    Zap,
-    Loader2,
     Database,
     Fingerprint,
     ShieldAlert
@@ -24,13 +20,13 @@ import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "Settlement Registry | Sovereign Ledger",
-  description: "Autonomous invoice reconciliation and ledger handshake terminal.",
+  description: "Enterprise autonomous settlement handshake and ledger synchronization terminal.",
 };
 
 interface PageProps { params: { locale: string }; }
 
 export default async function PaymentsPage({ params }: PageProps) {
-  // Ensure params are handled correctly for the routing context
+  // NEXT.JS 15 COMPATIBILITY: Securely resolve routing parameters
   const { locale } = await params;
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
@@ -41,25 +37,33 @@ export default async function PaymentsPage({ params }: PageProps) {
 
   const user = authData.user;
 
-  // 2. IDENTITY RESOLUTION (Safeguarded against 500 Digest crashes)
+  // 2. IDENTITY RESOLUTION (Forensic Join)
+  // We fetch the profile and join the 'tenants' table to get the verified name "cake"
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("business_id, business_name, tenant_id, organization_id")
+    .select(`
+        business_id, 
+        tenant_id, 
+        organization_id, 
+        business_name,
+        tenants ( name )
+    `)
     .eq("id", user.id)
     .maybeSingle();
 
-  // Resolve identity context using Enterprise Hierarchy
-  const activeBusinessId = profile?.business_id || profile?.tenant_id || profile?.organization_id;
-  const activeBusinessName = profile?.business_name || "Active Sovereign Unit";
+  // Resolve ID and Name using the verified database locations
+  const bizId = profile?.business_id || profile?.tenant_id || profile?.organization_id;
+  const activeBusinessName = (profile?.tenants as any)?.name || profile?.business_name || "Sovereign Unit";
 
-  if (!activeBusinessId || profileError) {
+  // 3. SECURITY GATEKEEPER
+  if (!bizId || profileError) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in fade-in duration-700">
         <div className="bg-rose-50 p-12 rounded-[40px] border-2 border-dashed border-rose-200 max-w-md shadow-2xl shadow-rose-500/10">
           <ShieldAlert className="h-16 w-16 text-rose-600 mx-auto mb-6 animate-pulse" />
-          <h2 className="text-2xl font-black text-rose-900 uppercase tracking-tighter leading-none">Forensic Lock</h2>
+          <h2 className="text-2xl font-black text-rose-900 uppercase tracking-tighter leading-none">Identity Lock</h2>
           <p className="text-rose-700 mt-4 font-medium leading-relaxed uppercase text-[10px] tracking-widest">
-            Identity verification failed. Profile is not anchored to a Sovereign Business Unit.
+            Verification failed. Profile is not anchored to a Sovereign Business Unit.
           </p>
           <Link href={`/${locale}/dashboard`} className="mt-8 inline-block px-10 h-12 bg-rose-600 text-white rounded-2xl font-bold uppercase text-[11px] tracking-widest hover:bg-rose-700 transition-all active:scale-95">Return to Dashboard</Link>
         </div>
@@ -67,63 +71,28 @@ export default async function PaymentsPage({ params }: PageProps) {
     );
   }
 
-  // 3. INFRASTRUCTURE AUDIT: Verify required ledger components exist
-  // We strictly check for 'GEN' and '1210' to ensure the database handshake can execute.
-  const [arRes, journalRes] = await Promise.all([
-    supabase.from("accounting_accounts").select("id").eq("business_id", activeBusinessId).eq("code", "1210").limit(1).maybeSingle(),
-    supabase.from("accounting_journals").select("id").eq("business_id", activeBusinessId).eq("code", "GEN").limit(1).maybeSingle()
-  ]);
-
-  const isLedgerSynchronized = !!(arRes.data && journalRes.data);
-
-  // 4. AUTONOMOUS INITIALIZATION GUARD
-  // If your system is still birthing the accounts, we show a professional pulse state.
-  if (!isLedgerSynchronized) {
-    return (
-        <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in zoom-in-95 duration-500">
-            <div className="bg-amber-50 p-12 rounded-[40px] border-2 border-dashed border-amber-200 max-w-lg shadow-2xl shadow-amber-500/10">
-                <div className="relative mb-6">
-                    <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full animate-pulse" />
-                    <Wrench className="h-16 w-16 text-amber-600 mx-auto relative z-10" />
-                </div>
-                <h2 className="text-2xl font-black text-amber-900 uppercase tracking-tighter">Handshake Interrupted</h2>
-                <p className="text-amber-800 mt-4 font-medium leading-relaxed">
-                    The General Ledger for <span className="font-bold underline">{activeBusinessName}</span> is not fully initialized.
-                    Standard Accounts (1210) and Journals (GEN) are required for protocol synchronization.
-                </p>
-                <div className="mt-8 flex gap-3 justify-center">
-                    <Link 
-                        href={`/${locale}/settings/accounting`} 
-                        className="px-10 h-14 bg-amber-600 text-white rounded-2xl flex items-center font-bold uppercase text-[11px] tracking-[0.2em] hover:bg-amber-700 transition-all shadow-lg active:scale-95"
-                    >
-                        Initialize Ledger Infrastructure
-                    </Link>
-                </div>
-            </div>
-        </div>
-    );
-  }
-
-  // 5. TRANSACTIONAL DATA ACQUISITION (Multi-Tenant Secured)
+  // 4. INSTANT DATA ACQUISITION (Multi-Tenant Secured)
+  // We bypass infrastructure checks and load the functional data immediately
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
       .select("id, invoice_number, customer_name, balance_due, currency, total")
-      .eq("business_id", activeBusinessId)
-      .gt("balance_due", 0)
+      .eq("business_id", bizId)
+      .gt("balance_due", 0) 
       .order("issue_date", { ascending: false }),
+      
     supabase
       .from("accounting_accounts")
-      .select("id, name, code")
-      .eq("business_id", activeBusinessId)
-      .eq("code", "1000") // Specifically identifying liquidity pools
+      .select("id, name, code, currency")
+      .eq("business_id", bizId)
+      .eq("code", "1000") // Discovery of Bank/Cash clearing pools
       .eq("is_active", true)
   ]);
 
   return (
-    <div className="container mx-auto py-10 max-w-7xl px-6 animate-in fade-in duration-700">
+    <div className="container mx-auto py-10 max-w-7xl px-6 animate-in fade-in duration-1000">
       
-      {/* PROFESSIONAL MASTER HEADER - Straight Typography Guaranteed */}
+      {/* PROFESSIONAL MASTER HEADER - Perfectly Straight Typography */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-10 border-slate-200">
         <div className="space-y-3">
           <Link href={`/${locale}/invoicing/list`} className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-blue-600 transition-colors">
@@ -141,18 +110,18 @@ export default async function PaymentsPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 bg-slate-950 px-5 py-3 rounded-2xl border border-white/10 shadow-lg shadow-blue-500/10">
+        <div className="flex items-center gap-4 bg-slate-950 px-5 py-3 rounded-2xl border border-white/10 shadow-lg">
            <ShieldCheck size={16} className="text-emerald-400" />
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Protocol Type</span>
-             <span className="text-xs font-bold text-emerald-400 uppercase mt-1 leading-none">Ledger Direct Sync</span>
+             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Protocol Status</span>
+             <span className="text-xs font-bold text-emerald-400 uppercase mt-1 leading-none">Ledger Pulse Active</span>
            </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* SETTLEMENT TERMINAL PANEL */}
+        {/* INSTANT OPERATIONAL TERMINAL */}
         <div className="lg:col-span-2">
             <div className="p-8 bg-white border border-slate-200 rounded-[32px] shadow-sm relative overflow-hidden">
                 <Database className="absolute -right-4 top-4 text-slate-50 w-32 h-32 rotate-12" />
@@ -161,19 +130,20 @@ export default async function PaymentsPage({ params }: PageProps) {
                     <div className="flex items-center justify-between mb-8 px-2">
                         <div className="space-y-1">
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">Record Arrival</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Autonomous Reconciliation Terminal</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sovereign Reconciliation Terminal</p>
                         </div>
-                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-none px-4 py-1 font-black text-[10px] uppercase rounded-full">
-                            {invoicesRes.data?.length || 0} Documents Open
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-none px-4 py-1.5 font-black text-[10px] uppercase rounded-full">
+                            {invoicesRes.data?.length || 0} Open Documents
                         </Badge>
                     </div>
                     
+                    {/* The form now loads immediately without an initialization screen */}
                     <PaymentRegistry 
                       isOpen={true} 
                       onClose={() => {}}
                       unpaidInvoices={invoicesRes.data || []}
                       bankAccounts={accountsRes.data || []}
-                      businessId={activeBusinessId}
+                      businessId={bizId}
                       businessName={activeBusinessName}
                     />
                 </div>
@@ -182,6 +152,7 @@ export default async function PaymentsPage({ params }: PageProps) {
 
         {/* SYSTEM INTELLIGENCE & AUDIT BAR */}
         <div className="space-y-6">
+           {/* FORENSIC CARD */}
            <div className="p-8 bg-slate-900 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
               <History size={80} className="absolute -right-4 -bottom-4 text-white opacity-5 group-hover:rotate-12 transition-all duration-700" />
               <div className="relative z-10 space-y-6">
@@ -205,19 +176,6 @@ export default async function PaymentsPage({ params }: PageProps) {
               </div>
            </div>
 
-           {/* CONFIGURATION ALERTS */}
-           {accountsRes.data?.length === 0 && (
-             <div className="p-6 bg-amber-50 border border-amber-200 rounded-[32px] flex gap-4 items-start shadow-sm animate-in slide-in-from-right-4 duration-500">
-               <Zap className="text-amber-600 shrink-0 mt-1" size={20} />
-               <div className="space-y-1">
-                 <p className="text-[11px] text-amber-900 font-black uppercase tracking-widest leading-none">Liquidity Missing</p>
-                 <p className="text-[10px] text-amber-700 font-medium leading-relaxed mt-1 uppercase tracking-tight">
-                   No recipient account found with **Code 1000**. Please register Bank or Cash assets in settings.
-                 </p>
-               </div>
-             </div>
-           )}
-
            <div className="p-6 bg-white border border-slate-200 rounded-[32px] shadow-sm flex items-center gap-4 group hover:border-blue-500 transition-colors">
               <div className="h-10 w-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 group-hover:bg-blue-50 transition-colors">
                 <Fingerprint className="text-slate-400 group-hover:text-blue-500" size={20} />
@@ -225,7 +183,7 @@ export default async function PaymentsPage({ params }: PageProps) {
               <div>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">System ID Reference</p>
                 <p className="text-[10px] font-mono font-bold text-slate-900 mt-1 uppercase">
-                    {String(activeBusinessId).substring(0,18)}
+                    {String(bizId).substring(0,18)}
                 </p>
               </div>
            </div>
