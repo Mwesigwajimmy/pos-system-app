@@ -5,15 +5,8 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import PaymentRegistry from "@/components/invoicing/PaymentRegistry";
 import { 
-    Landmark, 
-    ArrowLeft, 
-    CheckCircle2, 
-    History, 
-    ShieldCheck,
-    Activity,
-    Database,
-    Fingerprint,
-    ShieldAlert
+    Landmark, ArrowLeft, CheckCircle2, History, ShieldCheck,
+    Activity, Database, Fingerprint, ShieldAlert
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -23,39 +16,44 @@ export const metadata: Metadata = {
   description: "Enterprise autonomous settlement handshake and ledger synchronization terminal.",
 };
 
-interface PageProps { params: { locale: string }; }
+interface PageProps { params: Promise<{ locale: string }>; }
 
 export default async function PaymentsPage({ params }: PageProps) {
-  // NEXT.JS 15 COMPATIBILITY: Securely resolve routing parameters
+  // 1. NEXT.JS 15 COMPATIBILITY
   const { locale } = await params;
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. SECURE AUTHENTICATION HANDSHAKE
+  // 2. SECURE AUTHENTICATION HANDSHAKE
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData?.user) redirect(`/${locale}/auth/login`);
 
   const user = authData.user;
 
-  // 2. IDENTITY RESOLUTION (Forensic Join)
-  // We fetch the profile and join the 'tenants' table to get the verified name "cake"
+  // 3. IDENTITY RESOLUTION (Forensic Bridge)
+  // Verified Location: Profiles table joined with Tenants for the "Verified Name"
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(`
+        id,
         business_id, 
         tenant_id, 
         organization_id, 
         business_name,
-        tenants ( name )
+        tenants:tenant_id ( name )
     `)
     .eq("id", user.id)
     .maybeSingle();
 
-  // Resolve ID and Name using the verified database locations
+  // Resolve ID (The Anchor) and Name (The Display)
+  // Logic: Use business_id first as it's the ledger anchor, fallback to others
   const bizId = profile?.business_id || profile?.tenant_id || profile?.organization_id;
+  
+  // Name Logic: Fetches verified name from tenants table, fallback to profile claim
   const activeBusinessName = (profile?.tenants as any)?.name || profile?.business_name || "Sovereign Unit";
 
-  // 3. SECURITY GATEKEEPER
+  // 4. SECURITY GATEKEEPER
+  // If no bizId is resolved, the profile is "Unanchored" and the lock triggers
   if (!bizId || profileError) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in fade-in duration-700">
@@ -71,28 +69,25 @@ export default async function PaymentsPage({ params }: PageProps) {
     );
   }
 
-  // 4. INSTANT DATA ACQUISITION (Multi-Tenant Secured)
-  // We bypass infrastructure checks and load the functional data immediately
+  // 5. LEDGER SYNCHRONIZATION (Verified Fetch Locations)
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
       .select("id, invoice_number, customer_name, balance_due, currency, total")
-      .eq("business_id", bizId)
+      .eq("business_id", bizId) // Matches Invoices column confirmed in SQL
       .gt("balance_due", 0) 
       .order("issue_date", { ascending: false }),
       
     supabase
       .from("accounting_accounts")
       .select("id, name, code, currency")
-      .eq("business_id", bizId)
-      .eq("code", "1000") // Discovery of Bank/Cash clearing pools
+      .eq("business_id", bizId) // Matches Accounts column confirmed in SQL
+      .eq("code", "1000")       // Verified location of clearing pools
       .eq("is_active", true)
   ]);
 
   return (
     <div className="container mx-auto py-10 max-w-7xl px-6 animate-in fade-in duration-1000">
-      
-      {/* PROFESSIONAL MASTER HEADER - Perfectly Straight Typography */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-10 border-slate-200">
         <div className="space-y-3">
           <Link href={`/${locale}/invoicing/list`} className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-blue-600 transition-colors">
@@ -120,12 +115,9 @@ export default async function PaymentsPage({ params }: PageProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* INSTANT OPERATIONAL TERMINAL */}
         <div className="lg:col-span-2">
             <div className="p-8 bg-white border border-slate-200 rounded-[32px] shadow-sm relative overflow-hidden">
                 <Database className="absolute -right-4 top-4 text-slate-50 w-32 h-32 rotate-12" />
-                
                 <div className="relative z-10">
                     <div className="flex items-center justify-between mb-8 px-2">
                         <div className="space-y-1">
@@ -136,8 +128,6 @@ export default async function PaymentsPage({ params }: PageProps) {
                             {invoicesRes.data?.length || 0} Open Documents
                         </Badge>
                     </div>
-                    
-                    {/* The form now loads immediately without an initialization screen */}
                     <PaymentRegistry 
                       isOpen={true} 
                       onClose={() => {}}
@@ -150,9 +140,7 @@ export default async function PaymentsPage({ params }: PageProps) {
             </div>
         </div>
 
-        {/* SYSTEM INTELLIGENCE & AUDIT BAR */}
         <div className="space-y-6">
-           {/* FORENSIC CARD */}
            <div className="p-8 bg-slate-900 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
               <History size={80} className="absolute -right-4 -bottom-4 text-white opacity-5 group-hover:rotate-12 transition-all duration-700" />
               <div className="relative z-10 space-y-6">
@@ -189,16 +177,8 @@ export default async function PaymentsPage({ params }: PageProps) {
            </div>
         </div>
       </div>
-
-      {/* GLOBAL SYSTEM FOOTER */}
       <div className="mt-24 pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6 opacity-30">
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Sovereign Ledger System Protocol v10.2</p>
-        <div className="flex items-center gap-8">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-2">
-                <ShieldCheck size={10} /> Forensic Privacy Active
-            </p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Cloud-Anchored • Multi-Tenant</p>
-        </div>
       </div>
     </div>
   );
