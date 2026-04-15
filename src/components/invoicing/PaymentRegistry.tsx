@@ -204,7 +204,7 @@ export default function PaymentRegistry({
           </div>
 
           {/* SYSTEM INTELLIGENCE CARD */}
-          <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-start gap-4">
+          <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-start gap-4 shadow-sm">
              <ArrowUpRight className="text-emerald-600 mt-1 shrink-0" size={20} />
              <p className="text-[10px] text-emerald-900 font-bold leading-relaxed uppercase tracking-tight">
                Committing this settlement will trigger an autonomous Ledger Handshake. Account <span className="underline">1210</span> (Receivables) will be credited and the selected Asset account will be debited with zero human intervention.
@@ -226,6 +226,7 @@ export default function PaymentRegistry({
               <Button 
                 variant="outline"
                 onClick={downloadSettlementReceipt}
+                type="button"
                 className="h-14 w-full sm:w-16 border-2 border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:border-emerald-600 transition-all hover:bg-emerald-50"
                 title="Preview Receipt PDF"
               >
