@@ -28,40 +28,27 @@ export default async function PaymentsPage({ params }: PageProps) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData?.user) redirect(`/${locale}/auth/login`);
 
-  const user = authData.user;
+  // 3. SOVEREIGN IDENTITY RESOLUTION (System RPC)
+  // We use the exact RPC found in BusinessContext.tsx to fetch the business profile
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_business_profile');
 
-  // 3. IDENTITY RESOLUTION (Forensic Bridge)
-  // Verified Location: Profiles table joined with Tenants for the "Verified Name"
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select(`
-        id,
-        business_id, 
-        tenant_id, 
-        organization_id, 
-        business_name,
-        tenants:tenant_id ( name )
-    `)
-    .eq("id", user.id)
-    .maybeSingle();
+  // Logic: The RPC returns an array. We take the first result as the active anchor.
+  const profile = rpcData && rpcData.length > 0 ? rpcData[0] : null;
 
-  // Resolve ID (The Anchor) and Name (The Display)
-  // Logic: Use business_id first as it's the ledger anchor, fallback to others
-  const bizId = profile?.business_id || profile?.tenant_id || profile?.organization_id;
-  
-  // Name Logic: Fetches verified name from tenants table, fallback to profile claim
-  const activeBusinessName = (profile?.tenants as any)?.name || profile?.business_name || "Sovereign Unit";
+  // Resolved values based on the BusinessProfile interface in your context
+  const bizId = profile?.business_id;
+  const activeBusinessName = profile?.full_name || "Sovereign Unit";
 
   // 4. SECURITY GATEKEEPER
-  // If no bizId is resolved, the profile is "Unanchored" and the lock triggers
-  if (!bizId || profileError) {
+  // If the RPC returns no business_id, the identity is locked.
+  if (!bizId || rpcError) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in fade-in duration-700">
         <div className="bg-rose-50 p-12 rounded-[40px] border-2 border-dashed border-rose-200 max-w-md shadow-2xl shadow-rose-500/10">
           <ShieldAlert className="h-16 w-16 text-rose-600 mx-auto mb-6 animate-pulse" />
           <h2 className="text-2xl font-black text-rose-900 uppercase tracking-tighter leading-none">Identity Lock</h2>
           <p className="text-rose-700 mt-4 font-medium leading-relaxed uppercase text-[10px] tracking-widest">
-            Verification failed. Profile is not anchored to a Sovereign Business Unit.
+            Verification failed. Profile is not anchored via Sovereign RPC.
           </p>
           <Link href={`/${locale}/dashboard`} className="mt-8 inline-block px-10 h-12 bg-rose-600 text-white rounded-2xl font-bold uppercase text-[11px] tracking-widest hover:bg-rose-700 transition-all active:scale-95">Return to Dashboard</Link>
         </div>
@@ -69,20 +56,20 @@ export default async function PaymentsPage({ params }: PageProps) {
     );
   }
 
-  // 5. LEDGER SYNCHRONIZATION (Verified Fetch Locations)
+  // 5. LEDGER DATA ACQUISITION
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
       .select("id, invoice_number, customer_name, balance_due, currency, total")
-      .eq("business_id", bizId) // Matches Invoices column confirmed in SQL
+      .eq("business_id", bizId)
       .gt("balance_due", 0) 
       .order("issue_date", { ascending: false }),
       
     supabase
       .from("accounting_accounts")
       .select("id, name, code, currency")
-      .eq("business_id", bizId) // Matches Accounts column confirmed in SQL
-      .eq("code", "1000")       // Verified location of clearing pools
+      .eq("business_id", bizId)
+      .eq("code", "1000") // Discovery of Bank/Cash clearing pools
       .eq("is_active", true)
   ]);
 
@@ -154,9 +141,6 @@ export default async function PaymentsPage({ params }: PageProps) {
                     <p className="text-[13px] text-slate-300 font-medium leading-relaxed">
                         Settlements recorded here trigger an automated handshake between Account <span className="text-white font-bold underline underline-offset-8 decoration-blue-500">1210</span> (Receivables) and your chosen liquidity asset.
                     </p>
-                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
-                        Every cent is mathematically verified against the General Ledger to ensure forensic parity.
-                    </p>
                 </div>
                 <div className="pt-6 border-t border-white/10 flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
                     <CheckCircle2 size={12} className="text-emerald-500" /> Mathematical Parity Verified
@@ -176,9 +160,6 @@ export default async function PaymentsPage({ params }: PageProps) {
               </div>
            </div>
         </div>
-      </div>
-      <div className="mt-24 pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6 opacity-30">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Sovereign Ledger System Protocol v10.2</p>
       </div>
     </div>
   );
