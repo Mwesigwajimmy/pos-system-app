@@ -5,58 +5,73 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import PaymentRegistry from "@/components/invoicing/PaymentRegistry";
 import { 
-    Landmark, ArrowLeft, CheckCircle2, History, ShieldCheck,
-    Activity, Database, Fingerprint, ShieldAlert
+    Landmark, 
+    ArrowLeft, 
+    CheckCircle2, 
+    History, 
+    ShieldCheck,
+    Activity, 
+    Database, 
+    Fingerprint, 
+    ShieldAlert,
+    FileWarning,
+    RefreshCw
 } from "lucide-react";
 import Link from "next/link";
+
+// --- UI COMPONENTS (Ensure these imports exist in your project) ---
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
   title: "Settlement Registry | Sovereign Ledger",
   description: "Enterprise autonomous settlement handshake and ledger synchronization terminal.",
 };
 
+// NEXT.JS 15 COMPATIBILITY: Params must be treated as a Promise
 interface PageProps { 
     params: Promise<{ locale: string }>; 
 }
 
 export default async function PaymentsPage({ params }: PageProps) {
-  // 1. NEXT.JS 15 COMPATIBILITY
+  // 1. SECURE ROUTING & AUTHENTICATION
   const { locale } = await params;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // 2. AUTHENTICATION & IDENTITY CONTEXT
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect(`/${locale}/auth/login`);
 
-  // 3. SOVEREIGN CONTEXT RESOLUTION (Exact logic from InvoicesListPage)
+  // 2. SOVEREIGN CONTEXT RESOLUTION (Forensic Bridge from InvoicesListPage)
+  // We bridge business_id and organization_id to ensure the ledger interconnect is 1:1
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('business_id, organization_id, business_name')
     .eq('id', user.id)
     .single();
 
-  // The 'activeTenantId' is the golden key for the Ledger Interconnect
   const activeTenantId = profile?.business_id || profile?.organization_id;
 
-  // 4. SECURITY GATEKEEPER
+  // 3. SECURITY GATEKEEPER (Identity Lock)
   if (profileError || !activeTenantId) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in fade-in duration-700">
         <div className="bg-rose-50 p-12 rounded-[40px] border-2 border-dashed border-rose-200 max-w-md shadow-2xl shadow-rose-500/10">
           <ShieldAlert className="h-16 w-16 text-rose-600 mx-auto mb-6 animate-pulse" />
           <h2 className="text-2xl font-black text-rose-900 uppercase tracking-tighter leading-none">Identity Lock</h2>
-          <p className="text-rose-700 mt-4 font-medium leading-relaxed uppercase text-[10px] tracking-widest">
-            Security Alert: Your profile is not currently mapped to an active Business Unit.
+          <p className="text-rose-700 mt-4 font-medium leading-relaxed uppercase text-[10px] tracking-widest leading-relaxed">
+            Forensic Failure: Your profile is not currently mapped to an active Business Unit. Registry access is restricted.
           </p>
-          <Link href={`/${locale}/dashboard`} className="mt-8 inline-block px-10 h-12 bg-rose-600 text-white rounded-2xl font-bold uppercase text-[11px] tracking-widest hover:bg-rose-700 transition-all active:scale-95">Return to Dashboard</Link>
+          <Button variant="destructive" className="mt-8 font-bold uppercase text-[11px] tracking-widest px-10 h-12 rounded-2xl" asChild>
+            <Link href={`/${locale}/dashboard`}>Return to Dashboard</Link>
+          </Button>
         </div>
       </div>
     );
   }
 
-  // 5. FETCH LEGAL TENANT NAME (1:1 Relational Bridge)
+  // 4. FETCH LEGAL IDENTITY (The "Verified Name")
   const { data: tenantRecord } = await supabase
     .from('tenants')
     .select('name')
@@ -65,8 +80,8 @@ export default async function PaymentsPage({ params }: PageProps) {
 
   const activeBusinessName = tenantRecord?.name || profile?.business_name || "Sovereign Unit";
 
-  // 6. DATA ACQUISITION (Multi-Tenant Secured)
-  // Filtering 'invoices' and 'accounting_accounts' by the verified 'activeTenantId'
+  // 5. LEDGER DATA ACQUISITION
+  // Fetching active settlements and clearing pools from confirmed locations
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
@@ -83,10 +98,31 @@ export default async function PaymentsPage({ params }: PageProps) {
       .eq("is_active", true)
   ]);
 
+  // Handle Ledger Desync Errors (Matched to InvoicesListPage pattern)
+  if (invoicesRes.error || accountsRes.error) {
+    return (
+        <div className="p-8 max-w-3xl mx-auto flex h-[80vh] items-center justify-center">
+            <Alert variant="destructive" className="border-none shadow-2xl bg-red-600 text-white rounded-[32px] p-10">
+                <FileWarning className="h-10 w-10 text-white mb-4" />
+                <AlertTitle className="text-3xl font-black tracking-tighter uppercase mb-2">Ledger Desync Error</AlertTitle>
+                <AlertDescription className="text-red-100 font-medium leading-relaxed">
+                    The autonomous engine encountered a logic gap while synchronizing with the General Ledger.
+                    <span className="block mt-6 font-mono text-[10px] p-3 bg-red-700/50 rounded-xl uppercase tracking-widest">
+                        Technical Root: {invoicesRes.error?.message || accountsRes.error?.message}
+                    </span>
+                    <Button variant="outline" className="mt-8 bg-transparent border-white/20 text-white hover:bg-white/10" onClick={() => window.location.reload()}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Attempt Resync
+                    </Button>
+                </AlertDescription>
+            </Alert>
+        </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-10 max-w-7xl px-6 animate-in fade-in duration-1000">
       
-      {/* HEADER SECTION */}
+      {/* HEADER: TYPOGRAPHY & IDENTITY */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-10 border-slate-200">
         <div className="space-y-3">
           <Link href={`/${locale}/invoicing/list`} className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-blue-600 transition-colors">
