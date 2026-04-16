@@ -12,10 +12,13 @@ import {
     AlertCircle, 
     Wrench, 
     ShieldCheck, 
+    Loader2,
     Activity 
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
   title: "Settlement Registry | Sovereign Ledger",
