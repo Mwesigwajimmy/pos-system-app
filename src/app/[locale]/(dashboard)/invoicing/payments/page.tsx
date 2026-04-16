@@ -52,14 +52,16 @@ export default async function PaymentsPage({ params }: PageProps) {
   const user = authData.user;
 
   // 3. SOVEREIGN CONTEXT RESOLUTION (Universal RPC)
-  // This resolves "cake" and ledger status in one trip to stop Copilot crashes.
+  // Robust fetching: Handling both array and object return types from Supabase
   const { data: contextData, error: contextError } = await supabase
     .rpc('get_enterprise_payments_context', { p_user_id: user.id });
 
-  const ctx = contextData?.[0];
+  // Fix: Ensure ctx extracts correctly even if data is returned as a single object or an array
+  const ctx = Array.isArray(contextData) ? contextData[0] : contextData;
 
   // 4. SECURITY GATEKEEPER
-  if (!ctx?.res_biz_id || contextError) {
+  // If biz_id is missing, the user is not anchored to a business identity
+  if (contextError || !ctx || !ctx.res_biz_id) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center animate-in fade-in duration-700">
         <div className="bg-rose-50 p-12 rounded-[40px] border-2 border-dashed border-rose-200 max-w-md shadow-2xl">
