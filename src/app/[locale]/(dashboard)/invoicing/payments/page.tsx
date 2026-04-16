@@ -29,10 +29,11 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
   const supabase = createClient(cookieStore);
 
   // 1. SECURE AUTHENTICATION HANDSHAKE
+  // Ensures only authorized personnel can access the financial gateway
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect(`/${locale}/auth/login`);
 
-  // 2. IDENTITY RESOLUTION
+  // 2. IDENTITY RESOLUTION (Safeguarded against server crashes)
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("business_id, business_name")
@@ -41,7 +42,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
 
   const bizId = profile?.business_id;
 
-  // 3. SECURE GATEKEEPER
+  // 3. SECURE GATEKEEPER: Redirect if no business unit identity is found
   if (!bizId || profileError) {
     return (
       <div className="flex flex-col h-[70vh] items-center justify-center p-6 text-center animate-in fade-in duration-500">
@@ -57,24 +58,20 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
     );
   }
 
-  // 4. INFRASTRUCTURE AUDIT (Updated)
-  // Logic updated: As long as business data is loaded (bizId exists), we allow the registry to open.
-  const isLedgerSynchronized = !!bizId;
-
-  // 5. TRANSACTIONAL DATA DISCOVERY
+  // 5. TRANSACTIONAL DATA DISCOVERY (Multi-Tenant & Data-Driven)
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
       .select("id, invoice_number, customer_name, balance_due, currency, total")
       .eq("business_id", bizId)
-      .gt("balance_due", 0) 
+      .gt("balance_due", 0) // Strictly fetch documents with active outstanding debt
       .order("issue_date", { ascending: false }),
       
     supabase
       .from("accounting_accounts")
       .select("id, name, code")
       .eq("business_id", bizId)
-      .eq("code", "1000") 
+      .eq("code", "1000") // Specifically find liquidity clearing destinations
       .eq("is_active", true)
   ]);
 
@@ -112,12 +109,12 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
         {/* Settlement Panel */}
         <div className="lg:col-span-2">
             {!isLedgerSynchronized ? (
-                /* DIAGNOSTIC VIEW */
+                /* DIAGNOSTIC VIEW: Professional repair protocol if ledger setup is incomplete */
                 <div className="p-12 bg-amber-50 border border-amber-200 rounded-[40px] text-center shadow-2xl shadow-amber-500/5 animate-in zoom-in-95 duration-500">
                     <Wrench className="mx-auto text-amber-600 mb-4 animate-bounce" size={48} />
                     <h3 className="text-xl font-black text-amber-900 uppercase tracking-tight">Handshake Interrupted</h3>
                     <p className="text-amber-800 text-sm mt-3 font-medium leading-relaxed max-w-sm mx-auto">
-                        The General Ledger for {profile.business_name} has not been fully initialized.
+                        The General Ledger (Account 1210 or Journal GEN) for {profile.business_name} has not been fully initialized.
                     </p>
                     <Link href={`/${locale}/settings/accounting`} className="mt-8 inline-flex items-center px-8 h-12 bg-amber-600 text-white rounded-2xl font-bold uppercase text-[10px] tracking-widest hover:bg-amber-700 transition-all">
                         Initialize Infrastructure
