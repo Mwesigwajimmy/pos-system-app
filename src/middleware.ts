@@ -97,6 +97,7 @@ const rolePermissions: Record<string, string[]> = {
 
     // --- INVENTORY & PROCUREMENT ---
     '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'warehouse_manager', 'inventory_manager', 'chef'],
+    '/inventory/manufacturing/reports': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
     '/purchases': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'warehouse_manager'],
     '/procurement': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer'],
 
