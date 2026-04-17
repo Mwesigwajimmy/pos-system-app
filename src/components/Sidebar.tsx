@@ -23,7 +23,8 @@ import {
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
     CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
-    Bus, RefreshCcw, Factory, Beaker, FlaskConical, Anchor, Fingerprint
+    Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
+    Send, Factory, Beaker, FlaskConical, Fingerprint
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -149,6 +150,7 @@ const navSections: NavItem[] = [
             { href: '/reports/sales', label: 'Sales Reports', icon: BarChart3 },
             { href: '/reports/sales-history', label: 'Sales History', icon: History },
             { href: '/reports/tax', label: 'Tax Liability', icon: Calculator },
+            { href: '/reports/forensic-audit', label: 'Forensic Cash Audit', icon: Fingerprint },
             { href: '/reports/audit-trail', label: 'Audit Trail', icon: ShieldCheck },
             { href: '/reports/esg', label: 'ESG & Impact', icon: Handshake },
             { href: '/reports/benchmarking', label: 'Benchmarking', icon: Activity },
