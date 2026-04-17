@@ -24,7 +24,7 @@ import {
     CreditCard, Repeat, FileStack, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
-    Send, Factory, Beaker, FlaskConical, Fingerprint
+    Send, Factory, Beaker, FlaskConical, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -120,6 +120,7 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
             { href: '/invoicing/estimates', label: 'Estimate Terminal', icon: FileText },
+            { href: '/invoicing/estimates/history', label: 'Quotation Ledger', icon: FileDigit },
             { href: '/invoicing/payments', label: 'Payment Registry', icon: Handshake },
             { href: '/invoicing/list', label: 'All Invoices', icon: FileStack }, 
             { href: '/invoicing/fx-audit', label: 'FX Forensic Audit', icon: RefreshCcw },
