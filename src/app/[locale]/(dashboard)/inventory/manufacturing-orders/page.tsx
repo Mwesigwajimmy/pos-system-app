@@ -8,56 +8,73 @@ export default async function ManufacturingPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // REAL DATA FETCHING - No mocks
+  // 1. Get User Session for Tenant Security
+  const { data: { user } } = await supabase.auth.getUser();
+  const tenantId = user?.user_metadata?.tenant_id || "system";
+
+  // 2. ENTERPRISE FETCH: Join with Products to get Names and SKUs
+  // We use the new table name mfg_production_orders we defined in the SQL
   const [ordersRes, scheduleRes] = await Promise.all([
-    supabase.from("manufacturing_orders").select("*").order("planned_start", { ascending: true }),
-    supabase.from("work_center_schedule").select("*").order("start_time", { ascending: true })
+    supabase
+      .from("mfg_production_orders")
+      .select(`
+        *,
+        output_variant:product_variants (
+          sku,
+          product:products (name)
+        )
+      `)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("work_center_schedule")
+      .select("*")
+      .order("start_time", { ascending: true })
   ]);
 
-  // Transform DB data to UI props
+  // 3. DATA TRANSFORMATION: Mapping DB Joins to Component Props
   const orders = (ordersRes.data || []).map((o) => ({
     id: o.id,
-    moNumber: o.mo_number,
-    outputSku: o.sku,
-    productName: o.product_name,
-    quantity: o.quantity,
-    plannedStart: o.planned_start,
-    plannedFinish: o.planned_finish,
+    mo_number: o.batch_number || o.id.slice(0,8).toUpperCase(), // Fallback if no batch number
+    output_variant_id: o.output_variant_id,
+    product_name: o.output_variant?.product?.name || "Unknown Product",
+    sku: o.output_variant?.sku || "N/A",
+    planned_quantity: o.planned_quantity,
     status: o.status,
-    workCenter: o.work_center_id,
-    entity: o.entity,
-    country: o.country,
-    tenantId: "system" // or from auth context
+    tenant_id: o.tenant_id
   }));
 
   const schedule = (scheduleRes.data || []).map((s) => ({
     id: s.id,
     workCenter: s.work_center_name,
-    session: s.session_name,
     product: s.product_name,
     scheduledStart: s.start_time,
     scheduledEnd: s.end_time,
-    status: s.status as "planned" | "running" | "stopped" | "finished",
+    status: s.status,
     machineOperator: s.operator_name || "Unassigned",
-    entity: s.entity,
-    country: "UG", // Assuming default or fetch from related entity table
-    tenantId: "system"
+    tenantId: s.tenant_id
   }));
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <div className="flex-1 space-y-4 p-8 pt-6 bg-slate-50/30 min-h-screen">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Manufacturing Operations</h2>
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Manufacturing Operations</h2>
+          <p className="text-slate-500 text-sm font-medium">Manage production runs, batch audits, and inventory synchronization.</p>
+        </div>
       </div>
-      <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="orders">Manufacturing Orders</TabsTrigger>
-          <TabsTrigger value="schedule">Work Center Schedule</TabsTrigger>
+      
+      <Tabs defaultValue="orders" className="space-y-6">
+        <TabsList className="bg-white border border-slate-200 p-1 shadow-sm">
+          <TabsTrigger value="orders" className="font-bold px-8">Manufacturing Orders</TabsTrigger>
+          <TabsTrigger value="schedule" className="font-bold px-8">Work Center Schedule</TabsTrigger>
         </TabsList>
-        <TabsContent value="orders">
+
+        <TabsContent value="orders" className="border-none p-0 outline-none">
+          {/* We pass the initialData so the page loads instantly */}
           <ManufacturingOrderManager initialData={orders} />
         </TabsContent>
-        <TabsContent value="schedule">
+
+        <TabsContent value="schedule" className="border-none p-0 outline-none">
           <WorkCenterSchedule initialData={schedule} />
         </TabsContent>
       </Tabs>
