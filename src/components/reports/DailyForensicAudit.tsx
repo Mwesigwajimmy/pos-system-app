@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
     ShieldCheck, ArrowUpRight, ArrowDownRight, User, Phone,
     Download, Search, Loader2, PlusCircle, Landmark, 
-    FileSpreadsheet, Send, Smartphone, Clock, Filter, Wallet, Building2
+    FileSpreadsheet, Send, Smartphone, Clock, AlterTriangle, Filter, Wallet, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
