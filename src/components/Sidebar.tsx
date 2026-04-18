@@ -655,63 +655,81 @@ export default function Sidebar() {
             })}
         </Accordion>
     );
-
-    return (
-        <aside className={cn(
-            "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm",
-            isSidebarOpen ? "w-64" : "w-20"
-        )}>
-            <div className="flex items-center justify-between h-20 border-b border-slate-100 px-4 flex-shrink-0 bg-white">
-    {isSidebarOpen && (
-        <div className="flex items-center gap-3 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
-            {branding?.logo_url ? (
-                /* SHOWS THE LOGO UPLOADED BY THE BUSINESS OWNER (e.g. CAKE LOGO) */
-                <img 
-                    src={branding.logo_url} 
-                    className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-50" 
-                    alt="Logo" 
-                />
-            ) : (
-                /* FALLBACK PROFESSIONAL ICON IF NO LOGO UPLOADED */
-                <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
-                    <Building2 size={22} />
+return (
+    <aside className={cn(
+        "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm",
+        isSidebarOpen ? "w-64" : "w-20"
+    )}>
+        <div className="flex items-center justify-between h-20 border-b border-slate-100 px-4 flex-shrink-0 bg-white">
+            {isSidebarOpen && (
+                <div className="flex items-center gap-3 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
+                    {branding?.logo_url ? (
+                        <img 
+                            src={branding.logo_url} 
+                            className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-50" 
+                            alt="Logo" 
+                        />
+                    ) : (
+                        <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                            <Building2 size={20} />
+                        </div>
+                    )}
+                    
+                    <div className="flex flex-col truncate">
+                        <span className="text-sm font-bold tracking-tight text-slate-900 truncate">
+                            {branding?.company_name_display || "Business Account"}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
+                            Verified Profile
+                        </span>
+                    </div>
                 </div>
             )}
-            
-            <div className="flex flex-col truncate">
-                <span className="text-sm font-black tracking-tighter text-slate-900 uppercase leading-none truncate">
-                    {branding?.company_name_display || "BBU1 System"}
-                </span>
-                <span className="text-[8px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1 opacity-70">
-                    Sovereign Node
-                </span>
+
+            <div className="flex items-center gap-1">
+                <Button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors",
+                        !isSidebarOpen && "mx-auto"
+                    )}
+                >
+                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </Button>
+
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleSidebar} 
+                    className="text-slate-400 hover:text-blue-600 rounded-full h-9 w-9"
+                >
+                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </Button>
             </div>
         </div>
-    )}
-    
-    <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-slate-400 hover:text-blue-600 rounded-full h-9 w-9">
-        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-    </Button>
-</div>
-            <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
-                {isLoading ? (
-                    <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Loading Menu...</div>
-                ) : (
-                    renderAccordionNav(finalNavItems)
-                )}
-            </nav>
-            <div className="p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 bg-slate-50/50">
-                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md", !isSidebarOpen && "justify-center px-0")} onClick={openCopilot}>
-                    <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                    {isSidebarOpen && "AI Assistant"}
+
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
+            {isLoading ? (
+                <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Loading Menu...</div>
+            ) : (
+                renderAccordionNav(finalNavItems)
+            )}
+        </nav>
+
+        <div className="p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 bg-slate-50/50">
+            <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md", !isSidebarOpen && "justify-center px-0")} onClick={openCopilot}>
+                <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                {isSidebarOpen && "AI Assistant"}
+            </Button>
+            <Link href="/settings" className="block">
+                <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-semibold", !isSidebarOpen && "justify-center px-0")}>
+                    <Settings className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                    {isSidebarOpen && "Settings"}
                 </Button>
-                <Link href="/settings" className="block">
-                    <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-semibold", !isSidebarOpen && "justify-center px-0")}>
-                        <Settings className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && "Settings"}
-                    </Button>
-                </Link>
-            </div>
-        </aside>
-    );
+            </Link>
+        </div>
+    </aside>
+);
 }

@@ -25,13 +25,13 @@ import toast from 'react-hot-toast';
 const supabase = createClient();
 
 export default function ManufacturingReportCenter() {
-    // --- 1. DATE STATE MANAGEMENT ---
+    // --- 1. DATE STATE MANAGEMENT (Logic Intact) ---
     const [dateRange, setDateRange] = useState({
         from: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
         to: format(new Date(), 'yyyy-MM-dd')
     });
 
-    // --- 2. DATA FETCHING (Linked to view_manufacturing_audit_master) ---
+    // --- 2. DATA FETCHING (Logic Intact) ---
     const { data: auditData, isLoading } = useQuery({
         queryKey: ['mfg_audit_report', dateRange],
         queryFn: async () => {
@@ -47,7 +47,7 @@ export default function ManufacturingReportCenter() {
         }
     });
 
-    // --- 3. ANALYTICS CALCULATIONS ---
+    // --- 3. ANALYTICS CALCULATIONS (Logic Intact) ---
     const summary = useMemo(() => {
         if (!auditData) return { totalValue: 0, totalWastage: 0, avgEfficiency: 0, vatInput: 0 };
         const totalValue = auditData.reduce((s, i) => s + i.total_batch_expenditure, 0);
@@ -60,7 +60,7 @@ export default function ManufacturingReportCenter() {
         return { totalValue, totalWastage, avgEfficiency: efficiency.toFixed(1), vatInput };
     }, [auditData]);
 
-    // --- 4. PROFESSIONAL PDF EXPORT LOGIC ---
+    // --- 4. PDF EXPORT LOGIC (Logic Intact) ---
     const exportToPDF = () => {
         if (!auditData || auditData.length === 0) {
             toast.error("No data available to export.");
@@ -70,30 +70,27 @@ export default function ManufacturingReportCenter() {
         const doc = new jsPDF('l', 'mm', 'a4');
         const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm');
 
-        // Branded Header
-        doc.setFontSize(22);
-        doc.setTextColor(15, 23, 42); // slate-900
-        doc.text('BBU1 SYSTEM: MANUFACTURING AUDIT REPORT', 14, 22);
+        doc.setFontSize(20);
+        doc.setTextColor(30, 41, 59);
+        doc.text('Manufacturing Production Audit Report', 14, 22);
         
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Period: ${dateRange.from} to ${dateRange.to}`, 14, 30);
-        doc.text(`Generated: ${timestamp}`, 14, 35);
+        doc.text(`Reporting Period: ${dateRange.from} to ${dateRange.to}`, 14, 30);
+        doc.text(`Generated on: ${timestamp}`, 14, 35);
 
-        // Summary Statistics Box
-        doc.setDrawColor(230);
-        doc.setFillColor(248, 250, 252); // slate-50
-        doc.rect(14, 42, 270, 20, 'F');
-        doc.setFontSize(10);
-        doc.setTextColor(15, 23, 42);
-        doc.text(`Total Production Value: ${summary.totalValue.toLocaleString()} UGX`, 20, 54);
-        doc.text(`Wastage: ${summary.totalWastage} Units`, 100, 54);
-        doc.text(`Estimated VAT Input: ${summary.vatInput.toLocaleString()} UGX`, 180, 54);
+        doc.setDrawColor(226, 232, 240);
+        doc.setFillColor(248, 250, 252); 
+        doc.rect(14, 42, 270, 15, 'F');
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Total Value: ${summary.totalValue.toLocaleString()} UGX`, 20, 52);
+        doc.text(`Total Wastage: ${summary.totalWastage} Units`, 110, 52);
+        doc.text(`Estimated VAT Input: ${summary.vatInput.toLocaleString()} UGX`, 190, 52);
 
-        // Audit Table
         autoTable(doc, {
-            startY: 70,
-            head: [['Batch ID', 'Finished Product', 'Yield', 'Wastage', 'Landed Cost/Unit', 'Total Expenditure', 'Date']],
+            startY: 65,
+            head: [['Batch No.', 'Product Name', 'Actual Yield', 'Wastage', 'Unit Cost', 'Total Cost', 'Date']],
             body: auditData.map(r => [
                 r.batch_number,
                 r.finished_product,
@@ -103,155 +100,160 @@ export default function ManufacturingReportCenter() {
                 `${r.total_batch_expenditure.toLocaleString()} UGX`,
                 format(new Date(r.production_date), 'yyyy-MM-dd')
             ]),
-            styles: { fontSize: 8, font: 'helvetica', cellPadding: 4 },
-            headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-            alternateRowStyles: { fillColor: [245, 247, 250] },
+            styles: { fontSize: 8, cellPadding: 3 },
+            headStyles: { fillColor: [37, 87, 214], textColor: 255, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [252, 252, 252] },
         });
 
-        doc.save(`Mfg_Audit_${dateRange.from}_to_${dateRange.to}.pdf`);
-        toast.success("Audit Report Downloaded Successfully");
+        doc.save(`Production_Report_${dateRange.from}.pdf`);
+        toast.success("Export successful");
     };
 
     return (
-        <div className="p-8 space-y-8 bg-white min-h-screen animate-in fade-in duration-700">
+        <div className="max-w-[1500px] mx-auto py-8 px-6 space-y-6 animate-in fade-in duration-500 bg-slate-50/30 min-h-screen">
+            
             {/* TOP COMMAND BAR */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b pb-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-slate-200 pb-6">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Manufacturing Intelligence</h1>
-                    <p className="text-slate-500 font-bold flex items-center gap-2 mt-1">
-                        <ShieldCheck className="text-emerald-500 h-4 w-4" /> Comprehensive Production Cycle & Landed Cost Audit
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Production & Manufacturing Report</h1>
+                    <p className="text-sm text-slate-500 font-medium flex items-center gap-2 mt-1">
+                        <ShieldCheck size={16} className="text-emerald-500" /> Audit trail for batch yields and landed costs
                     </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* PROFESSIONAL DATE SELECTOR */}
                     <Popover>
                         <PopoverTrigger asChild>
-                            <Button variant="outline" className="h-12 border-slate-200 font-black gap-2 px-6 shadow-sm">
-                                <Calendar size={18} className="text-blue-600" />
+                            <Button variant="outline" className="h-10 border-slate-200 font-semibold gap-2 px-4 shadow-sm bg-white">
+                                <Calendar size={16} className="text-blue-600" />
                                 {format(new Date(dateRange.from), 'MMM d')} - {format(new Date(dateRange.to), 'MMM d, yyyy')}
-                                <ChevronDown size={14} className="opacity-50" />
+                                <ChevronDown size={14} className="opacity-40" />
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 p-6 space-y-4 rounded-2xl shadow-2xl border-none">
+                        <PopoverContent className="w-80 p-5 space-y-4 rounded-xl shadow-lg border border-slate-200" align="end">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400">Quick Select</label>
+                                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Presets</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Button variant="ghost" size="sm" onClick={() => setDateRange({from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd')})} className="text-xs font-bold">Today</Button>
-                                    <Button variant="ghost" size="sm" onClick={() => setDateRange({from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd')})} className="text-xs font-bold">This Month</Button>
-                                    <Button variant="ghost" size="sm" onClick={() => setDateRange({from: format(subDays(new Date(), 30), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd')})} className="text-xs font-bold">Last 30 Days</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setDateRange({from: format(new Date(), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd')})} className="text-xs font-semibold">Today</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setDateRange({from: format(startOfMonth(new Date()), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd')})} className="text-xs font-semibold">This Month</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setDateRange({from: format(subDays(new Date(), 30), 'yyyy-MM-dd'), to: format(new Date(), 'yyyy-MM-dd')})} className="text-xs font-semibold">Past 30 Days</Button>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400">Custom Range</label>
-                                <div className="space-y-2">
-                                    <Input type="date" value={dateRange.from} onChange={e => setDateRange({...dateRange, from: e.target.value})} className="h-9 text-xs font-bold" />
-                                    <Input type="date" value={dateRange.to} onChange={e => setDateRange({...dateRange, to: e.target.value})} className="h-9 text-xs font-bold" />
+                            <div className="space-y-2 border-t pt-4">
+                                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Custom Period</label>
+                                <div className="grid gap-2">
+                                    <Input type="date" value={dateRange.from} onChange={e => setDateRange({...dateRange, from: e.target.value})} className="h-9 text-xs" />
+                                    <Input type="date" value={dateRange.to} onChange={e => setDateRange({...dateRange, to: e.target.value})} className="h-9 text-xs" />
                                 </div>
                             </div>
                         </PopoverContent>
                     </Popover>
 
-                    <Button onClick={exportToPDF} className="bg-slate-900 hover:bg-blue-600 text-white font-black h-12 px-8 gap-3 shadow-xl transition-all rounded-xl">
-                        <FileDown size={20} /> DOWNLOAD AUDIT (PDF)
+                    <Button onClick={exportToPDF} className="bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold h-10 px-6 gap-2 shadow-sm rounded-lg transition-all">
+                        <FileDown size={18} /> Export PDF
                     </Button>
                 </div>
             </div>
 
             {/* ANALYTICS PILLARS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-slate-900 text-white">
-                    <CardContent className="p-8 space-y-4">
-                        <div className="bg-white/10 w-12 h-12 rounded-2xl flex items-center justify-center text-blue-400"><TrendingUp size={24}/></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Produced Value</p>
-                            <p className="text-3xl font-black mt-1 tabular-nums">{summary.totalValue.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-emerald-400 mt-2 flex items-center gap-1">
-                                <Activity size={10}/> Financial Asset Growth
-                            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-slate-900 text-white">
+                    <CardContent className="p-6">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Production Value</p>
+                        <div className="flex items-baseline gap-2 mt-2">
+                            <p className="text-2xl font-bold tabular-nums">{summary.totalValue.toLocaleString()}</p>
+                            <span className="text-xs font-medium text-slate-400">UGX</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-3 text-emerald-400">
+                            <TrendingUp size={14}/>
+                            <span className="text-[10px] font-bold uppercase">Asset Value</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
-                    <CardContent className="p-8 space-y-4">
-                        <div className="bg-orange-50 w-12 h-12 rounded-2xl flex items-center justify-center text-orange-600"><AlertTriangle size={24}/></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Production Wastage</p>
-                            <p className="text-3xl font-black mt-1 tabular-nums text-slate-900">{summary.totalWastage.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-orange-500 mt-2 italic">Units lost in cycle</p>
+                <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                    <CardContent className="p-6">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Stock Wastage</p>
+                        <p className="text-2xl font-bold mt-2 tabular-nums text-slate-900">{summary.totalWastage.toLocaleString()}</p>
+                        <div className="flex items-center gap-1.5 mt-3 text-amber-500">
+                            <AlertTriangle size={14}/>
+                            <span className="text-[10px] font-bold uppercase tracking-tight">Units Lost</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white">
-                    <CardContent className="p-8 space-y-4">
-                        <div className="bg-blue-50 w-12 h-12 rounded-2xl flex items-center justify-center text-blue-600"><Database size={24}/></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Input VAT Provision</p>
-                            <p className="text-3xl font-black mt-1 tabular-nums text-slate-900">{summary.vatInput.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-blue-500 mt-2">Compliance Credit Ready</p>
+                <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                    <CardContent className="p-6">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Input VAT Summary</p>
+                        <div className="flex items-baseline gap-2 mt-2">
+                            <p className="text-2xl font-bold tabular-nums text-slate-900">{summary.vatInput.toLocaleString()}</p>
+                            <span className="text-xs font-medium text-slate-400">UGX</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-3 text-blue-600">
+                            <Database size={14}/>
+                            <span className="text-[10px] font-bold uppercase tracking-tight">Tax Credit</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-emerald-600 text-white">
-                    <CardContent className="p-8 space-y-4">
-                        <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center"><ShieldCheck size={24}/></div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Avg. Batch Efficiency</p>
-                            <p className="text-3xl font-black mt-1 tabular-nums">{summary.avgEfficiency}%</p>
-                            <p className="text-[10px] font-bold mt-2">Yield optimization active</p>
+                <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-emerald-600 text-white">
+                    <CardContent className="p-6">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Cycle Efficiency</p>
+                        <p className="text-2xl font-bold mt-2 tabular-nums">{summary.avgEfficiency}%</p>
+                        <div className="flex items-center gap-1.5 mt-3">
+                            <ShieldCheck size={14}/>
+                            <span className="text-[10px] font-bold uppercase tracking-tight">Yield Accuracy</span>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* THE MASTER AUDIT TABLE */}
-            <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-                <CardHeader className="border-b bg-slate-50/50 p-8">
+            {/* MAIN DATA TABLE */}
+            <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                <CardHeader className="border-b bg-white p-8">
                     <div className="flex justify-between items-center">
-                        <CardTitle className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                            <Filter size={20} className="text-blue-600" /> Deep Batch Cycle Audit Trail
+                        <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <Filter size={18} className="text-blue-500" /> Batch Production Log
                         </CardTitle>
-                        <Badge className="bg-slate-900 text-white font-black px-4 py-1.5">VERIFIED SESSIONS</Badge>
+                        <Badge variant="outline" className="bg-slate-50 text-slate-500 font-bold px-3 py-1 border-slate-200 uppercase text-[9px]">Verified Records</Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <ScrollArea className="h-[600px]">
+                    <ScrollArea className="h-[550px]">
                         <Table>
-                            <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                            <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b">
                                 <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase tracking-widest px-8 py-5">Batch ID</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase tracking-widest">Target Product</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-center">Efficiency (Yield)</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-right">Landed Cost/Unit</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-right px-8">Total Expenditure</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase h-12 tracking-wider px-8">Batch ID</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase h-12 tracking-wider">Product Description</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase h-12 tracking-wider text-center">Batch Performance</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase h-12 tracking-wider text-right">Landed Cost/Unit</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase h-12 tracking-wider text-right px-8">Total Expenditure</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
-                                    <TableRow><TableCell colSpan={5} className="h-64 text-center text-slate-400 font-black animate-pulse uppercase tracking-widest">Auditing System Records...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} className="h-40 text-center"><Loader2 className="animate-spin inline mr-2 h-5 w-5"/>Syncing production data...</TableCell></TableRow>
                                 ) : auditData?.length === 0 ? (
-                                    <TableRow><TableCell colSpan={5} className="h-64 text-center text-slate-400 italic">No production batches found for this period.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} className="h-40 text-center text-slate-400 text-sm">No production data found for this range.</TableCell></TableRow>
                                 ) : auditData?.map((report: any) => (
-                                    <TableRow key={report.batch_number} className="hover:bg-blue-50/40 transition-all border-b border-slate-50">
-                                        <TableCell className="font-mono text-blue-600 font-black px-8 py-6 text-base">{report.batch_number}</TableCell>
+                                    <TableRow key={report.batch_number} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                                        <TableCell className="font-mono text-blue-600 font-bold px-8 py-5 text-sm">{report.batch_number}</TableCell>
                                         <TableCell>
-                                            <div className="font-black text-slate-800 text-base">{report.finished_product}</div>
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase">{format(new Date(report.production_date), 'MMMM dd, yyyy')}</div>
+                                            <div className="font-bold text-slate-800 text-sm">{report.finished_product}</div>
+                                            <div className="text-[10px] font-semibold text-slate-400 uppercase mt-0.5">{format(new Date(report.production_date), 'dd MMM yyyy')}</div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <div className="font-black text-slate-900">{report.yield} / {report.planned_quantity}</div>
-                                            <Badge variant={report.wastage > 0 ? "destructive" : "outline"} className="text-[9px] font-black uppercase px-2 mt-1">
-                                                {report.wastage > 0 ? `${report.wastage} Units Loss` : "Zero Wastage"}
+                                            <div className="text-sm font-bold text-slate-700">{report.yield} / {report.planned_quantity}</div>
+                                            <Badge variant={report.wastage > 0 ? "destructive" : "secondary"} className="text-[9px] font-bold px-2 py-0 mt-1 uppercase tracking-tighter">
+                                                {report.wastage > 0 ? `${report.wastage} Units Loss` : "Optimal Yield"}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right font-black text-slate-900 text-lg tabular-nums">
-                                            {report.landed_cost_per_unit.toLocaleString()} <span className="text-[10px] text-slate-400">UGX</span>
+                                        <TableCell className="text-right">
+                                            <div className="text-sm font-bold text-slate-900">{report.landed_cost_per_unit.toLocaleString()}</div>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase">UGX</span>
                                         </TableCell>
-                                        <TableCell className="text-right font-black text-blue-600 text-lg tabular-nums px-8">
-                                            {report.total_batch_expenditure.toLocaleString()}
+                                        <TableCell className="text-right px-8">
+                                            <div className="text-sm font-bold text-blue-600 tabular-nums">{report.total_batch_expenditure.toLocaleString()}</div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -259,11 +261,11 @@ export default function ManufacturingReportCenter() {
                         </Table>
                     </ScrollArea>
                 </CardContent>
-                <CardFooter className="bg-slate-50 p-6 flex justify-between items-center border-t">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Security Protocol: IFRS-15 Compliant Logging</p>
-                    <div className="flex gap-2">
-                         <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                         <span className="text-[10px] font-bold text-emerald-600 uppercase">Live Engine Active</span>
+                <CardFooter className="bg-slate-50 p-5 flex justify-between items-center border-t text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Standard Compliance: Batch Auditing Policy Active
+                    <div className="flex items-center gap-2 text-emerald-600">
+                         <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                         Reporting Status Online
                     </div>
                 </CardFooter>
             </Card>

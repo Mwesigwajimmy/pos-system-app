@@ -36,10 +36,10 @@ const Money = {
 // --- ENTERPRISE SCHEMA VALIDATION ---
 const estimateSchema = z.object({
   customerId: z.string().min(1, "Client Selection Required"),
-  estimateUid: z.string().min(1, "Protocol Number Required"),
+  estimateUid: z.string().min(1, "Reference Number Required"),
   title: z.string().min(3, "Document Subject Required"),
-  issueDate: z.string().min(1, "Generation Date Required"),
-  validUntil: z.string().min(1, "Expiry Protocol Required"),
+  issueDate: z.string().min(1, "Issue Date Required"),
+  validUntil: z.string().min(1, "Expiry Date Required"),
   currencyCode: z.string().min(3),
   
   // Corporate Identity & Stationery
@@ -52,18 +52,18 @@ const estimateSchema = z.object({
   
   // Payment Protocol
   chequesPayableTo: z.string().min(3, "Beneficiary Required"),
-  bankDetails: z.string().min(5, "Settlement Bank Required"),
+  bankDetails: z.string().min(5, "Bank Details Required"),
   momoDetails: z.string().optional(),
-  inquiryContact: z.string().min(5, "Support Contact Required"),
+  inquiryContact: z.string().min(5, "Contact Required"),
   
   // Technical Specifications
   items: z.array(z.object({
     description: z.string().min(1, "Item name required"),
     applicationArea: z.string().optional(),
     quantity: z.coerce.number().min(0.001),
-    unitCost: z.coerce.number().min(0), // Internal Production Cost
-    unitRate: z.coerce.number().min(0), // Commercial Selling Rate
-  })).min(1, "Minimum 1 Specification Required")
+    unitCost: z.coerce.number().min(0), 
+    unitRate: z.coerce.number().min(0), 
+  })).min(1, "Minimum 1 Item Required")
 });
 
 type EstimateForm = z.infer<typeof estimateSchema>;
@@ -95,11 +95,11 @@ export default function EstimateTerminal({
   const supabase = createClient();
   const router = useRouter();
 
-  // --- INITIALIZE FORM WITH ENTERPRISE DEFAULTS ---
+  // --- INITIALIZE FORM ---
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<EstimateForm>({
     resolver: zodResolver(estimateSchema),
     defaultValues: { 
-        title: 'Commercial Specification & Industrial Quotation Protocol', 
+        title: 'Commercial Quotation and Service Estimate', 
         currencyCode: 'UGX',
         issueDate: format(new Date(), 'yyyy-MM-dd'),
         validUntil: format(new Date(Date.now() + 30 * 86400000), 'yyyy-MM-dd'),
@@ -108,9 +108,9 @@ export default function EstimateTerminal({
         plotNumber: businessInfo.plot || '',
         pobox: businessInfo.pobox || '',
         chequesPayableTo: businessInfo.name,
-        bankDetails: 'Enter Bank Name, Branch, Account Number',
+        bankDetails: 'Bank Name, Branch, Account Number',
         ceoName: '',
-        ceoDesignation: 'Chief Executive Officer',
+        ceoDesignation: 'Management',
         inquiryContact: businessInfo.phone,
         items: [{ description: '', applicationArea: '', quantity: 1, unitCost: 0, unitRate: 0 }] 
     }
@@ -121,7 +121,7 @@ export default function EstimateTerminal({
   const currentCurrency = watch("currencyCode");
   const formValues = watch();
 
-  // --- 1. AUTONOMOUS SEQUENTIAL NUMBERING ENGINE ---
+  // --- 1. SEQUENCE GENERATOR ---
   useEffect(() => {
     async function fetchNextSequence() {
         const { count, error } = await supabase
@@ -131,13 +131,13 @@ export default function EstimateTerminal({
         
         if (!error) {
             const nextSeq = (count || 0) + 1;
-            setValue('estimateUid', `BBU1-QT-${nextSeq.toString().padStart(4, '0')}`);
+            setValue('estimateUid', `QT-${nextSeq.toString().padStart(4, '0')}`);
         }
     }
     fetchNextSequence();
   }, [tenantId, setValue, supabase]);
 
-  // --- 2. REAL-TIME MARGIN & YIELD AUDIT ---
+  // --- 2. MARGIN CALCULATION ---
   const totals = useMemo(() => {
     const grossPrice = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitRate || 0, curr.quantity || 0), 0);
     const totalCost = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitCost || 0, curr.quantity || 0), 0);
@@ -145,52 +145,48 @@ export default function EstimateTerminal({
     return { grossPrice, totalCost, margin };
   }, [watchedItems]);
 
-  // --- 3. PROFESSIONAL PDF GENERATION ENGINE (CORPORATE STANDARD) ---
+  // --- 3. PDF GENERATION ---
   const generateProfessionalPDF = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // BRANDED LOGO & HEADER
     if (branding?.logo_url) {
-        try { doc.addImage(branding.logo_url, 'PNG', 14, 12, 35, 18); } catch (e) { console.error("Logo injection error"); }
+        try { doc.addImage(branding.logo_url, 'PNG', 14, 12, 35, 18); } catch (e) { console.error("Logo error"); }
     }
 
-    doc.setFontSize(22); doc.setTextColor(15, 23, 42); doc.setFont("helvetica", "bold");
-    doc.text(businessInfo.name.toUpperCase(), pageWidth - 14, 22, { align: 'right' });
+    doc.setFontSize(18); doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold");
+    doc.text(businessInfo.name, pageWidth - 14, 20, { align: 'right' });
 
     doc.setFontSize(8); doc.setTextColor(100); doc.setFont("helvetica", "normal");
     doc.text([
-        `Plot No: ${formValues.plotNumber || 'N/A'} | Location: ${businessInfo.address}`,
+        `Address: ${formValues.plotNumber || businessInfo.address}`,
         `P.O. Box: ${formValues.pobox || 'N/A'} | Email: ${formValues.officialEmail}`,
-        `TIN: ${formValues.tinNumber} | Contact: ${formValues.companyPhone || businessInfo.phone}`
-    ], pageWidth - 14, 28, { align: 'right' });
+        `TIN: ${formValues.tinNumber} | Contact: ${formValues.inquiryContact}`
+    ], pageWidth - 14, 26, { align: 'right' });
 
-    doc.setDrawColor(59, 130, 246); doc.setLineWidth(0.8); doc.line(14, 48, pageWidth - 14, 48);
+    doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.5); doc.line(14, 45, pageWidth - 14, 45);
 
-    // DOCUMENT METADATA BLOCK
-    doc.setFontSize(16); doc.setTextColor(15, 23, 42); doc.setFont("helvetica", "bold");
-    doc.text("COMMERCIAL QUOTATION", 14, 60);
+    doc.setFontSize(14); doc.setTextColor(15, 23, 42); doc.setFont("helvetica", "bold");
+    doc.text("COMMERCIAL QUOTATION", 14, 55);
 
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text(`Protocol ID: ${formValues.estimateUid}`, pageWidth - 14, 60, { align: 'right' });
-    doc.text(`Issue Date: ${format(new Date(formValues.issueDate), 'PPPP')}`, pageWidth - 14, 66, { align: 'right' });
-    doc.text(`Expiry Date: ${format(new Date(formValues.validUntil), 'PPPP')}`, pageWidth - 14, 72, { align: 'right' });
+    doc.text(`Estimate No: ${formValues.estimateUid}`, pageWidth - 14, 55, { align: 'right' });
+    doc.text(`Date: ${format(new Date(formValues.issueDate), 'dd MMM yyyy')}`, pageWidth - 14, 60, { align: 'right' });
+    doc.text(`Expiry: ${format(new Date(formValues.validUntil), 'dd MMM yyyy')}`, pageWidth - 14, 65, { align: 'right' });
 
-    // CLIENT ENTITY BLOCK
     const client = customers.find(c => String(c.id) === formValues.customerId);
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
-    doc.text("PREPARED FOR:", 14, 85);
+    doc.setFontSize(10); doc.setFont("helvetica", "bold");
+    doc.text("BILL TO:", 14, 80);
     doc.setFont("helvetica", "normal");
     doc.text([
-        client?.name || 'Valued Business Entity',
+        client?.name || 'Customer Name',
         `Phone: ${client?.phone || 'N/A'}`,
         `Address: ${client?.address || 'N/A'}`
-    ], 14, 91);
+    ], 14, 85);
 
-    // SPECIFICATION TABLE (EXCLUDES INTERNAL COSTS)
     autoTable(doc, {
-        startY: 110,
-        head: [['Specification & Description', 'Application Area', 'Qty', 'Unit Rate', 'Total Amount']],
+        startY: 105,
+        head: [['Item Description', 'Category', 'Qty', 'Unit Price', 'Total']],
         body: watchedItems.map(i => [
             i.description,
             i.applicationArea || 'Standard',
@@ -198,43 +194,37 @@ export default function EstimateTerminal({
             `${i.unitRate.toLocaleString()} ${currentCurrency}`,
             `${(i.quantity * i.unitRate).toLocaleString()} ${currentCurrency}`
         ]),
-        headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 5 },
+        headStyles: { fillColor: [37, 87, 214], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 4 },
         foot: [[
-            { content: 'GRAND TOTAL QUOTATION VALUE', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
-            { content: `${totals.grossPrice.toLocaleString()} ${currentCurrency}`, styles: { fontStyle: 'bold', fillColor: [241, 245, 249] } }
+            { content: 'TOTAL AMOUNT', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: `${totals.grossPrice.toLocaleString()} ${currentCurrency}`, styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } }
         ]]
     });
 
-    // PAYMENT & PROTOCOL SECTION
-    let finalY = (doc as any).lastAutoTable.finalY + 15;
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text("PAYMENT & BANKING PROTOCOL:", 14, finalY);
+    doc.text("Payment Instructions:", 14, finalY);
     
-    doc.setFillColor(248, 250, 252); doc.rect(14, finalY + 4, pageWidth - 28, 28, 'F');
     doc.setFont("helvetica", "normal"); doc.setFontSize(9);
     doc.text([
-        `• All cheques payable to: ${formValues.chequesPayableTo}`,
-        `• Bank Details: ${formValues.bankDetails}`,
-        `• Mobile Money: ${formValues.momoDetails || 'N/A'}`
-    ], 20, finalY + 12);
+        `Bank Details: ${formValues.bankDetails}`,
+        `Payment Payable to: ${formValues.chequesPayableTo}`,
+        `Mobile Payment: ${formValues.momoDetails || 'N/A'}`
+    ], 14, finalY + 6);
 
-    // FORMAL SIGN-OFF
-    doc.setFontSize(9); doc.setFont("helvetica", "italic");
-    doc.text(`For any technical or commercial inquiries, kindly contact: ${formValues.inquiryContact}`, 14, 255);
-    
-    doc.setFontSize(11); doc.setFont("helvetica", "normal");
-    doc.text("Yours Sincerely,", 14, 270);
+    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+    doc.text("Authorized Signature:", 14, 270);
     doc.setFont("helvetica", "bold");
-    doc.text(`${formValues.ceoName || 'Authorized Personnel'}`, 14, 280);
+    doc.text(`${formValues.ceoName || 'Authorized Officer'}`, 14, 280);
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text(formValues.ceoDesignation || 'Management', 14, 285);
+    doc.text(formValues.ceoDesignation || '', 14, 285);
 
-    doc.save(`${formValues.estimateUid}_Commercial_Spec.pdf`);
-    toast.success("Professional Document Generated");
+    doc.save(`${formValues.estimateUid}_Quotation.pdf`);
+    toast.success("PDF Generated");
   };
 
-  // --- 4. MASTER SUBMIT PROTOCOL ---
+  // --- 4. SUBMIT ---
   const onSubmit: SubmitHandler<EstimateForm> = async (values) => {
     setIsSubmitting(true);
     try {
@@ -267,7 +257,7 @@ export default function EstimateTerminal({
 
       if (lineErr) throw lineErr;
       
-      toast.success("Commercial Protocol Recorded & Locked");
+      toast.success("Estimate saved successfully");
       router.push('/invoicing/estimates/history'); 
     } catch (err: any) {
       toast.error(err.message);
@@ -277,47 +267,44 @@ export default function EstimateTerminal({
   };
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-1000 max-w-[1700px] mx-auto pb-32">
+    <div className="max-w-[1400px] mx-auto py-10 px-6 space-y-8 animate-in fade-in duration-500">
       
-      {/* --- MASTER COMMAND HEADER --- */}
-      <Card className="border-none shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] rounded-[4rem] overflow-hidden bg-slate-900 text-white relative">
-        <div className="absolute top-0 right-0 p-16 opacity-10 rotate-12">
-            <ShieldCheck size={300} />
-        </div>
-        <CardContent className="p-14 flex flex-col lg:flex-row justify-between items-center gap-14 relative z-10">
-            <div className="flex items-center gap-10">
-                <div className="p-10 bg-blue-600 rounded-[3rem] shadow-[0_20px_50px_rgba(37,99,235,0.4)] transform hover:scale-105 transition-all">
-                    <PenTool size={64} className="text-white" />
+      {/* HEADER SECTION */}
+      <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+        <CardContent className="p-8 flex flex-col lg:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-5">
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-blue-600">
+                    <PenTool size={28} />
                 </div>
                 <div>
-                    <h1 className="text-6xl font-black tracking-tighter uppercase leading-none italic">Estimate Terminal</h1>
-                    <div className="flex items-center gap-5 mt-5">
-                        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-black text-[12px] tracking-[0.4em] px-6 py-2.5 uppercase rounded-full">
-                            BBU1_SOVEREIGN_NODE
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Create New Quotation</h1>
+                    <div className="flex items-center gap-3 mt-1">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-bold text-[10px] uppercase">
+                            Drafting Engine Active
                         </Badge>
-                        <span className="text-slate-500 text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                           <Clock size={16}/> v5.2 REAL-TIME SEQUENCING
+                        <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider flex items-center gap-2">
+                           <Clock size={14}/> System Online
                         </span>
                     </div>
                 </div>
             </div>
             
-            <div className="flex items-center gap-8 bg-white/5 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white/10 shadow-inner">
+            <div className="flex items-center gap-6 pr-4">
                 <div className="text-right">
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Internal Project Margin</p>
-                    <p className={`text-6xl font-black tabular-nums ${totals.margin >= 25 ? 'text-emerald-400' : 'text-orange-400'}`}>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Project Margin</p>
+                    <p className={`text-3xl font-bold ${totals.margin >= 25 ? 'text-emerald-600' : 'text-amber-600'}`}>
                         {totals.margin.toFixed(1)}%
                     </p>
                 </div>
-                <div className="w-[2px] h-20 bg-white/10 mx-6 rounded-full" />
-                <div className="space-y-3">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Protocol Currency</p>
+                <div className="h-10 w-px bg-slate-200" />
+                <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Currency</p>
                     <Select value={currentCurrency} onValueChange={(v) => setValue('currencyCode', v)}>
-                        <SelectTrigger className="w-52 h-16 bg-blue-600 border-none text-2xl font-black rounded-2xl shadow-xl hover:bg-blue-700 transition-colors">
+                        <SelectTrigger className="w-32 h-9 bg-white border-slate-200 text-sm font-bold">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="font-black">
-                            {currencies.map(c => <SelectItem key={c.code} value={c.code} className="text-xl">{c.code} - {c.name}</SelectItem>)}
+                        <SelectContent>
+                            {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -325,213 +312,175 @@ export default function EstimateTerminal({
         </CardContent>
       </Card>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 xl:grid-cols-12 gap-12">
+      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* LEFT COLUMN: CORPORATE STATIONERY */}
-        <div className="xl:col-span-4 space-y-10">
-            <Card className="border-slate-200 shadow-2xl rounded-[3rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50 border-b p-10">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.4em] text-slate-500 flex items-center gap-4">
-                        <Building2 size={20} className="text-blue-600"/> 1. Business Identity Node
+        {/* LEFT COLUMN: SETTINGS */}
+        <div className="lg:col-span-4 space-y-6">
+            <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                <CardHeader className="bg-slate-50 border-b p-6">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <Building2 size={16} className="text-blue-500"/> Business Details
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-10 space-y-8">
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                           <Hash size={12}/> Protocol ID (Auto-Generated)
-                        </Label>
-                        <Input {...register("estimateUid")} className="h-14 font-black border-slate-200 rounded-2xl bg-slate-50 text-blue-600 text-lg" readOnly />
+                <CardContent className="p-6 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Estimate Reference</Label>
+                        <Input {...register("estimateUid")} className="h-10 font-bold border-slate-200 bg-slate-50 text-blue-600 text-sm" readOnly />
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Issue Date</Label>
-                            <Input type="date" {...register("issueDate")} className="h-14 font-black border-slate-200 rounded-2xl" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600">Issue Date</Label>
+                            <Input type="date" {...register("issueDate")} className="h-10 text-sm font-medium border-slate-200" />
                         </div>
-                        <div className="space-y-3">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Expiry Protocol</Label>
-                            <Input type="date" {...register("validUntil")} className="h-14 font-black border-slate-200 rounded-2xl text-orange-600" />
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600">Valid Until</Label>
+                            <Input type="date" {...register("validUntil")} className="h-10 text-sm font-medium border-slate-200" />
                         </div>
                     </div>
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Plot Number / Physical Address</Label>
-                        <Input {...register("plotNumber")} className="h-14 font-black border-slate-200 rounded-2xl" placeholder="e.g. Plot 19, Yusuf Lule Road" />
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Physical Address</Label>
+                        <Input {...register("plotNumber")} className="h-10 border-slate-200 text-sm" />
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">P.O. Box</Label>
-                            <Input {...register("pobox")} className="h-14 font-black border-slate-200 rounded-2xl" placeholder="e.g. 7062 Kampala" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600">P.O. Box</Label>
+                            <Input {...register("pobox")} className="h-10 border-slate-200 text-sm" />
                         </div>
-                        <div className="space-y-3">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">TIN Identifier</Label>
-                            <Input {...register("tinNumber")} className="h-14 font-black border-slate-200 rounded-2xl" />
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600">Tax ID (TIN)</Label>
+                            <Input {...register("tinNumber")} className="h-10 border-slate-200 text-sm" />
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card className="border-slate-200 shadow-2xl rounded-[3rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50 border-b p-10">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.4em] text-slate-500 flex items-center gap-4">
-                        <Landmark size={20} className="text-blue-600"/> 2. Disbursement Instructions
+            <Card className="border border-slate-200 shadow-sm rounded-xl bg-white">
+                <CardHeader className="bg-slate-50 border-b p-6">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <Landmark size={16} className="text-blue-500"/> Bank & Payments
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-10 space-y-8">
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Cheques Payable To</Label>
-                        <Input {...register("chequesPayableTo")} className="h-14 font-black border-slate-200 rounded-2xl" />
+                <CardContent className="p-6 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Payable To</Label>
+                        <Input {...register("chequesPayableTo")} className="h-10 border-slate-200 text-sm" />
                     </div>
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Bank Account Specification</Label>
-                        <Textarea {...register("bankDetails")} className="min-h-[100px] font-bold border-slate-200 rounded-2xl text-xs" placeholder="e.g. Stanbic Bank, Kampala Branch, A/C: 903..." />
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Bank Account Details</Label>
+                        <Textarea {...register("bankDetails")} className="min-h-[80px] text-xs border-slate-200" />
                     </div>
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Mobile Money / Airtel Merchant</Label>
-                        <div className="relative">
-                            <Smartphone className="absolute left-4 top-4.5 h-5 w-5 text-slate-300" />
-                            <Input {...register("momoDetails")} className="h-14 font-black border-slate-200 rounded-2xl pl-12" placeholder="Merchant Name & Code" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card className="border-slate-200 shadow-2xl rounded-[3rem] overflow-hidden bg-white border-dashed">
-                <CardHeader className="bg-slate-50 border-b p-10">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.4em] text-slate-500 flex items-center gap-4">
-                        <UserCheck size={20} className="text-blue-600"/> 3. Formal Signatory Block
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-10 space-y-8">
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Signatory Full Name</Label>
-                        <Input {...register("ceoName")} className="h-14 font-black border-slate-200 rounded-2xl" placeholder="Person signing the document" />
-                    </div>
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Official Designation</Label>
-                        <Input {...register("ceoDesignation")} className="h-14 font-black border-slate-200 rounded-2xl" placeholder="e.g. Managing Director" />
-                    </div>
-                    <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Support / Inquiry Telephone</Label>
-                        <Input {...register("inquiryContact")} className="h-14 font-black border-slate-200 rounded-2xl" />
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-600">Support Contact</Label>
+                        <Input {...register("inquiryContact")} className="h-10 border-slate-200 text-sm" />
                     </div>
                 </CardContent>
             </Card>
         </div>
 
-        {/* RIGHT COLUMN: CLIENT SELECTION & ITEMS */}
-        <div className="xl:col-span-8 space-y-10">
-            <Card className="border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] rounded-[4rem] overflow-hidden bg-white">
-                <CardHeader className="p-12 border-b bg-slate-50/50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        <div className="space-y-4">
-                            <Label className="text-[12px] font-black uppercase text-slate-400 tracking-[0.3em] ml-3 flex items-center gap-2">
-                                <User size={14}/> Client Entity
+        {/* RIGHT COLUMN: ITEMS */}
+        <div className="lg:col-span-8 space-y-6">
+            <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b bg-slate-50/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600 flex items-center gap-2">
+                                <User size={14} className="text-slate-400"/> Customer Selection
                             </Label>
-                            <select {...register("customerId")} className="w-full h-20 px-8 border-2 border-slate-200 rounded-[1.5rem] bg-white text-lg font-black focus:ring-8 focus:ring-blue-50 transition-all outline-none">
-                                <option value="">Select Target Customer...</option>
+                            <select {...register("customerId")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="">Select a Customer...</option>
                                 {customers.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[12px] font-black uppercase text-slate-400 tracking-[0.3em] ml-3 flex items-center gap-2">
-                                <FileDigit size={14}/> Document Subject
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-slate-600 flex items-center gap-2">
+                                <FileDigit size={14} className="text-slate-400"/> Subject Title
                             </Label>
-                            <Input {...register("title")} className="h-20 border-2 border-slate-200 rounded-[1.5rem] font-black text-2xl px-8" />
+                            <Input {...register("title")} className="h-10 border-slate-200 font-semibold text-sm px-4" />
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
-                        <TableHeader className="bg-slate-900 h-24 border-none">
+                        <TableHeader className="bg-slate-900 border-none h-12">
                             <TableRow className="hover:bg-slate-900 border-none">
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400 pl-12">Specification & Dimension</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400">Area</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400 text-center">Qty</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400 text-right">Internal Cost</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400 text-right">Selling Rate</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400 text-right pr-12">Sub-Total</TableHead>
-                                <TableHead className="w-20"></TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 pl-8">Item & Description</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 w-24 text-center">Qty</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 text-right w-32">Rate ({currentCurrency})</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 text-right w-40 pr-8">Sub-Total</TableHead>
+                                <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {fields.map((field, index) => (
-                                <TableRow key={field.id} className="hover:bg-blue-50/40 border-b border-slate-100 group transition-all">
-                                    <TableCell className="pl-12 py-10">
-                                        <Input {...register(`items.${index}.description` as const)} className="border-none shadow-none font-black text-slate-900 text-2xl p-0 bg-transparent focus-visible:ring-0" placeholder="Product..." />
+                                <TableRow key={field.id} className="hover:bg-slate-50 border-b border-slate-100 group transition-colors">
+                                    <TableCell className="pl-8 py-6">
+                                        <Input {...register(`items.${index}.description` as const)} className="border-none shadow-none font-bold text-slate-800 text-sm p-0 bg-transparent focus-visible:ring-0" placeholder="Product or service name..." />
+                                        <Input {...register(`items.${index}.applicationArea` as const)} className="h-7 border-none shadow-none font-medium text-[9px] uppercase text-slate-400 p-0 bg-transparent focus-visible:ring-0 mt-1" placeholder="Add category / area..." />
                                     </TableCell>
                                     <TableCell>
-                                        <Input {...register(`items.${index}.applicationArea` as const)} className="h-12 border-2 border-slate-100 rounded-xl font-black text-[10px] uppercase bg-white focus:border-blue-400 shadow-sm" placeholder="e.g. ROOFING" />
+                                        <Input type="number" {...register(`items.${index}.quantity` as const)} className="h-9 text-center font-bold border-slate-200 rounded-lg w-full text-sm" />
                                     </TableCell>
                                     <TableCell>
-                                        <Input type="number" {...register(`items.${index}.quantity` as const)} className="h-12 text-center font-black border-2 border-slate-100 rounded-xl w-24" />
+                                        <Input type="number" step="0.01" {...register(`items.${index}.unitRate` as const)} className="h-9 text-right font-bold border-slate-200 rounded-lg text-blue-600 bg-blue-50/20 w-full text-sm" />
                                     </TableCell>
-                                    <TableCell>
-                                        <Input type="number" step="0.01" {...register(`items.${index}.unitCost` as const)} className="h-12 text-right font-black border-2 border-slate-100 rounded-xl text-slate-300 w-32" />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Input type="number" step="0.01" {...register(`items.${index}.unitRate` as const)} className="h-12 text-right font-black border-2 border-blue-200 rounded-xl text-blue-600 bg-blue-50/20 w-36 shadow-inner" />
-                                    </TableCell>
-                                    <TableCell className="text-right pr-12 font-black text-slate-900 text-3xl tabular-nums tracking-tighter">
+                                    <TableCell className="text-right pr-8 font-bold text-slate-900 text-base tabular-nums">
                                         {(Money.multiply(watchedItems[index]?.unitRate || 0, watchedItems[index]?.quantity || 0)).toLocaleString()}
                                     </TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" onClick={() => remove(index)} className="text-slate-200 hover:text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-all transform hover:scale-125">
-                                            <Trash2 size={28}/>
+                                    <TableCell className="pr-4">
+                                        <Button variant="ghost" size="icon" onClick={() => remove(index)} className="h-8 w-8 text-slate-300 hover:text-red-500 transition-colors">
+                                            <Trash2 size={16}/>
                                         </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
-                    <div className="p-12 bg-slate-50/50 border-t flex flex-col md:flex-row justify-between items-center gap-6">
-                        <Button type="button" variant="outline" onClick={() => append({ description: '', applicationArea: '', quantity: 1, unitCost: 0, unitRate: 0 })} className="h-20 px-14 font-black text-sm uppercase gap-5 bg-white border-2 border-slate-200 rounded-3xl hover:bg-slate-900 hover:text-white transition-all shadow-2xl hover:scale-105">
-                            <Plus size={28}/> Add Technical Specification
+                    <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row justify-between items-center gap-4">
+                        <Button type="button" variant="outline" onClick={() => append({ description: '', applicationArea: '', quantity: 1, unitCost: 0, unitRate: 0 })} className="h-10 px-6 font-bold text-xs uppercase gap-2 bg-white border-slate-200 shadow-sm hover:bg-slate-50">
+                            <Plus size={16}/> Add Line Item
                         </Button>
-                        <div className="flex gap-4">
-                            <Button type="button" onClick={generateProfessionalPDF} className="h-20 px-12 font-black bg-slate-900 text-white rounded-3xl shadow-2xl gap-4 hover:bg-blue-600 transition-all hover:scale-105">
-                                <Printer size={24}/> PREVIEW & PRINT DOCUMENT
-                            </Button>
-                        </div>
+                        <Button type="button" onClick={generateProfessionalPDF} className="h-10 px-6 font-bold bg-slate-900 text-white rounded-lg shadow-sm gap-2 hover:bg-slate-800">
+                            <Printer size={16}/> Print Preview
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
-                <Card className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-950 text-white rounded-[4rem] border-none p-12 shadow-[0_40px_80px_-20px_rgba(37,99,235,0.4)] flex gap-10 items-start relative overflow-hidden">
-                    <TrendingUp size={240} className="absolute -right-20 -bottom-20 opacity-5 rotate-12" />
-                    <div className="p-6 bg-white/10 rounded-3xl backdrop-blur-md border border-white/10 shadow-inner"><ShieldCheck size={40}/></div>
-                    <div className="space-y-4 relative z-10">
-                        <h4 className="font-black uppercase tracking-[0.4em] text-blue-300 text-xs">Sovereign Financial Seal</h4>
-                        <p className="text-sm font-bold text-blue-100 leading-relaxed max-w-sm">
-                            Protocol value verified. This specification is generated as a binding commercial offer and complies with international auditing standards.
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div className="p-6 bg-blue-50 border border-blue-100 rounded-xl flex gap-4 items-start">
+                    <ShieldCheck size={24} className="text-blue-600 shrink-0 mt-1"/>
+                    <div className="space-y-1">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">Standard Estimate Policy</h4>
+                        <p className="text-[11px] font-medium text-blue-700 leading-relaxed">
+                            This document serves as a formal commercial offer. Once accepted, it remains valid until the specified expiry date.
                         </p>
                     </div>
-                </Card>
+                </div>
 
-                <div className="space-y-8">
-                    <div className="flex justify-between items-end border-b-8 border-slate-200 pb-10 mb-5">
-                        <div className="space-y-2">
-                            <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.4em]">Gross Protocol Value</span>
-                            <Badge className="bg-orange-100 text-orange-700 border-none font-black px-4 py-1 text-[10px] tracking-widest block">AWAITING APPROVAL</Badge>
+                <div className="space-y-6">
+                    <div className="flex justify-between items-end border-b-2 border-slate-100 pb-6">
+                        <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grand Total</span>
                         </div>
                         <div className="text-right">
-                            <p className="text-8xl font-black text-slate-900 tracking-tighter tabular-nums leading-none">
+                            <p className="text-5xl font-bold text-slate-900 tracking-tight tabular-nums leading-none">
                                 {totals.grossPrice.toLocaleString()}
                             </p>
-                            <span className="text-2xl font-black text-blue-600 uppercase tracking-[0.4em] mt-4 block">{currentCurrency}</span>
+                            <span className="text-sm font-bold text-blue-600 uppercase tracking-wider mt-2 block">{currentCurrency}</span>
                         </div>
                     </div>
                     
                     <Button 
                         disabled={isSubmitting} 
                         type="submit" 
-                        className="w-full h-32 bg-blue-600 hover:bg-slate-900 text-white font-black uppercase tracking-[0.4em] text-3xl rounded-[2.5rem] shadow-2xl transition-all group active:scale-95"
+                        className="w-full h-14 bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold uppercase tracking-widest text-lg rounded-xl shadow-sm transition-all"
                     >
                         {isSubmitting ? (
-                            <Loader2 className="animate-spin h-14 w-14" />
+                            <Loader2 className="animate-spin h-6 w-6" />
                         ) : (
-                            <div className="flex items-center gap-8">
-                                <Send size={44} className="group-hover:translate-x-3 transition-transform"/> 
-                                COMMIT PROTOCOL
+                            <div className="flex items-center gap-3">
+                                <Send size={20}/> 
+                                Save & Record Estimate
                             </div>
                         )}
                     </Button>

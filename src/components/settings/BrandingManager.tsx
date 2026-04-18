@@ -17,13 +17,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label'; // Fix: Added missing import
 import { 
     Loader2, UploadCloud, Palette, ShieldCheck, X, 
     Building2, User, Phone, Mail, MapPin, Hash, 
     Landmark, UserCheck, Send, AlertTriangle, Activity, Clock, CheckCircle2
 } from 'lucide-react';
 
-// UPGRADE: Identity Broadcast Handshake
+// Identity Broadcast Handshake
 import { useBranding } from '@/components/core/BrandingProvider';
 
 // --- ENTERPRISE IDENTITY SCHEMA ---
@@ -63,30 +64,30 @@ const LogoUploader = memo(() => {
     return (
         <FormField control={control} name="logo_file" render={({ field: { onChange } }) => (
             <FormItem className="col-span-full">
-                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Corporate Identity Logo</FormLabel>
-                <div className="relative group flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-[3rem] border-slate-200 hover:border-blue-500 hover:bg-blue-50/10 transition-all cursor-pointer overflow-hidden bg-slate-50/50 shadow-inner">
+                <FormLabel className="text-xs font-semibold uppercase tracking-wider text-slate-500">Company Logo</FormLabel>
+                <div className="relative group flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all cursor-pointer overflow-hidden bg-slate-50/50 shadow-sm">
                     <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-20" onChange={(e) => onChange(e.target.files)} />
                     {preview ? (
-                        <div className="relative w-full h-full p-10 z-10">
-                            <Image src={preview} alt="Logo Preview" layout="fill" objectFit="contain" className="p-4" />
+                        <div className="relative w-full h-full p-6 z-10">
+                            <Image src={preview} alt="Logo Preview" layout="fill" objectFit="contain" className="p-2" />
                             <Button 
                                 type="button"
                                 size="icon" 
                                 variant="destructive" 
-                                className="absolute top-6 right-6 rounded-full h-12 w-12 shadow-2xl z-30 transform hover:scale-110 transition-all" 
+                                className="absolute top-4 right-4 rounded-full h-8 w-8 shadow-md z-30" 
                                 onClick={(e) => { e.preventDefault(); setValue('logo_file', undefined, { shouldDirty: true }); }}
                             >
-                                <X size={20}/>
+                                <X size={14}/>
                             </Button>
                         </div>
                     ) : (
-                        <div className="text-center space-y-4 pointer-events-none">
-                            <div className="w-20 h-20 bg-white rounded-[2rem] shadow-xl flex items-center justify-center mx-auto text-blue-600 border border-slate-100">
-                                <UploadCloud size={32}/>
+                        <div className="text-center space-y-3 pointer-events-none">
+                            <div className="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center mx-auto text-blue-600 border border-slate-100">
+                                <UploadCloud size={24}/>
                             </div>
                             <div>
-                                <p className="text-base font-black text-slate-900 uppercase tracking-tighter">Broadcast Identity Logo</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">High-Res PNG, SVG or JPG • Max 2MB</p>
+                                <p className="text-sm font-bold text-slate-800">Upload Corporate Logo</p>
+                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">PNG, SVG or JPG (Max 2MB)</p>
                             </div>
                         </div>
                     )}
@@ -100,9 +101,9 @@ const LogoUploader = memo(() => {
 export default function BrandingManager() {
     const supabase = createClient();
     const queryClient = useQueryClient();
-    const { refreshBranding } = useBranding(); // Access global identity refresh protocol
+    const { refreshBranding } = useBranding();
 
-    // 1. DATA: NEURAL FETCH
+    // 1. DATA FETCHING (Logic Intact)
     const { data: settings, isLoading, isError, error } = useQuery({
         queryKey: ['brandingSettings'],
         queryFn: async () => {
@@ -130,12 +131,11 @@ export default function BrandingManager() {
         }
     }, [settings, form]);
 
-    // 2. DATA: ATOMIC SYNCHRONIZATION & BROADCAST
+    // 2. DATA MUTATION (Logic Intact)
     const { mutate: handleSave, isPending } = useMutation({
         mutationFn: async (values: BrandingFormInput) => {
             let finalLogoUrl = settings?.logo_url || null;
             
-            // Handle logo storage lifecycle
             if (values.logo_file?.[0] && values.logo_file[0] instanceof File) {
                 const file = values.logo_file[0];
                 const fileExt = file.name.split('.').pop();
@@ -166,100 +166,87 @@ export default function BrandingManager() {
             if (error) throw error;
         },
         onSuccess: async () => {
-            // THE SOVEREIGN WELD: Force the system to recognize new identity immediately
             await queryClient.invalidateQueries({ queryKey: ['brandingSettings'] });
             await queryClient.invalidateQueries({ queryKey: ['bbu1_corporate_identity'] });
-            
-            // Trigger the global context to refresh Sidebar and Headers
             refreshBranding();
-            
-            toast.success("Corporate Identity Synchronized Globally");
+            toast.success("Branding settings updated successfully");
         },
         onError: (err: any) => {
-            toast.error(`Sync Failure: ${err.message}`);
+            toast.error(`Update Failure: ${err.message}`);
         }
     });
 
     if (isLoading) return (
-        <div className="p-32 text-center flex flex-col items-center gap-6">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-            <p className="font-black text-slate-300 uppercase tracking-[0.5em] text-sm animate-pulse">
-                Waking BBU1 Identity Engine...
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">
+                Loading business profile...
             </p>
         </div>
     );
 
     if (isError) return (
-        <div className="p-20 text-center bg-red-50 rounded-[4rem] border border-red-100 max-w-4xl mx-auto shadow-2xl">
-            <AlertTriangle className="mx-auto text-red-500 mb-6" size={64} />
-            <h3 className="text-2xl font-black text-red-900 uppercase tracking-tighter italic">Neural Ledger Handshake Failed</h3>
-            <p className="text-red-600 font-bold text-sm mt-3 uppercase tracking-widest leading-relaxed">
-                {error?.message || "Internal Protocol Error: Check DB Configuration"}
+        <div className="max-w-xl mx-auto my-20 p-8 text-center bg-red-50 rounded-xl border border-red-100 shadow-sm">
+            <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
+            <h3 className="text-xl font-bold text-red-900">Failed to load branding</h3>
+            <p className="text-red-600 text-sm mt-2 font-medium">
+                {error?.message || "Internal database connection error."}
             </p>
         </div>
     );
 
     return (
         <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit((d) => handleSave(d))} className="space-y-12 animate-in fade-in duration-1000 max-w-[1400px] mx-auto pb-32">
-                <Card className="border-none shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] rounded-[4rem] overflow-hidden bg-white">
-                    <CardHeader className="bg-slate-900 text-white p-14 border-b border-white/5 relative">
-                        <div className="absolute top-0 right-0 p-12 opacity-5 rotate-12">
-                            <ShieldCheck size={240} />
-                        </div>
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-10 relative z-10">
-                            <div className="flex items-center gap-10">
-                                <div className="p-8 bg-blue-600 rounded-[2.5rem] shadow-2xl shadow-blue-500/30 transform -rotate-3 hover:rotate-0 transition-all duration-700">
-                                    <Building2 size={56} className="text-white"/>
+            <form onSubmit={form.handleSubmit((d) => handleSave(d))} className="max-w-6xl mx-auto py-10 px-6 space-y-8 animate-in fade-in duration-500 pb-20">
+                <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                    <CardHeader className="bg-white border-b border-slate-100 p-8">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="flex items-center gap-6">
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-blue-600">
+                                    <Palette size={28} />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-5xl font-black uppercase tracking-tighter italic leading-none">Identity Terminal</CardTitle>
-                                    <div className="flex items-center gap-4 mt-5">
-                                        <Badge className="bg-blue-500/20 text-blue-400 border-none font-black text-[12px] tracking-[0.4em] px-6 py-2 uppercase rounded-full">BBU1_SOVEREIGN_HUB</Badge>
-                                        <div className="flex items-center gap-2 text-slate-500 text-[11px] font-black uppercase tracking-widest">
-                                            <Clock size={14}/> SYSTEM_SYNC_v5.2
-                                        </div>
-                                    </div>
+                                    <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">Branding & Identity</CardTitle>
+                                    <CardDescription className="text-sm text-slate-500 mt-1">
+                                        Configure your company visual standards and official documentation details.
+                                    </CardDescription>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-5 px-8 py-3 bg-white/5 rounded-[2rem] backdrop-blur-3xl border border-white/10 shadow-inner">
-                                <div className="h-3 w-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_15px_rgba(52,211,153,0.8)]" />
-                                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-emerald-400">Ledger Real-Time Connection</span>
+                            <div className="flex items-center gap-3 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Sync Active</span>
                             </div>
                         </div>
                     </CardHeader>
 
-                    <CardContent className="p-16 space-y-20 bg-white">
+                    <CardContent className="p-8 space-y-12">
                         {/* VISUAL STANDARDS SECTION */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                             <LogoUploader />
                             
-                            <div className="space-y-10 p-12 bg-slate-50/50 rounded-[3.5rem] border border-slate-100 shadow-inner relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-8 opacity-5">
-                                    <Palette size={120} />
-                                </div>
-                                <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-4 relative z-10">
-                                    <Palette size={18} className="text-blue-600"/> 1. Master Visual Standards
+                            <div className="space-y-8 p-8 bg-slate-50/50 rounded-xl border border-slate-100 shadow-inner">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                    <Palette size={16} className="text-blue-500"/> 1. Visual Standards
                                 </h3>
-                                <div className="space-y-8 relative z-10">
+                                <div className="space-y-6">
                                     <FormField control={form.control} name="company_name_display" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest ml-2 text-slate-500">Official Registered Display Name</FormLabel>
+                                            <FormLabel className="text-xs font-semibold text-slate-600">Official Display Name</FormLabel>
                                             <FormControl>
-                                                <Input className="h-16 font-black rounded-[1.25rem] border-slate-200 text-xl shadow-sm focus:border-blue-600 transition-all bg-white px-8" {...field} />
+                                                <Input className="h-11 rounded-lg border-slate-200 text-sm font-medium focus:border-blue-500 transition-all bg-white" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name="primary_color" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest ml-2 text-slate-500">Brand Primary Accent Hex</FormLabel>
+                                            <FormLabel className="text-xs font-semibold text-slate-600">Brand Primary Hex Code</FormLabel>
                                             <FormControl>
-                                                <div className="relative group">
-                                                    <Palette className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300 group-focus-within:text-blue-600 transition-colors" />
-                                                    <Input className="h-16 pl-16 font-mono font-black rounded-[1.25rem] border-slate-200 text-2xl shadow-sm bg-white" {...field} />
+                                                <div className="relative">
+                                                    <Palette className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                    <Input className="h-11 pl-10 font-mono font-bold rounded-lg border-slate-200 text-sm bg-white" {...field} />
                                                     {field.value && (
-                                                        <div className="absolute right-5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-2xl border-4 border-white shadow-2xl" style={{backgroundColor: field.value}}/>
+                                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded border border-slate-200" style={{backgroundColor: field.value}}/>
                                                     )}
                                                 </div>
                                             </FormControl>
@@ -271,50 +258,50 @@ export default function BrandingManager() {
                         </div>
 
                         {/* STATIONERY DNA SECTION */}
-                        <div className="space-y-10 pt-10 border-t border-slate-100">
-                            <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-5">
-                                <MapPin size={22} className="text-blue-600"/> 2. Corporate Stationery Details
+                        <div className="space-y-6 pt-6 border-t border-slate-100">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                <MapPin size={16} className="text-blue-500"/> 2. Office & Registration Details
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <FormField control={form.control} name="plot_number" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-slate-500">Plot / Street Address</FormLabel><FormControl><div className="relative"><MapPin className="absolute left-5 top-5 h-5 w-5 text-slate-300"/><Input className="h-16 pl-14 font-bold rounded-2xl bg-slate-50 border-slate-200 shadow-inner px-8" {...field} /></div></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">Physical Address</FormLabel><FormControl><Input className="h-11 rounded-lg bg-white border-slate-200 text-sm" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="po_box" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-slate-500">P.O. Box Protocol</FormLabel><FormControl><div className="relative"><Landmark className="absolute left-5 top-5 h-5 w-5 text-slate-300"/><Input className="h-16 pl-14 font-bold rounded-2xl bg-slate-50 border-slate-200 shadow-inner px-8" {...field} /></div></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">P.O. Box</FormLabel><FormControl><Input className="h-11 rounded-lg bg-white border-slate-200 text-sm" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="tin_number" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-orange-600">Company TIN Identifier</FormLabel><FormControl><div className="relative"><Hash className="absolute left-5 top-5 h-5 w-5 text-slate-300"/><Input className="h-16 pl-14 font-black rounded-2xl bg-slate-50 border-slate-200 font-mono text-xl" {...field} /></div></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">Tax ID (TIN)</FormLabel><FormControl><Input className="h-11 rounded-lg border-slate-200 font-mono text-sm" {...field} /></FormControl></FormItem>
                                 )} />
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField control={form.control} name="official_email" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-slate-500">Official Email</FormLabel><FormControl><div className="relative"><Mail className="absolute left-5 top-5 h-5 w-5 text-slate-300"/><Input className="h-16 pl-14 font-bold rounded-2xl bg-white border-slate-200 shadow-sm" {...field} /></div></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">Corporate Email</FormLabel><FormControl><Input className="h-11 rounded-lg bg-white border-slate-200 text-sm" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="official_phone" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-slate-500">Support Phone</FormLabel><FormControl><div className="relative"><Phone className="absolute left-5 top-5 h-5 w-5 text-slate-300"/><Input className="h-16 pl-14 font-bold rounded-2xl bg-white border-slate-200 shadow-sm" {...field} /></div></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">Contact Phone</FormLabel><FormControl><Input className="h-11 rounded-lg bg-white border-slate-200 text-sm" {...field} /></FormControl></FormItem>
                                 )} />
                             </div>
                         </div>
 
                         {/* SIGNATORY & PAYMENT SECTION */}
-                        <div className="space-y-10 pt-10 border-t border-slate-100">
-                            <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-5">
-                                <UserCheck size={22} className="text-blue-600"/> 3. Formal Signatory & Disbursement
+                        <div className="space-y-6 pt-6 border-t border-slate-100">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                <UserCheck size={16} className="text-blue-500"/> 3. Authorization & Settlement
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField control={form.control} name="ceo_name" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-slate-500">Authorized Signatory Name</FormLabel><FormControl><div className="relative"><User className="absolute left-5 top-5 h-5 w-5 text-slate-300"/><Input className="h-16 pl-14 font-black rounded-2xl border-slate-200 shadow-sm text-lg" {...field} /></div></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">Authorized Official Name</FormLabel><FormControl><Input className="h-11 rounded-lg border-slate-200 text-sm font-medium" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="ceo_role" render={({ field }) => (
-                                    <FormItem><FormLabel className="text-[10px] font-black uppercase ml-2 text-slate-500">Official Executive Role</FormLabel><FormControl><Input className="h-16 px-8 font-black rounded-2xl border-slate-200 text-lg bg-slate-50/50" placeholder="e.g. Managing Director" {...field} /></FormControl></FormItem>
+                                    <FormItem><FormLabel className="text-xs font-semibold text-slate-600">Official Designation</FormLabel><FormControl><Input className="h-11 rounded-lg border-slate-200 text-sm bg-slate-50/30" placeholder="e.g. Managing Director" {...field} /></FormControl></FormItem>
                                 )} />
                                 <FormField control={form.control} name="payment_instructions" render={({ field }) => (
                                     <FormItem className="col-span-full">
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest ml-3 flex items-center gap-3 text-blue-600">
-                                            <Landmark size={14}/> 4. Global Disbursement Specifications (Appears on Quotes/Invoices)
+                                        <FormLabel className="text-xs font-semibold text-slate-600 flex items-center gap-2">
+                                            <Landmark size={14} className="text-blue-500"/> 4. Payment Instructions (Appears on Invoices)
                                         </FormLabel>
                                         <FormControl>
-                                            <Textarea className="min-h-[180px] font-bold rounded-[3rem] border-slate-200 p-10 text-sm bg-slate-50 focus:bg-white shadow-inner transition-all leading-relaxed" placeholder="Clearly specify Bank Name, Branch Code, Account Numbers, and Mobile Money Merchant identifiers..." {...field} />
+                                            <Textarea className="min-h-[140px] rounded-lg border-slate-200 p-4 text-sm bg-slate-50/30 focus:bg-white transition-all leading-relaxed" placeholder="Specify Bank, Account Number, Branch details..." {...field} />
                                         </FormControl>
                                     </FormItem>
                                 )} />
@@ -322,46 +309,41 @@ export default function BrandingManager() {
                         </div>
 
                         {/* FOOTER PROTOCOL */}
-                        <div className="space-y-6 pt-10 border-t border-slate-100">
-                            <Label className="text-[11px] font-black uppercase tracking-[0.4em] ml-3 text-blue-500">Master Fiscal Document Footer</Label>
-                            <div className="relative group">
-                                <ReceiptIcon className="absolute left-8 top-10 h-8 w-8 text-blue-300 group-focus-within:text-blue-600 transition-colors"/>
-                                <Input name="receipt_footer" value={form.watch('receipt_footer') || ''} onChange={e => form.setValue('receipt_footer', e.target.value)} className="h-28 pl-20 italic font-bold text-slate-600 rounded-[2.5rem] border-blue-100 bg-blue-50/20 text-2xl shadow-inner border-2" placeholder="Thank you for choosing Sovereign ERP." />
+                        <div className="space-y-4 pt-6 border-t border-slate-100">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-blue-600 ml-1">Default Document Footer</Label>
+                            <div className="relative">
+                                <ReceiptIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-300"/>
+                                <Input name="receipt_footer" value={form.watch('receipt_footer') || ''} onChange={e => form.setValue('receipt_footer', e.target.value)} className="h-14 pl-12 rounded-xl border-blue-100 bg-blue-50/10 text-sm font-medium text-slate-600" placeholder="e.g. Thank you for your business." />
                             </div>
                         </div>
                     </CardContent>
 
-                    <CardFooter className="bg-slate-50 p-14 border-t flex flex-col sm:flex-row items-center justify-between gap-12">
-                        <div className="flex items-center gap-6 text-[12px] font-black text-slate-500 uppercase tracking-[0.5em]">
-                            <div className="h-16 w-16 rounded-[2rem] bg-blue-100 flex items-center justify-center border border-blue-200 shadow-2xl">
-                                <ShieldCheck className="text-blue-600 h-8 w-8" />
-                            </div>
-                            Sovereign Identity Sync Active
+                    <CardFooter className="bg-slate-50 p-8 border-t flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-3 text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                            <ShieldCheck size={18} className="text-slate-300" />
+                            Data Synced Securely
                         </div>
                         <Button 
                             type="submit" 
                             disabled={isPending || !form.formState.isDirty} 
-                            className="h-24 px-32 font-black bg-slate-900 hover:bg-blue-600 text-white shadow-[0_30px_60px_-15px_rgba(15,23,42,0.6)] rounded-[2.5rem] transition-all uppercase tracking-[0.3em] text-xl transform hover:scale-105 active:scale-95 group"
+                            className="bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold px-10 h-11 rounded-lg transition-all shadow-sm flex items-center gap-2"
                         >
                             {isPending ? (
-                                <><Loader2 className="animate-spin mr-5 h-10 w-10"/> BROADCASTING...</>
+                                <><Loader2 className="animate-spin h-4 w-4"/> Updating...</>
                             ) : (
-                                <div className="flex items-center gap-6">
-                                    <Send className="h-8 w-8 group-hover:translate-x-3 transition-transform" />
-                                    Broadcast Identity Settings
-                                </div>
+                                <><Send size={16} /> Save Branding Settings</>
                             )}
                         </Button>
                     </CardFooter>
                 </Card>
 
                 {/* COMPLIANCE FOOTER */}
-                <div className="flex justify-center items-center gap-10 opacity-30 py-10">
-                    <div className="h-[1px] w-40 bg-slate-300" />
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.8em]">
-                        BBU1 SOVEREIGN ENGINE • IDENTITY HUB v5.2
+                <div className="flex justify-center items-center gap-4 py-8 opacity-30">
+                    <div className="h-[1px] w-20 bg-slate-300" />
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        System Identity Manager • Version 5.2
                     </p>
-                    <div className="h-[1px] w-40 bg-slate-300" />
+                    <div className="h-[1px] w-20 bg-slate-300" />
                 </div>
             </form>
         </FormProvider>

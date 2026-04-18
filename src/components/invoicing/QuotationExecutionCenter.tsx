@@ -25,21 +25,21 @@ export default function QuotationExecutionCenter() {
     const [selectedQuote, setSelectedQuote] = useState<any>(null);
     const [payMethod, setPayMethod] = useState('NONE');
 
-    // 1. FETCH PENDING QUOTES
+    // 1. FETCH PENDING QUOTES (Logic Intact)
     const { data: quotes, isLoading } = useQuery({
         queryKey: ['pending_quotes'],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('estimates')
                 .select('*, items:estimate_line_items(*)')
-                .not('status', 'eq', 'ACCEPTED') // Hide already finalized ones
+                .not('status', 'eq', 'ACCEPTED') 
                 .order('created_at', { ascending: false });
             if (error) throw error;
             return data;
         }
     });
 
-    // 2. EXECUTION MUTATION
+    // 2. EXECUTION MUTATION (Logic Intact)
     const executeFiscalization = useMutation({
         mutationFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
@@ -52,25 +52,32 @@ export default function QuotationExecutionCenter() {
             return data;
         },
         onSuccess: (invId) => {
-            toast.success(`Commercial Protocol Sealed: Invoice #${invId} is now active.`);
+            toast.success(`Quotation processed: Invoice #${invId} generated.`);
             setSelectedQuote(null);
             queryClient.invalidateQueries({ queryKey: ['pending_quotes'] });
         },
-        onError: (err: any) => toast.error(`Protocol Breach: ${err.message}`)
+        onError: (err: any) => toast.error(`Error: ${err.message}`)
     });
 
-    if (isLoading) return <div className="p-20 text-center font-black animate-pulse text-slate-400">LOADING SOVEREIGN LEDGER...</div>;
+    if (isLoading) return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest">Loading Records...</p>
+        </div>
+    );
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            <Card className="border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] rounded-[3rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-900 text-white p-10 border-b border-white/5">
+        <div className="max-w-[1400px] mx-auto py-8 px-6 space-y-6 animate-in fade-in duration-500">
+            <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
+                <CardHeader className="bg-white border-b border-slate-100 p-8">
                     <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-6">
-                            <div className="p-5 bg-blue-600 rounded-3xl shadow-xl shadow-blue-600/20"><Gavel size={36} /></div>
+                        <div className="flex items-center gap-5">
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-blue-600">
+                                <Gavel size={28} />
+                            </div>
                             <div>
-                                <CardTitle className="text-3xl font-black uppercase tracking-tighter">Execution Console</CardTitle>
-                                <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2 italic">Commercial Approval & Fiscalization Node</p>
+                                <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">Quotation Processing</CardTitle>
+                                <p className="text-sm text-slate-500 mt-1 font-medium">Review pending estimates and convert to active invoices.</p>
                             </div>
                         </div>
                     </div>
@@ -78,35 +85,38 @@ export default function QuotationExecutionCenter() {
 
                 <CardContent className="p-0">
                     <Table>
-                        <TableHeader className="bg-slate-50 h-20">
+                        <TableHeader className="bg-slate-50 h-14 border-b">
                             <TableRow>
-                                <TableHead className="pl-10 font-black text-[11px] uppercase text-slate-400 tracking-widest">Protocol ID</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase text-slate-400">Target Client</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase text-slate-400 text-right">Gross Value</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase text-slate-400 text-center">Current Status</TableHead>
-                                <TableHead className="text-right pr-10 font-black text-[11px] uppercase text-slate-400">Decision</TableHead>
+                                <TableHead className="pl-8 font-bold text-[10px] uppercase text-slate-500 tracking-wider">Quotation No.</TableHead>
+                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Client Name</TableHead>
+                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 tracking-wider text-right">Total Amount</TableHead>
+                                <TableHead className="font-bold text-[10px] uppercase text-slate-500 tracking-wider text-center">Status</TableHead>
+                                <TableHead className="text-right pr-8 font-bold text-[10px] uppercase text-slate-500 tracking-wider">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {quotes?.map((q: any) => (
-                                <TableRow key={q.id} className="hover:bg-blue-50/30 transition-all border-b border-slate-50">
-                                    <TableCell className="pl-10 py-8 font-mono text-blue-600 font-black text-lg">{q.estimate_uid}</TableCell>
+                                <TableRow key={q.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                                    <TableCell className="pl-8 py-6 font-bold text-blue-600 text-sm">{q.estimate_uid}</TableCell>
                                     <TableCell>
-                                        <div className="font-black text-slate-800 text-xl tracking-tighter uppercase">{q.client_name}</div>
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{format(new Date(q.created_at), 'PPP')}</div>
+                                        <div className="font-bold text-slate-800 text-base">{q.client_name}</div>
+                                        <div className="text-[10px] font-semibold text-slate-400 uppercase mt-0.5 tracking-tight">{format(new Date(q.created_at), 'dd MMM yyyy')}</div>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="font-black text-slate-900 text-2xl tabular-nums">{q.total_amount.toLocaleString()}</div>
-                                        <Badge variant="outline" className="font-black text-[9px] mt-1">{q.currency_code}</Badge>
+                                        <div className="font-bold text-slate-900 text-lg tabular-nums">{q.total_amount.toLocaleString()}</div>
+                                        <Badge variant="outline" className="font-bold text-[9px] mt-0.5 uppercase border-slate-200">{q.currency_code}</Badge>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                        <Badge className={`font-black px-4 py-1.5 rounded-lg text-[10px] ${q.status === 'PENDING' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-700'}`}>
+                                        <Badge variant="secondary" className={`font-bold px-3 py-1 rounded-full text-[9px] uppercase tracking-wider ${q.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
                                             {q.status}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right pr-10">
-                                        <Button onClick={() => setSelectedQuote(q)} className="bg-slate-900 hover:bg-blue-600 font-black text-[10px] px-6 h-10 shadow-lg gap-2">
-                                            PROCESS <ChevronRight size={14}/>
+                                    <TableCell className="text-right pr-8">
+                                        <Button 
+                                            onClick={() => setSelectedQuote(q)} 
+                                            className="bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold text-[10px] px-5 h-9 rounded-lg shadow-sm gap-2"
+                                        >
+                                            PROCESS RECORD <ChevronRight size={14}/>
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -116,58 +126,58 @@ export default function QuotationExecutionCenter() {
                 </CardContent>
             </Card>
 
-            {/* --- MODAL: FINAL FISCALIZATION --- */}
+            {/* --- MODAL: FINAL PROCESSING --- */}
             <Dialog open={!!selectedQuote} onOpenChange={() => setSelectedQuote(null)}>
-                <DialogContent className="max-w-2xl rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden">
-                    <div className="bg-slate-900 p-10 text-white">
-                        <DialogTitle className="text-3xl font-black uppercase italic">Seal Commercial Protocol</DialogTitle>
-                        <DialogDescription className="text-blue-400 font-black text-[10px] uppercase tracking-[0.4em] mt-2">Transitioning Specification to Fiscal Asset</DialogDescription>
+                <DialogContent className="max-w-xl rounded-xl border border-slate-200 shadow-xl p-0 overflow-hidden">
+                    <div className="bg-white border-b border-slate-100 p-6">
+                        <DialogTitle className="text-xl font-bold text-slate-900">Generate Tax Invoice</DialogTitle>
+                        <DialogDescription className="text-xs font-medium text-slate-500 mt-1">Convert this quotation into a formal billing document.</DialogDescription>
                     </div>
 
-                    <div className="p-10 space-y-8">
-                        <div className="flex justify-between items-center p-6 bg-slate-50 rounded-3xl border border-slate-100 shadow-inner">
+                    <div className="p-8 space-y-6">
+                        <div className="flex justify-between items-center p-5 bg-slate-50 rounded-lg border border-slate-200">
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Ref</p>
-                                <p className="text-xl font-black text-slate-900">{selectedQuote?.estimate_uid}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quote Reference</p>
+                                <p className="text-base font-bold text-slate-900">{selectedQuote?.estimate_uid}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Client Payable</p>
-                                <p className="text-3xl font-black text-blue-600">{selectedQuote?.total_amount.toLocaleString()} <span className="text-xs">{selectedQuote?.currency_code}</span></p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payable Balance</p>
+                                <p className="text-2xl font-bold text-blue-600">{selectedQuote?.total_amount.toLocaleString()} <span className="text-xs">{selectedQuote?.currency_code}</span></p>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex gap-2"><Wallet size={14}/> Instant Settlement Option</Label>
+                        <div className="space-y-3">
+                            <Label className="text-xs font-bold text-slate-600 flex gap-2 items-center"><Wallet size={14} className="text-slate-400"/> Settlement Method</Label>
                             <Select value={payMethod} onValueChange={setPayMethod}>
-                                <SelectTrigger className="h-16 font-black border-2 border-slate-200 rounded-2xl text-lg shadow-sm">
-                                    <SelectValue placeholder="Select Settlement Status" />
+                                <SelectTrigger className="h-12 font-bold border-slate-200 rounded-lg text-sm bg-white">
+                                    <SelectValue placeholder="Select Method" />
                                 </SelectTrigger>
-                                <SelectContent className="font-black text-lg">
-                                    <SelectItem value="NONE" className="text-slate-500 py-3">INVOICE ONLY (CREDIT SALE)</SelectItem>
-                                    <SelectItem value="CASH" className="text-emerald-600 py-3 italic">FULL SETTLEMENT: DIRECT CASH</SelectItem>
-                                    <SelectItem value="BANK" className="text-blue-600 py-3 italic">FULL SETTLEMENT: BANK TRANSFER</SelectItem>
+                                <SelectContent>
+                                    <SelectItem value="NONE" className="font-semibold">UNPAID (CREDIT SALE)</SelectItem>
+                                    <SelectItem value="CASH" className="font-semibold text-emerald-600">PAID VIA CASH</SelectItem>
+                                    <SelectItem value="BANK" className="font-semibold text-blue-600">PAID VIA BANK TRANSFER</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <p className="text-[10px] text-slate-400 font-bold italic px-2">
-                                * Choosing a settlement method will automatically write to the Cash Ledger and update your Daily Forensic Audit.
+                            <p className="text-[10px] text-slate-400 font-medium px-1">
+                                * Payments selected here will be logged to your business accounts and cash registers immediately.
                             </p>
                         </div>
                     </div>
 
-                    <DialogFooter className="bg-slate-50 border-t p-10 flex flex-col sm:flex-row items-center justify-between gap-10">
-                        <div className="flex items-center gap-4 text-slate-500 text-[9px] font-black uppercase tracking-widest">
-                            <ShieldCheck className="text-emerald-500 h-6 w-6" />
-                            Security Seal: Once fiscalized, <br/>this document is immutable.
+                    <DialogFooter className="bg-slate-50 border-t border-slate-200 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                            <ShieldCheck size={18} className="text-emerald-500" />
+                            Confirmed Data Accuracy Required
                         </div>
-                        <div className="flex gap-4 w-full sm:w-auto">
-                            <Button variant="ghost" onClick={() => setSelectedQuote(null)} className="font-black text-slate-400 h-16 px-10">Discard</Button>
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            <Button variant="outline" onClick={() => setSelectedQuote(null)} className="font-bold text-slate-500 h-10 px-6 rounded-lg text-xs">Cancel</Button>
                             <Button 
                                 onClick={() => executeFiscalization.mutate()} 
                                 disabled={executeFiscalization.isPending}
-                                className="bg-blue-600 hover:bg-slate-900 text-white h-16 px-14 font-black text-sm shadow-2xl rounded-2xl transition-all transform hover:scale-105 active:scale-95 flex-1"
+                                className="bg-[#2557D6] hover:bg-[#1e44a8] text-white h-10 px-8 font-bold text-xs rounded-lg shadow-sm transition-all"
                             >
-                                {executeFiscalization.isPending ? <Loader2 className="animate-spin h-6 w-6 mr-3"/> : <Send className="mr-3 h-5 w-5"/>}
-                                {executeFiscalization.isPending ? "SEALING PROTOCOL..." : "FINALIZE & FISCALIZE"}
+                                {executeFiscalization.isPending ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : <Send className="mr-2 h-4 w-4"/>}
+                                {executeFiscalization.isPending ? "PROCESSING..." : "FINALIZE INVOICE"}
                             </Button>
                         </div>
                     </DialogFooter>
