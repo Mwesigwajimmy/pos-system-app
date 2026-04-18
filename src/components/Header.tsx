@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from './ui/button';
 import { 
     Bell, ShieldAlert, Zap, Activity, Clock, Trash2, CheckCircle2,
-    Building2, MapPin, Globe, Search as SearchIcon
+    Building2, MapPin, Globe, ShieldCheck, Search as SearchIcon
 } from 'lucide-react'; 
 import { toast } from 'sonner';
 import { Badge } from './ui/badge';
