@@ -75,7 +75,8 @@ const ProductGrid = ({ products, onProductSelect, disabled, isModalOpen }: any) 
         <div className={cn(
             'flex flex-col h-full bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden transition-all',
             disabled && 'opacity-50 pointer-events-none',
-            isModalOpen && 'blur-[2px] grayscale-[0.2]' // Professional softening when modal is open
+            // FIX: Lower z-index when modal is open so the search bar doesn't overlap
+            isModalOpen ? 'z-0' : 'z-10'
         )}>
             <div className="p-6 border-b bg-slate-50/50 relative">
                 <Search className="absolute left-10 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -83,8 +84,7 @@ const ProductGrid = ({ products, onProductSelect, disabled, isModalOpen }: any) 
                     placeholder="Search product name or scan SKU..." 
                     value={searchTerm} 
                     onChange={e => setSearchTerm(e.target.value)} 
-                    // Lower z-index to prevent overlapping modal layers
-                    className="pl-14 h-14 bg-white border-slate-200 rounded-2xl font-bold text-lg relative z-10" 
+                    className="pl-14 h-14 bg-white border-slate-200 rounded-2xl font-bold text-lg" 
                 />
             </div>
             <ScrollArea className="flex-1 p-6">
@@ -118,7 +118,7 @@ const ProductGrid = ({ products, onProductSelect, disabled, isModalOpen }: any) 
     );
 };
 
-// --- CHILD COMPONENT: CART DISPLAY (FIXED SCROLLING & STATIC BUTTON) ---
+// --- CHILD COMPONENT: CART DISPLAY (WITH FIXED BUTTON & SCROLLABLE LIST) ---
 const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, discount, setDiscount }: any) => {
     const subtotal = cart.reduce((acc: number, item: any) => acc + item.price * item.quantity, 0);
     const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : discount.value;
@@ -126,7 +126,7 @@ const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedC
 
     return (
         <div className="flex flex-col h-full bg-white rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden">
-            {/* 1. STATIC CUSTOMER HEADER */}
+            {/* 1. STATIC HEADER */}
             <div className="p-6 bg-slate-50/50 border-b">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedC
                 </div>
             </div>
 
-            {/* 2. SCROLLABLE CART ITEMS */}
+            {/* 2. SCROLLABLE ITEMS AREA */}
             <ScrollArea className="flex-1 px-6">
                 <div className="py-6 space-y-4">
                     {cart.length === 0 ? (
@@ -158,7 +158,7 @@ const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedC
                         </div>
                     ) : (
                         cart.map((item: any) => (
-                            <div key={item.variant_id} className="flex items-center justify-between group">
+                            <div key={item.variant_id} className="flex items-center justify-between group animate-in fade-in slide-in-from-right-2">
                                 <div className="flex-1">
                                     <p className="font-black text-slate-800 text-sm leading-tight">{item.product_name}</p>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase">{item.variant_name}</p>
@@ -177,7 +177,7 @@ const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedC
                                         <p className="font-black text-slate-900 text-sm">{ (item.price * item.quantity).toLocaleString() }</p>
                                         <p className="text-[9px] font-bold text-slate-400">@ {item.price.toLocaleString()}</p>
                                     </div>
-                                    <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.variant_id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500">
+                                    <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.variant_id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all">
                                         <X size={16} />
                                     </Button>
                                 </div>
@@ -187,7 +187,7 @@ const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedC
                 </div>
             </ScrollArea>
 
-            {/* 3. STATIC SUMMARY AND CHARGE BUTTON */}
+            {/* 3. STATIC FOOTER WITH CHARGE BUTTON */}
             <div className="p-8 border-t bg-slate-50/50 space-y-6">
                 <div className="space-y-3">
                     <div className="flex justify-between text-slate-400 font-bold text-xs uppercase tracking-widest">
@@ -225,7 +225,7 @@ const CartDisplay = ({ cart, currency, onUpdateQuantity, onRemoveItem, selectedC
     );
 };
 
-// --- MAIN CONTROLLER ---
+// --- MAIN CONTROLLER: RETAIL DESK ---
 export default function RetailDesk() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -235,19 +235,23 @@ export default function RetailDesk() {
     const [isSyncing, setIsSyncing] = useState(false);
     const receiptRef = useRef<HTMLDivElement>(null);
     const [discount, setDiscount] = useState<Discount>({ type: 'fixed', value: 0 });
-    const [identity, setIdentity] = useState<any>(null);
+    
+    // Default initial identity to avoid 'undefined' errors during first render
+    const [identity, setIdentity] = useState<any>({ currency_code: 'UGX' });
 
     const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
+
     const products = useLiveQuery(() => db.products.toArray(), []);
     
+    // --- PROFESSIONAL PRINT TRIGGER ---
     const handleWebPrint = useReactToPrint({ 
         content: () => receiptRef.current,
-        documentTitle: 'BBU1_Fiscal_Receipt',
+        documentTitle: 'Retail_Fiscal_Receipt',
         onAfterPrint: () => setLastCompletedSale(null)
     });
 
-    // --- 1. SOVEREIGN IDENTITY HANDSHAKE & ERROR FIX ---
+    // --- 1. CORPORATE IDENTITY HANDSHAKE ---
     useEffect(() => {
         if (!userProfile?.business_id) return;
 
@@ -269,7 +273,7 @@ export default function RetailDesk() {
             if (corpIdentity) {
                 setIdentity({
                     ...corpIdentity,
-                    // FIX: Ensure currency_code is never missing
+                    // FIX: Ensure currency_code is never undefined
                     currency_code: corpIdentity.currency_code || 'UGX',
                     globalTaxRate: taxRes?.[0]?.rate_percentage || 0
                 });
@@ -293,12 +297,11 @@ export default function RetailDesk() {
 
     // --- 2. MASTER PAYMENT & FISCALIZATION LOGIC ---
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
-        // Safe check for identity to prevent 'undefined' reading errors
         if (!userProfile?.business_id || !identity) {
-            return toast.error("System Identity not loaded. Please wait.");
+            return toast.error("System Identity not initialized.");
         }
 
-        const currency = identity?.currency_code || 'UGX';
+        const currentCurrency = identity.currency_code;
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
@@ -309,7 +312,7 @@ export default function RetailDesk() {
         const dueAmount = round(totalAmount - paymentData.amountPaid);
 
         if (dueAmount > 0.01 && !selectedCustomer) {
-            return toast.error("CREDIT PROTOCOL: Customer selection required for balance arrears.");
+            return toast.error("CREDIT PROTOCOL: Customer required for balance arrears.");
         }
 
         const salePayload: Omit<OfflineSale, 'id'> = {
@@ -340,21 +343,13 @@ export default function RetailDesk() {
                     subtotal: round(subtotal),
                     discount: round(discountAmount),
                     amount_due: salePayload.due_amount,
-                    currency_code: currency,
+                    currency_code: currentCurrency,
                     total_tax: totalTax,
                     kernel_seal_id: `TX-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
                 },
                 identity: {
-                    legal_name: identity.legal_name,
-                    tin_number: identity.tin_number,
-                    physical_address: identity.physical_address,
-                    official_phone: identity.official_phone,
-                    official_email: identity.official_email,
-                    logo_url: identity.logo_url,
-                    receipt_footer: identity.receipt_footer,
-                    currency_code: currency,
-                    plot_number: identity.plot_number,
-                    po_box: identity.po_box
+                    ...identity,
+                    currency_code: currentCurrency
                 },
                 customer: selectedCustomer,
                 items: cart.map(i => ({ 
@@ -373,8 +368,9 @@ export default function RetailDesk() {
         toast.success("FISCAL SESSION SEALED");
     };
 
-    if (isProfileLoading) return <div className="h-screen flex items-center justify-center font-black animate-pulse text-slate-300">WAKING POS CORE...</div>;
+    if (isProfileLoading) return <div className="h-screen flex items-center justify-center font-black animate-pulse text-slate-300 uppercase tracking-widest">Waking Retail Core...</div>;
 
+    // --- SUCCESS VIEW: FISCAL RECEIPT ---
     if (lastCompletedSale) {
         return (
             <div className="p-10 flex flex-col items-center justify-center min-h-screen bg-slate-900 animate-in zoom-in duration-500">
@@ -383,7 +379,7 @@ export default function RetailDesk() {
                         <div className="h-20 w-20 bg-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(16,185,129,0.4)]">
                             <CheckCircle2 className="w-10 h-10 text-white"/>
                         </div>
-                        <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Sale Completed</h2>
+                        <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Transaction Complete</h2>
                     </div>
 
                     <div className="bg-white rounded-[3rem] p-1 shadow-2xl">
@@ -402,14 +398,14 @@ export default function RetailDesk() {
                             className="h-20 bg-blue-600 hover:bg-white hover:text-blue-600 text-white font-black text-xl rounded-3xl shadow-2xl transition-all flex items-center justify-center gap-4 group"
                         >
                             <PrinterIcon className="w-7 h-7 group-hover:rotate-12 transition-transform" />
-                            PRINT RECEIPT
+                            EXECUTE PRINT
                         </Button>
                         <Button 
                             variant="ghost" 
                             className="text-slate-400 font-black uppercase tracking-[0.3em] hover:text-white"
                             onClick={() => setLastCompletedSale(null)}
                         >
-                            Dismiss and New Sale
+                            Start New Session
                         </Button>
                     </div>
                 </div>
@@ -419,31 +415,31 @@ export default function RetailDesk() {
     
     return (
         <div className="relative min-h-screen bg-[#F8FAFC]">
-            {/* TOP BAR IDENTITY */}
+            {/* TOP IDENTITY NAVIGATION */}
             <div className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm">
                 <div className="flex items-center gap-6">
                      <div className="flex items-center gap-3">
-                        <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                        <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-sm font-black text-slate-900 uppercase tracking-tighter">
-                            {identity?.legal_name || 'AUTHENTICATING...'}
+                            {identity?.legal_name || 'INITIALIZING...'}
                         </span>
                      </div>
-                     <Badge variant="outline" className="font-black text-[9px] px-3 border-blue-100 text-blue-600">
-                        {identity?.currency_code || 'UGX'} SYSTEM ACTIVE
+                     <Badge variant="outline" className="font-black text-[9px] px-3 border-blue-100 text-blue-600 uppercase">
+                        {identity?.currency_code || 'UGX'} System Active
                      </Badge>
                 </div>
                 <div className="flex items-center gap-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-4 italic">
-                        <MapPin size={10} className="inline mr-1" /> {identity?.physical_address}
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-4">
+                        <MapPin size={10} className="inline mr-1 text-blue-500" /> {identity?.physical_address || 'Main Office'}
                     </p>
-                    <Button onClick={() => {}} variant="outline" className="h-10 px-6 border-slate-200 font-black text-xs rounded-xl shadow-sm">
-                        <RefreshCw className="mr-2 h-4 w-4 text-blue-600" /> SYNC DATA
+                    <Button onClick={() => {}} variant="outline" className="h-10 px-6 border-slate-200 font-black text-xs rounded-xl shadow-sm hover:bg-slate-50 transition-all">
+                        <RefreshCw className="mr-2 h-4 w-4 text-blue-600" /> SYNC LOCAL DATA
                     </Button>
                 </div>
             </div>
 
             <div className="h-[calc(100vh-72px)] grid grid-cols-1 lg:grid-cols-12 gap-8 p-8 overflow-hidden">
-                {/* Product Search and Grid */}
+                {/* 1. PRODUCT GRID AREA */}
                 <div className="lg:col-span-7 h-full flex flex-col min-h-0 animate-in slide-in-from-left-4 duration-700">
                     <ProductGrid 
                         products={products || []} 
@@ -453,7 +449,7 @@ export default function RetailDesk() {
                     />
                 </div>
 
-                {/* Cart Area - Fully Scrollable with Fixed Footer */}
+                {/* 2. TRANSACTION CART AREA */}
                 <div className="lg:col-span-5 h-full flex flex-col min-h-0 animate-in slide-in-from-right-4 duration-700">
                     <CartDisplay 
                         cart={cart} 
@@ -472,6 +468,7 @@ export default function RetailDesk() {
                 </div>
             </div>
             
+            {/* MODALS */}
             <CustomerSearchModal 
                 isOpen={isCustomerModalOpen} 
                 onClose={() => setCustomerModalOpen(false)} 

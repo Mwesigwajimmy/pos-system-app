@@ -6,10 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import EstimateTerminal from "@/components/invoicing/EstimateTerminal";
 import { FileText, ArrowLeft, ShieldCheck, Landmark, Globe } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
-  title: "Estimate Terminal | BBU1 Sovereign Ledger",
-  description: "Enterprise specification and pre-fiscal commercial protocol management with autonomous sequencing.",
+  title: "Create Quotation | Business Manager",
+  description: "Generate commercial estimates and technical specifications for clients.",
 };
 
 interface PageProps { params: { locale: string }; }
@@ -18,11 +19,10 @@ export default async function EstimatesPage({ params: { locale } }: PageProps) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. NEURAL IDENTITY HANDSHAKE
+  // 1. USER SESSION AUTHENTICATION (Logic Intact)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  // Fetch verified profile context
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_id, organization_id")
@@ -32,7 +32,7 @@ export default async function EstimatesPage({ params: { locale } }: PageProps) {
   const activeTenantId = profile?.business_id || profile?.organization_id;
   if (!activeTenantId) redirect(`/${locale}/dashboard`);
 
-  // 2. ENTERPRISE DATA DISCOVERY (Parallel Execution for Speed)
+  // 2. DATA DISCOVERY (Logic Intact)
   const [customersRes, businessRes, currencyRes] = await Promise.all([
     supabase
       .from("customers")
@@ -51,26 +51,24 @@ export default async function EstimatesPage({ params: { locale } }: PageProps) {
       .or('name.ilike.%shilling%,name.ilike.%dollar%,name.ilike.%euro%,name.ilike.%pound%')
   ]);
 
-  // 3. STATIONERY PROTOCOL PREPARATION
-  // Maps raw database metadata to the professional stationery object
+  // 3. STATIONERY MAPPING (Logic Intact)
   const businessInfo = {
-    name: businessRes.data?.name || "BBU1 Enterprise",
+    name: businessRes.data?.name || "Business Enterprise",
     email: businessRes.data?.email || "",
     phone: businessRes.data?.phone || "",
     tin: businessRes.data?.tin || "TIN-PENDING",
-    address: businessRes.data?.address || "Headquarters",
+    address: businessRes.data?.address || "Main Office",
     plot: businessRes.data?.metadata?.plot_number || businessRes.data?.metadata?.plot || "N/A",
     pobox: businessRes.data?.metadata?.po_box || businessRes.data?.metadata?.pobox || "N/A"
   };
 
-  // 4. CURRENCY REGISTRY MAPPING
+  // 4. CURRENCY REGISTRY (Logic Intact)
   const currencies = (currencyRes.data || []).map(c => ({
     code: c.abbreviation,
     name: c.name,
     symbol: c.symbol || ""
   }));
 
-  // Fallback for global compatibility
   const defaultCurrencies = currencies.length > 0 ? currencies : [
     { code: 'UGX', name: 'Uganda Shilling', symbol: 'Shs' },
     { code: 'USD', name: 'US Dollar', symbol: '$' },
@@ -78,49 +76,55 @@ export default async function EstimatesPage({ params: { locale } }: PageProps) {
   ];
 
   return (
-    <div className="flex-1 space-y-10 p-6 md:p-12 bg-slate-50/30 min-h-screen animate-in fade-in duration-1000">
+    <div className="flex-1 space-y-10 p-6 md:p-10 bg-slate-50/50 min-h-screen animate-in fade-in duration-500">
       
-      {/* PROFESSIONAL COMMAND HEADER */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-slate-200 pb-12">
-        <div className="space-y-5">
+      {/* --- PROFESSIONAL HEADER --- */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 border-b border-slate-200 pb-10">
+        <div className="space-y-6">
           <Link 
             href={`/${locale}/invoicing/all-invoices`} 
-            className="group flex items-center text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] hover:text-blue-600 transition-all"
+            className="group flex items-center text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-blue-600 transition-colors"
           >
-            <ArrowLeft size={14} className="mr-2 group-hover:-translate-x-2 transition-transform" /> 
-            Back to Invoicing Ledger
+            <ArrowLeft size={14} className="mr-1.5 group-hover:-translate-x-1 transition-transform" /> 
+            Back to Invoicing History
           </Link>
-          <div className="flex items-center gap-6">
-            <div className="bg-slate-900 p-5 rounded-[2rem] shadow-2xl text-white transform -rotate-3 hover:rotate-0 transition-transform duration-500">
-              <FileText size={40} strokeWidth={2.5} />
+          <div className="flex items-center gap-5">
+            <div className="bg-slate-900 p-4 rounded-xl shadow-sm text-white">
+              <FileText size={32} />
             </div>
             <div>
-              <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">Estimate Terminal</h1>
-              <p className="text-slate-500 font-bold text-sm mt-2 uppercase tracking-[0.3em] flex items-center gap-3">
-                <Landmark size={16} className="text-blue-600"/> 
-                Commercial Specification & Protocol Node
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">Quotation Terminal</h1>
+                <Badge variant="outline" className="border-blue-200 text-blue-600 bg-blue-50 font-bold px-3 py-0.5 text-[10px] uppercase tracking-wide">
+                  Drafting Mode
+                </Badge>
+              </div>
+              <p className="text-slate-500 font-medium text-sm mt-1">
+                Configure commercial specifications and generate professional client estimates.
               </p>
             </div>
           </div>
         </div>
         
-        {/* COMPLIANCE STATUS BADGE */}
-        <div className="flex items-center gap-6 bg-white px-10 py-5 rounded-[2.5rem] border border-slate-200 shadow-xl relative overflow-hidden group">
-           <div className="absolute top-0 right-0 p-2 opacity-5">
-              <Globe size={40} />
-           </div>
-           <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center shadow-inner group-hover:bg-emerald-50 transition-colors">
-              <ShieldCheck size={24} className="text-blue-600 group-hover:text-emerald-600 transition-colors" />
+        {/* ORGANIZATION IDENTITY */}
+        <div className="flex items-center gap-5 bg-white px-8 py-5 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+           <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+              <ShieldCheck size={20} />
            </div>
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Protocol Registry</span>
-             <span className="text-xs font-black text-slate-800 uppercase tracking-tighter">Verified Sovereign Session</span>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account Identity</span>
+             <span className="text-sm font-bold text-slate-800 leading-tight">Verified Organization</span>
+             <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">Session Active</span>
+             </div>
            </div>
         </div>
       </div>
 
-      {/* THE MASTER TERMINAL MOUNT */}
-      <div className="mx-auto max-w-[1550px]">
+      {/* --- CONTENT CENTER --- */}
+      <div className="mx-auto max-w-[1600px]">
+        {/* Estimates Terminal handles the specific form components */}
         <EstimateTerminal 
             tenantId={activeTenantId} 
             customers={customersRes.data || []} 
@@ -129,11 +133,13 @@ export default async function EstimatesPage({ params: { locale } }: PageProps) {
         />
       </div>
 
-      {/* FOOTER AUDIT TAG */}
-      <div className="text-center pt-16 opacity-30">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">
-            BBU1 SOVEREIGN ENGINE • LEDGER IDENTITY: {activeTenantId.slice(0,18).toUpperCase()}
+      {/* --- COMPLIANCE FOOTER --- */}
+      <div className="flex justify-center items-center gap-4 pt-16 opacity-30">
+          <div className="h-[1px] w-12 bg-slate-400" />
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Standard Financial Protocol • Org ID: {activeTenantId.slice(0,12).toUpperCase()}
           </p>
+          <div className="h-[1px] w-12 bg-slate-400" />
       </div>
     </div>
   );

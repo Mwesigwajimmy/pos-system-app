@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
     TrendingUp, FlaskConical, AlertTriangle, FileDown, 
     ShieldCheck, Calendar, Filter, ChevronDown, 
-    Printer, Database, Activity
+    Printer, Loader2, Database, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 

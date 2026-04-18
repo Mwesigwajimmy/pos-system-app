@@ -17,11 +17,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label'; // Fix: Added missing import
+import { Label } from '@/components/ui/label'; 
 import { 
     Loader2, UploadCloud, Palette, ShieldCheck, X, 
     Building2, User, Phone, Mail, MapPin, Hash, 
-    Landmark, UserCheck, Send, AlertTriangle, Activity, Clock, CheckCircle2
+    Landmark, UserCheck, Send, AlertTriangle, Activity, Clock, CheckCircle2,
+    Receipt as ReceiptIcon // Fix: Added missing Receipt icon import
 } from 'lucide-react';
 
 // Identity Broadcast Handshake
