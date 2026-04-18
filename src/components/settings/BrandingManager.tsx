@@ -1,9 +1,8 @@
-// src/components/settings/BrandingManager.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
@@ -13,235 +12,182 @@ import Image from 'next/image';
 
 // UI Components
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, UploadCloud, Palette, AlertTriangle, X } from 'lucide-react';
-
-// --- 1. Schema, Types, and the Logic Hook ---
-
-// Type definition for the data as it exists in your database.
-interface BrandingSettings {
-  logo_url: string | null;
-  primary_color: string | null;
-}
-
-// Zod schema for powerful, declarative form validation.
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"];
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, UploadCloud, Palette, ShieldCheck, X, Building2, User, Phone, Mail, MapPin, Hash, Landmark, Signature } from 'lucide-react';
 
 const brandingSchema = z.object({
-  // Ensures the color is a valid hex code, providing a clear error message if not.
-  primary_color: z.string()
-    .regex(/^#([0-9a-f]{3}){1,2}$/i, "Must be a valid hex color code (e.g., #RRGGBB)")
-    .or(z.literal('')), // Allows the field to be empty.
-  
-  // Validates the logo file for size and type before any upload attempt.
-  logo_file: z.any()
-    .optional()
-    .refine((files) => !files || files.length === 0 || files[0].size <= MAX_FILE_SIZE, `Max file size is 2MB.`)
-    .refine((files) => !files || files.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files[0].type), ".jpg, .jpeg, .png, .svg, and .webp files are accepted.")
+  primary_color: z.string().regex(/^#([0-9a-f]{3}){1,2}$/i, "Hex required").or(z.literal('')),
+  secondary_color: z.string().optional(),
+  company_name_display: z.string().min(2, "Required"),
+  plot_number: z.string().optional(),
+  po_box: z.string().optional(),
+  official_email: z.string().email().or(z.literal('')),
+  official_phone: z.string().optional(),
+  tin_number: z.string().optional(),
+  ceo_name: z.string().optional(),
+  ceo_role: z.string().optional(),
+  payment_instructions: z.string().optional(),
+  logo_file: z.any().optional()
 });
 
 type BrandingFormInput = z.infer<typeof brandingSchema>;
 
-/**
- * Custom Hook: useBrandingManager
- * This encapsulates ALL logic related to branding settings.
- */
-const useBrandingManager = () => {
+const LogoUploader = memo(() => {
+    const { control, watch, setValue } = useFormContext<BrandingFormInput>();
+    const [preview, setPreview] = useState<string | null>(null);
+    const logoFile = watch('logo_file');
+    
+    useEffect(() => {
+        if (!logoFile?.[0]) { setPreview(null); return; }
+        const url = URL.createObjectURL(logoFile[0]);
+        setPreview(url);
+        return () => URL.revokeObjectURL(url);
+    }, [logoFile]);
+
+    return (
+        <FormField control={control} name="logo_file" render={({ field: { onChange } }) => (
+            <FormItem className="col-span-full">
+                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400">Corporate Master Logo</FormLabel>
+                <div className="relative group flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-[2rem] border-slate-200 hover:border-blue-400 hover:bg-slate-50 transition-all cursor-pointer overflow-hidden">
+                    <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => onChange(e.target.files)} />
+                    {preview ? (
+                        <div className="relative w-full h-full p-4">
+                            <Image src={preview} alt="Logo" layout="fill" objectFit="contain" />
+                            <Button size="icon" variant="destructive" className="absolute top-2 right-2 rounded-full h-8 w-8" onClick={() => setValue('logo_file', undefined)}><X size={14}/></Button>
+                        </div>
+                    ) : (
+                        <div className="text-center"><UploadCloud className="mx-auto text-slate-400 mb-2"/><p className="text-sm font-bold text-slate-600">Click to upload logo</p></div>
+                    )}
+                </div>
+            </FormItem>
+        )} />
+    );
+});
+
+export default function BrandingManager() {
     const supabase = createClient();
     const queryClient = useQueryClient();
 
-    // 1. DATA FETCHING: Get the current branding settings.
-    const { data: currentSettings, isLoading, isError, error } = useQuery<BrandingSettings>({
+    const { data: settings, isLoading } = useQuery({
         queryKey: ['brandingSettings'],
-        queryFn: async (): Promise<BrandingSettings> => {
-            const { data, error } = await supabase
-                .rpc('get_branding_settings', {})
-                .single();
-            
-            if (error && error.code !== 'PGRST116') throw error;
-            return (data as BrandingSettings) || { logo_url: null, primary_color: null };
+        queryFn: async () => {
+            const { data, error } = await supabase.rpc('get_branding_settings').single();
+            if (error) throw error;
+            return data;
         }
     });
 
-    // 2. FORM INITIALIZATION
     const form = useForm<BrandingFormInput>({
         resolver: zodResolver(brandingSchema),
-        defaultValues: { primary_color: '', logo_file: undefined },
+        defaultValues: { primary_color: '#1D4ED8', company_name_display: '' }
     });
 
     useEffect(() => {
-        if (currentSettings) {
-            form.reset({
-                primary_color: currentSettings.primary_color || '',
-                logo_file: undefined,
-            });
-        }
-    }, [currentSettings, form]);
+        if (settings) form.reset(settings);
+    }, [settings, form]);
 
-    // 3. DATA MUTATION
-    const { mutate: updateBranding, isPending: isUpdating } = useMutation({
+    const { mutate: handleSave, isPending } = useMutation({
         mutationFn: async (values: BrandingFormInput) => {
-            let newLogoUrl = currentSettings?.logo_url || null;
-            const newLogoFile = values.logo_file?.[0];
-
-            if (newLogoFile) {
-                const fileExt = newLogoFile.name.split('.').pop();
-                const filePath = `public/logo-${Date.now()}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('branding-assets').upload(filePath, newLogoFile);
-                if (uploadError) throw new Error(`Logo Upload Failed: ${uploadError.message}`);
-
-                const { data: { publicUrl } } = supabase.storage.from('branding-assets').getPublicUrl(filePath);
-                newLogoUrl = publicUrl;
-
-                if (currentSettings?.logo_url) {
-                    const oldLogoPath = currentSettings.logo_url.split('/branding-assets/')[1];
-                    await supabase.storage.from('branding-assets').remove([oldLogoPath]);
-                }
+            let finalLogoUrl = settings?.logo_url || null;
+            if (values.logo_file?.[0]) {
+                const fileName = `corp-id-${Date.now()}.${values.logo_file[0].name.split('.').pop()}`;
+                const { error: upErr } = await supabase.storage.from('branding-assets').upload(fileName, values.logo_file[0]);
+                if (upErr) throw upErr;
+                const { data: { publicUrl } } = supabase.storage.from('branding-assets').getPublicUrl(fileName);
+                finalLogoUrl = publicUrl;
             }
-            
-            const { error: rpcError } = await supabase.rpc('update_branding_settings', {
-                p_logo_url: newLogoUrl,
-                p_primary_color: values.primary_color || null,
+            const { error } = await supabase.rpc('update_branding_settings', {
+                p_logo_url: finalLogoUrl, p_primary_color: values.primary_color,
+                p_secondary_color: values.secondary_color || null, p_company_name: values.company_name_display,
+                p_plot: values.plot_number, p_pobox: values.po_box, p_email: values.official_email,
+                p_phone: values.official_phone, p_tin: values.tin_number, p_ceo: values.ceo_name,
+                p_role: values.ceo_role, p_payment: values.payment_instructions
             });
-            if (rpcError) throw rpcError;
+            if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Branding updated successfully!");
+            toast.success("Corporate branding fully synchronized.");
             queryClient.invalidateQueries({ queryKey: ['brandingSettings'] });
-        },
-        onError: (err) => {
-            toast.error(`Update failed: ${err.message}`);
         }
     });
-    
-    // 4. RETURN VALUES
-    return {
-        form,
-        onSubmit: form.handleSubmit((formData) => updateBranding(formData)),
-        currentSettings,
-        isLoading,
-        isUpdating,
-        isError,
-        error
-    };
-};
 
-// --- 2. UI Sub-components ---
+    if (isLoading) return <div className="p-20 text-center animate-pulse font-black text-slate-300">Retrieving Identity Engine...</div>;
 
-const BrandingFormSkeleton = memo(() => (
-    <Card>
-        <CardHeader><Skeleton className="h-6 w-1/3" /><Skeleton className="h-4 w-2/3 mt-2" /></CardHeader>
-        <CardContent className="space-y-6">
-            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-32 w-full" /></div>
-            <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>
-        </CardContent>
-        <CardFooter><Skeleton className="h-10 w-32" /></CardFooter>
-    </Card>
-));
-BrandingFormSkeleton.displayName = 'BrandingFormSkeleton';
-
-const LogoUploader = memo(() => {
-    const { control, watch } = useForm<BrandingFormInput>();
-    const [preview, setPreview] = useState<string | null>(null);
-    const selectedFile = watch('logo_file')?.[0];
-    
-    useEffect(() => {
-        if (!selectedFile) {
-            setPreview(null);
-            return;
-        }
-        const objectUrl = URL.createObjectURL(selectedFile);
-        setPreview(objectUrl);
-        return () => URL.revokeObjectURL(objectUrl);
-    }, [selectedFile]);
-
-    return (
-        <FormField
-            control={control}
-            name="logo_file"
-            render={({ field: { onChange }, fieldState }) => (
-                <FormItem>
-                    <FormLabel>Company Logo</FormLabel>
-                    <FormControl>
-                        <label className={cn( "relative flex flex-col items-center justify-center w-full h-32 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent", fieldState.error && "border-destructive" )}>
-                            <input type="file" className="hidden" accept={ACCEPTED_IMAGE_TYPES.join(",")} onChange={(e) => onChange(e.target.files)} />
-                            {preview ? (
-                                <>
-                                    <Image src={preview} alt="Logo preview" layout="fill" objectFit="contain" className="p-2" />
-                                    <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 z-10" onClick={() => onChange(null)}><X className="h-4 w-4" /></Button>
-                                </>
-                            ) : (
-                                <div className="text-center text-muted-foreground"><UploadCloud className="w-8 h-8 mx-auto mb-2" /><p>Click or drag & drop</p><p className="text-xs">SVG, PNG, JPG (max. 2MB)</p></div>
-                            )}
-                        </label>
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
-    );
-});
-LogoUploader.displayName = 'LogoUploader';
-
-const ColorInput = memo(() => (
-    <FormField
-        control={useForm<BrandingFormInput>().control}
-        name="primary_color"
-        render={({ field }) => (
-            <FormItem>
-                <FormLabel>Primary Color</FormLabel>
-                <div className="relative">
-                    <Palette className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <FormControl>
-                        <Input placeholder="#1D4ED8" className="pl-9 font-mono" {...field} />
-                    </FormControl>
-                    {field.value && <div className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-md border" style={{ backgroundColor: field.value }} />}
-                </div>
-                <FormMessage />
-            </FormItem>
-        )}
-    />
-));
-ColorInput.displayName = 'ColorInput';
-
-// --- 3. The Main Component ---
-
-export default function BrandingManager() {
-    const { form, onSubmit, isLoading, isUpdating, isError, error } = useBrandingManager();
-
-    if (isLoading) return <BrandingFormSkeleton />;
-
-    if (isError) {
-        return (
-            <div className="flex flex-col items-center justify-center py-12 text-destructive">
-                <AlertTriangle className="h-12 w-12 mb-4" />
-                <h3 className="text-xl font-semibold">Failed to Load Settings</h3>
-                {/* <-- FINAL FIX APPLIED HERE */}
-                <p>{error?.message}</p>
-            </div>
-        );
-    }
-    
     return (
         <FormProvider {...form}>
-            <form onSubmit={onSubmit}>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Appearance Settings</CardTitle>
-                        <CardDescription>Changes will be reflected across the app for all users.</CardDescription>
+            <form onSubmit={form.handleSubmit((d) => handleSave(d))} className="space-y-10 animate-in fade-in duration-700">
+                <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
+                    <CardHeader className="bg-slate-900 text-white p-10 border-b border-white/5">
+                        <div className="flex items-center gap-6">
+                            <div className="p-5 bg-blue-600 rounded-3xl shadow-xl shadow-blue-500/20"><Building2 size={36}/></div>
+                            <div>
+                                <CardTitle className="text-3xl font-black uppercase tracking-tight">Corporate Branding Hub</CardTitle>
+                                <CardDescription className="text-blue-400 font-bold uppercase tracking-widest text-[10px] mt-2 italic">Global Identity Broadcast Protocol</CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <LogoUploader />
-                        <ColorInput />
+                    <CardContent className="p-10 space-y-12">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <LogoUploader />
+                            
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 flex gap-3"><Palette size={14}/> Visual Standards</h3>
+                                <FormField control={form.control} name="company_name_display" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black uppercase">Official Display Name</FormLabel><FormControl><Input className="h-12 font-black rounded-xl" {...field} /></FormControl></FormItem>
+                                )} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="primary_color" render={({ field }) => (
+                                        <FormItem><FormLabel className="text-[10px] font-black uppercase">Primary Accent</FormLabel><FormControl><div className="relative"><Input className="h-12 pl-10 font-mono font-bold" {...field} /><div className="absolute left-3 top-3.5 w-5 h-5 rounded-md border" style={{backgroundColor: field.value}}/></div></FormControl></FormItem>
+                                    )} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-8 pt-6 border-t border-slate-50">
+                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 flex gap-3"><MapPin size={14}/> Stationery Details (Automatic for PDF)</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField control={form.control} name="plot_number" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">Plot No / Address</FormLabel><FormControl><Input className="h-11 font-bold rounded-xl bg-slate-50" {...field} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="po_box" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">P.O. Box</FormLabel><FormControl><Input className="h-11 font-bold rounded-xl bg-slate-50" {...field} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="tin_number" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">TIN Number</FormLabel><FormControl><Input className="h-11 font-bold rounded-xl bg-slate-50 font-mono" {...field} /></FormControl></FormItem>
+                                )} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="official_email" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">Contact Email</FormLabel><FormControl><div className="relative"><Mail className="absolute left-3 top-3.5 h-4 w-4 text-slate-300"/><Input className="h-11 pl-10 font-bold rounded-xl" {...field} /></div></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="official_phone" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">Support Phone</FormLabel><FormControl><div className="relative"><Phone className="absolute left-3 top-3.5 h-4 w-4 text-slate-300"/><Input className="h-11 pl-10 font-bold rounded-xl" {...field} /></div></FormControl></FormItem>
+                                )} />
+                            </div>
+                        </div>
+
+                        <div className="space-y-8 pt-6 border-t border-slate-50">
+                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 flex gap-3"><Signature size={14}/> Document Signatory & Payment</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="ceo_name" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">Authorized Signatory Name</FormLabel><FormControl><Input className="h-11 font-black rounded-xl" {...field} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="ceo_role" render={({ field }) => (
+                                    <FormItem><FormLabel className="text-[10px] font-black">Official Designation</FormLabel><FormControl><Input className="h-11 font-black rounded-xl" {...field} /></FormControl></FormItem>
+                                )} />
+                                <FormField control={form.control} name="payment_instructions" render={({ field }) => (
+                                    <FormItem className="col-span-full"><FormLabel className="text-[10px] font-black">Disbursement Protocol (Bank/Momo)</FormLabel><FormControl><Textarea className="min-h-[100px] font-bold rounded-2xl border-slate-200" placeholder="Stanbic Bank A/C... / Airtel Merchant..." {...field} /></FormControl></FormItem>
+                                )} />
+                            </div>
+                        </div>
                     </CardContent>
-                    <CardFooter className="border-t px-6 py-4">
-                        <Button type="submit" disabled={isUpdating || !form.formState.isDirty}>
-                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Changes
+                    <CardFooter className="bg-slate-50 p-8 border-t flex justify-between items-center">
+                        <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest"><ShieldCheck className="text-emerald-500" size={16}/> Identity Synchronized</div>
+                        <Button type="submit" disabled={isPending || !form.formState.isDirty} className="h-14 px-14 font-black bg-blue-600 hover:bg-slate-900 shadow-2xl rounded-2xl transition-all uppercase tracking-widest">
+                            {isPending ? <Loader2 className="animate-spin h-5 w-5 mr-3"/> : null} Update Global Identity
                         </Button>
                     </CardFooter>
                 </Card>

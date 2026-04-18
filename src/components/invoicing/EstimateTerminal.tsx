@@ -8,7 +8,8 @@ import {
   Plus, Trash2, Loader2, Save, FileText, CheckCircle2, 
   Calculator, Coins, Layers, BadgeAlert, Clock, ShieldCheck,
   TrendingUp, Info, Printer, Building2, Phone, Mail, MapPin, 
-  Landmark, Smartphone, PenTool, FileDigit, Hash, Calendar, Download, Send, Signature, User
+  Landmark, Smartphone, PenTool, Hash, Calendar, Download, Send, 
+  User, UserCheck, AlertTriangle, FileDigit
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -26,7 +27,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
-// --- BBU1 SOVEREIGN FINANCIAL UTILITIES ---
+// --- ENTERPRISE FINANCIAL UTILITIES ---
 const Money = {
   round: (val: number) => Math.round((val + Number.EPSILON) * 100) / 100,
   multiply: (amount: number, qty: number) => Math.round((amount * qty + Number.EPSILON) * 100) / 100
@@ -98,7 +99,7 @@ export default function EstimateTerminal({
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<EstimateForm>({
     resolver: zodResolver(estimateSchema),
     defaultValues: { 
-        title: 'Commercial Specification & Industrial Quotation', 
+        title: 'Commercial Specification & Industrial Quotation Protocol', 
         currencyCode: 'UGX',
         issueDate: format(new Date(), 'yyyy-MM-dd'),
         validUntil: format(new Date(Date.now() + 30 * 86400000), 'yyyy-MM-dd'),
@@ -107,7 +108,7 @@ export default function EstimateTerminal({
         plotNumber: businessInfo.plot || '',
         pobox: businessInfo.pobox || '',
         chequesPayableTo: businessInfo.name,
-        bankDetails: 'Bank: ... Branch: ... A/C: ...',
+        bankDetails: 'Enter Bank Name, Branch, Account Number',
         ceoName: '',
         ceoDesignation: 'Chief Executive Officer',
         inquiryContact: businessInfo.phone,
@@ -161,7 +162,7 @@ export default function EstimateTerminal({
     doc.text([
         `Plot No: ${formValues.plotNumber || 'N/A'} | Location: ${businessInfo.address}`,
         `P.O. Box: ${formValues.pobox || 'N/A'} | Email: ${formValues.officialEmail}`,
-        `TIN: ${formValues.tinNumber} | Contact: ${formValues.inquiryContact}`
+        `TIN: ${formValues.tinNumber} | Contact: ${formValues.companyPhone || businessInfo.phone}`
     ], pageWidth - 14, 28, { align: 'right' });
 
     doc.setDrawColor(59, 130, 246); doc.setLineWidth(0.8); doc.line(14, 48, pageWidth - 14, 48);
@@ -247,20 +248,19 @@ export default function EstimateTerminal({
         total_amount: totals.grossPrice,
         valid_until: values.validUntil,
         client_name: customers.find(c => String(c.id) === values.customerId)?.name,
-        metadata: { ...values } // Secure metadata storage for re-printing
+        metadata: { ...values } 
       }).select('id').single();
 
       if (estErr) throw estErr;
 
-      // Atomic Batch insert of specifications
       const { error: lineErr } = await supabase.from('estimate_line_items').insert(
         values.items.map(item => ({
           estimate_id: estData.id,
           description: item.description,
           application_area: item.applicationArea,
           quantity: item.quantity,
-          unit_cost: item.unitCost, // Saved for internal margin audit
-          unit_price: item.unitRate, // Fiscal price
+          unit_cost: item.unitCost, 
+          unit_price: item.unitRate, 
           total: Money.multiply(item.unitRate, item.quantity)
         }))
       );
@@ -268,7 +268,7 @@ export default function EstimateTerminal({
       if (lineErr) throw lineErr;
       
       toast.success("Commercial Protocol Recorded & Locked");
-      router.push('/invoicing/estimates/history'); // Direct to Audit Ledger
+      router.push('/invoicing/estimates/history'); 
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -397,7 +397,7 @@ export default function EstimateTerminal({
             <Card className="border-slate-200 shadow-2xl rounded-[3rem] overflow-hidden bg-white border-dashed">
                 <CardHeader className="bg-slate-50 border-b p-10">
                     <CardTitle className="text-xs font-black uppercase tracking-[0.4em] text-slate-500 flex items-center gap-4">
-                        <Signature size={20} className="text-blue-600"/> 3. Formal Signatory Block
+                        <UserCheck size={20} className="text-blue-600"/> 3. Formal Signatory Block
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-10 space-y-8">
@@ -444,7 +444,7 @@ export default function EstimateTerminal({
                         <TableHeader className="bg-slate-900 h-24 border-none">
                             <TableRow className="hover:bg-slate-900 border-none">
                                 <TableHead className="text-[11px] font-black uppercase text-slate-400 pl-12">Specification & Dimension</TableHead>
-                                <TableHead className="text-[11px] font-black uppercase text-slate-400">Application Area</TableHead>
+                                <TableHead className="text-[11px] font-black uppercase text-slate-400">Area</TableHead>
                                 <TableHead className="text-[11px] font-black uppercase text-slate-400 text-center">Qty</TableHead>
                                 <TableHead className="text-[11px] font-black uppercase text-slate-400 text-right">Internal Cost</TableHead>
                                 <TableHead className="text-[11px] font-black uppercase text-slate-400 text-right">Selling Rate</TableHead>
