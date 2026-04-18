@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
     Landmark, MapPin, Phone, Receipt as ReceiptIcon, Save, Loader2, 
     ShieldCheck, Building2, User, Mail, Hash, Landmark as BankIcon,
-    Signature, Globe
+    PenTool, Globe // <--- FIXED: Replaced Signature with PenTool
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -27,11 +27,13 @@ export default function SettingsForm() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Fetch from our new High-Performance View
+      // 1. Resolve Sovereign Identity context
       const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
       
       if (profile?.business_id) {
         setBusinessId(profile.business_id);
+        
+        // Fetch from our audited High-Performance View
         const { data: identity } = await supabase
             .from('view_bbu1_corporate_identity')
             .select('*')
@@ -66,7 +68,7 @@ export default function SettingsForm() {
     setSaving(true);
 
     try {
-      // 2. ATOMIC BROADCAST: Update both Tenants and Locations
+      // 2. ATOMIC BROADCAST: Update both Tenants (Global) and Locations (Primary)
       const { error: tenantErr } = await supabase
         .from('tenants')
         .update({
@@ -87,6 +89,7 @@ export default function SettingsForm() {
 
       if (tenantErr) throw tenantErr;
 
+      // Update primary location address for receipt localization
       const { error: locErr } = await supabase
         .from('locations')
         .update({ address: settings.address })
@@ -103,58 +106,70 @@ export default function SettingsForm() {
     }
   };
 
-  if (loading) return <div className="p-20 text-center animate-pulse font-black text-slate-300 uppercase tracking-widest">Initializing System Metadata...</div>;
+  if (loading) return (
+    <div className="p-20 text-center animate-pulse font-black text-slate-300 uppercase tracking-[0.4em]">
+        Waking BBU1 Identity Engine...
+    </div>
+  );
 
   return (
     <form onSubmit={handleSave} className="space-y-10 animate-in fade-in duration-1000 pb-20">
         <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
             <CardHeader className="bg-slate-900 text-white p-10 border-b border-white/5">
-                <div className="flex items-center gap-6">
-                    <div className="p-5 bg-blue-600 rounded-3xl shadow-xl"><Building2 size={40}/></div>
-                    <div>
-                        <CardTitle className="text-4xl font-black uppercase tracking-tighter">Business Identity Terminal</CardTitle>
-                        <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.4em] text-[10px] mt-2 italic">Legal Stationery & Compliance Settings</CardDescription>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-6">
+                        <div className="p-5 bg-blue-600 rounded-3xl shadow-xl shadow-blue-500/20 transform -rotate-3 hover:rotate-0 transition-transform">
+                            <Building2 size={40}/>
+                        </div>
+                        <div>
+                            <CardTitle className="text-4xl font-black uppercase tracking-tighter">Identity Terminal</CardTitle>
+                            <CardDescription className="text-blue-400 font-bold uppercase tracking-widest text-[10px] mt-2 italic">Official BBU1 Corporate Configuration Node</CardDescription>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 px-6 py-2 bg-white/10 rounded-full backdrop-blur-md border border-white/10">
+                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Identity Master Sync Active</span>
                     </div>
                 </div>
             </CardHeader>
 
             <CardContent className="p-12 space-y-12">
-                {/* SECTION 1: LEGAL IDENTITY */}
+                {/* SECTION 1: FISCAL & LEGAL REGISTRATION */}
                 <div className="space-y-8">
                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
                         <ShieldCheck size={16} className="text-blue-600"/> 1. Legal & Fiscal Registration
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Registered Name</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Registered Legal Entity Name</Label>
                             <Input name="name" value={settings.name || ''} onChange={e => setSettings({...settings, name: e.target.value})} className="h-14 font-black rounded-2xl border-slate-200 text-lg shadow-sm" />
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-orange-500">Tax ID / TIN Number</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-orange-500">Corporate TIN Identifier</Label>
                             <div className="relative">
                                 <Hash className="absolute left-4 top-5 h-4 w-4 text-slate-300"/>
-                                <Input name="tin_number" value={settings.tin_number || ''} onChange={e => setSettings({...settings, tin_number: e.target.value})} className="h-14 pl-12 font-black rounded-2xl border-slate-200 text-lg font-mono shadow-sm" placeholder="100XXXXXXXX" />
+                                <Input name="tin_number" value={settings.tin_number || ''} onChange={e => setSettings({...settings, tin_number: e.target.value})} className="h-14 pl-12 font-black rounded-2xl border-slate-200 text-lg font-mono shadow-sm" placeholder="e.g. 1001234567" />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* SECTION 2: STATIONERY DNA */}
+                {/* SECTION 2: STATIONERY SPECIFICATIONS */}
                 <div className="space-y-8 pt-8 border-t border-slate-100">
                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
                         <MapPin size={16} className="text-blue-600"/> 2. Corporate Stationery Details
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Plot / Street Address</Label>
-                            <Input name="plot_number" value={settings.plot_number || ''} onChange={e => setSettings({...settings, plot_number: e.target.value})} className="h-12 font-bold rounded-xl bg-slate-50 border-slate-200" />
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Plot Number / Street</Label>
+                            <Input name="plot_number" value={settings.plot_number || ''} onChange={e => setSettings({...settings, plot_number: e.target.value})} className="h-12 font-bold rounded-xl bg-slate-50 border-slate-200 shadow-inner" />
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">P.O. Box</Label>
-                            <Input name="po_box" value={settings.po_box || ''} onChange={e => setSettings({...settings, po_box: e.target.value})} className="h-12 font-bold rounded-xl bg-slate-50 border-slate-200" />
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">P.O. Box Reference</Label>
+                            <Input name="po_box" value={settings.po_box || ''} onChange={e => setSettings({...settings, po_box: e.target.value})} className="h-12 font-bold rounded-xl bg-slate-50 border-slate-200 shadow-inner" />
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">System Currency</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Functional Currency</Label>
                             <div className="relative">
                                 <Globe className="absolute left-3 top-4 h-4 w-4 text-slate-300"/>
                                 <Input name="currency_code" value={settings.currency_code || ''} onChange={e => setSettings({...settings, currency_code: e.target.value})} className="h-12 pl-10 font-black rounded-xl bg-blue-50 border-blue-100 text-blue-600" />
@@ -163,48 +178,62 @@ export default function SettingsForm() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Email</Label>
-                            <div className="relative"><Mail className="absolute left-3 top-4 h-4 w-4 text-slate-300"/><Input name="official_email" value={settings.official_email || ''} onChange={e => setSettings({...settings, official_email: e.target.value})} className="h-12 pl-10 font-bold rounded-xl" /></div>
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Corporate Email</Label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-4 h-4 w-4 text-slate-300"/>
+                                <Input name="official_email" value={settings.official_email || ''} onChange={e => setSettings({...settings, official_email: e.target.value})} className="h-12 pl-10 font-bold rounded-xl" />
+                            </div>
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Phone</Label>
-                            <div className="relative"><Phone className="absolute left-3 top-4 h-4 w-4 text-slate-300"/><Input name="phone" value={settings.phone || ''} onChange={e => setSettings({...settings, phone: e.target.value})} className="h-12 pl-10 font-bold rounded-xl" /></div>
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">HQ Support Contact</Label>
+                            <div className="relative">
+                                <Phone className="absolute left-3 top-4 h-4 w-4 text-slate-300"/>
+                                <Input name="phone" value={settings.phone || ''} onChange={e => setSettings({...settings, phone: e.target.value})} className="h-12 pl-10 font-bold rounded-xl" />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* SECTION 3: SIGNATORY & DISBURSEMENT */}
+                {/* SECTION 3: SIGNATORY & DISBURSEMENT PROTOCOLS */}
                 <div className="space-y-8 pt-8 border-t border-slate-100">
                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
-                        <Signature size={16} className="text-blue-600"/> 3. Document Signatory & Payment Instructions
+                        <PenTool size={16} className="text-blue-600"/> 3. Formal Signatory & Disbursement Instructions
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Authorized Representative (CEO)</Label>
-                            <div className="relative"><User className="absolute left-3 top-4 h-4 w-4 text-slate-300"/><Input name="ceo_name" value={settings.ceo_name || ''} onChange={e => setSettings({...settings, ceo_name: e.target.value})} className="h-12 pl-10 font-black rounded-xl" /></div>
+                            <div className="relative">
+                                <User className="absolute left-3 top-4 h-4 w-4 text-slate-300"/>
+                                <Input name="ceo_name" value={settings.ceo_name || ''} onChange={e => setSettings({...settings, ceo_name: e.target.value})} className="h-12 pl-10 font-black rounded-xl border-slate-200 shadow-sm" />
+                            </div>
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Role/Designation</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Executive Role</Label>
                             <Input name="ceo_designation" value={settings.ceo_designation || ''} onChange={e => setSettings({...settings, ceo_designation: e.target.value})} className="h-12 font-black rounded-xl" />
                         </div>
                         <div className="col-span-full space-y-3">
-                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-2"><BankIcon size={12}/> Global Disbursement Instructions (Appears on Quotes/Invoices)</Label>
-                            <Textarea name="payment_instructions" value={settings.payment_instructions || ''} onChange={e => setSettings({...settings, payment_instructions: e.target.value})} className="min-h-[120px] font-bold rounded-[1.5rem] border-slate-200 p-6 text-xs bg-slate-50 focus:bg-white shadow-inner" placeholder="Enter Bank, Branch, Account Number and Mobile Money Merchant Codes..." />
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <BankIcon size={12}/> Global Settlement Instructions (Appears on Quotes/Invoices)
+                            </Label>
+                            <Textarea name="payment_instructions" value={settings.payment_instructions || ''} onChange={e => setSettings({...settings, payment_instructions: e.target.value})} className="min-h-[120px] font-bold rounded-[1.5rem] border-slate-200 p-6 text-xs bg-slate-50 focus:bg-white shadow-inner transition-all" placeholder="Enter Bank specifications, Branch codes, and Mobile Money Merchant identifiers..." />
                         </div>
                     </div>
                 </div>
 
-                {/* SECTION 4: FOOTER SNAPSHOT */}
+                {/* SECTION 4: DOCUMENT FOOTER */}
                 <div className="space-y-3 pt-8 border-t border-slate-100">
-                    <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-blue-500">Global Receipt/Invoice Footer</Label>
-                    <div className="relative"><ReceiptIcon className="absolute left-4 top-4.5 h-5 w-5 text-blue-400"/><Input name="receipt_footer" value={settings.receipt_footer || ''} onChange={e => setSettings({...settings, receipt_footer: e.target.value})} className="h-14 pl-12 italic font-bold text-slate-500 rounded-2xl border-blue-100 bg-blue-50/20" placeholder="Thank you for choosing Sovereign ERP." /></div>
+                    <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-blue-500">Master Receipt / Invoice Footer</Label>
+                    <div className="relative">
+                        <ReceiptIcon className="absolute left-4 top-4.5 h-5 w-5 text-blue-400"/>
+                        <Input name="receipt_footer" value={settings.receipt_footer || ''} onChange={e => setSettings({...settings, receipt_footer: e.target.value})} className="h-14 pl-12 italic font-bold text-slate-500 rounded-2xl border-blue-100 bg-blue-50/20" placeholder="Thank you for choosing Sovereign ERP." />
+                    </div>
                 </div>
             </CardContent>
 
-            <CardFooter className="bg-slate-50 p-10 border-t flex justify-between items-center">
-                <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <CardFooter className="bg-slate-50 p-10 border-t flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">
                     <div className="h-10 w-10 rounded-2xl bg-blue-100 flex items-center justify-center border border-blue-200 shadow-sm"><ShieldCheck className="text-blue-600 h-6 w-6" /></div>
-                    Identity Sync Protocol: Multi-Branch Distributed
+                    Sovereign Protocol Synchronization Active
                 </div>
                 <Button type="submit" disabled={saving} className="h-16 px-20 font-black bg-slate-900 hover:bg-blue-600 text-white shadow-2xl rounded-2xl transition-all uppercase tracking-[0.2em] text-sm transform hover:scale-105 active:scale-95">
                     {saving ? <><Loader2 className="animate-spin mr-3 h-6 w-6"/> SEALING...</> : "Seal Identity Protocol"}
