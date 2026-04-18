@@ -686,14 +686,14 @@ return (
                 </div>
             )}
 
-            {/* Professional Single Toggle Button */}
+            {/* Restored toggle logic to the single professional button */}
             <Button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                onClick={toggleSidebar}
                 variant="ghost"
                 size="icon"
                 className={cn(
-                    "h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded-lg",
-                    !isSidebarOpen && "mx-auto"
+                    "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl",
+                    !isSidebarOpen && "mx-auto bg-blue-50 text-blue-600"
                 )}
             >
                 {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
