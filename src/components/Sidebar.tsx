@@ -7,6 +7,7 @@ import { useSidebar } from '@/context/SidebarContext';
 import { useCopilot } from '@/context/CopilotContext'; 
 
 import { Button } from '@/components/ui/button';
+import { useBranding } from '@/components/core/BrandingProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -569,6 +570,7 @@ export default function Sidebar() {
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
+    const { branding } = useBranding();
     
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
@@ -659,12 +661,38 @@ export default function Sidebar() {
             "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm",
             isSidebarOpen ? "w-64" : "w-20"
         )}>
-            <div className="flex items-center justify-between h-16 border-b border-slate-100 px-4 flex-shrink-0">
-                {isSidebarOpen && <h1 className="text-lg font-bold tracking-tight text-blue-600">BBU1 System</h1>}
-                <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-slate-400 hover:text-blue-600">
-                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                </Button>
+            <div className="flex items-center justify-between h-20 border-b border-slate-100 px-4 flex-shrink-0 bg-white">
+    {isSidebarOpen && (
+        <div className="flex items-center gap-3 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
+            {branding?.logo_url ? (
+                /* SHOWS THE LOGO UPLOADED BY THE BUSINESS OWNER (e.g. CAKE LOGO) */
+                <img 
+                    src={branding.logo_url} 
+                    className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-50" 
+                    alt="Logo" 
+                />
+            ) : (
+                /* FALLBACK PROFESSIONAL ICON IF NO LOGO UPLOADED */
+                <div className="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                    <Building2 size={22} />
+                </div>
+            )}
+            
+            <div className="flex flex-col truncate">
+                <span className="text-sm font-black tracking-tighter text-slate-900 uppercase leading-none truncate">
+                    {branding?.company_name_display || "BBU1 System"}
+                </span>
+                <span className="text-[8px] font-black text-blue-600 uppercase tracking-[0.2em] mt-1 opacity-70">
+                    Sovereign Node
+                </span>
             </div>
+        </div>
+    )}
+    
+    <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-slate-400 hover:text-blue-600 rounded-full h-9 w-9">
+        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+    </Button>
+</div>
             <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
                 {isLoading ? (
                     <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Loading Menu...</div>

@@ -70,9 +70,37 @@ export default async function LocaleRootLayout({
   
   // Safe session fetch
   let session = null;
+  
+  // --- UPGRADE: SOVEREIGN IDENTITY VARIABLES ---
+  let brandColor = '#1D4ED8'; // Default BBU1 Blue
+  let companyLogo = '/logo.png'; // Default Fallback Logo
+  // ----------------------------------------------
+
   try {
     const sessionRes = await supabase.auth.getSession();
     session = sessionRes.data.session;
+
+    // --- UPGRADE: SERVER-SIDE IDENTITY FETCH ---
+    // If the user is logged in, we fetch their specific branding from the audited view
+    if (session?.user) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('business_id')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profile?.business_id) {
+            const { data: brand } = await supabase
+                .from('view_bbu1_corporate_identity')
+                .select('primary_color, logo_url')
+                .eq('business_id', profile.business_id)
+                .single();
+            
+            if (brand?.primary_color) brandColor = brand.primary_color;
+            if (brand?.logo_url) companyLogo = brand.logo_url;
+        }
+    }
+    // -------------------------------------------
   } catch (e) {
     session = null;
   }
@@ -111,8 +139,13 @@ export default async function LocaleRootLayout({
     <html lang={safeLocale} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/site.webmanifest" />
-        <meta name="theme-color" content="#ffffff" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        
+        {/* --- UPGRADE: DYNAMIC IDENTITY FAVICON --- */}
+        {/* The browser tab now shows the Business Owner's logo instead of BBU1 */}
+        <link rel="icon" href={companyLogo} />
+        <link rel="apple-touch-icon" href={companyLogo} />
+        
+        <meta name="theme-color" content={brandColor} />
         
         {/* Software Identity Injection for Googlebot */}
         <script
@@ -134,7 +167,12 @@ export default async function LocaleRootLayout({
           `}
         </Script>
       </head>
-      <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
+      <body 
+        className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}
+        /* --- THE SOVEREIGN WELD: GLOBAL CSS VARIABLE INJECTION --- */
+        /* This line allows your globals.css to pick up the brand color dynamically */
+        style={{ '--brand-primary': brandColor } as React.CSSProperties}
+      >
         <SupabaseProvider session={session}>
           <TanstackProvider>
             <ThemeProvider
