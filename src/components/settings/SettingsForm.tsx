@@ -114,12 +114,12 @@ export default function SettingsForm() {
       // Trigger the context provider to refetch
       refreshBranding();
 
-      toast.success('Identity Protocol Sealed: Global Broadcast Synchronized');
+      toast.success('Business settings updated successfully.');
     } catch (error: any) {
       if (error.code === '23505') {
           toast.error('Data Conflict: This TIN or Contact is already registered to another entity.');
       } else {
-          toast.error(`Sync Failure: ${error.message}`);
+          toast.error(`Update Failure: ${error.message}`);
       }
     } finally {
       setSaving(false);
@@ -127,72 +127,69 @@ export default function SettingsForm() {
   };
 
   if (loading) return (
-    <div className="p-24 text-center animate-pulse flex flex-col items-center gap-6">
-        <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
-        <p className="font-black text-slate-300 uppercase tracking-[0.5em] text-sm">
-            Waking BBU1 Identity Engine...
+    <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+        <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">
+            Loading Profile Settings...
         </p>
     </div>
   );
 
   return (
-    <form onSubmit={handleSave} className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-32 max-w-7xl mx-auto">
-        <Card className="border-none shadow-[0_40px_80px_-20px_rgba(0,0,0,0.2)] rounded-[4rem] overflow-hidden bg-white">
+    <form onSubmit={handleSave} className="max-w-6xl mx-auto py-10 px-6 space-y-8 animate-in fade-in duration-500">
+        <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
             
-            {/* LUXURY ENTERPRISE HEADER */}
-            <CardHeader className="bg-slate-900 text-white p-14 border-b border-white/5 relative">
-                <div className="absolute top-0 right-0 p-12 opacity-5 rotate-12">
-                    <ShieldCheck size={200} />
-                </div>
-                <div className="flex flex-col md:flex-row justify-between items-center gap-10 relative z-10">
-                    <div className="flex items-center gap-10">
-                        <div className="p-8 bg-blue-600 rounded-[2.5rem] shadow-2xl shadow-blue-600/40 transform -rotate-3 hover:rotate-0 transition-all duration-500">
-                            <Building2 size={56} className="text-white" />
+            {/* PROFESSIONAL HEADER */}
+            <CardHeader className="bg-white border-b border-slate-100 p-8">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex items-center gap-6">
+                        <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-blue-600">
+                            <Building2 size={32} />
                         </div>
                         <div>
-                            <CardTitle className="text-5xl font-black uppercase tracking-tighter italic leading-none">Identity Terminal</CardTitle>
-                            <CardDescription className="text-blue-400 font-black uppercase tracking-[0.4em] text-[12px] mt-4 opacity-70">
-                                BBU1 Sovereign Configuration & Global Broadcast Node
+                            <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">Organization Settings</CardTitle>
+                            <CardDescription className="text-sm text-slate-500 mt-1">
+                                Manage your general ledger accounts, bank accounts, and financial structure.
                             </CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-5 px-10 py-4 bg-white/10 rounded-[2rem] backdrop-blur-2xl border border-white/10 shadow-inner">
-                        <div className="h-3.5 w-3.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_15px_rgba(52,211,153,0.8)]" />
-                        <span className="text-[12px] font-black uppercase tracking-[0.2em] text-emerald-400">Identity Protocol Secured</span>
+                    <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Session Secure</span>
                     </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="p-16 space-y-20 bg-white">
+            <CardContent className="p-8 space-y-12">
                 
                 {/* SECTION 1: LEGAL IDENTITY */}
-                <div className="space-y-12">
-                    <div className="flex items-center justify-between border-b border-slate-50 pb-6">
-                        <h3 className="text-[13px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-5">
-                            <ShieldCheck size={22} className="text-blue-600"/> 1. Legal & Fiscal Identity
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
+                            <ShieldCheck size={18} className="text-blue-500"/> 1. Legal Registration
                         </h3>
-                        <Badge variant="outline" className="text-[10px] font-black border-blue-100 text-blue-600 py-1.5 px-4 rounded-full bg-blue-50/30">AUDIT_LOCKED_SESSIONS</Badge>
+                        <Badge variant="outline" className="text-[10px] font-bold border-blue-100 text-blue-600 px-3 py-1">Verified Profile</Badge>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">Official Legal Entity Name</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Official Legal Entity Name</Label>
                             <Input 
                                 name="name" 
                                 value={settings.name || ''} 
                                 onChange={e => setSettings({...settings, name: e.target.value})} 
-                                className="h-16 font-black rounded-3xl border-slate-200 text-2xl shadow-sm focus:border-blue-600 transition-all px-10 bg-slate-50/50" 
+                                className="h-11 rounded-lg border-slate-200 text-sm font-medium focus:border-blue-500 focus:ring-blue-500/10" 
                             />
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-orange-600">Tax Identification Number (TIN)</Label>
-                            <div className="relative group">
-                                <Hash className="absolute left-6 top-5.5 h-5 w-5 text-slate-300 group-focus-within:text-orange-500 transition-colors"/>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Tax Identification Number (TIN)</Label>
+                            <div className="relative">
+                                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"/>
                                 <Input 
                                     name="tin_number" 
                                     value={settings.tin_number || ''} 
                                     onChange={e => setSettings({...settings, tin_number: e.target.value})} 
-                                    className="h-16 pl-16 font-black rounded-3xl border-slate-200 text-2xl font-mono shadow-sm bg-white focus:border-orange-500" 
-                                    placeholder="e.g. 1001234567" 
+                                    className="h-11 pl-10 rounded-lg border-slate-200 text-sm font-mono tracking-wider" 
+                                    placeholder="Enter registration number" 
                                 />
                             </div>
                         </div>
@@ -200,64 +197,64 @@ export default function SettingsForm() {
                 </div>
 
                 {/* SECTION 2: STATIONERY DNA */}
-                <div className="space-y-12 pt-12 border-t border-slate-100">
-                    <h3 className="text-[13px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-5">
-                        <MapPin size={22} className="text-blue-600"/> 2. Corporate Stationery Details
+                <div className="space-y-6 pt-6 border-t border-slate-100">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
+                        <MapPin size={18} className="text-blue-500"/> 2. Contact Information
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">HQ Physical Address</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Physical Address / Plot</Label>
                             <Input 
                                 name="plot_number" 
                                 value={settings.plot_number || ''} 
                                 onChange={e => setSettings({...settings, plot_number: e.target.value})} 
-                                className="h-16 font-bold rounded-2xl bg-slate-50 border-slate-200 shadow-inner px-8" 
+                                className="h-11 rounded-lg bg-slate-50/50 border-slate-200 text-sm" 
                             />
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">P.O. Box Reference</Label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">P.O. Box</Label>
                             <Input 
                                 name="po_box" 
                                 value={settings.po_box || ''} 
                                 onChange={e => setSettings({...settings, po_box: e.target.value})} 
-                                className="h-16 font-bold rounded-2xl bg-slate-50 border-slate-200 shadow-inner px-8" 
+                                className="h-11 rounded-lg bg-slate-50/50 border-slate-200 text-sm" 
                             />
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-blue-600">Reporting Currency</Label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Standard Currency</Label>
                             <div className="relative">
-                                <Globe className="absolute left-6 top-5.5 h-5 w-5 text-blue-300"/>
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400"/>
                                 <Input 
                                     name="currency_code" 
                                     value={settings.currency_code || ''} 
                                     onChange={e => setSettings({...settings, currency_code: e.target.value})} 
-                                    className="h-16 pl-16 font-black rounded-2xl bg-blue-50 border-blue-200 text-blue-700 text-xl uppercase tracking-widest" 
+                                    className="h-11 pl-10 rounded-lg border-slate-200 text-sm font-bold uppercase" 
                                 />
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">Corporate Email (Public)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Official Email Address</Label>
                             <div className="relative">
-                                <Mail className="absolute left-6 top-5.5 h-5 w-5 text-slate-300"/>
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"/>
                                 <Input 
                                     name="official_email" 
                                     value={settings.official_email || ''} 
                                     onChange={e => setSettings({...settings, official_email: e.target.value})} 
-                                    className="h-16 pl-16 font-bold rounded-2xl bg-white border-slate-200" 
+                                    className="h-11 pl-10 rounded-lg border-slate-200 text-sm" 
                                 />
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">Support Phone Contact</Label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Contact Phone</Label>
                             <div className="relative">
-                                <Phone className="absolute left-6 top-5.5 h-5 w-5 text-slate-300"/>
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"/>
                                 <Input 
                                     name="phone" 
                                     value={settings.phone || ''} 
                                     onChange={e => setSettings({...settings, phone: e.target.value})} 
-                                    className="h-16 pl-16 font-bold rounded-2xl bg-white border-slate-200" 
+                                    className="h-11 pl-10 rounded-lg border-slate-200 text-sm" 
                                 />
                             </div>
                         </div>
@@ -265,94 +262,89 @@ export default function SettingsForm() {
                 </div>
 
                 {/* SECTION 3: SIGNATORY PROTOCOLS */}
-                <div className="space-y-12 pt-12 border-t border-slate-100">
-                    <h3 className="text-[13px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-5">
-                        <PenTool size={22} className="text-blue-600"/> 3. Formal Signatory & Settlement Protocol
+                <div className="space-y-6 pt-6 border-t border-slate-100">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-3">
+                        <PenTool size={18} className="text-blue-500"/> 3. Authorization & Settlement
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">Authorized Personnel (CEO/MD)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Authorized Representative</Label>
                             <div className="relative">
-                                <User className="absolute left-6 top-5.5 h-5 w-5 text-slate-300"/>
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"/>
                                 <Input 
                                     name="ceo_name" 
                                     value={settings.ceo_name || ''} 
                                     onChange={e => setSettings({...settings, ceo_name: e.target.value})} 
-                                    className="h-16 pl-16 font-black rounded-2xl border-slate-200 shadow-sm text-xl" 
+                                    className="h-11 pl-10 rounded-lg border-slate-200 text-sm font-medium" 
                                 />
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-2 text-slate-500">Official Designation</Label>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">Official Designation</Label>
                             <Input 
                                 name="ceo_designation" 
                                 value={settings.ceo_designation || ''} 
                                 onChange={e => setSettings({...settings, ceo_designation: e.target.value})} 
-                                className="h-16 font-black rounded-2xl border-slate-200 text-lg px-8 bg-slate-50/50" 
+                                className="h-11 rounded-lg border-slate-200 text-sm bg-slate-50/50" 
                             />
                         </div>
-                        <div className="col-span-full space-y-5">
-                            <Label className="text-[11px] font-black uppercase tracking-widest ml-3 flex items-center gap-3 text-blue-600">
-                                <BankIcon size={16}/> 4. Universal Disbursement Instructions (Appears on Spec/Invoice)
+                        <div className="col-span-full space-y-3">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1 flex items-center gap-2">
+                                <BankIcon size={14} className="text-blue-600"/> Payment Instructions (Display on Invoices)
                             </Label>
                             <Textarea 
                                 name="payment_instructions" 
                                 value={settings.payment_instructions || ''} 
                                 onChange={e => setSettings({...settings, payment_instructions: e.target.value})} 
-                                className="min-h-[180px] font-bold rounded-[2.5rem] border-slate-200 p-10 text-sm bg-slate-50 focus:bg-white shadow-inner transition-all leading-relaxed" 
-                                placeholder="Clearly specify Bank Name, Branch Code, Account Numbers, and Mobile Money Merchant identifiers..." 
+                                className="min-h-[140px] rounded-xl border-slate-200 p-6 text-sm bg-slate-50/30 focus:bg-white transition-all leading-relaxed" 
+                                placeholder="List bank details, branch codes, and payment methods..." 
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* SECTION 4: DOCUMENT FOOTER */}
-                <div className="space-y-5 pt-12 border-t border-slate-100">
-                    <Label className="text-[11px] font-black uppercase tracking-[0.3em] ml-3 text-blue-500">Global Fiscal Document Footer</Label>
-                    <div className="relative group">
-                        <ReceiptIcon className="absolute left-6 top-7 h-6 w-6 text-blue-300 group-focus-within:text-blue-600 transition-colors"/>
+                <div className="space-y-4 pt-6 border-t border-slate-100">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-blue-600 ml-1">Document Footer Text</Label>
+                    <div className="relative">
+                        <ReceiptIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-300"/>
                         <Input 
                             name="receipt_footer" 
                             value={settings.receipt_footer || ''} 
                             onChange={e => setSettings({...settings, receipt_footer: e.target.value})} 
-                            className="h-24 pl-16 italic font-bold text-slate-600 rounded-[2.5rem] border-blue-100 bg-blue-50/20 text-xl shadow-sm" 
-                            placeholder="Thank you for choosing Sovereign ERP." 
+                            className="h-14 pl-12 rounded-xl border-blue-100 bg-blue-50/10 text-sm font-medium text-slate-600" 
+                            placeholder="e.g. Thank you for your business." 
                         />
                     </div>
                 </div>
             </CardContent>
 
-            <CardFooter className="bg-slate-50 p-14 border-t flex flex-col sm:flex-row items-center justify-between gap-12">
-                <div className="flex items-center gap-6 text-[12px] font-black text-slate-500 uppercase tracking-[0.4em]">
-                    <div className="h-14 w-14 rounded-3xl bg-blue-100 flex items-center justify-center border border-blue-200 shadow-[0_15px_30px_rgba(37,99,235,0.2)]">
-                        <ShieldCheck className="text-blue-600 h-8 w-8" />
-                    </div>
-                    Sovereign Identity Sync Active
+            <CardFooter className="bg-slate-50 p-8 border-t flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                    <ShieldCheck className="text-slate-300 h-5 w-5" />
+                    Data Synchronization Active
                 </div>
                 <Button 
                     type="submit" 
                     disabled={saving} 
-                    className="h-24 px-28 font-black bg-slate-900 hover:bg-blue-600 text-white shadow-[0_30px_60px_-12px_rgba(15,23,42,0.5)] rounded-[2rem] transition-all uppercase tracking-[0.3em] text-xl transform hover:scale-105 active:scale-95 group"
+                    className="bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold px-10 h-12 rounded-lg transition-all shadow-md flex items-center gap-3"
                 >
                     {saving ? (
-                        <><Loader2 className="animate-spin mr-5 h-10 w-10"/> SEALING...</>
+                        <><Loader2 className="animate-spin h-4 w-4"/> Saving Changes...</>
                     ) : (
-                        <div className="flex items-center gap-6">
-                            <Save className="h-8 w-8 group-hover:rotate-12 transition-transform" />
-                            Seal Protocol
-                        </div>
+                        <><Save className="h-4 w-4" /> Save Business Profile</>
                     )}
                 </Button>
             </CardFooter>
         </Card>
 
         {/* COMPLIANCE FOOTER */}
-        <div className="flex justify-center items-center gap-6 opacity-40 py-10">
-            <div className="h-[1px] w-20 bg-slate-300" />
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.6em]">
-                BBU1 SOVEREIGN ENGINE • IDENTITY VERSION 10.2.4
+        <div className="flex justify-center items-center gap-4 py-6 opacity-30">
+            <div className="h-[1px] w-12 bg-slate-400" />
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                ERP System Settings • Version 10.2.4
             </p>
-            <div className="h-[1px] w-20 bg-slate-300" />
+            <div className="h-[1px] w-12 bg-slate-400" />
         </div>
     </form>
   );
