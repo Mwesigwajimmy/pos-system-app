@@ -3,7 +3,7 @@
 import React, { memo, ReactNode, useState, useEffect } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
-  ShieldAlert, Activity, Zap, Fingerprint
+  ShieldAlert, Activity, Zap, ShieldCheck, Fingerprint
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
