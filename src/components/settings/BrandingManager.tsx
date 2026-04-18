@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
     Loader2, UploadCloud, Palette, ShieldCheck, X, 
     Building2, User, Phone, Mail, MapPin, Hash, 
-    Landmark, UserCheck, AlertTriangle 
+    Landmark, UserCheck, Send, AlertTriangle 
 } from 'lucide-react';
 
 // --- ENTERPRISE IDENTITY SCHEMA ---

@@ -4,64 +4,60 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Landmark, MapPin, Phone, Receipt as ReceiptIcon, Save, Loader2 } from 'lucide-react';
+import { Textarea } from "@/components/ui/textarea";
+import { 
+    Landmark, MapPin, Phone, Receipt as ReceiptIcon, Save, Loader2, 
+    ShieldCheck, Building2, User, Mail, Hash, Landmark as BankIcon,
+    Signature, Globe
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface StoreSettings {
-    name: string;
-    address: string;
-    phone: string;
-    currency_code: string;
-    receipt_footer: string;
-    tax_number: string; // UPGRADE: Required for Global Mandate
-}
-
 export default function SettingsForm() {
-  const [settings, setSettings] = useState<Partial<StoreSettings>>({});
+  const [settings, setSettings] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchNeuralIdentity() {
       setLoading(true);
-      
-      // 1. Resolve Sovereign Identity
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('business_id')
-        .eq('id', user.id)
-        .single();
-
+      // 1. Fetch from our new High-Performance View
+      const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+      
       if (profile?.business_id) {
         setBusinessId(profile.business_id);
-        
-        // 2. Fetch Multi-Tenant Data from Tenants and Locations
-        const [tenantRes, locationRes] = await Promise.all([
-          supabase.from('tenants').select('*').eq('id', profile.business_id).single(),
-          supabase.from('locations').select('address').eq('business_id', profile.business_id).eq('is_primary', true).single()
-        ]);
+        const { data: identity } = await supabase
+            .from('view_bbu1_corporate_identity')
+            .select('*')
+            .eq('business_id', profile.business_id)
+            .single();
 
-        if (tenantRes.data) {
+        if (identity) {
           setSettings({
-            name: tenantRes.data.name,
-            phone: tenantRes.data.phone,
-            currency_code: tenantRes.data.currency_code,
-            tax_number: tenantRes.data.tax_number,
-            receipt_footer: tenantRes.data.receipt_footer || 'Thank you for your business!',
-            address: locationRes.data?.address || ''
+            name: identity.legal_name,
+            phone: identity.official_phone,
+            currency_code: identity.currency_code,
+            tin_number: identity.tin_number,
+            plot_number: identity.plot_number,
+            po_box: identity.po_box,
+            official_email: identity.official_email,
+            receipt_footer: identity.receipt_footer,
+            address: identity.physical_address,
+            ceo_name: identity.ceo_name,
+            ceo_designation: identity.ceo_designation,
+            payment_instructions: identity.payment_instructions
           });
         }
       }
       setLoading(false);
     }
-    fetchSettings();
+    fetchNeuralIdentity();
   }, [supabase]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -70,111 +66,151 @@ export default function SettingsForm() {
     setSaving(true);
 
     try {
-      // 3. ATOMIC MULTI-TABLE UPDATE (The Sovereign Weld)
-      const updateTenant = supabase
+      // 2. ATOMIC BROADCAST: Update both Tenants and Locations
+      const { error: tenantErr } = await supabase
         .from('tenants')
         .update({
           name: settings.name,
           phone: settings.phone,
           currency_code: settings.currency_code,
-          tax_number: settings.tax_number,
+          tin_number: settings.tin_number,
+          plot_number: settings.plot_number,
+          po_box: settings.po_box,
+          official_email: settings.official_email,
           receipt_footer: settings.receipt_footer,
+          ceo_name: settings.ceo_name,
+          ceo_designation: settings.ceo_designation,
+          payment_instructions: settings.payment_instructions,
           updated_at: new Date().toISOString(),
         })
         .eq('id', businessId);
 
-      const updateLocation = supabase
+      if (tenantErr) throw tenantErr;
+
+      const { error: locErr } = await supabase
         .from('locations')
         .update({ address: settings.address })
         .eq('business_id', businessId)
         .eq('is_primary', true);
 
-      const [tenantErr, locationErr] = await Promise.all([updateTenant, updateLocation]);
+      if (locErr) throw locErr;
 
-      if (tenantErr.error) throw tenantErr.error;
-      if (locationErr.error) throw locationErr.error;
-
-      toast.success('Business Identity Synchronized Successfully!');
+      toast.success('Corporate Identity Sealed and Synchronized Successfully!');
     } catch (error: any) {
-      toast.error(`Forensic Sync Failed: ${error.message}`);
-      console.error(error);
+      toast.error(`Identity Sync Failure: ${error.message}`);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const { name, value } = e.target;
-      setSettings(prev => ({ ...prev, [name]: value }));
-  };
-
-  if (loading) {
-    return (
-        <div className="flex flex-col items-center justify-center p-12 text-slate-400 italic">
-            <Loader2 className="animate-spin mb-2" />
-            Initializing System Metadata...
-        </div>
-    );
-  }
+  if (loading) return <div className="p-20 text-center animate-pulse font-black text-slate-300 uppercase tracking-widest">Initializing System Metadata...</div>;
 
   return (
-    <Card className="shadow-xl border-none bg-white">
-      <CardHeader className="border-b bg-slate-50/50">
-        <CardTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tight">
-            <Landmark className="text-blue-600" /> Business Identity
-        </CardTitle>
-        <CardDescription className="font-medium text-slate-500">
-            Configure the legal metadata that appears on receipts, invoices, and tax filings.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-8">
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Legal Business Name</Label>
-                <Input id="name" name="name" value={settings.name || ''} onChange={handleInputChange} className="h-11" />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="tax_number" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Tax ID / TIN Number</Label>
-                <Input id="tax_number" name="tax_number" value={settings.tax_number || ''} onChange={handleInputChange} placeholder="e.g. 100XXXXXXX" className="h-11 font-mono" />
-              </div>
-          </div>
+    <form onSubmit={handleSave} className="space-y-10 animate-in fade-in duration-1000 pb-20">
+        <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-900 text-white p-10 border-b border-white/5">
+                <div className="flex items-center gap-6">
+                    <div className="p-5 bg-blue-600 rounded-3xl shadow-xl"><Building2 size={40}/></div>
+                    <div>
+                        <CardTitle className="text-4xl font-black uppercase tracking-tighter">Business Identity Terminal</CardTitle>
+                        <CardDescription className="text-blue-400 font-bold uppercase tracking-[0.4em] text-[10px] mt-2 italic">Legal Stationery & Compliance Settings</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor="address" className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
-                <MapPin className="w-3 h-3 text-red-500"/> Physical Headquarters Address
-            </Label>
-            <Input id="address" name="address" value={settings.address || ''} onChange={handleInputChange} className="h-11" />
-          </div>
+            <CardContent className="p-12 space-y-12">
+                {/* SECTION 1: LEGAL IDENTITY */}
+                <div className="space-y-8">
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
+                        <ShieldCheck size={16} className="text-blue-600"/> 1. Legal & Fiscal Registration
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Registered Name</Label>
+                            <Input name="name" value={settings.name || ''} onChange={e => setSettings({...settings, name: e.target.value})} className="h-14 font-black rounded-2xl border-slate-200 text-lg shadow-sm" />
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-orange-500">Tax ID / TIN Number</Label>
+                            <div className="relative">
+                                <Hash className="absolute left-4 top-5 h-4 w-4 text-slate-300"/>
+                                <Input name="tin_number" value={settings.tin_number || ''} onChange={e => setSettings({...settings, tin_number: e.target.value})} className="h-14 pl-12 font-black rounded-2xl border-slate-200 text-lg font-mono shadow-sm" placeholder="100XXXXXXXX" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
-                    <Phone className="w-3 h-3 text-green-600"/> Contact Phone
-                </Label>
-                <Input id="phone" name="phone" value={settings.phone || ''} onChange={handleInputChange} className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency_code" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">System Currency</Label>
-                <Input id="currency_code" name="currency_code" value={settings.currency_code || ''} onChange={handleInputChange} placeholder="e.g., UGX" className="h-11 font-mono font-bold" />
-              </div>
-          </div>
+                {/* SECTION 2: STATIONERY DNA */}
+                <div className="space-y-8 pt-8 border-t border-slate-100">
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
+                        <MapPin size={16} className="text-blue-600"/> 2. Corporate Stationery Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Plot / Street Address</Label>
+                            <Input name="plot_number" value={settings.plot_number || ''} onChange={e => setSettings({...settings, plot_number: e.target.value})} className="h-12 font-bold rounded-xl bg-slate-50 border-slate-200" />
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">P.O. Box</Label>
+                            <Input name="po_box" value={settings.po_box || ''} onChange={e => setSettings({...settings, po_box: e.target.value})} className="h-12 font-bold rounded-xl bg-slate-50 border-slate-200" />
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">System Currency</Label>
+                            <div className="relative">
+                                <Globe className="absolute left-3 top-4 h-4 w-4 text-slate-300"/>
+                                <Input name="currency_code" value={settings.currency_code || ''} onChange={e => setSettings({...settings, currency_code: e.target.value})} className="h-12 pl-10 font-black rounded-xl bg-blue-50 border-blue-100 text-blue-600" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Email</Label>
+                            <div className="relative"><Mail className="absolute left-3 top-4 h-4 w-4 text-slate-300"/><Input name="official_email" value={settings.official_email || ''} onChange={e => setSettings({...settings, official_email: e.target.value})} className="h-12 pl-10 font-bold rounded-xl" /></div>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Phone</Label>
+                            <div className="relative"><Phone className="absolute left-3 top-4 h-4 w-4 text-slate-300"/><Input name="phone" value={settings.phone || ''} onChange={e => setSettings({...settings, phone: e.target.value})} className="h-12 pl-10 font-bold rounded-xl" /></div>
+                        </div>
+                    </div>
+                </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="receipt_footer" className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
-                <ReceiptIcon className="w-3 h-3 text-blue-500"/> Global Receipt Footer
-            </Label>
-            <Input id="receipt_footer" name="receipt_footer" value={settings.receipt_footer || ''} onChange={handleInputChange} placeholder="Thank you for your business!" className="h-11 italic text-slate-500" />
-          </div>
+                {/* SECTION 3: SIGNATORY & DISBURSEMENT */}
+                <div className="space-y-8 pt-8 border-t border-slate-100">
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-3">
+                        <Signature size={16} className="text-blue-600"/> 3. Document Signatory & Payment Instructions
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Authorized Representative (CEO)</Label>
+                            <div className="relative"><User className="absolute left-3 top-4 h-4 w-4 text-slate-300"/><Input name="ceo_name" value={settings.ceo_name || ''} onChange={e => setSettings({...settings, ceo_name: e.target.value})} className="h-12 pl-10 font-black rounded-xl" /></div>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Official Role/Designation</Label>
+                            <Input name="ceo_designation" value={settings.ceo_designation || ''} onChange={e => setSettings({...settings, ceo_designation: e.target.value})} className="h-12 font-black rounded-xl" />
+                        </div>
+                        <div className="col-span-full space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-2"><BankIcon size={12}/> Global Disbursement Instructions (Appears on Quotes/Invoices)</Label>
+                            <Textarea name="payment_instructions" value={settings.payment_instructions || ''} onChange={e => setSettings({...settings, payment_instructions: e.target.value})} className="min-h-[120px] font-bold rounded-[1.5rem] border-slate-200 p-6 text-xs bg-slate-50 focus:bg-white shadow-inner" placeholder="Enter Bank, Branch, Account Number and Mobile Money Merchant Codes..." />
+                        </div>
+                    </div>
+                </div>
 
-          <div className="flex justify-end pt-4 border-t">
-            <Button type="submit" disabled={saving} className="min-w-[180px] h-12 bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">
-              {saving ? <><Loader2 className="animate-spin mr-2"/> SYNCING...</> : <><Save className="mr-2 w-4 h-4"/> Seal Settings</>}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+                {/* SECTION 4: FOOTER SNAPSHOT */}
+                <div className="space-y-3 pt-8 border-t border-slate-100">
+                    <Label className="text-[10px] font-black uppercase tracking-widest ml-1 text-blue-500">Global Receipt/Invoice Footer</Label>
+                    <div className="relative"><ReceiptIcon className="absolute left-4 top-4.5 h-5 w-5 text-blue-400"/><Input name="receipt_footer" value={settings.receipt_footer || ''} onChange={e => setSettings({...settings, receipt_footer: e.target.value})} className="h-14 pl-12 italic font-bold text-slate-500 rounded-2xl border-blue-100 bg-blue-50/20" placeholder="Thank you for choosing Sovereign ERP." /></div>
+                </div>
+            </CardContent>
+
+            <CardFooter className="bg-slate-50 p-10 border-t flex justify-between items-center">
+                <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <div className="h-10 w-10 rounded-2xl bg-blue-100 flex items-center justify-center border border-blue-200 shadow-sm"><ShieldCheck className="text-blue-600 h-6 w-6" /></div>
+                    Identity Sync Protocol: Multi-Branch Distributed
+                </div>
+                <Button type="submit" disabled={saving} className="h-16 px-20 font-black bg-slate-900 hover:bg-blue-600 text-white shadow-2xl rounded-2xl transition-all uppercase tracking-[0.2em] text-sm transform hover:scale-105 active:scale-95">
+                    {saving ? <><Loader2 className="animate-spin mr-3 h-6 w-6"/> SEALING...</> : "Seal Identity Protocol"}
+                </Button>
+            </CardFooter>
+        </Card>
+    </form>
   );
 }
