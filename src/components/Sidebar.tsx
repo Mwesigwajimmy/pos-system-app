@@ -686,28 +686,18 @@ return (
                 </div>
             )}
 
-            <div className="flex items-center gap-1">
-                <Button
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                        "h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors",
-                        !isSidebarOpen && "mx-auto"
-                    )}
-                >
-                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                </Button>
-
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={toggleSidebar} 
-                    className="text-slate-400 hover:text-blue-600 rounded-full h-9 w-9"
-                >
-                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                </Button>
-            </div>
+            {/* Professional Single Toggle Button */}
+            <Button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                    "h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded-lg",
+                    !isSidebarOpen && "mx-auto"
+                )}
+            >
+                {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+            </Button>
         </div>
 
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
