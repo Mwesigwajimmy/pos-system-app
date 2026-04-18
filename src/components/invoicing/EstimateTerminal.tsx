@@ -8,7 +8,7 @@ import {
   Plus, Trash2, Loader2, Save, FileText, CheckCircle2, 
   Calculator, Coins, Layers, BadgeAlert, Clock, ShieldCheck,
   TrendingUp, Info, Printer, Building2, Phone, Mail, MapPin, 
-  Landmark, Smartphone, PenTool, Hash, Calendar, Download, Send, Signature, User
+  Landmark, Smartphone, PenTool, FileDigit, Hash, Calendar, Download, Send, Signature, User
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
