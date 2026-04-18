@@ -121,6 +121,7 @@ const navSections: NavItem[] = [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
             { href: '/invoicing/estimates', label: 'Estimate Terminal', icon: FileText },
             { href: '/invoicing/estimates/history', label: 'Quotation Ledger', icon: FileDigit },
+            { href: '/invoicing/estimates/execution', label: 'Execution Terminal', icon: Gavel },
             { href: '/invoicing/payments', label: 'Payment Registry', icon: Handshake },
             { href: '/invoicing/list', label: 'All Invoices', icon: FileStack }, 
             { href: '/invoicing/fx-audit', label: 'FX Forensic Audit', icon: RefreshCcw },
