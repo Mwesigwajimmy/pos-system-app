@@ -242,37 +242,38 @@ export async function middleware(request: NextRequest) {
 
     if (user) {
         // --- 1. SOVEREIGN IDENTITY HANDSHAKE ---
-        // We detect the target node via the secure identity cookie.
+        // We detect the target node via the secure identity cookie set by the Sidebar.
         const activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
         if (activeBizId) {
             // We pre-inject the business ID into the database session.
-            // This ensures RLS (Row Level Security) is aligned BEFORE any data is fetched.
+            // This ensures RLS (Row Level Security) is aligned BEFORE the context RPC runs.
             await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
         }
     } else {
+        // Public Path handling for unauthenticated sessions
         const isPublicPath = publicPaths.some(pp => pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`));
         if (isPublicPath) return response;
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
     // --- 2. CONTEXT MORPHING ---
-    // Fetches the 'Accountant' or 'Architect' role based on the switched node.
+    // This RPC now surgically returns Jimmy as 'accountant' if switched to CAKE, 
+    // or 'architect' if switched back to NAK.
     const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context');
 
-    // --- 3. IDENTITY RECOVERY PROTOCOL (THE FIX) ---
-    // If context is missing, it's likely a temporary sync lag during a node swap.
+    // --- 3. IDENTITY RECOVERY PROTOCOL (THE STABILITY WELD) ---
+    // This prevents the "Forced Logout" during high-speed identity swaps.
     if (contextError || !userContextData || userContextData.length === 0) {
-        // SAFETY: If we are already on the neutral dashboard and it STILL fails,
-        // then the session is truly invalid.
+        // If we are already on the generic dashboard and it STILL fails, the session is truly dead.
         if (pathWithoutLocale === '/dashboard') {
             const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
             recoveryResponse.cookies.delete('bbu1_active_business_id');
             return recoveryResponse;
         }
 
-        // RECOVERY: Instead of logging out, we redirect to the generic dashboard.
-        // This forces a fresh middleware cycle, giving the Supabase session 
-        // time to fully synchronize with the database.
+        // RECOVERY BUFFER: Instead of signing out, we redirect to /dashboard.
+        // This forces a new middleware cycle, allowing the database 100ms 
+        // to fully propagate the new session metadata.
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
     
@@ -281,6 +282,7 @@ export async function middleware(request: NextRequest) {
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
     
+    // Calculates the correct landing node (e.g., /finance/banking for Accountants)
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
     // =================================================================================
@@ -297,16 +299,16 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING) ---
-    // If Jimmy switches to CAKE (Accountant) and the system lands him on /dashboard,
-    // this logic forces the browser to jump to the correct landing spot (e.g., /finance/banking).
-    // This ensures the Dashboard UI actually changes when the business changes.
+    // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING JUMP) ---
+    // This ensures that when Jimmy switches to 'Accountant' at CAKE, 
+    // he doesn't just see a sidebar refresh, he is physically moved to the Accountant's dashboard.
     const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
     if (isGenericDashboard && defaultDashboard !== '/dashboard') {
+        // Forces the browser to jump from /dashboard to /finance/banking, /sacco, etc.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // PRIORITY 3: Allow logged-in users to stay on public pages and articles.
+    // PRIORITY 3: Allow logged-in users to stay on public pages.
     const isPublicPath = publicPaths.some(pp => 
         pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
     );
@@ -322,18 +324,19 @@ export async function middleware(request: NextRequest) {
     // --- END OF LOGIC REORDERING ---
     // =================================================================================
 
-    // --- 4. ACCESS CONTROL ENFORCEMENT ---
+    // --- 4. SECURITY ACCESS ENFORCEMENT ---
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // SECURITY SHIELD: If Jimmy attempts to stay on an Architect page after
-        // switching to an Accountant role, he is instantly redirected to safety.
+        // LOCKDOWN: If Jimmy was on an Architect page but switched to Accountant,
+        // this block detects he is out of bounds and pushes him back to his role-home.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
+    // Authorization verified. Proceed to Active Node.
     return response; 
 }
 
-// --- MATCHER ---
+// --- MATCHER (Sovereign Engine Optimized) ---
 export const config = {
   matcher: [
     '/((?!api|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',

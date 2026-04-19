@@ -3,7 +3,7 @@
 import React, { memo, ReactNode, useState, useEffect } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
-  ShieldAlert, ShieldCheck, Fingerprint
+  ShieldAlert, ShieldCheck, Fingerprint, Building2
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
@@ -21,6 +21,7 @@ import { usePathname } from 'next/navigation';
 /**
  * --- UPGRADE: SOVEREIGN LIVE GUARD ---
  * Dynamically listens for forensic anomalies based on the active node.
+ * This ensures Jimmy only sees alerts for the business he is currently visiting.
  */
 const SovereignLiveGuard = () => {
     const supabase = createClient();
@@ -38,7 +39,7 @@ const SovereignLiveGuard = () => {
                 event: 'INSERT', 
                 schema: 'public', 
                 table: 'sovereign_audit_anomalies',
-                filter: `business_id=eq.${activeBizId}` // Weld to active node
+                filter: `business_id=eq.${activeBizId}` 
             }, (payload) => {
                 const anomaly = payload.new;
                 if (anomaly.severity === 'CRITICAL' || anomaly.severity === 'HIGH') {
@@ -82,7 +83,7 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const { branding, isLoading: isBrandingLoading } = useBranding(); 
+  const { branding } = useBranding(); 
   
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
@@ -149,13 +150,17 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 /**
  * SOVEREIGN GATEKEEPER
  * UPGRADE: Now handles "In-Between" switch states gracefully to prevent logout loops.
+ * This is the 'Stability Shield' that keeps the UI professional during node swaps.
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
     const { isLoading: isBrandingLoading } = useBranding();
 
-    // While switching businesses, we show the high-end loader instead of the error screen
-    if (isBusinessLoading || isBrandingLoading) {
+    // --- THE STABILITY SHIELD ---
+    // While the system is actively loading OR if the profile is momentarily null during a swap,
+    // we show the high-end loader instead of the error screen. 
+    // This prevents the system from "panicking" and forcing a logout.
+    if (isBusinessLoading || isBrandingLoading || (!profile && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
                 <div className="relative">
@@ -169,7 +174,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // ONLY show the error if we are NOT loading and the profile is still missing
+    // ONLY show the error if we have finished loading and the profile is still missing/errored
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
