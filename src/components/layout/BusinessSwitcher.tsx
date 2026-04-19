@@ -20,14 +20,17 @@ import Cookies from 'js-cookie';
 
 const supabase = createClient();
 
+/**
+ * SOVEREIGN BUSINESS SWITCHER
+ * Core component for multi-tenant identity morphing.
+ */
 export default function BusinessSwitcher() {
     const router = useRouter();
     const queryClient = useQueryClient(); 
     const { branding, refreshBranding } = useBranding();
 
     // --- 1. SOVEREIGN MEMBERSHIP DISCOVERY ---
-    // Fetches every business ledger the user is authorized to access.
-    // This uses the 'view_my_memberships' we optimized in the backend audit.
+    // Fetches every business ledger the user is authorized to access via the validated view.
     const { data: memberships, isLoading } = useQuery({
         queryKey: ['my_business_memberships'],
         queryFn: async () => {
@@ -48,25 +51,30 @@ export default function BusinessSwitcher() {
     });
 
     // --- 2. THE IDENTITY WELD PROTOCOL ---
-    // This function executes the cross-business context swap automatically.
-    const handleSwitch = async (bizId: string) => {
-        // Safety: Prevent redundant protocol execution if already on this business
+    // Executing the cross-business context swap with full state neutralization.
+    const handleSwitch = async (bizId: string, bizName: string) => {
+        // Safety: Prevent redundant protocol execution
         if (bizId === branding?.business_id) return; 
 
-        const toastId = toast.loading("Executing Sovereign Identity Swap...");
+        const toastId = toast.loading(`Executing Sovereign Identity Swap to ${bizName}...`);
         
         try {
-            // STEP A: IDENTITY COOKIE INJECTION
-            // The Middleware reads this cookie to maintain the session during the reload.
+            // STEP A: GRACEFUL REALTIME DISCONNECT
+            // Manually killing all active WebSocket channels to prevent the 
+            // "WebSocket is closed before connection is established" error.
+            await supabase.removeAllChannels();
+
+            // STEP B: IDENTITY COOKIE INJECTION
+            // Sets the cookie that the Middleware reads BEFORE the page renders.
             Cookies.set('bbu1_active_business_id', bizId, { 
                 expires: 30, 
                 path: '/',
                 sameSite: 'lax'
             });
 
-            // STEP B: UPDATE AUTH METADATA
-            // We update both 'business_id' and 'active_biz_id' to satisfy all RLS policy variants.
-            // This is what tells the backend to "Morph" Jimmy's role.
+            // STEP C: UPDATE AUTH METADATA
+            // Update the user's metadata in the Supabase Auth session.
+            // This is the trigger for the 'get_user_context' RPC morphing.
             const { error: authError } = await supabase.auth.updateUser({
                 data: { 
                     business_id: bizId,
@@ -76,23 +84,23 @@ export default function BusinessSwitcher() {
 
             if (authError) throw authError;
 
-            // STEP C: SESSION REFRESH (CRITICAL UPGRADE)
-            // This forces Supabase to generate a new JWT (token) containing the updated metadata.
-            // Without this, the RLS might still see the old business ID for a split second.
+            // STEP D: SESSION REFRESH
+            // Forces Supabase to generate a new JWT containing the updated context.
             await supabase.auth.refreshSession();
 
-            // STEP D: ATOMIC CACHE WIPE
-            // Clear React Query cache so data from the previous business doesn't leak into the new one.
+            // STEP E: ATOMIC CACHE WIPE
+            // Purge all stale data from the previous business node.
             await queryClient.clear(); 
 
-            // STEP E: BROADCAST REFRESH
+            // STEP F: BROADCAST REFRESH
             refreshBranding();
 
-            toast.success("Identity Swapped Successfully", { id: toastId });
+            toast.success("Identity Morphed Successfully", { id: toastId });
 
-            // STEP F: NEURAL RELOAD
-            // We use window.location.href to force a full clean-state reload of the entire app.
-            // This ensures the new 'Accountant' or 'Architect' role is applied everywhere.
+            // STEP G: NEURAL ROUTE RELOAD
+            // We redirect to /dashboard specifically. The Middleware will catch this,
+            // see the new role (e.g., Accountant) and send the user to the 
+            // correct industry-specific dashboard automatically.
             setTimeout(() => {
                 window.location.href = '/dashboard'; 
             }, 500);
@@ -112,7 +120,7 @@ export default function BusinessSwitcher() {
                             <img 
                                 src={branding.logo_url} 
                                 className="h-11 w-11 object-contain rounded-xl shadow-sm bg-white border border-slate-50 p-0.5" 
-                                alt="ID" 
+                                alt="Active Node Logo" 
                             />
                         ) : (
                             <div className="h-11 w-11 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg">
@@ -148,15 +156,15 @@ export default function BusinessSwitcher() {
                     ) : memberships?.map((biz) => (
                         <DropdownMenuItem 
                             key={biz.business_id} 
-                            onClick={() => handleSwitch(biz.business_id)}
+                            onClick={() => handleSwitch(biz.business_id, biz.business_name)}
                             className={cn(
                                 "flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all focus:bg-slate-50 group",
                                 branding?.business_id === biz.business_id ? "bg-blue-50/50 border border-blue-100" : "border border-transparent"
                             )}
                         >
-                            <div className="h-10 w-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden shadow-sm group-hover:border-blue-300">
+                            <div className="h-10 w-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden shadow-sm group-hover:border-blue-300 transition-all">
                                 {biz.logo_url ? (
-                                    <img src={biz.logo_url} className="object-contain p-1" alt="Logo" />
+                                    <img src={biz.logo_url} className="object-contain p-1" alt="Node Logo" />
                                 ) : (
                                     <Building2 size={16} className="text-slate-300"/>
                                 )}

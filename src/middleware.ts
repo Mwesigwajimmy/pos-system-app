@@ -241,30 +241,25 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-        // DETECT ACTIVE NODE: Read the cookie set by the BusinessSwitcher
+        // --- THE IDENTITY WELD ---
+        // Read the cookie set by the Sidebar/Switcher
         const activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
-        
         if (activeBizId) {
-            // SESSION INVERSION: Tell the database which business context to use for RLS
-            // This ensures Jimmy's 'Accountant' role is visible before the page renders.
+            // Tell the database session which node we are visiting BEFORE fetching context
+            // This ensures Jimmy's 'Accountant' role is visible to the RPC below.
             await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
         }
     } else {
-        // Public Path handling for unauthenticated users
-        const isPublicPath = publicPaths.some(pp => 
-            pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
-        );
+        const isPublicPath = publicPaths.some(pp => pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`));
         if (isPublicPath) return response;
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // FETCH MORPHED CONTEXT: 
-    // This RPC will now return Jimmy as 'Architect' for NAK or 'Accountant' for CAKE
-    const { data: userContextData, error } = await supabase.rpc('get_user_context');
+    // FETCH MORPHED CONTEXT (This returns Jimmy as 'accountant' if switched to CAKE)
+    const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context');
 
-    if (error || !userContextData || userContextData.length === 0) {
-        // IDENTITY RECOVERY: If the switch failed, clear the cookie and try to return home 
-        // instead of a hard sign-out.
+    if (contextError || !userContextData || userContextData.length === 0) {
+        // Safety: If the switch is broken, clear context and return to login instead of physical logout
         const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
         recoveryResponse.cookies.delete('bbu1_active_business_id');
         return recoveryResponse;
@@ -278,24 +273,29 @@ export async function middleware(request: NextRequest) {
     const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
 
     // =================================================================================
-    // --- START OF LOGIC REORDERING (THE ONLY FIX NEEDED) ---
-    // The following blocks have been re-ordered to prioritize the setup check.
+    // --- START OF LOGIC REORDERING (FULLY WELDED) ---
     // =================================================================================
 
     // PRIORITY 1: If setup is NOT complete, the user MUST be on the welcome page.
-    // If they are anywhere else, redirect them there immediately.
     if (!setupComplete && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
     
     // PRIORITY 2: If setup IS complete, the user MUST NOT be on the welcome page.
-    // If they land there by mistake, send them to their dashboard.
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-   // PRIORITY 3: Allow logged-in users to stay on public pages and articles.
-    // We only force a redirect if they try to go back to the Login or Signup forms.
+    // --- THE SOVEREIGN ROUTE WELD (NEW) ---
+    // If Jimmy switches to CAKE (Accountant) and the system lands him on /dashboard,
+    // this logic forces the browser to jump to the correct landing spot (e.g., /finance/banking).
+    // This solves the issue where the dashboard doesn't update on switch.
+    const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
+    if (isGenericDashboard && defaultDashboard !== '/dashboard') {
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+    }
+
+    // PRIORITY 3: Allow logged-in users to stay on public pages and articles.
     const isPublicPath = publicPaths.some(pp => 
         pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
     );
@@ -311,9 +311,11 @@ export async function middleware(request: NextRequest) {
     // --- END OF LOGIC REORDERING ---
     // =================================================================================
 
-    // Standard role-based permission check (Your original code, untouched)
+    // Standard role-based permission check
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
+        // If the user's role has changed (e.g. Architect to Accountant) and they are on 
+        // a page they no longer have access to, send them to their new home.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
@@ -321,17 +323,8 @@ export async function middleware(request: NextRequest) {
     return response; 
 }
 
-// --- MATCHER (Your original code, untouched) ---
+// --- MATCHER (Touch-proof Configuration) ---
 export const config = {
-  /*
-   * Match all request paths except for the ones starting with:
-   * - api (API routes)
-   * - _next/static (static files)
-   * - _next/image (image optimization files)
-   * - robots.txt (Required for Google Bot Handshake)
-   * - sitemap.xml (Required for Google Site Indexing)
-   * - any path containing a period '.' (most static assets like .png, .js, .webmanifest)
-   */
   matcher: [
     '/((?!api|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
   ],
