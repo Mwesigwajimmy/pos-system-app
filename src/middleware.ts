@@ -241,7 +241,7 @@ export async function middleware(request: NextRequest) {
     // --- AUTH & IDENTITY WELD SECTION ---
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Initialize the active business ID variable for the handoff
+    // Initialize the active business ID variable for the secure handoff
     let activeBizId: string | undefined = undefined;
 
     if (user) {
@@ -251,6 +251,7 @@ export async function middleware(request: NextRequest) {
         
         if (activeBizId) {
             // SESSION INVERSION: Pre-inject the ID into the session for RLS stability.
+            // This ensures all subsequent database queries in this request see the correct node.
             await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
         }
     } else {
@@ -262,15 +263,16 @@ export async function middleware(request: NextRequest) {
 
     // --- 2. CONTEXT MORPHING (THE SECURE HANDOFF) ---
     // UPGRADE: We pass p_target_biz_id directly to the RPC. 
+    // This stops the 'Logical Ghosting' by forcing the DB to return the role/industry of the TARGET node.
     const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context', {
         p_target_biz_id: activeBizId
     });
 
-    // --- 3. IDENTITY RECOVERY PROTOCOL (LOOP-PROOF STABILITY WELD) ---
-    // This prevents the "Too Many Redirects" error by detecting if we are already on the target.
+    // --- 3. IDENTITY RECOVERY PROTOCOL (STABILITY WELD) ---
+    // This prevents the "Forced Logout" during high-speed identity swaps.
     if (contextError || !userContextData || userContextData.length === 0) {
         
-        // LOOP GUARD: If we are already on the generic dashboard and the RPC is still failing,
+        // LOOP GUARD: If we are already on the generic dashboard and it STILL fails,
         // it means the session is truly broken or the SQL function is missing.
         if (pathWithoutLocale === '/dashboard') {
             const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
@@ -278,7 +280,9 @@ export async function middleware(request: NextRequest) {
             return recoveryResponse;
         }
 
-        // Instead of logging out, we try a single redirect to /dashboard to re-trigger a sync.
+        // RECOVERY BUFFER: Instead of signing out, we redirect to /dashboard.
+        // This forces a new middleware cycle, allowing the database time 
+        // to fully synchronize the new session parameters.
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
     
@@ -306,11 +310,11 @@ export async function middleware(request: NextRequest) {
 
     // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING JUMP - LOOP PROOF) ---
     // This ensures that when Jimmy switches to 'Accountant' at CAKE, 
-    // he is physically moved from /dashboard to the correct landing spot.
+    // he is physically moved from /dashboard to the correct industry-specific landing spot.
     const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
     
     if (isGenericDashboard && defaultDashboard !== '/dashboard' && pathWithoutLocale !== defaultDashboard) {
-        // LOOP GUARD: Only redirect if the target is different from where we are now
+        // LOOP GUARD: Only redirect if the target industry dashboard is different from where we are.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
@@ -335,7 +339,7 @@ export async function middleware(request: NextRequest) {
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
         
         // LOOP GUARD: If the redirect destination is the SAME as the current path, 
-        // stop and allow the request to prevent a loop.
+        // stop and allow the request to proceed to avoid a recursive loop.
         if (pathWithoutLocale === defaultDashboard) {
             return response;
         }
