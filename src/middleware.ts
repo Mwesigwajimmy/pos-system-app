@@ -217,7 +217,7 @@ export async function middleware(request: NextRequest) {
         return response;
     }
 
-    // --- SUPABASE & AUTH LOGIC (Your original code, untouched) ---
+   // --- SUPABASE & AUTH LOGIC (Your original code, untouched) ---
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -237,16 +237,20 @@ export async function middleware(request: NextRequest) {
     );
     
     await supabase.auth.getSession();
-// --- AUTH & IDENTITY WELD SECTION ---
+
+    // --- AUTH & IDENTITY WELD SECTION ---
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Initialize the active business ID variable for the handoff
+    let activeBizId: string | undefined = undefined;
 
     if (user) {
         // --- 1. SOVEREIGN IDENTITY HANDSHAKE ---
         // We detect the target node via the secure identity cookie set by the Sidebar.
-        const activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
+        activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
+        
         if (activeBizId) {
-            // We pre-inject the business ID into the database session.
-            // This ensures RLS (Row Level Security) is aligned BEFORE the context RPC runs.
+            // SESSION INVERSION: Pre-inject the ID into the session for RLS stability.
             await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
         }
     } else {
@@ -256,10 +260,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // --- 2. CONTEXT MORPHING ---
-    // This RPC now surgically returns Jimmy as 'accountant' if switched to CAKE, 
-    // or 'architect' if switched back to NAK.
-    const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context');
+    // --- 2. CONTEXT MORPHING (THE SECURE HANDOFF) ---
+    // UPGRADE: We pass p_target_biz_id directly to the RPC. 
+    // This stops the 'Logical Ghosting' by forcing the DB to look at the target node's industry.
+    const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context', {
+        p_target_biz_id: activeBizId
+    });
 
     // --- 3. IDENTITY RECOVERY PROTOCOL (THE STABILITY WELD) ---
     // This prevents the "Forced Logout" during high-speed identity swaps.
@@ -272,8 +278,8 @@ export async function middleware(request: NextRequest) {
         }
 
         // RECOVERY BUFFER: Instead of signing out, we redirect to /dashboard.
-        // This forces a new middleware cycle, allowing the database 100ms 
-        // to fully propagate the new session metadata.
+        // This forces a new middleware cycle, allowing the database time 
+        // to fully synchronize the new session parameters.
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
     
@@ -301,10 +307,10 @@ export async function middleware(request: NextRequest) {
 
     // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING JUMP) ---
     // This ensures that when Jimmy switches to 'Accountant' at CAKE, 
-    // he doesn't just see a sidebar refresh, he is physically moved to the Accountant's dashboard.
+    // he is physically moved from /dashboard to the Accountant's specific industry home.
     const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
     if (isGenericDashboard && defaultDashboard !== '/dashboard') {
-        // Forces the browser to jump from /dashboard to /finance/banking, /sacco, etc.
+        // Forces the browser to jump to the correct industry-specific landing spot.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
@@ -327,8 +333,8 @@ export async function middleware(request: NextRequest) {
     // --- 4. SECURITY ACCESS ENFORCEMENT ---
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // LOCKDOWN: If Jimmy was on an Architect page but switched to Accountant,
-        // this block detects he is out of bounds and pushes him back to his role-home.
+        // LOCKDOWN: If Jimmy was on an Architect page but switched to Accountant role,
+        // this block detects he is out of bounds and pushes him back to his authorized home.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
