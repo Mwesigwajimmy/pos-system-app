@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query'; // UPGRADE: Added useQueryClient
 import { createClient } from '@/lib/supabase/client';
 import { 
     Check, ChevronsUpDown, Building2, 
-    PlusCircle, Landmark, ShieldCheck
+    PlusCircle, Landmark, ShieldCheck, Loader2
 } from "lucide-react";
 import { 
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
@@ -15,11 +15,13 @@ import { useBranding } from '@/components/core/BrandingProvider';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast'; // UPGRADE: Added toast for professional feedback
 
 const supabase = createClient();
 
 export default function BusinessSwitcher() {
     const router = useRouter();
+    const queryClient = useQueryClient(); // Master cache controller
     const { branding, refreshBranding } = useBranding();
 
     // 1. FETCH ALL MEMBERSHIPS (Companies I belong to)
@@ -28,26 +30,50 @@ export default function BusinessSwitcher() {
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return [];
-            const { data } = await supabase.from('view_my_memberships').select('*').eq('user_id', user.id);
+            // Fetches from the verified multi-tenant view we built
+            const { data, error } = await supabase.from('view_my_memberships').select('*').eq('user_id', user.id);
+            if (error) throw error;
             return data || [];
         }
     });
 
-    // 2. SWITCH IDENTITY PROTOCOL
+    // 2. THE SOVEREIGN SWITCH PROTOCOL
     const handleSwitch = async (bizId: string) => {
-        // Broadcast the new identity to Supabase Auth metadata
-        const { error } = await supabase.auth.updateUser({
-            data: { business_id: bizId }
-        });
+        if (bizId === branding?.business_id) return; // Prevent redundant switching
 
-        if (error) {
-            console.error("Identity Swap Failed:", error);
-            return;
+        const toastId = toast.loading("Executing Sovereign Identity Swap...");
+        
+        try {
+            // STEP A: UPDATE AUTH METADATA
+            // This saves the new business_id into the user's JWT token
+            const { error } = await supabase.auth.updateUser({
+                data: { business_id: bizId }
+            });
+
+            if (error) throw error;
+
+            // STEP B: ATOMIC CACHE CLEARANCE
+            // We wipe all data belonging to the previous business (sales, stock, etc.)
+            // to ensure zero data leakage between accounts.
+            await queryClient.clear(); 
+
+            // STEP C: IDENTITY BROADCAST
+            // We notify the BrandingProvider to refresh its internal state
+            refreshBranding();
+
+            toast.success("Identity Successfully Swapped", { id: toastId });
+
+            // STEP D: HARD REFRESH
+            // This is required to force the Next.js Middleware and the Database 
+            // to pick up the updated JWT Token immediately.
+            setTimeout(() => {
+                window.location.reload(); 
+            }, 500);
+
+        } catch (err: any) {
+            console.error("SWITCH_FAILURE:", err);
+            toast.error(`Identity Protocol Breach: ${err.message}`, { id: toastId });
         }
-
-        // Trigger global UI re-weld
-        refreshBranding();
-        router.refresh(); 
     };
 
     return (
@@ -56,7 +82,11 @@ export default function BusinessSwitcher() {
                 <div className="flex items-center gap-4 p-3 rounded-[1.25rem] hover:bg-slate-50 transition-all cursor-pointer border border-transparent hover:border-slate-100 group animate-in fade-in duration-500">
                     <div className="h-11 w-11 flex-shrink-0 relative">
                         {branding?.logo_url ? (
-                            <img src={branding.logo_url} className="h-11 w-11 object-contain rounded-xl shadow-sm bg-white border border-slate-50" alt="Identity" />
+                            <img 
+                                src={branding.logo_url} 
+                                className="h-11 w-11 object-contain rounded-xl shadow-sm bg-white border border-slate-50" 
+                                alt="Identity" 
+                            />
                         ) : (
                             <div className="h-11 w-11 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-sm">
                                 {branding?.legal_name?.charAt(0).toUpperCase() || "B"}
@@ -94,7 +124,11 @@ export default function BusinessSwitcher() {
                             )}
                         >
                             <div className="h-10 w-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center overflow-hidden shadow-sm">
-                                {biz.logo_url ? <img src={biz.logo_url} className="object-contain p-1" /> : <Building2 size={16} className="text-slate-300"/>}
+                                {biz.logo_url ? (
+                                    <img src={biz.logo_url} className="object-contain p-1" alt={biz.business_name} />
+                                ) : (
+                                    <Building2 size={16} className="text-slate-300"/>
+                                )}
                             </div>
                             <div className="flex-1 flex flex-col">
                                 <span className="text-sm font-black text-slate-800 uppercase tracking-tighter">{biz.business_name}</span>
