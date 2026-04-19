@@ -24,11 +24,11 @@ import {
 } from "@/components/ui/select";
 import { Loader2, UserPlus, ShieldCheck, Fingerprint, Building2 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useTenant } from '@/hooks/useTenant'; // --- IDENTITY WELD IMPORT ---
+import { useTenant } from '@/hooks/useTenant';
 
 /**
  * SOVEREIGN RECRUITMENT MODAL
- * Handles the dispatch of authorized invitations to the active business node.
+ * Fully corrected to match your filesystem path structure.
  */
 export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const supabase = createClient();
@@ -40,13 +40,11 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
     const [phoneNumber, setPhoneNumber] = useState('');
     const [role, setRole] = useState<string>('');
 
-    // --- 1. CONTEXT RESOLUTION (THE WELD) ---
-    // This ensures we know exactly which business Jimmy is currently visiting (NAK or CAKE)
+    // --- 1. CONTEXT RESOLUTION ---
     const { data: tenant, isLoading: isTenantLoading } = useTenant();
     const activeBusinessId = tenant?.id;
 
     // --- 2. SOVEREIGN ROLE DISCOVERY ---
-    // Fetches the 64+ system roles dynamically from your PostgreSQL Enum
     const { data: allRoles, isLoading: isLoadingRoles } = useQuery({
         queryKey: ['system_available_roles'],
         queryFn: async () => {
@@ -62,8 +60,8 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
     // --- 3. RECRUITMENT MUTATION ---
     const { mutate: inviteEmployee, isPending } = useMutation({
         mutationFn: async () => {
-            // We dispatch to our identity-aware API route
-            const response = await fetch('/api/management/invite', { 
+            // FIX: Updated path to match your folder structure: management/api/invite
+            const response = await fetch('/management/api/invite', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -71,10 +69,15 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
                     fullName: fullName.trim(),
                     phoneNumber: phoneNumber.trim(),
                     role: role,
-                    // We explicitly pass the business context
                     businessId: activeBusinessId 
                 }),
             });
+
+            // Handle non-JSON responses (like 404s) gracefully
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Sovereign Protocol Breach: Server returned non-JSON response. Check route path.");
+            }
 
             const result = await response.json();
             if (!response.ok) {
@@ -84,12 +87,8 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
         },
         onSuccess: (message) => {
             toast.success("Invitation Sealed", { description: message });
-            
-            // Invalidate identity queries so the UI updates Jimmy's team list immediately
             queryClient.invalidateQueries({ queryKey: ['allEmployees', activeBusinessId] });
-            queryClient.invalidateQueries({ queryKey: ['employees', activeBusinessId] });
             
-            // Reset and Close
             setFullName(''); 
             setEmail(''); 
             setPhoneNumber('');
@@ -104,17 +103,14 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
         if (!activeBusinessId) {
             toast.error("Security Breach", { description: "Active business node not resolved." });
             return;
         }
-
         if (!role) {
             toast.error("Missing Role", { description: "Please assign an authorized access level." });
             return;
         }
-
         inviteEmployee();
     };
 
@@ -142,68 +138,32 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-5 py-4">
-                    {/* Full Name Field */}
                     <div className="space-y-2">
                         <Label htmlFor="fullName" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
                             Full Identity Name
                         </Label>
-                        <Input 
-                            id="fullName" 
-                            value={fullName} 
-                            onChange={(e) => setFullName(e.target.value)} 
-                            placeholder="e.g., Samuel Okello" 
-                            className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all"
-                            required 
-                        />
+                        <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g., Samuel Okello" className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all" required />
                     </div>
 
-                    {/* Email Field */}
                     <div className="space-y-2">
                         <Label htmlFor="email" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
                             Verification Email
                         </Label>
-                        <Input 
-                            id="email" 
-                            type="email" 
-                            value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
-                            placeholder="e.g., identity@bbu1.com" 
-                            className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all"
-                            required 
-                        />
+                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g., identity@bbu1.com" className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all" required />
                     </div>
 
-                    {/* Phone Field */}
-                    <div className="space-y-2">
-                        <Label htmlFor="phoneNumber" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
-                            Contact Number (Optional)
-                        </Label>
-                        <Input 
-                            id="phoneNumber" 
-                            value={phoneNumber} 
-                            onChange={(e) => setPhoneNumber(e.target.value)} 
-                            placeholder="e.g., +256..." 
-                            className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all"
-                        />
-                    </div>
-
-                    {/* Role Selection - Upgraded for Identity Switch */}
                     <div className="space-y-2">
                         <Label htmlFor="role" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
                             Authorized System Role
                         </Label>
                         <Select onValueChange={(value) => setRole(value)} value={role} required>
-                            <SelectTrigger id="role" className="h-12 font-black rounded-xl bg-slate-900 text-white border-none shadow-lg focus:ring-2 focus:ring-blue-600">
+                            <SelectTrigger id="role" className="h-12 font-black rounded-xl bg-slate-900 text-white border-none shadow-lg">
                                 <SelectValue placeholder={isLoadingRoles ? "Synchronizing Matrix..." : "Assign Access Level..."} />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl shadow-2xl border-none p-2 bg-white">
                                 <ScrollArea className="h-[280px] w-full pr-2">
                                     {allRoles?.map((r: string) => (
-                                        <SelectItem 
-                                            key={r} 
-                                            value={r} 
-                                            className="font-bold capitalize py-3 rounded-xl focus:bg-blue-50 focus:text-blue-600 transition-all cursor-pointer m-1"
-                                        >
+                                        <SelectItem key={r} value={r} className="font-bold capitalize py-3 rounded-xl focus:bg-blue-50 focus:text-blue-600 transition-all cursor-pointer m-1">
                                             <div className="flex items-center gap-2">
                                                 <Fingerprint size={14} className="opacity-20" />
                                                 {r.replace(/_/g, ' ')}
@@ -221,27 +181,11 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
                             Sovereign <br/> Handshake
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                onClick={onClose} 
-                                className="font-bold text-slate-400 hover:text-slate-900"
-                                disabled={isPending}
-                            >
+                            <Button type="button" variant="ghost" onClick={onClose} className="font-bold text-slate-400 hover:text-slate-900" disabled={isPending}>
                                 Abort
                             </Button>
-                            <Button 
-                                type="submit" 
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 h-12 rounded-xl shadow-xl shadow-blue-600/20 transition-all active:scale-95 flex-1"
-                                disabled={isPending || isTenantLoading}
-                            >
-                                {isPending ? (
-                                    <span className="flex items-center gap-2">
-                                        <Loader2 className="h-4 w-4 animate-spin" /> DISPATCHING...
-                                    </span>
-                                ) : (
-                                    "Dispatch Invitation"
-                                )}
+                            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 h-12 rounded-xl shadow-xl transition-all active:scale-95 flex-1" disabled={isPending || isTenantLoading}>
+                                {isPending ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> DISPATCHING...</span> : "Dispatch Invitation"}
                             </Button>
                         </div>
                     </DialogFooter>

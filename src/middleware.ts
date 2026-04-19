@@ -241,12 +241,12 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-        // --- THE IDENTITY WELD ---
-        // Read the cookie set by the Sidebar/Switcher
+        // --- 1. SOVEREIGN IDENTITY HANDSHAKE ---
+        // We detect the target node via the secure identity cookie.
         const activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
         if (activeBizId) {
-            // Tell the database session which node we are visiting BEFORE fetching context
-            // This ensures Jimmy's 'Accountant' role is visible to the RPC below.
+            // We pre-inject the business ID into the database session.
+            // This ensures RLS (Row Level Security) is aligned BEFORE any data is fetched.
             await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
         }
     } else {
@@ -255,14 +255,25 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // FETCH MORPHED CONTEXT (This returns Jimmy as 'accountant' if switched to CAKE)
+    // --- 2. CONTEXT MORPHING ---
+    // Fetches the 'Accountant' or 'Architect' role based on the switched node.
     const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context');
 
+    // --- 3. IDENTITY RECOVERY PROTOCOL (THE FIX) ---
+    // If context is missing, it's likely a temporary sync lag during a node swap.
     if (contextError || !userContextData || userContextData.length === 0) {
-        // Safety: If the switch is broken, clear context and return to login instead of physical logout
-        const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
-        recoveryResponse.cookies.delete('bbu1_active_business_id');
-        return recoveryResponse;
+        // SAFETY: If we are already on the neutral dashboard and it STILL fails,
+        // then the session is truly invalid.
+        if (pathWithoutLocale === '/dashboard') {
+            const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
+            recoveryResponse.cookies.delete('bbu1_active_business_id');
+            return recoveryResponse;
+        }
+
+        // RECOVERY: Instead of logging out, we redirect to the generic dashboard.
+        // This forces a fresh middleware cycle, giving the Supabase session 
+        // time to fully synchronize with the database.
+        return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
     
     const userContext = userContextData[0];
@@ -286,10 +297,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // --- THE SOVEREIGN ROUTE WELD (NEW) ---
+    // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING) ---
     // If Jimmy switches to CAKE (Accountant) and the system lands him on /dashboard,
     // this logic forces the browser to jump to the correct landing spot (e.g., /finance/banking).
-    // This solves the issue where the dashboard doesn't update on switch.
+    // This ensures the Dashboard UI actually changes when the business changes.
     const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
     if (isGenericDashboard && defaultDashboard !== '/dashboard') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
@@ -311,19 +322,18 @@ export async function middleware(request: NextRequest) {
     // --- END OF LOGIC REORDERING ---
     // =================================================================================
 
-    // Standard role-based permission check
+    // --- 4. ACCESS CONTROL ENFORCEMENT ---
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // If the user's role has changed (e.g. Architect to Accountant) and they are on 
-        // a page they no longer have access to, send them to their new home.
+        // SECURITY SHIELD: If Jimmy attempts to stay on an Architect page after
+        // switching to an Accountant role, he is instantly redirected to safety.
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
-    // If all checks pass, allow the request to proceed.
     return response; 
 }
 
-// --- MATCHER (Touch-proof Configuration) ---
+// --- MATCHER ---
 export const config = {
   matcher: [
     '/((?!api|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
