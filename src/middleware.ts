@@ -239,6 +239,14 @@ export async function middleware(request: NextRequest) {
     await supabase.auth.getSession();
 
     const { data: { user } } = await supabase.auth.getUser();
+if (user) {
+        const activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
+        if (activeBizId) {
+            // This RPC sets the 'app.current_business_id' in the Postgres session
+            // ensuring RLS knows exactly which business data to show.
+            await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
+        }
+    }
     
  if (!user) {
         const isPublicPath = publicPaths.some(pp => 

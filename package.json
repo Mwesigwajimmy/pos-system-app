@@ -70,6 +70,7 @@
     "dexie": "^4.2.0",
     "dexie-react-hooks": "^4.2.0",
     "framer-motion": "^12.23.19",
+    "js-cookie": "^3.0.5",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "langchain": "^1.0.1",
@@ -117,6 +118,7 @@
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",
     "@types/deep-diff": "^1.0.5",
+    "@types/js-cookie": "^3.0.6",
     "@types/negotiator": "^0.6.4",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.16",
