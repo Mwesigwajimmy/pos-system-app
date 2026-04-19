@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
-import Cookies from 'js-cookie'; // --- FINAL UPGRADE: INJECTED COOKIE ENGINE ---
+import Cookies from 'js-cookie';
 
 const supabase = createClient();
 
@@ -26,66 +26,76 @@ export default function BusinessSwitcher() {
     const { branding, refreshBranding } = useBranding();
 
     // --- 1. SOVEREIGN MEMBERSHIP DISCOVERY ---
-    // Fetches every business ledger the user is authorized to access
+    // Fetches every business ledger the user is authorized to access.
+    // This uses the 'view_my_memberships' we optimized in the backend audit.
     const { data: memberships, isLoading } = useQuery({
         queryKey: ['my_business_memberships'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return [];
             
-            // Querying the verified membership view
             const { data, error } = await supabase
                 .from('view_my_memberships')
                 .select('*')
                 .eq('user_id', user.id);
                 
-            if (error) throw error;
+            if (error) {
+                console.error("MEMBERSHIP_FETCH_ERROR:", error);
+                return [];
+            }
             return data || [];
         }
     });
 
     // --- 2. THE IDENTITY WELD PROTOCOL ---
-    // This function executes the cross-business context swap
+    // This function executes the cross-business context swap automatically.
     const handleSwitch = async (bizId: string) => {
-        // Safety: Prevent redundant protocol execution
+        // Safety: Prevent redundant protocol execution if already on this business
         if (bizId === branding?.business_id) return; 
 
         const toastId = toast.loading("Executing Sovereign Identity Swap...");
         
         try {
             // STEP A: IDENTITY COOKIE INJECTION
-            // We set a hard cookie that the Middleware reads BEFORE the page loads.
-            // This is the secret to stopping the "Logout Loop" forever.
+            // The Middleware reads this cookie to maintain the session during the reload.
             Cookies.set('bbu1_active_business_id', bizId, { 
-                expires: 30, // Session persists for 30 days
+                expires: 30, 
                 path: '/',
                 sameSite: 'lax'
             });
 
             // STEP B: UPDATE AUTH METADATA
-            // We synchronize the user's permanent session data in Supabase Auth
+            // We update both 'business_id' and 'active_biz_id' to satisfy all RLS policy variants.
+            // This is what tells the backend to "Morph" Jimmy's role.
             const { error: authError } = await supabase.auth.updateUser({
-                data: { business_id: bizId }
+                data: { 
+                    business_id: bizId,
+                    active_biz_id: bizId 
+                }
             });
 
             if (authError) throw authError;
 
-            // STEP C: ATOMIC CACHE WIPE
-            // We purge all data from the previous business to prevent data leakage in the UI
+            // STEP C: SESSION REFRESH (CRITICAL UPGRADE)
+            // This forces Supabase to generate a new JWT (token) containing the updated metadata.
+            // Without this, the RLS might still see the old business ID for a split second.
+            await supabase.auth.refreshSession();
+
+            // STEP D: ATOMIC CACHE WIPE
+            // Clear React Query cache so data from the previous business doesn't leak into the new one.
             await queryClient.clear(); 
 
-            // STEP D: BROADCAST REFRESH
-            // Update the BrandingProvider context for immediate UI skinning
+            // STEP E: BROADCAST REFRESH
             refreshBranding();
 
             toast.success("Identity Swapped Successfully", { id: toastId });
 
-            // STEP E: NEURAL RELOAD
-            // A hard refresh is mandatory here to force the Middleware and the
-            // get_safe_tenant_id() SQL function to pick up the new session state.
+            // STEP F: NEURAL RELOAD
+            // We use window.location.href to force a full clean-state reload of the entire app.
+            // This ensures the new 'Accountant' or 'Architect' role is applied everywhere.
             setTimeout(() => {
-                window.location.reload(); 
-            }, 600);
+                window.location.href = '/dashboard'; 
+            }, 500);
 
         } catch (err: any) {
             console.error("IDENTITY_SWAP_CRITICAL_BREACH:", err);
@@ -131,7 +141,11 @@ export default function BusinessSwitcher() {
                 <DropdownMenuSeparator className="bg-slate-50 mx-2" />
                 
                 <div className="space-y-1 py-2 max-h-96 overflow-y-auto scrollbar-hide">
-                    {memberships?.map((biz) => (
+                    {isLoading ? (
+                        <div className="p-4 flex justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                        </div>
+                    ) : memberships?.map((biz) => (
                         <DropdownMenuItem 
                             key={biz.business_id} 
                             onClick={() => handleSwitch(biz.business_id)}
@@ -148,8 +162,12 @@ export default function BusinessSwitcher() {
                                 )}
                             </div>
                             <div className="flex-1 flex flex-col">
-                                <span className="text-sm font-black text-slate-800 uppercase tracking-tighter">{biz.business_name}</span>
-                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest">{biz.assigned_role}</span>
+                                <span className="text-sm font-black text-slate-800 uppercase tracking-tighter truncate w-40">
+                                    {biz.business_name}
+                                </span>
+                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest">
+                                    {biz.assigned_role}
+                                </span>
                             </div>
                             {branding?.business_id === biz.business_id && (
                                 <div className="h-6 w-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">

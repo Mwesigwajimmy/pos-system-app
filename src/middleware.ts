@@ -237,45 +237,40 @@ export async function middleware(request: NextRequest) {
     );
     
     await supabase.auth.getSession();
-
+// --- AUTH & IDENTITY WELD SECTION ---
     const { data: { user } } = await supabase.auth.getUser();
-if (user) {
+
+    if (user) {
+        // DETECT ACTIVE NODE: Read the cookie set by the BusinessSwitcher
         const activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
+        
         if (activeBizId) {
-            // This RPC sets the 'app.current_business_id' in the Postgres session
-            // ensuring RLS knows exactly which business data to show.
+            // SESSION INVERSION: Tell the database which business context to use for RLS
+            // This ensures Jimmy's 'Accountant' role is visible before the page renders.
             await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
         }
-    }
-    
- if (!user) {
+    } else {
+        // Public Path handling for unauthenticated users
         const isPublicPath = publicPaths.some(pp => 
             pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
         );
-
-        if (isPublicPath) {
-            return response; 
-        }
+        if (isPublicPath) return response;
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // If we have a user, fetch their context
+    // FETCH MORPHED CONTEXT: 
+    // This RPC will now return Jimmy as 'Architect' for NAK or 'Accountant' for CAKE
     const { data: userContextData, error } = await supabase.rpc('get_user_context');
 
     if (error || !userContextData || userContextData.length === 0) {
-        await supabase.auth.signOut();
-        const loginUrl = new URL(`/${localeInPath}/login`, request.url);
-        loginUrl.searchParams.set('error', 'security_lockdown_active');
-        return NextResponse.redirect(loginUrl);
+        // IDENTITY RECOVERY: If the switch failed, clear the cookie and try to return home 
+        // instead of a hard sign-out.
+        const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
+        recoveryResponse.cookies.delete('bbu1_active_business_id');
+        return recoveryResponse;
     }
     
     const userContext = userContextData[0];
-    if (!userContext) {
-        // This prevents the crash if the RPC returns no data
-        const loginUrl = new URL(`/${localeInPath}/login`, request.url);
-        loginUrl.searchParams.set('error', 'context_missing');
-        return NextResponse.redirect(loginUrl);
-    }
     const userRole = userContext.user_role || 'guest';
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;

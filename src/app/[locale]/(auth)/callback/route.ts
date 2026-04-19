@@ -3,45 +3,31 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-/**
- * This server-side route handles the OAuth callback from Supabase.
- * When a user signs in with a provider like Google, they are redirected here.
- * This route then exchanges the authorization code for a user session.
- */
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const { searchParams, origin } = requestUrl;
   const authCode = searchParams.get('code');
+  const next = searchParams.get('next') ?? '/dashboard'; // Default to dashboard for better flow
 
-  // Construct the URL for the error page.
-  // This approach allows us to pass a specific error message to the client
-  // without exposing internal details.
   const errorRedirectUrl = new URL('/auth/auth-error', origin);
 
   if (!authCode) {
-    // If no authorization code is provided, redirect to an error page.
-    // This can happen if the user manually navigates to this URL.
     errorRedirectUrl.searchParams.set('message', 'Invalid authentication request: No code provided.');
     return NextResponse.redirect(errorRedirectUrl);
   }
 
-  // Check for mandatory environment variables.
-  // This provides a clear server-side error if the project is misconfigured.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     errorRedirectUrl.searchParams.set('message', 'Server configuration error: Missing Supabase credentials.');
-    console.error('Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.');
     return NextResponse.redirect(errorRedirectUrl);
   }
 
   const cookieStore = cookies();
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
+      get(name: string) { return cookieStore.get(name)?.value; },
       set(name: string, value: string, options: CookieOptions) {
         cookieStore.set({ name, value, ...options });
       },
@@ -51,21 +37,29 @@ export async function GET(request: Request) {
     },
   });
 
-  // Exchange the authorization code for a user session.
-  const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+  // 1. EXCHANGE CODE FOR SESSION
+  const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(authCode);
 
-  if (error) {
-    // Log the detailed error on the server for debugging purposes.
-    console.error('Supabase Auth Error:', error.message);
-
-    // If the code exchange fails, redirect to the error page with a user-friendly message.
-    errorRedirectUrl.searchParams.set('message', 'Failed to authenticate. The link may have expired or been used already.');
+  if (sessionError) {
+    console.error('Supabase Auth Error:', sessionError.message);
+    errorRedirectUrl.searchParams.set('message', 'Authentication failed: ' + sessionError.message);
     return NextResponse.redirect(errorRedirectUrl);
   }
 
-  // On successful authentication, redirect the user to their intended page
-  // or the dashboard root. The "next" parameter allows for redirecting
-  // back to a specific page after login (e.g., a settings page).
-  const next = searchParams.get('next') ?? '/';
+  // 2. THE IDENTITY WELD: PRE-EMPTIVE CONTEXT RESOLUTION
+  // We fetch the user context IMMEDIATELY after login to determine 
+  // if they are an Owner, Accountant (like Jimmy), or Architect.
+  const { data: contextData } = await supabase.rpc('get_user_context');
+  
+  const userContext = contextData && contextData.length > 0 ? contextData[0] : null;
+
+  // 3. SECURE REDIRECT LOGIC
+  // If the user has not finished onboarding, force them to the welcome page
+  if (userContext && !userContext.setup_complete) {
+    return NextResponse.redirect(`${origin}/welcome`);
+  }
+
+  // If we are logging in an existing Jimmy-type user, we send them straight 
+  // to the dashboard so the Middleware can apply the role-based routing.
   return NextResponse.redirect(`${origin}${next}`);
 }

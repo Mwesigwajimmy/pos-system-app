@@ -662,89 +662,100 @@ export default function Sidebar() {
         </Accordion>
     );
 return (
-    <aside className={cn(
-        "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm",
-        isSidebarOpen ? "w-64" : "w-20"
-    )}>
-        {/* --- UPGRADED: IDENTITY SELECTOR PORTAL --- */}
-        <div className={cn(
-            "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white transition-all",
-            isSidebarOpen ? "h-20" : "h-16"
+        <aside className={cn(
+            "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm overflow-hidden",
+            isSidebarOpen ? "w-64" : "w-20"
         )}>
-            {isSidebarOpen ? (
-                /* PORTAL ACTIVE: Allows clicking to switch between businesses */
-                <div className="flex-1 animate-in fade-in slide-in-from-left-2 duration-500">
-                    <BusinessSwitcher />
-                </div>
-            ) : (
-                /* CLOSED VIEW: Shows a centered, professional identity anchor */
-                <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                    {branding?.logo_url ? (
-                        <img 
-                            src={branding.logo_url} 
-                            className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50" 
-                            alt="Logo" 
-                        />
-                    ) : (
-                        <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm">
-                            <Building2 size={20} />
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Sovereign Toggle System */}
-            <Button
-                onClick={toggleSidebar}
-                variant="ghost"
-                size="icon"
-                className={cn(
-                    "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2",
-                    !isSidebarOpen && "bg-blue-50 text-blue-600"
+            {/* --- IDENTITY SELECTOR PORTAL --- */}
+            <div className={cn(
+                "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white transition-all",
+                isSidebarOpen ? "h-20" : "h-16"
+            )}>
+                {isSidebarOpen ? (
+                    /* PORTAL ACTIVE: Allows clicking to switch between businesses automatically */
+                    <div className="flex-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                        <BusinessSwitcher />
+                    </div>
+                ) : (
+                    /* CLOSED VIEW: Shows a centered, professional identity anchor */
+                    <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
+                        {branding?.logo_url ? (
+                            <img 
+                                src={branding.logo_url} 
+                                className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50 p-0.5 bg-white" 
+                                alt="Active Node Logo" 
+                            />
+                        ) : (
+                            <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
+                                {branding?.legal_name?.charAt(0).toUpperCase() || <Building2 size={20} />}
+                            </div>
+                        )}
+                    </div>
                 )}
-            >
-                {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-            </Button>
-        </div>
 
-        {/* --- NAVIGATION SECTION --- */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
-            {isLoading ? (
-                <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">
-                    Synchronizing Menu...
-                </div>
-            ) : (
-                renderAccordionNav(finalNavItems)
-            )}
-        </nav>
-
-        {/* --- FOOTER ACTION SECTION --- */}
-        <div className="p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 bg-slate-50/50">
-            <Button 
-                variant="default" 
-                className={cn(
-                    "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition-all", 
-                    !isSidebarOpen && "justify-center px-0"
-                )} 
-                onClick={openCopilot}
-            >
-                <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                {isSidebarOpen && "AI Assistant"}
-            </Button>
-            
-            <Link href="/settings" className="block">
-                <Button 
-                    variant="ghost" 
+                {/* Sovereign Toggle System */}
+                <Button
+                    onClick={toggleSidebar}
+                    variant="ghost"
+                    size="icon"
                     className={cn(
-                        "w-full justify-start text-slate-500 font-semibold hover:bg-white hover:text-blue-600 transition-all", 
-                        !isSidebarOpen && "justify-center px-0"
+                        "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2",
+                        !isSidebarOpen && "bg-blue-50 text-blue-600"
                     )}
                 >
-                    <Settings className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                    {isSidebarOpen && "General Settings"}
+                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
-            </Link>
-        </div>
-    </aside>
-);
+            </div>
+
+            {/* --- NAVIGATION SECTION --- */}
+            {/* This section automatically updates menu items based on Jimmy's current role (Accountant vs Architect) */}
+            <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
+                {isLoading ? (
+                    <div className="p-4 flex flex-col items-center gap-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                        {isSidebarOpen && (
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">
+                                Synchronizing Menu...
+                            </span>
+                        )}
+                    </div>
+                ) : (
+                    <div className="animate-in fade-in duration-700">
+                        {renderAccordionNav(finalNavItems)}
+                    </div>
+                )}
+            </nav>
+
+            {/* --- FOOTER ACTION SECTION --- */}
+            <div className={cn(
+                "p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 transition-colors",
+                isSidebarOpen ? "bg-slate-50/50" : "bg-white"
+            )}>
+                <Button 
+                    variant="default" 
+                    className={cn(
+                        "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95", 
+                        !isSidebarOpen && "justify-center px-0 h-12 w-12 mx-auto rounded-xl"
+                    )} 
+                    onClick={openCopilot}
+                >
+                    <Sparkles className={cn("h-5 w-5 fill-white/20", isSidebarOpen && "mr-3")} />
+                    {isSidebarOpen && <span className="tracking-tight">AI Assistant</span>}
+                </Button>
+                
+                <Link href="/settings" className="block">
+                    <Button 
+                        variant="ghost" 
+                        className={cn(
+                            "w-full justify-start text-slate-500 font-bold hover:bg-white hover:text-blue-600 transition-all group", 
+                            !isSidebarOpen && "justify-center px-0 h-10 w-10 mx-auto rounded-xl"
+                        )}
+                    >
+                        <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && <span className="tracking-tight">General Settings</span>}
+                    </Button>
+                </Link>
+            </div>
+        </aside>
+    );
 }
