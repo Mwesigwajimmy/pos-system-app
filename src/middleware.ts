@@ -262,24 +262,23 @@ export async function middleware(request: NextRequest) {
 
     // --- 2. CONTEXT MORPHING (THE SECURE HANDOFF) ---
     // UPGRADE: We pass p_target_biz_id directly to the RPC. 
-    // This stops the 'Logical Ghosting' by forcing the DB to look at the target node's industry.
     const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context', {
         p_target_biz_id: activeBizId
     });
 
-    // --- 3. IDENTITY RECOVERY PROTOCOL (THE STABILITY WELD) ---
-    // This prevents the "Forced Logout" during high-speed identity swaps.
+    // --- 3. IDENTITY RECOVERY PROTOCOL (LOOP-PROOF STABILITY WELD) ---
+    // This prevents the "Too Many Redirects" error by detecting if we are already on the target.
     if (contextError || !userContextData || userContextData.length === 0) {
-        // If we are already on the generic dashboard and it STILL fails, the session is truly dead.
+        
+        // LOOP GUARD: If we are already on the generic dashboard and the RPC is still failing,
+        // it means the session is truly broken or the SQL function is missing.
         if (pathWithoutLocale === '/dashboard') {
             const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
             recoveryResponse.cookies.delete('bbu1_active_business_id');
             return recoveryResponse;
         }
 
-        // RECOVERY BUFFER: Instead of signing out, we redirect to /dashboard.
-        // This forces a new middleware cycle, allowing the database time 
-        // to fully synchronize the new session parameters.
+        // Instead of logging out, we try a single redirect to /dashboard to re-trigger a sync.
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
     
@@ -305,12 +304,13 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING JUMP) ---
+    // --- THE SOVEREIGN ROUTE WELD (AUTO-LANDING JUMP - LOOP PROOF) ---
     // This ensures that when Jimmy switches to 'Accountant' at CAKE, 
-    // he is physically moved from /dashboard to the Accountant's specific industry home.
+    // he is physically moved from /dashboard to the correct landing spot.
     const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
-    if (isGenericDashboard && defaultDashboard !== '/dashboard') {
-        // Forces the browser to jump to the correct industry-specific landing spot.
+    
+    if (isGenericDashboard && defaultDashboard !== '/dashboard' && pathWithoutLocale !== defaultDashboard) {
+        // LOOP GUARD: Only redirect if the target is different from where we are now
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
@@ -330,11 +330,16 @@ export async function middleware(request: NextRequest) {
     // --- END OF LOGIC REORDERING ---
     // =================================================================================
 
-    // --- 4. SECURITY ACCESS ENFORCEMENT ---
+    // --- 4. SECURITY ACCESS ENFORCEMENT (LOOP PROOF) ---
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // LOCKDOWN: If Jimmy was on an Architect page but switched to Accountant role,
-        // this block detects he is out of bounds and pushes him back to his authorized home.
+        
+        // LOOP GUARD: If the redirect destination is the SAME as the current path, 
+        // stop and allow the request to prevent a loop.
+        if (pathWithoutLocale === defaultDashboard) {
+            return response;
+        }
+
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
