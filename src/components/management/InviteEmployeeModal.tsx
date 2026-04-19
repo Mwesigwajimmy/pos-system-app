@@ -22,62 +22,48 @@ import {
     SelectTrigger, 
     SelectValue 
 } from "@/components/ui/select";
-import { Loader2, UserPlus, ShieldCheck } from 'lucide-react';
+import { Loader2, UserPlus, ShieldCheck, Fingerprint, Building2 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTenant } from '@/hooks/useTenant'; // --- IDENTITY WELD IMPORT ---
 
-// --- ENTERPRISE TYPES ---
-// Role is now a string because it is fetched dynamically from the database enum
+/**
+ * SOVEREIGN RECRUITMENT MODAL
+ * Handles the dispatch of authorized invitations to the active business node.
+ */
 export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const supabase = createClient();
     const queryClient = useQueryClient();
 
+    // Form State
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [role, setRole] = useState<string>('');
 
-    // --- 1. SOVEREIGN ROLE DISCOVERY ---
-    // Fetches the entire list of roles (Matatu Driver, Pharmacist, etc.) from the DB
+    // --- 1. CONTEXT RESOLUTION (THE WELD) ---
+    // This ensures we know exactly which business Jimmy is currently visiting (NAK or CAKE)
+    const { data: tenant, isLoading: isTenantLoading } = useTenant();
+    const activeBusinessId = tenant?.id;
+
+    // --- 2. SOVEREIGN ROLE DISCOVERY ---
+    // Fetches the 64+ system roles dynamically from your PostgreSQL Enum
     const { data: allRoles, isLoading: isLoadingRoles } = useQuery({
         queryKey: ['system_available_roles'],
         queryFn: async () => {
-            // This calls the helper function we created to read your 'user_role' enum
             const { data, error } = await supabase.rpc('get_enum_values', { 
                 enum_name: 'user_role' 
             });
             if (error) throw error;
             return data as string[];
         },
-        enabled: isOpen, // Only fetch when modal opens to save resources
+        enabled: isOpen,
     });
 
-    // --- 2. IDENTITY HANDSHAKE ---
-    // Get the business context of the inviter
-    const { data: profile } = useQuery({
-        queryKey: ['userProfileForInvite'],
-        queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return null;
-
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('business_id')
-                .eq('id', user.id)
-                .single();
-
-            if (error) {
-                toast.error("Security Context Failure", { description: "Could not resolve your business ID." });
-                return null;
-            }
-            return data;
-        },
-    });
-
-    // --- 3. DISPATCH MUTATION ---
+    // --- 3. RECRUITMENT MUTATION ---
     const { mutate: inviteEmployee, isPending } = useMutation({
         mutationFn: async () => {
-            // This calls the single intelligent API endpoint
-            const response = await fetch('/management/api/invite', { 
+            // We dispatch to our identity-aware API route
+            const response = await fetch('/api/management/invite', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -85,6 +71,8 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
                     fullName: fullName.trim(),
                     phoneNumber: phoneNumber.trim(),
                     role: role,
+                    // We explicitly pass the business context
+                    businessId: activeBusinessId 
                 }),
             });
 
@@ -96,96 +84,130 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
         },
         onSuccess: (message) => {
             toast.success("Invitation Sealed", { description: message });
-            // Invalidate queries to refresh staff lists immediately
-            queryClient.invalidateQueries({ queryKey: ['agentManagementData'] });
-            queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
+            
+            // Invalidate identity queries so the UI updates Jimmy's team list immediately
+            queryClient.invalidateQueries({ queryKey: ['allEmployees', activeBusinessId] });
+            queryClient.invalidateQueries({ queryKey: ['employees', activeBusinessId] });
             
             // Reset and Close
-            onClose();
             setFullName(''); 
             setEmail(''); 
             setPhoneNumber('');
             setRole('');
+            onClose();
         },
-        onError: (error) => {
+        onError: (error: any) => {
+            console.error("RECRUITMENT_BREACH:", error);
             toast.error(`Recruitment Breach`, { description: error.message });
         },
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!role) {
-            toast.error("Missing Role", { description: "Please assign an access level." });
+        
+        if (!activeBusinessId) {
+            toast.error("Security Breach", { description: "Active business node not resolved." });
             return;
         }
+
+        if (!role) {
+            toast.error("Missing Role", { description: "Please assign an authorized access level." });
+            return;
+        }
+
         inviteEmployee();
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl">
-                <DialogHeader className="space-y-3">
-                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-inner">
-                        <UserPlus size={24} />
+            <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl bg-white/95 backdrop-blur-xl">
+                <DialogHeader className="space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                            <UserPlus size={28} />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-2xl font-black tracking-tighter uppercase italic text-slate-900">
+                                Recruit Personnel
+                            </DialogTitle>
+                            <div className="flex items-center gap-1.5 text-blue-600 font-bold text-[10px] uppercase tracking-widest">
+                                <Building2 size={12} />
+                                Target Node: {tenant?.name || "Resolving..."}
+                            </div>
+                        </div>
                     </div>
-                    <DialogTitle className="text-2xl font-black tracking-tight uppercase italic">Invite Team Member</DialogTitle>
-                    <DialogDescription className="font-medium text-slate-500">
-                        Dispatch a secure activation link to the specified individual to join your sovereign business ledger.
+                    <DialogDescription className="font-medium text-slate-500 text-sm leading-relaxed">
+                        Dispatch an encrypted activation handshake to onboard new talent into this specific business ledger.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-5 py-4">
+                    {/* Full Name Field */}
                     <div className="space-y-2">
-                        <Label htmlFor="fullName" className="text-[10px] font-black uppercase text-slate-400 ml-1">Full Identity Name</Label>
+                        <Label htmlFor="fullName" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
+                            Full Identity Name
+                        </Label>
                         <Input 
                             id="fullName" 
                             value={fullName} 
                             onChange={(e) => setFullName(e.target.value)} 
                             placeholder="e.g., Samuel Okello" 
-                            className="h-12 font-bold rounded-xl border-slate-200"
+                            className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all"
                             required 
                         />
                     </div>
 
+                    {/* Email Field */}
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-[10px] font-black uppercase text-slate-400 ml-1">Corporate Email Address</Label>
+                        <Label htmlFor="email" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
+                            Verification Email
+                        </Label>
                         <Input 
                             id="email" 
                             type="email" 
                             value={email} 
                             onChange={(e) => setEmail(e.target.value)} 
-                            placeholder="e.g., employee@company.com" 
-                            className="h-12 font-bold rounded-xl border-slate-200"
+                            placeholder="e.g., identity@bbu1.com" 
+                            className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all"
                             required 
                         />
                     </div>
 
+                    {/* Phone Field */}
                     <div className="space-y-2">
-                        <Label htmlFor="phoneNumber" className="text-[10px] font-black uppercase text-slate-400 ml-1">Contact Phone (Optional)</Label>
+                        <Label htmlFor="phoneNumber" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
+                            Contact Number (Optional)
+                        </Label>
                         <Input 
                             id="phoneNumber" 
                             value={phoneNumber} 
                             onChange={(e) => setPhoneNumber(e.target.value)} 
-                            placeholder="e.g., 0771234567" 
-                            className="h-12 font-bold rounded-xl border-slate-200"
+                            placeholder="e.g., +256..." 
+                            className="h-12 font-bold rounded-xl bg-slate-50 border-none focus-visible:ring-2 focus-visible:ring-blue-600 transition-all"
                         />
                     </div>
 
+                    {/* Role Selection - Upgraded for Identity Switch */}
                     <div className="space-y-2">
-                        <Label htmlFor="role" className="text-[10px] font-black uppercase text-slate-400 ml-1">Authorized Access Role</Label>
+                        <Label htmlFor="role" className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-[0.15em]">
+                            Authorized System Role
+                        </Label>
                         <Select onValueChange={(value) => setRole(value)} value={role} required>
-                            <SelectTrigger id="role" className="h-12 font-black rounded-xl bg-slate-50 border-slate-200 text-sm">
-                                <SelectValue placeholder={isLoadingRoles ? "Synchronizing Roles..." : "Select industry role..."} />
+                            <SelectTrigger id="role" className="h-12 font-black rounded-xl bg-slate-900 text-white border-none shadow-lg focus:ring-2 focus:ring-blue-600">
+                                <SelectValue placeholder={isLoadingRoles ? "Synchronizing Matrix..." : "Assign Access Level..."} />
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl shadow-2xl border-none p-2">
-                                <ScrollArea className="h-[300px] w-full">
+                            <SelectContent className="rounded-2xl shadow-2xl border-none p-2 bg-white">
+                                <ScrollArea className="h-[280px] w-full pr-2">
                                     {allRoles?.map((r: string) => (
                                         <SelectItem 
                                             key={r} 
                                             value={r} 
-                                            className="font-bold capitalize py-3 rounded-lg focus:bg-blue-50 focus:text-blue-600 transition-all cursor-pointer"
+                                            className="font-bold capitalize py-3 rounded-xl focus:bg-blue-50 focus:text-blue-600 transition-all cursor-pointer m-1"
                                         >
-                                            {r.replace(/_/g, ' ')}
+                                            <div className="flex items-center gap-2">
+                                                <Fingerprint size={14} className="opacity-20" />
+                                                {r.replace(/_/g, ' ')}
+                                            </div>
                                         </SelectItem>
                                     ))}
                                 </ScrollArea>
@@ -193,30 +215,32 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
                         </Select>
                     </div>
 
-                    <DialogFooter className="pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <DialogFooter className="pt-8 border-t border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-3 text-[9px] font-black text-slate-300 uppercase tracking-widest leading-tight">
                             <ShieldCheck size={20} className="text-emerald-500" /> 
-                            Neural Handshake <br/> Secure Session
+                            Sovereign <br/> Handshake
                         </div>
                         <div className="flex gap-3 w-full sm:w-auto">
                             <Button 
                                 type="button" 
                                 variant="ghost" 
                                 onClick={onClose} 
-                                className="font-bold text-slate-400"
+                                className="font-bold text-slate-400 hover:text-slate-900"
                                 disabled={isPending}
                             >
-                                Cancel
+                                Abort
                             </Button>
                             <Button 
                                 type="submit" 
-                                className="bg-slate-900 hover:bg-blue-600 text-white font-black px-10 h-12 rounded-xl shadow-xl transition-all flex-1"
-                                disabled={isPending || !profile?.business_id}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 h-12 rounded-xl shadow-xl shadow-blue-600/20 transition-all active:scale-95 flex-1"
+                                disabled={isPending || isTenantLoading}
                             >
                                 {isPending ? (
-                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> DISPATCHING...</>
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" /> DISPATCHING...
+                                    </span>
                                 ) : (
-                                    "Send Invitation"
+                                    "Dispatch Invitation"
                                 )}
                             </Button>
                         </div>

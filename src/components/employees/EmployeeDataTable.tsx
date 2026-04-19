@@ -21,7 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react"; // Added for better UX
 import AddEmployeeDialog from './AddEmployeeDialog';
-import { useTenant } from '@/hooks/useTenant'; // --- IDENTITY WELD IMPORT ---
+import { useTenant } from '@/hooks/useTenant'; 
+
 
 interface DataTableProps<TData, TValue> { 
     columns: ColumnDef<TData, TValue>[]; 
