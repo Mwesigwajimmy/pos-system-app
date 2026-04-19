@@ -14,6 +14,7 @@ import {
 import { useBranding } from '@/components/core/BrandingProvider';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const supabase = createClient();
 
