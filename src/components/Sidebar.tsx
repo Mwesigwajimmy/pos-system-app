@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useBranding } from '@/components/core/BrandingProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 
 // --- MASTER ICON REGISTRY ---
 import {
@@ -512,6 +513,11 @@ const navSections: NavItem[] = [
         module: 'Management & Settings',
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
+{ 
+    href: '/settings/memberships', 
+    label: 'Linked Businesses', 
+    icon: Building2 
+},
             { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
             { href: '/settings/locations', label: 'Branch Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/locations', label: 'Location Mgmt', icon: Building2, roles: ['admin', 'owner'] },
@@ -660,63 +666,82 @@ return (
         "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm",
         isSidebarOpen ? "w-64" : "w-20"
     )}>
-        <div className="flex items-center justify-between h-20 border-b border-slate-100 px-4 flex-shrink-0 bg-white">
-            {isSidebarOpen && (
-                <div className="flex items-center gap-3 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
+        {/* --- UPGRADED: IDENTITY SELECTOR PORTAL --- */}
+        <div className={cn(
+            "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white transition-all",
+            isSidebarOpen ? "h-20" : "h-16"
+        )}>
+            {isSidebarOpen ? (
+                /* PORTAL ACTIVE: Allows clicking to switch between businesses */
+                <div className="flex-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                    <BusinessSwitcher />
+                </div>
+            ) : (
+                /* CLOSED VIEW: Shows a centered, professional identity anchor */
+                <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
                     {branding?.logo_url ? (
                         <img 
                             src={branding.logo_url} 
-                            className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-50" 
+                            className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50" 
                             alt="Logo" 
                         />
                     ) : (
-                        <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                        <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm">
                             <Building2 size={20} />
                         </div>
                     )}
-                    
-                    <div className="flex flex-col truncate">
-                        <span className="text-sm font-bold tracking-tight text-slate-900 truncate">
-                            {branding?.company_name_display || "Business Account"}
-                        </span>
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mt-0.5">
-                            Verified Profile
-                        </span>
-                    </div>
                 </div>
             )}
 
-            {/* Restored toggle logic to the single professional button */}
+            {/* Sovereign Toggle System */}
             <Button
                 onClick={toggleSidebar}
                 variant="ghost"
                 size="icon"
                 className={cn(
-                    "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl",
-                    !isSidebarOpen && "mx-auto bg-blue-50 text-blue-600"
+                    "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2",
+                    !isSidebarOpen && "bg-blue-50 text-blue-600"
                 )}
             >
                 {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
             </Button>
         </div>
 
+        {/* --- NAVIGATION SECTION --- */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
             {isLoading ? (
-                <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">Loading Menu...</div>
+                <div className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-widest animate-pulse">
+                    Synchronizing Menu...
+                </div>
             ) : (
                 renderAccordionNav(finalNavItems)
             )}
         </nav>
 
+        {/* --- FOOTER ACTION SECTION --- */}
         <div className="p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 bg-slate-50/50">
-            <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md", !isSidebarOpen && "justify-center px-0")} onClick={openCopilot}>
+            <Button 
+                variant="default" 
+                className={cn(
+                    "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition-all", 
+                    !isSidebarOpen && "justify-center px-0"
+                )} 
+                onClick={openCopilot}
+            >
                 <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
                 {isSidebarOpen && "AI Assistant"}
             </Button>
+            
             <Link href="/settings" className="block">
-                <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-semibold", !isSidebarOpen && "justify-center px-0")}>
+                <Button 
+                    variant="ghost" 
+                    className={cn(
+                        "w-full justify-start text-slate-500 font-semibold hover:bg-white hover:text-blue-600 transition-all", 
+                        !isSidebarOpen && "justify-center px-0"
+                    )}
+                >
                     <Settings className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                    {isSidebarOpen && "Settings"}
+                    {isSidebarOpen && "General Settings"}
                 </Button>
             </Link>
         </div>
