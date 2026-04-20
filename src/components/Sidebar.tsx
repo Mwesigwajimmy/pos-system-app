@@ -183,7 +183,7 @@ const navSections: NavItem[] = [
  { 
             href: '/inventory/raw-materials', 
             label: 'Raw Materials', 
-            icon: FlaskConical, // <--- THIS WAS MISSING AND CAUSED THE CRASH
+            icon: FlaskConical,
             businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale', 'Restaurant / Cafe'] 
         },
             { href: '/inventory/composites', label: 'Recipes', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution', 'Restaurant / Cafe'] }, 

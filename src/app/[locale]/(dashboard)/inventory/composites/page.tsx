@@ -27,7 +27,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// --- ENTERPRISE INTERFACES ---
+// --- INTERFACES ---
 
 interface Component {
   component_variant_id: number;
@@ -75,7 +75,6 @@ async function fetchComposites(): Promise<CompositeProduct[]> {
 }
 
 async function fetchRawMaterials(): Promise<RawMaterialOption[]> {
-    // CRITICAL SECURITY: Fetching only verified Raw Materials (is_raw_material = true)
     const { data, error } = await supabase
         .from('product_variants')
         .select('id, name, sku, cost_price, products(name), units_of_measure(name)')
@@ -124,7 +123,7 @@ async function processAssembly(payload: { p_composite_variant_id: number, p_quan
     if (error) throw error;
 }
 
-// --- SUB-COMPONENT: RECIPE FORM (Zero Hardcoding) ---
+// --- SUB-COMPONENT: RECIPE FORM ---
 
 function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: any) {
     const [name, setName] = useState(initialData?.name || '');
@@ -141,7 +140,7 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: any) 
         if (!material) return;
 
         if (components.some(c => c.component_variant_id === selectedVariantId)) {
-            toast.error("Item already in formula.");
+            toast.error("Material already added to recipe.");
             return;
         }
 
@@ -158,8 +157,8 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: any) 
     }, [components]);
 
     const handleSubmit = () => {
-        if (!name.trim()) return toast.error("Batch name required.");
-        if (components.length === 0) return toast.error("Attach at least one input material.");
+        if (!name.trim()) return toast.error("Product name is required.");
+        if (components.length === 0) return toast.error("Add at least one material to the recipe.");
         onSave({
             id: initialData?.id || null,
             name,
@@ -170,49 +169,49 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: any) 
     
     return (
         <div className="flex flex-col h-full bg-white">
-            <ScrollArea className="flex-1 max-h-[65vh] px-10 py-8">
-                <div className="space-y-10">
-                    {/* Identification Node */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+            <ScrollArea className="flex-1 px-8 py-8">
+                <div className="space-y-8">
+                    {/* Basic Details Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Manufacturing Asset Name</Label>
-                            <Input className="bg-white h-12 border-slate-100 font-black rounded-xl shadow-inner" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Industrial Soap Batch"/>
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Product Name</Label>
+                            <Input className="h-11 border-slate-200 font-semibold" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Standard Batch Juice"/>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sovereign SKU Mapping</Label>
-                            <Input className="bg-white font-mono uppercase h-12 border-slate-100 rounded-xl" value={sku} onChange={e => setSku(e.target.value)} placeholder="AUTO-GENERATE" />
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Product SKU / Code</Label>
+                            <Input className="h-11 border-slate-200 font-mono" value={sku} onChange={e => setSku(e.target.value)} placeholder="e.g. BATCH-001" />
                         </div>
                     </div>
 
-                    {/* Ingredient Sourcing Search */}
-                    <div className="space-y-4">
+                    {/* Material Selection Section */}
+                    <div className="space-y-3">
                         <div className="flex justify-between items-center">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Add Verified Input Materials</Label>
-                            <Badge variant="outline" className="text-[9px] font-black text-blue-600 bg-blue-50 border-blue-100 uppercase">Input Registry Active</Badge>
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Add Recipe Materials</Label>
+                            <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-600 border-blue-100 font-bold px-3">Inventory Sync Active</Badge>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex gap-3">
                             <div className="flex-1">
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-between h-14 border-slate-200 bg-white rounded-2xl font-bold shadow-sm">
-                                            {selectedVariantId ? rawMaterials?.find((v) => v.value === selectedVariantId)?.label : "Search for raw chemicals / flour..."}
-                                            <ChevronsUpDown className="ml-2 h-5 w-5 opacity-40" />
+                                        <Button variant="outline" className="w-full justify-between h-11 border-slate-200 bg-white font-medium text-slate-600">
+                                            {selectedVariantId ? rawMaterials?.find((v) => v.value === selectedVariantId)?.label : "Search materials..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[500px] p-0 shadow-2xl border-slate-100 rounded-[1.5rem] overflow-hidden" align="start">
+                                    <PopoverContent className="w-[400px] p-0 shadow-xl border-slate-200 rounded-xl" align="start">
                                         <Command>
-                                            <CommandInput placeholder="Search materials or SKU..." className="h-12" />
+                                            <CommandInput placeholder="Search materials or SKU..." />
                                             <CommandList>
-                                                <CommandEmpty className="p-6 text-xs font-black text-slate-300 uppercase tracking-widest text-center">No raw assets found.</CommandEmpty>
-                                                <ScrollArea className="h-72">
+                                                <CommandEmpty className="p-4 text-xs text-slate-400 text-center">No materials found.</CommandEmpty>
+                                                <ScrollArea className="h-64">
                                                     <CommandGroup>
                                                         {rawMaterials?.filter(v => !components.some(c => c.component_variant_id === v.value)).map((variant) => (
-                                                            <CommandItem key={variant.value} value={variant.label} onSelect={() => { setSelectedVariantId(variant.value); setOpen(false); }} className="p-4 border-b border-slate-50 last:border-0 cursor-pointer">
-                                                                <div className="flex flex-col flex-1">
-                                                                    <span className="font-black text-sm text-slate-900 tracking-tight">{variant.label}</span>
-                                                                    <span className="text-[10px] text-slate-400 font-black uppercase mt-1">Registry Cost: {variant.cost_price.toLocaleString()} UGX</span>
+                                                            <CommandItem key={variant.value} value={variant.label} onSelect={() => { setSelectedVariantId(variant.value); setOpen(false); }} className="p-3 border-b border-slate-50 cursor-pointer">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-semibold text-sm text-slate-900">{variant.label}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Landed Cost: {variant.cost_price.toLocaleString()} UGX</span>
                                                                 </div>
-                                                                <Check className={cn("ml-auto h-5 w-5 text-blue-600", selectedVariantId === variant.value ? "opacity-100" : "opacity-0")} />
+                                                                <Check className={cn("ml-auto h-4 w-4 text-blue-600", selectedVariantId === variant.value ? "opacity-100" : "opacity-0")} />
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
@@ -222,47 +221,50 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: any) 
                                     </PopoverContent>
                                 </Popover>
                             </div>
-                            <Button onClick={handleAddComponent} disabled={!selectedVariantId} className="h-14 px-10 font-black bg-slate-900 text-white rounded-2xl shadow-xl hover:bg-blue-600 transition-all uppercase text-[10px] tracking-widest">
-                                Append Ingredient
+                            <Button onClick={handleAddComponent} disabled={!selectedVariantId} className="bg-slate-900 hover:bg-blue-700 text-white font-bold h-11 px-6 shadow-md rounded-xl transition-all">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Material
                             </Button>
                         </div>
                     </div>
 
-                    {/* BOM Forensic Ledger */}
-                    <div className="border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
+                    {/* BOM Table */}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
                         <Table>
                             <TableHeader className="bg-slate-50">
                                 <TableRow className="border-none">
-                                    <TableHead className="text-[9px] font-black text-slate-400 uppercase h-14 px-8 tracking-widest">Component identity</TableHead>
-                                    <TableHead className="text-[9px] font-black text-slate-400 uppercase h-14 text-right tracking-widest">Landed unit cost</TableHead>
-                                    <TableHead className="text-[9px] font-black text-slate-400 uppercase h-14 text-center w-[160px] tracking-widest">Batch Qty</TableHead>
-                                    <TableHead className="text-[9px] font-black text-slate-400 uppercase h-14 text-right px-8 tracking-widest">Sub-total</TableHead>
+                                    <TableHead className="text-[11px] font-bold text-slate-500 uppercase h-12 px-6">Material Identity</TableHead>
+                                    <TableHead className="text-[11px] font-bold text-slate-500 uppercase h-12 text-right">Landed Cost</TableHead>
+                                    <TableHead className="text-[11px] font-bold text-slate-500 uppercase h-12 text-center w-[140px]">Quantity</TableHead>
+                                    <TableHead className="text-[11px] font-bold text-slate-500 uppercase h-12 text-right px-6">Sub-total</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {components.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="h-48 text-center text-slate-300 text-xs font-black uppercase tracking-[0.2em] italic">Formula Builder Idle. Add Input components.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-400 text-sm font-medium italic">Your recipe is currently empty.</TableCell></TableRow>
                                 ) : (
                                     components.map(comp => (
-                                        <TableRow key={comp.component_variant_id} className="hover:bg-blue-50/20 transition-all border-b border-slate-50 last:border-0 group">
-                                            <TableCell className="font-black text-slate-800 px-8 py-6 text-sm">{comp.component_name}</TableCell>
-                                            <TableCell className="text-right text-xs font-bold text-slate-500">{(comp.unit_cost || 0).toLocaleString()}</TableCell>
-                                            <TableCell className="px-6">
-                                                <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-100 p-2 shadow-inner">
+                                        <TableRow key={comp.component_variant_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0 h-20">
+                                            <TableCell className="font-bold text-slate-900 px-6 py-4">
+                                                {comp.component_name} <br/>
+                                                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">Verified Raw Input</span>
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs font-semibold text-slate-600">{(comp.unit_cost || 0).toLocaleString()} <span className="text-[10px] ml-1">UGX</span></TableCell>
+                                            <TableCell className="px-4">
+                                                <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200 p-1">
                                                     <Input 
                                                         type="number" 
                                                         step="0.0001" 
                                                         value={comp.quantity} 
                                                         onChange={e => setComponents(prev => prev.map(c => c.component_variant_id === comp.component_variant_id ? { ...c, quantity: Number(e.target.value) } : c))} 
-                                                        className="h-8 border-none text-center font-black text-sm p-0 focus-visible:ring-0 tabular-nums" 
+                                                        className="h-8 border-none bg-transparent text-center font-bold text-sm focus-visible:ring-0" 
                                                     />
-                                                    <span className="text-[10px] text-slate-300 font-black uppercase pr-1">{comp.uom_name || 'U'}</span>
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase pr-2">{comp.uom_name || 'U'}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right px-8">
-                                                <div className="flex items-center justify-end gap-6">
-                                                    <span className="font-black text-slate-900 text-base tabular-nums">{((comp.unit_cost || 0) * comp.quantity).toLocaleString()}</span>
-                                                    <Button variant="ghost" size="icon" onClick={() => setComponents(components.filter(i => i.component_variant_id !== comp.component_variant_id))} className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full">
+                                            <TableCell className="text-right px-6">
+                                                <div className="flex items-center justify-end gap-4">
+                                                    <span className="font-bold text-slate-900">{((comp.unit_cost || 0) * comp.quantity).toLocaleString()}</span>
+                                                    <Button variant="ghost" size="sm" onClick={() => setComponents(components.filter(i => i.component_variant_id !== comp.component_variant_id))} className="h-8 w-8 text-slate-300 hover:text-red-600 hover:bg-red-50 p-0 rounded-lg">
                                                         <Trash2 size={16} />
                                                     </Button>
                                                 </div>
@@ -276,21 +278,18 @@ function CompositeProductForm({ initialData, onSave, onCancel, isSaving }: any) 
                 </div>
             </ScrollArea>
 
-            {/* Forensic Footer Audit Summary */}
-            <div className="p-10 border-t bg-slate-900 rounded-b-[3rem] flex flex-col sm:flex-row justify-between items-center gap-8 text-white shadow-2xl relative overflow-hidden">
-                 <div className="absolute top-0 right-0 opacity-5 pointer-events-none">
-                    <TrendingUp size={200} />
-                 </div>
-                 <div className="text-center sm:text-left relative z-10">
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Audited Production Baseline</p>
-                    <div className="text-4xl font-black tabular-nums tracking-tighter mt-1">
-                        {currentProductionCost.toLocaleString()} <span className="text-sm font-bold opacity-30 uppercase">UGX / UNIT</span>
+            {/* Sticky Form Footer */}
+            <div className="p-8 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-6 rounded-b-3xl">
+                 <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Estimated Production Cost</p>
+                    <div className="text-3xl font-bold mt-1 text-slate-900 tracking-tight">
+                        {currentProductionCost.toLocaleString()} <span className="text-sm font-semibold text-slate-400 uppercase">UGX / Unit</span>
                     </div>
                  </div>
-                 <div className="flex gap-4 w-full sm:w-auto relative z-10">
-                    <Button variant="ghost" onClick={onCancel} className="flex-1 sm:flex-none text-slate-400 hover:text-white font-black uppercase text-[10px] tracking-widest">Discard Audit</Button>
-                    <Button onClick={handleSubmit} disabled={isSaving} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white h-14 px-12 font-black rounded-2xl shadow-xl uppercase text-xs tracking-widest transition-all">
-                        {isSaving ? <Loader2 className="animate-spin mr-3 h-5 w-5"/> : <Save className="mr-3 h-5 w-5"/>} Commit Formula
+                 <div className="flex gap-3 w-full sm:w-auto">
+                    <Button variant="outline" onClick={onCancel} className="flex-1 sm:flex-none border-slate-200 text-slate-600 font-bold">Discard Changes</Button>
+                    <Button onClick={handleSubmit} disabled={isSaving} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 px-8 shadow-md rounded-xl">
+                        {isSaving ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <Save className="mr-2 h-4 w-4"/>} Commit Recipe
                     </Button>
                  </div>
             </div>
@@ -323,17 +322,17 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
     const assemblyMutation = useMutation({
         mutationFn: processAssembly,
         onSuccess: () => {
-            toast.success(`Production Run Complete: ${quantity}x "${product.name}"`);
+            toast.success(`Successfully manufactured ${quantity} units of ${product.name}`);
             queryClient.invalidateQueries({ queryKey: ['composites'] });
             onClose();
         },
-        onError: (err: Error) => toast.error(`Production Failure: ${err.message}`)
+        onError: (err: Error) => toast.error(`Production Failed: ${err.message}`)
     });
     
     const canAssemble = recipe && recipe.components.every(c => (c.available_stock || 0) >= (c.quantity * quantity));
 
     const handleSubmit = () => {
-        if (!sourceLocationId) return toast.error("Select production site.");
+        if (!sourceLocationId) return toast.error("Please select a manufacturing location.");
         assemblyMutation.mutate({
             p_composite_variant_id: product.id,
             p_quantity_to_assemble: quantity,
@@ -343,46 +342,46 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-3xl border-none shadow-2xl rounded-[2.5rem] overflow-hidden p-0 bg-white">
-                <div className="bg-slate-900 p-10 text-white">
-                    <div className="flex items-center gap-6">
-                        <div className="h-16 w-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Hammer className="text-white" size={32} />
+            <DialogContent className="sm:max-w-3xl border-none shadow-2xl rounded-3xl overflow-hidden p-0 bg-white">
+                <div className="bg-slate-900 p-8 text-white">
+                    <div className="flex items-center gap-5">
+                        <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <Hammer className="text-white h-7 w-7" />
                         </div>
-                        <div className="space-y-1">
-                            <DialogTitle className="text-2xl font-black tracking-tighter">Execute Assembly</DialogTitle>
-                            <DialogDescription className="text-slate-400 text-xs font-bold uppercase tracking-widest">Synthesizing raw materials into: {product.name}</DialogDescription>
+                        <div>
+                            <DialogTitle className="text-2xl font-bold tracking-tight">Execute Manufacturing Run</DialogTitle>
+                            <DialogDescription className="text-slate-400 font-medium text-xs mt-1 uppercase tracking-wider">Processing formula for: {product.name}</DialogDescription>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-10 space-y-10 bg-white max-h-[70vh] overflow-y-auto scrollbar-hide">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                <div className="p-8 space-y-8 bg-white max-h-[60vh] overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Yield Quantity</Label>
-                            <Input type="number" step="0.01" className="h-12 bg-white font-black text-lg border-slate-100 rounded-xl" value={quantity} onChange={e => setQuantity(Number(e.target.value))} />
+                            <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Yield Quantity</Label>
+                            <Input type="number" step="0.01" className="h-11 bg-white border-slate-200 font-bold text-lg focus:ring-blue-500" value={quantity} onChange={e => setQuantity(Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Production Node</Label>
+                            <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Production Site</Label>
                             <Select onValueChange={setSourceLocationId}>
-                                <SelectTrigger className="h-12 bg-white font-black border-slate-100 rounded-xl">
-                                    <div className="flex items-center gap-3"><Globe size={16} className="text-blue-500"/><SelectValue placeholder="Identify Branch..." /></div>
+                                <SelectTrigger className="h-11 bg-white border-slate-200 font-semibold">
+                                    <SelectValue placeholder="Select Branch..." />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-2xl shadow-2xl">
-                                    {locations?.map(l => <SelectItem key={l.value} value={l.value} className="font-bold">{l.label}</SelectItem>)}
+                                <SelectContent>
+                                    {locations?.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
 
                     {recipe && (
-                        <div className="border border-slate-100 rounded-[2rem] overflow-hidden bg-white shadow-inner">
+                        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                             <Table>
-                                <TableHeader className="bg-slate-50">
+                                <TableHeader className="bg-slate-50/50">
                                     <TableRow className="border-none">
-                                        <TableHead className="text-[9px] font-black uppercase text-slate-400 pl-8 h-14 tracking-widest">Input Material</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase text-slate-400 text-center h-14 tracking-widest">Net Required</TableHead>
-                                        <TableHead className="text-[9px] font-black uppercase text-slate-400 text-right pr-8 h-14 tracking-widest">Site Inventory</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-slate-500 pl-6 h-12">Required Input</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-12">Needed Qty</TableHead>
+                                        <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-right pr-6 h-12">Available Stock</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -391,13 +390,13 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
                                         const available = c.available_stock || 0;
                                         const hasEnough = available >= required;
                                         return (
-                                            <TableRow key={c.component_variant_id} className={cn("border-b border-slate-50 last:border-0", !hasEnough && 'bg-red-50/50')}>
-                                                <TableCell className="pl-8 font-black text-sm text-slate-900">{c.component_name}</TableCell>
-                                                <TableCell className="text-center font-black text-slate-700 text-sm tabular-nums">{required.toFixed(3)}</TableCell>
-                                                <TableCell className="text-right pr-8">
+                                            <TableRow key={c.component_variant_id} className={cn("border-b border-slate-100 last:border-0 h-16", !hasEnough && 'bg-red-50/50')}>
+                                                <TableCell className="pl-6 font-bold text-slate-900 text-sm">{c.component_name}</TableCell>
+                                                <TableCell className="text-center font-bold text-slate-700">{required.toFixed(3)}</TableCell>
+                                                <TableCell className="text-right pr-6">
                                                     {hasEnough 
-                                                        ? <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-emerald-100 font-black px-4 py-1 rounded-full text-[9px] uppercase tracking-widest">Verified ({available.toFixed(1)})</Badge> 
-                                                        : <Badge className="bg-red-50 text-red-600 border-red-100 font-black px-4 py-1 rounded-full text-[9px] uppercase tracking-widest">Shortage ({available.toFixed(1)})</Badge>
+                                                        ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 shadow-none px-3 font-bold text-[10px] uppercase">Sufficient ({available.toFixed(1)})</Badge> 
+                                                        : <Badge className="bg-red-50 text-red-700 border-red-100 shadow-none px-3 font-bold text-[10px] uppercase">Shortage ({available.toFixed(1)})</Badge>
                                                     }
                                                 </TableCell>
                                             </TableRow>
@@ -409,14 +408,15 @@ function AssemblyDialog({ product, onClose }: { product: CompositeProduct; onClo
                     )}
                 </div>
 
-                <div className="bg-slate-50 p-10 flex justify-end items-center border-t border-slate-100 gap-6">
-                    <Button variant="ghost" onClick={onClose} className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Abort Run</Button>
+                <div className="bg-slate-50 p-8 flex justify-end items-center border-t border-slate-100 gap-4">
+                    <Button variant="outline" onClick={onClose} className="font-bold border-slate-200 text-slate-500">Cancel</Button>
                     <Button 
                         onClick={handleSubmit} 
                         disabled={!canAssemble || assemblyMutation.isPending || !sourceLocationId} 
-                        className="bg-blue-600 hover:bg-slate-900 text-white h-16 px-16 font-black rounded-2xl shadow-[0_20px_50px_rgba(37,_99,_235,_0.3)] transition-all uppercase text-xs tracking-widest"
+                        className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-10 font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all uppercase tracking-wide"
                     >
-                        {assemblyMutation.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Authorize Production"}
+                        {assemblyMutation.isPending ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />} 
+                        Confirm Production
                     </Button>
                 </div>
             </DialogContent>
@@ -444,129 +444,130 @@ export default function CompositesView() {
     const upsertMutation = useMutation({
         mutationFn: upsertComposite,
         onSuccess: () => {
-            toast.success("Formula secured in ledger");
+            toast.success("Recipe configuration saved");
             queryClient.invalidateQueries({ queryKey: ['composites'] });
             setFormOpen(false);
         },
-        onError: (err: Error) => toast.error(`Registry Error: ${err.message}`),
+        onError: (err: Error) => toast.error(`Database Error: ${err.message}`),
     });
 
     const deleteMutation = useMutation({
         mutationFn: deleteComposite,
         onSuccess: () => {
-            toast.success("BOM record expunged");
+            toast.success("Recipe successfully removed");
             queryClient.invalidateQueries({ queryKey: ['composites'] });
             setDeleteConfirmOpen(false);
         }
     });
 
     return (
-        <div className="flex-1 space-y-12 p-8 md:p-12 animate-in fade-in duration-1000 pb-32">
+        <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 animate-in fade-in duration-700">
             
-            {/* Enterprise Control Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10 border-b border-slate-200 pb-12">
-                <div className="flex items-center gap-8">
-                    <div className="p-4 bg-slate-900 rounded-[1.5rem] shadow-2xl text-white">
-                        <Beaker className="w-10 h-10" />
+            {/* Header Section */}
+            <div className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                    <div className="p-3.5 bg-slate-900 rounded-2xl shadow-xl text-white">
+                        <Beaker className="w-7 h-7" />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-black tracking-tighter text-slate-900 uppercase">Recipe Management</h1>
-                        <p className="text-sm text-slate-400 font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-3">
-                           <ShieldCheck size={18} className="text-emerald-500" /> Forensic Manufacturing Protocol v10.2
-                        </p>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Recipe & Formula Registry</h1>
+                        <div className="flex items-center gap-2 mt-1">
+                           <ShieldCheck size={14} className="text-emerald-500" /> 
+                           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">BBU1 Manufacturing Standard Verified</span>
+                        </div>
                     </div>
                 </div>
-                <Button onClick={() => { setSelectedProduct(null); setFormOpen(true); }} className="h-16 px-12 bg-blue-600 hover:bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(37,_99,_235,_0.3)] rounded-3xl transition-all gap-4">
-                    <PlusCircle size={20} /> New Production Formula
+                <Button onClick={() => { setSelectedProduct(null); setFormOpen(true); }} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 shadow-lg shadow-blue-600/20 rounded-xl">
+                    <PlusCircle className="mr-2 h-4 w-4" /> New Formula
                 </Button>
             </div>
 
-            {/* Context Insights */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Insight Overview Nodes */}
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                 {[
-                   { label: 'Input Filtering', icon: <Database size={20}/>, color: 'text-blue-500', desc: 'Raw materials are strictly isolated from general retail stock for zero contamination.' },
-                   { label: 'Precision Costing', icon: <TrendingUp size={20}/>, color: 'text-emerald-500', desc: 'High-precision decimal calculations for pharmacological or chemical compounding.' },
-                   { label: 'Audit Trail', icon: <ShieldCheck size={20}/>, color: 'text-indigo-500', desc: 'Perpetual ledger deduction and forensic logs active on every assembly action.' }
+                   { label: 'Raw Material Isolation', icon: <Database size={18}/>, color: 'text-blue-500', bg: 'bg-blue-50', desc: 'Raw chemicals and inputs are logically separated from general inventory for precise tracking.' },
+                   { label: 'Dynamic Costing', icon: <TrendingUp size={18}/>, color: 'text-emerald-500', bg: 'bg-emerald-50', desc: 'Landed production costs are calculated in real-time based on latest procurement vendor data.' },
+                   { label: 'Perpetual Sync', icon: <ShieldCheck size={18}/>, color: 'text-indigo-500', bg: 'bg-indigo-50', desc: 'Inventory levels are automatically deducted across all sub-components upon production finalization.' }
                 ].map((node, i) => (
-                    <Card key={i} className="border-none shadow-xl bg-white p-8 rounded-[2.5rem] group hover:-translate-y-2 transition-all duration-700">
-                        <div className={cn("h-14 w-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-8 shadow-inner", node.color)}>
+                    <Card key={i} className="border-slate-200 shadow-sm bg-white p-6 rounded-2xl">
+                        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center mb-4", node.bg, node.color)}>
                             {node.icon}
                         </div>
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 mb-3">{node.label}</h4>
-                        <p className="text-xs text-slate-500 leading-loose font-bold opacity-70 italic">{node.desc}</p>
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-slate-900 mb-2">{node.label}</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">{node.desc}</p>
                     </Card>
                 ))}
             </div>
 
-            {/* Recipe Registry Ledger */}
-            <Card className="border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] rounded-[3.5rem] overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50/50 border-b p-12 flex flex-col sm:flex-row justify-between items-center gap-8">
+            {/* Main Registry Ledger */}
+            <Card className="max-w-7xl mx-auto border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <CardTitle className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Product Formula Ledger</CardTitle>
-                        <CardDescription className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Authenticated Batch Nodes: {composites?.length || 0}</CardDescription>
+                        <CardTitle className="text-lg font-bold text-slate-900 uppercase tracking-tight">Formula Registry Ledger</CardTitle>
+                        <CardDescription className="text-xs font-medium text-slate-400 mt-1">Verified recipes currently active in the production cycle: {composites?.length || 0}</CardDescription>
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-600 font-black border-emerald-100 border-2 py-2 px-8 rounded-full text-[10px] uppercase tracking-widest animate-in zoom-in">
-                       Live Node Synchronization
-                    </Badge>
+                    <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-50 border border-slate-100 rounded-full">
+                       <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Live Database Sync Active</span>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader className="bg-slate-50">
                                 <TableRow className="border-none">
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-400 pl-12 h-16 tracking-widest">Asset Profile</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-400 h-16 tracking-widest text-center">BOM Analysis</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-400 h-16 text-right tracking-widest">Production cost</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase text-slate-400 h-16 text-right tracking-widest">Ready stock</TableHead>
-                                    <TableHead className="text-right pr-12 font-black text-[10px] uppercase text-slate-400 h-16 tracking-widest">Control</TableHead>
+                                    <TableHead className="font-bold text-[11px] uppercase text-slate-500 pl-8 h-14">Product Profile</TableHead>
+                                    <TableHead className="font-bold text-[11px] uppercase text-slate-500 h-14 text-center">BOM Analysis</TableHead>
+                                    <TableHead className="font-bold text-[11px] uppercase text-slate-500 h-14 text-right">Production Cost</TableHead>
+                                    <TableHead className="font-bold text-[11px] uppercase text-slate-500 h-14 text-right">Available Stock</TableHead>
+                                    <TableHead className="text-right pr-8 font-bold text-[11px] uppercase text-slate-500 h-14">Operations</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
-                                    <TableRow><TableCell colSpan={5} className="h-64 text-center text-slate-300 font-black text-xs uppercase animate-pulse tracking-[0.5em]">Scanning Formula Vault...</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={5} className="h-64 text-center py-20 text-slate-400 text-sm font-medium italic">Syncing formula records...</TableCell></TableRow>
                                 ) : (
                                     composites?.map(product => (
-                                        <TableRow key={product.id} className="hover:bg-blue-50/20 transition-all border-b border-slate-50 last:border-0 group h-24">
-                                            <TableCell className="pl-12 py-6">
+                                        <TableRow key={product.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0 h-20">
+                                            <TableCell className="pl-8">
                                                 <div className="flex flex-col">
-                                                    <span className="font-black text-slate-900 text-base uppercase tracking-tight">{product.name}</span>
-                                                    <span className="text-[10px] font-mono text-slate-400 uppercase font-black mt-1">ID: {product.sku || '-'}</span>
+                                                    <span className="font-bold text-slate-900 text-base">{product.name}</span>
+                                                    <span className="text-[10px] font-mono text-slate-400 font-bold uppercase mt-0.5">{product.sku || 'NO SKU'}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                <div className="inline-flex items-center gap-3 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100 shadow-inner">
-                                                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                                                    <span className="font-black text-[10px] text-slate-600 uppercase tracking-widest">{product.total_components} Inputs</span>
-                                                </div>
+                                                <Badge className="bg-blue-50 text-blue-700 border-blue-100 font-bold shadow-none px-3 py-1">
+                                                    {product.total_components} Materials
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <span className="font-black text-slate-900 text-base tabular-nums">{(product.total_production_cost || 0).toLocaleString()}</span>
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">UGX Base</span>
+                                                    <span className="font-bold text-slate-900 tabular-nums">{(product.total_production_cost || 0).toLocaleString()}</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">UGX Base</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Badge variant="outline" className="font-mono font-black text-sm text-slate-700 border-slate-200 bg-white px-4 py-2 rounded-xl shadow-sm">
+                                                <Badge variant="outline" className="font-mono font-bold text-sm text-slate-700 border-slate-200 bg-white px-4 py-1.5 rounded-xl">
                                                     {product.current_stock.toLocaleString()}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-right pr-12">
+                                            <TableCell className="text-right pr-8">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="rounded-2xl h-12 w-12 hover:bg-white shadow-sm transition-all border border-slate-50">
-                                                            <MoreHorizontal size={24} className="text-slate-400" />
+                                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-slate-900">
+                                                            <MoreHorizontal size={20} />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-64 shadow-2xl border-none p-4 rounded-[1.5rem] bg-white">
-                                                        <DropdownMenuItem className="p-4 font-black text-[10px] uppercase tracking-widest cursor-pointer rounded-xl mb-2 flex items-center gap-4 hover:bg-orange-50 hover:text-orange-600 transition-colors" onClick={() => { setSelectedProduct(product); setAssemblyDialogOpen(true); }}>
-                                                            <Hammer className="h-5 w-5"/> Deploy assembly run
+                                                    <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border-slate-200 bg-white">
+                                                        <DropdownMenuItem className="p-3 font-bold text-xs uppercase cursor-pointer rounded-lg text-slate-600 focus:bg-orange-50 focus:text-orange-700 transition-colors" onClick={() => { setSelectedProduct(product); setAssemblyDialogOpen(true); }}>
+                                                            <Hammer className="mr-3 h-4 w-4 opacity-70"/> Run Production
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem className="p-4 font-black text-[10px] uppercase tracking-widest cursor-pointer rounded-xl mb-2 flex items-center gap-4 hover:bg-blue-50 hover:text-blue-600 transition-colors" onClick={() => { setSelectedProduct(product); setFormOpen(true); }}>
-                                                            <Edit className="h-5 w-5"/> Modify formula dna
+                                                        <DropdownMenuItem className="p-3 font-bold text-xs uppercase cursor-pointer rounded-lg text-slate-600 focus:bg-slate-50 transition-colors" onClick={() => { setSelectedProduct(product); setFormOpen(true); }}>
+                                                            <Edit className="mr-3 h-4 w-4 opacity-70"/> Modify Recipe
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-slate-50 my-2" />
-                                                        <DropdownMenuItem className="p-4 font-black text-[10px] uppercase tracking-widest text-red-600 cursor-pointer rounded-xl flex items-center gap-4 hover:bg-red-50 transition-colors" onClick={() => { setSelectedProduct(product); setDeleteConfirmOpen(true); }}>
-                                                            <Trash2 className="h-5 w-5"/> Expunge ledger record
+                                                        <DropdownMenuSeparator className="bg-slate-100 my-1" />
+                                                        <DropdownMenuItem className="p-3 font-bold text-xs uppercase cursor-pointer rounded-lg text-red-600 focus:bg-red-50 focus:text-red-700 transition-colors" onClick={() => { setSelectedProduct(product); setDeleteConfirmOpen(true); }}>
+                                                            <Trash2 className="mr-3 h-4 w-4 opacity-70"/> Expunge Recipe
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -580,27 +581,24 @@ export default function CompositesView() {
                 </CardContent>
             </Card>
 
-            {/* Recipe Builder Modal Terminal */}
+            {/* Recipe Configuration Dialog */}
             <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-                <DialogContent className="max-w-[1250px] h-[95vh] border-none shadow-2xl rounded-[3.5rem] overflow-hidden p-0 bg-white flex flex-col">
-                    <div className="bg-slate-900 p-12 text-white flex justify-between items-center shrink-0">
-                        <div className="flex items-center gap-8">
-                            <div className="h-20 w-20 bg-blue-600 rounded-[2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(37,_99,_235,_0.3)]">
-                                <Beaker className="text-white w-10 h-10" />
+                <DialogContent className="max-w-5xl h-[90vh] border-none shadow-2xl rounded-3xl overflow-hidden p-0 bg-white flex flex-col">
+                    <div className="bg-slate-900 p-8 text-white">
+                        <div className="flex items-center gap-6">
+                            <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <Beaker className="text-white w-7 h-7" />
                             </div>
                             <div>
-                                <h2 className="text-4xl font-black tracking-tighter">Formula Engineering Node</h2>
-                                <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.5em] mt-2 flex items-center gap-3">
-                                   <ShieldAlert size={14} className="text-blue-400" /> Sovereign Architecture • Data Encrypted
-                                </p>
+                                <h2 className="text-2xl font-bold tracking-tight">Recipe Configuration Terminal</h2>
+                                <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mt-1">Sovereign Architecture • Manufacturing Node v10.4</p>
                             </div>
                         </div>
-                        <Badge className="bg-blue-600 text-white font-black border-none px-8 py-3 text-[10px] tracking-[0.2em] uppercase rounded-full shadow-lg">Secure Interface Node</Badge>
                     </div>
                     {isLoadingDetails ? (
-                        <div className="flex-1 flex flex-col items-center justify-center bg-white gap-8">
-                            <Loader2 className="h-16 w-16 animate-spin text-blue-600" />
-                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.6em] animate-pulse">Decrypting Batch Configurations...</p>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-white space-y-4">
+                            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing recipe logic...</p>
                         </div>
                     ) : (
                         <CompositeProductForm 
@@ -617,33 +615,35 @@ export default function CompositesView() {
                 <AssemblyDialog product={selectedProduct} onClose={() => setAssemblyDialogOpen(false)} />
             )}
 
-            {/* DELETE ALERT TERMINAL */}
+            {/* DELETE ALERT DIALOG */}
             <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl bg-white p-0 overflow-hidden">
-                    <div className="bg-red-600 p-12 text-white text-center">
-                        <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-8 backdrop-blur-xl border border-white/20">
-                           <AlertTriangle size={32} className="text-white" />
+                <AlertDialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden max-w-md">
+                    <div className="bg-red-50 p-8 flex flex-col items-center text-center">
+                        <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                            <AlertTriangle className="h-6 w-6 text-red-600" />
                         </div>
-                        <AlertDialogTitle className="text-3xl font-black tracking-tighter uppercase">Expunge Recipe Ledger?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-red-100 text-sm font-bold leading-loose mt-4 px-10 opacity-80 uppercase tracking-widest">
-                            Warning: Removal of formula for <span className="underline italic">"{selectedProduct?.name}"</span> is irreversible. 
-                            Active manufacturing cycles will be terminated.
+                        <AlertDialogTitle className="text-xl font-bold text-red-900">Expunge Recipe Record?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-red-700 font-medium mt-2">
+                            Warning: Deleting the recipe for <span className="font-bold underline">"{selectedProduct?.name}"</span> is irreversible. 
+                            This formula will be removed from the manufacturing registry.
                         </AlertDialogDescription>
                     </div>
-                    <AlertDialogFooter className="bg-slate-50 p-10 flex justify-center gap-6 border-t border-slate-100">
-                        <AlertDialogCancel className="font-black text-[10px] uppercase tracking-[0.3em] border-none bg-transparent text-slate-400 hover:text-slate-900 transition-all">Cancel Request</AlertDialogCancel>
-                        <AlertDialogAction className="bg-red-600 hover:bg-slate-900 text-white font-black px-12 h-14 rounded-2xl shadow-xl text-[10px] uppercase tracking-[0.3em] transition-all" onClick={() => deleteMutation.mutate(selectedProduct!.id)}>
-                            {deleteMutation.isPending ? <Loader2 className="animate-spin h-4 w-4"/> : "Confirm Expunge"}
+                    <AlertDialogFooter className="p-6 bg-white flex justify-center gap-3">
+                        <AlertDialogCancel className="font-bold border-slate-200 h-11 px-6 rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white font-bold h-11 px-6 rounded-xl shadow-lg shadow-red-600/20 transition-all" onClick={() => deleteMutation.mutate(selectedProduct!.id)}>
+                           {deleteMutation.isPending ? <Loader2 className="animate-spin h-4 w-4"/> : "Confirm Expunge"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Final System Verification Node */}
-            <div className="text-center pb-20 opacity-40">
-                <div className="inline-flex items-center gap-5 px-10 py-4 bg-white rounded-full shadow-sm border border-slate-100">
+            {/* Page Footer Status */}
+            <div className="max-w-7xl mx-auto mt-12 flex items-center justify-center">
+                <div className="inline-flex items-center gap-3 px-6 py-2.5 bg-white border border-slate-200 rounded-full shadow-sm">
                     <ShieldCheck size={16} className="text-emerald-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 italic">Global Architecture Infrastructure Node • Version 10.4.2 Verified</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 italic">
+                        Infrastructure Node v10.4.2 Verified • Production Protocols Active
+                    </span>
                 </div>
             </div>
         </div>

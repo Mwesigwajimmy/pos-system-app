@@ -18,7 +18,12 @@ import {
     Beaker,
     Search,
     AlertCircle,
-    ShieldCheck
+    ShieldCheck,
+    Plus,
+    Save,
+    ArrowRight,
+    PieChart,
+    Layers
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -41,8 +46,8 @@ interface ProductOption {
     price: number; 
     cost_price: number;
     uom_name?: string;
-    is_raw_material: boolean; // CRITICAL: Added for filtering
-    is_composite: boolean;    // CRITICAL: Added for filtering
+    is_raw_material: boolean; 
+    is_composite: boolean;    
 }
 
 interface Ingredient { 
@@ -60,7 +65,6 @@ const supabase = createClient();
 // --- DATA ACCESS ---
 
 async function fetchAllVariants(): Promise<ProductOption[]> {
-    // We fetch the flags so we can filter locally without multiple network requests
     const { data, error } = await supabase
         .from('product_variants')
         .select('id, name, sku, price, cost_price, is_raw_material, is_composite, products(name), units_of_measure(name)')
@@ -120,36 +124,36 @@ const ProductCombobox = ({ options, value, onChange, placeholder, disabled, empt
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between h-12 border-slate-200 bg-white rounded-xl shadow-sm hover:bg-slate-50 transition-all" disabled={disabled}>
-                    {value ? <span className="font-bold text-slate-900">{value.label}</span> : <span className="text-slate-400 font-medium">{placeholder}</span>}
+                <Button variant="outline" role="combobox" className="w-full justify-between h-11 border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all font-medium text-slate-700" disabled={disabled}>
+                    {value ? <span className="font-bold text-slate-900">{value.label}</span> : <span className="text-slate-400">{placeholder}</span>}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[500px] p-0 shadow-2xl border-slate-100 rounded-2xl overflow-hidden" align="start">
+            <PopoverContent className="w-[450px] p-0 shadow-2xl border-slate-200 rounded-xl overflow-hidden" align="start">
                 <Command>
-                    <CommandInput placeholder="Search system registry..." className="h-12" />
+                    <CommandInput placeholder="Search inventory..." className="h-11" />
                     <CommandList>
                         <CommandEmpty className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">{emptyLabel}</CommandEmpty>
-                        <ScrollArea className="h-[400px]">
+                        <ScrollArea className="h-80">
                             <CommandGroup>
                                 {options.map((option: ProductOption) => (
                                     <CommandItem 
                                         key={option.value} 
                                         value={option.label}
                                         onSelect={() => { onChange(option); setOpen(false); }}
-                                        className="p-4 border-b border-slate-50 last:border-0 cursor-pointer"
+                                        className="p-3 border-b border-slate-50 last:border-0 cursor-pointer"
                                     >
                                         <div className="flex flex-col flex-1">
                                             <div className="flex items-center justify-between">
-                                                <span className="font-black text-sm text-slate-900 tracking-tight">{option.label}</span>
-                                                <Badge variant="outline" className="text-[9px] font-mono font-black text-blue-600 bg-blue-50 border-blue-100 uppercase">{option.sku}</Badge>
+                                                <span className="font-bold text-sm text-slate-900">{option.label}</span>
+                                                <span className="text-[10px] font-mono font-bold text-slate-400">{option.sku}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 mt-2">
-                                                <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Base Cost: {option.cost_price.toLocaleString()} UGX</span>
-                                                {option.uom_name && <Badge className="text-[9px] font-black px-2 h-4 bg-slate-900 text-white rounded">{option.uom_name}</Badge>}
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Cost: {option.cost_price.toLocaleString()} UGX</span>
+                                                {option.uom_name && <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-bold uppercase bg-slate-50">{option.uom_name}</Badge>}
                                             </div>
                                         </div>
-                                        <Check className={cn("ml-4 h-5 w-5 text-emerald-500", value?.value === option.value ? "opacity-100" : "opacity-0")} />
+                                        <Check className={cn("ml-2 h-4 w-4 text-emerald-500", value?.value === option.value ? "opacity-100" : "opacity-0")} />
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
@@ -173,7 +177,6 @@ export default function CompositeBuilder() {
 
     const { data: allVariants, isLoading: isLoadingVariants } = useQuery({ queryKey: ['allVariants'], queryFn: fetchAllVariants });
     
-    // 1. DATA FILTERING (The "Smooth" Logic)
     const compositeOptions = useMemo(() => allVariants?.filter(v => v.is_composite) || [], [allVariants]);
     const rawMaterialOptions = useMemo(() => {
         if (!allVariants) return [];
@@ -203,11 +206,11 @@ export default function CompositeBuilder() {
     const mutation = useMutation({
         mutationFn: saveRecipe,
         onSuccess: () => {
-            toast.success("Formula secured in database");
+            toast.success("Formula saved successfully");
             queryClient.invalidateQueries({ queryKey: ['recipe', selectedComposite?.value] });
             setIsDirty(false);
         },
-        onError: (error) => toast.error(`Sync Failure: ${error.message}`),
+        onError: (error) => toast.error(`Error: ${error.message}`),
     });
 
     const totalProductionCost = useMemo(() => {
@@ -245,109 +248,137 @@ export default function CompositeBuilder() {
         });
     };
 
-    if (isLoadingVariants) return <div className="p-20 text-center font-black text-slate-400 animate-pulse"><Loader2 className="animate-spin inline mr-3" />COLLECTING SOVEREIGN ASSETS...</div>;
+    if (isLoadingVariants) return (
+        <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Initializing Sovereign Assets...</p>
+        </div>
+    );
 
     return (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 pb-12 animate-in fade-in duration-700">
+        <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 animate-in fade-in duration-700">
             
-            {/* BUILDER AREA */}
-            <div className="xl:col-span-8 space-y-8">
-                <Card className="border-none shadow-2xl rounded-[2rem] bg-white overflow-hidden">
-                    <CardHeader className="bg-slate-900 border-b p-10 text-white">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-5">
-                                <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                    <Beaker className="text-white h-8 w-8" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-2xl font-black tracking-tighter">Formula Engineering</CardTitle>
-                                    <CardDescription className="text-blue-400 font-black text-[10px] uppercase tracking-[0.3em] mt-1">
-                                        BOM Construction & Real-Time Cost Analysis
-                                    </CardDescription>
-                                </div>
-                            </div>
+            {/* PAGE HEADER */}
+            <div className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                    <div className="p-3.5 bg-slate-900 rounded-2xl shadow-xl text-white">
+                        <Layers className="w-7 h-7" />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Bill of Materials (BOM)</h1>
+                        <div className="flex items-center gap-2 mt-1">
+                           <ShieldCheck size={14} className="text-emerald-500" /> 
+                           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Manufacturing Logic Sync Verified</span>
                         </div>
-                    </CardHeader>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button 
+                        onClick={handleSave} 
+                        disabled={!isDirty || mutation.isPending || !selectedComposite}
+                        className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 shadow-lg shadow-blue-600/20 rounded-xl"
+                    >
+                        {mutation.isPending ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />} 
+                        Commit Formula
+                    </Button>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-12 gap-8">
+                
+                {/* BUILDER AREA */}
+                <div className="xl:col-span-8 space-y-8">
                     
-                    <CardContent className="p-10 md:p-12 space-y-12">
-                        {/* TARGET PRODUCT SELECTION */}
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">1. Select Manufacturing Target</Label>
+                    {/* TARGET SELECTION */}
+                    <Card className="border-slate-200 shadow-sm bg-white overflow-hidden rounded-3xl">
+                        <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8">
+                            <div className="flex items-center gap-3">
+                                <Package className="h-5 w-5 text-blue-600" />
+                                <CardTitle className="text-lg font-bold">Select Manufacturing Target</CardTitle>
+                            </div>
+                            <CardDescription>Pick a composite item from your registry to configure its recipe.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-8">
                             <ProductCombobox 
                                 options={compositeOptions} 
                                 value={selectedComposite} 
                                 onChange={(val: any) => isDirty ? setPendingComposite(val) : setSelectedComposite(val)} 
-                                placeholder="Pick a composite/manufactured item..." 
-                                emptyLabel="No manufactured items found in registry."
+                                placeholder="Search manufactured products..." 
                             />
-                        </div>
+                        </CardContent>
+                    </Card>
 
-                        {/* INGREDIENT BUILDER */}
-                        <div className={cn("space-y-10 transition-all duration-500", !selectedComposite ? "opacity-20 grayscale pointer-events-none" : "opacity-100")}>
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">2. Sourced Raw Materials & Chemicals</Label>
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <ProductCombobox 
-                                            options={rawMaterialOptions} 
-                                            value={selectedIngredient} 
-                                            onChange={setSelectedIngredient} 
-                                            placeholder="Search verified raw materials..." 
-                                            emptyLabel="No raw materials flagged in system."
-                                        />
-                                    </div>
-                                    <Button onClick={handleAddIngredient} disabled={!selectedIngredient} className="bg-slate-900 hover:bg-blue-600 text-white h-12 px-10 font-black uppercase text-[10px] tracking-widest shadow-xl rounded-xl transition-all">
-                                        Append Input
-                                    </Button>
+                    {/* RECIPE BUILDER */}
+                    <Card className={cn("border-slate-200 shadow-sm bg-white overflow-hidden rounded-3xl transition-all duration-500", !selectedComposite ? "opacity-30 grayscale pointer-events-none" : "opacity-100")}>
+                        <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <Beaker className="h-5 w-5 text-blue-600" />
+                                    <CardTitle className="text-lg font-bold">Formula Construction</CardTitle>
                                 </div>
+                                <CardDescription>Search and add raw materials to the manufacturing formula.</CardDescription>
                             </div>
-
-                            <div className="border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm bg-slate-50/30">
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                <div className="flex-1 md:w-80">
+                                    <ProductCombobox 
+                                        options={rawMaterialOptions} 
+                                        value={selectedIngredient} 
+                                        onChange={setSelectedIngredient} 
+                                        placeholder="Add raw materials..." 
+                                    />
+                                </div>
+                                <Button onClick={handleAddIngredient} disabled={!selectedIngredient} className="bg-slate-900 hover:bg-blue-600 text-white h-11 px-6 font-bold shadow-md rounded-xl transition-all">
+                                    <Plus className="h-4 w-4 mr-2" /> Add
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
                                 <Table>
-                                    <TableHeader className="bg-slate-50">
+                                    <TableHeader className="bg-slate-50/50">
                                         <TableRow className="border-none">
-                                            <TableHead className="text-[9px] font-black uppercase text-slate-400 h-14 px-8 tracking-widest">Component Identity</TableHead>
-                                            <TableHead className="text-[9px] font-black uppercase text-slate-400 h-14 text-right px-8 tracking-widest">Base Cost</TableHead>
-                                            <TableHead className="text-[9px] font-black uppercase text-slate-400 h-14 text-center w-[180px] px-8 tracking-widest">Recipe Qty</TableHead>
-                                            <TableHead className="text-[9px] font-black uppercase text-slate-400 h-14 text-right px-10 tracking-widest">Sub-total</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-500 h-14 pl-8">Material Identity</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-500 h-14 text-right">Landed Cost</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-500 h-14 text-center w-[160px]">Formula Qty</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-500 h-14 text-right pr-8">Sub-total</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {ingredients.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="h-40 text-center text-slate-300 text-xs font-black uppercase tracking-widest">
-                                                    Empty Formula Ledger.
+                                                <TableCell colSpan={4} className="h-40 text-center text-slate-400 text-sm font-medium italic">
+                                                    No ingredients added yet. Search above to begin.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
                                             ingredients.map((ing, idx) => (
-                                                <TableRow key={ing.variant_id} className="border-b border-slate-50 last:border-0 hover:bg-white transition-all group">
-                                                    <TableCell className="px-8 py-6">
-                                                        <div className="font-black text-slate-900 text-sm tracking-tight">{ing.name}</div>
-                                                        <div className="flex gap-2 mt-1">
-                                                           <Badge variant="outline" className="text-[9px] font-black uppercase bg-white border-slate-200">Sourced</Badge>
-                                                           {ing.uom_name && <span className="text-[9px] text-blue-600 font-black uppercase tracking-tighter self-center">{ing.uom_name}</span>}
+                                                <TableRow key={ing.variant_id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors h-20">
+                                                    <TableCell className="pl-8">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-900">{ing.name}</span>
+                                                            <span className="text-[10px] font-bold text-blue-600 uppercase mt-0.5">{ing.uom_name || 'Units'} Verified</span>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs font-bold text-slate-400 px-8">
-                                                        {ing.unit_cost.toLocaleString()}
+                                                    <TableCell className="text-right text-xs font-semibold text-slate-500">
+                                                        {ing.unit_cost.toLocaleString()} <span className="text-[9px] ml-1">UGX</span>
                                                     </TableCell>
-                                                    <TableCell className="px-8">
-                                                        <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-3 py-1.5 shadow-inner">
+                                                    <TableCell className="px-4">
+                                                        <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
                                                             <Input 
                                                                 type="number" 
                                                                 step="0.0001" 
                                                                 value={ing.quantity_used} 
                                                                 onChange={e => handleUpdateQuantity(idx, Number(e.target.value))} 
-                                                                className="h-8 border-none text-center font-black text-sm p-0 focus-visible:ring-0 tabular-nums" 
+                                                                className="h-8 border-none text-center font-bold text-sm focus-visible:ring-0" 
                                                             />
-                                                            <span className="text-[10px] text-slate-300 font-black uppercase">{ing.uom_name || 'U'}</span>
+                                                            <span className="text-[10px] text-slate-400 font-bold uppercase pr-2">{ing.uom_name || 'U'}</span>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right px-10">
-                                                        <div className="flex items-center justify-end gap-6">
-                                                            <span className="font-black text-slate-900 text-base tabular-nums">{(ing.unit_cost * ing.quantity_used).toLocaleString()}</span>
-                                                            <Button variant="ghost" size="icon" onClick={() => { setIngredients(ingredients.filter(i => i.variant_id !== ing.variant_id)); setIsDirty(true); }} className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
+                                                    <TableCell className="text-right pr-8">
+                                                        <div className="flex items-center justify-end gap-5">
+                                                            <span className="font-bold text-slate-900">{(ing.unit_cost * ing.quantity_used).toLocaleString()}</span>
+                                                            <Button variant="ghost" size="sm" onClick={() => { setIngredients(ingredients.filter(i => i.variant_id !== ing.variant_id)); setIsDirty(true); }} className="h-8 w-8 text-slate-300 hover:text-red-600 hover:bg-red-50 p-0 rounded-lg">
                                                                 <Trash2 size={16} />
                                                             </Button>
                                                         </div>
@@ -358,115 +389,102 @@ export default function CompositeBuilder() {
                                     </TableBody>
                                 </Table>
                             </div>
-                        </div>
-                    </CardContent>
-                    
-                    <CardFooter className="bg-slate-50 p-10 flex flex-col sm:flex-row justify-between items-center gap-6 border-t border-slate-100">
-                        <div className="flex items-center gap-4 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                            <ShieldCheck className="text-emerald-500 w-5 h-5" />
-                            Data Integrity Verified
-                        </div>
-                        <Button 
-                            onClick={handleSave} 
-                            disabled={!isDirty || mutation.isPending || !selectedComposite}
-                            className="bg-blue-600 hover:bg-slate-900 text-white font-black h-14 px-20 shadow-2xl rounded-2xl transition-all uppercase text-xs tracking-widest w-full sm:w-auto"
-                        >
-                            {mutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Commit Formula"}
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-            {/* ANALYTICS SIDEBAR */}
-            <div className="xl:col-span-4 space-y-8">
-                
-                {/* FINANCIAL ENGINE PANEL */}
-                <Card className="bg-slate-900 text-white border-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] rounded-[2.5rem] overflow-hidden group">
-                    <CardHeader className="pb-4 border-b border-white/5 p-10">
-                        <CardTitle className="text-[10px] font-black uppercase text-blue-400 flex items-center gap-3 tracking-[0.3em]">
-                           <TrendingUp size={16}/> Forensic Costing
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-10 space-y-10">
-                        <div>
-                            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Aggregated Material Cost</p>
-                            <div className="text-5xl font-black text-white mt-3 tabular-nums tracking-tighter">
-                                {totalProductionCost.toLocaleString()} <span className="text-sm font-bold opacity-30">UGX</span>
+                {/* ANALYTICS SIDEBAR */}
+                <div className="xl:col-span-4 space-y-8">
+                    
+                    {/* COST ANALYSIS PANEL */}
+                    <Card className="bg-slate-900 text-white border-none shadow-xl rounded-3xl overflow-hidden">
+                        <CardHeader className="pb-4 border-b border-white/10 p-8">
+                            <CardTitle className="text-[11px] font-bold uppercase text-blue-400 flex items-center gap-3 tracking-widest">
+                               <TrendingUp size={16}/> Financial Analysis
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-8">
+                            <div>
+                                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wide">Total Material Cost</p>
+                                <div className="text-4xl font-bold text-white mt-2 tracking-tight">
+                                    {totalProductionCost.toLocaleString()} <span className="text-sm font-semibold text-slate-500 uppercase ml-1">UGX</span>
+                                </div>
                             </div>
+                            
+                            {selectedComposite && (
+                                <div className="space-y-6 pt-8 border-t border-white/10">
+                                    <div className="flex justify-between items-end">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Market Retail Price</p>
+                                            <p className="text-xl font-bold text-blue-300">{selectedComposite.price.toLocaleString()}</p>
+                                        </div>
+                                        <div className="text-right space-y-1">
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wide">Gross Margin</p>
+                                            <p className={cn("text-2xl font-bold", (selectedComposite.price - totalProductionCost) > 0 ? "text-emerald-400" : "text-red-400")}>
+                                                {(( (selectedComposite.price - totalProductionCost) / (selectedComposite.price || 1) ) * 100).toFixed(1)}%
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                         <div 
+                                            className="h-full bg-blue-500 transition-all duration-1000" 
+                                            style={{ width: `${Math.min(100, Math.max(0, (totalProductionCost / (selectedComposite.price || 1)) * 100))}%` }} 
+                                         />
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* SYSTEM INSIGHTS */}
+                    <Card className="border-slate-200 shadow-sm bg-white rounded-3xl p-8 space-y-6">
+                        <div className="flex items-center gap-4 border-b border-slate-50 pb-5">
+                            <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
+                                 <Info size={18}/>
+                            </div>
+                            <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Logic Node Info</h5>
                         </div>
                         
-                        {selectedComposite && (
-                            <div className="space-y-6 pt-10 border-t border-white/10">
-                                <div className="flex justify-between items-end">
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Retail Target</p>
-                                        <p className="text-xl font-black text-blue-300 tabular-nums">{selectedComposite.price.toLocaleString()}</p>
-                                    </div>
-                                    <div className="text-right space-y-1">
-                                        <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Gross Margin</p>
-                                        <p className={cn("text-2xl font-black tabular-nums", (selectedComposite.price - totalProductionCost) > 0 ? "text-emerald-400" : "text-red-400")}>
-                                            {(( (selectedComposite.price - totalProductionCost) / (selectedComposite.price || 1) ) * 100).toFixed(1)}%
-                                        </p>
-                                    </div>
+                        <div className="space-y-5">
+                            <div className="flex gap-4 items-start">
+                                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 mt-0.5">
+                                    <Utensils size={14} />
                                 </div>
-                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                     <div 
-                                        className="h-full bg-blue-500 transition-all duration-1000" 
-                                        style={{ width: `${Math.min(100, Math.max(0, (totalProductionCost / (selectedComposite.price || 1)) * 100))}%` }} 
-                                     />
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                    Materials are automatically deducted from stock upon production finalization.
+                                </p>
+                            </div>
+                            <div className="flex gap-4 items-start">
+                                 <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+                                    <Calculator size={14} />
                                 </div>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                    Landed costs are calculated based on the latest procurement vendor receipts.
+                                </p>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                        </div>
+                    </Card>
 
-                {/* LOGIC REPOSITORY INFO */}
-                <Card className="border-none shadow-xl bg-white rounded-[2rem] p-8 space-y-8">
-                    <div className="flex items-center gap-4 border-b border-slate-50 pb-6">
-                        <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
-                             <Info size={18}/>
-                        </div>
-                        <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Architecture Node</h5>
+                    <div className="text-[10px] text-slate-400 text-center font-bold uppercase tracking-widest px-6 leading-relaxed opacity-60">
+                        Formula versions are archived in the forensic audit ledger.
                     </div>
-                    
-                    <div className="space-y-6">
-                        <div className="flex gap-5 items-start">
-                            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 mt-1">
-                                <Utensils size={14} />
-                            </div>
-                            <p className="text-xs text-slate-600 leading-loose font-bold italic">
-                                Perpetual Inventory Control: Materials are live-deducted upon manufacturing finalization.
-                            </p>
-                        </div>
-                        <div className="flex gap-5 items-start">
-                             <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-1">
-                                <Beaker size={14} />
-                            </div>
-                            <p className="text-xs text-slate-600 leading-loose font-bold italic">
-                                High-Precision Engine: Formula logic supports 4-decimal points for chemical dosing accuracy.
-                            </p>
-                        </div>
-                    </div>
-                </Card>
-
-                <div className="text-[9px] text-slate-400 text-center uppercase tracking-[0.4em] font-black px-10 leading-relaxed">
-                    All formula changes are timestamped and isolated in the forensic audit log.
                 </div>
             </div>
 
-            {/* DISCARD ALERT */}
+            {/* DISCARD DIALOG */}
             <AlertDialog open={!!pendingComposite} onOpenChange={() => setPendingComposite(null)}>
-                <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-                    <div className="bg-red-600 p-10 text-white">
-                        <AlertDialogTitle className="text-2xl font-black tracking-tighter">Discard Formula Progress?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-red-100 font-bold opacity-80 mt-2">
-                            Unsaved configuration detected. Moving to a new target will permanently delete this session's progress.
+                <AlertDialogContent className="rounded-3xl border-none shadow-2xl overflow-hidden p-0 max-w-md">
+                    <div className="bg-red-50 p-8 flex flex-col items-center text-center">
+                        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                        <AlertDialogTitle className="text-xl font-bold text-red-900">Discard Changes?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-red-700 font-medium mt-2">
+                            You have unsaved formula changes. Switching products now will permanently lose your progress.
                         </AlertDialogDescription>
                     </div>
-                    <AlertDialogFooter className="bg-slate-50 p-8 border-t">
-                        <AlertDialogCancel className="font-black text-[10px] uppercase tracking-widest border-none">Resume Audit</AlertDialogCancel>
-                        <AlertDialogAction className="bg-red-600 hover:bg-slate-900 text-white font-black px-10 h-12 rounded-xl text-[10px] uppercase tracking-widest transition-all" onClick={() => { setSelectedComposite(pendingComposite); setPendingComposite(null); setIsDirty(false); }}>
-                            Discard Changes
+                    <AlertDialogFooter className="p-6 bg-white flex items-center justify-center gap-3">
+                        <AlertDialogCancel className="font-bold border-slate-200 h-11 px-6 rounded-xl">Keep Editing</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white font-bold h-11 px-6 rounded-xl shadow-lg shadow-red-600/20" onClick={() => { setSelectedComposite(pendingComposite); setPendingComposite(null); setIsDirty(false); }}>
+                            Discard Anyway
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

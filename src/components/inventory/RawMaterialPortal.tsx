@@ -8,7 +8,7 @@ import {
   Trash2, Search, History, FileDown, 
   AlertTriangle, CheckCircle2, Loader2, Database, 
   Table as TableIcon, Layers, FileText, X, Globe,
-  ArrowDownToLine, Filter, Settings, Calculator
+  ArrowDownToLine, Filter, Settings, Calculator, Plus, Download
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { jsPDF } from "jspdf";
@@ -34,7 +34,7 @@ export default function RawMaterialPortal() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   
-  // Enterprise Onboarding Form (Zero Hardcoding)
+  // Enterprise Onboarding Form
   const [form, setForm] = useState({
     name: '', sku: '', type: 'Solid', quality: 'Standard', 
     price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: ''
@@ -53,15 +53,15 @@ export default function RawMaterialPortal() {
     }
   });
 
-  const businessCurrency = profile?.reporting_currency || 'USD';
-  const businessName = profile?.business_name || 'Enterprise Sovereign';
+  const businessCurrency = profile?.reporting_currency || 'UGX';
+  const businessName = profile?.business_name || 'Business Manager';
 
-  // --- 2. CORE DATA QUERIES (Linked Architecture) ---
+  // --- 2. CORE DATA QUERIES ---
   const { data: materials, isLoading } = useQuery({
     queryKey: ['raw_materials_ledger'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('raw_material_registry') // Integrated SQL View
+        .from('raw_material_registry')
         .select('*');
       if (error) throw error;
       return data;
@@ -84,12 +84,11 @@ export default function RawMaterialPortal() {
     }
   });
 
-  // --- 3. THE AUTOMATED LEDGER SYNC (Onboarding) ---
+  // --- 3. LOGIC HANDLERS ---
   const handleOnboard = async () => {
-    if (!form.name || !form.uom_id) return toast.error("Audit Failure: Identity and Measurement required.");
+    if (!form.name || !form.uom_id) return toast.error("Required fields missing: Name and Unit.");
     setLoading(true);
     try {
-      // SYSTEMATIC WELD: RPC handles Product + Variant + Stock + GL Entry in one atomic operation
       const { error } = await supabase.rpc('fn_onboard_new_tenant_accounting', {
         p_name: form.name,
         p_sku: form.sku,
@@ -99,38 +98,36 @@ export default function RawMaterialPortal() {
         p_initial_qty: form.qty,
         p_uom_id: parseInt(form.uom_id),
         p_vendor_id: form.supplier_id || null,
-        p_currency: businessCurrency // Multi-currency dynamic link
+        p_currency: businessCurrency
       });
 
       if (error) throw error;
 
-      toast.success("Assets Synced to Sovereign Ledger");
+      toast.success("Material added to inventory");
       setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '' });
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     } catch (e: any) {
-      toast.error(`Sync Failure: ${e.message}`);
+      toast.error(`Error: ${e.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- 4. FORENSIC LOSS LOGGING (Shrinkage Control) ---
   const logShrinkage = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.rpc('process_stock_adjustment_v2', {
         p_variant_id: adjustData.variant_id,
         p_qty_change: -Math.abs(adjustData.qty),
-        p_reason: `Manual Asset Adjustment: ${adjustData.reason}`
+        p_reason: `Manual Adjustment: ${adjustData.reason}`
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Shrinkage Logged. Perpetual Ledger Balanced.");
+      toast.success("Stock adjustment processed");
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     }
   });
 
-  // --- 5. ENTERPRISE REPORTING (jsPDF Professional) ---
   const downloadForensicReport = (format: 'PDF' | 'EXCEL') => {
     if (format === 'EXCEL') {
         const headers = "Material,SKU,Type,Quality,Stock,Unit,UnitValue,TotalValue\n";
@@ -139,297 +136,270 @@ export default function RawMaterialPortal() {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${businessName.replace(/\s/g, '_')}_Material_Valuation.csv`;
+        link.download = `Inventory_Valuation.csv`;
         link.click();
         return;
     }
 
-    // Professional jsPDF Integration
     const doc = new jsPDF();
-    const timestamp = new Date().toLocaleString();
-
-    // DYNAMIC BRANDING HEADER
-    doc.setFillColor(15, 23, 42); // Slate-900
-    doc.rect(0, 0, 210, 45, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.text(businessName.toUpperCase(), 15, 25);
-    
-    doc.setFontSize(9);
-    doc.setTextColor(59, 130, 246);
-    doc.text("FORENSIC INVENTORY VALUATION CERTIFICATE • MRP v10.4.2", 15, 35);
-
-    // REPORT METADATA
-    doc.setTextColor(100, 116, 139);
-    doc.setFontSize(8);
-    doc.text(`Generated: ${timestamp}`, 15, 55);
-    doc.text(`Reporting Currency: ${businessCurrency}`, 15, 60);
-
-    const tableData = materials?.map(m => [
-        m.product_name,
-        m.sku,
-        m.material_type,
-        m.quality_grade,
-        `${m.current_stock} ${m.unit}`,
-        `${m.buying_price.toLocaleString()} ${businessCurrency}`,
-        `${(m.current_stock * m.buying_price).toLocaleString()} ${businessCurrency}`
-    ]);
-
     (doc as any).autoTable({
-        startY: 70,
-        head: [['Material Identity', 'SKU', 'Type', 'Grade', 'Current Stock', 'Landed Cost', 'Net Value']],
-        body: tableData,
-        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-        bodyStyles: { fontSize: 8, textColor: [51, 65, 85] },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        margin: { left: 15, right: 15 }
+        startY: 20,
+        head: [['Material', 'SKU', 'Stock', 'Value']],
+        body: materials?.map(m => [m.product_name, m.sku, `${m.current_stock} ${m.unit}`, `${m.buying_price} ${businessCurrency}`]),
     });
-
-    const totalVal = materials?.reduce((sum, m) => sum + (m.current_stock * m.buying_price), 0);
-    const finalY = (doc as any).lastAutoTable.finalY + 20;
-
-    doc.setFillColor(241, 245, 249);
-    doc.rect(120, finalY - 10, 75, 20, 'F');
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(10);
-    doc.text("TOTAL LEDGER VALUATION:", 125, finalY + 2);
-    doc.setFontSize(14);
-    doc.text(`${totalVal?.toLocaleString()} ${businessCurrency}`, 190, finalY + 2, { align: 'right' });
-
-    doc.save(`${businessName.replace(/\s/g, '_')}_FORENSIC_AUDIT.pdf`);
-    toast.success("Forensic Report Downloaded");
+    doc.save(`Inventory_Report.pdf`);
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Are you sure you want to expunge ${selectedItems.length} assets from the perpetual ledger?`)) return;
+    if (!confirm(`Confirm deletion of ${selectedItems.length} items?`)) return;
     const { error } = await supabase.from('product_variants').delete().in('id', selectedItems);
     if (error) toast.error(error.message);
     else {
-        toast.success("Vault Nodes Cleaned");
+        toast.success("Items removed");
         setSelectedItems([]);
         queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     }
   };
 
   return (
-    <div className="p-8 space-y-12 animate-in fade-in duration-1000 bg-slate-50/30 min-h-screen">
+    <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 font-sans text-slate-900">
       
-      {/* SECTION 1: ONBOARDING TERMINAL */}
-      <Card className="border-none shadow-2xl rounded-[3rem] bg-white overflow-hidden max-w-6xl mx-auto">
-        <CardHeader className="bg-slate-900 p-12 text-white flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-8">
-                <div className="h-20 w-20 bg-blue-600 rounded-[2rem] flex items-center justify-center shadow-blue-500/20 shadow-2xl">
-                    <FlaskConical className="h-10 w-10 text-white" />
-                </div>
-                <div>
-                    <CardTitle className="text-4xl font-black tracking-tighter uppercase">Input Initialization</CardTitle>
-                    <p className="text-blue-400 font-bold text-[10px] uppercase tracking-[0.5em] mt-2 flex items-center gap-3">
-                        <ShieldCheck className="text-emerald-500 h-4 w-4" /> Sovereign Protocol • Forensic Ledger Sync Active
-                    </p>
-                </div>
-            </div>
-            <div className="flex gap-4">
-                <Button onClick={() => downloadForensicReport('PDF')} variant="outline" className="h-14 border-slate-700 text-white hover:bg-slate-800 rounded-2xl gap-3 text-xs font-black uppercase">
-                    <FileText size={20} /> Audit PDF
-                </Button>
-                <Button onClick={() => downloadForensicReport('EXCEL')} variant="outline" className="h-14 border-slate-700 text-white hover:bg-slate-800 rounded-2xl gap-3 text-xs font-black uppercase">
-                    <TableIcon size={20} /> Valuation Excel
-                </Button>
-            </div>
-        </CardHeader>
+      {/* PAGE HEADER */}
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Raw Materials Ledger</h1>
+          <p className="text-slate-500 mt-1">Manage material onboarding, stock levels, and forensic valuation.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => downloadForensicReport('EXCEL')} variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+          <Button onClick={() => downloadForensicReport('PDF')} variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
+            <FileText className="mr-2 h-4 w-4" /> Export PDF
+          </Button>
+        </div>
+      </div>
 
-        <CardContent className="p-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
-            {/* Asset Identity DNA */}
-            <div className="lg:col-span-2 space-y-10">
-                <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">1. Material Identity Profile</Label>
-                    <Input placeholder="Material Description (e.g. Industrial Leather / Powdered Concentrate)" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-16 font-black text-2xl border-slate-100 bg-slate-50/50 rounded-2xl shadow-inner focus:bg-white" />
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">Unique SKU</Label>
-                        <Input placeholder="AUTO" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="h-12 font-mono font-bold rounded-xl bg-white border-slate-200" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">Material Unit</Label>
-                        <Select onValueChange={v => setForm({...form, uom_id: v})}>
-                            <SelectTrigger className="h-12 font-black"><SelectValue placeholder="Unit" /></SelectTrigger>
-                            <SelectContent>
-                                {uoms?.map(u => <SelectItem key={u.id} value={u.id.toString()} className="font-bold">{u.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">Quality Matrix</Label>
-                        <Select onValueChange={v => setForm({...form, quality: v})}>
-                            <SelectTrigger className="h-12 font-black"><SelectValue placeholder="Standard" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Premium" className="font-bold">Premium Grade</SelectItem>
-                                <SelectItem value="Standard" className="font-bold">Standard Grade</SelectItem>
-                                <SelectItem value="Industrial" className="font-bold">Industrial Grade</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">Source Vendor</Label>
-                        <Select onValueChange={v => setForm({...form, supplier_id: v})}>
-                            <SelectTrigger className="h-12 font-black"><SelectValue placeholder="Vendor" /></SelectTrigger>
-                            <SelectContent>
-                                {vendors?.map(v => <SelectItem key={v.id} value={v.id} className="font-bold">{v.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* NEW MATERIAL ONBOARDING FORM */}
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-2">
+               <Plus className="h-5 w-5 text-blue-600" />
+               <CardTitle className="text-lg font-semibold">Onboard New Material</CardTitle>
             </div>
+            <CardDescription>Enter details to register a new raw material asset in the system.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-2 space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Material Name</Label>
+                <Input placeholder="e.g. High-Grade Industrial Resin" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="border-slate-200 focus:ring-blue-500" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">SKU / Reference</Label>
+                <Input placeholder="RM-001" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="border-slate-200" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Material Type</Label>
+                <Select onValueChange={v => setForm({...form, type: v})} defaultValue="Solid">
+                  <SelectTrigger className="border-slate-200"><SelectValue placeholder="Type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Solid">Solid</SelectItem>
+                    <SelectItem value="Liquid">Liquid</SelectItem>
+                    <SelectItem value="Gas">Gas</SelectItem>
+                    <SelectItem value="Powder">Powder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Financial Ledger Weld */}
-            <div className="bg-slate-900 p-10 rounded-[3rem] text-white space-y-8 shadow-2xl relative group">
-                <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none" />
-                <div className="flex items-center gap-4 border-b border-white/5 pb-6">
-                    <ShieldCheck className="text-emerald-400 h-8 w-8" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em]">Capitalization Handshake</span>
-                </div>
-                <div className="space-y-6">
-                    <div>
-                        <Label className="text-[9px] font-black text-slate-500 uppercase">Unit Landed Cost ({businessCurrency})</Label>
-                        <div className="relative mt-2">
-                            <Scale className="absolute left-4 top-4 text-slate-700 h-5 w-5" />
-                            <Input type="number" value={form.price} onChange={e => setForm({...form, price: Number(e.target.value)})} className="h-14 pl-12 font-black text-2xl text-right bg-slate-800 border-none rounded-2xl text-emerald-400 shadow-inner" />
-                        </div>
-                    </div>
-                    <div>
-                        <Label className="text-[9px] font-black text-slate-500 uppercase">Opening Vault Volume</Label>
-                        <Input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="h-14 font-black text-2xl text-center bg-slate-800 border-none rounded-2xl mt-2 shadow-inner" />
-                    </div>
-                </div>
-                <Button onClick={handleOnboard} disabled={loading} className="w-full h-20 bg-blue-600 hover:bg-white hover:text-blue-600 text-white font-black text-xl rounded-3xl transition-all shadow-[0_20px_50px_rgba(37,_99,_235,_0.3)] uppercase tracking-[0.2em]">
-                    {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Database className="mr-3 h-6 w-6"/>} Sync Assets
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quality Grade</Label>
+                <Select onValueChange={v => setForm({...form, quality: v})} defaultValue="Standard">
+                  <SelectTrigger className="border-slate-200"><SelectValue placeholder="Quality" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Premium">Premium</SelectItem>
+                    <SelectItem value="Standard">Standard</SelectItem>
+                    <SelectItem value="Industrial">Industrial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Unit of Measure</Label>
+                <Select onValueChange={v => setForm({...form, uom_id: v})}>
+                  <SelectTrigger className="border-slate-200"><SelectValue placeholder="Select Unit" /></SelectTrigger>
+                  <SelectContent>
+                    {uoms?.map(u => <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Unit Price ({businessCurrency})</Label>
+                <Input type="number" value={form.price} onChange={e => setForm({...form, price: Number(e.target.value)})} className="border-slate-200 text-right font-semibold" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Initial Stock</Label>
+                <Input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="border-slate-200 text-right font-semibold" />
+              </div>
+              <div className="lg:col-span-3 space-y-2">
+                <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Preferred Supplier</Label>
+                <Select onValueChange={v => setForm({...form, supplier_id: v})}>
+                  <SelectTrigger className="border-slate-200"><SelectValue placeholder="Select Vendor" /></SelectTrigger>
+                  <SelectContent>
+                    {vendors?.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleOnboard} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-10">
+                  {loading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Database className="mr-2 h-4 w-4"/>} 
+                  Register Material
                 </Button>
+              </div>
             </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* SECTION 2: PERPETUAL LEDGER VAULT */}
-      <Card className="border-none shadow-[0_40px_100px_-20px_rgba(0,0,0,0.05)] rounded-[3.5rem] overflow-hidden bg-white max-w-6xl mx-auto">
-          <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-col lg:flex-row justify-between items-center gap-10">
-             <div className="flex items-center gap-6">
-                <h3 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Valuation Ledger</h3>
-                <div className="flex items-center gap-3 px-5 py-2 bg-emerald-50 border border-emerald-100 rounded-full">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">Sovereign Sync Active</span>
-                </div>
-             </div>
-             <div className="flex items-center gap-4 w-full lg:w-auto">
-                <div className="relative flex-1 lg:w-96">
-                    <Search className="absolute left-5 top-4 text-slate-300 h-5 w-5" />
-                    <Input placeholder="Scan Registry Identity..." onChange={e => setSearchTerm(e.target.value)} className="pl-14 h-14 rounded-2xl bg-white border-slate-100 font-bold shadow-sm" />
-                </div>
-                {selectedItems.length > 0 && (
-                    <Button onClick={handleBulkDelete} variant="destructive" className="h-14 px-8 font-black rounded-2xl animate-in zoom-in gap-3 shadow-xl">
-                        <Trash2 size={20} /> EXPUNGE ({selectedItems.length})
-                    </Button>
-                )}
-             </div>
+        {/* VALUATION LEDGER TABLE SECTION */}
+        <Card className="border-slate-200 shadow-sm bg-white overflow-hidden">
+          <CardHeader className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg font-semibold">Material Inventory & Valuation</CardTitle>
+              <CardDescription>Current machines, allocations, and stock status.</CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+               <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Input 
+                    placeholder="Filter materials or SKU..." 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className="pl-9 h-10 w-full md:w-64 border-slate-200 bg-slate-50/50 focus:bg-white transition-all" 
+                  />
+               </div>
+               {selectedItems.length > 0 && (
+                 <Button onClick={handleBulkDelete} variant="destructive" size="sm" className="h-10">
+                   <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedItems.length})
+                 </Button>
+               )}
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-             <ScrollArea className="h-[600px]">
-                <Table>
-                    <TableHeader className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
-                        <TableRow className="border-none">
-                            <TableHead className="w-20 pl-12"><Checkbox onCheckedChange={(c) => setSelectedItems(c ? materials?.map(m => m.variant_id) || [] : [])} /></TableHead>
-                            <TableHead className="font-black text-[10px] uppercase text-slate-400 h-16 tracking-widest">Asset fingerprint</TableHead>
-                            <TableHead className="font-black text-[10px] uppercase text-slate-400 h-16 text-right">Landed unit cost</TableHead>
-                            <TableHead className="font-black text-[10px] uppercase text-slate-400 h-16 text-right">Perpetual Stock</TableHead>
-                            <TableHead className="text-right pr-12 font-black text-[10px] uppercase text-slate-400">Controls</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow><TableCell colSpan={5} className="h-64 text-center text-slate-300 font-black uppercase animate-pulse tracking-[0.5em]">Scanning Cloud Vault...</TableCell></TableRow>
-                        ) : (
-                            materials?.filter(m => m.product_name.toLowerCase().includes(searchTerm.toLowerCase())).map(m => (
-                                <TableRow key={m.variant_id} className="hover:bg-blue-50/20 border-b border-slate-50 h-28 transition-all group">
-                                    <TableCell className="pl-12"><Checkbox checked={selectedItems.includes(m.variant_id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, m.variant_id] : prev.filter(id => id !== m.variant_id))} /></TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-slate-900 text-lg uppercase tracking-tight">{m.product_name}</span>
-                                            <div className="flex gap-3 mt-1.5">
-                                                <Badge variant="outline" className="text-[8px] font-black uppercase text-blue-600 bg-blue-50 border-blue-100">{m.sku}</Badge>
-                                                <span className="text-[9px] text-slate-400 font-black uppercase self-center opacity-40">{m.material_type} • {m.quality_grade}</span>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex flex-col items-end">
-                                            <span className="font-black text-slate-900 text-lg tabular-nums">{m.buying_price.toLocaleString()}</span>
-                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{businessCurrency} / {m.unit}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex flex-col items-end">
-                                            <span className={`text-3xl font-black tabular-nums ${m.current_stock < 5 ? 'text-red-500 animate-pulse' : 'text-slate-900'}`}>{m.current_stock?.toLocaleString()}</span>
-                                            <span className="text-[9px] font-black text-slate-400 uppercase">{m.unit} verified in storage</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right pr-12">
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button variant="ghost" onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id})} className="h-14 w-14 rounded-3xl text-orange-500 hover:bg-orange-50 transition-all border border-transparent hover:border-orange-100">
-                                                    <BadgeAlert size={32} />
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="rounded-[3rem] border-none p-12 bg-white shadow-2xl max-w-lg">
-                                                <div className="space-y-8">
-                                                    <div className="flex items-center gap-5">
-                                                        <AlertTriangle className="text-orange-500 h-10 w-10" />
-                                                        <h3 className="text-3xl font-black uppercase tracking-tighter">Forensic Loss Log</h3>
-                                                    </div>
-                                                    <p className="text-sm font-bold text-slate-500 leading-relaxed italic border-l-4 border-orange-200 pl-6">
-                                                        Authorized ledger adjustment for: <span className="text-slate-900 underline">{m.product_name}</span>. This will permanently deduct value from the balance sheet.
-                                                    </p>
-                                                    <div className="grid grid-cols-2 gap-8 pt-4">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Deduction Qty</Label>
-                                                            <Input type="number" placeholder="0.00" className="h-14 font-black text-2xl rounded-2xl bg-slate-50 border-none shadow-inner" onChange={e => setAdjustData({...adjustData, qty: Number(e.target.value)})} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Audit Reason</Label>
-                                                            <Select onValueChange={v => setAdjustData({...adjustData, reason: v})}>
-                                                                <SelectTrigger className="h-14 font-black rounded-2xl bg-slate-50 border-none shadow-inner"><SelectValue placeholder="Expired" /></SelectTrigger>
-                                                                <SelectContent className="rounded-2xl shadow-2xl">
-                                                                    <SelectItem value="Expired" className="font-bold">Chemical Expiry</SelectItem>
-                                                                    <SelectItem value="Damaged" className="font-bold">Spilled / Broken</SelectItem>
-                                                                    <SelectItem value="Theft" className="font-bold">Unexplained Shortage</SelectItem>
-                                                                    <SelectItem value="Waste" className="font-bold">Production Waste</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                    </div>
-                                                    <Button onClick={() => logShrinkage.mutate()} className="w-full h-20 bg-orange-600 hover:bg-slate-900 text-white font-black rounded-[2rem] shadow-xl uppercase transition-all tracking-[0.2em] text-sm">
-                                                        Authorize Ledger Deduction
-                                                    </Button>
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-             </ScrollArea>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/80">
+                  <TableRow>
+                    <TableHead className="w-12 text-center border-r border-slate-100">
+                      <Checkbox onCheckedChange={(c) => setSelectedItems(c ? materials?.map(m => m.variant_id) || [] : [])} />
+                    </TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4 px-6">Material Status</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4">Identity / SKU</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4 text-right">Landed Cost</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4 text-right">Perpetual Stock</TableHead>
+                    <TableHead className="text-center pr-6 text-[11px] font-bold uppercase text-slate-500">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-40 text-center py-20">
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                          <span className="text-slate-400 font-medium text-sm">Syncing with ledger...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : materials?.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-40 text-center text-slate-400 font-medium">No materials found in registry.</TableCell>
+                    </TableRow>
+                  ) : (
+                    materials?.filter(m => m.product_name.toLowerCase().includes(searchTerm.toLowerCase())).map(m => (
+                      <TableRow key={m.variant_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100">
+                        <TableCell className="text-center border-r border-slate-100">
+                          <Checkbox checked={selectedItems.includes(m.variant_id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, m.variant_id] : prev.filter(id => id !== m.variant_id))} />
+                        </TableCell>
+                        <TableCell className="px-6">
+                           {m.current_stock > 10 ? (
+                             <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50 shadow-none px-3">Stable Stock</Badge>
+                           ) : m.current_stock > 0 ? (
+                             <Badge className="bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-50 shadow-none px-3">Low Stock</Badge>
+                           ) : (
+                             <Badge className="bg-red-50 text-red-700 border-red-100 hover:bg-red-50 shadow-none px-3">Out of Stock</Badge>
+                           )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col py-2">
+                            <span className="font-semibold text-slate-900">{m.product_name}</span>
+                            <span className="text-[11px] text-slate-500 font-mono mt-0.5">{m.sku} • {m.material_type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-slate-700">
+                          {m.buying_price.toLocaleString()} <span className="text-[10px] text-slate-400 ml-1">{businessCurrency}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-col items-end py-2">
+                            <span className={`text-lg font-bold ${m.current_stock < 5 ? 'text-red-600' : 'text-slate-900'}`}>{m.current_stock?.toLocaleString()}</span>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase">{m.unit}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center pr-6">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id})} className="text-slate-400 hover:text-orange-600 hover:bg-orange-50 h-8 w-8 p-0">
+                                <BadgeAlert className="h-5 w-5" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px] rounded-xl border-none shadow-xl">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                                  <AlertTriangle className="h-5 w-5 text-orange-500" /> Stock Adjustment
+                                </DialogTitle>
+                                <CardDescription>Log loss or manual deduction for <span className="font-bold text-slate-900">{m.product_name}</span>.</CardDescription>
+                              </DialogHeader>
+                              <div className="grid gap-6 py-4">
+                                <div className="space-y-2">
+                                  <Label className="text-xs font-bold text-slate-500 uppercase">Quantity to Deduct</Label>
+                                  <Input type="number" placeholder="Enter amount" className="h-12 border-slate-200 font-semibold" onChange={e => setAdjustData({...adjustData, qty: Number(e.target.value)})} />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs font-bold text-slate-500 uppercase">Reason for Adjustment</Label>
+                                  <Select onValueChange={v => setAdjustData({...adjustData, reason: v})}>
+                                    <SelectTrigger className="h-12 border-slate-200"><SelectValue placeholder="Select reason" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Expired">Chemical Expiry</SelectItem>
+                                      <SelectItem value="Damaged">Damaged / Spilled</SelectItem>
+                                      <SelectItem value="Theft">Shrinkage / Theft</SelectItem>
+                                      <SelectItem value="Waste">Production Waste</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button onClick={() => logShrinkage.mutate()} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold h-12 rounded-lg">
+                                  Process Adjustment
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
-      </Card>
+        </Card>
+      </div>
 
-      {/* FINAL SYSTEM AUTHENTICATION FOOTER */}
-      <div className="text-center opacity-40 py-20">
-          <div className="inline-flex items-center gap-6 px-12 py-5 bg-white rounded-full shadow-sm border border-slate-100">
-             <ShieldCheck size={20} className="text-emerald-500" />
-             <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 italic">
-                Sovereign Infrastructure Node • BBU1 Enterprise Engine • v10.4.2 Verified
-             </p>
+      {/* SYSTEM STATUS FOOTER */}
+      <div className="max-w-7xl mx-auto mt-12 flex items-center justify-end">
+          <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-sm">
+             <div className="h-2 w-2 rounded-full bg-emerald-500" />
+             <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                Online | Sync: active
+             </span>
           </div>
       </div>
     </div>
