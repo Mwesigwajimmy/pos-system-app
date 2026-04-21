@@ -24,20 +24,32 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // --- DATA ACCESS LAYER ---
 
+/**
+ * Fetches the global registry of Measurement Units.
+ * Enterprise standard: Used for Pharmaceuticals, Chemicals, and Food Processing.
+ */
 async function getUOMs(supabase: any) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('units_of_measure')
     .select('id, name, abbreviation')
     .order('name', { ascending: true });
+  
+  if (error) console.error("UOM Fetch Error:", error.message);
   return data || [];
 }
 
+/**
+ * Fetches Vendors strictly linked to the active Business ID.
+ * Ensures multi-tenant isolation for procurement.
+ */
 async function getVendors(supabase: any, businessId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('vendors')
     .select('id, name')
     .eq('business_id', businessId)
     .order('name', { ascending: true });
+    
+  if (error) console.error("Vendor Fetch Error:", error.message);
   return data || [];
 }
 
@@ -46,16 +58,20 @@ export default async function RawMaterialOnboardingPage() {
   const supabase = createClient(cookieStore);
 
   // --- 1. AUTHENTICATION GUARD ---
+  // Verified V10.2 Security Protocol
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
-  // --- 2. IDENTITY RESOLUTION ---
+  // --- 2. IDENTITY RESOLUTION (Sector-Aware) ---
+  // Resolving the active business node for the session.
+  // This supports invited employees who have 'switched' sectors.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("business_id, business_name, active_organization_slug")
+    .select("business_id, business_name, active_organization_slug, currency")
     .eq("id", user.id)
     .single();
 
+  // Failsafe: If no business context is linked to the user session
   if (!profile?.business_id) {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
@@ -74,6 +90,7 @@ export default async function RawMaterialOnboardingPage() {
   const entityName = profile.business_name || "Enterprise Hub";
 
   // --- 3. DATA SYNCHRONIZATION ---
+  // Parallel execution for high-performance server-side rendering
   const [uoms, vendors] = await Promise.all([
     getUOMs(supabase),
     getVendors(supabase, businessId)
