@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
  * Fetches the global registry of Measurement Units.
- * Enterprise standard: Used for Pharmaceuticals, Chemicals, and Food Processing.
+ * Enterprise standard: Supports Pharmaceutical, Chemical, and Food metrics.
  */
 async function getUOMs(supabase: any) {
   const { data, error } = await supabase
@@ -34,13 +34,13 @@ async function getUOMs(supabase: any) {
     .select('id, name, abbreviation')
     .order('name', { ascending: true });
   
-  if (error) console.error("UOM Fetch Error:", error.message);
+  if (error) console.error("Forensic UOM Fetch Error:", error.message);
   return data || [];
 }
 
 /**
  * Fetches Vendors strictly linked to the active Business ID.
- * Ensures multi-tenant isolation for procurement.
+ * Ensures multi-tenant isolation for procurement and supply chain integrity.
  */
 async function getVendors(supabase: any, businessId: string) {
   const { data, error } = await supabase
@@ -49,7 +49,7 @@ async function getVendors(supabase: any, businessId: string) {
     .eq('business_id', businessId)
     .order('name', { ascending: true });
     
-  if (error) console.error("Vendor Fetch Error:", error.message);
+  if (error) console.error("Sector Vendor Fetch Error:", error.message);
   return data || [];
 }
 
@@ -62,35 +62,38 @@ export default async function RawMaterialOnboardingPage() {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
-  // --- 2. IDENTITY RESOLUTION (Sector-Aware) ---
-  // Resolving the active business node for the session.
-  // This supports invited employees who have 'switched' sectors.
+  // --- 2. IDENTITY RESOLUTION (Sector-Aware Switcher) ---
+  // We resolve the active business ID. 
+  // Priority: 1. Active Cookie (Switch) -> 2. Profile Default
+  const activeCookieId = cookieStore.get('bbu1_active_business_id')?.value;
+
   const { data: profile } = await supabase
     .from("profiles")
-    .select("business_id, business_name, active_organization_slug, currency")
+    .select("id, business_id, business_name, active_organization_slug, currency")
     .eq("id", user.id)
     .single();
 
-  // Failsafe: If no business context is linked to the user session
-  if (!profile?.business_id) {
+  // Determine the working context ID
+  const businessId = activeCookieId || profile?.business_id;
+  const entityName = profile?.business_name || "Enterprise Node";
+
+  // Failsafe: Access Restriction if no organizational context is resolved
+  if (!businessId) {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
             <Alert variant="destructive" className="max-w-md rounded-3xl border-none shadow-2xl p-8 bg-white">
                 <AlertCircle className="h-6 w-6 text-red-500" />
-                <AlertTitle className="font-bold text-slate-900 ml-2">Access Restricted</AlertTitle>
+                <AlertTitle className="font-bold text-slate-900 ml-2 text-lg uppercase tracking-tight">Access Restricted</AlertTitle>
                 <AlertDescription className="mt-4 text-slate-600 font-medium leading-relaxed">
-                    This terminal requires an active Business ID. Please ensure your organization profile is fully configured to onboard raw assets.
+                    This industrial terminal requires an active Business Identity. Please ensure your session is correctly linked to a manufacturing sector to onboard assets.
                 </AlertDescription>
             </Alert>
         </div>
     );
   }
 
-  const businessId = profile.business_id;
-  const entityName = profile.business_name || "Enterprise Hub";
-
   // --- 3. DATA SYNCHRONIZATION ---
-  // Parallel execution for high-performance server-side rendering
+  // Parallel execution for high-integrity industrial data retrieval
   const [uoms, vendors] = await Promise.all([
     getUOMs(supabase),
     getVendors(supabase, businessId)
@@ -119,10 +122,10 @@ export default async function RawMaterialOnboardingPage() {
         <div className="flex items-center gap-3">
             <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-500 uppercase tracking-widest shadow-sm">
                 <ShieldCheck size={14} className="text-emerald-500" />
-                Inventory Audit Verified
+                Sovereign Audit Verified
             </div>
             <Badge className="bg-slate-900 text-white border-none px-4 py-1.5 font-bold text-[10px] tracking-widest uppercase rounded-lg">
-                V10.2 SECURE
+                V10.5 SECURE
             </Badge>
         </div>
       </header>
@@ -146,7 +149,7 @@ export default async function RawMaterialOnboardingPage() {
             <Card className="border-none bg-slate-900 text-white rounded-[2.5rem] overflow-hidden shadow-xl">
                 <CardHeader className="border-b border-white/10 p-8">
                     <CardTitle className="text-[11px] font-bold uppercase text-blue-400 flex items-center gap-3 tracking-widest">
-                       <ClipboardList size={16}/> Manufacturing Protocol
+                       <ClipboardList size={16}/> Industrial Protocol
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-8">
@@ -156,9 +159,9 @@ export default async function RawMaterialOnboardingPage() {
                                 <Info size={16} />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-sm font-bold text-white">Identify Material</p>
+                                <p className="text-sm font-bold text-white">Identity Mapping</p>
                                 <p className="text-xs text-slate-400 leading-relaxed">
-                                    Define the base material profile to create a unique SKU fingerprint in the registry.
+                                    Define the base material profile to generate a unique batch SKU for industrial tracking.
                                 </p>
                             </div>
                         </div>
@@ -167,9 +170,9 @@ export default async function RawMaterialOnboardingPage() {
                                 <ShieldCheck size={16} />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-sm font-bold text-white">Quality Standards</p>
+                                <p className="text-sm font-bold text-white">Quality Assurance</p>
                                 <p className="text-xs text-slate-400 leading-relaxed">
-                                    Assign quality grades to enable automated stock anomaly and expiry detection.
+                                    Assign pharmaceutical or food-grade purity standards to enable forensic anomaly detection.
                                 </p>
                             </div>
                         </div>
@@ -178,9 +181,9 @@ export default async function RawMaterialOnboardingPage() {
                                 <TrendingUp size={16} />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-sm font-bold text-white">Landed Valuation</p>
+                                <p className="text-sm font-bold text-white">Financial Integration</p>
                                 <p className="text-xs text-slate-400 leading-relaxed">
-                                    Input final unit costs to initialize the perpetual inventory valuation ledger.
+                                    Valuations are automatically bridged to the General Ledger for accurate Balance Sheet reporting.
                                 </p>
                             </div>
                         </div>
@@ -192,10 +195,10 @@ export default async function RawMaterialOnboardingPage() {
             <Card className="border-slate-200 shadow-sm bg-white rounded-[2rem] p-8">
                 <div className="flex items-center gap-3 mb-4">
                     <History size={16} className="text-slate-400" />
-                    <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Inventory Separation</h3>
+                    <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Forensic Separation</h3>
                 </div>
                 <p className="text-xs font-medium text-slate-500 leading-relaxed italic">
-                    Assets onboarded via this portal are logically isolated from general retail stock to maintain precise tracking within the manufacturing cycle.
+                    Raw materials recorded here are logically partitioned by business node, ensuring precise multi-location stock control across the production cycle.
                 </p>
             </Card>
         </aside>
@@ -205,11 +208,11 @@ export default async function RawMaterialOnboardingPage() {
       <footer className="max-w-7xl mx-auto mt-16 pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             <LayoutGrid size={14} className="text-slate-300" />
-            Infrastructure Node: <span className="text-slate-500 font-mono">{businessId.substring(0,8).toUpperCase()}</span>
+            Infrastructure Link: <span className="text-slate-500 font-mono">{businessId.substring(0,8).toUpperCase()}</span>
           </div>
           <div className="bg-emerald-50 text-emerald-700 px-5 py-2 rounded-full border border-emerald-100 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Database Synchronization Active
+            Neural Synchronization Active
           </div>
       </footer>
     </main>
