@@ -25,33 +25,39 @@ export default async function ManufacturingPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // --- 1. AUTHENTICATION & BUSINESS RESOLUTION ---
+  // --- 1. AUTHENTICATION & IDENTITY RESOLUTION ---
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
+  // RESOLVE ACTIVE CONTEXT: Check for sector-switcher cookie first, then fall back to profile
+  const activeCookieId = cookieStore.get('bbu1_active_business_id')?.value;
+
   const { data: profile } = await supabase
     .from("profiles")
-    .select("business_id, business_name")
+    .select("business_id, business_name, currency")
     .eq("id", user.id)
     .single();
 
-  if (!profile?.business_id) {
+  const workingBizId = activeCookieId || profile?.business_id;
+
+  // Failsafe: Access Restriction if no organizational context is resolved
+  if (!workingBizId) {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-10">
             <div className="text-center space-y-4 max-w-sm bg-white p-10 rounded-3xl shadow-sm border border-slate-100">
                 <ShieldCheck className="h-12 w-12 text-slate-200 mx-auto" />
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Business Context Required</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">
-                  Your account must be linked to an active organization to access manufacturing data.
+                  Your account must be linked to an active organization or production node to access manufacturing data.
                 </p>
             </div>
         </div>
     );
   }
 
-  const businessId = profile.business_id;
+  const entityName = profile?.business_name || "Industrial Node";
 
-  // --- 2. DATA SYNCHRONIZATION ---
+  // --- 2. DATA SYNCHRONIZATION (High-Integrity Sector Partitioning) ---
   const [ordersRes, scheduleRes] = await Promise.all([
     supabase
       .from("mfg_production_orders")
@@ -62,16 +68,16 @@ export default async function ManufacturingPage() {
           product:products (name)
         )
       `)
-      .eq('tenant_id', businessId)
+      .eq('business_id', workingBizId) // Partitioned by active sector
       .order("created_at", { ascending: false }),
     supabase
       .from("work_center_schedule")
       .select("*")
-      .eq('tenant_id', businessId)
+      .eq('tenant_id', workingBizId) // Partitioned for multi-location awareness
       .order("start_time", { ascending: true })
   ]);
 
-  // --- 3. DATA TRANSFORMATION ---
+  // --- 3. INDUSTRIAL DATA TRANSFORMATION ---
   const orders = (ordersRes.data || []).map((o) => ({
     id: o.id,
     batch_number: o.batch_number || o.id.slice(0,10).toUpperCase(), 
@@ -80,7 +86,9 @@ export default async function ManufacturingPage() {
     sku: o.output_variant?.sku || "N/A",
     planned_quantity: o.planned_quantity,
     status: o.status,
-    tenant_id: o.tenant_id
+    tenant_id: o.tenant_id,
+    business_id: o.business_id, // Mandatory for the Asset Transformation Weld
+    created_at: o.created_at
   }));
 
   const schedule = (scheduleRes.data || []).map((s) => ({
@@ -107,11 +115,11 @@ export default async function ManufacturingPage() {
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">Manufacturing Hub</h1>
                 <div className="flex items-center gap-3 mt-1">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <Database size={13} /> Node: {businessId.substring(0,8).toUpperCase()}
+                        <Database size={13} /> Node: {workingBizId.substring(0,8).toUpperCase()}
                     </span>
                     <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 border px-3 py-0.5 font-bold text-[10px] uppercase tracking-wide rounded-full flex items-center gap-1.5 shadow-none">
                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Real-time Sync Active
+                        Industrial Sync Active
                     </Badge>
                 </div>
             </div>
@@ -119,10 +127,10 @@ export default async function ManufacturingPage() {
         
         <div className="flex items-center gap-4">
              <div className="hidden md:flex flex-col text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Status</p>
-                <p className="text-xs font-bold text-slate-900 uppercase">Operational v10.4</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Protocol</p>
+                <p className="text-xs font-bold text-slate-900 uppercase">Operational v10.5 • {profile?.currency}</p>
              </div>
-             <div className="h-11 w-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shadow-sm">
+             <div className="h-11 w-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shadow-sm transition-all hover:border-blue-400">
                 <Settings2 size={20} />
              </div>
         </div>
@@ -144,7 +152,7 @@ export default async function ManufacturingPage() {
                     className="font-bold px-8 h-10 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all gap-2 text-xs uppercase tracking-tight rounded-lg"
                 >
                     <CalendarIcon size={16} />
-                    Work Schedules
+                    Sector Schedules
                 </TabsTrigger>
             </TabsList>
             
@@ -162,6 +170,7 @@ export default async function ManufacturingPage() {
         </div>
 
         <TabsContent value="orders" className="outline-none mt-0 animate-in slide-in-from-bottom-2 duration-500">
+          {/* Component is initialized with the sector-aware orders list */}
           <ManufacturingOrderManager />
         </TabsContent>
 
@@ -177,13 +186,13 @@ export default async function ManufacturingPage() {
               <div className="flex items-center gap-2">
                   <ShieldCheck size={14} className="text-slate-300" />
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Production Protocol v10.4.2
+                      Production Protocol v10.5.1
                   </p>
               </div>
               <div className="h-px flex-1 bg-slate-200" />
           </div>
           <p className="text-center text-[9px] font-semibold text-slate-400 uppercase tracking-widest opacity-60">
-            Licensed for Enterprise Use • Manufacturing Registry Sync Verified
+            Licensed for Enterprise Use • Organization: {entityName} • Manufacturing Registry Sync Verified
           </p>
       </footer>
     </main>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -39,6 +39,8 @@ export interface ManufacturingOrder {
   planned_quantity: number;
   status: 'draft' | 'confirmed' | 'in_progress' | 'completed';
   tenant_id: string;
+  business_id: string;
+  created_at: string;
 }
 
 interface IngredientLog {
@@ -78,10 +80,13 @@ export default function ManufacturingOrderManager() {
   const [newOrder, setNewOrder] = useState({ variant_id: '', qty: 1, batch: '' });
 
   // --- 1. CORE DATA QUERIES ---
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, isError } = useQuery({
     queryKey: ['manufacturing_orders'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('mfg_production_orders_view').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('mfg_production_orders_view')
+        .select('*')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data as ManufacturingOrder[];
     }
@@ -90,7 +95,11 @@ export default function ManufacturingOrderManager() {
   const { data: finishedGoods } = useQuery({
     queryKey: ['composite_products'],
     queryFn: async () => {
-      const { data } = await supabase.from('product_variants').select('id, name, sku').eq('is_composite', true);
+      const { data } = await supabase
+        .from('product_variants')
+        .select('id, name, sku')
+        .eq('is_composite', true)
+        .eq('is_active', true);
       return data || [];
     }
   });
@@ -109,6 +118,11 @@ export default function ManufacturingOrderManager() {
 
   // --- 2. LOGIC HANDLERS ---
   const addIngredientFromInventory = (variantId: string) => {
+    // Check if already in list to prevent duplicates
+    if (ingredientLogs.find(i => i.variant_id === variantId)) {
+        return toast.error("Material already added to batch log.");
+    }
+
     const material = rawMaterials?.find(m => m.id.toString() === variantId);
     if (!material) return;
 
@@ -122,53 +136,77 @@ export default function ManufacturingOrderManager() {
     }]);
   };
 
-  const openAuditDialog = async (order: ManufacturingOrder) => {
-    const { data: recipe } = await supabase.rpc('get_composite_details_v5', { p_variant_id: order.output_variant_id });
-    
-    if (recipe?.components) {
-      setIngredientLogs(recipe.components.map((c: any) => ({
-        variant_id: c.component_variant_id.toString(),
-        name: c.component_name,
-        planned_qty: c.quantity,
-        actual_qty: c.quantity * order.planned_quantity,
-        waste_qty: 0,
-        unit_cost: c.unit_cost || 0
-      })));
-    } else {
-        setIngredientLogs([]);
-    }
+  const removeIngredient = (variantId: string) => {
+    setIngredientLogs(ingredientLogs.filter(i => i.variant_id !== variantId));
+  };
 
-    setActualYield(order.planned_quantity);
-    setExpenses([
-        { category: 'General Labor', hours_or_units: 1, rate: 0, amount: 0 },
-        { category: 'Logistics/Transport', hours_or_units: 1, rate: 0, amount: 0 }
-    ]);
-    setSelectedOrder(order);
+  const openAuditDialog = async (order: ManufacturingOrder) => {
+    try {
+        const { data: recipe, error } = await supabase.rpc('get_composite_details_v5', { 
+            p_variant_id: order.output_variant_id 
+        });
+        
+        if (error) throw error;
+
+        if (recipe?.components) {
+          setIngredientLogs(recipe.components.map((c: any) => ({
+            variant_id: c.component_variant_id.toString(),
+            name: c.component_name,
+            planned_qty: c.quantity,
+            actual_qty: Number((c.quantity * order.planned_quantity).toFixed(4)),
+            waste_qty: 0,
+            unit_cost: c.unit_cost || 0
+          })));
+        } else {
+            setIngredientLogs([]);
+        }
+
+        setActualYield(order.planned_quantity);
+        setExpenses([
+            { category: 'General Labor', hours_or_units: 1, rate: 0, amount: 0 },
+            { category: 'Logistics/Transport', hours_or_units: 1, rate: 0, amount: 0 }
+        ]);
+        setSelectedOrder(order);
+    } catch (err: any) {
+        toast.error(`Recipe Load Failed: ${err.message}`);
+    }
   };
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
+      if (!newOrder.variant_id || !newOrder.batch || newOrder.qty <= 0) {
+          throw new Error("Please complete all required fields with valid values.");
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
+      const bizId = user?.app_metadata?.business_id || user?.user_metadata?.business_id;
+
       const { error } = await supabase.from('mfg_production_orders').insert([{
         output_variant_id: parseInt(newOrder.variant_id),
         planned_quantity: newOrder.qty,
-        batch_number: newOrder.batch,
+        batch_number: newOrder.batch.toUpperCase(),
         status: 'draft',
+        business_id: bizId,
         tenant_id: user?.user_metadata?.tenant_id
       }]);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Work order created");
+      toast.success("Production batch created successfully");
       setIsCreateModalOpen(false);
+      setNewOrder({ variant_id: '', qty: 1, batch: '' });
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
-    }
+    },
+    onError: (error: any) => toast.error(error.message)
   });
 
   const finalizeProductionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOrder) return;
+      if (actualYield <= 0) throw new Error("Actual yield must be greater than zero.");
+      if (!expiryDate) throw new Error("Batch expiry date is required for compliance.");
 
+      // 1. Bulk Insert Ingredient Logs
       const { error: ingErr } = await supabase.from('mfg_production_ingredient_logs').insert(
         ingredientLogs.map(l => ({
           production_order_id: selectedOrder.id,
@@ -176,34 +214,45 @@ export default function ManufacturingOrderManager() {
           quantity_used: l.actual_qty,
           waste_qty: l.waste_qty,
           unit_cost_at_run: l.unit_cost,
-          tenant_id: selectedOrder.tenant_id
+          tenant_id: selectedOrder.tenant_id,
+          business_id: selectedOrder.business_id
         }))
       );
       if (ingErr) throw ingErr;
 
-      const { error: expErr } = await supabase.from('mfg_production_expenses').insert(
-        expenses.map(e => ({
-          production_order_id: selectedOrder.id,
-          expense_category: e.category,
-          description: e.category,
-          amount: e.hours_or_units * e.rate,
-          tenant_id: selectedOrder.tenant_id
-        }))
-      );
-      if (expErr) throw expErr;
+      // 2. Bulk Insert Expenses
+      if (expenses.length > 0) {
+        const { error: expErr } = await supabase.from('mfg_production_expenses').insert(
+          expenses.map(e => ({
+            production_order_id: selectedOrder.id,
+            expense_category: e.category,
+            description: e.category,
+            amount: e.hours_or_units * e.rate,
+            tenant_id: selectedOrder.tenant_id,
+            business_id: selectedOrder.business_id
+          }))
+        );
+        if (expErr) throw expErr;
+      }
 
-      await supabase.from('mfg_production_orders').update({ 
+      // 3. Final State Update
+      const { error: updateErr } = await supabase.from('mfg_production_orders').update({ 
           actual_quantity_produced: actualYield,
           mfg_date: mfgDate,
           expiry_date: expiryDate,
-          qc_inspector: qcSupervisor
+          qc_inspector: qcSupervisor,
+          status: 'confirmed'
       }).eq('id', selectedOrder.id);
+      if (updateErr) throw updateErr;
 
-      const { error: syncErr } = await supabase.rpc('mfg_complete_production_v2', { p_order_id: selectedOrder.id });
+      // 4. Trigger Server-Side Ledger & Inventory Reconciliation
+      const { error: syncErr } = await supabase.rpc('mfg_complete_production_v2', { 
+          p_order_id: selectedOrder.id 
+      });
       if (syncErr) throw syncErr;
     },
     onSuccess: () => {
-      toast.success("Production batch completed");
+      toast.success("Batch finalized and Inventory synced");
       setSelectedOrder(null);
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     },
@@ -214,8 +263,22 @@ export default function ManufacturingOrderManager() {
     const matTotal = ingredientLogs.reduce((sum, i) => sum + (i.actual_qty * i.unit_cost), 0);
     const expTotal = expenses.reduce((sum, e) => sum + (e.hours_or_units * e.rate), 0);
     const total = matTotal + expTotal;
-    return { matTotal, expTotal, total, unitCost: actualYield > 0 ? total / actualYield : 0 };
+    return { 
+        matTotal, 
+        expTotal, 
+        total, 
+        unitCost: actualYield > 0 ? (total / actualYield) : 0 
+    };
   }, [ingredientLogs, expenses, actualYield]);
+
+  // UI state for filtered results
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    return orders.filter(o => 
+        o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || 
+        o.product_name.toLowerCase().includes(filter.toLowerCase())
+    );
+  }, [orders, filter]);
 
   if (isLoading) return (
     <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
@@ -241,7 +304,7 @@ export default function ManufacturingOrderManager() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 shadow-lg shadow-blue-600/20 rounded-xl">
+        <Button onClick={() => setIsCreateModalOpen(true)} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 shadow-lg shadow-blue-600/20 rounded-xl transition-all active:scale-95">
           <PackagePlus className="mr-2 h-5 w-5" /> New Batch Order
         </Button>
       </div>
@@ -276,7 +339,13 @@ export default function ManufacturingOrderManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders?.filter(o => o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || o.product_name.toLowerCase().includes(filter.toLowerCase())).map(o => (
+                {filteredOrders.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-32 text-center text-slate-400 text-sm italic font-medium">
+                            No production orders found matching your criteria.
+                        </TableCell>
+                    </TableRow>
+                ) : filteredOrders.map(o => (
                   <TableRow key={o.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 h-20">
                     <TableCell className="px-8 font-mono font-bold text-blue-600">{o.batch_number || 'N/A'}</TableCell>
                     <TableCell>
@@ -319,7 +388,7 @@ export default function ManufacturingOrderManager() {
           <div className="p-8 space-y-6">
             <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-500 uppercase">Product to Manufacture</Label>
-              <Select onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
+              <Select value={newOrder.variant_id} onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
                 <SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Finished Good" /></SelectTrigger>
                 <SelectContent>
                   {finishedGoods?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
@@ -333,7 +402,7 @@ export default function ManufacturingOrderManager() {
                </div>
                <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase">Planned Quantity</Label>
-                  <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-11 border-slate-200 font-semibold" />
+                  <Input type="number" min="1" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Math.max(1, Number(e.target.value))})} className="h-11 border-slate-200 font-semibold" />
                </div>
             </div>
           </div>
@@ -415,26 +484,32 @@ export default function ManufacturingOrderManager() {
                           <TableHead className="text-[10px] font-bold uppercase py-3 text-center">Actual Quantity Used</TableHead>
                           <TableHead className="text-[10px] font-bold uppercase py-3 text-center">Waste / Scrap</TableHead>
                           <TableHead className="text-[10px] font-bold uppercase py-3 text-right pr-6">Cost per Unit</TableHead>
+                          <TableHead className="w-10"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {ingredientLogs.map((log, idx) => (
-                          <TableRow key={idx} className="border-b border-slate-50 last:border-0 h-16">
+                          <TableRow key={idx} className="border-b border-slate-50 last:border-0 h-16 group">
                             <TableCell className="pl-6 py-4">
                                <span className="font-bold text-slate-900">{log.name}</span>
                             </TableCell>
                             <TableCell>
-                              <Input type="number" value={log.actual_qty} onChange={e => {
+                              <Input type="number" step="0.0001" value={log.actual_qty} onChange={e => {
                                  const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n);
                               }} className="h-9 w-24 mx-auto font-bold text-center border-slate-200 focus:bg-slate-50 transition-all" />
                             </TableCell>
                             <TableCell>
-                              <Input type="number" value={log.waste_qty} onChange={e => {
+                              <Input type="number" step="0.0001" value={log.waste_qty} onChange={e => {
                                  const n = [...ingredientLogs]; n[idx].waste_qty = Number(e.target.value); setIngredientLogs(n);
                               }} className="h-9 w-24 mx-auto font-bold text-center border-red-200 text-red-600 bg-red-50/30 focus:bg-red-50 transition-all" />
                             </TableCell>
                             <TableCell className="text-right pr-6">
                               <span className="font-mono font-bold text-slate-600">{log.unit_cost.toLocaleString()}</span>
+                            </TableCell>
+                            <TableCell>
+                                <Button variant="ghost" size="sm" onClick={() => removeIngredient(log.variant_id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500">
+                                    <X size={14} />
+                                </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -464,7 +539,7 @@ export default function ManufacturingOrderManager() {
                         </div>
                         <div className="w-32">
                           <Label className="text-[10px] font-bold text-slate-400 uppercase text-center block">Qty / Hours</Label>
-                          <Input type="number" value={exp.hours_or_units} onChange={e => {
+                          <Input type="number" step="0.01" value={exp.hours_or_units} onChange={e => {
                               const n = [...expenses]; n[idx].hours_or_units = Number(e.target.value); setExpenses(n);
                           }} className="h-10 mt-1 font-bold text-center border-slate-200 bg-white" />
                         </div>
@@ -490,7 +565,7 @@ export default function ManufacturingOrderManager() {
                 <div className="space-y-4">
                     <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">3. Actual Production Yield</Label>
                     <div className="relative">
-                      <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-20 text-5xl font-bold bg-white border-slate-200 text-center rounded-2xl shadow-sm focus:ring-blue-500" />
+                      <Input type="number" step="0.01" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-20 text-5xl font-bold bg-white border-slate-200 text-center rounded-2xl shadow-sm focus:ring-blue-500" />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end opacity-50">
                         <span className="text-[10px] font-bold uppercase tracking-tight">Confirmed</span>
                         <span className="text-[10px] font-bold uppercase tracking-tight text-blue-600">Items</span>
@@ -504,15 +579,15 @@ export default function ManufacturingOrderManager() {
                 <div className="pt-8 border-t border-slate-200 space-y-4">
                   <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase">
                     <span>Material Costs</span>
-                    <span className="text-slate-900">{financialAudit.matTotal.toLocaleString()} UGX</span>
+                    <span className="text-slate-900 font-mono">{financialAudit.matTotal.toLocaleString()} UGX</span>
                   </div>
                   <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase">
                     <span>Operational Overheads</span>
-                    <span className="text-slate-900">{financialAudit.expTotal.toLocaleString()} UGX</span>
+                    <span className="text-slate-900 font-mono">{financialAudit.expTotal.toLocaleString()} UGX</span>
                   </div>
                   <div className="flex justify-between items-center text-xl font-bold text-slate-900 pt-6 border-t-2 border-slate-200">
                     <span className="uppercase tracking-tight">Total Batch Cost</span>
-                    <span className="text-blue-600">{financialAudit.total.toLocaleString()} UGX</span>
+                    <span className="text-blue-600 font-mono">{financialAudit.total.toLocaleString()} UGX</span>
                   </div>
                 </div>
               </div>
@@ -556,7 +631,7 @@ export default function ManufacturingOrderManager() {
                 disabled={finalizeProductionMutation.isPending} 
                 className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-12 font-bold shadow-lg shadow-blue-600/20 rounded-xl flex-1 sm:flex-none uppercase tracking-wider"
               >
-                {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
+                {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
                 Complete Production Sync
               </Button>
             </div>
@@ -567,7 +642,7 @@ export default function ManufacturingOrderManager() {
       {/* SYSTEM STATUS FOOTER */}
       <div className="max-w-7xl mx-auto mt-12 flex items-center justify-end">
           <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-sm">
-             <div className="h-2 w-2 rounded-full bg-emerald-500" />
+             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
                 Production Engine | Sync: active
              </span>
