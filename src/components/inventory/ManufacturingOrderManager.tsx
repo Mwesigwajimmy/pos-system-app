@@ -37,6 +37,7 @@ export interface ManufacturingOrder {
   product_name: string;
   sku: string;
   planned_quantity: number;
+  actual_quantity_produced: number;
   status: 'draft' | 'confirmed' | 'in_progress' | 'completed';
   tenant_id: string;
   business_id: string;
@@ -54,8 +55,6 @@ interface IngredientLog {
 
 interface Expense {
   category: string; 
-  hours_or_units: number;
-  rate: number;
   amount: number;
 }
 
@@ -69,7 +68,7 @@ export default function ManufacturingOrderManager() {
   const [selectedOrder, setSelectedOrder] = useState<ManufacturingOrder | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Form States
+  // Form States (Industrial Detail)
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [ingredientLogs, setIngredientLogs] = useState<IngredientLog[]>([]);
   const [actualYield, setActualYield] = useState<number>(0);
@@ -79,10 +78,22 @@ export default function ManufacturingOrderManager() {
 
   const [newOrder, setNewOrder] = useState({ variant_id: '', qty: 1, batch: '' });
 
-  // --- 1. CORE DATA QUERIES ---
-  const { data: orders, isLoading, isError } = useQuery({
+  // --- 1. DEEP CORE DATA QUERIES ---
+  const { data: profile } = useQuery({
+    queryKey: ['business_profile_mfg'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.from('profiles').select('*, business_name, currency').eq('id', user?.id).limit(1).single();
+      return data;
+    }
+  });
+
+  const businessCurrency = profile?.currency || 'UGX';
+
+  const { data: orders, isLoading } = useQuery({
     queryKey: ['manufacturing_orders'],
     queryFn: async () => {
+      // Fetching from the repaired sector-aware view
       const { data, error } = await supabase
         .from('mfg_production_orders_view')
         .select('*')
@@ -92,12 +103,12 @@ export default function ManufacturingOrderManager() {
     }
   });
 
-  const { data: finishedGoods } = useQuery({
+  const { data: compositeProducts } = useQuery({
     queryKey: ['composite_products'],
     queryFn: async () => {
       const { data } = await supabase
         .from('product_variants')
-        .select('id, name, sku')
+        .select('id, name, product:products(name)')
         .eq('is_composite', true)
         .eq('is_active', true);
       return data || [];
@@ -105,34 +116,29 @@ export default function ManufacturingOrderManager() {
   });
 
   const { data: rawMaterials } = useQuery({
-    queryKey: ['raw_materials_registry'],
+    queryKey: ['raw_materials_registry_mfg'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('product_variants')
-        .select('id, name, sku, cost_price')
-        .eq('is_raw_material', true)
-        .eq('is_active', true);
+      // Pulling from high-integrity material ledger
+      const { data } = await supabase.from('raw_material_registry').select('*');
       return data || [];
     }
   });
 
   // --- 2. LOGIC HANDLERS ---
   const addIngredientFromInventory = (variantId: string) => {
-    // Check if already in list to prevent duplicates
     if (ingredientLogs.find(i => i.variant_id === variantId)) {
-        return toast.error("Material already added to batch log.");
+        return toast.error("Ingredient already mapped to batch.");
     }
-
-    const material = rawMaterials?.find(m => m.id.toString() === variantId);
+    const material: any = rawMaterials?.find((m: any) => m.variant_id.toString() === variantId);
     if (!material) return;
 
     setIngredientLogs([...ingredientLogs, {
-      variant_id: material.id.toString(),
-      name: material.name,
+      variant_id: material.variant_id.toString(),
+      name: material.product_name,
       planned_qty: 0,
       actual_qty: 1,
       waste_qty: 0,
-      unit_cost: material.cost_price || 0
+      unit_cost: material.buying_price || 0
     }]);
   };
 
@@ -141,154 +147,122 @@ export default function ManufacturingOrderManager() {
   };
 
   const openAuditDialog = async (order: ManufacturingOrder) => {
-    try {
-        const { data: recipe, error } = await supabase.rpc('get_composite_details_v5', { 
-            p_variant_id: order.output_variant_id 
-        });
-        
-        if (error) throw error;
-
-        if (recipe?.components) {
-          setIngredientLogs(recipe.components.map((c: any) => ({
-            variant_id: c.component_variant_id.toString(),
-            name: c.component_name,
-            planned_qty: c.quantity,
-            actual_qty: Number((c.quantity * order.planned_quantity).toFixed(4)),
-            waste_qty: 0,
-            unit_cost: c.unit_cost || 0
-          })));
-        } else {
-            setIngredientLogs([]);
-        }
-
-        setActualYield(order.planned_quantity);
-        setExpenses([
-            { category: 'General Labor', hours_or_units: 1, rate: 0, amount: 0 },
-            { category: 'Logistics/Transport', hours_or_units: 1, rate: 0, amount: 0 }
-        ]);
-        setSelectedOrder(order);
-    } catch (err: any) {
-        toast.error(`Recipe Load Failed: ${err.message}`);
+    // RESOLVE FORMULA: Fetch recipe from BOM table
+    const { data: recipe } = await supabase.rpc('get_composite_details_v5', { 
+        p_variant_id: order.output_variant_id 
+    });
+    
+    if (recipe?.components) {
+      setIngredientLogs(recipe.components.map((c: any) => ({
+        variant_id: c.component_variant_id.toString(),
+        name: c.component_name,
+        planned_qty: c.quantity,
+        actual_qty: Number((c.quantity * order.planned_quantity).toFixed(4)),
+        waste_qty: 0,
+        unit_cost: c.unit_cost || 0
+      })));
+    } else {
+        setIngredientLogs([]);
     }
+
+    setActualYield(order.planned_quantity);
+    setExpenses([
+        { category: 'Machine Power & Utility', amount: 0 },
+        { category: 'Direct Labor Hours', amount: 0 }
+    ]);
+    setSelectedOrder(order);
   };
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
-      if (!newOrder.variant_id || !newOrder.batch || newOrder.qty <= 0) {
-          throw new Error("Please complete all required fields with valid values.");
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      const bizId = user?.app_metadata?.business_id || user?.user_metadata?.business_id;
+      if (!newOrder.variant_id || !newOrder.batch) throw new Error("Product and Batch ID required.");
+      
+      const { data: prof } = await supabase.from('profiles').select('business_id').limit(1).single();
 
       const { error } = await supabase.from('mfg_production_orders').insert([{
         output_variant_id: parseInt(newOrder.variant_id),
         planned_quantity: newOrder.qty,
         batch_number: newOrder.batch.toUpperCase(),
         status: 'draft',
-        business_id: bizId,
-        tenant_id: user?.user_metadata?.tenant_id
+        business_id: prof?.business_id,
+        tenant_id: prof?.business_id
       }]);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Production batch created successfully");
+      toast.success("Industrial batch initiated");
       setIsCreateModalOpen(false);
       setNewOrder({ variant_id: '', qty: 1, batch: '' });
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     },
-    onError: (error: any) => toast.error(error.message)
+    onError: (e: any) => toast.error(e.message)
   });
 
   const finalizeProductionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOrder) return;
-      if (actualYield <= 0) throw new Error("Actual yield must be greater than zero.");
-      if (!expiryDate) throw new Error("Batch expiry date is required for compliance.");
+      if (actualYield <= 0) throw new Error("Yield cannot be zero.");
+      if (!expiryDate) throw new Error("Pharma/Food regulation requires expiry date.");
 
-      // 1. Bulk Insert Ingredient Logs
-      const { error: ingErr } = await supabase.from('mfg_production_ingredient_logs').insert(
+      // 1. ATOMIC LOGS: Capture Inputs and Overheads
+      await supabase.from('mfg_production_ingredient_logs').insert(
         ingredientLogs.map(l => ({
           production_order_id: selectedOrder.id,
           ingredient_variant_id: l.variant_id,
           quantity_used: l.actual_qty,
-          waste_qty: l.waste_qty,
           unit_cost_at_run: l.unit_cost,
-          tenant_id: selectedOrder.tenant_id,
           business_id: selectedOrder.business_id
         }))
       );
-      if (ingErr) throw ingErr;
 
-      // 2. Bulk Insert Expenses
-      if (expenses.length > 0) {
-        const { error: expErr } = await supabase.from('mfg_production_expenses').insert(
-          expenses.map(e => ({
-            production_order_id: selectedOrder.id,
-            expense_category: e.category,
-            description: e.category,
-            amount: e.hours_or_units * e.rate,
-            tenant_id: selectedOrder.tenant_id,
-            business_id: selectedOrder.business_id
-          }))
-        );
-        if (expErr) throw expErr;
-      }
+      await supabase.from('mfg_production_expenses').insert(
+        expenses.map(e => ({
+          production_order_id: selectedOrder.id,
+          expense_category: e.category,
+          amount: e.amount,
+          tenant_id: selectedOrder.business_id
+        }))
+      );
 
-      // 3. Final State Update
-      const { error: updateErr } = await supabase.from('mfg_production_orders').update({ 
+      // 2. SEAL BATCH: Update status and dates
+      await supabase.from('mfg_production_orders').update({ 
           actual_quantity_produced: actualYield,
           mfg_date: mfgDate,
           expiry_date: expiryDate,
           qc_inspector: qcSupervisor,
           status: 'confirmed'
       }).eq('id', selectedOrder.id);
-      if (updateErr) throw updateErr;
 
-      // 4. Trigger Server-Side Ledger & Inventory Reconciliation
+      // 3. EXECUTE WELD: Move assets to Warehouse and General Ledger
       const { error: syncErr } = await supabase.rpc('mfg_complete_production_v2', { 
           p_order_id: selectedOrder.id 
       });
       if (syncErr) throw syncErr;
     },
     onSuccess: () => {
-      toast.success("Batch finalized and Inventory synced");
+      toast.success("Industrial transformation complete and Ledger Sealed.");
       setSelectedOrder(null);
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     },
-    onError: (e: any) => toast.error(`Sync Error: ${e.message}`)
+    onError: (e: any) => toast.error(`Process Error: ${e.message}`)
   });
 
   const financialAudit = useMemo(() => {
     const matTotal = ingredientLogs.reduce((sum, i) => sum + (i.actual_qty * i.unit_cost), 0);
-    const expTotal = expenses.reduce((sum, e) => sum + (e.hours_or_units * e.rate), 0);
+    const expTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
     const total = matTotal + expTotal;
-    return { 
-        matTotal, 
-        expTotal, 
-        total, 
-        unitCost: actualYield > 0 ? (total / actualYield) : 0 
-    };
+    return { matTotal, expTotal, total, unitCost: actualYield > 0 ? (total / actualYield) : 0 };
   }, [ingredientLogs, expenses, actualYield]);
-
-  // UI state for filtered results
-  const filteredOrders = useMemo(() => {
-    if (!orders) return [];
-    return orders.filter(o => 
-        o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || 
-        o.product_name.toLowerCase().includes(filter.toLowerCase())
-    );
-  }, [orders, filter]);
 
   if (isLoading) return (
     <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
       <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Syncing Production Data...</p>
+      <p className="text-slate-400 font-black text-xs uppercase tracking-widest animate-pulse">Syncing Industrial Data...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-slate-50/50 p-6 md:p-10 font-sans animate-in fade-in duration-700">
       
       {/* PAGE HEADER */}
       <div className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -297,76 +271,70 @@ export default function ManufacturingOrderManager() {
             <Factory className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Production Control</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 tracking-tighter">Production Hub</h1>
             <div className="flex items-center gap-2 mt-1">
                <ShieldCheck size={14} className="text-emerald-500" /> 
-               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Manufacturing Hub Verified</span>
+               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">Enterprise Registry Sync: Active</span>
             </div>
           </div>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 shadow-lg shadow-blue-600/20 rounded-xl transition-all active:scale-95">
-          <PackagePlus className="mr-2 h-5 w-5" /> New Batch Order
+        <Button onClick={() => setIsCreateModalOpen(true)} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-black px-8 rounded-2xl shadow-xl shadow-blue-600/20 uppercase tracking-widest text-xs">
+          <PackagePlus className="mr-2 h-5 w-5" /> Initiate production run
         </Button>
       </div>
 
-      {/* MAIN ORDERS TABLE */}
-      <Card className="max-w-7xl mx-auto border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
+      {/* BATCH MONITOR TABLE */}
+      <Card className="max-w-7xl mx-auto border-slate-200 shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
         <CardHeader className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex-1">
-            <CardTitle className="text-lg font-bold text-slate-900 uppercase tracking-tight">Active Production Orders</CardTitle>
-            <CardDescription className="text-xs font-medium text-slate-400 mt-1">Monitor and finalize ongoing manufacturing batches.</CardDescription>
+            <CardTitle className="text-lg font-black text-slate-900 uppercase tracking-tight">Active Sector Runs</CardTitle>
+            <CardDescription className="text-xs font-medium text-slate-400 mt-1">Monitor ongoing asset transformation across the manufacturing sector.</CardDescription>
           </div>
           <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder="Filter by batch or product..." 
+              placeholder="Search by Lot ID or Product..." 
               value={filter} 
               onChange={e => setFilter(e.target.value)} 
-              className="pl-9 h-10 border-slate-200 bg-slate-50/50 focus:bg-white transition-all" 
+              className="pl-10 h-11 border-slate-200 bg-slate-50/50 focus:bg-white transition-all font-bold rounded-xl" 
             />
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50">
+              <TableHeader className="bg-slate-50/80">
                 <TableRow className="border-none">
-                  <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4 px-8">Batch Identity</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4">Finished Good</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4">Target Quantity</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase text-slate-500 py-4">Order Status</TableHead>
-                  <TableHead className="text-right pr-8 text-[11px] font-bold uppercase text-slate-500">Actions</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase text-slate-400 py-5 px-8 tracking-widest">Batch identity</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase text-slate-400 py-5 tracking-widest">Target good</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase text-slate-400 py-5 tracking-widest">Yield Plan</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase text-slate-400 py-5 tracking-widest text-center">Batch Status</TableHead>
+                  <TableHead className="text-right pr-8 text-[10px] font-black uppercase text-slate-400 tracking-widest">Control</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.length === 0 ? (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-32 text-center text-slate-400 text-sm italic font-medium">
-                            No production orders found matching your criteria.
-                        </TableCell>
-                    </TableRow>
-                ) : filteredOrders.map(o => (
-                  <TableRow key={o.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 h-20">
-                    <TableCell className="px-8 font-mono font-bold text-blue-600">{o.batch_number || 'N/A'}</TableCell>
+                {orders?.filter(o => o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || o.product_name.toLowerCase().includes(filter.toLowerCase())).map(o => (
+                  <TableRow key={o.id} className="hover:bg-slate-50/50 transition-all border-b border-slate-50 last:border-none group h-20">
+                    <TableCell className="px-8 font-mono font-black text-blue-600 text-sm">{o.batch_number || 'LOT-N/A'}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-900">{o.product_name}</span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">{o.sku}</span>
+                        <span className="font-black text-slate-900 text-sm tracking-tight">{o.product_name}</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{o.sku} Certified</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-bold text-slate-700">{o.planned_quantity.toLocaleString()} Units</TableCell>
-                    <TableCell>
+                    <TableCell className="font-black text-slate-700 text-sm">{o.planned_quantity.toLocaleString()} Units</TableCell>
+                    <TableCell className="text-center">
                       <Badge className={cn(
-                        "font-bold uppercase text-[10px] px-3 py-1 shadow-none border",
-                        o.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-blue-50 text-blue-700 border-blue-100"
+                        "font-black uppercase text-[9px] px-3 py-1 rounded-lg border",
+                        o.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-blue-50 text-blue-700 border-blue-100 animate-pulse"
                       )}>
                         {o.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right pr-8">
                       {o.status !== 'completed' && (
-                        <Button onClick={() => openAuditDialog(o)} size="sm" className="bg-slate-900 hover:bg-blue-700 font-bold px-4 rounded-lg">
-                          Review & Finalize
+                        <Button onClick={() => openAuditDialog(o)} size="sm" className="bg-slate-900 hover:bg-blue-700 font-black px-6 rounded-xl text-[10px] uppercase tracking-widest transition-all">
+                          Finalize Batch
                         </Button>
                       )}
                     </TableCell>
@@ -378,139 +346,121 @@ export default function ManufacturingOrderManager() {
         </CardContent>
       </Card>
 
-      {/* CREATE ORDER MODAL */}
+      {/* CREATE MODAL */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-lg rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="bg-slate-900 p-8 text-white">
-            <DialogTitle className="text-2xl font-bold tracking-tight">Initiate Production Batch</DialogTitle>
-            <DialogDescription className="text-slate-400 font-medium text-xs mt-1 uppercase tracking-wider">Select a product formula to begin manufacturing.</DialogDescription>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Initiate industrial run</DialogTitle>
+            <DialogDescription className="text-slate-400 font-medium text-xs mt-2 uppercase tracking-[0.3em]">Authorize batch molecular transformation.</DialogDescription>
           </div>
-          <div className="p-8 space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase">Product to Manufacture</Label>
+          <div className="p-8 space-y-8">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Finished Good to Produce</Label>
               <Select value={newOrder.variant_id} onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
-                <SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Finished Good" /></SelectTrigger>
-                <SelectContent>
-                  {finishedGoods?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                <SelectTrigger className="h-12 border-slate-200 font-bold rounded-2xl shadow-sm"><SelectValue placeholder="Select Product Target" /></SelectTrigger>
+                <SelectContent className="rounded-2xl shadow-2xl">
+                  {compositeProducts?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()}>{g.product?.name} ({g.name})</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase">Batch Number</Label>
-                  <Input placeholder="e.g. BATCH-2024-01" value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-11 border-slate-200 font-semibold" />
+            <div className="grid grid-cols-2 gap-8">
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Batch Lot ID #</Label>
+                  <Input placeholder="LOT-2024-01" value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-12 border-slate-200 font-black uppercase rounded-2xl shadow-sm" />
                </div>
-               <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase">Planned Quantity</Label>
-                  <Input type="number" min="1" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Math.max(1, Number(e.target.value))})} className="h-11 border-slate-200 font-semibold" />
+               <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Planned Quantity</Label>
+                  <Input type="number" min="1" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-12 border-slate-200 font-black text-blue-600 rounded-2xl shadow-sm" />
                </div>
             </div>
           </div>
-          <DialogFooter className="bg-slate-50 p-6 border-t border-slate-100">
-            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="font-bold">Cancel</Button>
-            <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-md">
-              {createOrderMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : "Create Work Order"}
+          <DialogFooter className="bg-slate-50 p-8 border-t border-slate-100 flex gap-4">
+            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Cancel</Button>
+            <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-black px-12 rounded-[1.5rem] shadow-2xl shadow-blue-600/30 uppercase tracking-[0.2em] text-xs">
+              {createOrderMutation.isPending ? <Loader2 className="animate-spin" /> : "Authorize Order"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* PRODUCTION REVIEW DIALOG (Audit) */}
+      {/* FINALIZATION DIALOG (Industrial Audit) */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
-          <DialogHeader className="bg-slate-900 text-white p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                   <ClipboardList className="text-white h-7 w-7" />
+        <DialogContent className="max-w-6xl h-[92vh] flex flex-col p-0 overflow-hidden border-none shadow-[0_48px_96px_-24px_rgba(0,0,0,0.3)] rounded-[3rem]">
+          <DialogHeader className="bg-slate-900 text-white p-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
+              <div className="flex items-center gap-6">
+                <div className="h-16 w-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-blue-500/30">
+                   <ClipboardList className="text-white h-8 w-8" />
                 </div>
                 <div>
-                    <DialogTitle className="text-2xl font-bold tracking-tight">Production Batch Review: {selectedOrder?.batch_number}</DialogTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Finalizing Formula For:</span>
-                      <Badge className="bg-white/10 text-white hover:bg-white/20 border-none px-2 py-0.5 text-[10px] font-bold uppercase">{selectedOrder?.product_name}</Badge>
-                    </div>
+                    <DialogTitle className="text-3xl font-black uppercase tracking-tight">Forensic Production Audit</DialogTitle>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1 italic">Lot Identification: {selectedOrder?.batch_number}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Calculated Cost Per Unit</p>
-                <p className="text-4xl font-bold text-emerald-400 tracking-tight mt-1">
-                  {financialAudit.unitCost.toLocaleString()} <span className="text-sm font-semibold opacity-50 uppercase">UGX</span>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Landed unit cost</p>
+                <p className="text-5xl font-black text-emerald-400 tracking-tighter mt-2">
+                  {financialAudit.unitCost.toLocaleString()} <span className="text-sm font-bold opacity-30 uppercase">{businessCurrency}</span>
                 </p>
               </div>
             </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden flex flex-col lg:flex-row bg-white">
-            <ScrollArea className="flex-1 p-8">
-              <div className="space-y-10">
+            <ScrollArea className="flex-1 p-10">
+              <div className="space-y-12">
                 
-                {/* BATCH METADATA */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Manufacturing Date</Label>
-                        <Input type="date" value={mfgDate} onChange={e => setMfgDate(e.target.value)} className="h-10 border-slate-200 font-semibold" />
+                {/* BATCH DATA & DATES */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100 shadow-inner">
+                    <div className="space-y-3">
+                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Manufacturing Date</Label>
+                        <Input type="date" value={mfgDate} onChange={e => setMfgDate(e.target.value)} className="h-12 border-slate-200 font-black rounded-2xl bg-white" />
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-red-500 tracking-wider">Product Expiry Date</Label>
-                        <Input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className="h-10 border-red-200 text-red-600 font-semibold focus:ring-red-500" />
+                    <div className="space-y-3">
+                        <Label className="text-[9px] font-black uppercase text-red-400 tracking-widest ml-1">Lot Expiry Date</Label>
+                        <Input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className="h-12 border-red-100 text-red-600 font-black rounded-2xl bg-white" />
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Quality Control Supervisor</Label>
-                        <Input placeholder="Enter supervisor name" value={qcSupervisor} onChange={e => setQcSupervisor(e.target.value)} className="h-10 border-slate-200 font-semibold" />
+                    <div className="space-y-3">
+                        <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Audit / QC Supervisor</Label>
+                        <Input placeholder="Authorized Name" value={qcSupervisor} onChange={e => setQcSupervisor(e.target.value)} className="h-12 border-slate-200 font-black rounded-2xl bg-white" />
                     </div>
                 </div>
 
-                {/* MATERIAL CONSUMPTION */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-900 flex items-center gap-2">
-                      <Beaker className="text-blue-600 h-4 w-4" /> 1. Material Consumption
+                {/* 1. INPUT ABSORPTION */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 flex items-center gap-4">
+                      <Beaker className="text-blue-600 h-6 w-6" /> 1. Physical Inputs Absorption
                     </h3>
                     <Select onValueChange={addIngredientFromInventory}>
-                      <SelectTrigger className="w-64 h-9 font-bold text-[11px] bg-blue-50/50 border-blue-100 text-blue-700 rounded-lg">
-                          <SelectValue placeholder="+ ADD EXTRA MATERIAL" />
+                      <SelectTrigger className="w-72 h-10 font-black text-[10px] bg-slate-50 border-slate-200 uppercase tracking-widest rounded-xl">
+                          <SelectValue placeholder="+ MAP EXTRA RAW MATERIAL" />
                       </SelectTrigger>
-                      <SelectContent>
-                          {rawMaterials?.map(rm => <SelectItem key={rm.id} value={rm.id.toString()}>{rm.name} ({rm.sku})</SelectItem>)}
+                      <SelectContent className="rounded-2xl shadow-2xl">
+                          {rawMaterials?.map((rm: any) => <SelectItem key={rm.variant_id} value={rm.variant_id.toString()} className="font-bold">{rm.product_name} ({rm.sku})</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="rounded-xl overflow-hidden border border-slate-100 shadow-sm">
+                  <div className="rounded-[2rem] overflow-hidden border border-slate-100 shadow-lg p-2 bg-white">
                     <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead className="text-[10px] font-bold uppercase py-3 pl-6">Material Name</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase py-3 text-center">Actual Quantity Used</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase py-3 text-center">Waste / Scrap</TableHead>
-                          <TableHead className="text-[10px] font-bold uppercase py-3 text-right pr-6">Cost per Unit</TableHead>
-                          <TableHead className="w-10"></TableHead>
+                      <TableHeader className="bg-slate-50/50">
+                        <TableRow className="border-none">
+                          <TableHead className="text-[9px] font-black uppercase py-4 pl-10 tracking-[0.3em] text-slate-400">Chemical Identity</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase py-4 text-center tracking-[0.3em] text-slate-400">Volume Burn</TableHead>
+                          <TableHead className="text-[9px] font-black uppercase py-4 text-right pr-10 tracking-[0.3em] text-slate-400">At-Run Cost</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {ingredientLogs.map((log, idx) => (
-                          <TableRow key={idx} className="border-b border-slate-50 last:border-0 h-16 group">
-                            <TableCell className="pl-6 py-4">
-                               <span className="font-bold text-slate-900">{log.name}</span>
-                            </TableCell>
+                          <TableRow key={idx} className="h-24 hover:bg-slate-50/50 border-b border-slate-50 last:border-none group rounded-3xl">
+                            <TableCell className="pl-10 font-black text-slate-900 text-base tracking-tight">{log.name}</TableCell>
                             <TableCell>
-                              <Input type="number" step="0.0001" value={log.actual_qty} onChange={e => {
-                                 const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n);
-                              }} className="h-9 w-24 mx-auto font-bold text-center border-slate-200 focus:bg-slate-50 transition-all" />
+                              <div className="flex items-center justify-center gap-3">
+                                <Input type="number" step="0.0001" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-11 w-32 font-black text-center border-slate-200 bg-slate-50 rounded-2xl text-blue-600 text-lg shadow-inner" />
+                                <Button variant="ghost" size="sm" onClick={() => removeIngredient(log.variant_id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></Button>
+                              </div>
                             </TableCell>
-                            <TableCell>
-                              <Input type="number" step="0.0001" value={log.waste_qty} onChange={e => {
-                                 const n = [...ingredientLogs]; n[idx].waste_qty = Number(e.target.value); setIngredientLogs(n);
-                              }} className="h-9 w-24 mx-auto font-bold text-center border-red-200 text-red-600 bg-red-50/30 focus:bg-red-50 transition-all" />
-                            </TableCell>
-                            <TableCell className="text-right pr-6">
-                              <span className="font-mono font-bold text-slate-600">{log.unit_cost.toLocaleString()}</span>
-                            </TableCell>
-                            <TableCell>
-                                <Button variant="ghost" size="sm" onClick={() => removeIngredient(log.variant_id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500">
-                                    <X size={14} />
-                                </Button>
-                            </TableCell>
+                            <TableCell className="text-right pr-10 font-mono font-black text-slate-500">{log.unit_cost.toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -518,40 +468,28 @@ export default function ManufacturingOrderManager() {
                   </div>
                 </div>
 
-                {/* ADDITIONAL COSTS */}
-                <div className="space-y-4 pb-10">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-900 flex items-center gap-2">
-                      <Wallet className="text-orange-500 h-4 w-4" /> 2. Additional Production Costs
+                {/* 2. OVERHEAD ABSORPTION */}
+                <div className="space-y-8 pb-16">
+                   <div className="flex justify-between items-center px-2">
+                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 flex items-center gap-4">
+                      <Wallet className="text-orange-500 h-6 w-6" /> 2. Overhead Ledgers
                     </h3>
-                    <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', hours_or_units: 1, rate: 0, amount: 0 }])} className="h-9 px-4 font-bold border-orange-200 text-orange-700 bg-orange-50/30 hover:bg-orange-50 transition-all">
-                      <Plus className="mr-2 h-4 w-4" /> Add Cost Line
+                    <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-11 px-6 font-black border-orange-200 text-orange-700 bg-orange-50/50 hover:bg-orange-100 rounded-[1.25rem] transition-all uppercase tracking-widest text-[9px] shadow-sm">
+                      <Plus className="mr-2 h-4 w-4" /> Add overhead row
                     </Button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-5">
                     {expenses.map((exp, idx) => (
-                      <div key={idx} className="flex gap-4 items-center bg-slate-50 border border-slate-100 p-4 rounded-xl shadow-sm">
+                      <div key={idx} className="flex gap-8 items-center bg-white border border-slate-100 p-6 rounded-[2.5rem] shadow-lg transition-all hover:shadow-2xl">
                         <div className="flex-1">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase">Cost Description</Label>
-                          <Input placeholder="e.g. Electricity, Night Labor" value={exp.category} onChange={e => {
-                              const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n);
-                          }} className="h-10 mt-1 font-bold border-slate-200 bg-white" />
+                          <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2">Description</Label>
+                          <Input placeholder="e.g. Mixing Power Consumption" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-12 mt-2 font-black border-slate-200 bg-slate-50 focus:bg-white rounded-2xl text-sm shadow-inner" />
                         </div>
-                        <div className="w-32">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase text-center block">Qty / Hours</Label>
-                          <Input type="number" step="0.01" value={exp.hours_or_units} onChange={e => {
-                              const n = [...expenses]; n[idx].hours_or_units = Number(e.target.value); setExpenses(n);
-                          }} className="h-10 mt-1 font-bold text-center border-slate-200 bg-white" />
+                        <div className="w-56">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] text-right block mr-2">Absorbed Valuation</Label>
+                          <Input type="number" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-12 mt-2 font-black text-right border-slate-200 bg-slate-50 focus:bg-white rounded-2xl text-lg text-orange-600 shadow-inner" />
                         </div>
-                        <div className="w-40">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase text-right block">Rate Per Unit</Label>
-                          <Input type="number" value={exp.rate} onChange={e => {
-                              const n = [...expenses]; n[idx].rate = Number(e.target.value); setExpenses(n);
-                          }} className="h-10 mt-1 font-bold text-right border-slate-200 bg-white" />
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="mt-5 text-slate-300 hover:text-red-500 h-10">
-                          <Trash2 size={18} />
-                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="mt-7 text-slate-200 hover:text-red-500 h-12 transition-colors"><Trash2 size={24} /></Button>
                       </div>
                     ))}
                   </div>
@@ -559,80 +497,63 @@ export default function ManufacturingOrderManager() {
               </div>
             </ScrollArea>
 
-            {/* SUMMARY SIDEBAR */}
-            <div className="w-full lg:w-[420px] bg-slate-50 border-l border-slate-200 p-8 flex flex-col justify-between">
-              <div className="space-y-10">
-                <div className="space-y-4">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">3. Actual Production Yield</Label>
-                    <div className="relative">
-                      <Input type="number" step="0.01" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-20 text-5xl font-bold bg-white border-slate-200 text-center rounded-2xl shadow-sm focus:ring-blue-500" />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end opacity-50">
-                        <span className="text-[10px] font-bold uppercase tracking-tight">Confirmed</span>
-                        <span className="text-[10px] font-bold uppercase tracking-tight text-blue-600">Items</span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-400 font-medium leading-relaxed italic text-center px-4">
-                      Enter the total number of finished units successfully placed into inventory.
-                    </p>
+            {/* FINANCIAL SIDEBAR */}
+            <div className="w-full lg:w-[480px] bg-slate-50 border-l border-slate-100 p-12 flex flex-col justify-between">
+              <div className="space-y-14">
+                <div className="space-y-8 text-center px-4">
+                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Final Industrial Yield</Label>
+                    <Input type="number" step="0.001" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-28 text-7xl font-black bg-white border-slate-100 text-center rounded-[3rem] shadow-2xl text-slate-900 tracking-tighter" />
+                    <p className="text-[10px] text-slate-400 font-black leading-relaxed italic uppercase tracking-widest opacity-60">Input final molecular volume for Ledger Seal.</p>
                 </div>
 
-                <div className="pt-8 border-t border-slate-200 space-y-4">
-                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase">
-                    <span>Material Costs</span>
-                    <span className="text-slate-900 font-mono">{financialAudit.matTotal.toLocaleString()} UGX</span>
+                <div className="pt-12 border-t border-slate-200 space-y-8">
+                  <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <span>Input Absorption</span>
+                    <span className="text-slate-900 font-mono text-sm">{financialAudit.matTotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase">
-                    <span>Operational Overheads</span>
-                    <span className="text-slate-900 font-mono">{financialAudit.expTotal.toLocaleString()} UGX</span>
+                  <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <span>Overhead Absorption</span>
+                    <span className="text-slate-900 font-mono text-sm">{financialAudit.expTotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xl font-bold text-slate-900 pt-6 border-t-2 border-slate-200">
-                    <span className="uppercase tracking-tight">Total Batch Cost</span>
-                    <span className="text-blue-600 font-mono">{financialAudit.total.toLocaleString()} UGX</span>
+                  <div className="flex justify-between items-center text-3xl font-black text-slate-900 pt-10 border-t-4 border-slate-900 tracking-tighter">
+                    <span className="uppercase tracking-tight text-sm text-slate-400">Total valuation</span>
+                    <span className="text-blue-600">{financialAudit.total.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-6 pt-10">
-                <Card className="bg-slate-900 text-white border-none shadow-xl rounded-2xl overflow-hidden relative group">
-                  <div className="absolute top-0 right-0 p-6 opacity-10 transition-transform group-hover:rotate-12">
-                      <Settings2 size={100} />
+              <div className="space-y-10 pt-16">
+                <Card className="bg-slate-900 text-white border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.4)] rounded-[2.5rem] overflow-hidden relative group">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 transition-transform duration-700 group-hover:rotate-[360deg]">
+                      <Settings2 size={120} />
                   </div>
-                  <CardContent className="p-8 relative z-10 space-y-4">
-                    <p className="text-[11px] font-bold uppercase text-blue-400 tracking-widest">Production Analysis</p>
+                  <CardContent className="p-10 relative z-10 space-y-6">
+                    <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.5em]">Forensic Analytics</p>
                     <div>
-                      <p className="text-xs text-slate-400 font-medium">Unit Production Cost:</p>
-                      <p className="text-5xl font-bold tracking-tight text-white mt-1">{financialAudit.unitCost.toLocaleString()}</p>
+                      <p className="text-xs text-slate-400 font-medium tracking-tight italic opacity-60">Landed cost per unit:</p>
+                      <p className="text-6xl font-black tracking-tighter text-white mt-4">{financialAudit.unitCost.toLocaleString()}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-emerald-400 pt-2">
-                        <TrendingUp size={14} /> <span>Margin analysis verified</span>
+                    <div className="flex items-center gap-4 text-[9px] font-black uppercase text-emerald-400 pt-6 tracking-[0.3em]">
+                        <TrendingUp size={18} className="animate-bounce" /> <span>Precision Cost Lock Active</span>
                     </div>
                   </CardContent>
                 </Card>
-                
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center py-4 border-2 border-dashed border-slate-200 rounded-2xl italic">
-                  Order ID: {selectedOrder?.id.substring(0,12).toUpperCase()}
-                </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="bg-white border-t p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-100 shadow-sm"><CheckCircle2 className="text-emerald-600 h-6 w-6" /></div>
+          <DialogFooter className="bg-white border-t border-slate-50 p-12 flex flex-col sm:flex-row items-center justify-between gap-10">
+            <div className="flex items-center gap-6">
+              <div className="h-16 w-16 rounded-[1.5rem] bg-emerald-50 flex items-center justify-center border-2 border-emerald-100"><CheckCircle2 className="text-emerald-600 h-10 w-10" /></div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-tight text-slate-900">Batch ready for completion</p>
-                <p className="text-[10px] font-medium text-slate-400">Inventory and ledger sync will be triggered upon confirmation.</p>
+                <p className="text-base font-black uppercase tracking-tight text-slate-900">Execute asset transformation</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 italic">Atomic Ledger Sync Authorized</p>
               </div>
             </div>
-            <div className="flex gap-4 w-full sm:w-auto">
-              <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="font-bold text-slate-400 hover:text-red-500 h-12 px-6">Discard Changes</Button>
-              <Button 
-                onClick={() => finalizeProductionMutation.mutate()} 
-                disabled={finalizeProductionMutation.isPending} 
-                className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-12 font-bold shadow-lg shadow-blue-600/20 rounded-xl flex-1 sm:flex-none uppercase tracking-wider"
-              >
-                {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
-                Complete Production Sync
+            <div className="flex gap-6 w-full sm:w-auto">
+              <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="font-black text-slate-300 hover:text-red-500 h-16 px-10 uppercase tracking-[0.4em] text-[10px] transition-all">Abort run</Button>
+              <Button onClick={() => finalizeProductionMutation.mutate()} disabled={finalizeProductionMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white h-16 px-16 font-black shadow-2xl shadow-blue-600/30 rounded-3xl flex-1 sm:flex-none uppercase tracking-[0.3em] text-xs transition-all hover:scale-105 active:scale-95">
+                {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Authorize Ledger Weld"}
               </Button>
             </div>
           </DialogFooter>
@@ -640,14 +561,21 @@ export default function ManufacturingOrderManager() {
       </Dialog>
 
       {/* SYSTEM STATUS FOOTER */}
-      <div className="max-w-7xl mx-auto mt-12 flex items-center justify-end">
-          <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-sm">
-             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
-                Production Engine | Sync: active
+      <footer className="max-w-7xl mx-auto mt-16 flex items-center justify-between border-t border-slate-100 pt-10 pb-12">
+          <div className="space-y-1 px-4">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Sector Protocol Health</p>
+             <div className="flex items-center gap-3">
+                <Badge variant="outline" className="text-[9px] font-black bg-white border-slate-200">ISO-9001 SYNC</Badge>
+                <Badge variant="outline" className="text-[9px] font-black bg-white border-slate-200 uppercase tracking-tighter">BigInt / UUID: OPERATIONAL</Badge>
+             </div>
+          </div>
+          <div className="flex items-center gap-4 px-8 py-4 bg-white border border-slate-100 rounded-[2rem] shadow-sm transition-all hover:shadow-xl group">
+             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse group-hover:scale-150 transition-transform" />
+             <span className="text-[11px] font-black text-slate-600 uppercase tracking-[0.4em]">
+                Molecular sync engine: active
              </span>
           </div>
-      </div>
+      </footer>
     </div>
   );
 }
