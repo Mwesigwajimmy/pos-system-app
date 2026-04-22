@@ -186,6 +186,12 @@ const navSections: NavItem[] = [
             icon: FlaskConical,
             businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale', 'Restaurant / Cafe'] 
         },
+{ 
+            href: '/inventory/composites/designer', 
+            label: 'Production Catalog', 
+            icon: Layers, 
+            businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale'] 
+        },
             { href: '/inventory/composites', label: 'Recipes', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution', 'Restaurant / Cafe'] }, 
             { href: '/inventory/work-center', label: 'Work Center', icon: CalendarDays, businessTypes: ['Distribution', 'Retail / Wholesale'] },
             { href: '/inventory/manufacturing-orders', label: 'Manufacturing', icon: Wrench, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
