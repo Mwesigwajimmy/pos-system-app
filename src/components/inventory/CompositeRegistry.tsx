@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Factory, ShieldCheck, Layers, Plus, Database, 
   Settings2, Loader2, Package, Beaker, Zap, Ruler,
-  ArrowRight, CheckCircle2, AlertCircle, Scale, X
+  ArrowRight, CheckCircle2, AlertCircle, Scale, X, Tags, FolderPlus
 } from "lucide-react";
 import toast from 'react-hot-toast';
 
@@ -38,7 +38,10 @@ const supabase = createClient();
 export default function CompositeRegistry() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  
+  // Modal States
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   
   // High-Integrity Industrial Form State
   const [form, setForm] = useState({
@@ -46,12 +49,13 @@ export default function CompositeRegistry() {
     sku: '',
     category_id: '',
     uom_id: '',
-    base_price: '', // Changed to string for better typing experience
+    base_price: '', 
     cost_estimate: '' 
   });
 
-  // Local state for on-the-fly unit creation
+  // Industrial Definition States
   const [newUnit, setNewUnit] = useState({ name: '', abbreviation: '' });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
 
   // --- 1. SYSTEM CONTEXT QUERIES ---
   const { data: profile } = useQuery({
@@ -66,6 +70,7 @@ export default function CompositeRegistry() {
     queryKey: ['mfg_registry_categories', profile?.business_id],
     queryFn: async () => {
       if (!profile?.business_id) return [];
+      // Fetching categories. Note: Production categories are filtered by the business node
       const { data } = await supabase.from('categories').select('id, name').eq('business_id', profile?.business_id);
       return data || [];
     },
@@ -80,9 +85,28 @@ export default function CompositeRegistry() {
     }
   });
 
-  // --- 2. LOGIC HANDLERS ---
+  // --- 2. AUTONOMOUS LOGIC ---
 
-  // Procedure: Birth New Industrial Unit
+  // UTILITY: Forensic SKU Generator
+  // Standard: [PREFIX]-[INITIALS]-[TIMESTAMP_SHORT]
+  const generateForensicSKU = (name: string) => {
+    if (!name || name.length < 2) return '';
+    const prefix = "MFG-";
+    const initials = name.replace(/\s+/g, '').substring(0, 3).toUpperCase();
+    const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    return `${prefix}${initials}-${timestamp}`;
+  };
+
+  // Sync Name with SKU automatically to assist the user
+  useEffect(() => {
+    if (form.name && !form.sku) {
+        setForm(prev => ({ ...prev, sku: generateForensicSKU(form.name) }));
+    }
+  }, [form.name]);
+
+  // --- 3. REGISTRY HANDLERS ---
+
+  // Procedure: Birth New Industrial Metric
   const handleCreateUnit = async () => {
     if (!newUnit.name || !newUnit.abbreviation) return toast.error("Unit details required.");
     try {
@@ -103,19 +127,46 @@ export default function CompositeRegistry() {
         setIsUnitModalOpen(false);
         queryClient.invalidateQueries({ queryKey: ['mfg_registry_uoms'] });
     } catch (e: any) {
-        toast.error(`Unit Creation Error: ${e.message}`);
+        toast.error(`Industrial Metric Error: ${e.message}`);
+    }
+  };
+
+  // Procedure: Birth New Production Category
+  const handleCreateCategory = async () => {
+    if (!newCategory.name) return toast.error("Category name required.");
+    try {
+        const { data, error } = await supabase
+            .from('categories')
+            .insert([{ 
+                name: newCategory.name, 
+                description: newCategory.description,
+                business_id: profile?.business_id,
+                status: 'active'
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        toast.success(`Category '${data.name}' birthed.`);
+        setForm(prev => ({ ...prev, category_id: data.id.toString() }));
+        setNewCategory({ name: '', description: '' });
+        setIsCategoryModalOpen(false);
+        queryClient.invalidateQueries({ queryKey: ['mfg_registry_categories'] });
+    } catch (e: any) {
+        toast.error(`Category Creation Error: ${e.message}`);
     }
   };
 
   const handleRegisterDesign = async () => {
     if (!form.name || !form.uom_id || !form.category_id) {
-        return toast.error("Asset Name, Metric, and Category are mandatory for industrial registration.");
+        return toast.error("Asset Identity, Metric, and Classification are mandatory.");
     }
     
     setLoading(true);
 
     try {
-      // 1. Create Master Product Definition
+      // THE INDUSTRIAL BIRTH: 
+      // 1. Create the Master Product Record (The Identity)
       const { data: product, error: pErr } = await supabase
         .from('products')
         .insert([{
@@ -129,18 +180,18 @@ export default function CompositeRegistry() {
 
       if (pErr) throw pErr;
 
-      // 2. Create Variant with 'is_composite = true'
-      // This activates the product in the Manufacturing Hub
+      // 2. Create the Variant (The Market Instance)
+      // We set price = selling price for NIM PAINTS distributive needs
       const { error: vErr } = await supabase
         .from('product_variants')
         .insert([{
           product_id: product.id,
           business_id: profile?.business_id,
           name: 'Standard Batch',
-          sku: form.sku || `MFG-${Date.now()}`,
+          sku: form.sku || generateForensicSKU(form.name),
           price: parseFloat(form.base_price as string) || 0,
           cost_price: parseFloat(form.cost_estimate as string) || 0,
-          is_composite: true, 
+          is_composite: true, // Crucial for Manufacturing dropdown
           is_raw_material: false,
           uom_id: form.uom_id,
           status: 'active'
@@ -148,7 +199,7 @@ export default function CompositeRegistry() {
 
       if (vErr) throw vErr;
 
-      toast.success(`${form.name} born into Production Catalog.`);
+      toast.success(`${form.name} authorized in Production Catalog.`);
       setForm({ name: '', sku: '', category_id: '', uom_id: '', base_price: '', cost_estimate: '' });
       
       queryClient.invalidateQueries({ queryKey: ['mfg_products_targets'] });
@@ -165,19 +216,19 @@ export default function CompositeRegistry() {
       <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
-               <div className="p-4 bg-slate-900 rounded-2xl text-white shadow-2xl transition-transform hover:rotate-3">
+               <div className="p-4 bg-slate-900 rounded-2xl text-white shadow-2xl transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                     <Factory size={28} />
                </div>
                <div>
-                   <CardTitle className="text-2xl font-black uppercase tracking-tight text-slate-900">Finished Good Designer</CardTitle>
-                   <CardDescription className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-[0.2em]">
-                        Register high-value manufactured assets into the industrial registry.
+                   <CardTitle className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-none">Finished Good Designer</CardTitle>
+                   <CardDescription className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]">
+                        Establish master identities for manufactured goods.
                    </CardDescription>
                </div>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-100 shadow-sm">
                 <ShieldCheck className="text-emerald-500" size={16} />
-                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Security Node: Verified</span>
+                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Security Node: Active</span>
             </div>
         </div>
       </CardHeader>
@@ -185,21 +236,21 @@ export default function CompositeRegistry() {
       <CardContent className="p-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           
-          {/* PRODUCT IDENTITY - Z-INDEX FIXED FOR TYPING */}
+          {/* PRODUCT IDENTITY */}
           <div className="space-y-3 relative z-10">
             <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Finished Asset Identity</Label>
             <Input 
                 placeholder="e.g. NIM Gloss White Paint 5L" 
                 value={form.name} 
                 onChange={e => setForm({...form, name: e.target.value})} 
-                className="h-12 border-slate-200 focus:ring-blue-500 font-bold rounded-2xl shadow-sm bg-white" 
+                className="h-12 border-slate-200 focus:ring-blue-500 font-bold rounded-2xl shadow-sm bg-white transition-all" 
             />
           </div>
 
           <div className="space-y-3 relative z-10">
             <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Global SKU / Lot Serial</Label>
             <Input 
-                placeholder="PAINT-GW-05" 
+                placeholder="Auto-generated" 
                 value={form.sku} 
                 onChange={e => setForm({...form, sku: e.target.value})} 
                 className="h-12 border-slate-200 font-mono text-sm rounded-2xl shadow-sm bg-white" 
@@ -232,12 +283,21 @@ export default function CompositeRegistry() {
             </Select>
           </div>
 
-          {/* CLASSIFICATION */}
+          {/* DYNAMIC CATEGORY SELECTOR */}
           <div className="space-y-3 relative z-10">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Asset Classification</Label>
+            <div className="flex justify-between items-center px-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Asset Classification</Label>
+                <button 
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="text-[9px] font-black text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 uppercase"
+                >
+                    <Plus size={10} /> Add Category
+                </button>
+            </div>
             <Select value={form.category_id} onValueChange={v => setForm({...form, category_id: v})}>
               <SelectTrigger className="h-12 border-slate-200 font-bold rounded-2xl shadow-sm text-sm bg-white">
-                <SelectValue placeholder="Select Production Category" />
+                <SelectValue placeholder="Select Production Type" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
                 {categories?.map(c => (
@@ -249,9 +309,9 @@ export default function CompositeRegistry() {
             </Select>
           </div>
 
-          {/* VALUATION - MULTI-CURRENCY LOCK */}
+          {/* VALUATION */}
           <div className="space-y-3 relative z-10">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Retail Selling Price ({profile?.currency})</Label>
+            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Retail Price ({profile?.currency})</Label>
             <Input 
                 type="number" 
                 value={form.base_price} 
@@ -266,7 +326,7 @@ export default function CompositeRegistry() {
                 disabled={loading} 
                 className="w-full bg-slate-900 hover:bg-blue-700 text-white font-black h-12 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.3)] rounded-2xl transition-all uppercase tracking-widest text-xs group"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform"/>} 
+              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform"/>} 
               Authorize Design
             </Button>
           </div>
@@ -287,7 +347,7 @@ export default function CompositeRegistry() {
         </div>
       </CardContent>
 
-      {/* DYNAMIC UNIT DEFINITION MODAL */}
+      {/* MODAL: NEW UNIT */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
           <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] p-0 overflow-hidden">
               <div className="bg-slate-900 p-8 text-white">
@@ -295,7 +355,7 @@ export default function CompositeRegistry() {
                       <Scale className="text-blue-400" /> Metric Registry
                   </DialogTitle>
                   <DialogDescription className="text-slate-400 text-xs mt-2 leading-relaxed font-medium">
-                      Register a new measurement standard for Pharmaceutical or Chemical tracking.
+                      Establish a new measurement standard for Pharmaceutical or Chemical tracking.
                   </DialogDescription>
               </div>
               <div className="p-8 space-y-6 bg-white">
@@ -309,7 +369,7 @@ export default function CompositeRegistry() {
                       />
                   </div>
                   <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Forensic Abbreviation</Label>
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Abbreviation</Label>
                       <Input 
                         placeholder="e.g. 5L-JC" 
                         value={newUnit.abbreviation} 
@@ -320,12 +380,45 @@ export default function CompositeRegistry() {
               </div>
               <DialogFooter className="bg-slate-50 p-6 border-t border-slate-100 flex gap-3">
                   <Button variant="ghost" onClick={() => setIsUnitModalOpen(false)} className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Discard</Button>
-                  <Button 
-                    onClick={handleCreateUnit} 
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 rounded-2xl shadow-xl shadow-blue-600/20 uppercase tracking-widest text-[10px]"
-                  >
-                    Save Standard
-                  </Button>
+                  <Button onClick={handleCreateUnit} className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 rounded-2xl shadow-xl shadow-blue-600/20 uppercase tracking-widest text-[10px]">Save Metric</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* MODAL: NEW CATEGORY */}
+      <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
+          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+              <div className="bg-slate-900 p-8 text-white">
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+                      <FolderPlus className="text-blue-400" /> Sector Classification
+                  </DialogTitle>
+                  <DialogDescription className="text-slate-400 text-xs mt-2 leading-relaxed font-medium">
+                      Define a new production category to logically separate manufactured assets.
+                  </DialogDescription>
+              </div>
+              <div className="p-8 space-y-6 bg-white">
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Category Name</Label>
+                      <Input 
+                        placeholder="e.g. High-Gloss Coatings" 
+                        value={newCategory.name} 
+                        onChange={e => setNewCategory({...newCategory, name: e.target.value})} 
+                        className="h-12 border-slate-200 focus:ring-blue-500 font-bold rounded-2xl" 
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Logistics Note (Optional)</Label>
+                      <Input 
+                        placeholder="e.g. Industrial grade paints" 
+                        value={newCategory.description} 
+                        onChange={e => setNewCategory({...newCategory, description: e.target.value})} 
+                        className="h-12 border-slate-200 font-medium rounded-2xl" 
+                      />
+                  </div>
+              </div>
+              <DialogFooter className="bg-slate-50 p-6 border-t border-slate-100 flex gap-3">
+                  <Button variant="ghost" onClick={() => setIsCategoryModalOpen(false)} className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Discard</Button>
+                  <Button onClick={handleCreateCategory} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 rounded-2xl shadow-xl uppercase tracking-widest text-[10px]">Save Category</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -333,9 +426,9 @@ export default function CompositeRegistry() {
       <CardFooter className="bg-slate-50/30 p-8 border-t border-slate-100 flex justify-between items-center">
           <div className="flex items-center gap-3">
               <Package size={14} className="text-slate-300" />
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sovereign Registry Node v10.5.5</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sovereign OS Manufacturing Node v10.6.0</span>
           </div>
-          <Badge variant="outline" className="bg-white text-[9px] font-black tracking-tighter border-slate-200 shadow-sm">ISO-9001 COMPLIANT_PROTOCOL</Badge>
+          <Badge variant="outline" className="bg-white text-[9px] font-black tracking-tighter border-slate-200 shadow-sm">ISO-9001 COMPLIANT_REGISTRY</Badge>
       </CardFooter>
     </Card>
   );

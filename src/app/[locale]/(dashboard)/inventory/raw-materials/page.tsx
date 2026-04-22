@@ -16,7 +16,9 @@ import {
   ClipboardList,
   CheckCircle2,
   Info,
-  TrendingUp
+  TrendingUp,
+  ChevronRight,
+  Activity
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
  * Fetches the global registry of Measurement Units.
- * Enterprise standard: Supports Pharmaceutical, Chemical, and Food metrics.
+ * Standardized system for Pharmaceutical, Chemical, and Food metrics.
  */
 async function getUOMs(supabase: any) {
   const { data, error } = await supabase
@@ -34,13 +36,13 @@ async function getUOMs(supabase: any) {
     .select('id, name, abbreviation')
     .order('name', { ascending: true });
   
-  if (error) console.error("Forensic UOM Fetch Error:", error.message);
+  if (error) console.error("Measurement Unit Fetch Error:", error.message);
   return data || [];
 }
 
 /**
- * Fetches Vendors strictly linked to the active Business ID.
- * Ensures multi-tenant isolation for procurement and supply chain integrity.
+ * Fetches Vendors linked to the active Business context.
+ * Ensures data isolation and supply chain integrity.
  */
 async function getVendors(supabase: any, businessId: string) {
   const { data, error } = await supabase
@@ -49,7 +51,7 @@ async function getVendors(supabase: any, businessId: string) {
     .eq('business_id', businessId)
     .order('name', { ascending: true });
     
-  if (error) console.error("Sector Vendor Fetch Error:", error.message);
+  if (error) console.error("Vendor Registry Fetch Error:", error.message);
   return data || [];
 }
 
@@ -58,13 +60,10 @@ export default async function RawMaterialOnboardingPage() {
   const supabase = createClient(cookieStore);
 
   // --- 1. AUTHENTICATION GUARD ---
-  // Verified V10.2 Security Protocol
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
-  // --- 2. IDENTITY RESOLUTION (Sector-Aware Switcher) ---
-  // We resolve the active business ID. 
-  // Priority: 1. Active Cookie (Switch) -> 2. Profile Default
+  // --- 2. IDENTITY RESOLUTION ---
   const activeCookieId = cookieStore.get('bbu1_active_business_id')?.value;
 
   const { data: profile } = await supabase
@@ -73,67 +72,73 @@ export default async function RawMaterialOnboardingPage() {
     .eq("id", user.id)
     .single();
 
-  // Determine the working context ID
   const businessId = activeCookieId || profile?.business_id;
-  const entityName = profile?.business_name || "Enterprise Node";
+  const entityName = profile?.business_name || "Primary Node";
 
-  // Failsafe: Access Restriction if no organizational context is resolved
+  // Failsafe: Handle missing business context
   if (!businessId) {
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
-            <Alert variant="destructive" className="max-w-md rounded-3xl border-none shadow-2xl p-8 bg-white">
-                <AlertCircle className="h-6 w-6 text-red-500" />
-                <AlertTitle className="font-bold text-slate-900 ml-2 text-lg uppercase tracking-tight">Access Restricted</AlertTitle>
-                <AlertDescription className="mt-4 text-slate-600 font-medium leading-relaxed">
-                    This industrial terminal requires an active Business Identity. Please ensure your session is correctly linked to a manufacturing sector to onboard assets.
-                </AlertDescription>
-            </Alert>
+        <div className="min-h-screen bg-white flex items-center justify-center p-8">
+            <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-10 shadow-sm text-center">
+                <div className="h-14 w-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <AlertCircle className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">Facility Link Required</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-8">
+                    To access the Raw Material Registry, your account must be linked to an active manufacturing facility. Please select a facility from your dashboard.
+                </p>
+                <Badge variant="outline" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 py-1">
+                    Error Code: AUTH_PROFILE_UNLINKED
+                </Badge>
+            </div>
         </div>
     );
   }
 
   // --- 3. DATA SYNCHRONIZATION ---
-  // Parallel execution for high-integrity industrial data retrieval
   const [uoms, vendors] = await Promise.all([
     getUOMs(supabase),
     getVendors(supabase, businessId)
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-50/50 p-6 md:p-10 animate-in fade-in duration-700 font-sans">
+    <main className="min-h-screen bg-white p-6 md:p-12 font-sans selection:bg-blue-50">
       
-      {/* PAGE HEADER */}
-      <header className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-5">
-           <div className="p-3.5 bg-slate-900 rounded-2xl shadow-xl text-white">
-              <Database className="w-7 h-7" />
+      {/* PAGE HEADER - Clean, Wide and High Contrast */}
+      <header className="max-w-[1600px] mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-100 pb-10">
+        <div className="flex items-center gap-6">
+           <div className="p-4 bg-slate-900 rounded-xl shadow-sm text-white">
+              <Database className="w-6 h-6" />
            </div>
            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Input Registry</h1>
-              <div className="flex items-center gap-2 mt-1">
-                 <ShieldCheck size={14} className="text-emerald-500" />
-                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Onboarding Raw Materials • {entityName}
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Raw Material Registry</h1>
+              <div className="flex items-center gap-3 mt-2">
+                 <Badge variant="outline" className="bg-emerald-50/50 text-emerald-700 border-emerald-100 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md">
+                    System Active
+                 </Badge>
+                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    Facility: {entityName}
                  </span>
               </div>
            </div>
         </div>
 
-        <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-500 uppercase tracking-widest shadow-sm">
-                <ShieldCheck size={14} className="text-emerald-500" />
-                Sovereign Audit Verified
+        <div className="flex items-center gap-6">
+            <div className="hidden lg:flex items-center gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                <ShieldCheck size={16} className="text-blue-500" />
+                Audit-Ready Protocol
             </div>
-            <Badge className="bg-slate-900 text-white border-none px-4 py-1.5 font-bold text-[10px] tracking-widest uppercase rounded-lg">
-                V10.5 SECURE
+            <div className="h-8 w-px bg-slate-100 hidden lg:block" />
+            <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-none px-4 py-1.5 font-bold text-[10px] tracking-widest uppercase">
+                Release v10.5
             </Badge>
         </div>
       </header>
 
-      {/* MAIN CONTENT GRID */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* MAIN CONTENT GRID - Wide Layout Architecture */}
+      <div className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-12">
         
-        {/* LEFT SECTION: INTERACTIVE PORTAL */}
+        {/* LEFT SECTION: INTERACTIVE PORTAL (Main Form/Table) */}
         <div className="xl:col-span-8">
             <RawMaterialPortal 
               uoms={uoms} 
@@ -142,48 +147,50 @@ export default async function RawMaterialOnboardingPage() {
             />
         </div>
 
-        {/* RIGHT SECTION: SYSTEM INSIGHTS */}
-        <aside className="xl:col-span-4 space-y-6">
+        {/* RIGHT SECTION: SYSTEM INSIGHTS AND GUIDANCE */}
+        <aside className="xl:col-span-4 space-y-8">
             
-            {/* INSTRUCTION CARD */}
-            <Card className="border-none bg-slate-900 text-white rounded-[2.5rem] overflow-hidden shadow-xl">
-                <CardHeader className="border-b border-white/10 p-8">
-                    <CardTitle className="text-[11px] font-bold uppercase text-blue-400 flex items-center gap-3 tracking-widest">
-                       <ClipboardList size={16}/> Industrial Protocol
+            {/* GUIDANCE CARD */}
+            <Card className="border-none bg-slate-50 rounded-2xl overflow-hidden shadow-sm">
+                <CardHeader className="border-b border-slate-100 p-8">
+                    <CardTitle className="text-xs font-bold uppercase text-slate-500 flex items-center gap-3 tracking-widest">
+                       <ClipboardList size={16} className="text-blue-600"/> Onboarding Guidance
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-8">
-                    <div className="space-y-8">
-                        <div className="flex gap-4">
-                            <div className="h-7 w-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
-                                <Info size={16} />
+                    <div className="space-y-10">
+                        <div className="flex gap-5">
+                            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
+                                <Activity size={18} />
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-sm font-bold text-white">Identity Mapping</p>
-                                <p className="text-xs text-slate-400 leading-relaxed">
-                                    Define the base material profile to generate a unique batch SKU for industrial tracking.
+                            <div className="space-y-1.5">
+                                <p className="text-sm font-bold text-slate-800">Inventory Classification</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    Accurately define material properties to ensure compatibility with standard manufacturing cycles and batch tracking.
                                 </p>
                             </div>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="h-7 w-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
-                                <ShieldCheck size={16} />
+                        
+                        <div className="flex gap-5">
+                            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
+                                <ShieldCheck size={18} />
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-sm font-bold text-white">Quality Assurance</p>
-                                <p className="text-xs text-slate-400 leading-relaxed">
-                                    Assign pharmaceutical or food-grade purity standards to enable forensic anomaly detection.
+                            <div className="space-y-1.5">
+                                <p className="text-sm font-bold text-slate-800">Standard Compliance</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    Materials registered here follow pharmaceutical and food-safe standards for full supply-chain traceability.
                                 </p>
                             </div>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="h-7 w-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
-                                <TrendingUp size={16} />
+
+                        <div className="flex gap-5">
+                            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
+                                <TrendingUp size={18} />
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-sm font-bold text-white">Financial Integration</p>
-                                <p className="text-xs text-slate-400 leading-relaxed">
-                                    Valuations are automatically bridged to the General Ledger for accurate Balance Sheet reporting.
+                            <div className="space-y-1.5">
+                                <p className="text-sm font-bold text-slate-800">Financial Accuracy</p>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    Initial valuations are directly bridged to the general ledger to maintain balance sheet integrity in real-time.
                                 </p>
                             </div>
                         </div>
@@ -191,28 +198,36 @@ export default async function RawMaterialOnboardingPage() {
                 </CardContent>
             </Card>
 
-            {/* INTEGRITY CARD */}
-            <Card className="border-slate-200 shadow-sm bg-white rounded-[2rem] p-8">
+            {/* SYSTEM DATA SEGREGATION CARD */}
+            <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl p-8">
                 <div className="flex items-center gap-3 mb-4">
-                    <History size={16} className="text-slate-400" />
-                    <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Forensic Separation</h3>
+                    <History size={16} className="text-slate-300" />
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data Segregation</h3>
                 </div>
-                <p className="text-xs font-medium text-slate-500 leading-relaxed italic">
-                    Raw materials recorded here are logically partitioned by business node, ensuring precise multi-location stock control across the production cycle.
+                <p className="text-xs font-medium text-slate-500 leading-relaxed">
+                    All material records are logically partitioned by facility ID. This ensures data privacy and precise stock management across multiple production nodes.
                 </p>
             </Card>
         </aside>
       </div>
 
-      {/* SYSTEM STATUS FOOTER */}
-      <footer className="max-w-7xl mx-auto mt-16 pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+      {/* REFINED SYSTEM STATUS FOOTER */}
+      <footer className="max-w-[1600px] mx-auto mt-24 pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             <LayoutGrid size={14} className="text-slate-300" />
-            Infrastructure Link: <span className="text-slate-500 font-mono">{businessId.substring(0,8).toUpperCase()}</span>
+            Infrastructure Node: <span className="text-slate-900 font-mono tracking-tighter">{businessId.substring(0,8).toUpperCase()}</span>
           </div>
-          <div className="bg-emerald-50 text-emerald-700 px-5 py-2 rounded-full border border-emerald-100 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Neural Synchronization Active
+          
+          <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cloud Sync Active</span>
+              </div>
+              <div className="h-4 w-px bg-slate-100" />
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <CheckCircle2 size={14} className="text-emerald-500" />
+                Data Integrity Verified
+              </div>
           </div>
       </footer>
     </main>
