@@ -55,7 +55,7 @@ export default async function CompositeDesignerPage() {
   const workingBizId = activeSectorCookie || profile?.business_id;
 
   // FAILSAFE: Identity Drift Protection
-  // If the system cannot resolve which business node to birth the asset into, we restrict access.
+  // If the system cannot resolve which business node to birth the asset into, access is restricted.
   if (!workingBizId) {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-10">
@@ -63,7 +63,7 @@ export default async function CompositeDesignerPage() {
                 <Lock className="h-10 w-10 text-red-500 mb-6" />
                 <AlertTitle className="font-black text-slate-900 uppercase tracking-tight text-xl">Identity Handshake Failed</AlertTitle>
                 <AlertDescription className="mt-4 text-slate-500 font-medium leading-relaxed">
-                    This industrial designer requires an active Production Node identity. Please return to your main dashboard and select a sector (e.g., NIM PAINTS) to proceed with asset registration.
+                    This industrial designer requires an active Production Node identity. Please return to your main dashboard and select a sector to proceed with asset registration.
                 </AlertDescription>
                 <div className="mt-8 pt-6 border-t border-slate-100">
                     <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Error_Code: 0xIDENTITY_NULL</p>
@@ -132,13 +132,13 @@ export default async function CompositeDesignerPage() {
       {/* MAIN CONTENT AREA: THE ATOMIC DESIGNER */}
       <div className="max-w-7xl mx-auto space-y-12">
         
-        {/* This component handles the multi-table insertion logic for is_composite = true */}
+        {/* Component for multi-table insertion logic */}
         <section className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur opacity-5 group-hover:opacity-10 transition duration-1000 group-hover:duration-200"></div>
             <CompositeRegistry />
         </section>
 
-        {/* INDUSTRIAL DOCUMENTATION CARDS (Forensic Integrity) */}
+        {/* INDUSTRIAL DOCUMENTATION CARDS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 space-y-5 transition-all hover:shadow-2xl">
                 <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -159,7 +159,7 @@ export default async function CompositeDesignerPage() {
                 <div className="space-y-2">
                     <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">2. Security Partitioning</h3>
                     <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                        Using the <span className="font-bold underline text-blue-600">Sovereign Identity Protocol</span>, your paint formulas and lot data are cryptographically isolated. Only authorized personnel in the {entityName} sector can access this catalog.
+                        Using the <span className="font-bold underline text-blue-600">Sovereign Identity Protocol</span>, paint formulas and lot data are cryptographically isolated. Only authorized personnel in the {entityName} sector can access this catalog.
                     </p>
                 </div>
             </div>
@@ -179,7 +179,7 @@ export default async function CompositeDesignerPage() {
 
       </div>
 
-      {/* SYSTEM STATUS FOOTER (Persistence Verification) */}
+      {/* SYSTEM STATUS FOOTER */}
       <footer className="max-w-7xl mx-auto mt-24 pt-10 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-4 text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">
             Authorized Production monitor • Node: {nodeIdentity}

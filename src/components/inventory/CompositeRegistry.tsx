@@ -15,7 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardFooter 
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const supabase = createClient();
@@ -226,7 +233,7 @@ export default function CompositeRegistry() {
       <CardFooter className="bg-slate-50/30 p-8 border-t border-slate-100 flex justify-between items-center">
           <div className="flex items-center gap-3">
               <Package size={14} className="text-slate-300" />
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest italic">Industrial Registry v10.4.5</span>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Industrial Registry v10.4.5</span>
           </div>
           <Badge variant="outline" className="bg-white text-[9px] font-black tracking-tighter border-slate-200">ISO-9001 COMPLIANT_REGISTRY</Badge>
       </CardFooter>
