@@ -46,12 +46,10 @@ export default function SovereignCommandCenter() {
       } else {
         setStats({ daily_visits: 0, daily_signups: 0, active_users_now: 0 });
       }
-
-      if (industry.data) setVerticals(industry.data);
-      if (orgs.data) setTenants(orgs.data);
       
+      if (industry.data) setVerticals(industry.data || []);
+      if (orgs.data) setTenants(orgs.data || []);
     } catch (e) {
-      console.error("Deep System Error:", e);
       toast.error("DATA_SYNC_CRITICAL", { description: "Uplink to sovereign ledgers interrupted." });
     } finally {
       setLoading(false);
@@ -65,7 +63,6 @@ export default function SovereignCommandCenter() {
     const channel = supabase
       .channel('system_sentinel')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_global_telemetry' }, () => {
-        // Throttled refresh for non-critical stats
         syncSystemState();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tenants' }, (payload) => {
@@ -85,14 +82,13 @@ export default function SovereignCommandCenter() {
 
   // --- 3. TACTICAL OVERRIDES (RPC BASED) ---
   const handleTacticalIsolation = async (tenantId: string, name: string) => {
-    // In Enterprise, we use a custom-themed confirm or Double-Lock UI (omitted for brevity)
     const proceed = confirm(`AUTH REQUIRED: Isolate ${name}? This will sever all module interconnects.`);
     if (!proceed) return;
 
     try {
       const { error } = await supabase.rpc('isolate_tenant_tactical', {
         target_tenant_id: tenantId,
-        admin_id: 'architect_01' // Replace with actual session admin ID
+        admin_id: 'architect_01'
       });
 
       if (error) throw error;
@@ -124,32 +120,35 @@ export default function SovereignCommandCenter() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020205] flex flex-col items-center justify-center gap-6">
-        <Loader2 className="h-16 w-16 animate-spin text-blue-600" />
-        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500/50">Initializing Sovereign Command</p>
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Initializing Command HQ</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#020205] text-slate-200 p-6 lg:p-12 font-sans overflow-x-hidden selection:bg-blue-500/40">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-6 lg:p-10 font-sans selection:bg-blue-100">
       
-      {/* --- LEVEL 5 HEADER --- */}
-      <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-16 gap-10 border-b border-white/5 pb-16">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <ShieldCheck size={16} className={cn("animate-pulse", realtimeStatus === 'ONLINE' ? 'text-blue-500' : 'text-red-500')} />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
-              Uplink: {realtimeStatus} // Node: Sovereign_Prime
-            </span>
+      {/* --- PROFESSIONAL HEADER --- */}
+      <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-4">
+             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
+              Command Center
+            </h1>
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+              realtimeStatus === 'ONLINE' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-600 border-red-100"
+            )}>
+              <Activity size={12} className={realtimeStatus === 'ONLINE' ? "animate-pulse" : ""} />
+              Live Updates Active
+            </div>
           </div>
-          <h1 className="text-8xl font-black tracking-tighter text-white uppercase italic leading-none">
-            COMMAND<span className="text-blue-600">_HQ</span>
-          </h1>
-          <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em]">Oversight: 316 Global Tables // 2,808 Active Sentinels</p>
+          <p className="text-slate-500 font-medium text-sm">Oversight: 316 Global Tables // 2,808 Active Sentinels</p>
         </div>
 
-        <nav className="flex flex-wrap bg-slate-900/40 p-2 rounded-[2rem] border border-white/5 backdrop-blur-3xl shadow-2xl items-center gap-2">
+        <nav className="flex flex-wrap bg-white p-1 rounded-xl border border-slate-200 shadow-sm items-center gap-1">
           {['War Room', 'Financials', 'Leads', 'Tenants'].map((label) => {
             const id = label.toLowerCase().replace(' ', '_');
             const isActive = activeTab === id;
@@ -158,54 +157,56 @@ export default function SovereignCommandCenter() {
                 key={id}
                 onClick={() => setActiveTab(id)}
                 className={cn(
-                  "px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  isActive ? "bg-blue-600 text-white shadow-xl shadow-blue-600/30" : "text-slate-500 hover:text-white hover:bg-white/5"
+                  "px-6 py-2 rounded-lg text-xs font-bold transition-all",
+                  isActive ? "bg-blue-600 text-white shadow-md shadow-blue-200" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 )}
               >
                 {label}
               </button>
             );
           })}
-          <div className="h-8 w-[1px] bg-white/10 mx-4" />
-          <button onClick={() => window.location.href = '/dashboard'} className="p-4 text-slate-500 hover:text-white"><LayoutDashboard size={18} /></button>
-          <button onClick={() => handleLogout(supabase)} className="p-4 text-red-500/50 hover:text-red-500"><Power size={18} /></button>
+          <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+          <button onClick={() => window.location.href = '/dashboard'} className="p-2 text-slate-400 hover:text-blue-600 transition-colors"><LayoutDashboard size={20} /></button>
+          <button onClick={() => handleLogout(supabase)} className="p-2 text-slate-400 hover:text-red-600 transition-colors"><Power size={20} /></button>
         </nav>
       </header>
 
-      {/* --- KPI MATRIX --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-        <MetricCard title="System Visits" value={stats.daily_visits} icon={MousePointer2} color="text-blue-500" sub="24h Traffic Vector" />
-        <MetricCard title="Node Signups" value={stats.daily_signups} icon={UserPlus} color="text-emerald-500" sub="Conversion: 4.2%" />
-        <MetricCard title="Active Flux" value={stats.active_users_now} icon={Zap} color="text-yellow-500" sub="Current WebSockets" />
-        <MetricCard title="Anomalies" value={0} icon={AlertOctagon} color="text-red-500" sub="Integrity: 100%" />
+      {/* --- CLEAN KPI MATRIX --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <MetricCard title="Today's Sales" value={stats.daily_visits} icon={TrendingUp} color="border-emerald-500" subColor="text-emerald-600" sub="Cash Inflow" />
+        <MetricCard title="Today's Expenses" value={stats.daily_signups} icon={TrendingUp} color="border-red-500" subColor="text-red-600" sub="Cash Outflow" flipIcon />
+        <MetricCard title="Net Position" value={stats.active_users_now} icon={Activity} color="border-blue-500" subColor="text-blue-600" sub="Daily Profit/Loss" />
+        <MetricCard title="Transactions" value={0} icon={Search} color="border-slate-300" subColor="text-slate-500" sub="Orders Processed" />
       </div>
 
       {/* --- CONTENT ENGINE --- */}
-      <main className="space-y-16">
+      <main className="space-y-10">
         {activeTab === 'war_room' && (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-12">
-            <div className="xl:col-span-2 space-y-12">
-              <SovereignGeoMap />
-              <section className="bg-slate-900/20 border border-white/5 p-12 rounded-[4rem] backdrop-blur-3xl">
-                <h3 className="text-2xl font-black uppercase tracking-tighter mb-12 flex items-center gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="xl:col-span-2 space-y-8">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-1">
+                <SovereignGeoMap />
+              </div>
+              <section className="bg-white border border-slate-200 p-8 rounded-3xl shadow-sm">
+                <h3 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
                   <TrendingUp className="text-blue-600" /> Vertical Performance Ledger
                 </h3>
-                <div className="h-[400px]">
+                <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={verticals}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                      <XAxis dataKey="business_type" stroke="#475569" fontSize={10} fontWeight="900" />
-                      <YAxis stroke="#475569" fontSize={10} tabularNums />
-                      <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '16px' }} />
-                      <Bar dataKey="processed_revenue" fill="#2563eb" radius={[12, 12, 0, 0]} barSize={40} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="business_type" stroke="#64748b" fontSize={11} fontWeight="600" axisLine={false} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={11} fontWeight="600" axisLine={false} tickLine={false} tabularNums />
+                      <Tooltip cursor={{fill: '#f1f5f9'}} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Bar dataKey="processed_revenue" fill="#2563eb" radius={[6, 6, 0, 0]} barSize={32} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </section>
             </div>
-            <div className="bg-slate-900/10 rounded-[4rem] border border-white/5 p-8">
-               <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-8 px-4 flex items-center gap-2">
-                 <Activity size={12} className="text-blue-500" /> Live Telemetry
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                 <Activity size={14} className="text-blue-600" /> Live Telemetry
                </h3>
                <GlobalTelemetryFeed />
             </div>
@@ -216,29 +217,29 @@ export default function SovereignCommandCenter() {
         {activeTab === 'leads' && <LeadInsights />}
 
         {activeTab === 'tenants' && (
-          <section className="bg-slate-900/10 border border-white/5 p-12 rounded-[4rem]">
-            <div className="flex justify-between items-center mb-16 px-6">
-              <h3 className="text-4xl font-black uppercase italic tracking-tighter">Organization Registry</h3>
-              <div className="flex gap-4">
-                 <button className="p-4 bg-white/5 rounded-2xl border border-white/5 text-slate-400"><Search size={20} /></button>
-                 <button className="p-4 bg-white/5 rounded-2xl border border-white/5 text-slate-400"><Filter size={20} /></button>
+          <section className="bg-white border border-slate-200 p-10 rounded-3xl shadow-sm">
+            <div className="flex justify-between items-center mb-10">
+              <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Organization Registry</h3>
+              <div className="flex gap-2">
+                 <button className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 transition-colors"><Search size={18} /></button>
+                 <button className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 transition-colors"><Filter size={18} /></button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {tenants.map(t => (
-                <div key={t.id} className="group flex items-center justify-between p-8 bg-black/40 border border-white/5 rounded-[3rem] hover:border-blue-500/40 transition-all">
-                  <div className="flex items-center gap-10">
-                    <div className={cn("h-4 w-4 rounded-full", t.status === 'active' ? 'bg-emerald-500 shadow-[0_0_15px_#10b981]' : 'bg-red-500 shadow-[0_0_15px_#ef4444]')} />
+                <div key={t.id} className="group flex items-center justify-between p-6 bg-white border border-slate-100 rounded-2xl hover:border-blue-200 hover:bg-blue-50/30 transition-all">
+                  <div className="flex items-center gap-6">
+                    <div className={cn("h-3 w-3 rounded-full", t.status === 'active' ? 'bg-emerald-500 shadow-sm' : 'bg-red-500 shadow-sm')} />
                     <div>
-                      <h4 className="text-3xl font-black text-white uppercase tracking-tighter italic">{t.name}</h4>
-                      <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-1">UUID: {t.id} // Vector: {t.business_type || 'STANDARD'}</p>
+                      <h4 className="text-lg font-bold text-slate-900">{t.name}</h4>
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">UUID: {t.id} // Sector: {t.business_type || 'STANDARD'}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-all translate-x-10 group-hover:translate-x-0">
-                    <button onClick={() => handleDispatchDirective(t.id)} className="px-8 py-4 bg-blue-600/10 text-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Message</button>
-                    <button onClick={() => handleTacticalIsolation(t.id, t.name)} className="px-8 py-4 bg-red-600/10 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2">
+                  <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                    <button onClick={() => handleDispatchDirective(t.id)} className="px-5 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all">Message</button>
+                    <button onClick={() => handleTacticalIsolation(t.id, t.name)} className="px-5 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-600 hover:text-white transition-all flex items-center gap-2">
                       <Lock size={12} /> Isolate
                     </button>
                   </div>
@@ -249,37 +250,39 @@ export default function SovereignCommandCenter() {
         )}
       </main>
 
-      <footer className="mt-32 pt-16 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-10 text-[10px] font-black text-slate-600 uppercase tracking-[0.5em]">
-        <div className="flex items-center gap-4">
+      <footer className="mt-20 pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">
+        <div className="flex items-center gap-3">
           <div className="h-1.5 w-1.5 bg-blue-600 rounded-full" />
-          <p>SOVEREIGN OS v4.2 // ARCHITECT INTERCONNECT</p>
+          <p>BBU1 OS v4.2 // Enterprise Operating System</p>
         </div>
-        <div className="flex items-center gap-10">
-          <span className="flex items-center gap-2"><HardDrive size={14} /> 316 TABLES</span>
-          <span className="flex items-center gap-2"><MessageSquare size={14} /> SUPPORT: ACTIVE</span>
+        <div className="flex items-center gap-8">
+          <span className="flex items-center gap-2 font-black"><HardDrive size={14} /> 316 TABLES</span>
+          <span className="flex items-center gap-2 font-black"><MessageSquare size={14} /> SUPPORT: ACTIVE</span>
         </div>
       </footer>
     </div>
   );
 }
 
-// --- KPI COMPONENT ---
-function MetricCard({ title, value, icon: Icon, color, sub }: any) {
+// --- KPI CARD (CLEAN STYLE) ---
+function MetricCard({ title, value, icon: Icon, color, subColor, sub, flipIcon }: any) {
   return (
-    <div className="bg-slate-900/20 border border-white/5 p-12 rounded-[4rem] hover:bg-slate-900/40 transition-all group relative overflow-hidden shadow-2xl">
-      <div className="absolute -right-12 -bottom-12 text-white opacity-[0.01] group-hover:opacity-[0.03] transition-opacity duration-1000"><Icon size={240} /></div>
-      <div className="flex justify-between items-start relative z-10">
-        <div className="space-y-10">
-          <p className="text-[12px] font-black text-slate-600 uppercase tracking-[0.5em]">{title}</p>
-          <div className="space-y-3">
-            <p className="text-7xl font-black text-white tracking-tighter tabular-nums leading-none">
-              {typeof value === 'number' ? value.toLocaleString() : value}
-            </p>
-            <p className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">{sub}</p>
+    <div className={cn(
+      "bg-white border border-slate-200 p-8 rounded-2xl shadow-sm transition-all hover:shadow-md border-l-4",
+      color
+    )}>
+      <div className="space-y-6">
+        <p className="text-sm font-bold text-slate-500">{title}</p>
+        <div className="space-y-1">
+          <p className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            {typeof value === 'number' && title.toLowerCase().includes('sales') || title.toLowerCase().includes('expenses') || title.toLowerCase().includes('position') 
+              ? `UGX ${value.toLocaleString()}` 
+              : value.toLocaleString()}
+          </p>
+          <div className={cn("flex items-center gap-1.5 text-xs font-bold", subColor)}>
+            <Icon size={14} className={flipIcon ? "rotate-180" : ""} />
+            {sub}
           </div>
-        </div>
-        <div className={cn("p-6 rounded-[2rem] bg-black/40 border border-white/10 shadow-2xl transition-all group-hover:scale-110", color)}>
-          <Icon size={36} strokeWidth={3} />
         </div>
       </div>
     </div>
