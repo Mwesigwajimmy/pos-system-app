@@ -36,15 +36,22 @@ export default function SovereignCommandCenter() {
   const syncSystemState = useCallback(async () => {
     try {
       const [metrics, industry, orgs] = await Promise.all([
-        supabase.from('view_admin_growth_metrics').select('*').single(),
+        supabase.from('view_admin_growth_metrics').select('*').maybeSingle(),
         supabase.from('view_admin_vertical_performance').select('*'),
         supabase.from('tenants').select('*').order('created_at', { ascending: false })
       ]);
 
-      if (metrics.data) setStats(metrics.data);
-      if (industry.data) setVerticals(industry.data || []);
-      if (orgs.data) setTenants(orgs.data || []);
+      if (metrics.data) {
+        setStats(metrics.data);
+      } else {
+        setStats({ daily_visits: 0, daily_signups: 0, active_users_now: 0 });
+      }
+
+      if (industry.data) setVerticals(industry.data);
+      if (orgs.data) setTenants(orgs.data);
+      
     } catch (e) {
+      console.error("Deep System Error:", e);
       toast.error("DATA_SYNC_CRITICAL", { description: "Uplink to sovereign ledgers interrupted." });
     } finally {
       setLoading(false);

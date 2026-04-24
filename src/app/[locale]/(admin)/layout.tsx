@@ -18,7 +18,8 @@ interface AdminLayoutProps {
  * It performs dual-layer verification: Auth JWT + Real-time Database Profile.
  */
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const supabase = createClient();
+  // FIXED: Passed cookies() into createClient to allow authoritative server-side auth.
+  const supabase = createClient(cookies());
 
   // 2. Authoritative User Fetch
   // getUser() is a server-side network call to Supabase Auth to verify the JWT 
