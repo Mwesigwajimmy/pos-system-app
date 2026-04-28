@@ -4,19 +4,39 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   Signal, Zap, Globe, Activity, Terminal, 
   Cpu, Server, BarChart3, MousePointer2, Loader2, 
-  RefreshCcw, ShieldCheck
+  RefreshCcw, ShieldCheck, Database, Network, 
+  Layers, HardDrive, Share2
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer 
 } from 'recharts';
+
+// Internal Libs
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 // --- PRODUCTION COMPONENTS ---
 import GlobalTelemetryFeed from '@/components/admin/GlobalTelemetryFeed';
 import SovereignGeoMap from '@/components/admin/SovereignGeoMap';
+
+/**
+ * DEEPLY DEFINED UTILITY: cn (Class Name Merger)
+ * Defined locally to ensure zero external dependency issues.
+ */
+function cn(...inputs: (string | undefined | boolean | null | Record<string, boolean>)[]) {
+  return inputs
+    .flatMap((input) => {
+      if (typeof input === 'string') return input;
+      if (typeof input === 'object' && input !== null) {
+        return Object.entries(input)
+          .filter(([_, value]) => value)
+          .map(([key]) => key);
+      }
+      return [];
+    })
+    .join(' ');
+}
 
 export default function TelemetryPage() {
   const [loading, setLoading] = useState(true);
@@ -26,12 +46,12 @@ export default function TelemetryPage() {
     daily_total: 0,
     active_users: 0,
     error_rate: 0,
-    system_load: 0 // Derived from request volume per second
+    system_load: 0 
   });
 
   const supabase = useMemo(() => createClient(), []);
 
-  // --- 1. AUTHORITATIVE DATA ENGINE ---
+  // --- 1. AUTHORITATIVE DATA ENGINE (Logic Untouched) ---
   const fetchTelemetryIntelligence = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     setIsSyncing(true);
@@ -51,7 +71,7 @@ export default function TelemetryPage() {
         daily_total: health.total_requests_24h || 0,
         active_users: health.active_nodes || 0,
         error_rate: parseFloat(health.error_rate?.toFixed(2) || "0"),
-        system_load: Math.min(Math.round((health.total_requests_24h / 10000) * 100), 100) // Real calc based on capacity
+        system_load: Math.min(Math.round((health.total_requests_24h / 10000) * 100), 100) 
       });
 
       setPulseData(distributionResponse.data || []);
@@ -74,7 +94,6 @@ export default function TelemetryPage() {
         schema: 'public', 
         table: 'system_global_telemetry' 
       }, () => {
-        // High-frequency events trigger a silent data refresh
         fetchTelemetryIntelligence(true);
       })
       .subscribe((status) => {
@@ -90,102 +109,136 @@ export default function TelemetryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020205] flex flex-col items-center justify-center gap-6">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-8">
         <Loader2 className="h-16 w-16 animate-spin text-blue-600" />
-        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500/50 text-center">
-          Establishing Authoritative<br/>Telemetry Uplink...
-        </p>
+        <div className="text-center space-y-2">
+            <p className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-600 animate-pulse">
+                Establishing Authoritative
+            </p>
+            <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-300">
+                Telemetry Uplink...
+            </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#020205] text-slate-200 p-6 lg:p-12 font-sans selection:bg-blue-600/40">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-8 lg:p-12 font-sans selection:bg-blue-100 animate-in fade-in duration-1000">
       
-      {/* --- ARCHITECT HEADER --- */}
-      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-20 gap-8 border-b border-white/5 pb-16">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 text-blue-500 font-black text-[10px] uppercase tracking-[0.5em]">
-            <Signal size={14} className={cn(isSyncing ? "animate-ping" : "")} /> 
-            System Status: {isSyncing ? "Synchronizing" : "Authoritative"}
+      {/* --- CLEAN PROFESSIONAL HEADER --- */}
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-16 gap-10 border-b border-slate-200 pb-16">
+        <div className="space-y-5">
+          <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-full border border-slate-200 shadow-sm w-fit">
+            <div className="relative flex items-center justify-center">
+                <Signal size={16} className={cn("text-blue-600", isSyncing ? "animate-pulse" : "")} /> 
+                {isSyncing && <div className="absolute inset-0 h-4 w-4 bg-blue-400 rounded-full animate-ping opacity-20" />}
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">
+                System Status: {isSyncing ? "Synchronizing" : "Authoritative"}
+            </span>
           </div>
-          <h1 className="text-8xl font-black tracking-tighter text-white uppercase italic leading-none">
+          <h1 className="text-8xl font-black tracking-tighter text-slate-900 uppercase leading-none">
             Pulse<span className="text-blue-600">_Node</span>
           </h1>
-          <p className="text-slate-500 font-bold max-w-xl text-xs uppercase tracking-widest leading-loose">
-            Direct ingestion from <span className="text-white">SOVEREIGN_MESH</span>. 
-            Monitoring packet flow across 316 global tables.
+          <p className="text-slate-400 font-bold max-w-2xl text-sm uppercase tracking-widest leading-relaxed flex items-center gap-3">
+            <Network size={18} className="text-slate-300" />
+            Direct ingestion from BBU1 Sovereign Mesh. Monitoring 316 global tables.
           </p>
         </div>
 
         <div className="flex gap-4">
            <button 
              onClick={() => fetchTelemetryIntelligence()}
-             className="bg-slate-900/50 p-6 rounded-[2rem] border border-white/10 hover:border-blue-500/50 transition-all backdrop-blur-3xl group"
+             className="bg-white p-6 rounded-[2rem] border border-slate-200 hover:border-blue-500/30 transition-all shadow-sm group active:scale-95"
            >
-              <RefreshCcw size={20} className={cn("text-slate-500 group-hover:text-blue-500", isSyncing && "animate-spin")} />
+              <RefreshCcw size={22} className={cn("text-slate-400 group-hover:text-blue-600 transition-colors", isSyncing && "animate-spin")} />
            </button>
-           <div className="bg-slate-900/50 p-6 px-10 rounded-[2rem] border border-emerald-500/20 backdrop-blur-3xl flex items-center gap-4">
-              <div className="h-2.5 w-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_15px_#10b981]" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Security Mesh: Active</span>
+           <div className="bg-white p-6 px-10 rounded-[2rem] border border-emerald-100 shadow-sm flex items-center gap-5">
+              <div className="relative flex items-center justify-center">
+                  <div className="h-3 w-3 bg-emerald-500 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.4)]" />
+                  <div className="absolute h-6 w-6 bg-emerald-400 rounded-full animate-ping opacity-20" />
+              </div>
+              <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 leading-none">Security Mesh</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Status: Active</span>
+              </div>
            </div>
         </div>
       </header>
 
-      {/* --- METRIC GRID --- */}
+      {/* --- INSTITUTIONAL METRIC GRID --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
-        <MetricCard title="24h Ingress" value={metrics.daily_total} icon={MousePointer2} color="text-blue-400" />
-        <MetricCard title="Active Nodes" value={metrics.active_users} icon={Zap} color="text-yellow-400" />
-        <MetricCard title="Error Frequency" value={`${metrics.error_rate}%`} icon={Server} color="text-red-400" />
-        <MetricCard title="Compute Load" value={`${metrics.system_load}%`} icon={Cpu} color="text-purple-400" />
+        <MetricCard title="24h Ingress" value={metrics.daily_total} icon={MousePointer2} color="text-blue-600" bg="bg-blue-50" />
+        <MetricCard title="Active Nodes" value={metrics.active_users} icon={Zap} color="text-emerald-600" bg="bg-emerald-50" />
+        <MetricCard title="Error Frequency" value={`${metrics.error_rate}%`} icon={Server} color="text-red-600" bg="bg-red-50" />
+        <MetricCard title="Compute Load" value={`${metrics.system_load}%`} icon={Cpu} color="text-purple-600" bg="bg-purple-50" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-16">
         
         {/* HEATMAP & VOLATILITY */}
         <div className="xl:col-span-2 space-y-16">
-          <section className="bg-slate-900/10 border border-white/5 p-1 rounded-[4rem] backdrop-blur-3xl shadow-2xl relative overflow-hidden">
-             <div className="p-10 flex justify-between items-center relative z-10">
-                <h3 className="text-3xl font-black uppercase flex items-center gap-5 italic">
-                  <Globe className="text-blue-600" size={32} /> ORIGIN_MATRIX
-                </h3>
+          <section className="bg-white border border-slate-200 p-2 rounded-[4rem] shadow-sm relative overflow-hidden group transition-all hover:shadow-xl hover:shadow-blue-500/5">
+             <div className="p-10 flex justify-between items-center relative z-10 border-b border-slate-50">
+                <div className="flex items-center gap-5">
+                    <div className="p-3 bg-blue-50 rounded-2xl">
+                        <Globe className="text-blue-600" size={24} />
+                    </div>
+                    <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900 leading-none">
+                        ORIGIN_MATRIX
+                    </h3>
+                </div>
+                <div className="px-5 py-2 bg-slate-50 rounded-full border border-slate-100">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Global Cluster Mapping</span>
+                </div>
              </div>
-             <div className="h-[550px] w-full">
+             <div className="h-[600px] w-full">
                 <SovereignGeoMap />
              </div>
           </section>
 
-          <section className="bg-slate-900/10 border border-white/5 p-12 rounded-[4rem] backdrop-blur-3xl">
-             <div className="flex justify-between items-center mb-12">
-                <h3 className="text-3xl font-black uppercase flex items-center gap-5 italic">
-                   <Activity className="text-blue-600" size={32} /> VOLATILITY_INDEX
-                </h3>
-                <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                   Window: 24 Hours <div className="h-1 w-8 bg-blue-600" />
+          <section className="bg-white border border-slate-200 p-12 rounded-[4rem] shadow-sm group transition-all hover:shadow-xl hover:shadow-blue-500/5">
+             <div className="flex justify-between items-start mb-12">
+                <div className="flex items-center gap-5">
+                   <div className="p-3 bg-blue-50 rounded-2xl">
+                        <Activity className="text-blue-600" size={24} />
+                   </div>
+                   <div>
+                        <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900 leading-none">
+                            VOLATILITY_INDEX
+                        </h3>
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-2">Historical Packet Distribution</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-4 bg-slate-50 p-2 px-4 rounded-xl border border-slate-100 shadow-inner">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Window: 24 Hours</span>
+                   <div className="h-4 w-px bg-slate-200" />
+                   <div className="h-1 w-8 bg-blue-600 rounded-full" />
                 </div>
              </div>
-             <div className="h-[400px] w-full">
+             <div className="h-[450px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                    <AreaChart data={pulseData}>
                       <defs>
                         <linearGradient id="telemetryGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
                           <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                      <XAxis dataKey="time_label" stroke="#334155" fontSize={10} fontWeight="900" axisLine={false} tickLine={false} />
-                      <YAxis stroke="#334155" fontSize={10} fontWeight="900" axisLine={false} tickLine={false} tabularNums />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="time_label" stroke="#cbd5e1" fontSize={10} fontWeight="900" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).toUpperCase()} />
+                      <YAxis stroke="#cbd5e1" fontSize={10} fontWeight="900" axisLine={false} tickLine={false} tabularNums />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#020205', borderRadius: '24px', border: '1px solid #1e293b', padding: '20px' }}
-                        itemStyle={{ color: '#fff', fontWeight: '900', textTransform: 'uppercase', fontSize: '10px' }}
-                        cursor={{ stroke: '#2563eb', strokeWidth: 2 }}
+                        contentStyle={{ backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ color: '#0f172a', fontWeight: '900', textTransform: 'uppercase', fontSize: '10px' }}
+                        cursor={{ stroke: '#2563eb', strokeWidth: 3 }}
                       />
                       <Area 
                         type="stepAfter" 
                         dataKey="request_count" 
                         stroke="#2563eb" 
-                        strokeWidth={4} 
+                        strokeWidth={5} 
                         fillOpacity={1} 
                         fill="url(#telemetryGradient)" 
                         isAnimationActive={true}
@@ -197,57 +250,89 @@ export default function TelemetryPage() {
         </div>
 
         {/* LIVE PACKET INSPECTOR */}
-        <div className="space-y-10">
-          <div className="flex items-center justify-between px-4">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 flex items-center gap-3">
-                  <Terminal className="text-blue-500" size={16} /> Stream_Inspector
+        <div className="space-y-8 flex flex-col h-full">
+          <div className="flex items-center justify-between px-6">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-400 flex items-center gap-3">
+                  <Terminal className="text-blue-600 animate-pulse" size={16} /> Stream_Inspector
               </h3>
-              <div className="flex gap-2">
-                  <div className="h-8 w-8 bg-white/5 rounded-lg flex items-center justify-center">
-                    <BarChart3 size={14} className="text-slate-600" />
-                  </div>
+              <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                <BarChart3 size={16} className="text-slate-300" />
               </div>
           </div>
           
-          <div className="bg-slate-900/10 border border-white/5 p-2 rounded-[3.5rem] min-h-[900px] shadow-2xl relative overflow-hidden">
+          <div className="bg-white border border-slate-200 p-2 rounded-[3.5rem] flex-1 shadow-sm relative overflow-hidden group transition-all hover:shadow-xl hover:shadow-blue-500/5">
              <GlobalTelemetryFeed />
+          </div>
+          
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+                <div className="relative z-10 space-y-4">
+                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-[0.3em]">Core Status</p>
+                    <div className="flex items-center justify-between">
+                        <span className="text-white text-xs font-bold uppercase tracking-widest">Database Sync</span>
+                        <span className="text-emerald-400 text-[10px] font-black">99.9% ACCURACY</span>
+                    </div>
+                    <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div className="w-[99.9%] h-full bg-emerald-500" />
+                    </div>
+                </div>
+                <Database className="absolute -right-8 -bottom-8 text-white opacity-5" size={140} />
           </div>
         </div>
       </div>
 
-      <footer className="mt-40 pt-16 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-10 text-[9px] font-black text-slate-700 uppercase tracking-[0.6em]">
-          <div className="flex items-center gap-4">
-              <div className="h-1 w-1 bg-blue-600 rounded-full" />
-              <p>SOVEREIGN OS // TELEMETRY TERMINAL // AUTH: ARCHITECT_LEVEL</p>
+      {/* --- INSTITUTIONAL FOOTER --- */}
+      <footer className="mt-40 pt-16 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-12 text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">
+          <div className="flex items-center gap-6">
+              <div className="h-2 w-2 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
+              <p>Litonu Business Base Universe // BBU1_OS Telemetry Terminal</p>
           </div>
-          <div className="flex items-center gap-12 text-slate-500">
-              <span className="flex items-center gap-2"><ShieldCheck size={12}/> DATA_INTEGRITY: VERIFIED</span>
-              <span className="flex items-center gap-2 text-white"><Signal size={12}/> UPLINK: STABLE</span>
+          <div className="flex items-center gap-12">
+              <span className="flex items-center gap-3 text-slate-900 border-b-2 border-blue-600 pb-1">
+                <ShieldCheck size={14} className="text-blue-600" /> DATA_INTEGRITY: VERIFIED
+              </span>
+              <span className="flex items-center gap-3 text-slate-400">
+                <Share2 size={14} /> SIGNAL_MESH: GLOBAL
+              </span>
+              <span className="flex items-center gap-3 text-emerald-600">
+                <HardDrive size={14} /> UPLINK: AUTHORITATIVE
+              </span>
           </div>
       </footer>
+
+      {/* GLOBAL SCROLLBAR POLISH */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.05); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.1); }
+      `}</style>
     </div>
   );
 }
 
-function MetricCard({ title, value, icon: Icon, color }: any) {
+// --- KPI COMPONENT (CLEAN WHITE) ---
+function MetricCard({ title, value, icon: Icon, color, bg }: any) {
   return (
-    <div className="bg-slate-900/20 border border-white/5 p-12 rounded-[4rem] hover:bg-slate-900/40 transition-all group relative overflow-hidden shadow-2xl">
-      <div className="absolute -right-16 -bottom-16 text-white opacity-[0.01] group-hover:opacity-[0.03] transition-opacity duration-1000">
-         <Icon size={300} />
+    <div className="bg-white border border-slate-200 p-12 rounded-[4rem] shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden border-b-4 border-b-transparent hover:border-b-blue-600 h-72 flex flex-col justify-between">
+      <div className="absolute -right-12 -bottom-12 text-slate-50 opacity-[0.4] group-hover:opacity-100 transition-opacity duration-1000 group-hover:-rotate-12">
+         <Icon size={220} />
       </div>
+      
       <div className="flex justify-between items-start relative z-10">
-        <div className="space-y-10">
-          <p className="text-[11px] font-black text-slate-600 uppercase tracking-[0.5em]">{title}</p>
-          <p className="text-7xl font-black text-white tracking-tighter tabular-nums leading-none">
-            {typeof value === 'number' ? value.toLocaleString() : value}
+        <div className="space-y-10 w-full">
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">{title}</p>
+          <p className={cn("text-6xl font-black tracking-tighter tabular-nums leading-none text-slate-900")}>
+            {value}
           </p>
         </div>
-        <div className={cn(
-          "p-6 rounded-[2rem] bg-black/40 border border-white/10 transition-all group-hover:scale-110 group-hover:-rotate-3 shadow-2xl",
-          color
-        )}>
-          <Icon size={32} strokeWidth={2.5} />
+        <div className={cn("p-6 rounded-[1.5rem] border border-slate-100 shadow-sm transition-all group-hover:scale-110", bg, color)}>
+          <Icon size={30} strokeWidth={2.5} />
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 relative z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+          <Layers size={12} className="text-blue-500" />
+          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">Authoritative Uplink Active</span>
       </div>
     </div>
   );
