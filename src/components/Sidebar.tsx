@@ -346,11 +346,10 @@ const navSections: NavItem[] = [
             { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
         ]
     },
-
-    {
+{
         type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
         module: 'Distribution & Logistics',
-        businessTypes: ['Distribution', 'Mixed/Conglomerate'],
+        businessTypes: ['Distribution', 'Distribution / Wholesale Supply', 'Mixed/Conglomerate', 'Logistics'],
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/distribution/aura-master', label: 'Aura Master HUD', icon: Zap },
@@ -599,26 +598,47 @@ export default function Sidebar() {
         if (isLoading || !role || !tenant) return [];
         
         const userRole = role?.toLowerCase() || '';
-        const bizType = tenant?.business_type || '';
+        // DEEP UPGRADE: Normalizing the business type to handle the "Deep Disconnect" 
+        // between Signup slugs ("Distribution") and Middleware slugs ("Distribution / Wholesale Supply")
+        const rawBizType = tenant?.business_type || '';
+        const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
+                        rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
+                        rawBizType === 'Nonprofit' ? 'Nonprofit / Education / NGO' :
+                        rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
+                        (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
+
         const isSovereign = ['architect', 'commander'].includes(userRole);
         const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
         return navSections.filter((item) => {
+            // RULE 1: SOVEREIGN OVERRIDE
+            // If Jimmy is an Architect/Commander, the gates are removed.
             if (isSovereign) return true;
+
+            // RULE 2: ROLE PERMISSION GATE
             const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
+
+            // RULE 3: MODULE ENABLEMENT GATE
+            // Bypasses check for Admin/Owner to ensure they can always see their core sectors
             if (item.module) {
                 const isModuleEnabled = enabledModules?.includes?.(item.module);
                 if (!isAdminOrOwner && !isModuleEnabled) {
                     return false;
                 }
             }
-            if (item.businessTypes && !item.businessTypes.includes(bizType)) {
-                return false;
+
+            // RULE 4: INDUSTRY ALIGNMENT GATE
+            // Checks against both the raw DB slug and the normalized smart slug
+            if (item.businessTypes) {
+                const hasBizMatch = item.businessTypes.includes(rawBizType) || item.businessTypes.includes(bizType);
+                if (!hasBizMatch) return false;
             }
+
             return true;
         });
-    }, [isLoading, role, enabledModules, tenant]);
+        // DEEP SYNC: Added pathname to ensure recalculation on identity switch re-routes
+    }, [isLoading, role, enabledModules, tenant, pathname]);
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
@@ -637,13 +657,20 @@ export default function Sidebar() {
                 }
                 if (item.type === 'accordion') {
                     const userRole = role?.toLowerCase() || '';
-                    const bizType = tenant?.business_type || '';
+                    // DEEP UPGRADE: Applying normalization to sub-item rendering logic
+                    const rawBizType = tenant?.business_type || '';
+                    const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
+                                    rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
+                                    rawBizType === 'Nonprofit' ? 'Nonprofit / Education / NGO' :
+                                    rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
+                                    (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
+
                     const isSovereign = ['architect', 'commander'].includes(userRole);
 
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-                        const bizOk = !sub.businessTypes || sub.businessTypes.includes(bizType);
+                        const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
                         return roleOk && bizOk;
                     });
 
@@ -673,7 +700,8 @@ export default function Sidebar() {
             })}
         </Accordion>
     );
-return (
+
+    return (
         <aside className={cn(
             "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm overflow-hidden",
             isSidebarOpen ? "w-64" : "w-20"
