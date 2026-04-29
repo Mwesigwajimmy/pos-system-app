@@ -348,8 +348,8 @@ const navSections: NavItem[] = [
     },
 {
         type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
-        module: 'Distribution & Logistics',
-        businessTypes: ['Distribution', 'Distribution / Wholesale Supply', 'Mixed/Conglomerate', 'Logistics'],
+        module: 'Distribution',
+        businessTypes: ['Distribution', 'Distribution / Wholesale Supply', 'Mixed/Conglomerate', 'Logistics', 'all'],
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/distribution/aura-master', label: 'Aura Master HUD', icon: Zap },
