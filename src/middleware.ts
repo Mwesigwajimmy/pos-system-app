@@ -268,7 +268,7 @@ export async function middleware(request: NextRequest) {
         p_target_biz_id: activeBizId
     });
 
-    // --- 3. IDENTITY RECOVERY PROTOCOL (STABILITY WELD) ---
+// --- 3. IDENTITY RECOVERY PROTOCOL (STABILITY WELD) ---
     // This prevents the "Forced Logout" during high-speed identity swaps.
     if (contextError || !userContextData || userContextData.length === 0) {
         
@@ -286,14 +286,28 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
     
+    // --- THE DEEP IDENTITY RESOLUTION ---
     const userContext = userContextData[0];
+    
+    // 1. Job Role (e.g. admin, cashier, accountant)
     const userRole = userContext.user_role || 'guest';
+    
+    // 2. Business Type (Ensures industry-specific redirects work deeply)
     const businessType = userContext.business_type || '';
+    
+    // 3. Setup Status (Controls the Welcome page gate)
     const setupComplete = userContext.setup_complete;
     
-    // Calculates the correct landing node (e.g., /finance/banking for Accountants)
-    const defaultDashboard = defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default'];
+    // 4. Sovereign Power Tier (The God-Mode Flag)
+    // This is returned from the new 'system_power' column in your DB function
+    const systemPower = userContext.system_power || null;
 
+    // --- THE SMART REDIRECT ENGINE ---
+    // Calculates the correct landing node. 
+    // ARCHITECTS go to /command-center. Standard ADMITS go to their Industry Dashboard.
+    const defaultDashboard = (systemPower === 'architect' || systemPower === 'commander') 
+        ? '/command-center' 
+        : (defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default']);
     // =================================================================================
     // --- START OF LOGIC REORDERING (FULLY WELDED) ---
     // =================================================================================
