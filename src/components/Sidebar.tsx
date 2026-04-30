@@ -31,6 +31,7 @@ import {
 
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTenantModules } from '@/hooks/useTenantModules';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useTenant } from '@/hooks/useTenant';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -588,6 +589,11 @@ export default function Sidebar() {
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
     const { branding } = useBranding();
+    const { data: profile } = useUserProfile();
+
+
+    const businessName = tenant?.business_display_name || tenant?.name || "SOVEREIGN OS";
+    const operatorName = profile?.full_name || "Authorized User";
     
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
@@ -713,8 +719,18 @@ export default function Sidebar() {
             )}>
                 {isSidebarOpen ? (
                     /* PORTAL ACTIVE: Allows clicking to switch between businesses automatically */
-                    <div className="flex-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                    <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-2 duration-500 overflow-hidden">
                         <BusinessSwitcher />
+                        
+                        {/* DEEP IDENTITY WELD: Dynamic display of Enterprise & Operator metadata */}
+                        <div className="flex flex-col mt-1 px-1 overflow-hidden">
+                            <span className="text-[10px] font-black uppercase tracking-tighter text-slate-900 truncate leading-none">
+                                {tenant?.business_display_name || branding?.company_name_display || "Sovereign OS"}
+                            </span>
+                            <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-70 mt-0.5 leading-tight">
+                                {profile?.full_name || "Authorized User"} • {role}
+                            </span>
+                        </div>
                     </div>
                 ) : (
                     /* CLOSED VIEW: Shows a centered, professional identity anchor */
@@ -727,7 +743,7 @@ export default function Sidebar() {
                             />
                         ) : (
                             <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
-                                {branding?.legal_name?.charAt(0).toUpperCase() || <Building2 size={20} />}
+                                {(tenant?.business_display_name || branding?.legal_name || "S")?.charAt(0).toUpperCase()}
                             </div>
                         )}
                     </div>

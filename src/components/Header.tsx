@@ -18,10 +18,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { useBusiness } from '@/context/BusinessContext'; 
 import { useBranding } from '@/components/core/BrandingProvider'; 
 
+/**
+ * LITONU BUSINESS BASE UNIVERSE LTD - AUTHORITATIVE HEADER
+ * 
+ * UPGRADE: Dynamically resolves the Operator Identity and Business Context.
+ * Replaces "Business Manager" with the real human name and job role.
+ */
 export default function Header() {
   const router = useRouter();
   const supabase = createClient();
   
+  // DEEP SYNC: Pulling the live session data
   const { profile } = useBusiness();
   const { branding } = useBranding();
 
@@ -83,30 +90,37 @@ export default function Header() {
   return (
     <header className="flex justify-between items-center px-8 h-20 bg-white border-b w-full sticky top-0 z-50">
       
-      {/* --- LEFT: BRANDING & IDENTITY --- */}
+      {/* --- LEFT: DYNAMIC OPERATOR IDENTITY --- */}
       <div className="flex items-center gap-8">
-        <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                {branding?.company_name_display || "Business Manager"}
+        <div className="flex flex-col overflow-hidden">
+            {/* 
+                DEEP FIX: Replaced "Business Manager" with the Operator's Full Name.
+                This provides immediate personal authority to the user.
+            */}
+            <h1 className="text-xl font-black tracking-tight text-slate-900 truncate max-w-[300px]">
+                {profile?.full_name || "Authorized Operator"}
             </h1>
+            
             <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs font-medium text-slate-500">
-                    {profile?.role || "Account Administrator"}
+                {/* Dynamically displays the specific Job Role (e.g. Admin, Accountant) */}
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                    {profile?.role || "System Admin"}
                 </span>
                 <span className="h-1 w-1 rounded-full bg-slate-300" />
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                    <MapPin size={12} className="text-slate-400" /> Main Office
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
+                    <MapPin size={10} className="text-slate-400" /> 
+                    {branding?.company_name_display || "Main Office"}
                 </span>
             </div>
         </div>
 
         {/* --- SEARCH BAR (MATCHING IMAGE STYLE) --- */}
-        <div className="relative hidden md:block group">
+        <div className="relative hidden xl:block group">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
                 type="text" 
-                placeholder="Search accounts or records..."
-                className="pl-10 pr-4 py-2 w-64 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                placeholder="Search accounts, records, or nodes..."
+                className="pl-10 pr-4 py-2 w-80 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium"
             />
         </div>
       </div>
@@ -114,15 +128,15 @@ export default function Header() {
       {/* --- RIGHT: ACTIONS & NOTIFICATIONS --- */}
       <div className="flex items-center gap-4">
         
-        {/* Currency Display */}
-        <div className="hidden lg:flex items-center gap-3 pr-4 border-r border-slate-100">
+        {/* Reporting Currency Display (Multi-Currency Support) */}
+        <div className="hidden lg:flex items-center gap-3 pr-6 border-r border-slate-100">
             <div className="text-right">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Reporting Currency</p>
-                <p className="text-sm font-bold text-slate-700">
-                    {branding?.currency_code || "USD"}
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Reporting Currency</p>
+                <p className="text-sm font-black text-slate-900 leading-none mt-1">
+                    {branding?.currency_code || "UGX"}
                 </p>
             </div>
-            <div className="h-9 w-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+            <div className="h-10 w-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-100 border border-blue-100">
                 <Globe size={18} />
             </div>
         </div>
@@ -130,57 +144,57 @@ export default function Header() {
         {/* --- NOTIFICATION CENTER --- */}
         <Sheet>
           <SheetTrigger asChild>
-            <div className="relative p-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer border border-transparent">
-                <Bell className={`w-5 h-5 ${urgentCount > 0 ? "text-blue-600" : "text-slate-500"}`} />
+            <div className="relative p-2.5 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-transparent active:scale-95">
+                <Bell className={`w-5 h-5 ${urgentCount > 0 ? "text-blue-600 animate-pulse" : "text-slate-400"}`} />
                 {urgentCount > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-blue-600 rounded-full border-2 border-white" />
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm" />
                 )}
             </div>
           </SheetTrigger>
-          <SheetContent className="w-[400px] p-0 flex flex-col shadow-xl border-l border-slate-200">
-            <SheetHeader className="p-6 border-b bg-white">
+          <SheetContent className="w-[440px] p-0 flex flex-col shadow-2xl border-l border-slate-200">
+            <SheetHeader className="p-8 border-b bg-white">
               <div className="flex justify-between items-center">
                 <div>
-                    <SheetTitle className="text-lg font-bold text-slate-900">Notifications</SheetTitle>
-                    <SheetDescription className="text-xs font-medium text-slate-500 uppercase tracking-tight">
-                        Account activity and alerts
+                    <SheetTitle className="text-xl font-black text-slate-900 uppercase italic tracking-tighter">Command Feed</SheetTitle>
+                    <SheetDescription className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                        Forensic Logs & Tactical Alerts
                     </SheetDescription>
                 </div>
-                <Button variant="ghost" size="icon" onClick={clearNotifications} className="text-slate-400 hover:text-red-500">
-                    <Trash2 size={18} />
+                <Button variant="ghost" size="icon" onClick={clearNotifications} className="text-slate-300 hover:text-red-500 rounded-xl">
+                    <Trash2 size={20} />
                 </Button>
               </div>
             </SheetHeader>
 
-            <ScrollArea className="flex-1 px-6 py-4 bg-slate-50/30">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 px-8 py-6 bg-slate-50/50">
+              <div className="space-y-5">
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                        <Activity className="animate-spin mb-2 h-6 w-6" />
-                        <span className="text-xs font-medium">Syncing data...</span>
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                        <Activity className="animate-spin mb-4 h-8 w-8 text-blue-600" />
+                        <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Hub...</span>
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 mb-4">
-                            <CheckCircle2 size={24} />
+                    <div className="flex flex-col items-center justify-center py-32 text-center">
+                        <div className="w-16 h-16 bg-white border border-slate-100 rounded-3xl flex items-center justify-center text-emerald-500 mb-6 shadow-sm">
+                            <CheckCircle2 size={32} />
                         </div>
-                        <p className="text-sm font-semibold text-slate-800">All caught up</p>
-                        <p className="text-xs text-slate-400 mt-1">No new alerts or activities found.</p>
+                        <p className="text-sm font-black text-slate-900 uppercase">Operational Status: Clear</p>
+                        <p className="text-[11px] text-slate-400 font-bold mt-2">No anomalies detected in this session.</p>
                     </div>
                 ) : (
                     notifications.map((n) => (
-                        <div key={n.id} className="p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
-                            <div className="flex justify-between items-start mb-2">
+                        <div key={n.id} className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-center gap-2">
-                                    <Badge variant={n.priority === 'URGENT' ? "destructive" : "secondary"} className="text-[10px] px-2 py-0">
-                                        {n.priority === 'URGENT' ? "Attention Required" : "Activity"}
+                                    <Badge variant={n.priority === 'URGENT' ? "destructive" : "secondary"} className="text-[9px] px-3 py-1 font-black rounded-full uppercase tracking-widest">
+                                        {n.priority === 'URGENT' ? "CRITICAL" : "ACTIVITY"}
                                     </Badge>
                                 </div>
-                                <div className="text-[10px] text-slate-400 font-medium">
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
                                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                                 </div>
                             </div>
-                            <p className="text-sm text-slate-700 font-medium leading-relaxed">
+                            <p className="text-[13px] text-slate-700 font-semibold leading-relaxed">
                                 {n.body}
                             </p>
                         </div>
@@ -189,22 +203,23 @@ export default function Header() {
               </div>
             </ScrollArea>
             
-            <div className="p-4 bg-white border-t flex justify-center">
-                <div className="flex items-center gap-2 text-slate-400">
-                    <ShieldCheck size={14} />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider">
-                        Secure Session Active
+            <div className="p-6 bg-white border-t flex justify-center shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+                <div className="flex items-center gap-3 text-slate-300">
+                    <ShieldCheck size={16} className="text-blue-600/30" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                        Sovereign Node Integrity Verified
                     </span>
                 </div>
             </div>
           </SheetContent>
         </Sheet>
 
-        {/* --- PRIMARY BUTTON (STYLE FROM IMAGE) --- */}
+        {/* --- AUTHORITATIVE SIGN OUT (STYLE FROM IMAGE) --- */}
         <Button 
             onClick={handleLogout} 
-            className="bg-[#2557D6] hover:bg-[#1a44b1] text-white font-semibold px-6 h-10 rounded-lg flex items-center gap-2 text-sm transition-all"
+            className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-black uppercase tracking-[0.1em] px-8 h-12 rounded-2xl flex items-center gap-3 text-xs shadow-lg shadow-blue-600/20 transition-all active:scale-95"
         >
+            <Zap size={14} className="fill-white" />
             Sign Out
         </Button>
       </div>
