@@ -591,9 +591,8 @@ export default function Sidebar() {
     const { branding } = useBranding();
     const { data: profile } = useUserProfile();
 
-
-    const businessName = tenant?.business_display_name || tenant?.name || "SOVEREIGN OS";
-    const operatorName = profile?.full_name || "Authorized User";
+    const businessName = tenant?.business_display_name || branding?.company_name_display ||tenant?.name ||profile?.business_name || "SOVEREIGN OS";
+    const operatorName = profile?.full_name || "Authorized Operator";
     
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
@@ -725,10 +724,10 @@ export default function Sidebar() {
                         {/* DEEP IDENTITY WELD: Dynamic display of Enterprise & Operator metadata */}
                         <div className="flex flex-col mt-1 px-1 overflow-hidden">
                             <span className="text-[10px] font-black uppercase tracking-tighter text-slate-900 truncate leading-none">
-                                {tenant?.business_display_name || branding?.company_name_display || "Sovereign OS"}
+                                {tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "Sovereign OS"}
                             </span>
                             <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-70 mt-0.5 leading-tight">
-                                {profile?.full_name || "Authorized User"} • {role}
+                                {profile?.full_name || "Authorized Operator"} • {role}
                             </span>
                         </div>
                     </div>
@@ -743,7 +742,7 @@ export default function Sidebar() {
                             />
                         ) : (
                             <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
-                                {(tenant?.business_display_name || branding?.legal_name || "S")?.charAt(0).toUpperCase()}
+                                {(tenant?.business_display_name || branding?.company_name_display || tenant?.name || "S")?.charAt(0).toUpperCase()}
                             </div>
                         )}
                     </div>
