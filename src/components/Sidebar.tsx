@@ -646,7 +646,7 @@ export default function Sidebar() {
             return true;
         });
         // DEEP SYNC: Added pathname to ensure recalculation on identity switch re-routes
-    }, [isLoading, role, enabledModules, tenant, pathname]);
+    }, [isLoading, userRole, enabledModules, tenant, pathname]);
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
@@ -730,7 +730,7 @@ export default function Sidebar() {
                                 {tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "Sovereign OS"}
                             </span>
                             <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-70 mt-0.5 leading-tight">
-                                {profile?.full_name || "Authorized Operator"} • {role}
+                                {profile?.full_name || "Authorized Operator"} • {activerole}
                             </span>
                         </div>
                     </div>
