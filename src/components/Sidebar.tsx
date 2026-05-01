@@ -68,7 +68,7 @@ const navSections: NavItem[] = [
         type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, 
         roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender'], 
         module: 'Sales & POS', 
-        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services']
+        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Distribution', 'Mixed/Conglomerate', 'Professional Services']
     },
     { 
         type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, 
@@ -583,26 +583,29 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 };
 
 export default function Sidebar() {
-    const pathname = usePathname();
-    const { role, isLoading: isLoadingRole } = useUserRole();
+   const pathname = usePathname();
+    // 1. Rename 'role' to 'rawRole' to prevent naming conflicts
+    const { role: rawRole, isLoading: isLoadingRole } = useUserRole();
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
     const { branding } = useBranding();
     const { data: profile } = useUserProfile();
 
-    const businessName = tenant?.business_display_name || branding?.company_name_display ||tenant?.name ||profile?.business_name || "SOVEREIGN OS";
-    const operatorName = profile?.full_name || "Authorized Operator";
-    
+    // --- DEEP IDENTITY RESOLUTION (THE FIX) ---
+    // We prioritize the role from the 'tenant' context (which fetches from business_memberships)
+    const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
+    const userRole = activeRole.toLowerCase();
+
+    const businessName = tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "SOVEREIGN OS";
+    const operatorName = profile?.full_name || "Authorized Operator"; 
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
  const finalNavItems = useMemo(() => {
-        if (isLoading || !role || !tenant) return [];
-        
-        const userRole = role?.toLowerCase() || '';
+        if (isLoading || !userRole || !tenant) return [];
         // DEEP UPGRADE: Normalizing the business type to handle the "Deep Disconnect" 
         // between Signup slugs ("Distribution") and Middleware slugs ("Distribution / Wholesale Supply")
         const rawBizType = tenant?.business_type || '';
