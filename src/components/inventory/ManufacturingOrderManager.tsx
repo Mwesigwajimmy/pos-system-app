@@ -321,82 +321,91 @@ export default function ManufacturingOrderManager() {
         </DialogContent>
       </Dialog>
 
-      {/* RECONCILIATION MODAL */}
+      {/* RECONCILIATION MODAL - AUTO-WIDE VERSION */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-[1200px] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl bg-white">
-          <DialogHeader className="bg-slate-50/50 border-b p-6 md:p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-slate-950 rounded-xl flex items-center justify-center shadow-lg">
-                   <ClipboardList className="text-white h-7 w-7" />
+        <DialogContent className="max-w-[1500px] w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl bg-white">
+          <DialogHeader className="bg-slate-50/50 border-b p-6 md:p-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+              <div className="flex items-center gap-6">
+                <div className="h-16 w-16 bg-slate-950 rounded-2xl flex items-center justify-center shadow-lg">
+                   <ClipboardList className="text-white h-8 w-8" />
                 </div>
                 <div className="space-y-0.5">
-                    <DialogTitle className="text-2xl font-bold text-slate-900 tracking-tight">Lot Reconciliation</DialogTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Lot ID:</span>
-                      <Badge className="bg-blue-600 text-white font-bold px-3 py-0.5 rounded-full text-[9px] uppercase tracking-wider">{selectedOrder?.batch_number}</Badge>
+                    <DialogTitle className="text-3xl font-bold text-slate-900 tracking-tight">Lot Reconciliation</DialogTitle>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Lot Identifier:</span>
+                      <Badge className="bg-blue-600 text-white font-bold px-4 py-1 rounded-full text-[10px] uppercase tracking-wider">{selectedOrder?.batch_number}</Badge>
                     </div>
                 </div>
               </div>
-              <div className="bg-slate-900 p-5 rounded-xl text-right min-w-[220px] shadow-sm">
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Final Unit Valuation</p>
-                <p className="text-3xl font-black text-white mt-0.5 tabular-nums">
-                  {financialAudit.unitCost.toLocaleString()} <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">{currency}</span>
+              <div className="bg-slate-900 p-6 rounded-2xl text-right min-w-[280px] shadow-sm border border-slate-800">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Final Landed Valuation / Unit</p>
+                <p className="text-4xl font-black text-white mt-1 tabular-nums tracking-tighter">
+                  {financialAudit.unitCost.toLocaleString()} <span className="text-xs font-bold text-slate-500 uppercase ml-1">{currency}</span>
                 </p>
               </div>
             </div>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-            {/* Left Content Area - MATERIAL AND OVERHEADS */}
-            <ScrollArea className="lg:col-span-8 bg-white border-r border-slate-100">
-              <div className="p-6 md:p-10 space-y-12">
+            {/* Left Content Area - expanded to lg:col-span-9 for wide monitor visibility */}
+            <ScrollArea className="lg:col-span-9 bg-white border-r border-slate-100 h-full">
+              <div className="p-6 md:p-12 space-y-16">
                 
-                {/* section 1: MATERIALS */}
-                <div className="space-y-6">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-blue-600" /> 1. Material Consumption
+                {/* section 1: MATERIALS MATRIX */}
+                <div className="space-y-8">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-blue-600" /> 1. Operational Material Consumption Matrix
                   </h3>
-                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-                    <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow className="h-10 border-none">
-                          <TableHead className="text-[9px] font-bold py-3 pl-6 uppercase tracking-wider text-slate-500">Material Name</TableHead>
-                          <TableHead className="text-[9px] font-bold py-3 text-center uppercase tracking-wider text-slate-500">Actual Usage</TableHead>
-                          <TableHead className="text-[9px] font-bold py-3 text-right pr-6 uppercase tracking-wider text-slate-500">Unit Cost</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {ingredientLogs.map((log, idx) => (
-                          <TableRow key={idx} className="h-14 hover:bg-slate-50 transition-all border-b last:border-none">
-                            <TableCell className="pl-6 font-bold text-slate-800 text-xs">{log.name}</TableCell>
-                            <TableCell>
-                              <Input type="number" step="0.001" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-9 w-32 mx-auto text-center border-slate-200 bg-slate-50 rounded-lg font-bold text-blue-600 text-sm" />
-                            </TableCell>
-                            <TableCell className="text-right pr-6 font-bold text-slate-400 text-xs tabular-nums">{log.unit_cost.toLocaleString()} {currency}</TableCell>
+                  <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+                    <ScrollArea className="w-full">
+                      <Table className="min-w-[800px]"> {/* Forces room for labels */}
+                        <TableHeader className="bg-slate-50">
+                          <TableRow className="h-14 border-none">
+                            <TableHead className="text-[10px] font-bold py-4 pl-8 uppercase tracking-widest text-slate-500">Resource Identification</TableHead>
+                            <TableHead className="text-[10px] font-bold py-4 text-center uppercase tracking-widest text-slate-500">Authorized usage metric</TableHead>
+                            <TableHead className="text-[10px] font-bold py-4 text-right pr-8 uppercase tracking-widest text-slate-500">Unit cost basis ({currency})</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {ingredientLogs.map((log, idx) => (
+                            <TableRow key={idx} className="h-16 hover:bg-slate-50 transition-all border-b last:border-none">
+                              <TableCell className="pl-8 font-bold text-slate-800 text-sm whitespace-nowrap">{log.name}</TableCell>
+                              <TableCell>
+                                <Input 
+                                  type="number" 
+                                  step="0.001" 
+                                  value={log.actual_qty} 
+                                  onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} 
+                                  className="h-10 w-40 mx-auto text-center border-slate-200 bg-slate-50/50 rounded-lg font-bold text-blue-600 text-base focus:bg-white" 
+                                />
+                              </TableCell>
+                              <TableCell className="text-right pr-8 font-bold text-slate-400 text-sm tabular-nums">{log.unit_cost.toLocaleString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
                   </div>
                 </div>
 
                 {/* section 2: OVERHEADS */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                    <div className="flex justify-between items-center">
-                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-rose-600" /> 2. Operational Overhead
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-rose-600" /> 2. Process Overheads & Expenses
                     </h3>
-                    <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-8 border-slate-200 text-slate-700 font-bold text-[9px] bg-white rounded-md px-4 transition-all hover:bg-slate-50 uppercase tracking-widest">
-                      <Plus className="mr-1.5 h-3 w-3" /> Add Overhead
+                    <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-10 border-slate-200 text-slate-700 font-bold text-[10px] bg-white rounded-xl px-6 transition-all hover:bg-slate-50 uppercase tracking-widest shadow-sm">
+                      <Plus className="mr-2 h-4 w-4" /> Add Ledger Category
                     </Button>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {expenses.map((exp, idx) => (
-                      <div key={idx} className="flex gap-4 items-center bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
-                        <div className="flex-1"><Input placeholder="Expense Category (e.g., Labor)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-10 border-slate-200 bg-white font-medium text-slate-900 rounded-lg px-4 text-xs" /></div>
-                        <div className="w-48"><Input type="number" step="0.01" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-10 border-slate-200 bg-white text-right font-bold text-rose-600 rounded-lg px-4 text-sm" /></div>
-                        <Button variant="ghost" size="icon" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"><Trash2 size={18} /></Button>
+                      <div key={idx} className="flex gap-6 items-center bg-white border border-slate-100 p-5 rounded-2xl shadow-sm hover:border-slate-300 transition-all group">
+                        <div className="flex-1"><Input placeholder="Ledger Description (e.g., Facility Rent, Energy)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-12 border-slate-200 bg-white font-medium text-slate-900 rounded-xl px-5 text-sm" /></div>
+                        <div className="w-64"><Input type="number" step="0.01" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-12 border-slate-200 bg-white text-right font-bold text-rose-600 rounded-xl px-5 text-lg" /></div>
+                        <Button variant="ghost" size="icon" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-12 w-12 text-slate-200 group-hover:text-rose-500 hover:bg-rose-50 transition-all rounded-xl"><Trash2 size={22} /></Button>
                       </div>
                     ))}
                   </div>
@@ -404,43 +413,64 @@ export default function ManufacturingOrderManager() {
               </div>
             </ScrollArea>
 
-            {/* Right Sidebar Area - YIELD AND VALUATION */}
-            <div className="lg:col-span-4 bg-slate-50/50 p-6 md:p-10 flex flex-col justify-between">
-              <div className="space-y-10">
-                <div className="space-y-4">
+            {/* Right Sidebar Area - LG:COL-SPAN-3 */}
+            <div className="lg:col-span-3 bg-slate-50/50 p-6 md:p-10 flex flex-col justify-between overflow-y-auto">
+              <div className="space-y-12">
+                <div className="space-y-5">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Actual Production Yield</Label>
-                    <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-28 text-5xl font-black bg-white border-slate-200 text-center rounded-2xl shadow-sm text-slate-950 tracking-tight" />
-                    <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-widest">Confirm physical output count</p>
+                    <div className="relative group">
+                      <Input 
+                        type="number" 
+                        value={actualYield} 
+                        onChange={e => setActualYield(Number(e.target.value))} 
+                        className="h-32 text-6xl font-black bg-white border-slate-200 text-center rounded-3xl shadow-sm text-slate-950 tracking-tighter focus:ring-4 focus:ring-blue-500/5 transition-all" 
+                      />
+                      <div className="absolute inset-0 rounded-3xl pointer-events-none border-2 border-transparent group-focus-within:border-blue-500/20" />
+                    </div>
+                    <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-widest">Verify physical finished units</p>
                 </div>
 
-                <div className="pt-10 border-t border-slate-200 space-y-6">
-                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider"><span>Material Total</span><span className="text-slate-900 font-bold">{financialAudit.matTotal.toLocaleString()} {currency}</span></div>
-                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider"><span>Applied Overhead</span><span className="text-slate-900 font-bold">{financialAudit.expTotal.toLocaleString()} {currency}</span></div>
-                  <div className="pt-8 border-t-2 border-slate-950 flex justify-between items-end">
+                <div className="pt-12 border-t border-slate-200 space-y-8">
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span>Resources</span>
+                    <span className="text-slate-900 font-bold text-sm">{financialAudit.matTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span>Ledger Overheads</span>
+                    <span className="text-slate-900 font-bold text-sm">{financialAudit.expTotal.toLocaleString()}</span>
+                  </div>
+                  
+                  <div className="pt-10 border-t-2 border-slate-950 flex justify-between items-end">
                     <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lot Total Valuation</span>
-                      <span className="text-3xl font-black text-slate-950 tracking-tighter tabular-nums mt-0.5">{financialAudit.total.toLocaleString()}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lot Cumulative Value</span>
+                      <span className="text-4xl font-black text-slate-950 tracking-tighter tabular-nums mt-1">
+                        {financialAudit.total.toLocaleString()}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">{currency}</span>
+                    <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase">{currency}</span>
                   </div>
                 </div>
               </div>
 
-              <Card className="bg-blue-600 rounded-2xl text-white shadow-lg p-6 space-y-3 border-none mt-10">
-                  <div className="flex items-center gap-2.5"><Database size={16} className="text-blue-200" /><span className="text-[9px] font-bold uppercase tracking-widest">Inventory Logic</span></div>
-                  <p className="text-[10px] text-blue-100 font-medium leading-relaxed uppercase tracking-tight">Authorizing will deduct raw materials from ledger and increase finished good node balance.</p>
+              <Card className="bg-blue-600 rounded-3xl text-white shadow-xl p-8 space-y-4 border-none mt-12">
+                  <div className="flex items-center gap-3"><Database size={18} className="text-blue-200" /><span className="text-[10px] font-bold uppercase tracking-widest">Ledger Sync Protocol</span></div>
+                  <p className="text-[10px] text-blue-100 font-medium leading-relaxed uppercase tracking-tight">Post-audit will permanently deduct resource balances and increment the finished goods registry.</p>
               </Card>
             </div>
           </div>
 
-          <DialogFooter className="bg-white border-t p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 px-5 py-2 rounded-full border border-emerald-100 font-bold text-[9px] uppercase tracking-wider">
-                <CheckCircle2 size={16} /> Audit Integrity Protocol Active
+          <DialogFooter className="bg-white border-t p-6 md:p-10 flex flex-col sm:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-4 text-emerald-600 bg-emerald-50 px-6 py-2.5 rounded-full border border-emerald-100 font-bold text-[10px] uppercase tracking-widest">
+                <CheckCircle2 size={18} /> Protocol Integrity Verified
             </div>
             <div className="flex gap-4 w-full sm:w-auto">
-                <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-12 px-6 font-bold text-slate-400 hover:text-slate-950 text-[10px] uppercase tracking-widest transition-colors">Discard</Button>
-                <Button onClick={() => finalizeProductionMutation.mutate()} disabled={finalizeProductionMutation.isPending} className="h-12 px-10 bg-slate-950 hover:bg-black text-white font-bold rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] flex items-center justify-center min-w-[280px] active:scale-95">
-                    {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "Post Reconciliation Protocol"}
+                <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-14 px-8 font-bold text-slate-400 hover:text-slate-950 text-[11px] uppercase tracking-widest transition-all">Discard Adjustment</Button>
+                <Button 
+                  onClick={() => finalizeProductionMutation.mutate()} 
+                  disabled={finalizeProductionMutation.isPending} 
+                  className="h-14 px-12 bg-slate-950 hover:bg-black text-white font-bold rounded-2xl shadow-2xl transition-all uppercase tracking-[0.1em] text-[11px] flex items-center justify-center min-w-[350px] active:scale-[0.98] border border-slate-800"
+                >
+                    {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Authorize & Commit Reconciliation"}
                 </Button>
             </div>
           </DialogFooter>
