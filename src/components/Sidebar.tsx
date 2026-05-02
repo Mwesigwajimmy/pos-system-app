@@ -44,13 +44,14 @@ interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; rol
 type NavItem = NavLink | NavAccordion;
 
 // --- MASTER NAVIGATION CONFIGURATION ---
+// UPGRADE: 'module' keys now strictly match the database slugs verified in the forensic audit.
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
         title: 'System Control', 
         icon: ShieldAlert, 
         roles: ['architect', 'commander'], 
-        module: 'System Administration',
+        module: 'admin',
         subItems: [
             { href: '/command-center', label: 'Command Dashboard', icon: Zap },
             { href: '/sovereign-control', label: 'Control Center', icon: ShieldCheck },
@@ -67,19 +68,19 @@ const navSections: NavItem[] = [
     { 
         type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, 
         roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender'], 
-        module: 'Sales & POS', 
-        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Distribution', 'Mixed/Conglomerate', 'Professional Services']
+        module: 'sales', 
+        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services']
     },
     { 
         type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, 
         roles: ['admin', 'manager', 'cashier', 'kitchen', 'owner', 'architect', 'chef'], 
-        module: 'Sales & POS', 
+        module: 'sales', 
         businessTypes: ['Restaurant / Cafe', 'Mixed/Conglomerate']
     },
     
     {
         type: 'accordion', title: 'Activities & Logs', icon: ListChecks, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
-        module: 'Activities & Logs',
+        module: 'activities',
         subItems: [
             { href: '/activities/timeline', label: 'Timeline', icon: Activity },      
             { href: '/activities/user-feeds', label: 'User Feed', icon: UserCog },  
@@ -92,7 +93,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'CRM', icon: Handshake, roles: ['admin', 'manager', 'owner', 'architect', 'marketing_specialist', 'support_agent'], 
-        module: 'CRM',
+        module: 'crm',
         subItems: [ 
             { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 }, 
             { href: '/crm/marketing', label: 'Marketing', icon: Megaphone }, 
@@ -102,7 +103,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'eCommerce', icon: Globe, roles: ['admin', 'manager', 'owner', 'architect', 'ecommerce_manager'], 
-        module: 'eCommerce',
+        module: 'ecommerce',
         subItems: [ 
             { href: '/ecommerce/orders', label: 'Online Orders', icon: ClipboardCheck }, 
             { href: '/ecommerce/returns', label: 'Order Returns', icon: Undo2 }, 
@@ -119,7 +120,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Invoicing', icon: Receipt, roles: ['admin', 'manager', 'accountant', 'cashier', 'owner', 'architect', 'pharmacist', 'legal_counsel'], 
-        module: 'Invoicing Hub',
+        module: 'invoicing',
         subItems: [
             { href: '/invoicing/create', label: 'Create Invoice', icon: FilePlus }, 
             { href: '/invoicing/estimates', label: 'Estimate Terminal', icon: FileText },
@@ -140,7 +141,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect'], 
-        module: 'Reports Center',
+        module: 'reports',
         subItems: [
             { href: '/reports/finance-hub', label: 'Finance Hub', icon: Landmark },
             { href: '/reports/executive-summary', label: 'Executive Summary', icon: Activity },
@@ -164,7 +165,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist'], 
-        module: 'Sales & POS',
+        module: 'sales',
         businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Distribution', 'Mixed/Conglomerate', 'Professional Services'], 
         subItems: [
             { href: '/customers', label: 'Customers', icon: Users },
@@ -177,7 +178,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager'], 
-        module: 'Inventory Management',
+        module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, 
             { href: '/inventory/categories', label: 'Categories', icon: Tags }, 
@@ -211,7 +212,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager', 'owner', 'architect', 'procurement_officer'], 
-        module: 'Procurement',
+        module: 'procurement',
         subItems: [
             { href: '/procurement', label: 'Overview', icon: LayoutDashboard },
             { href: '/procurement/pipeline', label: 'Pipeline', icon: Activity },
@@ -232,7 +233,7 @@ const navSections: NavItem[] = [
         title: 'Audit & Assurance', 
         icon: ShieldCheck, 
         roles: ['admin', 'auditor', 'owner', 'architect'], 
-        module: 'Audit & Assurance',
+        module: 'audit',
         subItems: [
             { href: '/audit', label: 'Audit Hub', icon: LayoutDashboard }, 
             { href: '/audit/sandbox', label: 'Audit Sandbox', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'accountant', 'owner', 'architect'] },
@@ -254,9 +255,8 @@ const navSections: NavItem[] = [
         type: 'accordion', 
         title: 'Compliance Hub', 
         icon: Gavel, 
-        // ADDED: 'accountant' and 'commander'
         roles: ['admin', 'manager', 'auditor', 'owner', 'architect', 'accountant', 'commander'], 
-        module: 'Compliance Hub',
+        module: 'compliance',
         subItems: [
             { href: '/compliance', label: 'Overview', icon: LayoutDashboard },
             { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
@@ -280,7 +280,7 @@ const navSections: NavItem[] = [
         title: 'Accounting Tools', 
         icon: Calculator, 
         roles: ['admin', 'accountant', 'architect', 'manager'], 
-        module: 'Accountant Tools',
+        module: 'accountant',
         subItems: [
             { href: '/accountant', label: 'Accounting Hub', icon: LayoutDashboard }, 
             { href: '/accountant/ai-assistant', label: 'AI Assistant', icon: Sparkles },
@@ -293,7 +293,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Professional Services', icon: Briefcase, roles: ['admin', 'manager', 'owner', 'architect', 'lawyer', 'accountant', 'consultant', 'practitioner'], 
-        module: 'Professional Services',
+        module: 'professional-services',
         businessTypes: ['Professional Services', 'Mixed/Conglomerate'],
         subItems: [
             { href: '/professional-services', label: 'Hub', icon: LayoutDashboard },
@@ -313,7 +313,7 @@ const navSections: NavItem[] = [
    
     {
         type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager', 'owner', 'architect', 'hr_manager'], 
-        module: 'Human Resources (HCM)',
+        module: 'hcm',
         subItems: [ 
             { href: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard },
             { href: '/hr/directory', label: 'Directory', icon: Contact },
@@ -332,7 +332,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
-        module: 'Financial Ledger',
+        module: 'finance',
         subItems: [ 
             { href: '/finance/banking', label: 'Banking', icon: Landmark },
             { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
@@ -349,7 +349,7 @@ const navSections: NavItem[] = [
     },
 {
         type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
-        module: 'Distribution',
+        module: 'distribution',
         businessTypes: ['Distribution', 'Distribution / Wholesale Supply', 'Mixed/Conglomerate', 'Logistics', 'all'],
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard },
@@ -372,7 +372,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'SACCO & Co-ops', icon: PiggyBank, roles: ['admin', 'manager', 'owner', 'architect', 'sacco_manager', 'teller', 'loan_officer'], 
-        module: 'SACCO & Co-ops',
+        module: 'sacco',
         businessTypes: ['SACCO / Co-operative', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/sacco', label: 'Dashboard', icon: LayoutDashboard }, 
@@ -400,7 +400,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Lending Portal', icon: Landmark, roles: ['admin', 'manager', 'owner', 'architect', 'loan_officer', 'credit_analyst', 'debt_collector'], 
-        module: 'Lending & Microfinance',
+        module: 'lending',
         businessTypes: ['Lending / Microfinance', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/lending', label: 'Portfolio', icon: LayoutDashboard },
@@ -423,7 +423,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Property', icon: Home, roles: ['admin', 'manager', 'owner', 'architect', 'property_manager', 'leasing_agent'], 
-        module: 'Rentals & Real Estate',
+        module: 'rentals',
         businessTypes: ['Rentals / Real Estate', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/rentals/properties', label: 'Units', icon: Building2 }, 
@@ -435,7 +435,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Telecom', icon: Smartphone, roles: ['admin', 'manager', 'cashier', 'accountant', 'owner', 'architect', 'dsr_rep', 'agent', 'float_manager'], 
-        module: 'Telecom & Mobile Money',
+        module: 'telecom',
         businessTypes: ['Telecom Services', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/telecom', label: 'Admin Hub', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner', 'architect'] }, 
@@ -461,7 +461,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Field Service', icon: Wrench, roles: ['admin', 'manager', 'owner', 'architect', 'field_technician', 'dispatcher'], 
-        module: 'Field Service',
+        module: 'field-service',
         businessTypes: ['Field Service', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/field-service/schedule', label: 'Schedule', icon: CalendarDays, roles: ['dispatcher', 'admin'] }, 
@@ -476,7 +476,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Project Management', icon: Construction, roles: ['admin', 'manager', 'owner', 'architect', 'engineer', 'foreman', 'site_manager'], 
-        module: 'Contractor Tools',
+        module: 'contractor',
         businessTypes: ['Contractor', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/contractor', label: 'Dashboard', icon: LayoutDashboard }, 
@@ -490,7 +490,7 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Non-Profit', icon: HeartHandshake, roles: ['admin', 'manager', 'owner', 'architect', 'donor_relations', 'grant_manager', 'volunteer_coordinator'], 
-        module: 'Nonprofit & NGO',
+        module: 'nonprofit',
         businessTypes: ['Nonprofit', 'Mixed/Conglomerate'],
         subItems: [ 
             { href: '/nonprofit', label: 'Overview', icon: LayoutDashboard },
@@ -506,23 +506,23 @@ const navSections: NavItem[] = [
 
     {
         type: 'accordion', title: 'Appointments', icon: CalendarDays, roles: ['admin', 'manager', 'owner', 'architect'], 
-        module: 'Booking & Appointments',
+        module: 'booking',
         subItems: [ { href: '/booking', label: 'Calendar', icon: CalendarDays }, { href: '/booking/services', label: 'Services', icon: ClipboardPlus }, ]
     },
     {
         type: 'accordion', title: 'Collaboration', icon: Users, roles: ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner', 'architect'], 
-        module: 'Collaboration (Workbooks)',
+        module: 'collaboration',
         subItems: [ { href: '/workbooks', label: 'Workbooks', icon: FileSpreadsheet }, ]
     },
     {
         type: 'accordion', title: 'Business Library', icon: Library, roles: ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect'], 
-        module: 'Business Hub (Library)',
+        module: 'business-hub',
         subItems: [ { href: '/library', label: 'Documents', icon: Library }, ]
     },
 
     {
         type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
-        module: 'Management & Settings',
+        module: 'management',
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
 { 
