@@ -730,7 +730,7 @@ export default function Sidebar() {
                                 {tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "Sovereign OS"}
                             </span>
                             <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-70 mt-0.5 leading-tight">
-                                {profile?.full_name || "Authorized Operator"} • {activerole}
+                                {profile?.full_name || "Authorized Operator"} • {activeRole}
                             </span>
                         </div>
                     </div>
