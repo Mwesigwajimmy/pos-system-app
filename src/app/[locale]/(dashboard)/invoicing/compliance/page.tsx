@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import FiscalComplianceBridge from "@/components/invoicing/FiscalComplianceBridge";
-import { ShieldCheck, Landmark, ArrowLeft, Globe } from "lucide-react";
+import { Landmark, ArrowLeft, Globe, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Statutory Compliance | Sovereign Registry",
-  description: "Global tax authority integration and legal invoice validation terminal.",
+  title: "Regulatory Compliance | Enterprise Ledger",
+  description: "Standardized regulatory authority integration and fiscal validation terminal.",
 };
 
 interface PageProps { params: { locale: string }; }
@@ -18,11 +18,9 @@ export default async function CompliancePage({ params: { locale } }: PageProps) 
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. AUTHENTICATION HANDSHAKE
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
-  // 2. TENANT RESOLUTION
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_id, organization_id")
@@ -32,8 +30,6 @@ export default async function CompliancePage({ params: { locale } }: PageProps) 
   const activeTenantId = profile?.business_id || profile?.organization_id;
   if (!activeTenantId) redirect(`/${locale}/dashboard`);
 
-  // 3. FETCH RECENT INVOICE FOR HANDSHAKE CONTEXT
-  // We fetch the latest invoice to show the current "Live" fiscal state of the business unit
   const { data: latestInvoice } = await supabase
     .from("invoices")
     .select("id")
@@ -42,9 +38,7 @@ export default async function CompliancePage({ params: { locale } }: PageProps) 
     .limit(1)
     .single();
 
-  // 4. CALL THE ENTERPRISE FISCAL RPC
-  // This calls the global tax logic we built in the database
-  const { data: handshakeData, error: rpcError } = await supabase
+  const { data: handshakeData } = await supabase
     .rpc('get_fiscal_handshake_status', { 
         p_invoice_id: latestInvoice?.id || 0, 
         p_user_id: user.id 
@@ -53,43 +47,60 @@ export default async function CompliancePage({ params: { locale } }: PageProps) 
   const handshake = handshakeData?.[0];
 
   return (
-    <div className="container mx-auto py-10 max-w-7xl px-6">
-      <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-10">
-        <div className="space-y-3">
-          <Link href={`/${locale}/invoicing/list`} className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-blue-600 transition-colors">
-            <ArrowLeft size={12} className="mr-2" /> Return to Registry
+    <div className="max-w-[1400px] mx-auto py-12 px-8 space-y-12 animate-in fade-in duration-700">
+      
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-slate-100 pb-12">
+        <div className="space-y-4">
+          <Link 
+            href={`/${locale}/invoicing/list`} 
+            className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-colors"
+          >
+            <ArrowLeft size={14} className="mr-2" /> Back to Registry
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="bg-slate-950 p-3 rounded-2xl shadow-xl text-white">
-              <Landmark size={28} strokeWidth={2.5} />
+          
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-slate-900 rounded-[1.5rem] text-white shadow-xl shadow-slate-200">
+              <Landmark size={32} />
             </div>
-            <div>
-              {/* UI FIXED: Text is straight, no italics */}
-              <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Compliance Bridge</h1>
-              <p className="text-slate-500 font-medium mt-1">Autonomous <span className="text-blue-600 font-bold">Revenue Authority</span> synchronization and handshake.</p>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Compliance Gateway</h1>
+              <p className="text-sm font-medium text-slate-500">Standardized regulatory synchronization and fiscal authentication.</p>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 bg-blue-50 px-5 py-3 rounded-2xl border border-blue-100">
-           <Globe size={16} className="text-blue-600 animate-pulse" />
-           <div className="flex flex-col">
-             <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Fiscal Status</span>
-             <span className="text-xs font-bold text-blue-700 uppercase">
-                {handshake?.jurisdiction_label || 'Global'} Active
+
+        <div className="flex items-center gap-6 bg-white border border-slate-100 p-6 rounded-[2rem] shadow-sm">
+           <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+             <Globe size={20} />
+           </div>
+           <div className="space-y-0.5 pr-4">
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Operational Status</span>
+             <span className="text-sm font-bold text-slate-800 uppercase">
+                {handshake?.jurisdiction_label || 'Global'} Protocol Active
              </span>
            </div>
         </div>
-      </div>
+      </header>
 
-      {/* 5. DATA INJECTION: Passing real DB results to the UI */}
-      <FiscalComplianceBridge 
-        fiscalId={handshake?.fiscal_identifier}
-        status={handshake?.fiscal_status || 'PENDING_HANDSHAKE'}
-        jurisdiction={handshake?.jurisdiction_label}
-        authorityStandard={handshake?.authority_standard}
-        isOnline={handshake?.is_gateway_online || false}
-        rules={handshake?.applied_rules || []}
-      />
+      <main className="min-h-[500px]">
+        <FiscalComplianceBridge 
+          fiscalId={handshake?.fiscal_identifier}
+          status={handshake?.fiscal_status || 'PENDING_AUTHORIZATION'}
+          jurisdiction={handshake?.jurisdiction_label}
+          authorityStandard={handshake?.authority_standard}
+          isOnline={handshake?.is_gateway_online || false}
+          rules={handshake?.applied_rules || []}
+        />
+      </main>
+
+      <footer className="pt-12 flex justify-between items-center opacity-30">
+        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">
+          <ShieldCheck size={14} /> Regulatory Standard 12-B
+        </div>
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          Node ID: GATEWAY-2026-X
+        </div>
+      </footer>
     </div>
   );
 }

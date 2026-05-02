@@ -52,24 +52,24 @@ const invoiceSchema = z.object({
   customerId: z.string().min(1, "Customer selection is required"),
   currency: z.string().min(1, "Currency is required"),
   exchangeRate: z.coerce.number().min(0.000001, "Manual rate required"), 
-  originCountry: z.string().min(2, "Required for Compliance"),
-  destinationCountry: z.string().min(2, "Required for Compliance"),
+  originCountry: z.string().min(2, "Required"),
+  destinationCountry: z.string().min(2, "Required"),
   incoterm: z.string().default('CIF'),
   isRecurring: z.boolean().default(false),
-  issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid issue date"),
-  dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid due date"),
+  issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
+  dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
   notes: z.string().default(''), 
   items: z.array(z.object({
-    description: z.string().min(1, "Description is required"),
+    description: z.string().min(1, "Description required"),
     hsCode: z.string().optional(), 
-    quantity: z.coerce.number().min(0.001, "Qty must be greater than 0"),
-    unitPrice: z.coerce.number().min(0, "Price cannot be negative"),
-    taxRate: z.coerce.number().min(0).max(100, "Tax cannot exceed 100%").default(0),
-  })).min(1, "You must add at least one line item"),
+    quantity: z.coerce.number().min(0.001, "Min 0.001"),
+    unitPrice: z.coerce.number().min(0, "Min 0"),
+    taxRate: z.coerce.number().min(0).max(100).default(0),
+  })).min(1, "Add at least one item"),
 }).refine((data) => {
   return new Date(data.dueDate) >= new Date(data.issueDate);
 }, {
-  message: "Due date cannot be earlier than the issue date",
+  message: "Due date error",
   path: ["dueDate"],
 });
 
@@ -79,7 +79,7 @@ const CURRENCIES = [
   { code: 'USD', symbol: '$', locale: 'en-US' },
   { code: 'EUR', symbol: '€', locale: 'de-DE' },
   { code: 'GBP', symbol: '£', locale: 'en-GB' },
-  { code: 'UGX', symbol: 'USh', locale: 'en-UG' },
+  { code: 'UGX', symbol: 'Shs', locale: 'en-UG' },
   { code: 'KES', symbol: 'KSh', locale: 'en-KE' },
   { code: 'AED', symbol: 'Dh', locale: 'ar-AE' },
 ];
@@ -132,7 +132,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
           }
         }
       } catch (err: any) {
-        console.error("Critical Data Fault:", err);
+        console.error("Fetch Error:", err);
       } finally {
         if (isMounted) setIsLoadingCustomers(false);
       }
@@ -205,8 +205,6 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
   const onSubmit: SubmitHandler<InvoiceFormValues> = async (data) => {
     setIsSubmitting(true);
     setSubmitError(null);
-    let createdInvoiceId: string | null = null;
-
     try {
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
@@ -235,12 +233,11 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
         .single();
 
       if (invoiceError) throw new Error(invoiceError.message);
-      createdInvoiceId = invoiceData.id;
 
       const lineItems = data.items.map(item => {
           const lineSub = Money.multiply(item.unitPrice, item.quantity);
           return {
-            invoice_id: createdInvoiceId!,
+            invoice_id: invoiceData.id,
             tenant_id: tenantId,
             business_id: tenantId,
             description: item.description,
@@ -254,274 +251,195 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
       });
 
       const { error: itemsError } = await supabase.from('invoice_items').insert(lineItems);
+      if (itemsError) throw new Error(itemsError.message);
 
-      if (itemsError) {
-        await supabase.from('invoices').delete().eq('id', createdInvoiceId);
-        throw new Error(`Data Synchronization Failure: ${itemsError.message}`);
-      }
-
-      toast.success("Fiscal Record Finalized");
-      router.push(`/${locale}/invoicing/to-be-issued`);
+      toast.success("Invoice created");
+      router.push(`/${locale}/invoicing/history`);
       router.refresh();
 
     } catch (error: any) {
-      setSubmitError(error.message || "Failed to finalize transaction.");
+      setSubmitError(error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <ScrollArea className="h-screen bg-slate-50/50">
-      <div className="max-w-[1400px] mx-auto py-12 px-6 space-y-10 animate-in fade-in duration-700">
+    <ScrollArea className="h-screen bg-white">
+      <div className="max-w-[1400px] mx-auto py-10 px-8 space-y-10 animate-in fade-in duration-700">
         
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-slate-200 pb-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 text-blue-600 font-bold text-xs uppercase tracking-[0.2em]">
-              <Receipt size={16} /> Fiscal Documentation
-            </div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter">New Tax Invoice</h1>
-            <p className="text-sm font-semibold text-slate-500">Execute professional billing records with integrated trade compliance.</p>
+        <header className="flex justify-between items-end border-b border-slate-100 pb-10">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Create Invoice</h1>
+            <p className="text-sm text-slate-500 font-medium">Draft and authorize professional billing documents.</p>
           </div>
           <Button 
             variant="outline" 
             onClick={() => router.back()} 
-            disabled={isSubmitting} 
-            className="h-12 px-8 border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white shadow-sm"
+            className="h-10 px-6 border-slate-200 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm"
           >
-            <ArrowLeft size={16} className="mr-2" /> Discard Draft
+            <ArrowLeft size={16} className="mr-2" /> Back
           </Button>
         </header>
 
         {submitError && (
-          <div className="p-5 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 text-red-900 shadow-sm animate-in slide-in-from-top-2">
-            <AlertCircle className="w-6 h-6 shrink-0 text-red-600" />
-            <p className="text-sm font-bold uppercase tracking-tight">{submitError}</p>
+          <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-900 shadow-sm">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+            <p className="text-xs font-bold uppercase">{submitError}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
           
-          <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Governance & Compliance</h2>
-          </div>
-
-          <Card className="border-slate-200 shadow-2xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white border-none">
-            <CardContent className="p-8 md:p-12 space-y-12">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Counterparty Name</Label>
-                  <select 
-                    {...register("customerId")} 
-                    disabled={isLoadingCustomers || isSubmitting}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl bg-slate-50/50 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 transition-all outline-none border-none shadow-inner"
-                  >
-                    <option value="">{isLoadingCustomers ? "Syncing Directory..." : "Select Transaction Party"}</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  {errors.customerId && <p className="text-red-500 text-[10px] font-black uppercase mt-2 ml-1">{errors.customerId.message}</p>}
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Logistics Corridor (ISO)</Label>
-                  <div className="flex gap-3">
-                    <input {...register("originCountry")} placeholder="ORG" className="w-1/2 h-12 px-4 border-none rounded-xl bg-slate-50/50 text-sm font-black text-center shadow-inner" />
-                    <input {...register("destinationCountry")} placeholder="DST" className="w-1/2 h-12 px-4 border-none rounded-xl bg-slate-50/50 text-sm font-black text-center shadow-inner" />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Commercial Incoterm</Label>
-                  <select {...register("incoterm")} className="w-full h-12 px-4 border-none rounded-xl bg-slate-50/50 text-sm font-black shadow-inner outline-none">
-                    {INCOTERMS.map(term => <option key={term} value={term}>{term}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Automated Schedule</Label>
-                  <div className="flex items-center h-12 px-5 border-none rounded-xl bg-slate-50/50 justify-between shadow-inner">
-                    <span className="text-[10px] font-black text-slate-500 uppercase">Recurring?</span>
-                    <input type="checkbox" {...register("isRecurring")} className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-0" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100/50 grid grid-cols-1 md:grid-cols-3 gap-10">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Monetary Denomination</Label>
-                  <select {...register("currency")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-sm font-black shadow-sm outline-none">
-                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
-                  </select>
-                </div>
-
-                {selectedCurrency !== businessDNA.currency && (
-                  <div className="space-y-3 animate-in fade-in duration-300">
-                    <Label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                      <RefreshCcw size={12} /> Valuation Rate
-                    </Label>
-                    <div className="flex items-center gap-4">
-                      <input type="number" step="0.0001" {...register("exchangeRate")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-sm font-black shadow-sm" />
-                      <span className="text-[10px] font-black text-slate-400 uppercase">{businessDNA.currency} Base</span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            
+            <div className="lg:col-span-2 space-y-10">
+                <div className="space-y-6">
+                    <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
+                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">General Information</h2>
                     </div>
-                  </div>
-                )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Customer Selection</Label>
+                            <select 
+                                {...register("customerId")} 
+                                disabled={isLoadingCustomers}
+                                className="w-full h-11 px-4 border border-slate-200 rounded-xl bg-slate-50/50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/10"
+                            >
+                                <option value="">Select Customer...</option>
+                                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </div>
 
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Issuance Date</Label>
-                    <input type="date" {...register("issueDate")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-xs font-black shadow-sm" />
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Maturity Date</Label>
-                    <input type="date" {...register("dueDate")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-xs font-black shadow-sm" />
-                  </div>
-                </div>
-              </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Trade Origin/Destination</Label>
+                            <div className="flex gap-2">
+                                <input {...register("originCountry")} placeholder="ORG" className="w-1/2 h-11 px-4 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50/50" />
+                                <input {...register("destinationCountry")} placeholder="DST" className="w-1/2 h-11 px-4 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50/50" />
+                            </div>
+                        </div>
 
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Line Item Detail</h2>
-                </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Billing Currency</Label>
+                            <select {...register("currency")} className="w-full h-11 px-4 border border-slate-200 rounded-xl bg-white text-sm font-bold outline-none">
+                                {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                            </select>
+                        </div>
 
-                <div className="border border-slate-100 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/20 bg-white">
-                  <ScrollArea className="w-full">
-                    <Table>
-                      <TableHeader className="bg-slate-50/50 border-b border-slate-100">
-                        <TableRow className="h-14 border-none hover:bg-transparent">
-                          <TableHead className="text-[10px] font-black uppercase text-slate-400 pl-8 tracking-widest">Operational Detail</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-center w-28 tracking-widest">Qty</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-right w-40 tracking-widest">Rate (Unit)</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-center w-28 tracking-widest">Tax %</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-right pr-8 w-44 tracking-widest">Line Total</TableHead>
-                          <TableHead className="w-16"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {fields.map((field, index) => {
-                          const qty = items?.[index]?.quantity || 0;
-                          const price = items?.[index]?.unitPrice || 0;
-                          const lineTotal = Money.multiply(Number(price), Number(qty));
-
-                          return (
-                            <TableRow key={field.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-all">
-                              <TableCell className="p-6 pl-8 space-y-3 align-top">
-                                <Input {...register(`items.${index}.description` as const)} placeholder="Enter full service/product description..." className="h-12 border-none bg-slate-50/50 rounded-xl font-bold text-sm shadow-inner" />
-                                <div className="flex gap-2">
-                                  <Badge variant="outline" className="bg-blue-50/50 border-blue-100 text-blue-600 font-black text-[9px] px-3 py-1 uppercase rounded-md tracking-tighter">Tariff Ref</Badge>
-                                  <Input {...register(`items.${index}.hsCode` as const)} placeholder="HS-CODE" className="h-8 border-none bg-slate-50/30 rounded-lg text-[10px] font-black w-32 shadow-inner" />
-                                </div>
-                              </TableCell>
-                              <TableCell className="p-6 align-top">
-                                <Input type="number" step="0.01" {...register(`items.${index}.quantity` as const)} className="h-12 border-none bg-slate-50/50 rounded-xl text-center font-black shadow-inner" />
-                              </TableCell>
-                              <TableCell className="p-6 align-top">
-                                <div className="relative">
-                                  <span className="absolute left-4 top-4 text-[10px] font-black text-slate-300">{currencyMeta.symbol}</span>
-                                  <Input type="number" step="0.01" {...register(`items.${index}.unitPrice` as const)} className="h-12 border-none bg-slate-50/50 rounded-xl pl-8 text-right font-black shadow-inner" />
-                                </div>
-                              </TableCell>
-                              <TableCell className="p-6 align-top">
-                                <Input type="number" step="0.1" {...register(`items.${index}.taxRate` as const)} className="h-12 border-none bg-slate-100/50 rounded-xl text-center font-black shadow-inner" />
-                              </TableCell>
-                              <TableCell className="p-6 text-right align-top font-black text-slate-900 text-base tabular-nums pt-9">
-                                {formatCurrency(lineTotal)}
-                              </TableCell>
-                              <TableCell className="p-6 text-center align-top pt-8">
-                                <Button variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="text-slate-200 hover:text-red-500 h-10 w-10 hover:bg-red-50 rounded-xl">
-                                  <Trash2 size={20} />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                    <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
-                  <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
-                    <Button type="button" onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessDNA.taxRate })} className="bg-white border-blue-600 border-2 text-blue-600 font-black h-12 px-8 rounded-2xl hover:bg-blue-600 hover:text-white transition-all gap-3 shadow-lg shadow-blue-600/5">
-                      <Plus size={18} /> Append Transaction Entry
-                    </Button>
-                    <div className="flex items-center gap-3 text-slate-400 font-black text-[10px] uppercase tracking-[0.2em]">
-                      <CheckCircle2 size={16} className="text-emerald-500" /> Distributed Ledger Active
+                        {selectedCurrency !== businessDNA.currency && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest ml-1">Exchange Rate</Label>
+                                <Input type="number" step="0.0001" {...register("exchangeRate")} className="h-11 rounded-xl bg-emerald-50/30 border-emerald-100 font-bold" />
+                            </div>
+                        )}
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 pt-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                    <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Financial Footnotes</h2>
-                  </div>
-                  <Textarea 
-                    {...register("notes")} 
-                    className="w-full p-6 border-none rounded-3xl text-sm min-h-[220px] bg-slate-50/50 shadow-inner font-bold text-slate-600 placeholder:text-slate-300" 
-                    placeholder="Specify bank routing information, contractual terms, or regulatory declarations..."
-                  />
                 </div>
 
-                <div className="space-y-8">
-                  <Card className="bg-slate-900 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden p-10 space-y-10">
+                <div className="space-y-6">
+                    <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
+                        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Item Details</h2>
+                    </div>
+
+                    <Card className="rounded-2xl border-slate-200 shadow-sm overflow-hidden border-none">
+                        <Table>
+                            <TableHeader className="bg-slate-50/80">
+                                <TableRow className="h-12 border-none">
+                                    <TableHead className="pl-6 font-bold text-[10px] uppercase text-slate-400">Description</TableHead>
+                                    <TableHead className="w-24 text-center font-bold text-[10px] uppercase text-slate-400">Qty</TableHead>
+                                    <TableHead className="w-32 text-right font-bold text-[10px] uppercase text-slate-400">Rate</TableHead>
+                                    <TableHead className="w-40 text-right pr-6 font-bold text-[10px] uppercase text-slate-400">Total</TableHead>
+                                    <TableHead className="w-12"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {fields.map((field, index) => {
+                                    const qty = items?.[index]?.quantity || 0;
+                                    const price = items?.[index]?.unitPrice || 0;
+                                    const lineTotal = Money.multiply(Number(price), Number(qty));
+
+                                    return (
+                                        <TableRow key={field.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100">
+                                            <TableCell className="p-4 pl-6 align-top space-y-2">
+                                                <Input {...register(`items.${index}.description` as const)} placeholder="Item description..." className="h-10 border-slate-200 font-semibold" />
+                                                <Input {...register(`items.${index}.hsCode` as const)} placeholder="HS-Code" className="h-7 border-none bg-blue-50/50 text-[10px] font-bold uppercase rounded-md tracking-tighter" />
+                                            </TableCell>
+                                            <TableCell className="p-4 align-top">
+                                                <Input type="number" step="0.01" {...register(`items.${index}.quantity` as const)} className="h-10 text-center font-bold" />
+                                            </TableCell>
+                                            <TableCell className="p-4 align-top">
+                                                <Input type="number" step="0.01" {...register(`items.${index}.unitPrice` as const)} className="h-10 text-right font-bold" />
+                                            </TableCell>
+                                            <TableCell className="p-4 text-right align-top pt-6 font-bold text-slate-900">
+                                                {formatCurrency(lineTotal)}
+                                            </TableCell>
+                                            <TableCell className="p-4 text-center align-top pt-5">
+                                                <Button variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="text-slate-300 hover:text-red-500 h-8 w-8">
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                        <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+                            <Button type="button" variant="outline" onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessDNA.taxRate })} className="h-10 px-6 border-blue-600 border-2 text-blue-600 font-bold text-[11px] uppercase rounded-xl hover:bg-blue-600 hover:text-white transition-all">
+                                <Plus size={16} className="mr-2" /> Add Line Item
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+
+            <div className="space-y-8">
+                <Card className="rounded-[2rem] border-none bg-slate-900 text-white shadow-2xl p-8 space-y-8">
                     <div className="space-y-6">
-                      <div className="flex justify-between items-center text-slate-500 uppercase tracking-widest text-[10px] font-black">
-                        <span>Operational Subtotal</span> 
-                        <span className="text-white text-sm">{formatCurrency(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-blue-400 uppercase tracking-widest text-[10px] font-black">
-                        <span>Tax Obligation Total</span> 
-                        <span className="text-base">+{formatCurrency(totals.taxTotal)}</span>
-                      </div>
+                        <div className="flex justify-between items-center text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+                            <span>Sub Total</span>
+                            <span className="text-white text-sm">{formatCurrency(totals.subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+                            <span>Tax Amount</span>
+                            <span className="text-sm">+{formatCurrency(totals.taxTotal)}</span>
+                        </div>
                     </div>
 
-                    <div className="border-t border-white/10 pt-10 flex justify-between items-end">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Total Valuation</span>
-                        <h4 className="text-5xl font-black text-white tracking-tighter tabular-nums">
-                          {formatCurrency(totals.grandTotal)}
-                        </h4>
-                      </div>
-                      <Badge className="bg-blue-600 text-white font-black px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest border-none mb-2">Net Balance</Badge>
+                    <div className="pt-8 border-t border-white/10 space-y-1">
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Total Payable Amount</p>
+                        <div className="flex justify-between items-end">
+                            <h4 className="text-4xl font-bold tracking-tighter tabular-nums">{formatCurrency(totals.grandTotal)}</h4>
+                            <Badge className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-bold uppercase border-none">Net Balance</Badge>
+                        </div>
                     </div>
 
                     <Button 
-                      type="submit" 
-                      disabled={isSubmitting} 
-                      className="w-full h-18 bg-white hover:bg-blue-50 text-slate-900 font-black uppercase tracking-[0.2em] text-sm rounded-3xl shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 py-8 flex gap-4"
+                        type="submit" 
+                        disabled={isSubmitting} 
+                        className="w-full h-16 bg-white hover:bg-blue-50 text-slate-900 font-bold uppercase tracking-widest text-xs rounded-2xl shadow-xl transition-all active:scale-95 disabled:opacity-50"
                     >
-                      {isSubmitting ? (
-                        <><Loader2 className="animate-spin h-6 w-6" /> Syncing Protocol</>
-                      ) : (
-                        <><Save size={20} /> Authorize & Post Invoice</>
-                      )}
+                        {isSubmitting ? <><Loader2 className="animate-spin mr-3 h-5 w-5" /> Processing</> : "Authorize & Post Invoice"}
                     </Button>
-                  </Card>
+                </Card>
 
-                  <div className="p-8 bg-amber-50/50 border border-amber-100 rounded-3xl flex items-start gap-5">
-                    <div className="p-3 bg-amber-100 text-amber-700 rounded-2xl">
-                      <AlertCircle size={20} />
-                    </div>
-                    <div className="space-y-1">
-                      <h5 className="font-black text-amber-900 text-xs uppercase tracking-tight">Audit Confirmation</h5>
-                      <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
-                        Authorized users are responsible for the accuracy of HS-Codes and Tax nexus. Financial entries are locked upon posting to the corporate ledger.
-                      </p>
-                    </div>
-                  </div>
+                <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl space-y-4 shadow-sm">
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Internal Notes</Label>
+                    <Textarea 
+                        {...register("notes")} 
+                        className="min-h-[150px] border-none bg-white rounded-xl text-sm font-medium p-4 shadow-inner resize-none outline-none" 
+                        placeholder="Specify bank details or special terms..."
+                    />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <footer className="text-center py-12 opacity-30">
-            <div className="flex items-center justify-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
-              <FileText size={14} /> System Node ID: INV-CORP-A-01
+                <div className="flex justify-center items-center gap-3 opacity-30 pt-4">
+                    <CheckCircle2 size={16} className="text-emerald-500" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">System Record Valid</span>
+                </div>
             </div>
-          </footer>
+
+          </div>
         </form>
       </div>
-      <ScrollBar />
     </ScrollArea>
   );
 }

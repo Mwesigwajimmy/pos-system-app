@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   X, Plus, Trash2, Loader2, Save, AlertCircle, 
-  Calendar, Receipt, Landmark, Globe, Ship, RefreshCcw, Repeat, FileText, CheckCircle2
+  Receipt, CheckCircle2, Globe, MapPin, 
+  CreditCard, Info, FileText, Copy, ArrowRight
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -18,92 +19,53 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
-} from "@/components/ui/dialog";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
 
 const Money = {
   round: (val: number) => Math.round((val + Number.EPSILON) * 100) / 100,
-  multiply: (amount: number, quantity: number) => {
-    return Math.round((amount * quantity + Number.EPSILON) * 100) / 100;
-  },
-  calculateTax: (amount: number, rate: number) => {
-    return Math.round((amount * (rate / 100) + Number.EPSILON) * 100) / 100;
-  }
+  multiply: (amount: number, qty: number) => Math.round((amount * qty + Number.EPSILON) * 100) / 100,
+  calculateTax: (amount: number, rate: number) => Math.round((amount * (rate / 100) + Number.EPSILON) * 100) / 100
 };
 
-const getLocalDateString = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const getFutureDateString = (daysToAdd: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() + daysToAdd);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const addressSchema = z.object({
+  country: z.string().optional(),
+  building: z.string().optional(),
+  street: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+});
 
 const invoiceSchema = z.object({
-  customerId: z.string().min(1, "Customer selection is required"),
-  currency: z.string().min(1, "Currency is required"),
-  exchangeRate: z.coerce.number().min(0.000001, "Valid rate required"), 
-  originCountry: z.string().min(2, "Required for Compliance"),
-  destinationCountry: z.string().min(2, "Required for Compliance"),
-  incoterm: z.string().default('CIF'),
-  isRecurring: z.boolean().default(false),
-  issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
-  dueDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
-  notes: z.string().default(''), 
+  customerId: z.string().min(1, "Customer required"),
+  currency: z.string().min(1),
+  exchangeRate: z.coerce.number().min(0.000001),
+  issueDate: z.string().min(1),
+  dueDate: z.string().min(1),
+  billingAddress: addressSchema,
+  shippingAddress: addressSchema,
+  termsAndConditions: z.string().optional(),
+  additionalDescription: z.string().optional(),
+  adjustment: z.coerce.number().default(0),
   items: z.array(z.object({
-    description: z.string().min(1, "Description is required"),
-    hsCode: z.string().optional(), 
-    quantity: z.coerce.number().min(0.001, "Min qty > 0"), 
-    unitPrice: z.coerce.number().min(0, "Price cannot be negative"),
-    taxRate: z.coerce.number().min(0).max(100).default(0),
-  })).min(1, "Add at least one item"),
-}).refine((data) => {
-  return new Date(data.dueDate) >= new Date(data.issueDate);
-}, {
-  message: "Due date cannot be before issue date",
-  path: ["dueDate"],
+    productName: z.string().min(1, "Required"),
+    description: z.string().optional(),
+    quantity: z.coerce.number().min(0.001), 
+    unitPrice: z.coerce.number().min(0),
+    discount: z.coerce.number().default(0),
+    taxRate: z.coerce.number().default(0),
+  })).min(1),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 const CURRENCIES = [
-  { code: 'USD', symbol: '$', locale: 'en-US' },
-  { code: 'EUR', symbol: '€', locale: 'de-DE' },
-  { code: 'GBP', symbol: '£', locale: 'en-GB' },
-  { code: 'UGX', symbol: 'USh', locale: 'en-UG' },
-  { code: 'KES', symbol: 'KSh', locale: 'en-KE' },
-  { code: 'AED', symbol: 'Dh', locale: 'ar-AE' },
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'UGX', symbol: 'Sh' }
 ];
-
-const INCOTERMS = ['EXW', 'FOB', 'CIF', 'DDP', 'DAP'];
 
 interface CreateInvoiceModalProps {
   isOpen: boolean;
@@ -113,190 +75,85 @@ interface CreateInvoiceModalProps {
   onSuccess?: () => void; 
 }
 
-interface CustomerOption {
-  id: string;
-  name: string;
-  email?: string;
-}
-
 export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, onSuccess }: CreateInvoiceModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
-  const [businessConfig, setBusinessConfig] = useState<{currency: string, taxRate: number, country: string}>({ 
-    currency: 'UGX', taxRate: 0, country: 'UG' 
-  });
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const supabase = createClient();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let isMounted = true;
-    const fetchOnboardingDNA = async () => {
-      try {
-        const [tenantRes, taxRes, customerRes] = await Promise.all([
-          supabase.from('tenants').select('currency_code, country_code').eq('id', tenantId).single(),
-          supabase.from('tax_configurations').select('rate_percentage').eq('business_id', tenantId).eq('is_active', true).limit(1),
-          supabase.from('customers').select('id, name, email').or(`tenant_id.eq.${tenantId},business_id.eq.${tenantId}`).eq('is_active', true).order('name')
-        ]);
-
-        if (isMounted) {
-          if (tenantRes.data) {
-            setBusinessConfig({
-              currency: tenantRes.data.currency_code || 'UGX',
-              taxRate: taxRes.data?.[0]?.rate_percentage || 0,
-              country: tenantRes.data.country_code || 'UG'
-            });
-          }
-          if (customerRes.data) {
-            setCustomers(customerRes.data.map((c: any) => ({ ...c, id: String(c.id) })));
-          }
-        }
-      } catch (err: any) {
-        console.error("Critical System Fault:", err.message);
-      } finally {
-        if (isMounted) setIsLoadingCustomers(false);
-      }
-    };
-
-    fetchOnboardingDNA();
-    document.body.style.overflow = 'hidden';
-    return () => { 
-      isMounted = false; 
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen, tenantId, supabase]);
-
-  const { 
-    register, control, handleSubmit, watch, reset, setValue,
-    formState: { errors } 
-  } = useForm<InvoiceFormValues>({
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
-      customerId: '',
-      currency: businessConfig.currency,
+      currency: 'USD',
       exchangeRate: 1.0,
-      originCountry: businessConfig.country,
-      destinationCountry: '',
-      incoterm: 'CIF',
-      isRecurring: false,
-      issueDate: getLocalDateString(),
-      dueDate: getFutureDateString(14),
-      notes: '',
-      items: [{ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessConfig.taxRate }]
-    },
-    mode: 'onBlur'
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      adjustment: 0,
+      items: [{ productName: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 }]
+    }
   });
 
-  useEffect(() => {
-    if (businessConfig.currency) {
-      setValue('currency', businessConfig.currency);
-      setValue('originCountry', businessConfig.country);
-      setValue('items.0.taxRate', businessConfig.taxRate);
-    }
-  }, [businessConfig, setValue]);
-
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  const watchedItems = watch("items");
+  const adjustment = watch("adjustment");
 
-  const items = watch("items");
-  const selectedCurrency = watch("currency");
-  const currencyMeta = CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
+  useEffect(() => {
+    if (!isOpen) return;
+    async function fetchData() {
+      const { data } = await supabase.from('customers').select('id, name').eq('is_active', true);
+      if (data) setCustomers(data);
+      setIsLoading(false);
+    }
+    fetchData();
+  }, [isOpen]);
 
   const totals = useMemo(() => {
-    const currentItems = items || [];
-    let subtotal = 0;
-    let taxTotal = 0;
+    let subTotal = 0;
+    let totalTax = 0;
+    let totalDiscount = 0;
 
-    currentItems.forEach(item => {
-      const qty = Number(item.quantity) || 0;
-      const price = Number(item.unitPrice) || 0;
-      const taxRate = Number(item.taxRate) || 0;
-
-      const lineTotal = Money.multiply(price, qty);
-      const lineTax = Money.calculateTax(lineTotal, taxRate);
-
-      subtotal += lineTotal;
-      taxTotal += lineTax;
+    watchedItems.forEach(item => {
+      const lineAmount = Money.multiply(item.unitPrice, item.quantity);
+      const lineTax = Money.calculateTax(lineAmount - item.discount, item.taxRate);
+      subTotal += lineAmount;
+      totalDiscount += Number(item.discount);
+      totalTax += lineTax;
     });
 
     return {
-      subtotal: Money.round(subtotal),
-      taxTotal: Money.round(taxTotal),
-      grandTotal: Money.round(subtotal + taxTotal)
+      subTotal,
+      totalDiscount,
+      totalTax,
+      grandTotal: subTotal - totalDiscount + totalTax + Number(adjustment)
     };
-  }, [items]);
+  }, [watchedItems, adjustment]);
 
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat(currencyMeta.locale, { style: 'currency', currency: currencyMeta.code }).format(val);
+  const copyAddress = () => {
+    const billing = watch('billingAddress');
+    setValue('shippingAddress', billing);
+    toast.success("Shipping address synchronized");
+  };
 
   const onSubmit: SubmitHandler<InvoiceFormValues> = async (data) => {
     setIsSubmitting(true);
-    setSubmitError(null);
-    let createdInvoiceId: string | null = null;
-
     try {
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          tenant_id: tenantId,
-          business_id: tenantId,
-          customer_id: data.customerId,
-          currency_code: data.currency,
-          exchange_rate_at_issue: data.exchangeRate, 
-          origin_country_code: data.originCountry,
-          destination_country_code: data.destinationCountry,
-          incoterm: data.incoterm,
-          is_recurring: data.isRecurring,
-          issue_date: data.issueDate,
-          due_date: data.dueDate,
-          notes: data.notes,
-          subtotal: totals.subtotal,
-          tax_amount: totals.taxTotal,
-          total: totals.grandTotal,
-          balance_due: totals.grandTotal,
-          status: 'ISSUED',
-          created_by: userId,
-          created_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
+      const { data: inv, error } = await supabase.from('invoices').insert({
+        tenant_id: tenantId,
+        customer_id: data.customerId,
+        total: totals.grandTotal,
+        status: 'ISSUED',
+        metadata: { ...data }
+      }).select('id').single();
 
-      if (invoiceError) throw new Error(invoiceError.message);
-      createdInvoiceId = invoiceData.id;
-
-      const lineItems = data.items.map(item => {
-        const lineSubtotal = Money.multiply(item.unitPrice, item.quantity);
-        return {
-            invoice_id: createdInvoiceId!,
-            tenant_id: tenantId,
-            business_id: tenantId,
-            description: item.description,
-            hs_code: item.hsCode,
-            quantity: item.quantity,
-            unit_price: item.unitPrice,
-            tax_rate: item.taxRate,
-            tax_amount: Money.calculateTax(lineSubtotal, item.taxRate),
-            total: lineSubtotal + Money.calculateTax(lineSubtotal, item.taxRate)
-        };
-      });
-
-      const { error: itemsError } = await supabase.from('invoice_items').insert(lineItems);
-
-      if (itemsError) {
-        await supabase.from('invoices').delete().eq('id', createdInvoiceId);
-        throw new Error(`Fiscal Ledger Synchronisation Failure: ${itemsError.message}`);
-      }
-
-      toast.success("Fiscal Document Finalized");
-      if (onSuccess) onSuccess();
+      if (error) throw error;
+      toast.success("Invoice successfully generated");
+      onSuccess?.();
       onClose();
-      router.refresh();
-
-    } catch (error: any) {
-      setSubmitError(error.message || "Financial handshake failed.");
+    } catch (err: any) {
+      setSubmitError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -305,234 +162,184 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
-
-      <div className="relative w-full max-w-6xl max-h-[90vh] flex flex-col bg-white rounded-[2rem] shadow-[0_32px_64px_-15px_rgba(0,0,0,0.3)] overflow-hidden border border-white/20">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+      <div className="relative w-full max-w-[1300px] max-h-[95vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
         
-        <header className="flex items-center justify-between px-10 py-8 border-b border-slate-100 bg-white">
-          <div className="flex items-center gap-5">
-            <div className="p-3 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200">
-                <Receipt className="text-white w-7 h-7" />
-            </div>
-            <div className="space-y-0.5">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  Fiscal Issuance Engine
-                </h2>
-                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  <CheckCircle2 size={12} className="text-emerald-500" /> Accounting Integrity Mode
-                </div>
-            </div>
+        <header className="flex items-center justify-between px-10 py-6 border-b border-slate-100">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-slate-900">New Fiscal Invoice</h2>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Transaction Record ID: INV-2026-F1</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-red-500 transition-all bg-slate-50 p-3 rounded-2xl border border-slate-100 hover:shadow-lg">
+          <Button variant="ghost" onClick={onClose} className="rounded-xl h-10 w-10 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50">
             <X size={20} />
-          </button>
+          </Button>
         </header>
 
-        <ScrollArea className="flex-1 bg-white">
-          <div className="p-10 space-y-12">
-            {submitError && (
-              <div className="p-5 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 text-red-900 animate-in slide-in-from-top-2">
-                <AlertCircle className="w-6 h-6 shrink-0 text-red-600" />
-                <p className="text-xs font-black uppercase tracking-tight">{submitError}</p>
+        <ScrollArea className="flex-1">
+          <form id="invoice-form" onSubmit={handleSubmit(onSubmit)} className="p-10 space-y-12 pb-24">
+            
+            <div className="space-y-6">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Address Information</h3>
+                <Button type="button" variant="outline" onClick={copyAddress} className="h-9 px-4 text-xs font-bold border-slate-200 rounded-lg shadow-sm gap-2">
+                  <Copy size={14} /> Copy Billing to Shipping
+                </Button>
               </div>
-            )}
 
-            <form id="invoice-modal-form" onSubmit={handleSubmit(onSubmit)} className="space-y-12">
-              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                {[
+                  { title: "Billing Address", prefix: "billingAddress" as const },
+                  { title: "Shipping Address", prefix: "shippingAddress" as const }
+                ].map((sect) => (
+                  <div key={sect.title} className="space-y-5 p-6 rounded-2xl border border-slate-100 bg-slate-50/30">
+                    <div className="flex items-center gap-2 text-blue-600 mb-2">
+                      <MapPin size={16} />
+                      <span className="text-xs font-bold uppercase tracking-widest">{sect.title}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 items-center">
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1">Country / Region</Label>
+                      <Input {...register(`${sect.prefix}.country`)} className="col-span-2 h-9 rounded-lg border-slate-200" />
+                      
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1 leading-tight">Flat / House / Building</Label>
+                      <Input {...register(`${sect.prefix}.building`)} className="col-span-2 h-9 rounded-lg border-slate-200" />
+                      
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1">Street Address</Label>
+                      <Input {...register(`${sect.prefix}.street`)} className="col-span-2 h-9 rounded-lg border-slate-200" />
+                      
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1">City</Label>
+                      <Input {...register(`${sect.prefix}.city`)} className="col-span-2 h-9 rounded-lg border-slate-200" />
+                      
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1">State / Province</Label>
+                      <Input {...register(`${sect.prefix}.state`)} className="col-span-2 h-9 rounded-lg border-slate-200" />
+                      
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1">Zip / Postal Code</Label>
+                      <Input {...register(`${sect.prefix}.zip`)} className="col-span-2 h-9 rounded-lg border-slate-200" />
+                      
+                      <Label className="text-xs font-semibold text-slate-500 col-span-1">Coordinates</Label>
+                      <div className="col-span-2 flex gap-2">
+                        <Input {...register(`${sect.prefix}.latitude`)} placeholder="Latitude" className="h-9 rounded-lg border-slate-200 text-[10px]" />
+                        <Input {...register(`${sect.prefix}.longitude`)} placeholder="Longitude" className="h-9 rounded-lg border-slate-200 text-[10px]" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
               <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Counterparty & Compliance</h3>
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Invoiced Items</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Client Entity</Label>
-                  <select {...register("customerId")} className="w-full h-12 px-5 border-none rounded-2xl bg-slate-50 text-sm font-bold shadow-inner focus:ring-4 focus:ring-blue-500/5 outline-none transition-all">
-                    <option value="">{isLoadingCustomers ? "Syncing..." : "Select Transaction Party"}</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Trade Corridor (Origin/Dest)</Label>
-                  <div className="flex gap-3">
-                      <input {...register("originCountry")} placeholder="ORG" className="w-1/2 h-12 px-4 border-none rounded-2xl bg-slate-50 text-sm font-black text-center shadow-inner uppercase" />
-                      <input {...register("destinationCountry")} placeholder="DST" className="w-1/2 h-12 px-4 border-none rounded-2xl bg-slate-50 text-sm font-black text-center shadow-inner uppercase" />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Commercial Incoterm</Label>
-                  <select {...register("incoterm")} className="w-full h-12 px-5 border-none rounded-2xl bg-slate-50 text-sm font-black shadow-inner outline-none">
-                    {INCOTERMS.map(term => <option key={term} value={term}>{term}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Operational Logic</Label>
-                  <div className="flex items-center h-12 px-5 border-none rounded-2xl bg-slate-50 justify-between shadow-inner">
-                      <span className="text-[10px] font-black text-slate-500 uppercase">Recurring?</span>
-                      <input type="checkbox" {...register("isRecurring")} className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-0" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-10 bg-slate-900 rounded-[2.5rem] flex flex-wrap items-center gap-10 text-white shadow-2xl shadow-slate-900/20">
-                  <div className="space-y-3">
-                      <Label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Billing Denomination</Label>
-                      <select {...register("currency")} className="bg-white/10 border-none rounded-xl h-11 px-5 text-sm font-black outline-none shadow-sm">
-                          {CURRENCIES.map(c => <option key={c.code} value={c.code} className="text-black font-bold">{c.code} ({c.symbol})</option>)}
-                      </select>
-                  </div>
-
-                  {selectedCurrency !== businessConfig.currency && (
-                      <div className="space-y-3 animate-in fade-in duration-500">
-                          <Label className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] flex items-center gap-2">
-                              <RefreshCcw size={14} /> Valuation Rate
-                          </Label>
-                          <div className="flex items-center gap-4">
-                              <input 
-                                  type="number" 
-                                  step="0.000001" 
-                                  {...register("exchangeRate")} 
-                                  className="bg-white/5 border border-white/10 text-white rounded-xl h-11 px-5 text-base font-black w-48 outline-none focus:border-blue-500 shadow-inner" 
-                              />
-                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Per {businessConfig.currency}</span>
-                          </div>
-                      </div>
-                  )}
-
-                  <div className="ml-auto flex gap-8">
-                      <div className="space-y-3">
-                          <Label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Fiscal Issue Date</Label>
-                          <input type="date" {...register("issueDate")} className="bg-white/10 border-none rounded-xl h-11 px-5 text-xs font-black outline-none shadow-sm" />
-                      </div>
-                      <div className="space-y-3">
-                          <Label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Maturity Date</Label>
-                          <input type="date" {...register("dueDate")} className="bg-white/10 border-none rounded-xl h-11 px-5 text-xs font-black outline-none shadow-sm" />
-                      </div>
-                  </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Line Item Detail</h3>
-                </div>
-
-                <div className="rounded-[2rem] border border-slate-100 overflow-hidden shadow-2xl shadow-slate-200/20">
-                  <Table>
-                    <TableHeader className="bg-slate-50/50 border-b border-slate-100">
-                      <TableRow className="h-14 border-none hover:bg-transparent">
-                        <TableHead className="px-8 font-black uppercase text-slate-400 text-[10px] tracking-widest">Description & Specification</TableHead>
-                        <TableHead className="text-center w-28 font-black uppercase text-slate-400 text-[10px] tracking-widest">Qty</TableHead>
-                        <TableHead className="text-right w-44 font-black uppercase text-slate-400 text-[10px] tracking-widest">Rate (Unit)</TableHead>
-                        <TableHead className="text-center w-28 font-black uppercase text-slate-400 text-[10px] tracking-widest">Tax %</TableHead>
-                        <TableHead className="px-8 text-right w-48 font-black uppercase text-slate-400 text-[10px] tracking-widest">Line Total</TableHead>
-                        <TableHead className="w-16"></TableHead>
+              <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-slate-50/80">
+                    <TableRow className="h-12 border-none">
+                      <TableHead className="w-16 text-center font-bold text-slate-400 text-[10px] uppercase">S.NO</TableHead>
+                      <TableHead className="min-w-[350px] border-l-2 border-red-500/20 font-bold text-slate-400 text-[10px] uppercase">Product Name & Detail</TableHead>
+                      <TableHead className="w-24 text-center font-bold text-slate-400 text-[10px] uppercase">Quantity</TableHead>
+                      <TableHead className="w-32 text-right font-bold text-slate-400 text-[10px] uppercase">List Price($)</TableHead>
+                      <TableHead className="w-32 text-right font-bold text-slate-400 text-[10px] uppercase">Amount($)</TableHead>
+                      <TableHead className="w-32 text-right font-bold text-slate-400 text-[10px] uppercase">Discount($)</TableHead>
+                      <TableHead className="w-24 text-center font-bold text-slate-400 text-[10px] uppercase">Tax(%)</TableHead>
+                      <TableHead className="w-40 text-right pr-8 font-bold text-slate-400 text-[10px] uppercase">Line Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fields.map((field, index) => (
+                      <TableRow key={field.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100 align-top">
+                        <TableCell className="text-center pt-8 font-bold text-slate-400 text-sm">{index + 1}</TableCell>
+                        <TableCell className="py-6 space-y-3">
+                          <Input {...register(`items.${index}.productName`)} className="h-10 rounded-lg border-slate-200 font-semibold" placeholder="Product name" />
+                          <Textarea {...register(`items.${index}.description`)} className="min-h-[80px] rounded-lg border-slate-100 bg-slate-50/30 text-xs p-3 resize-none" placeholder="Description information..." />
+                        </TableCell>
+                        <TableCell className="pt-6"><Input type="number" {...register(`items.${index}.quantity`)} className="h-10 text-center font-bold" /></TableCell>
+                        <TableCell className="pt-6"><Input type="number" {...register(`items.${index}.unitPrice`)} className="h-10 text-right font-bold" /></TableCell>
+                        <TableCell className="pt-6 text-right font-semibold text-slate-400 text-sm">
+                           ${(watchedItems[index]?.unitPrice * watchedItems[index]?.quantity).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="pt-6"><Input type="number" {...register(`items.${index}.discount`)} className="h-10 text-right font-bold bg-amber-50/30" /></TableCell>
+                        <TableCell className="pt-6"><Input type="number" {...register(`items.${index}.taxRate`)} className="h-10 text-center font-bold bg-blue-50/30" /></TableCell>
+                        <TableCell className="pt-6 text-right pr-8 font-bold text-slate-900">
+                          ${((watchedItems[index]?.unitPrice * watchedItems[index]?.quantity) - Number(watchedItems[index]?.discount || 0)).toLocaleString()}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.map((field, index) => {
-                        const qty = items?.[index]?.quantity || 0;
-                        const price = items?.[index]?.unitPrice || 0;
-                        const lineTotal = Money.multiply(Number(price), Number(qty));
-
-                        return (
-                          <TableRow key={field.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-50">
-                            <TableCell className="p-6 pl-8 space-y-3 align-top">
-                              <Input {...register(`items.${index}.description`)} placeholder="Operational detail..." className="h-12 border-none bg-slate-50/50 rounded-xl px-5 text-sm font-bold shadow-inner" />
-                              <div className="flex gap-2 items-center">
-                                <Badge variant="outline" className="bg-blue-50 border-blue-100 text-blue-600 font-black text-[9px] px-3 py-1 uppercase rounded-md tracking-tighter">HS-TARIFF</Badge>
-                                <Input {...register(`items.${index}.hsCode`)} placeholder="CODE-REFERENCE" className="h-8 border-none bg-slate-50/30 rounded-lg px-3 text-[10px] font-black w-36 shadow-inner" />
-                              </div>
-                            </TableCell>
-                            <TableCell className="p-6 align-top">
-                              <Input type="number" step="0.001" {...register(`items.${index}.quantity`)} className="h-12 border-none bg-slate-50/50 rounded-xl text-center font-black shadow-inner" />
-                            </TableCell>
-                            <TableCell className="p-6 align-top">
-                              <div className="relative">
-                                <span className="absolute left-4 top-4 text-[10px] font-black text-slate-300">{currencyMeta.symbol}</span>
-                                <Input type="number" step="0.01" {...register(`items.${index}.unitPrice`)} className="h-12 border-none bg-slate-50/50 rounded-xl pr-5 text-right font-black shadow-inner" />
-                              </div>
-                            </TableCell>
-                            <TableCell className="p-6 align-top">
-                              <Input type="number" step="0.1" {...register(`items.${index}.taxRate`)} className="h-12 border-none bg-slate-100 rounded-xl text-center font-black shadow-inner text-blue-600" />
-                            </TableCell>
-                            <TableCell className="px-8 py-9 text-right font-black text-slate-900 text-base tabular-nums">
-                              {formatCurrency(lineTotal)}
-                            </TableCell>
-                            <TableCell className="p-6 text-center align-top pt-8">
-                              <button type="button" onClick={() => remove(index)} className="text-slate-200 hover:text-red-500 transition-all p-2 hover:bg-red-50 rounded-lg">
-                                <Trash2 size={20}/>
-                              </button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  <div className="p-8 bg-slate-50/50 border-t border-slate-100">
-                    <Button type="button" variant="outline" onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessConfig.taxRate })} className="bg-white border-blue-600 border-2 text-blue-600 font-black h-12 px-8 rounded-2xl hover:bg-blue-600 hover:text-white transition-all gap-3 shadow-lg shadow-blue-600/5">
-                      <Plus size={18} /> Append Transaction Entry
-                    </Button>
-                  </div>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="p-5 bg-slate-50/50 border-t border-slate-100">
+                  <Button type="button" variant="outline" onClick={() => append({ productName: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 })} className="h-10 px-6 rounded-lg border-blue-600 border-2 text-blue-600 font-bold text-xs uppercase hover:bg-blue-600 hover:text-white transition-all shadow-sm gap-2">
+                    <Plus size={16}/> Add New Row
+                  </Button>
                 </div>
-              </div>
+              </Card>
+            </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+              <div className="space-y-10">
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Financial Footnotes</h3>
-                  </div>
-                  <Textarea {...register("notes")} className="w-full p-6 border-none rounded-3xl text-sm h-44 bg-slate-50/50 shadow-inner font-bold text-slate-600 placeholder:text-slate-300 outline-none" placeholder="Specify settlement terms, bank routing, or contractual declarations..."></Textarea>
+                  <Label className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Info size={14} className="text-blue-500" /> Terms and Conditions
+                  </Label>
+                  <Textarea {...register("termsAndConditions")} className="min-h-[140px] rounded-xl border-slate-200 bg-white p-5 shadow-inner text-xs font-medium text-slate-600" placeholder="Specify settlement terms, delivery timelines..." />
                 </div>
-
-                <div className="w-full space-y-6">
-                  <Card className="bg-slate-900 text-white border-none shadow-2xl rounded-[2.5rem] p-10 space-y-10">
-                     <div className="space-y-6">
-                        <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                          <span>Operational Subtotal</span> 
-                          <span className="text-white text-sm">{formatCurrency(totals.subtotal)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] font-black text-blue-400 uppercase tracking-widest">
-                          <span>Fiscal Tax Liability</span> 
-                          <span className="text-base">+{formatCurrency(totals.taxTotal)}</span>
-                        </div>
-                     </div>
-                     <div className="pt-10 border-t border-white/10 flex justify-between items-end">
-                       <div className="space-y-1">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Total Receivable</span>
-                          <div className="text-5xl font-black tracking-tighter text-white tabular-nums">
-                              {formatCurrency(totals.grandTotal)}
-                          </div>
-                       </div>
-                       <Badge className="bg-blue-600 text-white font-black px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest border-none mb-2">Net Sum</Badge>
-                     </div>
-                  </Card>
+                <div className="space-y-4">
+                  <Label className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <FileText size={14} className="text-blue-500" /> Description Information
+                  </Label>
+                  <Textarea {...register("additionalDescription")} className="min-h-[140px] rounded-xl border-slate-200 bg-white p-5 shadow-inner text-xs font-medium text-slate-600" placeholder="Add relevant notes or internal project descriptors..." />
                 </div>
               </div>
-            </form>
-          </div>
+
+              <div className="space-y-8">
+                <Card className="rounded-3xl border border-slate-100 bg-white shadow-xl p-10 space-y-6">
+                  {[
+                    { label: "Sub Total ($)", value: totals.subTotal },
+                    { label: "Discount ($)", value: totals.totalDiscount, color: "text-red-500" },
+                    { label: "Tax ($)", value: totals.totalTax, color: "text-blue-600" }
+                  ].map((row) => (
+                    <div key={row.label} className="flex justify-between items-center pb-2 border-b border-slate-50">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{row.label}</span>
+                      <span className={`text-sm font-bold ${row.color || "text-slate-900"}`}>{row.value.toLocaleString()}</span>
+                    </div>
+                  ))}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Adjustment ($)</span>
+                    <Input type="number" {...register("adjustment")} className="w-28 h-9 text-right font-bold border-slate-100 rounded-lg bg-slate-50/50" />
+                  </div>
+
+                  <div className="pt-8 border-t-2 border-slate-900 flex justify-between items-end">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Payable Amount</p>
+                      <h4 className="text-4xl font-bold text-slate-900 tracking-tighter tabular-nums leading-none">
+                        ${totals.grandTotal.toLocaleString()}
+                      </h4>
+                    </div>
+                    <Badge className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase">USD Fiscal Base</Badge>
+                  </div>
+                </Card>
+
+                <Button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest text-sm rounded-2xl shadow-xl shadow-blue-200 transition-all active:scale-95 gap-3"
+                >
+                    {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : <><CheckCircle2 size={20}/> Finalize & Authorize Invoice</>}
+                </Button>
+              </div>
+            </div>
+          </form>
           <ScrollBar />
         </ScrollArea>
 
-        <footer className="px-10 py-8 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-            <FileText size={16} /> Audit Reference: SYS-TX-INV-01
-          </div>
-          <div className="flex gap-4 w-full sm:w-auto">
-              <button onClick={onClose} type="button" className="flex-1 sm:flex-none px-10 h-14 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all">
-                Discard
-              </button>
-              <button 
-                type="submit" 
-                form="invoice-modal-form" 
-                disabled={isSubmitting} 
-                className="flex-1 sm:flex-none px-14 h-14 text-xs font-black uppercase tracking-[0.2em] text-white bg-blue-600 rounded-2xl hover:bg-blue-700 shadow-2xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
-              >
-                {isSubmitting ? <><Loader2 className="animate-spin h-5 w-5" /> Processing</> : <><Save className="w-5 h-5" /> Finalize Record</>}
-              </button>
-          </div>
+        <footer className="px-10 py-6 border-t border-slate-50 bg-slate-50/30 flex justify-between items-center">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <CheckCircle2 size={14} className="text-emerald-500" /> Digital Ledger Synchronized
+            </div>
+            <div className="flex items-center gap-2 text-slate-500 font-semibold text-xs">
+                System Status: <span className="text-emerald-600">Online</span>
+            </div>
         </footer>
       </div>
     </div>

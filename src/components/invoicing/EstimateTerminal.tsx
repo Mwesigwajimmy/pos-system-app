@@ -6,20 +6,18 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   Plus, Trash2, Loader2, Save, FileText, CheckCircle2, 
-  Calculator, Coins, Layers, BadgeAlert, Clock, ShieldCheck,
-  TrendingUp, Info, Printer, Building2, Phone, Mail, MapPin, 
-  Landmark, Smartphone, PenTool, Hash, Calendar, Download, Send, 
-  User, UserCheck, AlertTriangle, FileDigit
+  Calculator, Printer, Building2, Landmark, PenTool, 
+  Calendar, Send, User, FileDigit, Info, Wifi
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import toast from 'react-hot-toast';
@@ -27,43 +25,38 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
-// --- ENTERPRISE FINANCIAL UTILITIES ---
 const Money = {
   round: (val: number) => Math.round((val + Number.EPSILON) * 100) / 100,
   multiply: (amount: number, qty: number) => Math.round((amount * qty + Number.EPSILON) * 100) / 100
 };
 
-// --- ENTERPRISE SCHEMA VALIDATION ---
 const estimateSchema = z.object({
-  customerId: z.string().min(1, "Client Selection Required"),
-  estimateUid: z.string().min(1, "Reference Number Required"),
-  title: z.string().min(3, "Document Subject Required"),
-  issueDate: z.string().min(1, "Issue Date Required"),
-  validUntil: z.string().min(1, "Expiry Date Required"),
+  customerId: z.string().min(1, "Customer required"),
+  estimateUid: z.string().min(1, "ID required"),
+  title: z.string().min(3, "Subject required"),
+  issueDate: z.string().min(1),
+  validUntil: z.string().min(1),
   currencyCode: z.string().min(3),
-  
-  // Corporate Identity & Stationery
   plotNumber: z.string().optional(),
   pobox: z.string().optional(),
   tinNumber: z.string().optional(),
   officialEmail: z.string().optional(),
   ceoName: z.string().optional(),
   ceoDesignation: z.string().optional(),
-  
-  // Payment Protocol
-  chequesPayableTo: z.string().min(3, "Beneficiary Required"),
-  bankDetails: z.string().min(5, "Bank Details Required"),
-  momoDetails: z.string().optional(),
-  inquiryContact: z.string().min(5, "Contact Required"),
-  
-  // Technical Specifications
+  chequesPayableTo: z.string().optional(),
+  bankDetails: z.string().optional(),
+  inquiryContact: z.string().optional(),
+  termsAndConditions: z.string().optional(),
+  internalDescription: z.string().optional(),
+  taxRate: z.coerce.number().default(0),
+  discountAmount: z.coerce.number().default(0),
+  adjustment: z.coerce.number().default(0),
   items: z.array(z.object({
-    description: z.string().min(1, "Item name required"),
-    applicationArea: z.string().optional(),
+    description: z.string().min(1, "Required"),
+    details: z.string().optional(),
     quantity: z.coerce.number().min(0.001),
-    unitCost: z.coerce.number().min(0), 
     unitRate: z.coerce.number().min(0), 
-  })).min(1, "Minimum 1 Item Required")
+  })).min(1)
 });
 
 type EstimateForm = z.infer<typeof estimateSchema>;
@@ -95,136 +88,53 @@ export default function EstimateTerminal({
   const supabase = createClient();
   const router = useRouter();
 
-  // --- INITIALIZE FORM ---
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<EstimateForm>({
     resolver: zodResolver(estimateSchema),
     defaultValues: { 
-        title: 'Commercial Quotation and Service Estimate', 
-        currencyCode: 'UGX',
+        title: 'Service Quotation', 
+        currencyCode: 'USD',
         issueDate: format(new Date(), 'yyyy-MM-dd'),
         validUntil: format(new Date(Date.now() + 30 * 86400000), 'yyyy-MM-dd'),
         officialEmail: businessInfo.email,
         tinNumber: businessInfo.tin,
-        plotNumber: businessInfo.plot || '',
-        pobox: businessInfo.pobox || '',
         chequesPayableTo: businessInfo.name,
-        bankDetails: 'Bank Name, Branch, Account Number',
-        ceoName: '',
-        ceoDesignation: 'Management',
-        inquiryContact: businessInfo.phone,
-        items: [{ description: '', applicationArea: '', quantity: 1, unitCost: 0, unitRate: 0 }] 
+        bankDetails: '',
+        termsAndConditions: '',
+        internalDescription: '',
+        taxRate: 0,
+        discountAmount: 0,
+        adjustment: 0,
+        items: [{ description: '', details: '', quantity: 1, unitRate: 0 }] 
     }
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const watchedItems = watch("items");
   const currentCurrency = watch("currencyCode");
-  const formValues = watch();
+  const taxRate = watch("taxRate");
+  const discount = watch("discountAmount");
+  const adjustment = watch("adjustment");
 
-  // --- 1. SEQUENCE GENERATOR ---
   useEffect(() => {
     async function fetchNextSequence() {
         const { count, error } = await supabase
             .from('estimates')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', tenantId);
-        
         if (!error) {
-            const nextSeq = (count || 0) + 1;
-            setValue('estimateUid', `QT-${nextSeq.toString().padStart(4, '0')}`);
+            setValue('estimateUid', `QT-${((count || 0) + 1).toString().padStart(4, '0')}`);
         }
     }
     fetchNextSequence();
   }, [tenantId, setValue, supabase]);
 
-  // --- 2. MARGIN CALCULATION ---
   const totals = useMemo(() => {
-    const grossPrice = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitRate || 0, curr.quantity || 0), 0);
-    const totalCost = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitCost || 0, curr.quantity || 0), 0);
-    const margin = grossPrice > 0 ? ((grossPrice - totalCost) / grossPrice) * 100 : 0;
-    return { grossPrice, totalCost, margin };
-  }, [watchedItems]);
+    const subTotal = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitRate || 0, curr.quantity || 0), 0);
+    const taxAmount = (subTotal - discount) * (taxRate / 100);
+    const grandTotal = subTotal - discount + taxAmount + adjustment;
+    return { subTotal, taxAmount, grandTotal };
+  }, [watchedItems, taxRate, discount, adjustment]);
 
-  // --- 3. PDF GENERATION ---
-  const generateProfessionalPDF = () => {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    if (branding?.logo_url) {
-        try { doc.addImage(branding.logo_url, 'PNG', 14, 12, 35, 18); } catch (e) { console.error("Logo error"); }
-    }
-
-    doc.setFontSize(18); doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold");
-    doc.text(businessInfo.name, pageWidth - 14, 20, { align: 'right' });
-
-    doc.setFontSize(8); doc.setTextColor(100); doc.setFont("helvetica", "normal");
-    doc.text([
-        `Address: ${formValues.plotNumber || businessInfo.address}`,
-        `P.O. Box: ${formValues.pobox || 'N/A'} | Email: ${formValues.officialEmail}`,
-        `TIN: ${formValues.tinNumber} | Contact: ${formValues.inquiryContact}`
-    ], pageWidth - 14, 26, { align: 'right' });
-
-    doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.5); doc.line(14, 45, pageWidth - 14, 45);
-
-    doc.setFontSize(14); doc.setTextColor(15, 23, 42); doc.setFont("helvetica", "bold");
-    doc.text("COMMERCIAL QUOTATION", 14, 55);
-
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text(`Estimate No: ${formValues.estimateUid}`, pageWidth - 14, 55, { align: 'right' });
-    doc.text(`Date: ${format(new Date(formValues.issueDate), 'dd MMM yyyy')}`, pageWidth - 14, 60, { align: 'right' });
-    doc.text(`Expiry: ${format(new Date(formValues.validUntil), 'dd MMM yyyy')}`, pageWidth - 14, 65, { align: 'right' });
-
-    const client = customers.find(c => String(c.id) === formValues.customerId);
-    doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text("BILL TO:", 14, 80);
-    doc.setFont("helvetica", "normal");
-    doc.text([
-        client?.name || 'Customer Name',
-        `Phone: ${client?.phone || 'N/A'}`,
-        `Address: ${client?.address || 'N/A'}`
-    ], 14, 85);
-
-    autoTable(doc, {
-        startY: 105,
-        head: [['Item Description', 'Category', 'Qty', 'Unit Price', 'Total']],
-        body: watchedItems.map(i => [
-            i.description,
-            i.applicationArea || 'Standard',
-            i.quantity,
-            `${i.unitRate.toLocaleString()} ${currentCurrency}`,
-            `${(i.quantity * i.unitRate).toLocaleString()} ${currentCurrency}`
-        ]),
-        headStyles: { fillColor: [37, 87, 214], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 4 },
-        foot: [[
-            { content: 'TOTAL AMOUNT', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
-            { content: `${totals.grossPrice.toLocaleString()} ${currentCurrency}`, styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } }
-        ]]
-    });
-
-    let finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text("Payment Instructions:", 14, finalY);
-    
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text([
-        `Bank Details: ${formValues.bankDetails}`,
-        `Payment Payable to: ${formValues.chequesPayableTo}`,
-        `Mobile Payment: ${formValues.momoDetails || 'N/A'}`
-    ], 14, finalY + 6);
-
-    doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text("Authorized Signature:", 14, 270);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${formValues.ceoName || 'Authorized Officer'}`, 14, 280);
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text(formValues.ceoDesignation || '', 14, 285);
-
-    doc.save(`${formValues.estimateUid}_Quotation.pdf`);
-    toast.success("PDF Generated");
-  };
-
-  // --- 4. SUBMIT ---
   const onSubmit: SubmitHandler<EstimateForm> = async (values) => {
     setIsSubmitting(true);
     try {
@@ -235,7 +145,7 @@ export default function EstimateTerminal({
         title: values.title,
         status: 'PENDING', 
         currency_code: values.currencyCode,
-        total_amount: totals.grossPrice,
+        total_amount: totals.grandTotal,
         valid_until: values.validUntil,
         client_name: customers.find(c => String(c.id) === values.customerId)?.name,
         metadata: { ...values } 
@@ -247,17 +157,14 @@ export default function EstimateTerminal({
         values.items.map(item => ({
           estimate_id: estData.id,
           description: item.description,
-          application_area: item.applicationArea,
           quantity: item.quantity,
-          unit_cost: item.unitCost, 
           unit_price: item.unitRate, 
           total: Money.multiply(item.unitRate, item.quantity)
         }))
       );
 
       if (lineErr) throw lineErr;
-      
-      toast.success("Estimate saved successfully");
+      toast.success("Quotation Saved");
       router.push('/invoicing/estimates/history'); 
     } catch (err: any) {
       toast.error(err.message);
@@ -267,227 +174,176 @@ export default function EstimateTerminal({
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto py-10 px-6 space-y-8 animate-in fade-in duration-500">
-      
-      {/* HEADER SECTION */}
-      <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-        <CardContent className="p-8 flex flex-col lg:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-5">
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-blue-600">
-                    <PenTool size={28} />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Create New Quotation</h1>
-                    <div className="flex items-center gap-3 mt-1">
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-bold text-[10px] uppercase">
-                            Drafting Engine Active
-                        </Badge>
-                        <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider flex items-center gap-2">
-                           <Clock size={14}/> System Online
-                        </span>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="flex items-center gap-6 pr-4">
-                <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Project Margin</p>
-                    <p className={`text-3xl font-bold ${totals.margin >= 25 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {totals.margin.toFixed(1)}%
-                    </p>
-                </div>
-                <div className="h-10 w-px bg-slate-200" />
-                <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Currency</p>
-                    <Select value={currentCurrency} onValueChange={(v) => setValue('currencyCode', v)}>
-                        <SelectTrigger className="w-32 h-9 bg-white border-slate-200 text-sm font-bold">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {currencies.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-        </CardContent>
-      </Card>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <ScrollArea className="h-screen bg-[#F8FAFC]">
+      <div className="max-w-[1400px] mx-auto py-12 px-8 space-y-12 animate-in fade-in duration-700">
         
-        {/* LEFT COLUMN: SETTINGS */}
-        <div className="lg:col-span-4 space-y-6">
-            <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                <CardHeader className="bg-slate-50 border-b p-6">
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                        <Building2 size={16} className="text-blue-500"/> Business Details
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-600">Estimate Reference</Label>
-                        <Input {...register("estimateUid")} className="h-10 font-bold border-slate-200 bg-slate-50 text-blue-600 text-sm" readOnly />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600">Issue Date</Label>
-                            <Input type="date" {...register("issueDate")} className="h-10 text-sm font-medium border-slate-200" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600">Valid Until</Label>
-                            <Input type="date" {...register("validUntil")} className="h-10 text-sm font-medium border-slate-200" />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-600">Physical Address</Label>
-                        <Input {...register("plotNumber")} className="h-10 border-slate-200 text-sm" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600">P.O. Box</Label>
-                            <Input {...register("pobox")} className="h-10 border-slate-200 text-sm" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600">Tax ID (TIN)</Label>
-                            <Input {...register("tinNumber")} className="h-10 border-slate-200 text-sm" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+        <header className="space-y-2">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Generate Quotation</h1>
+            <p className="text-sm text-slate-500 font-medium max-w-2xl">
+                Create detailed service estimates based on customer requirements. These documents serve as the preliminary agreement before a sales order is confirmed.
+            </p>
+        </header>
 
-            <Card className="border border-slate-200 shadow-sm rounded-xl bg-white">
-                <CardHeader className="bg-slate-50 border-b p-6">
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                        <Landmark size={16} className="text-blue-500"/> Bank & Payments
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Client Selection</Label>
+                    <select {...register("customerId")} className="w-full h-11 px-4 border border-slate-200 rounded-xl bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/10">
+                        <option value="">Select Customer...</option>
+                        {customers.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Quotation Subject</Label>
+                    <Input {...register("title")} className="h-11 rounded-xl border-slate-200 font-bold" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-600">Payable To</Label>
-                        <Input {...register("chequesPayableTo")} className="h-10 border-slate-200 text-sm" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Reference No.</Label>
+                        <Input {...register("estimateUid")} className="h-11 rounded-xl bg-slate-50 border-slate-100 font-black text-blue-600" readOnly />
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-600">Bank Account Details</Label>
-                        <Textarea {...register("bankDetails")} className="min-h-[80px] text-xs border-slate-200" />
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Currency</Label>
+                        <select {...register("currencyCode")} className="w-full h-11 px-4 border border-slate-200 rounded-xl bg-white text-sm font-bold">
+                            {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                        </select>
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-600">Support Contact</Label>
-                        <Input {...register("inquiryContact")} className="h-10 border-slate-200 text-sm" />
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                </div>
+            </div>
 
-        {/* RIGHT COLUMN: ITEMS */}
-        <div className="lg:col-span-8 space-y-6">
-            <Card className="border border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
-                <CardHeader className="p-8 border-b bg-slate-50/50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600 flex items-center gap-2">
-                                <User size={14} className="text-slate-400"/> Customer Selection
-                            </Label>
-                            <select {...register("customerId")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                <option value="">Select a Customer...</option>
-                                {customers.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-600 flex items-center gap-2">
-                                <FileDigit size={14} className="text-slate-400"/> Subject Title
-                            </Label>
-                            <Input {...register("title")} className="h-10 border-slate-200 font-semibold text-sm px-4" />
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-0">
+            <div className="space-y-6">
+                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
+                    <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Quoted Items</h2>
+                </div>
+
+                <Card className="rounded-2xl border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden border-none">
                     <Table>
-                        <TableHeader className="bg-slate-900 border-none h-12">
-                            <TableRow className="hover:bg-slate-900 border-none">
-                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 pl-8">Item & Description</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 w-24 text-center">Qty</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 text-right w-32">Rate ({currentCurrency})</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-slate-400 text-right w-40 pr-8">Sub-Total</TableHead>
+                        <TableHeader className="bg-slate-50/80">
+                            <TableRow className="h-14 border-none">
+                                <TableHead className="w-16 text-center font-bold text-slate-400 text-[10px] uppercase">S.NO</TableHead>
+                                <TableHead className="min-w-[400px] border-l-2 border-red-500/20 font-bold text-slate-400 text-[10px] uppercase">Product Name & Description</TableHead>
+                                <TableHead className="w-28 text-center font-bold text-slate-400 text-[10px] uppercase">Quantity</TableHead>
+                                <TableHead className="w-40 text-right font-bold text-slate-400 text-[10px] uppercase">List Price ({currentCurrency})</TableHead>
+                                <TableHead className="w-44 text-right pr-10 font-bold text-slate-400 text-[10px] uppercase text-right">Line Total</TableHead>
                                 <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {fields.map((field, index) => (
-                                <TableRow key={field.id} className="hover:bg-slate-50 border-b border-slate-100 group transition-colors">
-                                    <TableCell className="pl-8 py-6">
-                                        <Input {...register(`items.${index}.description` as const)} className="border-none shadow-none font-bold text-slate-800 text-sm p-0 bg-transparent focus-visible:ring-0" placeholder="Product or service name..." />
-                                        <Input {...register(`items.${index}.applicationArea` as const)} className="h-7 border-none shadow-none font-medium text-[9px] uppercase text-slate-400 p-0 bg-transparent focus-visible:ring-0 mt-1" placeholder="Add category / area..." />
+                                <TableRow key={field.id} className="hover:bg-slate-50 transition-all border-b-slate-100 align-top">
+                                    <TableCell className="text-center pt-8 font-bold text-slate-400 text-sm">{index + 1}</TableCell>
+                                    <TableCell className="py-6 space-y-3">
+                                        <Input {...register(`items.${index}.description` as const)} className="h-11 rounded-xl border-slate-200 font-bold text-sm" placeholder="Enter service or product name..." />
+                                        <Textarea {...register(`items.${index}.details` as const)} className="min-h-[100px] rounded-xl border-slate-100 bg-slate-50/50 text-sm placeholder:text-slate-300 resize-none p-4" placeholder="Description details..." />
                                     </TableCell>
-                                    <TableCell>
-                                        <Input type="number" {...register(`items.${index}.quantity` as const)} className="h-9 text-center font-bold border-slate-200 rounded-lg w-full text-sm" />
+                                    <TableCell className="pt-6">
+                                        <Input type="number" {...register(`items.${index}.quantity` as const)} className="h-11 rounded-xl text-center font-bold border-slate-200" />
                                     </TableCell>
-                                    <TableCell>
-                                        <Input type="number" step="0.01" {...register(`items.${index}.unitRate` as const)} className="h-9 text-right font-bold border-slate-200 rounded-lg text-blue-600 bg-blue-50/20 w-full text-sm" />
+                                    <TableCell className="pt-6">
+                                        <Input type="number" step="0.01" {...register(`items.${index}.unitRate` as const)} className="h-11 rounded-xl text-right font-bold border-slate-200" />
                                     </TableCell>
-                                    <TableCell className="text-right pr-8 font-bold text-slate-900 text-base tabular-nums">
-                                        {(Money.multiply(watchedItems[index]?.unitRate || 0, watchedItems[index]?.quantity || 0)).toLocaleString()}
+                                    <TableCell className="pt-6 text-right pr-10 font-black text-slate-900 text-sm">
+                                        <div className="h-11 flex items-center justify-end">
+                                            ${(Money.multiply(watchedItems[index]?.unitRate || 0, watchedItems[index]?.quantity || 0)).toLocaleString()}
+                                        </div>
                                     </TableCell>
-                                    <TableCell className="pr-4">
-                                        <Button variant="ghost" size="icon" onClick={() => remove(index)} className="h-8 w-8 text-slate-300 hover:text-red-500 transition-colors">
-                                            <Trash2 size={16}/>
+                                    <TableCell className="pt-6">
+                                        <Button variant="ghost" size="icon" onClick={() => remove(index)} className="h-11 w-11 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                                            <Trash2 size={18}/>
                                         </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
-                    <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row justify-between items-center gap-4">
-                        <Button type="button" variant="outline" onClick={() => append({ description: '', applicationArea: '', quantity: 1, unitCost: 0, unitRate: 0 })} className="h-10 px-6 font-bold text-xs uppercase gap-2 bg-white border-slate-200 shadow-sm hover:bg-slate-50">
-                            <Plus size={16}/> Add Line Item
-                        </Button>
-                        <Button type="button" onClick={generateProfessionalPDF} className="h-10 px-6 font-bold bg-slate-900 text-white rounded-lg shadow-sm gap-2 hover:bg-slate-800">
-                            <Printer size={16}/> Print Preview
+                    <div className="p-6 bg-slate-50/50 border-t border-slate-100">
+                        <Button type="button" variant="outline" onClick={() => append({ description: '', details: '', quantity: 1, unitRate: 0 })} className="h-12 px-8 rounded-xl border-blue-600 border-2 text-blue-600 font-bold text-xs uppercase hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-100">
+                            <Plus size={16} className="mr-2"/> Add Line Item
                         </Button>
                     </div>
-                </CardContent>
-            </Card>
+                </Card>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                <div className="p-6 bg-blue-50 border border-blue-100 rounded-xl flex gap-4 items-start">
-                    <ShieldCheck size={24} className="text-blue-600 shrink-0 mt-1"/>
-                    <div className="space-y-1">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">Standard Estimate Policy</h4>
-                        <p className="text-[11px] font-medium text-blue-700 leading-relaxed">
-                            This document serves as a formal commercial offer. Once accepted, it remains valid until the specified expiry date.
-                        </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="space-y-10">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-800">
+                            <Info size={16} className="text-blue-500" />
+                            <h3 className="text-sm font-bold uppercase tracking-widest">Terms and Conditions</h3>
+                        </div>
+                        <Textarea {...register("termsAndConditions")} className="min-h-[160px] rounded-2xl border-slate-200 bg-white p-6 shadow-inner text-sm font-medium text-slate-600" placeholder="Outline payment terms, validity periods, and delivery timelines..." />
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-800">
+                            <FileDigit size={16} className="text-blue-500" />
+                            <h3 className="text-sm font-bold uppercase tracking-widest">Internal Description</h3>
+                        </div>
+                        <Textarea {...register("internalDescription")} className="min-h-[160px] rounded-2xl border-slate-200 bg-white p-6 shadow-inner text-sm font-medium text-slate-600" placeholder="Add notes for internal audit or project management..." />
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="flex justify-between items-end border-b-2 border-slate-100 pb-6">
-                        <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grand Total</span>
+                <div className="space-y-8">
+                    <Card className="rounded-[2.5rem] border-none bg-white shadow-2xl shadow-slate-200/60 p-10 space-y-8">
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center text-slate-500">
+                                <span className="text-xs font-bold uppercase tracking-widest">Sub Total</span>
+                                <span className="text-sm font-black text-slate-900">${totals.subTotal.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-slate-500 pt-2">
+                                <span className="text-xs font-bold uppercase tracking-widest">Total Discount</span>
+                                <Input type="number" {...register("discountAmount")} className="w-24 h-9 text-right font-bold border-slate-100 rounded-lg" />
+                            </div>
+                            <div className="flex justify-between items-center text-slate-500 pt-2">
+                                <span className="text-xs font-bold uppercase tracking-widest">Tax Liability (%)</span>
+                                <Input type="number" {...register("taxRate")} className="w-24 h-9 text-right font-bold border-slate-100 rounded-lg" />
+                            </div>
+                            <div className="flex justify-between items-center text-slate-500 pt-2">
+                                <span className="text-xs font-bold uppercase tracking-widest">Adjustment</span>
+                                <Input type="number" {...register("adjustment")} className="w-24 h-9 text-right font-bold border-slate-100 rounded-lg" />
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <p className="text-5xl font-bold text-slate-900 tracking-tight tabular-nums leading-none">
-                                {totals.grossPrice.toLocaleString()}
-                            </p>
-                            <span className="text-sm font-bold text-blue-600 uppercase tracking-wider mt-2 block">{currentCurrency}</span>
+
+                        <div className="pt-10 border-t-2 border-slate-900 space-y-1">
+                            <div className="flex justify-between items-end">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Payable Amount</p>
+                                    <h4 className="text-5xl font-black text-slate-900 tracking-tighter tabular-nums leading-none">
+                                        ${totals.grandTotal.toLocaleString()}
+                                    </h4>
+                                </div>
+                                <Badge className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">{currentCurrency} Currency</Badge>
+                            </div>
+                        </div>
+                        
+                        <Button 
+                            disabled={isSubmitting} 
+                            type="submit" 
+                            className="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] text-sm rounded-3xl shadow-2xl shadow-blue-200 transition-all active:scale-95 flex gap-4"
+                        >
+                            {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><CheckCircle2 size={24} /> Finalize & Dispatch Quote</>}
+                        </Button>
+                    </Card>
+
+                    <div className="flex justify-center">
+                        <div className="bg-emerald-50 border border-emerald-100 px-5 py-2.5 rounded-2xl flex items-center gap-3 shadow-sm">
+                            <Wifi size={14} className="text-emerald-500" />
+                            <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+                                Online | Sync: {format(new Date(), 'dd MMM, HH:mm')}
+                            </span>
                         </div>
                     </div>
-                    
-                    <Button 
-                        disabled={isSubmitting} 
-                        type="submit" 
-                        className="w-full h-14 bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold uppercase tracking-widest text-lg rounded-xl shadow-sm transition-all"
-                    >
-                        {isSubmitting ? (
-                            <Loader2 className="animate-spin h-6 w-6" />
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                <Send size={20}/> 
-                                Save & Record Estimate
-                            </div>
-                        )}
-                    </Button>
                 </div>
             </div>
-        </div>
-      </form>
-    </div>
+        </form>
+
+        <footer className="pt-12 text-center opacity-30">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center justify-center gap-4">
+                <FileDigit size={14} /> Estimate Protocol Engine v2.6
+            </p>
+        </footer>
+      </div>
+      <ScrollBar orientation="vertical" />
+    </ScrollArea>
   );
 }

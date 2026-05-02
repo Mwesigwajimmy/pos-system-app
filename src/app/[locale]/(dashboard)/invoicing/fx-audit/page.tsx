@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import FXGainLossAudit from "@/components/invoicing/FXGainLossAudit";
-import { TrendingUp, Landmark, ArrowLeft, RefreshCcw } from "lucide-react";
+import { TrendingUp, Landmark, ArrowLeft, RefreshCcw, ShieldCheck, Activity } from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "FX Forensic Audit | Sovereign Ledger",
-  description: "Real-time monitoring of currency drift and unrealized exchange variances.",
+  title: "Currency Valuation Audit | Enterprise Ledger",
+  description: "Operational monitoring of currency variance and unrealized exchange differentials.",
 };
 
 interface PageProps { params: { locale: string }; }
@@ -18,11 +18,9 @@ export default async function FXAuditPage({ params: { locale } }: PageProps) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. SESSION AUTHENTICATION
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect(`/${locale}/auth/login`);
 
-  // 2. PROFILE & CURRENCY DISCOVERY (Primary Source of Truth)
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_id, organization_id, currency, business_name")
@@ -31,60 +29,80 @@ export default async function FXAuditPage({ params: { locale } }: PageProps) {
 
   const activeTenantId = profile?.business_id || profile?.organization_id;
 
-  // 3. DATA INTEGRITY CHECK: Handle missing business link
   if (!activeTenantId) {
     return (
-      <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center">
-        <div className="bg-red-50 border-2 border-dashed border-red-200 p-12 rounded-3xl max-w-md shadow-xl">
-          <Landmark className="h-16 w-16 text-red-600 mx-auto mb-6 animate-pulse" />
-          <h2 className="text-2xl font-black text-red-900 tracking-tighter uppercase">Forensic Lock</h2>
-          <p className="text-red-700 mt-4 font-medium">Profile not linked to a Sovereign Business Unit.</p>
-          <Link href={`/${locale}/dashboard`} className="mt-8 inline-block font-bold text-red-900 underline">Return</Link>
+      <div className="min-h-screen flex items-center justify-center p-12 bg-slate-50">
+        <div className="bg-white border border-slate-200 p-12 rounded-[2rem] max-w-md shadow-xl text-center space-y-6">
+          <div className="h-16 w-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
+            <Landmark size={32} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-sm text-slate-500 font-medium">Your account profile is not associated with an active business unit. Audit protocols are locked.</p>
+          </div>
+          <Link href={`/${locale}/dashboard`} className="mt-4 block text-sm font-bold text-blue-600">
+            Return to Command Center
+          </Link>
         </div>
       </div>
     );
   }
 
-  // 4. CALL FORENSIC ENGINE
-  const { data: auditResults, error: rpcError } = await supabase
+  const { data: auditResults } = await supabase
     .rpc('get_fx_forensic_audit', { p_user_id: user.id });
 
-  // 5. CALCULATE AGGREGATES
   const totalGain = auditResults?.reduce((acc: number, curr: any) => acc + Number(curr.unrealized_gain_loss), 0) || 0;
   const lastSync = auditResults?.[0]?.sync_timestamp ? new Date(auditResults[0].sync_timestamp) : new Date();
   const displaySync = lastSync.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
 
   return (
-    <div className="container mx-auto py-10 max-w-7xl px-6">
-      <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-10">
-        <div className="space-y-3">
-          <Link href={`/${locale}/invoicing/list`} className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-blue-600 transition-colors">
-            <ArrowLeft size={12} className="mr-2" /> Back to Invoices
+    <div className="max-w-[1400px] mx-auto py-12 px-8 space-y-12 animate-in fade-in duration-700 bg-white">
+      
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-slate-100 pb-12">
+        <div className="space-y-4">
+          <Link 
+            href={`/${locale}/invoicing/all-invoices`} 
+            className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-colors"
+          >
+            <ArrowLeft size={14} className="mr-2" /> Return to Registry
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg shadow-emerald-500/20 text-white">
-              <TrendingUp size={28} strokeWidth={2.5} />
+          
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-emerald-600 rounded-[1.5rem] text-white shadow-xl shadow-emerald-100">
+              <TrendingUp size={32} />
             </div>
-            <div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">FX Variance Audit</h1>
-              <p className="text-slate-500 font-medium mt-1">Forensic monitoring of <span className="text-emerald-600 font-bold">Currency Drift</span> for {profile.business_name || 'Business Unit'}.</p>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Currency Variance Audit</h1>
+              <p className="text-sm font-medium text-slate-500">Valuation analysis for {profile.business_name || 'Active Entity'}.</p>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 bg-slate-950 px-5 py-3 rounded-2xl border border-white/10">
-           <RefreshCcw size={16} className="text-blue-400 animate-spin-slow" />
+
+        <div className="flex items-center gap-4 bg-slate-900 px-6 py-4 rounded-[2rem] shadow-xl">
+           <RefreshCcw size={18} className="text-blue-400" />
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aura Mid-Rate Feed</span>
-             <span className="text-xs font-bold text-emerald-400 uppercase">Online | Sync: {displaySync}</span>
+             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Market Rate Feed</span>
+             <span className="text-xs font-bold text-emerald-400 uppercase mt-1">Synchronized: {displaySync}</span>
            </div>
         </div>
-      </div>
+      </header>
 
-      <FXGainLossAudit 
-        auditData={auditResults || []} 
-        totalGain={totalGain} 
-        homeCurrency={profile?.currency} 
-      />
+      <main className="min-h-[600px]">
+        <FXGainLossAudit 
+          auditData={auditResults || []} 
+          totalGain={totalGain} 
+          homeCurrency={profile?.currency} 
+        />
+      </main>
+
+      <footer className="pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 opacity-30">
+        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">
+          <ShieldCheck size={14} /> Fiscal Compliance Standard 12-B
+        </div>
+        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <Activity size={12} /> Valuation Node: {activeTenantId.substring(0,18).toUpperCase()}
+        </div>
+      </footer>
     </div>
   );
 }

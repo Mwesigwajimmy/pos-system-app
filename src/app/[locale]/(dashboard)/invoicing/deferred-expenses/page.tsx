@@ -4,13 +4,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import DeferredExpensesTable from "@/components/invoicing/DeferredExpensesTable";
-import { ShieldCheck, Wallet, Landmark, ArrowLeft, BarChart3 } from "lucide-react";
+import { ShieldCheck, Wallet, Landmark, ArrowLeft, Activity } from "lucide-react";
 import Link from "next/link";
 
-// --- Enterprise Metadata ---
 export const metadata: Metadata = {
   title: "Prepaid Amortization | Enterprise Ledger",
-  description: "Autonomous terminal for managing prepaid assets and monthly expense recognition schedules.",
+  description: "Terminal for managing prepaid assets and amortized expense recognition cycles.",
 };
 
 interface PageProps {
@@ -23,32 +22,29 @@ export default async function DeferredExpensesPage({ params: { locale } }: PageP
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. SECURE AUTHENTICATION
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect(`/${locale}/auth/login`);
 
-  // 2. SOVEREIGN CONTEXT RESOLUTION
-  // We fetch both business_id and organization_id to bridge the desync found in the audit.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("business_id, organization_id")
     .eq("id", user.id)
     .single();
 
-  // Define the True ID for the Ledger Interconnect (Matches our SQL recognition engine)
   const activeTenantId = profile?.business_id || profile?.organization_id;
 
   if (profileError || !activeTenantId) {
     return (
-      <div className="flex flex-col h-[80vh] items-center justify-center p-6 text-center">
-        <div className="bg-red-50 border-2 border-dashed border-red-200 p-12 rounded-3xl max-w-md shadow-xl shadow-red-500/10">
-          <Landmark className="h-16 w-16 text-red-600 mx-auto mb-6 animate-pulse" />
-          <h2 className="text-2xl font-black text-red-900 tracking-tighter uppercase">Entity Link Missing</h2>
-          <p className="text-red-700 mt-4 font-medium leading-relaxed">
-            Your profile is not currently mapped to an active Business Unit. 
-            Prepaid asset tracking is disabled for this session.
-          </p>
-          <Link href={`/${locale}/dashboard`} className="mt-8 inline-block text-sm font-bold text-red-900 underline underline-offset-4">
+      <div className="min-h-screen flex items-center justify-center p-12 bg-slate-50">
+        <div className="bg-white border border-slate-200 p-12 rounded-[2rem] max-w-md shadow-xl text-center space-y-6">
+          <div className="h-16 w-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
+            <Landmark size={32} />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Access Restricted</h2>
+            <p className="text-sm text-slate-500 font-medium">Your account profile is not associated with an active business unit. Recognition protocols are locked.</p>
+          </div>
+          <Link href={`/${locale}/dashboard`} className="mt-4 block text-sm font-bold text-blue-600">
             Return to Command Center
           </Link>
         </div>
@@ -56,66 +52,54 @@ export default async function DeferredExpensesPage({ params: { locale } }: PageP
     );
   }
 
-  // 3. RENDER ENTERPRISE TERMINAL
   return (
-    <div className="container mx-auto py-10 max-w-7xl px-6">
-      {/* Dynamic Enterprise Header */}
-      <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-10">
-        <div className="space-y-3">
+    <div className="max-w-[1400px] mx-auto py-12 px-8 space-y-12 animate-in fade-in duration-700 bg-white">
+      
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-slate-100 pb-12">
+        <div className="space-y-4">
           <Link 
             href={`/${locale}/invoicing/all-invoices`}
-            className="flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] hover:text-blue-600 transition-colors"
+            className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-colors"
           >
-            <ArrowLeft size={12} className="mr-2" /> Back to Registry
+            <ArrowLeft size={14} className="mr-2" /> Return to Registry
           </Link>
           
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-500/20 text-white">
-              <Wallet size={28} strokeWidth={2.5} />
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-blue-600 rounded-[1.5rem] text-white shadow-xl shadow-blue-100">
+              <Wallet size={32} />
             </div>
-            <div>
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                Deferred Expenses
-              </h1>
-              <p className="text-slate-500 font-medium mt-1">
-                Autonomous tracking of <span className="text-blue-600 font-bold">Prepaid Assets</span> and their transition to the P&L.
-              </p>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Prepaid Asset Ledger</h1>
+              <p className="text-sm font-medium text-slate-500">Management of prepaid expenditure and amortized recognition cycles.</p>
             </div>
           </div>
         </div>
 
-        {/* Real-time Recognition Status Badge */}
-        <div className="flex items-center gap-4 bg-slate-100 dark:bg-slate-900 px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-           <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+        <div className="flex items-center gap-4 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
+           <div className="h-2 w-2 bg-emerald-500 rounded-full" />
            <div className="flex flex-col">
-             <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none mb-1">
-               Amortization Engine
+             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest leading-none">
+               Recognition Engine
              </span>
-             <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
-               <ShieldCheck size={12} /> Asset-to-Ledger Link Active
+             <span className="text-[9px] font-bold text-blue-600 uppercase tracking-tighter mt-1 flex items-center gap-1">
+               <ShieldCheck size={10} /> Ledger Link Active
              </span>
            </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Table Interface */}
-      <div className="relative">
-        <div className="absolute -top-4 -left-4 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
+      <main className="min-h-[600px]">
         <DeferredExpensesTable tenantId={activeTenantId} locale={locale} />
-      </div>
+      </main>
 
-      {/* Security & Compliance Footer */}
-      <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-300">
-        <div className="flex items-center gap-2">
-            <BarChart3 size={12} />
-            <p className="text-[10px] font-bold uppercase tracking-widest">
-              Standard Compliance: Section 31-D Asset Amortization
-            </p>
+      <footer className="pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 opacity-30">
+        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">
+          <ShieldCheck size={14} /> Regulatory Standard 31-D Compliant
         </div>
-        <p className="text-[10px] font-medium italic">
-          DocType: 8400-PPD | Context: {activeTenantId.substring(0,8).toUpperCase()}
-        </p>
-      </div>
+        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <Activity size={12} /> Operational Context: {activeTenantId.substring(0,8).toUpperCase()}
+        </div>
+      </footer>
     </div>
   );
 }
