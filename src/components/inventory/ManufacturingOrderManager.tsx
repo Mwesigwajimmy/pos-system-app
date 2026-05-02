@@ -6,15 +6,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-
-// --- UI COMPONENTS ---
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,7 +20,7 @@ import {
   Factory, Beaker, CheckCircle2, Loader2, 
   TrendingUp, Wallet, PackagePlus, Trash2, Plus, 
   ClipboardList, ShieldCheck, Search, Download, FileText, X, Settings2,
-  Layers, ChevronRight, BarChart3, Database
+  Layers, ChevronRight, BarChart3, Database, Activity, FileDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,21 +30,15 @@ export default function ManufacturingOrderManager() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  
-  // Modal States
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  // Industrial Form States
   const [expenses, setExpenses] = useState<any[]>([]);
   const [ingredientLogs, setIngredientLogs] = useState<any[]>([]);
   const [actualYield, setActualYield] = useState<number>(0);
   const [mfgDate, setMfgDate] = useState(new Date().toISOString().split('T')[0]);
   const [qcSupervisor, setQcSupervisor] = useState("");
-  
   const [newOrder, setNewOrder] = useState({ variant_id: '', qty: 1, batch: '' });
 
-  // --- 1. SECTOR IDENTITY & DATA ---
   const { data: profile } = useQuery({
     queryKey: ['active_profile_mfg'],
     queryFn: async () => {
@@ -56,7 +48,7 @@ export default function ManufacturingOrderManager() {
     }
   });
 
-  const currency = profile?.currency || 'UGX';
+  const currency = profile?.currency || 'USD';
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['manufacturing_orders'],
@@ -86,14 +78,12 @@ export default function ManufacturingOrderManager() {
     }
   });
 
-  // --- 2. CORE INDUSTRIAL LOGIC ---
-
   useEffect(() => {
     if (isCreateModalOpen && !newOrder.batch) {
-        const lotId = `BATCH-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        const lotId = `LOT-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         setNewOrder(prev => ({ ...prev, batch: lotId }));
     }
-  }, [isCreateModalOpen]);
+  }, [isCreateModalOpen, newOrder.batch]);
 
   const openAuditDialog = async (order: any) => {
     const { data: recipe } = await supabase.rpc('get_composite_details_v5', { p_variant_id: order.output_variant_id });
@@ -106,7 +96,7 @@ export default function ManufacturingOrderManager() {
       })));
     }
     setActualYield(order.planned_quantity);
-    setExpenses([{ category: 'Direct Labor & Utilities', amount: 0 }]);
+    setExpenses([{ category: 'Personnel & Utilities', amount: 0 }]);
     setSelectedOrder(order);
   };
 
@@ -123,7 +113,7 @@ export default function ManufacturingOrderManager() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Production batch initialized successfully");
+      toast.success("Industrial order initialized");
       setIsCreateModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     }
@@ -152,31 +142,36 @@ export default function ManufacturingOrderManager() {
       if (syncErr) throw syncErr;
     },
     onSuccess: () => {
-      toast.success("Batch reconciliation complete. Inventory levels updated.");
+      toast.success("Operational reconciliation successful");
       setSelectedOrder(null);
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     },
-    onError: (e: any) => toast.error(`Sync Failure: ${e.message}`)
+    onError: (e: any) => toast.error(`Process Alert: ${e.message}`)
   });
 
-  const downloadReport = (format: 'PDF' | 'EXCEL') => {
-    if (format === 'EXCEL') {
-        const headers = "BatchID,Product,Yield,Status,MaterialCost,Overhead,TotalCost\n";
-        const rows = orders?.map(o => `${o.batch_number},${o.product_name},${o.actual_quantity_produced},${o.status},${o.total_material_cost},${o.total_overhead_cost},${o.final_unit_cost * o.actual_quantity_produced}`).join("\n");
+  const downloadReport = (format: 'PDF' | 'CSV') => {
+    if (format === 'CSV') {
+        const headers = "Lot_ID,Product,Yield,Status,Material_Valuation,Overhead,Landed_Cost\n";
+        const rows = orders?.map(o => `${o.batch_number},${o.product_name},${o.actual_quantity_produced},${o.status},${o.total_material_cost},${o.total_overhead_cost},${o.final_unit_cost}`).join("\n");
         const blob = new Blob([headers + rows], { type: 'text/csv' });
         const link = document.createElement('a');
         link.href = window.URL.createObjectURL(blob);
-        link.download = `Production_Report_${Date.now()}.csv`;
+        link.download = `Manufacturing_Ledger_${Date.now()}.csv`;
         link.click();
         return;
     }
-    const doc = new jsPDF();
+    const doc = new jsPDF('p', 'mm', 'a4');
+    doc.setFontSize(20);
+    doc.text("PRODUCTION VALUATION LEDGER", 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Registry Context: ${profile?.business_name} | Date: ${new Date().toLocaleDateString()}`, 14, 30);
     (doc as any).autoTable({
-        startY: 20,
-        head: [['Batch ID', 'Product Name', 'Yield', 'Status', 'Unit Cost']],
-        body: orders?.map(o => [o.batch_number, o.product_name, o.actual_quantity_produced, o.status, `${o.final_unit_cost} ${currency}`]),
+        startY: 40,
+        head: [['Lot ID', 'Target Product', 'Final Yield', 'Lifecycle Status', 'Unit Valuation']],
+        body: orders?.map(o => [o.batch_number, o.product_name, `${o.actual_quantity_produced} units`, o.status.toUpperCase(), `${o.final_unit_cost.toLocaleString()} ${currency}`]),
+        headStyles: { fillColor: [15, 23, 42] }
     });
-    doc.save(`Production_Batch_Audit.pdf`);
+    doc.save(`Production_Audit_${Date.now()}.pdf`);
   };
 
   const financialAudit = useMemo(() => {
@@ -186,267 +181,281 @@ export default function ManufacturingOrderManager() {
     return { matTotal, expTotal, total, unitCost: actualYield > 0 ? total / actualYield : 0 };
   }, [ingredientLogs, expenses, actualYield]);
 
-  if (isLoading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-slate-400 h-8 w-8" /></div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen bg-white"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] p-8 md:p-12 font-sans selection:bg-blue-100">
+    <div className="min-h-screen bg-white p-6 md:p-12 space-y-12 animate-in fade-in duration-700">
       
-      {/* HEADER SECTION - Styled after your reference image */}
-      <div className="max-w-[1600px] mx-auto mb-10">
-         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Production Management</h1>
-                <p className="text-slate-500 mt-2 text-sm max-w-xl">
-                    Manage industrial production cycles, track raw material consumption, and audit batch overhead costs with precision.
-                </p>
-            </div>
-            <div className="flex gap-3">
-                <Button onClick={() => downloadReport('EXCEL')} variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm rounded-lg h-10 px-4 font-medium">
-                    <Download className="mr-2 h-4 w-4" /> Export Data
-                </Button>
-                <Button onClick={() => setIsCreateModalOpen(true)} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 rounded-lg shadow-sm h-10">
-                    <PackagePlus className="mr-2 h-4 w-4" /> New Production Batch
-                </Button>
-            </div>
-         </div>
-      </div>
+      <header className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-slate-100 pb-10">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em]">
+            <Activity size={16} /> Manufacturing Governance
+          </div>
+          <h1 className="text-4xl font-bold tracking-tighter text-slate-950">Production Management</h1>
+          <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest leading-none">Industrial Control terminal</p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+           <Button onClick={() => downloadReport('CSV')} variant="ghost" className="h-12 px-6 font-bold text-slate-400 uppercase text-[10px] tracking-widest hover:text-slate-900 transition-all">
+             <Download size={16} className="mr-2" /> Export CSV
+           </Button>
+           <Button onClick={() => downloadReport('PDF')} variant="ghost" className="h-12 px-6 font-bold text-slate-400 uppercase text-[10px] tracking-widest hover:text-slate-900 transition-all">
+             <FileDown size={16} className="mr-2" /> Audit PDF
+           </Button>
+           <Button onClick={() => setIsCreateModalOpen(true)} className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-widest shadow-2xl shadow-blue-200 rounded-2xl transition-all active:scale-95">
+             <Plus size={18} className="mr-2" /> Initialize Lot
+           </Button>
+        </div>
+      </header>
 
-      {/* MONITOR TABLE - High whitespace and clean lines */}
-      <Card className="max-w-[1600px] mx-auto border-none shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-xl overflow-hidden bg-white">
-        <CardHeader className="px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-50">
-          <div className="flex items-center gap-4">
-            <Layers className="text-slate-400 h-5 w-5" />
-            <div>
-                <CardTitle className="text-lg font-bold text-slate-800">Active Production Batches</CardTitle>
-                <CardDescription className="text-xs">Real-time status of molecular asset transformation.</CardDescription>
+      <main className="max-w-[1600px] mx-auto">
+        <Card className="border-none shadow-[0_32px_64px_-15px_rgba(0,0,0,0.05)] rounded-[2.5rem] overflow-hidden bg-white">
+          <CardHeader className="px-12 py-10 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-10 bg-slate-50/20">
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Operational Pipeline</CardTitle>
+              <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time monitoring of active industrial nodes</CardDescription>
             </div>
-          </div>
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-                placeholder="Filter by Product, SKU or Batch ID..." 
-                value={filter} 
-                onChange={e => setFilter(e.target.value)} 
-                className="pl-10 h-10 border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-1 focus:ring-slate-200 rounded-lg text-sm" 
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50/50 border-b border-slate-100">
-                <TableRow>
-                  <TableHead className="w-12 pl-8"><Checkbox checked={selectedItems.length === orders?.length} onCheckedChange={(c) => setSelectedItems(c ? orders?.map(o => o.id) || [] : [])} /></TableHead>
-                  <TableHead className="text-xs font-bold uppercase text-slate-500 tracking-wider py-4">Batch ID</TableHead>
-                  <TableHead className="text-xs font-bold uppercase text-slate-500 tracking-wider py-4">Target Product</TableHead>
-                  <TableHead className="text-xs font-bold uppercase text-slate-500 tracking-wider py-4">Planned Yield</TableHead>
-                  <TableHead className="text-xs font-bold uppercase text-slate-500 tracking-wider py-4 text-center">Status</TableHead>
-                  <TableHead className="text-right pr-8 text-xs font-bold uppercase text-slate-500 tracking-wider">Operations</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders?.filter((o: any) => o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || o.product_name.toLowerCase().includes(filter.toLowerCase())).map((o: any) => (
-                  <TableRow key={o.id} className="hover:bg-slate-50/50 border-b border-slate-50 last:border-none transition-colors">
-                    <TableCell className="pl-8"><Checkbox checked={selectedItems.includes(o.id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, o.id] : prev.filter(id => id !== o.id))} /></TableCell>
-                    <TableCell className="font-medium text-slate-600">{o.batch_number || 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900">{o.product_name}</span>
-                        <span className="text-[10px] font-medium text-slate-400 uppercase">{o.sku}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold text-slate-700">{o.planned_quantity.toLocaleString()} Units</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className={cn(
-                        "font-bold uppercase text-[10px] px-2.5 py-0.5 rounded-full",
-                        o.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-blue-50 text-blue-600 border-blue-100"
-                      )}>
-                        {o.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right pr-8">
-                      {o.status !== 'completed' ? (
-                        <Button onClick={() => openAuditDialog(o)} size="sm" className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold px-4 rounded-lg text-xs shadow-sm">
-                          Finalize Batch
-                        </Button>
-                      ) : (
-                        <div className="text-slate-400 text-xs italic">Archived</div>
-                      )}
-                    </TableCell>
+            <div className="relative w-full md:w-[400px]">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input 
+                  placeholder="Global search through registry..." 
+                  value={filter}
+                  onChange={e => setFilter(e.target.value)}
+                  className="h-14 pl-12 border-none bg-white rounded-2xl shadow-inner font-bold text-sm" 
+                />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="w-full whitespace-nowrap">
+              <Table>
+                <TableHeader className="bg-slate-50/50 border-b border-slate-100">
+                  <TableRow className="h-16">
+                    <TableHead className="w-20 text-center border-r border-slate-100">
+                      <Checkbox checked={selectedItems.length === orders?.length} onCheckedChange={(c) => setSelectedItems(c ? orders?.map(o => o.id) || [] : [])} />
+                    </TableHead>
+                    <TableHead className="px-10 font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Lot Identifier</TableHead>
+                    <TableHead className="font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Finished Good Specification</TableHead>
+                    <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Planned Output</TableHead>
+                    <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Process Status</TableHead>
+                    <TableHead className="px-10 text-right font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Authorization</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {orders?.filter((o: any) => o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || o.product_name.toLowerCase().includes(filter.toLowerCase())).map((o: any) => (
+                    <TableRow key={o.id} className="h-24 hover:bg-slate-50/50 transition-all border-b border-slate-50">
+                      <TableCell className="text-center border-r border-slate-50">
+                        <Checkbox checked={selectedItems.includes(o.id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, o.id] : prev.filter(id => id !== o.id))} />
+                      </TableCell>
+                      <TableCell className="px-10 font-bold text-slate-900 uppercase tracking-tight">{o.batch_number || 'N/A'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 text-sm tracking-tight">{o.product_name}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{o.sku}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-bold text-slate-700 text-sm tabular-nums">{o.planned_quantity.toLocaleString()} UNITS</TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={cn(
+                          "font-bold uppercase text-[9px] px-4 py-1.5 rounded-full border-none shadow-sm",
+                          o.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
+                        )}>
+                          {o.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-10 text-right">
+                        {o.status !== 'completed' ? (
+                          <Button onClick={() => openAuditDialog(o)} className="h-10 px-6 bg-slate-900 hover:bg-black text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all">
+                            Verify & Post
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-end gap-2 text-slate-300 font-bold text-[10px] uppercase tracking-widest">
+                            <ShieldCheck size={16} className="text-emerald-500" /> Operational Record Sealed
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </main>
 
-      {/* CREATE BATCH MODAL - Clean, Focused Form */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-slate-900 px-8 py-6 text-white">
-            <DialogTitle className="text-xl font-bold tracking-tight">Initialize Production Batch</DialogTitle>
-            <DialogDescription className="text-slate-400 text-sm mt-1">Select a composite product to begin the asset transformation cycle.</DialogDescription>
+        <DialogContent className="max-w-lg rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
+          <div className="bg-slate-950 px-10 py-8 text-white">
+            <DialogTitle className="text-xl font-bold uppercase tracking-widest">Initiate Production Lot</DialogTitle>
           </div>
-          <div className="p-8 space-y-6 bg-white">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Target Finished Good</Label>
+          <div className="p-10 space-y-10">
+            <div className="space-y-4">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Asset Selection</Label>
               <Select onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
-                <SelectTrigger className="h-11 border-slate-200 rounded-lg shadow-sm"><SelectValue placeholder="Select Product SKU..." /></SelectTrigger>
-                <SelectContent>
-                  {finishedGoods?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()}>{g.product?.name} ({g.sku})</SelectItem>)}
+                <SelectTrigger className="h-14 border-none bg-slate-50 rounded-2xl shadow-inner font-bold text-sm px-6">
+                  <SelectValue placeholder="Identify target SKU..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-none shadow-2xl">
+                  {finishedGoods?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()} className="font-bold py-4 px-6">{g.product?.name} — {g.sku}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-6">
-               <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Batch ID (Internal)</Label>
-                  <Input value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-11 border-slate-200 font-medium rounded-lg" />
+            <div className="grid grid-cols-2 gap-8">
+               <div className="space-y-4">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reference ID</Label>
+                  <Input value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-14 border-none bg-slate-50 font-black rounded-2xl shadow-inner text-center uppercase tracking-widest" />
                </div>
-               <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Planned Quantity</Label>
-                  <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-11 border-slate-200 font-semibold rounded-lg" />
+               <div className="space-y-4">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Yield</Label>
+                  <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-14 border-none bg-slate-50 font-black rounded-2xl shadow-inner text-center text-blue-600 text-xl" />
                </div>
             </div>
           </div>
-          <DialogFooter className="bg-slate-50 p-6 border-t border-slate-100 flex gap-3">
-            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="font-semibold text-slate-500">Cancel</Button>
-            <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-lg shadow-lg shadow-blue-600/20">
-              {createOrderMutation.isPending ? <Loader2 className="animate-spin" /> : "Release Production Order"}
+          <DialogFooter className="bg-slate-50/50 p-10 border-t border-slate-100 flex gap-6">
+            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="h-14 px-8 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Discard</Button>
+            <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="h-14 px-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-2xl transition-all uppercase tracking-widest text-[10px] flex-1">
+              {createOrderMutation.isPending ? <Loader2 className="animate-spin" /> : "Authorize Order"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* FINALIZATION DIALOG - Professional Wide Ledger View */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-[1200px] h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
-          <DialogHeader className="bg-white border-b border-slate-100 p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-              <div className="flex items-center gap-5">
-                <div className="h-14 w-14 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
-                   <ClipboardList className="text-slate-600 h-7 w-7" />
+        <DialogContent className="max-w-[1400px] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[3rem] bg-white">
+          <DialogHeader className="bg-white border-b border-slate-100 p-12">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-12">
+              <div className="flex items-center gap-8">
+                <div className="h-20 w-20 bg-slate-950 rounded-3xl flex items-center justify-center shadow-2xl">
+                   <ClipboardList className="text-white h-10 w-10" />
                 </div>
-                <div>
-                    <DialogTitle className="text-2xl font-bold text-slate-900">Batch Reconciliation & Finalization</DialogTitle>
-                    <p className="text-sm font-medium text-slate-400 mt-0.5">Tracking Lot Identity: <span className="text-blue-600 font-bold">{selectedOrder?.batch_number}</span></p>
+                <div className="space-y-1">
+                    <DialogTitle className="text-4xl font-bold text-slate-900 tracking-tighter">Operational Reconciliation</DialogTitle>
+                    <div className="flex items-center gap-4 mt-2">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Audit Lot:</span>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 font-bold px-4 py-1.5 rounded-xl uppercase tracking-widest text-[10px]">{selectedOrder?.batch_number}</Badge>
+                    </div>
                 </div>
               </div>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-right min-w-[200px]">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Landed Cost Per Unit</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {financialAudit.unitCost.toLocaleString()} <span className="text-sm font-medium text-slate-400 uppercase ml-1">{currency}</span>
+              <div className="bg-slate-950 p-8 rounded-[2rem] text-right min-w-[280px] shadow-2xl">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Landed Unit Valuation</p>
+                <p className="text-5xl font-black text-white mt-1 tabular-nums">
+                  {financialAudit.unitCost.toLocaleString()} <span className="text-sm font-bold text-slate-500 uppercase ml-2">{currency}</span>
                 </p>
               </div>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row bg-[#fcfcfc]">
-            <ScrollArea className="flex-1 p-8">
-              <div className="space-y-10 max-w-4xl mx-auto">
-                {/* INGREDIENT SECTION */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                    <Beaker className="text-blue-500 h-4 w-4" /> 1. Component Consumption Log
+          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            <ScrollArea className="flex-1 bg-white">
+              <div className="p-12 space-y-16">
+                <div className="space-y-8">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 flex items-center gap-4">
+                    <div className="h-2 w-2 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]" /> 1. Material Consumption Matrix
                   </h3>
-                  <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                  <div className="rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden bg-white">
+                    <ScrollArea className="w-full">
                     <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead className="text-[11px] font-bold py-3 pl-6">Material Description</TableHead>
-                          <TableHead className="text-[11px] font-bold py-3 text-center">Actual Consumption</TableHead>
-                          <TableHead className="text-[11px] font-bold py-3 text-right pr-6">Cost Basis ({currency})</TableHead>
+                      <TableHeader className="bg-slate-50/50">
+                        <TableRow className="h-16 border-none">
+                          <TableHead className="text-[10px] font-black py-6 pl-10 uppercase tracking-widest text-slate-500">Material Specification</TableHead>
+                          <TableHead className="text-[10px] font-black py-6 text-center uppercase tracking-widest text-slate-500">Actual Metric Consumption</TableHead>
+                          <TableHead className="text-[10px] font-black py-6 text-right pr-10 uppercase tracking-widest text-slate-500">Inventory Cost Basis</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {ingredientLogs.map((log, idx) => (
-                          <TableRow key={idx} className="h-16">
-                            <TableCell className="pl-6 font-semibold text-slate-700">{log.name}</TableCell>
+                          <TableRow key={idx} className="h-20 hover:bg-slate-50/30 transition-all border-b border-slate-50 last:border-none">
+                            <TableCell className="pl-10 font-bold text-slate-950 text-sm">{log.name}</TableCell>
                             <TableCell>
-                              <Input type="number" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-9 w-28 mx-auto text-center border-slate-200 font-bold text-blue-600 bg-slate-50/50" />
+                              <Input type="number" step="0.001" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-12 w-40 mx-auto text-center border-none bg-slate-50 rounded-2xl font-black text-blue-600 shadow-inner text-lg" />
                             </TableCell>
-                            <TableCell className="text-right pr-6 font-mono text-sm text-slate-500">{log.unit_cost.toLocaleString()}</TableCell>
+                            <TableCell className="text-right pr-10 font-bold text-slate-400 text-sm tabular-nums">{log.unit_cost.toLocaleString()} {currency}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
+                    <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
                   </div>
                 </div>
 
-                {/* OVERHEAD SECTION */}
-                <div className="space-y-4">
+                <div className="space-y-8">
                    <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                      <Wallet className="text-orange-500 h-4 w-4" /> 2. Overhead Expense Ledger
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 flex items-center gap-4">
+                      <div className="h-2 w-2 rounded-full bg-rose-600 shadow-[0_0_8px_rgba(225,29,72,0.4)]" /> 2. Operational Overheads
                     </h3>
-                    <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-9 border-slate-200 text-slate-600 font-bold text-xs bg-white rounded-lg">
-                      <Plus className="mr-2 h-3.5 w-3.5" /> Add Expense
+                    <Button variant="ghost" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-12 border border-slate-200 text-slate-900 font-bold text-[10px] bg-white rounded-2xl px-8 transition-all hover:bg-slate-950 hover:text-white uppercase tracking-widest shadow-sm">
+                      <Plus className="mr-3 h-4 w-4" /> Append Overhead
                     </Button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-6">
                     {expenses.map((exp, idx) => (
-                      <div key={idx} className="flex gap-4 items-center bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
-                        <div className="flex-1"><Input placeholder="Expense Type (e.g. Electricity, Labor)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-10 border-slate-200 text-sm font-medium" /></div>
-                        <div className="w-48"><Input type="number" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-10 text-right border-slate-200 font-bold text-orange-600" /></div>
-                        <Button variant="ghost" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500"><Trash2 size={18} /></Button>
+                      <div key={idx} className="flex gap-8 items-center bg-white border border-slate-100 p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all">
+                        <div className="flex-1"><Input placeholder="Category Description (Labor, Power, Rent...)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-14 border-none bg-slate-50 font-bold text-slate-950 rounded-2xl shadow-inner px-8 text-sm" /></div>
+                        <div className="w-72"><Input type="number" step="0.01" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-14 border-none bg-slate-50 text-right font-black text-rose-600 rounded-2xl shadow-inner px-8 text-xl" /></div>
+                        <Button variant="ghost" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-14 w-14 rounded-2xl text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all"><Trash2 size={24} /></Button>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
+              <ScrollBar orientation="vertical" />
             </ScrollArea>
 
-            {/* SIDEBAR SUMMARY */}
-            <div className="w-full lg:w-[400px] bg-slate-50 border-l border-slate-200 p-8 flex flex-col">
-              <div className="flex-1 space-y-10">
-                <div className="space-y-4">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center block">Actual Production Yield</Label>
-                    <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-24 text-6xl font-bold bg-white border-slate-200 text-center rounded-2xl shadow-inner text-slate-900 tracking-tighter" />
-                    <p className="text-[10px] text-center text-slate-400 italic">Verify physical count before final reconciliation.</p>
+            <div className="w-full lg:w-[500px] bg-slate-50/50 border-l border-slate-100 p-16 flex flex-col justify-between">
+              <div className="space-y-16">
+                <div className="space-y-6">
+                    <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] text-center block">Authorized Production Yield</Label>
+                    <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-40 text-8xl font-black bg-white border-none text-center rounded-[3rem] shadow-2xl text-slate-950 tracking-tighter" />
+                    <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-4">Confirm Physical Node Quantity</p>
                 </div>
 
-                <div className="pt-8 border-t border-slate-200 space-y-4">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-400"><span>Component Value</span><span className="text-slate-700">{financialAudit.matTotal.toLocaleString()}</span></div>
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-400"><span>Overhead Applied</span><span className="text-slate-700">{financialAudit.expTotal.toLocaleString()}</span></div>
-                  <div className="pt-6 border-t border-slate-900 flex justify-between items-end">
-                    <div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Batch Valuation</span><span className="text-2xl font-bold text-slate-900">{financialAudit.total.toLocaleString()}</span></div>
-                    <span className="text-sm font-bold text-slate-400 mb-1">{currency}</span>
+                <div className="pt-12 border-t border-slate-200 space-y-8">
+                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-widest"><span>Material Consumption</span><span className="text-slate-950 text-sm">{financialAudit.matTotal.toLocaleString()} {currency}</span></div>
+                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-widest"><span>Applied Overheads</span><span className="text-slate-950 text-sm">{financialAudit.expTotal.toLocaleString()} {currency}</span></div>
+                  <div className="pt-10 border-t-2 border-slate-950 flex justify-between items-end">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Total Lot Valuation</span>
+                      <span className="text-5xl font-black text-slate-950 tracking-tighter tabular-nums mt-1">{financialAudit.total.toLocaleString()}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 mb-2 uppercase">{currency}</span>
                   </div>
                 </div>
-
-                <Card className="bg-slate-900 text-white border-none shadow-xl rounded-xl overflow-hidden mt-8">
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex items-center gap-2 text-blue-400"><Database size={16} /><span className="text-[10px] font-bold uppercase tracking-widest">Inventory Ledger Sync</span></div>
-                    <p className="text-xs text-slate-400 font-medium leading-relaxed">Completing this run will deduct ingredients from the raw ledger and increase finished good inventory by <span className="text-white font-bold">{actualYield} units</span>.</p>
-                  </CardContent>
-                </Card>
               </div>
+
+              <Card className="bg-blue-600 rounded-[2.5rem] text-white shadow-2xl shadow-blue-600/30 p-10 space-y-4 border-none mt-12">
+                  <div className="flex items-center gap-4"><Database size={20} className="text-blue-200" /><span className="text-[11px] font-bold uppercase tracking-widest">Inventory Orchestration</span></div>
+                  <p className="text-xs text-blue-100 font-medium leading-relaxed uppercase tracking-tight">System will perform molecular-level deduction of components from raw ledger and increase finished good inventory node.</p>
+              </Card>
             </div>
           </div>
 
-          <DialogFooter className="bg-white border-t border-slate-100 p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4 text-slate-400">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Audit trail ready for synchronization</span>
+          <DialogFooter className="bg-white border-t border-slate-100 p-12 flex flex-col sm:flex-row items-center justify-between gap-10">
+            <div className="flex items-center gap-4 text-emerald-600 bg-emerald-50 px-8 py-3 rounded-full border border-emerald-100 font-bold text-[11px] uppercase tracking-widest">
+                <CheckCircle2 size={18} /> Audit Integrity Protocol Active
             </div>
-            <div className="flex gap-4 w-full sm:w-auto">
-                <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="font-bold text-slate-400 hover:text-red-500 text-xs px-6 uppercase tracking-wider">Discard Draft</Button>
-                <Button onClick={() => finalizeProductionMutation.mutate()} disabled={finalizeProductionMutation.isPending} className="bg-slate-900 hover:bg-slate-800 text-white h-12 px-10 font-bold rounded-lg shadow-xl flex-1 sm:flex-none uppercase tracking-widest text-xs transition-transform active:scale-95">
-                    {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : "Authorize Reconciliation"}
+            <div className="flex gap-8 w-full sm:w-auto">
+                <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-16 px-10 font-bold text-slate-400 hover:text-slate-950 text-[11px] uppercase tracking-widest transition-colors">Discard Draft</Button>
+                <Button onClick={() => finalizeProductionMutation.mutate()} disabled={finalizeProductionMutation.isPending} className="h-16 px-16 bg-slate-950 hover:bg-black text-white font-bold rounded-[1.5rem] shadow-2xl transition-all uppercase tracking-widest text-[11px] flex items-center justify-center min-w-[320px] active:scale-[0.98]">
+                    {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Authorize Reconciliation Protocol"}
                 </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* FOOTER */}
-      <footer className="max-w-[1600px] mx-auto mt-12 flex items-center justify-between border-t border-slate-200 pt-8 pb-12">
-          <div className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            Manufacturing System Online | Node Status: Active
+      <footer className="max-w-[1600px] mx-auto mt-24 flex flex-col md:flex-row items-center justify-between border-t border-slate-100 pt-12 pb-20 opacity-30">
+          <div className="flex items-center gap-8">
+             <div className="flex items-center gap-3">
+                <ShieldCheck size={16} />
+                <span className="text-[10px] font-bold uppercase tracking-[0.4em]">Industrial Protocol v4.2.0</span>
+             </div>
+             <div className="h-1 w-1 rounded-full bg-slate-400" />
+             <span className="text-[10px] font-bold uppercase tracking-[0.4em]">Autonomous Data Environment</span>
           </div>
-          <div className="text-[11px] font-medium text-slate-400">
-            Powered by Enterprise Manufacturing Hub v4.2
+          <div className="flex items-center gap-4 bg-white border border-slate-100 px-6 py-2.5 rounded-full shadow-sm">
+             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">System Synchronized</span>
           </div>
       </footer>
     </div>
