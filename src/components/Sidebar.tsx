@@ -593,14 +593,15 @@ export default function Sidebar() {
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
     const { branding } = useBranding();
     const { data: profile } = useUserProfile();
-    
-    // 2. DEEP IDENTITY RESOLUTION 
+
+    // 2. DEEP IDENTITY RESOLUTION (THE FIX)
     // Prioritizes Active Membership Role -> Root Hook -> Master Profile
+    // Scoped at component root so the entire OS recognizes the identity swap
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
     // 3. INDUSTRY CONTEXT NORMALIZATION
-    // Scoped at component root so both Main Nav and Accordions can access it
+    // Moved to component root so both Main Nav and Accordion Sub-items can access it
     const rawBizType = tenant?.business_type || '';
     const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
                     rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
@@ -609,6 +610,7 @@ export default function Sidebar() {
                     (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
 
     // 4. SOVEREIGN AUTHORITY RESOLUTION
+    // Authoritative gates available globally within this component scope
     const isSovereign = ['architect', 'commander'].includes(userRole);
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
@@ -621,7 +623,9 @@ export default function Sidebar() {
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
+    // --- NAVIGATION LOGIC WELD ---
     const finalNavItems = useMemo(() => {
+        // [DEEP GATE]: Use 'userRole' (the resolved context) for the gate check
         if (isLoading || !userRole || !tenant) return [];
 
         return navSections.filter((item) => {
@@ -648,7 +652,7 @@ export default function Sidebar() {
 
             return true;
         });
-        // DEEP SYNC: All context dependencies included to ensure reactivity on identity switch
+        // [DEPENDENCY SYNC]: Reacts to industry swaps and identity changes instantly
     }, [isLoading, userRole, enabledModules, tenant, pathname, bizType, rawBizType, isSovereign, isAdminOrOwner]);
 
     const activeAccordionValue = useMemo(() => {
@@ -666,13 +670,16 @@ export default function Sidebar() {
                 if (item.type === 'link') {
                     return <NavLinkComponent key={item.href} href={item.href} label={item.label} Icon={item.icon} isSidebarOpen={isSidebarOpen} />;
                 }
+                
                 if (item.type === 'accordion') {
-                    // DEEP WELD: Local declarations removed. 
-                    // Now uses authoritative userRole and bizType from component scope.
+                    // [DEEP FIX]: Inherits authoritative variables from the component scope.
+                    // Local declarations removed to resolve ReferenceErrors.
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
+                        
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
                         const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
+                        
                         return roleOk && bizOk;
                     });
 
@@ -714,11 +721,10 @@ export default function Sidebar() {
                 isSidebarOpen ? "h-20" : "h-16"
             )}>
                 {isSidebarOpen ? (
-                    /* PORTAL ACTIVE: Allows clicking to switch between businesses automatically */
                     <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-2 duration-500 overflow-hidden">
                         <BusinessSwitcher />
                         
-                        {/* DEEP IDENTITY WELD: Dynamic display of Enterprise & Operator metadata */}
+                        {/* [IDENTITY SEAL]: Real-time name and role resolution */}
                         <div className="flex flex-col mt-1 px-1 overflow-hidden">
                             <span className="text-[10px] font-black uppercase tracking-tighter text-slate-900 truncate leading-none">
                                 {businessName}
@@ -729,14 +735,9 @@ export default function Sidebar() {
                         </div>
                     </div>
                 ) : (
-                    /* CLOSED VIEW: Shows a centered, professional identity anchor */
                     <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
                         {branding?.logo_url ? (
-                            <img 
-                                src={branding.logo_url} 
-                                className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50 p-0.5 bg-white" 
-                                alt="Active Node Logo" 
-                            />
+                            <img src={branding.logo_url} className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50 p-0.5 bg-white" alt="Logo" />
                         ) : (
                             <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
                                 {businessName.charAt(0).toUpperCase()}
@@ -745,16 +746,7 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {/* Sovereign Toggle System */}
-                <Button
-                    onClick={toggleSidebar}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                        "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2",
-                        !isSidebarOpen && "bg-blue-50 text-blue-600"
-                    )}
-                >
+                <Button onClick={toggleSidebar} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 ml-2", !isSidebarOpen && "bg-blue-50 text-blue-600")}>
                     {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
             </div>
@@ -764,11 +756,7 @@ export default function Sidebar() {
                 {isLoading ? (
                     <div className="p-4 flex flex-col items-center gap-3">
                         <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        {isSidebarOpen && (
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">
-                                Synchronizing Menu...
-                            </span>
-                        )}
+                        {isSidebarOpen && <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Synchronizing Identity...</span>}
                     </div>
                 ) : (
                     <div className="animate-in fade-in duration-700">
@@ -778,30 +766,14 @@ export default function Sidebar() {
             </nav>
 
             {/* --- FOOTER ACTION SECTION --- */}
-            <div className={cn(
-                "p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 transition-colors",
-                isSidebarOpen ? "bg-slate-50/50" : "bg-white"
-            )}>
-                <Button 
-                    variant="default" 
-                    className={cn(
-                        "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95", 
-                        !isSidebarOpen && "justify-center px-0 h-12 w-12 mx-auto rounded-xl"
-                    )} 
-                    onClick={openCopilot}
-                >
+            <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 transition-colors", isSidebarOpen ? "bg-slate-50/50" : "bg-white")}>
+                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all", !isSidebarOpen && "justify-center px-0 h-12 w-12 mx-auto rounded-xl")} onClick={openCopilot}>
                     <Sparkles className={cn("h-5 w-5 fill-white/20", isSidebarOpen && "mr-3")} />
                     {isSidebarOpen && <span className="tracking-tight">AI Assistant</span>}
                 </Button>
                 
                 <Link href="/settings" className="block">
-                    <Button 
-                        variant="ghost" 
-                        className={cn(
-                            "w-full justify-start text-slate-500 font-bold hover:bg-white hover:text-blue-600 transition-all group", 
-                            !isSidebarOpen && "justify-center px-0 h-10 w-10 mx-auto rounded-xl"
-                        )}
-                    >
+                    <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-white hover:text-blue-600 transition-all group", !isSidebarOpen && "justify-center px-0 h-10 w-10 mx-auto rounded-xl")}>
                         <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
                         {isSidebarOpen && <span className="tracking-tight">General Settings</span>}
                     </Button>
