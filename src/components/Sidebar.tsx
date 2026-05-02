@@ -583,44 +583,49 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 };
 
 export default function Sidebar() {
-   const pathname = usePathname();
-    // 1. Rename 'role' to 'rawRole' to prevent naming conflicts
+    const pathname = usePathname();
+    
+    // 1. Authoritative Data Retrieval
+    // Renamed 'role' to 'rawRole' to isolate hook result from context resolution
     const { role: rawRole, isLoading: isLoadingRole } = useUserRole();
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
     const { branding } = useBranding();
     const { data: profile } = useUserProfile();
-
-    // --- DEEP IDENTITY RESOLUTION (THE FIX) ---
-    // We prioritize the role from the 'tenant' context (which fetches from business_memberships)
+    
+    // 2. DEEP IDENTITY RESOLUTION 
+    // Prioritizes Active Membership Role -> Root Hook -> Master Profile
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
+    // 3. INDUSTRY CONTEXT NORMALIZATION
+    // Scoped at component root so both Main Nav and Accordions can access it
+    const rawBizType = tenant?.business_type || '';
+    const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
+                    rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
+                    rawBizType === 'Nonprofit' ? 'Nonprofit / Education / NGO' :
+                    rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
+                    (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
+
+    // 4. SOVEREIGN AUTHORITY RESOLUTION
+    const isSovereign = ['architect', 'commander'].includes(userRole);
+    const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
+
+    // 5. BRANDING RESOLUTION CHAIN
     const businessName = tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "SOVEREIGN OS";
     const operatorName = profile?.full_name || "Authorized Operator"; 
+    
     const { isSidebarOpen, toggleSidebar } = useSidebar();
     const { openCopilot } = useCopilot();
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
- const finalNavItems = useMemo(() => {
+    const finalNavItems = useMemo(() => {
         if (isLoading || !userRole || !tenant) return [];
-        // DEEP UPGRADE: Normalizing the business type to handle the "Deep Disconnect" 
-        // between Signup slugs ("Distribution") and Middleware slugs ("Distribution / Wholesale Supply")
-        const rawBizType = tenant?.business_type || '';
-        const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
-                        rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
-                        rawBizType === 'Nonprofit' ? 'Nonprofit / Education / NGO' :
-                        rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
-                        (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
-
-        const isSovereign = ['architect', 'commander'].includes(userRole);
-        const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
         return navSections.filter((item) => {
             // RULE 1: SOVEREIGN OVERRIDE
-            // If Jimmy is an Architect/Commander, the gates are removed.
             if (isSovereign) return true;
 
             // RULE 2: ROLE PERMISSION GATE
@@ -628,7 +633,6 @@ export default function Sidebar() {
             if (!hasRolePermission) return false;
 
             // RULE 3: MODULE ENABLEMENT GATE
-            // Bypasses check for Admin/Owner to ensure they can always see their core sectors
             if (item.module) {
                 const isModuleEnabled = enabledModules?.includes?.(item.module);
                 if (!isAdminOrOwner && !isModuleEnabled) {
@@ -637,7 +641,6 @@ export default function Sidebar() {
             }
 
             // RULE 4: INDUSTRY ALIGNMENT GATE
-            // Checks against both the raw DB slug and the normalized smart slug
             if (item.businessTypes) {
                 const hasBizMatch = item.businessTypes.includes(rawBizType) || item.businessTypes.includes(bizType);
                 if (!hasBizMatch) return false;
@@ -645,8 +648,8 @@ export default function Sidebar() {
 
             return true;
         });
-        // DEEP SYNC: Added pathname to ensure recalculation on identity switch re-routes
-    }, [isLoading, userRole, enabledModules, tenant, pathname]);
+        // DEEP SYNC: All context dependencies included to ensure reactivity on identity switch
+    }, [isLoading, userRole, enabledModules, tenant, pathname, bizType, rawBizType, isSovereign, isAdminOrOwner]);
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
@@ -657,27 +660,19 @@ export default function Sidebar() {
         return undefined;
     }, [pathname]);
 
-  const renderAccordionNav = (items: NavItem[]) => (
+    const renderAccordionNav = (items: NavItem[]) => (
         <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full">
             {items.map((item) => {
                 if (item.type === 'link') {
                     return <NavLinkComponent key={item.href} href={item.href} label={item.label} Icon={item.icon} isSidebarOpen={isSidebarOpen} />;
                 }
-                
                 if (item.type === 'accordion') {
-                    // DEEP FIX: We have REMOVED the local 'const userRole', 'const bizType', and 'const isSovereign' lines.
-                    // This function now inherits the authoritative variables from the Sidebar parent scope.
-
+                    // DEEP WELD: Local declarations removed. 
+                    // Now uses authoritative userRole and bizType from component scope.
                     const filteredSubItems = item.subItems.filter(sub => {
-                        // 1. SOVEREIGN BYPASS: Inherited from parent scope
                         if (isSovereign) return true;
-
-                        // 2. ROLE CHECK: Matches against your 60+ roles (e.g. accountant)
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-
-                        // 3. INDUSTRY CHECK: Uses the normalized bizType from parent scope
                         const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
-                        
                         return roleOk && bizOk;
                     });
 
@@ -707,6 +702,7 @@ export default function Sidebar() {
             })}
         </Accordion>
     );
+
     return (
         <aside className={cn(
             "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm overflow-hidden",
@@ -725,10 +721,10 @@ export default function Sidebar() {
                         {/* DEEP IDENTITY WELD: Dynamic display of Enterprise & Operator metadata */}
                         <div className="flex flex-col mt-1 px-1 overflow-hidden">
                             <span className="text-[10px] font-black uppercase tracking-tighter text-slate-900 truncate leading-none">
-                                {tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "Sovereign OS"}
+                                {businessName}
                             </span>
                             <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-70 mt-0.5 leading-tight">
-                                {profile?.full_name || "Authorized Operator"} • {activeRole}
+                                {operatorName} • {activeRole}
                             </span>
                         </div>
                     </div>
@@ -743,7 +739,7 @@ export default function Sidebar() {
                             />
                         ) : (
                             <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
-                                {(tenant?.business_display_name || branding?.company_name_display || tenant?.name || "S")?.charAt(0).toUpperCase()}
+                                {businessName.charAt(0).toUpperCase()}
                             </div>
                         )}
                     </div>
@@ -764,7 +760,6 @@ export default function Sidebar() {
             </div>
 
             {/* --- NAVIGATION SECTION --- */}
-            {/* This section automatically updates menu items based on Jimmy's current role (Accountant vs Architect) */}
             <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
                 {isLoading ? (
                     <div className="p-4 flex flex-col items-center gap-3">
