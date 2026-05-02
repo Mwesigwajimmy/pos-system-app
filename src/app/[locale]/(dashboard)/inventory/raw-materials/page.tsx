@@ -1,49 +1,31 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-
-// --- CORE COMPONENTS ---
 import RawMaterialPortal from '@/components/inventory/RawMaterialPortal';
-
-// --- UI COMPONENTS ---
 import { 
-  FlaskConical, 
-  ShieldCheck, 
   AlertCircle, 
   Database,
   History,
   LayoutGrid,
   ClipboardList,
   CheckCircle2,
-  Info,
   TrendingUp,
-  ChevronRight,
-  Activity
+  Activity,
+  ShieldCheck
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// --- DATA ACCESS LAYER ---
-
-/**
- * Fetches the global registry of Measurement Units.
- * Standardized system for Pharmaceutical, Chemical, and Food metrics.
- */
 async function getUOMs(supabase: any) {
   const { data, error } = await supabase
     .from('units_of_measure')
     .select('id, name, abbreviation')
     .order('name', { ascending: true });
   
-  if (error) console.error("Measurement Unit Fetch Error:", error.message);
+  if (error) return [];
   return data || [];
 }
 
-/**
- * Fetches Vendors linked to the active Business context.
- * Ensures data isolation and supply chain integrity.
- */
 async function getVendors(supabase: any, businessId: string) {
   const { data, error } = await supabase
     .from('vendors')
@@ -51,7 +33,7 @@ async function getVendors(supabase: any, businessId: string) {
     .eq('business_id', businessId)
     .order('name', { ascending: true });
     
-  if (error) console.error("Vendor Registry Fetch Error:", error.message);
+  if (error) return [];
   return data || [];
 }
 
@@ -59,177 +41,170 @@ export default async function RawMaterialOnboardingPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // --- 1. AUTHENTICATION GUARD ---
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
-  // --- 2. IDENTITY RESOLUTION ---
   const activeCookieId = cookieStore.get('bbu1_active_business_id')?.value;
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, business_id, business_name, active_organization_slug, currency")
+    .select("id, business_id, business_name, currency")
     .eq("id", user.id)
     .single();
 
   const businessId = activeCookieId || profile?.business_id;
   const entityName = profile?.business_name || "Primary Node";
 
-  // Failsafe: Handle missing business context
   if (!businessId) {
     return (
-        <div className="min-h-screen bg-white flex items-center justify-center p-8">
-            <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-10 shadow-sm text-center">
-                <div className="h-14 w-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <AlertCircle className="h-7 w-7" />
+        <div className="min-h-screen bg-white flex items-center justify-center p-6">
+            <div className="max-w-sm w-full bg-white border border-slate-100 rounded-2xl p-10 shadow-sm text-center">
+                <div className="h-12 w-12 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                    <AlertCircle size={24} />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Facility Link Required</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-8">
-                    To access the Raw Material Registry, your account must be linked to an active manufacturing facility. Please select a facility from your dashboard.
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Facility Link Required</h3>
+                <p className="text-slate-500 text-xs leading-relaxed mb-8">
+                    To access the registry, your account must be associated with an active production facility.
                 </p>
-                <Badge variant="outline" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 py-1">
-                    Error Code: AUTH_PROFILE_UNLINKED
+                <Badge variant="outline" className="text-[9px] font-bold text-slate-300 uppercase tracking-widest border-slate-100">
+                    ERR_PROFILE_UNLINKED
                 </Badge>
             </div>
         </div>
     );
   }
 
-  // --- 3. DATA SYNCHRONIZATION ---
   const [uoms, vendors] = await Promise.all([
     getUOMs(supabase),
     getVendors(supabase, businessId)
   ]);
 
   return (
-    <main className="min-h-screen bg-white p-6 md:p-12 font-sans selection:bg-blue-50">
-      
-      {/* PAGE HEADER - Clean, Wide and High Contrast */}
-      <header className="max-w-[1600px] mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-100 pb-10">
-        <div className="flex items-center gap-6">
-           <div className="p-4 bg-slate-900 rounded-xl shadow-sm text-white">
-              <Database className="w-6 h-6" />
-           </div>
-           <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Raw Material Registry</h1>
-              <div className="flex items-center gap-3 mt-2">
-                 <Badge variant="outline" className="bg-emerald-50/50 text-emerald-700 border-emerald-100 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md">
-                    System Active
-                 </Badge>
-                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    Facility: {entityName}
-                 </span>
-              </div>
-           </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-            <div className="hidden lg:flex items-center gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                <ShieldCheck size={16} className="text-blue-500" />
-                Audit-Ready Protocol
-            </div>
-            <div className="h-8 w-px bg-slate-100 hidden lg:block" />
-            <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-none px-4 py-1.5 font-bold text-[10px] tracking-widest uppercase">
-                Release v10.5
-            </Badge>
-        </div>
-      </header>
-
-      {/* MAIN CONTENT GRID - Wide Layout Architecture */}
-      <div className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-12">
+    <main className="min-h-screen bg-white">
+      <div className="max-w-[1400px] mx-auto py-8 px-6 md:px-12 space-y-10 animate-in fade-in duration-500">
         
-        {/* LEFT SECTION: INTERACTIVE PORTAL (Main Form/Table) */}
-        <div className="xl:col-span-8">
-            <RawMaterialPortal 
-              uoms={uoms} 
-              vendors={vendors} 
-              businessId={businessId} 
-            />
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-50 pb-8">
+            <div className="flex items-center gap-5">
+                <div className="p-3 bg-slate-900 rounded-xl text-white shadow-md">
+                    <Database className="w-6 h-6" />
+                </div>
+                <div className="space-y-0.5">
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-950">Raw Material Registry</h1>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <Activity size={12} className="text-blue-500" /> Facility: {entityName}
+                        </span>
+                        <Badge className="bg-emerald-50 text-emerald-600 font-bold px-3 py-0.5 rounded-full text-[9px] uppercase tracking-wider border-none">
+                            Registry Active
+                        </Badge>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="flex items-center gap-6">
+                 <div className="hidden sm:block text-right">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Compliance Level</p>
+                    <p className="text-xs font-bold text-slate-700 uppercase">Audit-Ready Protocol</p>
+                 </div>
+                 <Badge variant="outline" className="h-9 px-4 flex items-center text-slate-400 border-slate-200 font-bold text-[9px] uppercase tracking-widest rounded-lg">
+                    v10.5.2
+                 </Badge>
+            </div>
+        </header>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+            <div className="xl:col-span-8">
+                <RawMaterialPortal 
+                  uoms={uoms} 
+                  vendors={vendors} 
+                  businessId={businessId} 
+                />
+            </div>
+
+            <aside className="xl:col-span-4 space-y-6">
+                <Card className="border border-slate-100 bg-slate-50/30 rounded-xl shadow-none overflow-hidden">
+                    <CardHeader className="bg-white border-b border-slate-50 px-6 py-4">
+                        <CardTitle className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-2 tracking-widest">
+                           <ClipboardList size={14} className="text-blue-600"/> Onboarding Guidance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <div className="space-y-8">
+                            <div className="flex gap-4">
+                                <div className="h-9 w-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-300 shrink-0 shadow-sm">
+                                    <Activity size={16} />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-slate-800">Inventory Classification</p>
+                                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                                        Accurately define properties to ensure compatibility with standard manufacturing cycles.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-4">
+                                <div className="h-9 w-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-300 shrink-0 shadow-sm">
+                                    <ShieldCheck size={16} />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-slate-800">Standard Compliance</p>
+                                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                                        Materials registered here follow pharmaceutical and food-safe standards for traceability.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4">
+                                <div className="h-9 w-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-slate-300 shrink-0 shadow-sm">
+                                    <TrendingUp size={16} />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xs font-bold text-slate-800">Financial Accuracy</p>
+                                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                                        Initial valuations are directly bridged to the general ledger for real-time balance sheet integrity.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-slate-100 bg-white rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                        <History size={14} className="text-slate-300" />
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data Partitioning</h3>
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
+                        Records are logically partitioned by facility ID to ensure privacy and precise stock management across multiple nodes.
+                    </p>
+                </Card>
+            </aside>
         </div>
 
-        {/* RIGHT SECTION: SYSTEM INSIGHTS AND GUIDANCE */}
-        <aside className="xl:col-span-4 space-y-8">
-            
-            {/* GUIDANCE CARD */}
-            <Card className="border-none bg-slate-50 rounded-2xl overflow-hidden shadow-sm">
-                <CardHeader className="border-b border-slate-100 p-8">
-                    <CardTitle className="text-xs font-bold uppercase text-slate-500 flex items-center gap-3 tracking-widest">
-                       <ClipboardList size={16} className="text-blue-600"/> Onboarding Guidance
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-8">
-                    <div className="space-y-10">
-                        <div className="flex gap-5">
-                            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
-                                <Activity size={18} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <p className="text-sm font-bold text-slate-800">Inventory Classification</p>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Accurately define material properties to ensure compatibility with standard manufacturing cycles and batch tracking.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-5">
-                            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
-                                <ShieldCheck size={18} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <p className="text-sm font-bold text-slate-800">Standard Compliance</p>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Materials registered here follow pharmaceutical and food-safe standards for full supply-chain traceability.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-5">
-                            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
-                                <TrendingUp size={18} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <p className="text-sm font-bold text-slate-800">Financial Accuracy</p>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    Initial valuations are directly bridged to the general ledger to maintain balance sheet integrity in real-time.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* SYSTEM DATA SEGREGATION CARD */}
-            <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl p-8">
-                <div className="flex items-center gap-3 mb-4">
-                    <History size={16} className="text-slate-300" />
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data Segregation</h3>
+        <footer className="pt-20 pb-12">
+            <div className="flex justify-center items-center gap-4 mb-6 opacity-30">
+                <div className="h-px w-16 bg-slate-200" />
+                <div className="flex items-center gap-2">
+                    <LayoutGrid size={14} className="text-slate-400" />
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.4em]">
+                        Node: {businessId.substring(0,8).toUpperCase()}
+                    </p>
                 </div>
-                <p className="text-xs font-medium text-slate-500 leading-relaxed">
-                    All material records are logically partitioned by facility ID. This ensures data privacy and precise stock management across multiple production nodes.
-                </p>
-            </Card>
-        </aside>
+                <div className="h-px w-16 bg-slate-200" />
+            </div>
+            
+            <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 opacity-40">
+                <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Cloud Sync Active</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 size={12} className="text-emerald-500" />
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Integrity Verified</span>
+                </div>
+            </div>
+        </footer>
       </div>
-
-      {/* REFINED SYSTEM STATUS FOOTER */}
-      <footer className="max-w-[1600px] mx-auto mt-24 pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            <LayoutGrid size={14} className="text-slate-300" />
-            Infrastructure Node: <span className="text-slate-900 font-mono tracking-tighter">{businessId.substring(0,8).toUpperCase()}</span>
-          </div>
-          
-          <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-blue-500" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cloud Sync Active</span>
-              </div>
-              <div className="h-4 w-px bg-slate-100" />
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <CheckCircle2 size={14} className="text-emerald-500" />
-                Data Integrity Verified
-              </div>
-          </div>
-      </footer>
     </main>
   );
 }

@@ -195,40 +195,40 @@ export default function EstimateTerminal({
   };
 
   return (
-    <ScrollArea className="h-screen bg-white">
-      <div className="max-w-[1500px] mx-auto py-12 px-8 space-y-12 animate-in fade-in duration-700 pb-32">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-[1400px] mx-auto py-8 px-4 md:px-8 space-y-8 animate-in fade-in duration-500">
         
         {/* TOP METRICS & IDENTITY */}
-        <Card className="border border-slate-100 shadow-sm rounded-3xl overflow-hidden bg-[#FCFCFC]">
-          <CardContent className="p-10 flex flex-col lg:flex-row justify-between items-center gap-10">
-            <div className="flex items-center gap-6">
-              <div className="p-4 bg-slate-900 rounded-2xl text-white shadow-xl">
-                <PenTool size={32} />
+        <Card className="border border-slate-100 shadow-sm rounded-xl overflow-hidden bg-slate-50/30">
+          <CardContent className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-5">
+              <div className="p-3 bg-slate-900 rounded-lg text-white shadow-md">
+                <PenTool size={24} />
               </div>
-              <div className="space-y-1">
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Quotation Drafting terminal</h1>
-                <div className="flex items-center gap-4">
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 font-bold uppercase text-[9px] tracking-widest px-3 py-1">
-                    System Protocol Active
+              <div className="space-y-0.5">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Estimate Drafting Terminal</h1>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-600 text-white font-bold uppercase text-[8px] tracking-wider px-2 py-0.5 border-none">
+                    Protocol Active
                   </Badge>
-                  <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                    <Clock size={14}/> Operational Handshake Verified
+                  <span className="text-slate-400 text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                    <Clock size={12}/> Handshake Verified
                   </span>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-10">
-              <div className="text-right space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Gross Margin</p>
-                <p className={`text-4xl font-bold tracking-tighter ${totals.margin >= 20 ? 'text-emerald-600' : 'text-amber-600'}`}>
+            <div className="flex items-center gap-8">
+              <div className="text-right">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Margin</p>
+                <p className={`text-2xl font-bold tracking-tight ${totals.margin >= 20 ? 'text-emerald-600' : 'text-amber-600'}`}>
                   {totals.margin.toFixed(1)}%
                 </p>
               </div>
-              <div className="h-16 w-px bg-slate-200" />
-              <div className="space-y-3">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base Currency</Label>
-                <select {...register("currencyCode")} className="h-10 w-36 px-4 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none shadow-sm">
+              <div className="h-10 w-px bg-slate-200" />
+              <div className="space-y-1">
+                <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Currency</Label>
+                <select {...register("currencyCode")} className="h-9 w-32 px-3 bg-white border border-slate-200 rounded-lg font-bold text-xs outline-none">
                   {currencies.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
                 </select>
               </div>
@@ -236,146 +236,135 @@ export default function EstimateTerminal({
           </CardContent>
         </Card>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             
             {/* 1. REGISTRY & CORPORATE IDENTITY */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                    <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Registry Details</h2>
-                  </div>
-                  <Card className="rounded-[2rem] border-slate-100 shadow-sm p-8 bg-slate-50/30 grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Document Reference</Label>
-                      <Input {...register("estimateUid")} className="h-12 border-none bg-white font-bold text-blue-600 shadow-inner rounded-xl px-5" readOnly />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Registry Details</h2>
+                  <Card className="rounded-xl border-slate-100 shadow-sm p-6 bg-slate-50/20 grid grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Document Ref</Label>
+                      <Input {...register("estimateUid")} className="h-10 border-slate-200 bg-white font-bold text-blue-600 rounded-lg px-4" readOnly />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Quotation Subject</Label>
-                      <Input {...register("title")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Subject</Label>
+                      <Input {...register("title")} className="h-10 border-slate-200 bg-white font-medium rounded-lg px-4" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Issuance Date</Label>
-                      <Input type="date" {...register("issueDate")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Issue Date</Label>
+                      <Input type="date" {...register("issueDate")} className="h-10 border-slate-200 bg-white font-medium rounded-lg px-4" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Maturity Expiry</Label>
-                      <Input type="date" {...register("validUntil")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Valid Until</Label>
+                      <Input type="date" {...register("validUntil")} className="h-10 border-slate-200 bg-white font-medium rounded-lg px-4" />
                     </div>
                   </Card>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                    <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Corporate Identity</h2>
-                  </div>
-                  <Card className="rounded-[2rem] border-slate-100 shadow-sm p-8 bg-slate-50/30 grid grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Authorized Official (CEO)</Label>
-                      <Input {...register("ceoName")} placeholder="CEO / Manager Name" className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                <div className="space-y-4">
+                  <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Corporate Identity</h2>
+                  <Card className="rounded-xl border-slate-100 shadow-sm p-6 bg-slate-50/20 grid grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Official (CEO)</Label>
+                      <Input {...register("ceoName")} placeholder="Name" className="h-10 border-slate-200 bg-white rounded-lg px-4" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tax ID (TIN)</Label>
-                      <Input {...register("tinNumber")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">TIN Number</Label>
+                      <Input {...register("tinNumber")} className="h-10 border-slate-200 bg-white rounded-lg px-4" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">PO BOX / Postal</Label>
-                      <Input {...register("pobox")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">PO BOX</Label>
+                      <Input {...register("pobox")} className="h-10 border-slate-200 bg-white rounded-lg px-4" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Physical/Plot Number</Label>
-                      <Input {...register("plotNumber")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Plot Number</Label>
+                      <Input {...register("plotNumber")} className="h-10 border-slate-200 bg-white rounded-lg px-4" />
                     </div>
                   </Card>
                 </div>
             </div>
 
-            {/* 2. CUSTOMER & PAYMENT PROTOCOL */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                  <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Stakeholder Context</h2>
-                </div>
-                <Card className="rounded-[2rem] border-slate-100 shadow-sm p-8 bg-slate-50/30 space-y-6">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Client/Entity</Label>
-                    <select {...register("customerId")} className="w-full h-14 border-none bg-white font-bold rounded-2xl px-6 shadow-inner text-sm outline-none">
-                      <option value="">Syncing counterparty registry...</option>
+            {/* 2. CUSTOMER & PAYMENT */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Stakeholder Context</h2>
+                <Card className="rounded-xl border-slate-100 shadow-sm p-6 bg-slate-50/20 space-y-5">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Target Client</Label>
+                    <select {...register("customerId")} className="w-full h-10 border-slate-200 bg-white font-medium rounded-lg px-4 text-sm outline-none">
+                      <option value="">Syncing registry...</option>
                       {customers.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                     </select>
                   </div>
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Operational Support Contact</Label>
-                    <Input {...register("inquiryContact")} className="h-14 border-none bg-white font-bold rounded-2xl px-6 shadow-inner" />
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Inquiry Contact</Label>
+                    <Input {...register("inquiryContact")} className="h-10 border-slate-200 bg-white rounded-lg px-4" />
                   </div>
                 </Card>
               </div>
 
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                  <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Payment Protocols</h2>
-                </div>
-                <Card className="rounded-[2rem] border-slate-100 shadow-sm p-8 bg-slate-50/30 space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Payable To (Beneficiary)</Label>
-                      <Input {...register("chequesPayableTo")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+              <div className="space-y-4">
+                <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Payment Protocols</h2>
+                <Card className="rounded-xl border-slate-100 shadow-sm p-6 bg-slate-50/20 space-y-5">
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Payable To</Label>
+                      <Input {...register("chequesPayableTo")} className="h-10 border-slate-200 bg-white font-medium rounded-lg px-4" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">MOMO/Digital Pay</Label>
-                      <Input {...register("momoDetails")} className="h-12 border-none bg-white font-bold rounded-xl px-5 shadow-inner" />
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Digital Pay</Label>
+                      <Input {...register("momoDetails")} className="h-10 border-slate-200 bg-white font-medium rounded-lg px-4" />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Banking Routing Details</Label>
-                    <Textarea {...register("bankDetails")} className="min-h-[80px] border-none bg-white font-bold rounded-2xl px-6 py-4 shadow-inner text-xs" />
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Banking Details</Label>
+                    <Textarea {...register("bankDetails")} className="min-h-[60px] border-slate-200 bg-white font-medium rounded-lg px-4 py-2 text-xs" />
                   </div>
                 </Card>
               </div>
             </div>
 
-            {/* 3. ITEM REGISTRY TABLE */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
-                    <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">Technical Specifications</h2>
-                </div>
-
-                <Card className="rounded-[2.5rem] border-slate-100 shadow-2xl shadow-slate-200/30 overflow-hidden border-none">
-                    <ScrollArea className="w-full whitespace-nowrap">
-                        <Table className="min-w-[1200px]">
-                            <TableHeader className="bg-slate-50/80">
-                                <TableRow className="h-16 border-none hover:bg-transparent">
-                                    <TableHead className="w-20 text-center font-bold text-slate-400 text-[10px] uppercase tracking-widest">S.NO</TableHead>
-                                    <TableHead className="min-w-[450px] border-l-2 border-red-500/20 font-bold text-slate-400 text-[10px] uppercase tracking-widest pl-10">Product Identity & Specification Detail</TableHead>
-                                    <TableHead className="w-28 text-center font-bold text-slate-400 text-[10px] uppercase tracking-widest">Quantity</TableHead>
-                                    <TableHead className="w-40 text-right font-bold text-slate-400 text-[10px] uppercase tracking-widest">Unit Cost ({currentCurrency})</TableHead>
-                                    <TableHead className="w-40 text-right font-bold text-slate-400 text-[10px] uppercase tracking-widest">Unit Rate ({currentCurrency})</TableHead>
-                                    <TableHead className="w-48 text-right pr-12 font-bold text-slate-400 text-[10px] uppercase tracking-widest">Landed Value</TableHead>
-                                    <TableHead className="w-20"></TableHead>
+            {/* 3. ITEM TABLE */}
+            <div className="space-y-4">
+                <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Technical Specifications</h2>
+                <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden bg-white">
+                    <ScrollArea className="w-full">
+                        <Table>
+                            <TableHeader className="bg-slate-50">
+                                <TableRow className="h-12 border-none">
+                                    <TableHead className="w-12 text-center font-bold text-slate-500 text-[10px] uppercase tracking-wider">#</TableHead>
+                                    <TableHead className="min-w-[400px] font-bold text-slate-500 text-[10px] uppercase tracking-wider pl-6">Product Identity & Detail</TableHead>
+                                    <TableHead className="w-24 text-center font-bold text-slate-500 text-[10px] uppercase tracking-wider">Qty</TableHead>
+                                    <TableHead className="w-32 text-right font-bold text-slate-500 text-[10px] uppercase tracking-wider">Cost ({currentCurrency})</TableHead>
+                                    <TableHead className="w-32 text-right font-bold text-slate-500 text-[10px] uppercase tracking-wider">Rate ({currentCurrency})</TableHead>
+                                    <TableHead className="w-36 text-right pr-8 font-bold text-slate-500 text-[10px] uppercase tracking-wider">Total</TableHead>
+                                    <TableHead className="w-12"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {fields.map((field, index) => (
-                                    <TableRow key={field.id} className="hover:bg-slate-50/50 transition-all border-b border-slate-100 align-top group">
-                                        <TableCell className="text-center pt-10 font-bold text-slate-300 text-sm">{index + 1}</TableCell>
-                                        <TableCell className="py-8 pl-10 space-y-4">
-                                            <Input {...register(`items.${index}.description` as const)} className="h-12 border-none bg-slate-50 font-bold text-slate-900 rounded-2xl shadow-inner px-5 text-sm" placeholder="Enter service/product identifier..." />
-                                            <Textarea {...register(`items.${index}.details` as const)} className="min-h-[110px] border-none bg-slate-50 text-slate-600 font-medium rounded-2xl px-5 py-4 shadow-inner text-xs resize-none" placeholder="Provide detailed technical scope or product parameters..." />
+                                    <TableRow key={field.id} className="hover:bg-slate-50 transition-all border-b last:border-none align-top">
+                                        <TableCell className="text-center pt-5 text-xs font-bold text-slate-300">{index + 1}</TableCell>
+                                        <TableCell className="py-4 pl-6 space-y-2">
+                                            <Input {...register(`items.${index}.description` as const)} className="h-9 border-slate-200 bg-white font-bold text-slate-900 rounded-lg px-4 text-xs" placeholder="Item name..." />
+                                            <Textarea {...register(`items.${index}.details` as const)} className="min-h-[80px] border-slate-200 bg-slate-50/50 text-slate-600 font-medium rounded-lg px-4 py-2 text-[11px] resize-none" placeholder="Technical specifications..." />
                                         </TableCell>
-                                        <TableCell className="pt-8">
-                                            <Input type="number" step="0.001" {...register(`items.${index}.quantity` as const)} className="h-12 border-none bg-slate-50 rounded-2xl text-center font-bold shadow-inner" />
+                                        <TableCell className="pt-4 align-top">
+                                            <Input type="number" step="0.001" {...register(`items.${index}.quantity` as const)} className="h-9 border-slate-200 rounded-lg text-center font-bold text-xs" />
                                         </TableCell>
-                                        <TableCell className="pt-8">
-                                            <Input type="number" step="0.01" {...register(`items.${index}.unitCost` as const)} className="h-12 border-none bg-slate-50 rounded-2xl text-right font-bold shadow-inner text-amber-600" />
+                                        <TableCell className="pt-4 align-top">
+                                            <Input type="number" step="0.01" {...register(`items.${index}.unitCost` as const)} className="h-9 border-slate-200 rounded-lg text-right font-bold text-xs text-amber-600" />
                                         </TableCell>
-                                        <TableCell className="pt-8">
-                                            <Input type="number" step="0.01" {...register(`items.${index}.unitRate` as const)} className="h-12 border-none bg-slate-50 rounded-2xl text-right font-bold shadow-inner text-blue-600" />
+                                        <TableCell className="pt-4 align-top">
+                                            <Input type="number" step="0.01" {...register(`items.${index}.unitRate` as const)} className="h-9 border-slate-200 rounded-lg text-right font-bold text-xs text-blue-600" />
                                         </TableCell>
-                                        <TableCell className="pt-11 text-right pr-12 font-black text-slate-900 text-base tabular-nums">
-                                            ${(Money.multiply(watchedItems[index]?.unitRate || 0, watchedItems[index]?.quantity || 0)).toLocaleString()}
+                                        <TableCell className="pt-6 text-right pr-8 font-bold text-slate-900 text-sm tabular-nums">
+                                            {(Money.multiply(watchedItems[index]?.unitRate || 0, watchedItems[index]?.quantity || 0)).toLocaleString()}
                                         </TableCell>
-                                        <TableCell className="pt-9">
-                                            <Button variant="ghost" size="icon" onClick={() => remove(index)} className="h-11 w-11 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                                                <Trash2 size={20}/>
+                                        <TableCell className="pt-4 align-top">
+                                            <Button variant="ghost" size="icon" onClick={() => remove(index)} className="h-8 w-8 text-slate-300 hover:text-red-500 rounded-lg">
+                                                <Trash2 size={16}/>
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -384,110 +373,107 @@ export default function EstimateTerminal({
                         </Table>
                         <ScrollBar orientation="horizontal" />
                     </ScrollArea>
-                    <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
-                        <Button type="button" variant="outline" onClick={() => append({ description: '', details: '', quantity: 1, unitCost: 0, unitRate: 0 })} className="h-14 px-10 rounded-2xl border-blue-600 border-2 text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-blue-100 gap-3">
-                            <Plus size={18} /> Append Transaction Entry
+                    <div className="p-4 bg-slate-50/30 border-t border-slate-100 flex justify-between items-center">
+                        <Button type="button" variant="outline" size="sm" onClick={() => append({ description: '', details: '', quantity: 1, unitCost: 0, unitRate: 0 })} className="h-10 px-6 rounded-lg border-blue-600 text-blue-600 font-bold text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm gap-2">
+                            <Plus size={16} /> Add Transaction Entry
                         </Button>
-                        <div className="flex items-center gap-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-                            <ShieldCheck size={16} className="text-emerald-500" /> Accounting Integrity Mode
+                        <div className="flex items-center gap-2 text-slate-400 font-bold text-[9px] uppercase tracking-widest">
+                            <ShieldCheck size={14} className="text-emerald-500" /> Accounting Integrity Verified
                         </div>
                     </div>
                 </Card>
             </div>
 
-            {/* 4. FINANCIAL SUMMARY & LEGAL */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                <div className="space-y-12">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 text-slate-800">
-                            <Info size={16} className="text-blue-500" />
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Statutory Terms and Conditions</h3>
+            {/* 4. SUMMARY & LEGAL */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <Info size={14} className="text-blue-500" />
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Statutory Terms</h3>
                         </div>
-                        <Textarea {...register("termsAndConditions")} className="min-h-[220px] rounded-[2.5rem] border-none bg-slate-50/50 p-8 shadow-inner text-sm font-medium text-slate-600 outline-none focus:ring-4 focus:ring-blue-500/5 transition-all" placeholder="Outline maturity dates, payment terms, and delivery window..." />
+                        <Textarea {...register("termsAndConditions")} className="min-h-[140px] rounded-xl border-slate-200 bg-slate-50/20 p-4 text-xs font-medium text-slate-600" placeholder="Settlement terms..." />
                     </div>
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-3 text-slate-800">
-                            <FileDigit size={16} className="text-blue-500" />
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Internal Audit Description</h3>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <FileDigit size={14} className="text-blue-500" />
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Internal Audit Description</h3>
                         </div>
-                        <Textarea {...register("internalDescription")} className="min-h-[220px] rounded-[2.5rem] border-none bg-slate-50/50 p-8 shadow-inner text-sm font-medium text-slate-600 outline-none" placeholder="Private internal project notes regarding logistics or resource allocation..." />
+                        <Textarea {...register("internalDescription")} className="min-h-[140px] rounded-xl border-slate-200 bg-slate-50/20 p-4 text-xs font-medium text-slate-600" placeholder="Internal remarks..." />
                     </div>
                 </div>
 
-                <div className="space-y-10">
-                    <Card className="rounded-[3rem] border-none bg-slate-900 text-white shadow-2xl p-12 space-y-10">
-                        <div className="space-y-6">
-                            <div className="flex justify-between items-center text-slate-500 uppercase tracking-widest text-[10px] font-bold">
-                                <span>Operational Sub Total</span>
-                                <span className="text-white text-sm font-bold">${totals.subTotal.toLocaleString()}</span>
+                <div className="space-y-8">
+                    <Card className="rounded-2xl border-none bg-slate-900 text-white shadow-xl p-8 md:p-10 space-y-8">
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                <span>Sub Total</span>
+                                <span className="text-white text-xs">${totals.subTotal.toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between items-center pt-2">
-                                <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Aggregate Discount Applied</span>
-                                <Input type="number" step="0.01" {...register("discountAmount")} className="w-36 h-11 border-none bg-white/5 rounded-xl text-right font-bold text-white shadow-inner focus:ring-4 focus:ring-blue-500/10" />
+                            <div className="flex justify-between items-center text-[9px] font-bold text-rose-400 uppercase tracking-wider pt-1">
+                                <span>Discounts</span>
+                                <Input type="number" step="0.01" {...register("discountAmount")} className="w-28 h-8 border-none bg-white/10 rounded-md text-right font-bold text-white text-xs" />
                             </div>
-                            <div className="flex justify-between items-center pt-2">
-                                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Fiscal Tax Liability (%)</span>
-                                <Input type="number" step="0.1" {...register("taxRate")} className="w-36 h-11 border-none bg-white/5 rounded-xl text-right font-bold text-white shadow-inner focus:ring-4 focus:ring-blue-500/10" />
+                            <div className="flex justify-between items-center text-[9px] font-bold text-blue-400 uppercase tracking-wider pt-1">
+                                <span>Tax Liability (%)</span>
+                                <Input type="number" step="0.1" {...register("taxRate")} className="w-28 h-8 border-none bg-white/10 rounded-md text-right font-bold text-white text-xs" />
                             </div>
-                            <div className="flex justify-between items-center pt-2">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Manual Fiscal Adjustment</span>
-                                <Input type="number" step="0.01" {...register("adjustment")} className="w-36 h-11 border-none bg-white/5 rounded-xl text-right font-bold text-white shadow-inner focus:ring-4 focus:ring-blue-500/10" />
+                            <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase tracking-wider pt-1">
+                                <span>Adjustment</span>
+                                <Input type="number" step="0.01" {...register("adjustment")} className="w-28 h-8 border-none bg-white/10 rounded-md text-right font-bold text-white text-xs" />
                             </div>
                         </div>
 
-                        <div className="pt-10 border-t-2 border-white/10 space-y-2">
-                            <div className="flex justify-between items-end">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Total Receivable Valuation</p>
-                                    <h4 className="text-6xl font-bold text-white tracking-tighter tabular-nums leading-none">
-                                        ${totals.grandTotal.toLocaleString()}
-                                    </h4>
-                                </div>
-                                <Badge className="bg-blue-600 text-white font-bold px-5 py-2.5 rounded-2xl text-[10px] uppercase tracking-[0.2em] border-none mb-2 shadow-2xl">
-                                  {currentCurrency} Net Sum
-                                </Badge>
+                        <div className="pt-6 border-t border-white/10 flex justify-between items-end">
+                            <div className="space-y-0.5">
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Total Valuation</p>
+                                <h4 className="text-3xl font-bold text-white tracking-tight tabular-nums">
+                                    ${totals.grandTotal.toLocaleString()}
+                                </h4>
                             </div>
+                            <Badge className="bg-blue-600 text-white font-bold px-3 py-1 rounded-md text-[8px] uppercase tracking-wider border-none mb-1">
+                                {currentCurrency} Net Sum
+                            </Badge>
                         </div>
                         
                         <Button 
                             disabled={isSubmitting} 
                             type="submit" 
-                            className="w-full h-24 bg-white hover:bg-blue-50 text-slate-900 font-bold uppercase tracking-[0.3em] text-sm rounded-[2.5rem] shadow-2xl transition-all active:scale-95 flex gap-6"
+                            className="w-full h-14 bg-white hover:bg-slate-100 text-slate-900 font-bold uppercase tracking-widest text-[11px] rounded-xl shadow-lg transition-all active:scale-95 flex gap-3"
                         >
                             {isSubmitting ? (
-                              <Loader2 className="animate-spin h-8 w-8" />
+                              <Loader2 className="animate-spin h-4 w-4" />
                             ) : (
                               <>
-                                <CheckCircle2 size={28} className="text-blue-600" /> 
-                                Finalize & Dispatch Protocol
+                                <CheckCircle2 size={18} className="text-blue-600" /> 
+                                Finalize Protocol
                               </>
                             )}
                         </Button>
                     </Card>
 
-                    <div className="flex flex-col items-center gap-6">
-                        <div className="bg-emerald-50 border border-emerald-100 px-8 py-4 rounded-[2rem] flex items-center gap-4 shadow-sm">
-                            <Wifi size={16} className="text-emerald-500" />
-                            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-[0.2em]">
-                                Synchronized | Registry: {format(new Date(), 'dd MMM, HH:mm')}
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm">
+                            <Wifi size={12} className="text-emerald-500" />
+                            <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-widest">
+                                Synchronized: {format(new Date(), 'dd MMM, HH:mm')}
                             </span>
                         </div>
                         
-                        <Button type="button" onClick={() => toast.error("Please save draft before printing")} variant="ghost" className="text-slate-400 font-bold text-[10px] uppercase tracking-widest gap-2 hover:text-slate-900">
-                          <Printer size={16} /> Technical Print Sequence
+                        <Button type="button" onClick={() => toast.error("Please save draft before printing")} variant="ghost" className="text-slate-400 font-bold text-[9px] uppercase tracking-widest gap-2 hover:text-slate-900">
+                          <Printer size={14} /> Print Specification
                         </Button>
                     </div>
                 </div>
             </div>
         </form>
 
-        <footer className="pt-20 pb-12 text-center opacity-30 border-t border-slate-100">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.5em] flex items-center justify-center gap-4">
-                <FileDigit size={16} /> Registry ID: {tenantId.substring(0,18).toUpperCase()} • Engine v2.6.2
+        <footer className="pt-12 pb-8 text-center opacity-40 border-t border-slate-100">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.4em] flex items-center justify-center gap-3">
+                <FileDigit size={14} /> Registry ID: {tenantId.substring(0,18).toUpperCase()} • v2.6.2
             </p>
         </footer>
       </div>
-      <ScrollBar orientation="vertical" />
-    </ScrollArea>
+    </div>
   );
 }

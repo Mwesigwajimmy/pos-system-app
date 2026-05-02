@@ -184,92 +184,92 @@ export default function ManufacturingOrderManager() {
   if (isLoading) return <div className="flex items-center justify-center min-h-screen bg-white"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
 
   return (
-    <div className="min-h-screen bg-white p-6 md:p-12 space-y-12 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-white p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
       
-      <header className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-slate-100 pb-10">
+      <header className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-8">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em]">
-            <Activity size={16} /> Manufacturing Governance
+          <div className="flex items-center gap-2 text-blue-600 font-bold text-[11px] uppercase tracking-wider">
+            <Activity size={14} /> Manufacturing Governance
           </div>
-          <h1 className="text-4xl font-bold tracking-tighter text-slate-950">Production Management</h1>
-          <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest leading-none">Industrial Control terminal</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-950">Production Management</h1>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Industrial Control terminal</p>
         </div>
         
-        <div className="flex items-center gap-4">
-           <Button onClick={() => downloadReport('CSV')} variant="ghost" className="h-12 px-6 font-bold text-slate-400 uppercase text-[10px] tracking-widest hover:text-slate-900 transition-all">
-             <Download size={16} className="mr-2" /> Export CSV
+        <div className="flex flex-wrap items-center gap-3">
+           <Button onClick={() => downloadReport('CSV')} variant="outline" className="h-10 px-4 font-bold text-slate-600 uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all">
+             <Download size={14} className="mr-2" /> CSV
            </Button>
-           <Button onClick={() => downloadReport('PDF')} variant="ghost" className="h-12 px-6 font-bold text-slate-400 uppercase text-[10px] tracking-widest hover:text-slate-900 transition-all">
-             <FileDown size={16} className="mr-2" /> Audit PDF
+           <Button onClick={() => downloadReport('PDF')} variant="outline" className="h-10 px-4 font-bold text-slate-600 uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all">
+             <FileDown size={14} className="mr-2" /> PDF
            </Button>
-           <Button onClick={() => setIsCreateModalOpen(true)} className="h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-widest shadow-2xl shadow-blue-200 rounded-2xl transition-all active:scale-95">
-             <Plus size={18} className="mr-2" /> Initialize Lot
+           <Button onClick={() => setIsCreateModalOpen(true)} className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-widest shadow-md rounded-lg transition-all active:scale-95">
+             <Plus size={16} className="mr-2" /> New Lot
            </Button>
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto">
-        <Card className="border-none shadow-[0_32px_64px_-15px_rgba(0,0,0,0.05)] rounded-[2.5rem] overflow-hidden bg-white">
-          <CardHeader className="px-12 py-10 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-10 bg-slate-50/20">
-            <div className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Operational Pipeline</CardTitle>
-              <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time monitoring of active industrial nodes</CardDescription>
+      <main className="max-w-[1400px] mx-auto">
+        <Card className="border border-slate-100 shadow-sm rounded-xl overflow-hidden bg-white">
+          <CardHeader className="px-6 py-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/30">
+            <div className="space-y-0.5">
+              <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Operational Pipeline</CardTitle>
+              <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active industrial nodes registry</CardDescription>
             </div>
-            <div className="relative w-full md:w-[400px]">
+            <div className="relative w-full md:w-[350px]">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input 
-                  placeholder="Global search through registry..." 
+                  placeholder="Filter by Lot or Product..." 
                   value={filter}
                   onChange={e => setFilter(e.target.value)}
-                  className="h-14 pl-12 border-none bg-white rounded-2xl shadow-inner font-bold text-sm" 
+                  className="h-11 pl-11 border-slate-200 bg-white rounded-xl font-medium text-sm focus:ring-1 focus:ring-blue-500" 
                 />
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="w-full whitespace-nowrap">
+            <ScrollArea className="w-full">
               <Table>
-                <TableHeader className="bg-slate-50/50 border-b border-slate-100">
-                  <TableRow className="h-16">
-                    <TableHead className="w-20 text-center border-r border-slate-100">
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="h-12">
+                    <TableHead className="w-16 text-center border-r border-slate-100">
                       <Checkbox checked={selectedItems.length === orders?.length} onCheckedChange={(c) => setSelectedItems(c ? orders?.map(o => o.id) || [] : [])} />
                     </TableHead>
-                    <TableHead className="px-10 font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Lot Identifier</TableHead>
-                    <TableHead className="font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Finished Good Specification</TableHead>
-                    <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Planned Output</TableHead>
-                    <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Process Status</TableHead>
-                    <TableHead className="px-10 text-right font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Authorization</TableHead>
+                    <TableHead className="px-6 font-bold uppercase text-slate-500 text-[10px] tracking-wider">Lot ID</TableHead>
+                    <TableHead className="font-bold uppercase text-slate-500 text-[10px] tracking-wider">Product / Specification</TableHead>
+                    <TableHead className="text-center font-bold uppercase text-slate-500 text-[10px] tracking-wider">Target Output</TableHead>
+                    <TableHead className="text-center font-bold uppercase text-slate-500 text-[10px] tracking-wider">Status</TableHead>
+                    <TableHead className="px-6 text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {orders?.filter((o: any) => o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || o.product_name.toLowerCase().includes(filter.toLowerCase())).map((o: any) => (
-                    <TableRow key={o.id} className="h-24 hover:bg-slate-50/50 transition-all border-b border-slate-50">
+                    <TableRow key={o.id} className="h-16 hover:bg-slate-50/50 transition-all border-b last:border-none">
                       <TableCell className="text-center border-r border-slate-50">
                         <Checkbox checked={selectedItems.includes(o.id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, o.id] : prev.filter(id => id !== o.id))} />
                       </TableCell>
-                      <TableCell className="px-10 font-bold text-slate-900 uppercase tracking-tight">{o.batch_number || 'N/A'}</TableCell>
+                      <TableCell className="px-6 font-bold text-slate-900 text-xs tracking-wide uppercase">{o.batch_number || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 text-sm tracking-tight">{o.product_name}</span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{o.sku}</span>
+                          <span className="font-bold text-slate-900 text-sm">{o.product_name}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{o.sku}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-center font-bold text-slate-700 text-sm tabular-nums">{o.planned_quantity.toLocaleString()} UNITS</TableCell>
                       <TableCell className="text-center">
-                        <Badge className={cn(
-                          "font-bold uppercase text-[9px] px-4 py-1.5 rounded-full border-none shadow-sm",
+                        <Badge variant="outline" className={cn(
+                          "font-bold uppercase text-[8px] px-3 py-1 rounded-full border-none shadow-sm",
                           o.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
                         )}>
                           {o.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-10 text-right">
+                      <TableCell className="px-6 text-right">
                         {o.status !== 'completed' ? (
-                          <Button onClick={() => openAuditDialog(o)} className="h-10 px-6 bg-slate-900 hover:bg-black text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all">
-                            Verify & Post
+                          <Button onClick={() => openAuditDialog(o)} className="h-9 px-4 bg-slate-900 hover:bg-black text-white font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all">
+                            Finalize Lot
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-end gap-2 text-slate-300 font-bold text-[10px] uppercase tracking-widest">
-                            <ShieldCheck size={16} className="text-emerald-500" /> Operational Record Sealed
+                          <div className="flex items-center justify-end gap-2 text-slate-400 font-bold text-[9px] uppercase tracking-widest">
+                            <ShieldCheck size={14} className="text-emerald-500" /> Record Sealed
                           </div>
                         )}
                       </TableCell>
@@ -283,179 +283,182 @@ export default function ManufacturingOrderManager() {
         </Card>
       </main>
 
+      {/* CREATE LOT MODAL */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-lg rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
-          <div className="bg-slate-950 px-10 py-8 text-white">
-            <DialogTitle className="text-xl font-bold uppercase tracking-widest">Initiate Production Lot</DialogTitle>
+        <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+          <div className="bg-slate-900 px-6 py-6 text-white">
+            <DialogTitle className="text-sm font-bold uppercase tracking-widest">Initiate Production Lot</DialogTitle>
           </div>
-          <div className="p-10 space-y-10">
-            <div className="space-y-4">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Asset Selection</Label>
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Asset Selection</Label>
               <Select onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
-                <SelectTrigger className="h-14 border-none bg-slate-50 rounded-2xl shadow-inner font-bold text-sm px-6">
+                <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-medium text-sm px-4">
                   <SelectValue placeholder="Identify target SKU..." />
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl border-none shadow-2xl">
-                  {finishedGoods?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()} className="font-bold py-4 px-6">{g.product?.name} — {g.sku}</SelectItem>)}
+                <SelectContent>
+                  {finishedGoods?.map((g: any) => <SelectItem key={g.id} value={g.id.toString()} className="text-xs font-medium py-2">{g.product?.name} — {g.sku}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-8">
-               <div className="space-y-4">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reference ID</Label>
-                  <Input value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-14 border-none bg-slate-50 font-black rounded-2xl shadow-inner text-center uppercase tracking-widest" />
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Lot Ref</Label>
+                  <Input value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-11 border-slate-200 bg-white font-bold rounded-lg text-center uppercase tracking-wider text-xs" />
                </div>
-               <div className="space-y-4">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Yield</Label>
-                  <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-14 border-none bg-slate-50 font-black rounded-2xl shadow-inner text-center text-blue-600 text-xl" />
+               <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Planned Qty</Label>
+                  <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-11 border-slate-200 bg-white font-bold rounded-lg text-center text-blue-600 text-lg" />
                </div>
             </div>
           </div>
-          <DialogFooter className="bg-slate-50/50 p-10 border-t border-slate-100 flex gap-6">
-            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="h-14 px-8 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Discard</Button>
-            <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="h-14 px-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-2xl transition-all uppercase tracking-widest text-[10px] flex-1">
-              {createOrderMutation.isPending ? <Loader2 className="animate-spin" /> : "Authorize Order"}
+          <DialogFooter className="bg-slate-50 p-6 border-t flex gap-3">
+            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} className="h-11 px-6 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Abort</Button>
+            <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="h-11 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all uppercase tracking-widest text-[10px] flex-1">
+              {createOrderMutation.isPending ? <Loader2 className="animate-spin w-4 h-4" /> : "Authorize Order"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* RECONCILIATION MODAL */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-[1400px] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[3rem] bg-white">
-          <DialogHeader className="bg-white border-b border-slate-100 p-12">
-            <div className="flex flex-col md:flex-row justify-between items-start gap-12">
-              <div className="flex items-center gap-8">
-                <div className="h-20 w-20 bg-slate-950 rounded-3xl flex items-center justify-center shadow-2xl">
-                   <ClipboardList className="text-white h-10 w-10" />
+        <DialogContent className="max-w-[1200px] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl bg-white">
+          <DialogHeader className="bg-slate-50/50 border-b p-6 md:p-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 bg-slate-950 rounded-xl flex items-center justify-center shadow-lg">
+                   <ClipboardList className="text-white h-7 w-7" />
                 </div>
-                <div className="space-y-1">
-                    <DialogTitle className="text-4xl font-bold text-slate-900 tracking-tighter">Operational Reconciliation</DialogTitle>
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Audit Lot:</span>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 font-bold px-4 py-1.5 rounded-xl uppercase tracking-widest text-[10px]">{selectedOrder?.batch_number}</Badge>
+                <div className="space-y-0.5">
+                    <DialogTitle className="text-2xl font-bold text-slate-900 tracking-tight">Lot Reconciliation</DialogTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Lot ID:</span>
+                      <Badge className="bg-blue-600 text-white font-bold px-3 py-0.5 rounded-full text-[9px] uppercase tracking-wider">{selectedOrder?.batch_number}</Badge>
                     </div>
                 </div>
               </div>
-              <div className="bg-slate-950 p-8 rounded-[2rem] text-right min-w-[280px] shadow-2xl">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Landed Unit Valuation</p>
-                <p className="text-5xl font-black text-white mt-1 tabular-nums">
-                  {financialAudit.unitCost.toLocaleString()} <span className="text-sm font-bold text-slate-500 uppercase ml-2">{currency}</span>
+              <div className="bg-slate-900 p-5 rounded-xl text-right min-w-[220px] shadow-sm">
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Final Unit Valuation</p>
+                <p className="text-3xl font-black text-white mt-0.5 tabular-nums">
+                  {financialAudit.unitCost.toLocaleString()} <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">{currency}</span>
                 </p>
               </div>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-            <ScrollArea className="flex-1 bg-white">
-              <div className="p-12 space-y-16">
-                <div className="space-y-8">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 flex items-center gap-4">
-                    <div className="h-2 w-2 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]" /> 1. Material Consumption Matrix
+          <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+            {/* Left Content Area */}
+            <ScrollArea className="lg:col-span-8 bg-white border-r border-slate-100">
+              <div className="p-6 md:p-10 space-y-12">
+                
+                {/* section 1 */}
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-blue-600" /> 1. Material Consumption
                   </h3>
-                  <div className="rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden bg-white">
-                    <ScrollArea className="w-full">
+                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
                     <Table>
-                      <TableHeader className="bg-slate-50/50">
-                        <TableRow className="h-16 border-none">
-                          <TableHead className="text-[10px] font-black py-6 pl-10 uppercase tracking-widest text-slate-500">Material Specification</TableHead>
-                          <TableHead className="text-[10px] font-black py-6 text-center uppercase tracking-widest text-slate-500">Actual Metric Consumption</TableHead>
-                          <TableHead className="text-[10px] font-black py-6 text-right pr-10 uppercase tracking-widest text-slate-500">Inventory Cost Basis</TableHead>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow className="h-10 border-none">
+                          <TableHead className="text-[9px] font-bold py-3 pl-6 uppercase tracking-wider text-slate-500">Material Name</TableHead>
+                          <TableHead className="text-[9px] font-bold py-3 text-center uppercase tracking-wider text-slate-500">Actual Usage</TableHead>
+                          <TableHead className="text-[9px] font-bold py-3 text-right pr-6 uppercase tracking-wider text-slate-500">Unit Cost</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {ingredientLogs.map((log, idx) => (
-                          <TableRow key={idx} className="h-20 hover:bg-slate-50/30 transition-all border-b border-slate-50 last:border-none">
-                            <TableCell className="pl-10 font-bold text-slate-950 text-sm">{log.name}</TableCell>
+                          <TableRow key={idx} className="h-14 hover:bg-slate-50 transition-all border-b last:border-none">
+                            <TableCell className="pl-6 font-bold text-slate-800 text-xs">{log.name}</TableCell>
                             <TableCell>
-                              <Input type="number" step="0.001" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-12 w-40 mx-auto text-center border-none bg-slate-50 rounded-2xl font-black text-blue-600 shadow-inner text-lg" />
+                              <Input type="number" step="0.001" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-9 w-32 mx-auto text-center border-slate-200 bg-slate-50 rounded-lg font-bold text-blue-600 text-sm" />
                             </TableCell>
-                            <TableCell className="text-right pr-10 font-bold text-slate-400 text-sm tabular-nums">{log.unit_cost.toLocaleString()} {currency}</TableCell>
+                            <TableCell className="text-right pr-6 font-bold text-slate-400 text-xs tabular-nums">{log.unit_cost.toLocaleString()} {currency}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                    <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
                   </div>
                 </div>
 
-                <div className="space-y-8">
+                {/* section 2 */}
+                <div className="space-y-6">
                    <div className="flex justify-between items-center">
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 flex items-center gap-4">
-                      <div className="h-2 w-2 rounded-full bg-rose-600 shadow-[0_0_8px_rgba(225,29,72,0.4)]" /> 2. Operational Overheads
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-rose-600" /> 2. Operational Overhead
                     </h3>
-                    <Button variant="ghost" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-12 border border-slate-200 text-slate-900 font-bold text-[10px] bg-white rounded-2xl px-8 transition-all hover:bg-slate-950 hover:text-white uppercase tracking-widest shadow-sm">
-                      <Plus className="mr-3 h-4 w-4" /> Append Overhead
+                    <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-8 border-slate-200 text-slate-700 font-bold text-[9px] bg-white rounded-md px-4 transition-all hover:bg-slate-50 uppercase tracking-widest">
+                      <Plus className="mr-1.5 h-3 w-3" /> Add Overhead
                     </Button>
                   </div>
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {expenses.map((exp, idx) => (
-                      <div key={idx} className="flex gap-8 items-center bg-white border border-slate-100 p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all">
-                        <div className="flex-1"><Input placeholder="Category Description (Labor, Power, Rent...)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-14 border-none bg-slate-50 font-bold text-slate-950 rounded-2xl shadow-inner px-8 text-sm" /></div>
-                        <div className="w-72"><Input type="number" step="0.01" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-14 border-none bg-slate-50 text-right font-black text-rose-600 rounded-2xl shadow-inner px-8 text-xl" /></div>
-                        <Button variant="ghost" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-14 w-14 rounded-2xl text-slate-200 hover:text-rose-500 hover:bg-rose-50 transition-all"><Trash2 size={24} /></Button>
+                      <div key={idx} className="flex gap-4 items-center bg-white border border-slate-100 p-4 rounded-xl shadow-sm">
+                        <div className="flex-1"><Input placeholder="Expense Category (e.g., Labor)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-10 border-slate-200 bg-white font-medium text-slate-900 rounded-lg px-4 text-xs" /></div>
+                        <div className="w-48"><Input type="number" step="0.01" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-10 border-slate-200 bg-white text-right font-bold text-rose-600 rounded-lg px-4 text-sm" /></div>
+                        <Button variant="ghost" size="icon" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-10 w-10 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"><Trash2 size={18} /></Button>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-              <ScrollBar orientation="vertical" />
             </ScrollArea>
 
-            <div className="w-full lg:w-[500px] bg-slate-50/50 border-l border-slate-100 p-16 flex flex-col justify-between">
-              <div className="space-y-16">
-                <div className="space-y-6">
-                    <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] text-center block">Authorized Production Yield</Label>
-                    <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-40 text-8xl font-black bg-white border-none text-center rounded-[3rem] shadow-2xl text-slate-950 tracking-tighter" />
-                    <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest mt-4">Confirm Physical Node Quantity</p>
+            {/* Right Sidebar Area */}
+            <div className="lg:col-span-4 bg-slate-50/50 p-6 md:p-10 flex flex-col justify-between">
+              <div className="space-y-10">
+                <div className="space-y-4">
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Actual Production Yield</Label>
+                    <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-28 text-5xl font-black bg-white border-slate-200 text-center rounded-2xl shadow-sm text-slate-950 tracking-tight" />
+                    <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-widest">Confirm physical output count</p>
                 </div>
 
-                <div className="pt-12 border-t border-slate-200 space-y-8">
-                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-widest"><span>Material Consumption</span><span className="text-slate-950 text-sm">{financialAudit.matTotal.toLocaleString()} {currency}</span></div>
-                  <div className="flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-widest"><span>Applied Overheads</span><span className="text-slate-950 text-sm">{financialAudit.expTotal.toLocaleString()} {currency}</span></div>
-                  <div className="pt-10 border-t-2 border-slate-950 flex justify-between items-end">
+                <div className="pt-10 border-t border-slate-200 space-y-6">
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider"><span>Material Total</span><span className="text-slate-900 font-bold">{financialAudit.matTotal.toLocaleString()} {currency}</span></div>
+                  <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider"><span>Applied Overhead</span><span className="text-slate-900 font-bold">{financialAudit.expTotal.toLocaleString()} {currency}</span></div>
+                  <div className="pt-8 border-t-2 border-slate-950 flex justify-between items-end">
                     <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Total Lot Valuation</span>
-                      <span className="text-5xl font-black text-slate-950 tracking-tighter tabular-nums mt-1">{financialAudit.total.toLocaleString()}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lot Total Valuation</span>
+                      <span className="text-3xl font-black text-slate-950 tracking-tighter tabular-nums mt-0.5">{financialAudit.total.toLocaleString()}</span>
                     </div>
-                    <span className="text-xs font-bold text-slate-400 mb-2 uppercase">{currency}</span>
+                    <span className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">{currency}</span>
                   </div>
                 </div>
               </div>
 
-              <Card className="bg-blue-600 rounded-[2.5rem] text-white shadow-2xl shadow-blue-600/30 p-10 space-y-4 border-none mt-12">
-                  <div className="flex items-center gap-4"><Database size={20} className="text-blue-200" /><span className="text-[11px] font-bold uppercase tracking-widest">Inventory Orchestration</span></div>
-                  <p className="text-xs text-blue-100 font-medium leading-relaxed uppercase tracking-tight">System will perform molecular-level deduction of components from raw ledger and increase finished good inventory node.</p>
+              <Card className="bg-blue-600 rounded-2xl text-white shadow-lg p-6 space-y-3 border-none mt-10">
+                  <div className="flex items-center gap-2.5"><Database size={16} className="text-blue-200" /><span className="text-[9px] font-bold uppercase tracking-widest">Inventory Logic</span></div>
+                  <p className="text-[10px] text-blue-100 font-medium leading-relaxed uppercase tracking-tight">Authorizing will deduct raw materials from ledger and increase finished good node balance.</p>
               </Card>
             </div>
           </div>
 
-          <DialogFooter className="bg-white border-t border-slate-100 p-12 flex flex-col sm:flex-row items-center justify-between gap-10">
-            <div className="flex items-center gap-4 text-emerald-600 bg-emerald-50 px-8 py-3 rounded-full border border-emerald-100 font-bold text-[11px] uppercase tracking-widest">
-                <CheckCircle2 size={18} /> Audit Integrity Protocol Active
+          <DialogFooter className="bg-white border-t p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3 text-emerald-600 bg-emerald-50 px-5 py-2 rounded-full border border-emerald-100 font-bold text-[9px] uppercase tracking-wider">
+                <CheckCircle2 size={16} /> Audit Integrity Protocol Active
             </div>
-            <div className="flex gap-8 w-full sm:w-auto">
-                <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-16 px-10 font-bold text-slate-400 hover:text-slate-950 text-[11px] uppercase tracking-widest transition-colors">Discard Draft</Button>
-                <Button onClick={() => finalizeProductionMutation.mutate()} disabled={finalizeProductionMutation.isPending} className="h-16 px-16 bg-slate-950 hover:bg-black text-white font-bold rounded-[1.5rem] shadow-2xl transition-all uppercase tracking-widest text-[11px] flex items-center justify-center min-w-[320px] active:scale-[0.98]">
-                    {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Authorize Reconciliation Protocol"}
+            <div className="flex gap-4 w-full sm:w-auto">
+                <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-12 px-6 font-bold text-slate-400 hover:text-slate-950 text-[10px] uppercase tracking-widest transition-colors">Discard</Button>
+                <Button onClick={() => finalizeProductionMutation.mutate()} disabled={finalizeProductionMutation.isPending} className="h-12 px-10 bg-slate-950 hover:bg-black text-white font-bold rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] flex items-center justify-center min-w-[280px] active:scale-95">
+                    {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "Post Reconciliation Protocol"}
                 </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <footer className="max-w-[1600px] mx-auto mt-24 flex flex-col md:flex-row items-center justify-between border-t border-slate-100 pt-12 pb-20 opacity-30">
-          <div className="flex items-center gap-8">
-             <div className="flex items-center gap-3">
-                <ShieldCheck size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.4em]">Industrial Protocol v4.2.0</span>
+      <footer className="max-w-[1400px] mx-auto mt-16 flex flex-col md:flex-row items-center justify-between border-t border-slate-100 pt-8 pb-12 opacity-40">
+          <div className="flex items-center gap-6">
+             <div className="flex items-center gap-2">
+                <ShieldCheck size={14} />
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em]">Industrial Protocol v4.2.0</span>
              </div>
              <div className="h-1 w-1 rounded-full bg-slate-400" />
-             <span className="text-[10px] font-bold uppercase tracking-[0.4em]">Autonomous Data Environment</span>
+             <span className="text-[9px] font-bold uppercase tracking-[0.2em]">Autonomous Data Environment</span>
           </div>
-          <div className="flex items-center gap-4 bg-white border border-slate-100 px-6 py-2.5 rounded-full shadow-sm">
+          <div className="flex items-center gap-3 bg-white border border-slate-100 px-5 py-2 rounded-full shadow-sm mt-4 md:mt-0">
              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">System Synchronized</span>
+             <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">System Synchronized</span>
           </div>
       </footer>
     </div>
