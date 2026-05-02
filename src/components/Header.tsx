@@ -17,6 +17,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from 'date-fns';
 import { useBusiness } from '@/context/BusinessContext'; 
 import { useBranding } from '@/components/core/BrandingProvider'; 
+// DEEP SYNC: Importing the authoritative tenant hook
+import { useTenant } from '@/hooks/useTenant';
 
 /**
  * LITONU BUSINESS BASE UNIVERSE LTD - AUTHORITATIVE HEADER
@@ -28,9 +30,17 @@ export default function Header() {
   const router = useRouter();
   const supabase = createClient();
   
-  // DEEP SYNC: Pulling the live session data
+  // DEEP SYNC: Pulling live context from all identity pillars
   const { profile } = useBusiness();
   const { branding } = useBranding();
+  const { data: tenant } = useTenant();
+
+  // --- AUTHORITATIVE IDENTITY RESOLUTION ---
+  // Matches the logic in the Sidebar to ensure 100% UI consistency
+  const businessName = tenant?.business_display_name || 
+                       branding?.company_name_display || 
+                       profile?.business_name || 
+                       "Sovereign Node";
 
   const [urgentCount, setUrgentCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -94,8 +104,7 @@ export default function Header() {
       <div className="flex items-center gap-8">
         <div className="flex flex-col overflow-hidden">
             {/* 
-                DEEP FIX: Replaced "Business Manager" with the Operator's Full Name.
-                This provides immediate personal authority to the user.
+                DEEP FIX: Operator's Full Name from Profile Context.
             */}
             <h1 className="text-xl font-black tracking-tight text-slate-900 truncate max-w-[300px]">
                 {profile?.full_name || "Authorized Operator"}
@@ -109,7 +118,8 @@ export default function Header() {
                 <span className="h-1 w-1 rounded-full bg-slate-300" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
                     <MapPin size={10} className="text-slate-400" /> 
-                    {branding?.company_name_display || "Main Office"}
+                    {/* DEEP FIX: Replaced static "Main Office" with dynamic Business Name */}
+                    {businessName}
                 </span>
             </div>
         </div>
@@ -133,7 +143,7 @@ export default function Header() {
             <div className="text-right">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Reporting Currency</p>
                 <p className="text-sm font-black text-slate-900 leading-none mt-1">
-                    {branding?.currency_code || "UGX"}
+                    {tenant?.reporting_currency || branding?.currency_code || "UGX"}
                 </p>
             </div>
             <div className="h-10 w-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-100 border border-blue-100">
