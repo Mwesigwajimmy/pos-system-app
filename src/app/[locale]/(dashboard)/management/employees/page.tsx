@@ -73,7 +73,12 @@ export default function EmployeesPage() {
                             </h1>
                         </div>
                         <p className="text-slate-500 font-medium">
-                            Managing authorized personnel for <span className="text-blue-600 font-bold">{tenant?.name || 'Active Node'}</span>
+                            {/* 
+                                DEEP IDENTITY RESOLUTION FIX: 
+                                Changed 'tenant?.name' to 'tenant?.business_display_name'
+                                This clears the 'Active Node' placeholder and shows 'NIM UGANDA LTD'
+                            */}
+                            Managing authorized personnel for <span className="text-blue-600 font-bold">{tenant?.business_display_name || 'Active Node'}</span>
                         </p>
                     </div>
                     
