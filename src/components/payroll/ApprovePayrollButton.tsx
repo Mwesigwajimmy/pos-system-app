@@ -7,36 +7,63 @@ import {
     ShieldCheck, 
     Loader2, 
     AlertTriangle, 
-    Landmark 
+    Landmark,
+    Lock,
+    Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
+/**
+ * LITONU BUSINESS BASE UNIVERSE LTD - SOVEREIGN AUTHORIZATION PROTOCOL
+ * 
+ * UPGRADE: Authoritative Ledger Execution Gate.
+ * This component handles the final "Weld" of payroll data into the 
+ * Institutional General Ledger (IFRS-16 Compliant).
+ */
 export function ApprovePayrollButton({ runId }: { runId: string }) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     
     const handleApprove = () => {
-        // We use a toast-based confirmation or a more professional prompt
+        // --- AUTHORITATIVE EXECUTION NOTICE ---
+        // Upgraded text to reflect Institutional Security and GL impact.
         const isConfirmed = window.confirm(
-            "AUTHORIZATION REQUIRED:\n\nApproving this payroll will:\n1. Lock employee payslips.\n2. Generate PAYE Tax Liabilities.\n3. Post Gross Wages to the General Ledger (Account 6100).\n\nDo you wish to proceed?"
+            "SOVEREIGN AUTHORIZATION REQUIRED:\n\n" +
+            "Executing this protocol will perform the following actions:\n" +
+            "1. Physically LOCK all employee payslips for this cycle.\n" +
+            "2. Generate definitive Statutory Tax Liabilities (Account 2100).\n" +
+            "3. Post Gross Wage Expenditures to the General Ledger (Account 6100).\n" +
+            "4. Identity Seal: This action is irreversible and forensic logs will be recorded.\n\n" +
+            "Do you authorize this financial execution?"
         );
 
         if (isConfirmed) {
             startTransition(async () => {
-                const result = await approvePayrollRun(runId);
-                
-                if (result?.error) {
-                    toast.error(`Authorization Failed: ${result.error}`, {
-                        icon: <AlertTriangle className="h-4 w-4 text-destructive" />
+                try {
+                    const result = await approvePayrollRun(runId);
+                    
+                    if (result?.error) {
+                        toast.error("Authorization Breach", {
+                            description: result.error,
+                            icon: <AlertTriangle className="h-5 w-5 text-red-600" />,
+                            duration: 6000
+                        });
+                    } else {
+                        toast.success("Identity Sealed & Ledger Posted", {
+                            description: "Financial nodes have been successfully synchronized.",
+                            icon: <ShieldCheck className="h-5 w-5 text-emerald-600" />,
+                            duration: 5000
+                        });
+                        
+                        // Force a deep refresh to update the 'Sealed' status across the UI
+                        router.refresh();
+                    }
+                } catch (err: any) {
+                    toast.error("Kernel Error", {
+                        description: "An unexpected exception occurred during ledger synchronization.",
+                        icon: <Scale className="h-5 w-5 text-amber-500" />
                     });
-                } else {
-                    toast.success("Payroll Authorized & Ledger Synchronized", {
-                        description: "Financial entries have been posted to the master ledger.",
-                        icon: <ShieldCheck className="h-4 w-4 text-green-600" />
-                    });
-                    // Refresh the page data to show the 'Paid' status and new Ledger links
-                    router.refresh();
                 }
             });
         }
@@ -48,26 +75,31 @@ export function ApprovePayrollButton({ runId }: { runId: string }) {
             disabled={isPending}
             variant={isPending ? "outline" : "default"}
             className={cn(
-                "h-11 px-8 font-bold shadow-xl transition-all",
-                !isPending && "bg-green-600 hover:bg-green-700 text-white"
+                "h-12 px-10 font-black uppercase tracking-[0.15em] text-xs shadow-2xl transition-all active:scale-95 rounded-2xl",
+                !isPending 
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20" 
+                    : "border-slate-200 text-slate-400 bg-slate-50"
             )}
         >
             {isPending ? (
                 <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Authorizing Ledger...
+                    <Loader2 className="mr-3 h-5 w-5 animate-spin text-emerald-600" />
+                    <span>Authorizing Node...</span>
                 </>
             ) : (
                 <>
-                    <Landmark className="mr-2 h-5 w-5" />
-                    Approve & Post Payroll
+                    <Landmark className="mr-3 h-5 w-5 fill-white/10" />
+                    <span>Authorize & Post Ledger</span>
                 </>
             )}
         </Button>
     );
 }
 
-// Helper for class names if you don't have it imported
+/**
+ * DEEPLY DEFINED UTILITY: cn (Class Name Merger)
+ * Optimized for institutional build stability.
+ */
 function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
+    return classes.filter(Boolean).join(' ');
 }
