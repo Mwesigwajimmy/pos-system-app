@@ -348,11 +348,11 @@ export default function ManufacturingOrderManager() {
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-            {/* Left Content Area */}
+            {/* Left Content Area - MATERIAL AND OVERHEADS */}
             <ScrollArea className="lg:col-span-8 bg-white border-r border-slate-100">
               <div className="p-6 md:p-10 space-y-12">
                 
-                {/* section 1 */}
+                {/* section 1: MATERIALS */}
                 <div className="space-y-6">
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                     <div className="h-1.5 w-1.5 rounded-full bg-blue-600" /> 1. Material Consumption
@@ -381,7 +381,7 @@ export default function ManufacturingOrderManager() {
                   </div>
                 </div>
 
-                {/* section 2 */}
+                {/* section 2: OVERHEADS */}
                 <div className="space-y-6">
                    <div className="flex justify-between items-center">
                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
@@ -404,7 +404,7 @@ export default function ManufacturingOrderManager() {
               </div>
             </ScrollArea>
 
-            {/* Right Sidebar Area */}
+            {/* Right Sidebar Area - YIELD AND VALUATION */}
             <div className="lg:col-span-4 bg-slate-50/50 p-6 md:p-10 flex flex-col justify-between">
               <div className="space-y-10">
                 <div className="space-y-4">

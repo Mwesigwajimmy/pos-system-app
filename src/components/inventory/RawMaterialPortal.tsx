@@ -190,31 +190,45 @@ export default function RawMaterialPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-      
-      <header className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-8">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-blue-600 font-bold text-[11px] uppercase tracking-wider">
-            <Activity size={14} /> Inventory Governance
+    <div className="min-h-screen bg-white">
+      <div className="max-w-[1400px] mx-auto py-8 px-4 md:px-8 space-y-8 animate-in fade-in duration-500">
+        
+        {/* HEADER SECTION WITH INTEGRATED STATS */}
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-slate-100 pb-8">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-blue-600 font-bold text-[11px] uppercase tracking-wider">
+              <Activity size={14} /> Inventory Governance
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-950">Raw Material Registry</h1>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{businessName}</p>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-950">Raw Material Registry</h1>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{businessName}</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-           <Button onClick={() => downloadReport('EXCEL')} variant="outline" className="h-10 px-4 font-bold text-slate-600 uppercase text-[10px] tracking-widest hover:bg-slate-50 transition-all">
-             <Download size={14} className="mr-2" /> CSV
-           </Button>
-           <Button onClick={() => downloadReport('PDF')} variant="outline" className="h-10 px-6 border-slate-200 rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-sm">
-             <FileText size={14} className="mr-2" /> PDF Manifest
-           </Button>
-        </div>
-      </header>
+          
+          <div className="flex flex-wrap items-center gap-8">
+            <div className="flex items-center gap-6 pr-6 border-r border-slate-100">
+              <div className="text-right">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Global Assets</p>
+                <p className="text-lg font-bold text-slate-900">{ledgerStats.count} <span className="text-[10px] text-slate-400">Nodes</span></p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registry Value</p>
+                <p className="text-lg font-bold text-blue-600 tabular-nums">{ledgerStats.totalValuation.toLocaleString()} <span className="text-[10px] uppercase">{businessCurrency}</span></p>
+              </div>
+            </div>
 
-      <div className="max-w-[1400px] mx-auto space-y-8 pb-16">
-        
+            <div className="flex items-center gap-2">
+               <Button onClick={() => downloadReport('EXCEL')} variant="outline" size="sm" className="h-9 px-4 font-bold text-slate-600 uppercase text-[10px] tracking-widest hover:bg-slate-50">
+                 <Download size={14} className="mr-2" /> CSV
+               </Button>
+               <Button onClick={() => downloadReport('PDF')} variant="outline" size="sm" className="h-9 px-4 border-slate-200 rounded-lg font-bold text-[10px] uppercase tracking-widest shadow-sm">
+                 <FileText size={14} className="mr-2" /> Manifest
+               </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* MATERIAL ENROLLMENT FORM */}
         <Card className="border border-slate-100 shadow-sm rounded-xl overflow-hidden bg-white">
-          <CardHeader className="px-6 py-5 border-b border-slate-50 flex flex-row items-center justify-between bg-slate-50/20">
+          <CardHeader className="px-6 py-5 border-b border-slate-50 bg-slate-50/20">
             <div className="flex items-center gap-3">
                <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100 text-blue-600">
                  <Database size={18} />
@@ -226,16 +240,16 @@ export default function RawMaterialPortal() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="lg:col-span-2 space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Asset Identity</Label>
-                <Input placeholder="Material name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-11 border-slate-200 bg-white rounded-lg font-medium px-4 focus:ring-1 focus:ring-blue-500" />
+                <Input placeholder="Material name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-10 border-slate-200 bg-white rounded-lg font-medium px-4 focus:ring-1 focus:ring-blue-500" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">SKU / Lot ID</Label>
-                <Input placeholder="Registry Ref" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="h-11 border-slate-200 bg-white rounded-lg font-mono text-xs px-4 uppercase" />
+                <Input placeholder="Registry Ref" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="h-10 border-slate-200 bg-white rounded-lg font-mono text-xs px-4 uppercase" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Physical State</Label>
                 <Select onValueChange={v => setForm({...form, type: v})} defaultValue="Solid">
-                  <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-medium px-4"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-medium px-4"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Solid" className="py-2 text-sm">Solid / Powder</SelectItem>
                     <SelectItem value="Liquid" className="py-2 text-sm">Liquid / Fluid</SelectItem>
@@ -248,7 +262,7 @@ export default function RawMaterialPortal() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Quality Class</Label>
                 <Select onValueChange={v => setForm({...form, quality: v})} defaultValue="Standard">
-                  <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-medium px-4"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-medium px-4"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pharmaceutical" className="py-2 text-sm">Pharmaceutical Grade</SelectItem>
                     <SelectItem value="Food Grade" className="py-2 text-sm">Food Grade</SelectItem>
@@ -262,12 +276,12 @@ export default function RawMaterialPortal() {
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Measurement</Label>
                 <div className="flex gap-2">
                   <Select value={form.uom_id} onValueChange={v => setForm({...form, uom_id: v})}>
-                    <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-medium px-4 flex-1"><SelectValue placeholder="Metric" /></SelectTrigger>
+                    <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-medium px-4 flex-1"><SelectValue placeholder="Metric" /></SelectTrigger>
                     <SelectContent>
                       {uoms?.map(u => <SelectItem key={u.id} value={u.id} className="py-2 text-sm">{u.abbreviation}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" onClick={() => setIsUnitModalOpen(true)} className="h-11 w-11 rounded-lg text-slate-600 border-slate-200 hover:bg-slate-50">
+                  <Button variant="outline" onClick={() => setIsUnitModalOpen(true)} className="h-10 w-10 rounded-lg text-slate-600 border-slate-200 hover:bg-slate-50">
                     <Plus size={18} />
                   </Button>
                 </div>
@@ -275,23 +289,23 @@ export default function RawMaterialPortal() {
 
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Rate ({businessCurrency})</Label>
-                <Input type="number" value={form.price} onChange={e => setForm({...form, price: Number(e.target.value)})} className="h-11 border-slate-200 bg-white rounded-lg font-medium text-right px-4" />
+                <Input type="number" value={form.price} onChange={e => setForm({...form, price: Number(e.target.value)})} className="h-10 border-slate-200 bg-white rounded-lg font-medium text-right px-4" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-blue-600 uppercase tracking-wider ml-1">Opening Reserve</Label>
-                <Input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="h-11 border border-blue-100 bg-blue-50/30 rounded-lg font-bold text-right text-blue-700 px-4" />
+                <Input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="h-10 border border-blue-100 bg-blue-50/30 rounded-lg font-bold text-right text-blue-700 px-4" />
               </div>
               <div className="lg:col-span-3 space-y-2">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Verified Supply Partner</Label>
                 <Select onValueChange={v => setForm({...form, supplier_id: v})}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-medium px-4"><SelectValue placeholder="Select Supply Partner" /></SelectTrigger>
+                  <SelectTrigger className="h-10 border-slate-200 bg-white rounded-lg font-medium px-4"><SelectValue placeholder="Select Supply Partner" /></SelectTrigger>
                   <SelectContent>
                     {vendors?.map(v => <SelectItem key={v.id} value={v.id} className="py-2 text-sm">{v.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-end">
-                <Button onClick={handleOnboard} disabled={loading} className="w-full h-11 bg-slate-900 hover:bg-black text-white font-bold rounded-lg shadow-md transition-all uppercase tracking-widest text-[10px]">
+                <Button onClick={handleOnboard} disabled={loading} className="w-full h-10 bg-slate-900 hover:bg-black text-white font-bold rounded-lg shadow-md transition-all uppercase tracking-widest text-[10px]">
                   {loading ? <Loader2 className="animate-spin h-4 w-4" /> : "Authorize Enrollment"}
                 </Button>
               </div>
@@ -299,159 +313,134 @@ export default function RawMaterialPortal() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-          <Card className="lg:col-span-3 border border-slate-100 shadow-sm bg-white overflow-hidden rounded-xl">
-            <CardHeader className="px-6 py-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/10">
-              <div className="space-y-0.5">
-                <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Inventory Ledger</CardTitle>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Nodes: {ledgerStats.count}</p>
+        {/* FULL WIDTH INVENTORY LEDGER */}
+        <Card className="border border-slate-100 shadow-sm bg-white overflow-hidden rounded-xl">
+          <CardHeader className="px-6 py-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/10">
+            <div className="space-y-0.5">
+              <CardTitle className="text-lg font-bold text-slate-900 tracking-tight">Registry Ledger</CardTitle>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time balancing protocol</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative w-full md:w-[350px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input 
+                    placeholder="Filter by material name or SKU..." 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className="h-10 pl-10 border-slate-200 bg-white rounded-lg font-medium text-xs focus:ring-1 focus:ring-blue-500" 
+                  />
               </div>
-              <div className="flex items-center gap-4">
-                <div className="relative w-full md:w-[300px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    <Input 
-                      placeholder="Search registry..." 
-                      onChange={e => setSearchTerm(e.target.value)} 
-                      className="h-10 pl-10 border-slate-200 bg-white rounded-lg font-medium text-xs focus:ring-1 focus:ring-blue-500" 
-                    />
-                </div>
-                {selectedItems.length > 0 && (
-                  <Button onClick={handleBulkDelete} variant="destructive" className="h-10 px-4 rounded-lg font-bold uppercase text-[9px] tracking-widest shadow-sm">
-                    Purge Nodes
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="w-full">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow className="h-12">
-                      <TableHead className="w-16 text-center border-r border-slate-100">
-                        <Checkbox onCheckedChange={(c) => setSelectedItems(c ? materials?.map(m => m.variant_id) || [] : [])} />
-                      </TableHead>
-                      <TableHead className="px-6 font-bold uppercase text-slate-500 text-[10px] tracking-wider">Status</TableHead>
-                      <TableHead className="font-bold uppercase text-slate-500 text-[10px] tracking-wider">Material / Identity</TableHead>
-                      <TableHead className="text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Rate</TableHead>
-                      <TableHead className="text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Balance</TableHead>
-                      <TableHead className="px-6 text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Valuation</TableHead>
-                      <TableHead className="w-16"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow><TableCell colSpan={7} className="h-48 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-slate-200" /></TableCell></TableRow>
-                    ) : materials?.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="h-48 text-center font-bold uppercase tracking-widest text-slate-300 text-[10px]">No registry nodes</TableCell></TableRow>
-                    ) : (
-                      materials?.filter(m => m.product_name.toLowerCase().includes(searchTerm.toLowerCase())).map(m => (
-                        <TableRow key={m.variant_id} className="h-16 hover:bg-slate-50/50 transition-all border-b last:border-none group">
-                          <TableCell className="text-center border-r border-slate-50">
-                            <Checkbox checked={selectedItems.includes(m.variant_id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, m.variant_id] : prev.filter(id => id !== m.variant_id))} />
-                          </TableCell>
-                          <TableCell className="px-6">
-                             {m.current_stock > 100 ? (
-                               <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[8px] uppercase px-3 py-1 rounded-full">Operational</Badge>
-                             ) : m.current_stock > 0 ? (
-                               <Badge className="bg-amber-50 text-amber-600 border-none font-bold text-[8px] uppercase px-3 py-1 rounded-full">Low</Badge>
-                             ) : (
-                               <Badge className="bg-rose-50 text-rose-600 border-none font-bold text-[8px] uppercase px-3 py-1 rounded-full">Critical</Badge>
-                             )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-900 text-sm tracking-tight">{m.product_name}</span>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{m.sku} — {m.quality_grade}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className="font-bold text-slate-800 text-xs tabular-nums">{m.buying_price.toLocaleString()}</span>
-                            <span className="text-[9px] text-slate-400 ml-1 font-bold">{businessCurrency}</span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex flex-col items-end">
-                              <span className={`text-sm font-bold tabular-nums ${m.current_stock < 50 ? 'text-rose-500' : 'text-slate-900'}`}>{m.current_stock?.toLocaleString()}</span>
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.unit}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-6 text-right font-bold text-slate-900 text-xs tabular-nums">
-                            {(m.current_stock * m.buying_price).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="pr-6 text-center">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id})} className="h-10 w-10 text-slate-300 hover:text-slate-950 rounded-lg">
-                                  <BadgeAlert size={18} />
+              {selectedItems.length > 0 && (
+                <Button onClick={handleBulkDelete} variant="destructive" className="h-10 px-4 rounded-lg font-bold uppercase text-[9px] tracking-widest shadow-sm">
+                  Purge Selection
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="w-full">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="h-12">
+                    <TableHead className="w-16 text-center border-r border-slate-100">
+                      <Checkbox onCheckedChange={(c) => setSelectedItems(c ? materials?.map(m => m.variant_id) || [] : [])} />
+                    </TableHead>
+                    <TableHead className="px-6 font-bold uppercase text-slate-500 text-[10px] tracking-wider">Status</TableHead>
+                    <TableHead className="font-bold uppercase text-slate-500 text-[10px] tracking-wider">Material / Identity</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Rate</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Balance</TableHead>
+                    <TableHead className="px-6 text-right font-bold uppercase text-slate-500 text-[10px] tracking-wider">Valuation</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={7} className="h-48 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-slate-200" /></TableCell></TableRow>
+                  ) : materials?.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="h-48 text-center font-bold uppercase tracking-widest text-slate-300 text-[10px]">No registry nodes found</TableCell></TableRow>
+                  ) : (
+                    materials?.filter(m => m.product_name.toLowerCase().includes(searchTerm.toLowerCase())).map(m => (
+                      <TableRow key={m.variant_id} className="h-16 hover:bg-slate-50/50 transition-all border-b last:border-none group">
+                        <TableCell className="text-center border-r border-slate-50">
+                          <Checkbox checked={selectedItems.includes(m.variant_id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, m.variant_id] : prev.filter(id => id !== m.variant_id))} />
+                        </TableCell>
+                        <TableCell className="px-6">
+                           {m.current_stock > 100 ? (
+                             <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[8px] uppercase px-3 py-1 rounded-full">Operational</Badge>
+                           ) : m.current_stock > 0 ? (
+                             <Badge className="bg-amber-50 text-amber-600 border-none font-bold text-[8px] uppercase px-3 py-1 rounded-full">Low</Badge>
+                           ) : (
+                             <Badge className="bg-rose-50 text-rose-600 border-none font-bold text-[8px] uppercase px-3 py-1 rounded-full">Critical</Badge>
+                           )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 text-sm tracking-tight">{m.product_name}</span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{m.sku} — {m.quality_grade}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="font-bold text-slate-800 text-xs tabular-nums">{m.buying_price.toLocaleString()}</span>
+                          <span className="text-[9px] text-slate-400 ml-1 font-bold">{businessCurrency}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-col items-end">
+                            <span className={`text-sm font-bold tabular-nums ${m.current_stock < 50 ? 'text-rose-500' : 'text-slate-900'}`}>{m.current_stock?.toLocaleString()}</span>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.unit}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 text-right font-bold text-slate-900 text-xs tabular-nums">
+                          {(m.current_stock * m.buying_price).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="pr-6 text-center">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id})} className="h-8 w-8 text-slate-300 hover:text-slate-950 rounded-lg flex items-center justify-center transition-all">
+                                <BadgeAlert size={18} />
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white">
+                              <div className="bg-slate-900 px-8 py-6 text-white">
+                                <DialogTitle className="text-sm font-bold uppercase tracking-widest">Registry Correction</DialogTitle>
+                                <DialogDescription className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">{m.product_name}</DialogDescription>
+                              </div>
+                              <div className="p-8 space-y-8">
+                                <div className="space-y-4">
+                                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Quantity to Deduct</Label>
+                                  <div className="relative">
+                                    <Input type="number" className="h-16 border-slate-100 bg-slate-50 font-black text-3xl text-center rounded-xl shadow-inner text-slate-900" onChange={e => setAdjustData({...adjustData, qty: Number(e.target.value)})} />
+                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[10px] tracking-widest">{m.unit}</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Adjustment Logic</Label>
+                                  <Select onValueChange={v => setAdjustData({...adjustData, reason: v})}>
+                                    <SelectTrigger className="h-10 border-slate-200 bg-white font-medium rounded-lg px-4 text-xs"><SelectValue placeholder="Select Reason" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Waste" className="text-sm py-2">Production Waste</SelectItem>
+                                      <SelectItem value="Expired" className="text-sm py-2">Expiry / Obsolescence</SelectItem>
+                                      <SelectItem value="Damage" className="text-sm py-2">Logistical Damage</SelectItem>
+                                      <SelectItem value="Forensic" className="text-sm py-2">Audit Reconciliation</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                              <DialogFooter className="p-8 bg-slate-50 border-t flex flex-col gap-3">
+                                <Button onClick={() => logShrinkage.mutate()} className="w-full h-11 bg-slate-900 hover:bg-black text-white font-bold rounded-lg shadow-md uppercase tracking-widest text-[10px]">
+                                  Commit Adjustment
                                 </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white">
-                                <div className="bg-slate-900 px-8 py-6 text-white">
-                                  <DialogTitle className="text-sm font-bold uppercase tracking-widest">Registry Correction</DialogTitle>
-                                  <DialogDescription className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">{m.product_name}</DialogDescription>
-                                </div>
-                                <div className="p-8 space-y-8">
-                                  <div className="space-y-4">
-                                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center block">Quantity to Deduct</Label>
-                                    <div className="relative">
-                                      <Input type="number" className="h-16 border-slate-100 bg-slate-50 font-black text-3xl text-center rounded-xl shadow-inner text-slate-900" onChange={e => setAdjustData({...adjustData, qty: Number(e.target.value)})} />
-                                      <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[10px] tracking-widest">{m.unit}</span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Reason for Adjustment</Label>
-                                    <Select onValueChange={v => setAdjustData({...adjustData, reason: v})}>
-                                      <SelectTrigger className="h-11 border-slate-200 bg-white font-medium rounded-lg px-4 text-xs focus:ring-1 focus:ring-blue-500"><SelectValue placeholder="Select Reason" /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="Waste" className="text-sm py-2">Production Waste</SelectItem>
-                                        <SelectItem value="Expired" className="text-sm py-2">Expiry / Obsolescence</SelectItem>
-                                        <SelectItem value="Damage" className="text-sm py-2">Logistical Damage</SelectItem>
-                                        <SelectItem value="Forensic" className="text-sm py-2">Audit Reconciliation</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
-                                <DialogFooter className="p-8 bg-slate-50 border-t flex flex-col gap-3">
-                                  <Button onClick={() => logShrinkage.mutate()} className="w-full h-11 bg-slate-900 hover:bg-black text-white font-bold rounded-lg shadow-md uppercase tracking-widest text-[10px]">
-                                    Execute Correction
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-                <ScrollBar orientation="horizontal" />
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-1 border-none shadow-xl rounded-2xl bg-slate-900 text-white p-8 space-y-8 relative overflow-hidden">
-             <div className="absolute top-[-20px] right-[-20px] opacity-5 pointer-events-none"><DollarSign size={100} /></div>
-             <div className="space-y-1">
-                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Asset Valuation</p>
-                <h4 className="text-2xl font-black text-white tracking-tight tabular-nums">
-                  {ledgerStats.totalValuation.toLocaleString()}
-                </h4>
-                <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">{businessCurrency} Consolidated</p>
-             </div>
-             <div className="pt-6 border-t border-white/10 space-y-4">
-                <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                   <span>Nodes Registry</span>
-                   <span className="text-white">{ledgerStats.count} Units</span>
-                </div>
-                <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                   <span>Ledger Status</span>
-                   <span className="text-emerald-400">Synchronized</span>
-                </div>
-             </div>
-             <Button onClick={() => downloadReport('PDF')} className="w-full h-12 bg-white hover:bg-slate-100 text-slate-900 font-bold uppercase tracking-widest text-[10px] rounded-lg shadow-lg transition-all">
-                Download Manifest
-             </Button>
-          </Card>
-        </div>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
 
       {/* UNIT DIALOG */}
@@ -472,7 +461,7 @@ export default function RawMaterialPortal() {
               </div>
               <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex gap-3">
                   <Button variant="ghost" onClick={() => setIsUnitModalOpen(false)} className="h-10 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Discard</Button>
-                  <Button onClick={handleCreateUnit} className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 rounded-lg shadow-md uppercase tracking-widest text-[10px] flex-1">Commit Protocol</Button>
+                  <Button onClick={handleCreateUnit} className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 rounded-lg shadow-md uppercase tracking-widest text-[10px] flex-1">Authorize</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -487,7 +476,7 @@ export default function RawMaterialPortal() {
           </div>
           <div className="flex items-center gap-3 bg-white border border-slate-100 px-4 py-2 rounded-full shadow-sm mt-4 md:mt-0">
              <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Active Sync</span>
+             <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Network Synchronized</span>
           </div>
       </footer>
     </div>
