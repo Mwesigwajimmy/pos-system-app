@@ -66,10 +66,22 @@ const navSections: NavItem[] = [
     { type: 'link', href: '/time-clock', label: 'Time Clock', icon: Clock, roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'waiter_staff', 'pharmacist'] },
     
     { 
-        type: 'link', href: '/pos', label: 'Point of Sale', icon: ShoppingCart, 
-        roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender'], 
-        module: 'sales', 
-        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services']
+        type: 'link', 
+        href: '/pos', 
+        label: 'Point of Sale', 
+        icon: ShoppingCart, 
+        // Authorized Roles: Includes standard sales roles plus your specialized DSR reps
+        roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
+        module: 'sales', // Technical Slug matching public.modules
+        // Industry Logic: Now explicitly includes Distribution sectors for Nim Paints
+        businessTypes: [
+            'Retail / Wholesale', 
+            'Restaurant / Cafe', 
+            'Mixed/Conglomerate', 
+            'Professional Services', 
+            'Distribution', 
+            'Distribution / Wholesale Supply'
+        ]
     },
     { 
         type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, 
