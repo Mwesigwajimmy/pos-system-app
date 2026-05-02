@@ -11,17 +11,16 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-
-// UI Components
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import toast from 'react-hot-toast';
 
-// --- 1. Financial Utilities (Logic Preserved) ---
 const Money = {
   round: (val: number) => Math.round((val + Number.EPSILON) * 100) / 100,
   multiply: (amount: number, quantity: number) => {
@@ -32,7 +31,6 @@ const Money = {
   }
 };
 
-// --- 2. Date Utilities ---
 const getLocalDateString = () => {
   const date = new Date();
   const year = date.getFullYear();
@@ -50,7 +48,6 @@ const getFutureDateString = (daysToAdd: number) => {
   return `${year}-${month}-${day}`;
 };
 
-// --- 3. Validation Schema ---
 const invoiceSchema = z.object({
   customerId: z.string().min(1, "Customer selection is required"),
   currency: z.string().min(1, "Currency is required"),
@@ -78,7 +75,6 @@ const invoiceSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
-// --- 4. Configuration ---
 const CURRENCIES = [
   { code: 'USD', symbol: '$', locale: 'en-US' },
   { code: 'EUR', symbol: '€', locale: 'de-DE' },
@@ -136,7 +132,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
           }
         }
       } catch (err: any) {
-        console.error("Data Fetch Error:", err);
+        console.error("Critical Data Fault:", err);
       } finally {
         if (isMounted) setIsLoadingCustomers(false);
       }
@@ -261,249 +257,271 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
 
       if (itemsError) {
         await supabase.from('invoices').delete().eq('id', createdInvoiceId);
-        throw new Error(`Data Sync Error: ${itemsError.message}`);
+        throw new Error(`Data Synchronization Failure: ${itemsError.message}`);
       }
 
-      toast.success("Invoice created successfully");
+      toast.success("Fiscal Record Finalized");
       router.push(`/${locale}/invoicing/to-be-issued`);
       router.refresh();
 
     } catch (error: any) {
-      setSubmitError(error.message || "Failed to save invoice.");
+      setSubmitError(error.message || "Failed to finalize transaction.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 md:px-6 animate-in fade-in duration-500 bg-slate-50/30">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 border-b border-slate-200 pb-8">
-        <div className="space-y-1">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
-                    <Receipt className="text-white w-7 h-7" />
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                    Create Invoice
-                </h1>
+    <ScrollArea className="h-screen bg-slate-50/50">
+      <div className="max-w-[1400px] mx-auto py-12 px-6 space-y-10 animate-in fade-in duration-700">
+        
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b border-slate-200 pb-10">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 text-blue-600 font-bold text-xs uppercase tracking-[0.2em]">
+              <Receipt size={16} /> Fiscal Documentation
             </div>
-            <p className="text-sm text-slate-500 font-medium ml-1">
-                Generate professional billing documents with trade compliance.
-            </p>
-        </div>
-        <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting} className="font-semibold border-slate-200 h-10 px-6 bg-white">
-          <ArrowLeft size={16} className="mr-2" /> Cancel
-        </Button>
-      </div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter">New Tax Invoice</h1>
+            <p className="text-sm font-semibold text-slate-500">Execute professional billing records with integrated trade compliance.</p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => router.back()} 
+            disabled={isSubmitting} 
+            className="h-12 px-8 border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white shadow-sm"
+          >
+            <ArrowLeft size={16} className="mr-2" /> Discard Draft
+          </Button>
+        </header>
 
-      {submitError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-800 shadow-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <p className="text-sm font-semibold">{submitError}</p>
-        </div>
-      )}
+        {submitError && (
+          <div className="p-5 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 text-red-900 shadow-sm animate-in slide-in-from-top-2">
+            <AlertCircle className="w-6 h-6 shrink-0 text-red-600" />
+            <p className="text-sm font-bold uppercase tracking-tight">{submitError}</p>
+          </div>
+        )}
 
-      {/* FORM START */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-20">
-        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white rounded-xl">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-200 p-6">
-                <CardTitle className="text-base font-bold text-slate-700 flex items-center gap-2">
-                    <Landmark className="w-4 h-4 text-blue-600" />
-                    Configuration & Compliance
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 md:p-8 space-y-10">
-                
-                {/* 1. IDENTITY GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Client Name</Label>
-                        <select 
-                            {...register("customerId")} 
-                            disabled={isLoadingCustomers || isSubmitting}
-                            className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-semibold focus:ring-2 focus:ring-blue-600 transition-all outline-none"
-                        >
-                            <option value="">{isLoadingCustomers ? "Loading..." : "Select Client"}</option>
-                            {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                        {errors.customerId && <p className="text-red-500 text-[11px] font-bold mt-1 ml-1">{errors.customerId.message}</p>}
-                    </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+          
+          <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
+            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Governance & Compliance</h2>
+          </div>
 
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Trade Origin/Destination</Label>
-                        <div className="flex gap-2">
-                            <input {...register("originCountry")} placeholder="From" className="w-1/2 h-10 px-3 border border-slate-200 rounded-lg text-sm font-mono font-bold" />
-                            <input {...register("destinationCountry")} placeholder="To" className="w-1/2 h-10 px-3 border border-slate-200 rounded-lg text-sm font-mono font-bold" />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Incoterm</Label>
-                        <select {...register("incoterm")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-bold">
-                            {INCOTERMS.map(term => <option key={term} value={term}>{term}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight ml-1">Automation</Label>
-                        <div className="flex items-center h-10 px-4 border border-slate-200 rounded-lg bg-white justify-between">
-                            <span className="text-[11px] font-bold text-slate-500 uppercase">Recurring?</span>
-                            <input type="checkbox" {...register("isRecurring")} className="w-4 h-4 rounded border-slate-300 text-blue-600" />
-                        </div>
-                    </div>
+          <Card className="border-slate-200 shadow-2xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white border-none">
+            <CardContent className="p-8 md:p-12 space-y-12">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Counterparty Name</Label>
+                  <select 
+                    {...register("customerId")} 
+                    disabled={isLoadingCustomers || isSubmitting}
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl bg-slate-50/50 text-sm font-bold focus:ring-4 focus:ring-blue-500/10 transition-all outline-none border-none shadow-inner"
+                  >
+                    <option value="">{isLoadingCustomers ? "Syncing Directory..." : "Select Transaction Party"}</option>
+                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  {errors.customerId && <p className="text-red-500 text-[10px] font-black uppercase mt-2 ml-1">{errors.customerId.message}</p>}
                 </div>
 
-                {/* 2. CURRENCY & DATES */}
-                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-tight">Invoice Currency</Label>
-                        <select {...register("currency")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-bold outline-none">
-                            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
-                        </select>
-                    </div>
-
-                    {selectedCurrency !== businessDNA.currency && (
-                        <div className="space-y-2 animate-in slide-in-from-top-1 duration-300">
-                            <Label className="text-xs font-bold text-emerald-600 uppercase tracking-tight flex items-center gap-1.5">
-                                <RefreshCcw size={12} /> Exchange Rate
-                            </Label>
-                            <div className="flex items-center gap-3">
-                                <input type="number" step="0.0001" {...register("exchangeRate")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm font-mono font-bold" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">{businessDNA.currency} Base</span>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase">Issue Date</Label>
-                            <input type="date" {...register("issueDate")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-xs font-mono font-semibold" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold text-slate-500 uppercase">Due Date</Label>
-                            <input type="date" {...register("dueDate")} className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white text-xs font-mono font-semibold" />
-                        </div>
-                    </div>
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Logistics Corridor (ISO)</Label>
+                  <div className="flex gap-3">
+                    <input {...register("originCountry")} placeholder="ORG" className="w-1/2 h-12 px-4 border-none rounded-xl bg-slate-50/50 text-sm font-black text-center shadow-inner" />
+                    <input {...register("destinationCountry")} placeholder="DST" className="w-1/2 h-12 px-4 border-none rounded-xl bg-slate-50/50 text-sm font-black text-center shadow-inner" />
+                  </div>
                 </div>
 
-                {/* 3. ITEMIZED TABLE */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Commercial Incoterm</Label>
+                  <select {...register("incoterm")} className="w-full h-12 px-4 border-none rounded-xl bg-slate-50/50 text-sm font-black shadow-inner outline-none">
+                    {INCOTERMS.map(term => <option key={term} value={term}>{term}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">Automated Schedule</Label>
+                  <div className="flex items-center h-12 px-5 border-none rounded-xl bg-slate-50/50 justify-between shadow-inner">
+                    <span className="text-[10px] font-black text-slate-500 uppercase">Recurring?</span>
+                    <input type="checkbox" {...register("isRecurring")} className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-0" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100/50 grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Monetary Denomination</Label>
+                  <select {...register("currency")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-sm font-black shadow-sm outline-none">
+                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} ({c.symbol})</option>)}
+                  </select>
+                </div>
+
+                {selectedCurrency !== businessDNA.currency && (
+                  <div className="space-y-3 animate-in fade-in duration-300">
+                    <Label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                      <RefreshCcw size={12} /> Valuation Rate
+                    </Label>
+                    <div className="flex items-center gap-4">
+                      <input type="number" step="0.0001" {...register("exchangeRate")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-sm font-black shadow-sm" />
+                      <span className="text-[10px] font-black text-slate-400 uppercase">{businessDNA.currency} Base</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Issuance Date</Label>
+                    <input type="date" {...register("issueDate")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-xs font-black shadow-sm" />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Maturity Date</Label>
+                    <input type="date" {...register("dueDate")} className="w-full h-12 px-4 border-none rounded-xl bg-white text-xs font-black shadow-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
+                  <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Line Item Detail</h2>
+                </div>
+
+                <div className="border border-slate-100 rounded-3xl overflow-hidden shadow-xl shadow-slate-200/20 bg-white">
+                  <ScrollArea className="w-full">
                     <Table>
-                        <TableHeader className="bg-slate-50">
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 pl-6 h-12">Item Details</TableHead>
-                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-center h-12 w-24">Qty</TableHead>
-                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-right h-12 w-32">Rate</TableHead>
-                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-center h-12 w-24">Tax %</TableHead>
-                                <TableHead className="text-[11px] font-bold uppercase text-slate-500 text-right h-12 pr-6 w-32">Total</TableHead>
-                                <TableHead className="w-12"></TableHead>
+                      <TableHeader className="bg-slate-50/50 border-b border-slate-100">
+                        <TableRow className="h-14 border-none hover:bg-transparent">
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400 pl-8 tracking-widest">Operational Detail</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-center w-28 tracking-widest">Qty</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-right w-40 tracking-widest">Rate (Unit)</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-center w-28 tracking-widest">Tax %</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase text-slate-400 text-right pr-8 w-44 tracking-widest">Line Total</TableHead>
+                          <TableHead className="w-16"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {fields.map((field, index) => {
+                          const qty = items?.[index]?.quantity || 0;
+                          const price = items?.[index]?.unitPrice || 0;
+                          const lineTotal = Money.multiply(Number(price), Number(qty));
+
+                          return (
+                            <TableRow key={field.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-all">
+                              <TableCell className="p-6 pl-8 space-y-3 align-top">
+                                <Input {...register(`items.${index}.description` as const)} placeholder="Enter full service/product description..." className="h-12 border-none bg-slate-50/50 rounded-xl font-bold text-sm shadow-inner" />
+                                <div className="flex gap-2">
+                                  <Badge variant="outline" className="bg-blue-50/50 border-blue-100 text-blue-600 font-black text-[9px] px-3 py-1 uppercase rounded-md tracking-tighter">Tariff Ref</Badge>
+                                  <Input {...register(`items.${index}.hsCode` as const)} placeholder="HS-CODE" className="h-8 border-none bg-slate-50/30 rounded-lg text-[10px] font-black w-32 shadow-inner" />
+                                </div>
+                              </TableCell>
+                              <TableCell className="p-6 align-top">
+                                <Input type="number" step="0.01" {...register(`items.${index}.quantity` as const)} className="h-12 border-none bg-slate-50/50 rounded-xl text-center font-black shadow-inner" />
+                              </TableCell>
+                              <TableCell className="p-6 align-top">
+                                <div className="relative">
+                                  <span className="absolute left-4 top-4 text-[10px] font-black text-slate-300">{currencyMeta.symbol}</span>
+                                  <Input type="number" step="0.01" {...register(`items.${index}.unitPrice` as const)} className="h-12 border-none bg-slate-50/50 rounded-xl pl-8 text-right font-black shadow-inner" />
+                                </div>
+                              </TableCell>
+                              <TableCell className="p-6 align-top">
+                                <Input type="number" step="0.1" {...register(`items.${index}.taxRate` as const)} className="h-12 border-none bg-slate-100/50 rounded-xl text-center font-black shadow-inner" />
+                              </TableCell>
+                              <TableCell className="p-6 text-right align-top font-black text-slate-900 text-base tabular-nums pt-9">
+                                {formatCurrency(lineTotal)}
+                              </TableCell>
+                              <TableCell className="p-6 text-center align-top pt-8">
+                                <Button variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="text-slate-200 hover:text-red-500 h-10 w-10 hover:bg-red-50 rounded-xl">
+                                  <Trash2 size={20} />
+                                </Button>
+                              </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {fields.map((field, index) => {
-                                const qty = items?.[index]?.quantity || 0;
-                                const price = items?.[index]?.unitPrice || 0;
-                                const lineTotal = Money.multiply(Number(price), Number(qty));
-
-                                return (
-                                    <TableRow key={field.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                                        <TableCell className="p-4 pl-6 align-top space-y-2">
-                                            <Input {...register(`items.${index}.description` as const)} placeholder="Service description..." className="h-9 font-semibold" />
-                                            <Input {...register(`items.${index}.hsCode` as const)} placeholder="HS-Code (Optional)" className="h-7 text-[10px] font-mono bg-blue-50 border-none rounded-md" />
-                                        </TableCell>
-                                        <TableCell className="p-4 align-top">
-                                            <Input type="number" step="0.01" {...register(`items.${index}.quantity` as const)} className="h-9 text-center font-mono font-bold" />
-                                        </TableCell>
-                                        <TableCell className="p-4 align-top">
-                                            <div className="relative">
-                                                <span className="absolute left-2.5 top-2.5 text-[10px] text-slate-400 font-bold">{currencyMeta.symbol}</span>
-                                                <Input type="number" step="0.01" {...register(`items.${index}.unitPrice` as const)} className="h-9 pl-7 text-right font-mono font-bold" />
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="p-4 align-top">
-                                            <Input type="number" step="0.1" {...register(`items.${index}.taxRate` as const)} className="h-9 text-center font-mono font-bold bg-slate-50" />
-                                        </TableCell>
-                                        <TableCell className="p-4 text-right align-top pt-5 font-bold text-slate-900">
-                                            {formatCurrency(lineTotal)}
-                                        </TableCell>
-                                        <TableCell className="p-4 text-center align-top pt-4">
-                                            <Button variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="text-slate-300 hover:text-red-500 h-8 w-8">
-                                                <Trash2 size={18} />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
+                          );
+                        })}
+                      </TableBody>
                     </Table>
-                    <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                        <Button type="button" variant="outline" onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessDNA.taxRate })} className="bg-white border-blue-200 text-blue-600 font-bold h-9 px-6 rounded-lg hover:bg-blue-50">
-                            <Plus size={16} className="mr-2" /> Add Item
-                        </Button>
-                        <div className="flex items-center gap-2 text-slate-400">
-                            <CheckCircle2 size={14} className="text-emerald-500" />
-                            <span className="text-[10px] font-bold uppercase tracking-tight">Ledger Logic Active</span>
-                        </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                  <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
+                    <Button type="button" onClick={() => append({ description: '', hsCode: '', quantity: 1, unitPrice: 0, taxRate: businessDNA.taxRate })} className="bg-white border-blue-600 border-2 text-blue-600 font-black h-12 px-8 rounded-2xl hover:bg-blue-600 hover:text-white transition-all gap-3 shadow-lg shadow-blue-600/5">
+                      <Plus size={18} /> Append Transaction Entry
+                    </Button>
+                    <div className="flex items-center gap-3 text-slate-400 font-black text-[10px] uppercase tracking-[0.2em]">
+                      <CheckCircle2 size={16} className="text-emerald-500" /> Distributed Ledger Active
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 pt-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 border-l-4 border-red-500 pl-4 py-1">
+                    <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Financial Footnotes</h2>
+                  </div>
+                  <Textarea 
+                    {...register("notes")} 
+                    className="w-full p-6 border-none rounded-3xl text-sm min-h-[220px] bg-slate-50/50 shadow-inner font-bold text-slate-600 placeholder:text-slate-300" 
+                    placeholder="Specify bank routing information, contractual terms, or regulatory declarations..."
+                  />
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-10 pt-4">
-                    {/* NOTES */}
-                    <div className="flex-1 space-y-2">
-                        <Label className="text-xs font-bold text-slate-500 uppercase ml-1">Additional Notes</Label>
-                        <textarea 
-                            {...register("notes")} 
-                            className="w-full p-4 border border-slate-200 rounded-xl text-sm min-h-[180px] focus:ring-1 focus:ring-blue-600 transition-all outline-none bg-white font-medium text-slate-700" 
-                            placeholder="Add payment terms or bank details..."
-                        />
+                <div className="space-y-8">
+                  <Card className="bg-slate-900 text-white border-none shadow-2xl rounded-[2.5rem] overflow-hidden p-10 space-y-10">
+                    <div className="space-y-6">
+                      <div className="flex justify-between items-center text-slate-500 uppercase tracking-widest text-[10px] font-black">
+                        <span>Operational Subtotal</span> 
+                        <span className="text-white text-sm">{formatCurrency(totals.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-blue-400 uppercase tracking-widest text-[10px] font-black">
+                        <span>Tax Obligation Total</span> 
+                        <span className="text-base">+{formatCurrency(totals.taxTotal)}</span>
+                      </div>
                     </div>
 
-                    {/* TOTALS & SUBMIT */}
-                    <div className="w-full lg:w-[400px] space-y-6">
-                        <Card className="bg-slate-900 text-white border-none shadow-lg rounded-xl overflow-hidden">
-                            <CardHeader className="pb-4 border-b border-white/5">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Invoice Summary</span>
-                            </CardHeader>
-                            <CardContent className="p-6 space-y-4">
-                                <div className="flex justify-between items-center text-sm font-medium text-slate-400">
-                                    <span>Subtotal</span> 
-                                    <span className="font-mono">{formatCurrency(totals.subtotal)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm font-medium text-blue-400">
-                                    <span>Total Tax</span> 
-                                    <span className="font-mono">+{formatCurrency(totals.taxTotal)}</span>
-                                </div>
-                                <div className="border-t border-white/10 pt-6 flex justify-between items-end">
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Amount</span>
-                                    <span className="text-3xl font-bold text-white font-mono tracking-tighter">{formatCurrency(totals.grandTotal)}</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Button 
-                            type="submit" 
-                            disabled={isSubmitting} 
-                            className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest text-base rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
-                        >
-                            {isSubmitting ? (
-                                <><Loader2 className="animate-spin mr-3 h-6 w-6" /> Saving...</>
-                            ) : (
-                                <><Save className="mr-3 h-5 w-5" /> Save & Issue Invoice</>
-                            )}
-                        </Button>
+                    <div className="border-t border-white/10 pt-10 flex justify-between items-end">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Total Valuation</span>
+                        <h4 className="text-5xl font-black text-white tracking-tighter tabular-nums">
+                          {formatCurrency(totals.grandTotal)}
+                        </h4>
+                      </div>
+                      <Badge className="bg-blue-600 text-white font-black px-4 py-2 rounded-xl text-[10px] uppercase tracking-widest border-none mb-2">Net Balance</Badge>
                     </div>
+
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting} 
+                      className="w-full h-18 bg-white hover:bg-blue-50 text-slate-900 font-black uppercase tracking-[0.2em] text-sm rounded-3xl shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 py-8 flex gap-4"
+                    >
+                      {isSubmitting ? (
+                        <><Loader2 className="animate-spin h-6 w-6" /> Syncing Protocol</>
+                      ) : (
+                        <><Save size={20} /> Authorize & Post Invoice</>
+                      )}
+                    </Button>
+                  </Card>
+
+                  <div className="p-8 bg-amber-50/50 border border-amber-100 rounded-3xl flex items-start gap-5">
+                    <div className="p-3 bg-amber-100 text-amber-700 rounded-2xl">
+                      <AlertCircle size={20} />
+                    </div>
+                    <div className="space-y-1">
+                      <h5 className="font-black text-amber-900 text-xs uppercase tracking-tight">Audit Confirmation</h5>
+                      <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                        Authorized users are responsible for the accuracy of HS-Codes and Tax nexus. Financial entries are locked upon posting to the corporate ledger.
+                      </p>
+                    </div>
+                  </div>
                 </div>
+              </div>
             </CardContent>
-        </Card>
+          </Card>
 
-        {/* FOOTNOTE */}
-        <div className="text-center pt-8 opacity-40">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] flex items-center justify-center gap-2">
-                <FileText size={12} /> System Reference: BBU1 INV-ENG-10
-            </p>
-        </div>
-      </form>
-    </div>
+          <footer className="text-center py-12 opacity-30">
+            <div className="flex items-center justify-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
+              <FileText size={14} /> System Node ID: INV-CORP-A-01
+            </div>
+          </footer>
+        </form>
+      </div>
+      <ScrollBar />
+    </ScrollArea>
   );
 }
