@@ -657,28 +657,27 @@ export default function Sidebar() {
         return undefined;
     }, [pathname]);
 
-    const renderAccordionNav = (items: NavItem[]) => (
+  const renderAccordionNav = (items: NavItem[]) => (
         <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full">
             {items.map((item) => {
                 if (item.type === 'link') {
                     return <NavLinkComponent key={item.href} href={item.href} label={item.label} Icon={item.icon} isSidebarOpen={isSidebarOpen} />;
                 }
+                
                 if (item.type === 'accordion') {
-                    const userRole = role?.toLowerCase() || '';
-                    // DEEP UPGRADE: Applying normalization to sub-item rendering logic
-                    const rawBizType = tenant?.business_type || '';
-                    const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
-                                    rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
-                                    rawBizType === 'Nonprofit' ? 'Nonprofit / Education / NGO' :
-                                    rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
-                                    (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
-
-                    const isSovereign = ['architect', 'commander'].includes(userRole);
+                    // DEEP FIX: We have REMOVED the local 'const userRole', 'const bizType', and 'const isSovereign' lines.
+                    // This function now inherits the authoritative variables from the Sidebar parent scope.
 
                     const filteredSubItems = item.subItems.filter(sub => {
+                        // 1. SOVEREIGN BYPASS: Inherited from parent scope
                         if (isSovereign) return true;
+
+                        // 2. ROLE CHECK: Matches against your 60+ roles (e.g. accountant)
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
+
+                        // 3. INDUSTRY CHECK: Uses the normalized bizType from parent scope
                         const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
+                        
                         return roleOk && bizOk;
                     });
 
@@ -708,7 +707,6 @@ export default function Sidebar() {
             })}
         </Accordion>
     );
-
     return (
         <aside className={cn(
             "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm overflow-hidden",
