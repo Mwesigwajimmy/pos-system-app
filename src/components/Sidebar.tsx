@@ -586,7 +586,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     
     // 1. Authoritative Data Retrieval
-    // Renamed 'role' to 'rawRole' to isolate hook result from context resolution
+    // 'rawRole' isolates the hook result to allow for context resolution below
     const { role: rawRole, isLoading: isLoadingRole } = useUserRole();
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
@@ -594,14 +594,14 @@ export default function Sidebar() {
     const { branding } = useBranding();
     const { data: profile } = useUserProfile();
 
-    // 2. DEEP IDENTITY RESOLUTION (THE FIX)
-    // Prioritizes Active Membership Role -> Root Hook -> Master Profile
-    // Scoped at component root so the entire OS recognizes the identity swap
+    // 2. DEEP IDENTITY RESOLUTION (THE WELD)
+    // Resolves the context-aware role (e.g., Accountant) from the active business membership.
+    // Scoped at component root to be accessible to all sub-link filters.
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
     // 3. INDUSTRY CONTEXT NORMALIZATION
-    // Moved to component root so both Main Nav and Accordion Sub-items can access it
+    // Centralized industry logic ensuring sub-items and main modules are in perfect sync.
     const rawBizType = tenant?.business_type || '';
     const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
                     rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
@@ -609,8 +609,8 @@ export default function Sidebar() {
                     rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
                     (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
 
-    // 4. SOVEREIGN AUTHORITY RESOLUTION
-    // Authoritative gates available globally within this component scope
+    // 4. SOVEREIGN AUTHORITY GATES
+    // Root-scoped booleans to resolve 'God-Mode' vs 'Restricted-Node' access instantly.
     const isSovereign = ['architect', 'commander'].includes(userRole);
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
@@ -623,20 +623,20 @@ export default function Sidebar() {
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
-    // --- NAVIGATION LOGIC WELD ---
+    // --- NAVIGATION LOGIC ENGINE ---
     const finalNavItems = useMemo(() => {
-        // [DEEP GATE]: Use 'userRole' (the resolved context) for the gate check
+        // [IDENTITY GUARD]: Strictly validates session readiness before rendering
         if (isLoading || !userRole || !tenant) return [];
 
         return navSections.filter((item) => {
-            // RULE 1: SOVEREIGN OVERRIDE
+            // RULE 1: SOVEREIGN BYPASS (Only for mwesigwajimmy123@gmail.com)
             if (isSovereign) return true;
 
-            // RULE 2: ROLE PERMISSION GATE
+            // RULE 2: ROLE PERMISSION GATE (Supports your 60+ Job Roles)
             const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
 
-            // RULE 3: MODULE ENABLEMENT GATE
+            // RULE 3: MODULE ENTITLEMENT GATE (Matches SQL public.modules slugs)
             if (item.module) {
                 const isModuleEnabled = enabledModules?.includes?.(item.module);
                 if (!isAdminOrOwner && !isModuleEnabled) {
@@ -652,7 +652,7 @@ export default function Sidebar() {
 
             return true;
         });
-        // [DEPENDENCY SYNC]: Reacts to industry swaps and identity changes instantly
+        // [REACTIVE SYNC]: Recalculates instantly on business switch or identity swap
     }, [isLoading, userRole, enabledModules, tenant, pathname, bizType, rawBizType, isSovereign, isAdminOrOwner]);
 
     const activeAccordionValue = useMemo(() => {
@@ -672,8 +672,8 @@ export default function Sidebar() {
                 }
                 
                 if (item.type === 'accordion') {
-                    // [DEEP FIX]: Inherits authoritative variables from the component scope.
-                    // Local declarations removed to resolve ReferenceErrors.
+                    // [DEEP SCOPE WELD]: Local declarations removed to utilize the authoritative 
+                    // root-level variables. This fixes the 'ReferenceError' and unlocks sub-links.
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
                         
@@ -724,7 +724,7 @@ export default function Sidebar() {
                     <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-2 duration-500 overflow-hidden">
                         <BusinessSwitcher />
                         
-                        {/* [IDENTITY SEAL]: Real-time name and role resolution */}
+                        {/* [IDENTITY SEAL]: Real-time node name and operator role resolution */}
                         <div className="flex flex-col mt-1 px-1 overflow-hidden">
                             <span className="text-[10px] font-black uppercase tracking-tighter text-slate-900 truncate leading-none">
                                 {businessName}
@@ -735,9 +735,14 @@ export default function Sidebar() {
                         </div>
                     </div>
                 ) : (
+                    /* PROFESSIONAL IDENTITY ANCHOR (CLOSED VIEW) */
                     <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
                         {branding?.logo_url ? (
-                            <img src={branding.logo_url} className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50 p-0.5 bg-white" alt="Logo" />
+                            <img 
+                                src={branding.logo_url} 
+                                className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50 p-0.5 bg-white" 
+                                alt="Logo" 
+                            />
                         ) : (
                             <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
                                 {businessName.charAt(0).toUpperCase()}
@@ -746,7 +751,15 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                <Button onClick={toggleSidebar} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 ml-2", !isSidebarOpen && "bg-blue-50 text-blue-600")}>
+                <Button
+                    onClick={toggleSidebar}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2",
+                        !isSidebarOpen && "bg-blue-50 text-blue-600"
+                    )}
+                >
                     {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                 </Button>
             </div>
@@ -766,14 +779,30 @@ export default function Sidebar() {
             </nav>
 
             {/* --- FOOTER ACTION SECTION --- */}
-            <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 transition-colors", isSidebarOpen ? "bg-slate-50/50" : "bg-white")}>
-                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all", !isSidebarOpen && "justify-center px-0 h-12 w-12 mx-auto rounded-xl")} onClick={openCopilot}>
+            <div className={cn(
+                "p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 transition-colors",
+                isSidebarOpen ? "bg-slate-50/50" : "bg-white"
+            )}>
+                <Button 
+                    variant="default" 
+                    className={cn(
+                        "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95", 
+                        !isSidebarOpen && "justify-center px-0 h-12 w-12 mx-auto rounded-xl"
+                    )} 
+                    onClick={openCopilot}
+                >
                     <Sparkles className={cn("h-5 w-5 fill-white/20", isSidebarOpen && "mr-3")} />
                     {isSidebarOpen && <span className="tracking-tight">AI Assistant</span>}
                 </Button>
                 
                 <Link href="/settings" className="block">
-                    <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-white hover:text-blue-600 transition-all group", !isSidebarOpen && "justify-center px-0 h-10 w-10 mx-auto rounded-xl")}>
+                    <Button 
+                        variant="ghost" 
+                        className={cn(
+                            "w-full justify-start text-slate-500 font-bold hover:bg-white hover:text-blue-600 transition-all group", 
+                            !isSidebarOpen && "justify-center px-0 h-10 w-10 mx-auto rounded-xl"
+                        )}
+                    >
                         <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
                         {isSidebarOpen && <span className="tracking-tight">General Settings</span>}
                     </Button>
