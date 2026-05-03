@@ -74,6 +74,7 @@ import ImportProductsDialog from '@/components/inventory/ImportProductsDialog';
 import EditProductModal from '@/components/inventory/EditProductModal';
 import AuditLogDialog from '@/components/inventory/AuditLogDialog';
 import CreateAdjustmentForm from '@/components/inventory/CreateAdjustmentForm';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 // --- Interfaces ---
 interface DataTableProps {
@@ -354,8 +355,8 @@ export default function InventoryDataTable({
       </div>
 
       {/* Bulk Action Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center bg-slate-900 text-white p-3 px-5 rounded-xl shadow-lg border-none">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row gap-4 md:items-center bg-slate-900 text-white p-4 px-6 rounded-xl shadow-lg border-none">
+        <div className="flex items-center gap-3 shrink-0">
             <div className="p-1.5 bg-blue-600 rounded-md">
                 <Box size={16} className="text-white" />
             </div>
@@ -364,9 +365,9 @@ export default function InventoryDataTable({
             </span>
         </div>
         
-        <div className="h-4 w-[1px] bg-white/20 hidden sm:block mx-2" />
+        <div className="h-4 w-[1px] bg-white/20 hidden md:block mx-2" />
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 flex-1">
             <Button 
                 variant="destructive" 
                 size="sm" 
@@ -401,56 +402,59 @@ export default function InventoryDataTable({
         </div>
       </div>
 
-      {/* Table Container */}
+      {/* Table Container - Enabled Horizontal Scroll for visibility */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50/50">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="h-12 text-[11px] font-bold uppercase text-slate-500 tracking-wider">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-64 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                        <span className="text-sm font-medium text-slate-500">Updating inventory...</span>
-                    </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow 
-                    key={row.id} 
-                    data-state={row.getIsSelected() && "selected"} 
-                    className="hover:bg-slate-50/50 transition-colors border-b border-slate-100"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3 text-sm text-slate-700">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+        <ScrollArea className="w-full">
+            <Table>
+            <TableHeader className="bg-slate-50/50">
+                {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                    {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} className="h-12 text-[11px] font-bold uppercase text-slate-500 tracking-wider whitespace-nowrap">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                    ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                  <TableCell colSpan={columns.length} className="h-64 text-center">
-                    <div className="flex flex-col items-center text-slate-300">
-                        <Package size={48} className="mb-2" />
-                        <p className="text-sm font-semibold">No products found</p>
-                    </div>
-                  </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                ))}
+            </TableHeader>
+            <TableBody>
+                {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={columns.length} className="h-64 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                            <span className="text-sm font-medium text-slate-500">Updating inventory...</span>
+                        </div>
+                    </TableCell>
+                </TableRow>
+                ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                    <TableRow 
+                        key={row.id} 
+                        data-state={row.getIsSelected() && "selected"} 
+                        className="hover:bg-slate-50/50 transition-colors border-b border-slate-100"
+                    >
+                    {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="py-3 text-sm text-slate-700 whitespace-nowrap">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                    ))}
+                    </TableRow>
+                ))
+                ) : (
+                <TableRow>
+                    <TableCell colSpan={columns.length} className="h-64 text-center">
+                        <div className="flex flex-col items-center text-slate-300">
+                            <Package size={48} className="mb-2" />
+                            <p className="text-sm font-semibold">No products found</p>
+                        </div>
+                    </TableCell>
+                </TableRow>
+                )}
+            </TableBody>
+            </Table>
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
 
       {/* Pagination */}

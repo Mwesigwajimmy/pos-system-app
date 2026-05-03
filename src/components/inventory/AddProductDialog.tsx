@@ -58,7 +58,9 @@ import {
   Palette,
   ArrowRightLeft,
   Activity,
-  ShieldCheck
+  ShieldCheck,
+  Building2,
+  MapPin
 } from 'lucide-react';
 
 import { Category } from '@/types/dashboard';
@@ -115,6 +117,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
   const [productName, setProductName] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [locationId, setLocationId] = useState<string | null>(null); // NEW: Location state
   const [uomId, setUomId] = useState<string | null>(null);
   const [taxCategoryCode, setTaxCategoryCode] = useState('STANDARD'); 
   const [isMultiVariant, setIsMultiVariant] = useState(false);
@@ -129,6 +132,21 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data } = await supabase.from('profiles').select('currency, business_id').eq('id', user?.id).single();
+      return data;
+    }
+  });
+
+  // NEW: Fetch all available Branches/Locations for this business
+  const { data: locations } = useQuery({
+    queryKey: ['business_locations', profile?.business_id],
+    enabled: !!profile?.business_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name')
+        .eq('business_id', profile?.business_id)
+        .eq('status', 'active');
+      if (error) throw error;
       return data;
     }
   });
@@ -224,11 +242,14 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
+      if (!locationId) throw new Error("Please select a storage location");
+
       const { data: product, error: prodError } = await supabase.from('products').insert({
           name: productName,
           category_id: categoryId ? parseInt(categoryId) : null,
           uom_id: uomId || null, 
           business_id: profile?.business_id,
+          location_id: locationId, // AUTHORITATIVE SYNC: Added location
           is_active: true,
           status: 'active',
           tax_category_code: taxCategoryCode.toUpperCase()
@@ -249,6 +270,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         attributes: v.attributes,
         uom_id: v.uom_id || uomId || null, 
         business_id: profile?.business_id,
+        location_id: locationId, // AUTHORITATIVE SYNC: Added location to variants
         tax_category_code: taxCategoryCode.toUpperCase()
       }));
 
@@ -260,19 +282,21 @@ export default function ProductManagementConsole({ categories }: ProductManageme
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
       setOpen(false);
       resetForm();
+    },
+    onError: (err: any) => {
+      toast.error(err.message);
     }
   });
 
   const resetForm = () => {
-    setProductName(''); setCategoryId(null); setUomId(null); setTaxCategoryCode('STANDARD');
+    setProductName(''); setCategoryId(null); setUomId(null); setTaxCategoryCode('STANDARD'); setLocationId(null);
     setIsMultiVariant(false); setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Color Palette', inputValue: '', values: [] }]); setActiveTab("configuration");
   };
 
   return (
-    <div className="max-w-[1600px] mx-auto py-12 px-10 space-y-12 animate-in fade-in duration-700 bg-white min-h-screen">
+    <div className="max-w-[1600px] mx-auto py-12 px-10 space-y-12 animate-in fade-in duration-700 bg-white min-h-screen text-slate-900">
       
-      {/* PROFESSIONAL HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-slate-100 pb-12">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-widest">
@@ -311,14 +335,35 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
               <ScrollArea className="flex-1 bg-white">
                 <div className="p-12 space-y-16">
-                  {/* FORM FIELDS - REDACTED FOR BREVITY - FULL FORM RETAINED IN ACTUAL OUTPUT */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                      <div className="space-y-4">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Commercial Designation</Label>
-                          <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Official product name" className="h-14 border-none bg-slate-50 rounded-2xl font-bold px-6 shadow-inner" />
+                  
+                  {/* MAIN IDENTITY & STRATEGIC FIELDS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                      <div className="space-y-4 lg:col-span-1">
+                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Asset Identity</Label>
+                          <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Material or product name" className="h-14 border-none bg-slate-50 rounded-2xl font-bold px-6 shadow-inner" />
                       </div>
+
+                      {/* NEW: BRANCH/LOCATION SELECTION */}
                       <div className="space-y-4">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Strategic Classification</Label>
+                          <Label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest ml-1 flex items-center gap-1.5"><MapPin size={12}/> Target Node / Branch</Label>
+                          <Select value={locationId || ''} onValueChange={setLocationId}>
+                              <SelectTrigger className="h-14 border-none bg-blue-50/50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0 text-blue-700">
+                                <SelectValue placeholder="Identify Location" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                  {locations?.map(loc => (
+                                    <SelectItem key={loc.id} value={loc.id} className="font-bold py-4">
+                                      <div className="flex items-center gap-2 uppercase tracking-tighter">
+                                        <Building2 size={14} className="text-slate-400" /> {loc.name}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                      </div>
+
+                      <div className="space-y-4">
+                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Classification</Label>
                           <Select value={categoryId || ''} onValueChange={setCategoryId}>
                               <SelectTrigger className="h-14 border-none bg-slate-50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0"><SelectValue placeholder="Select Category" /></SelectTrigger>
                               <SelectContent className="rounded-2xl border-none shadow-2xl">
@@ -326,14 +371,15 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                               </SelectContent>
                           </Select>
                       </div>
+
                       <div className="space-y-4">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Taxation Authority</Label>
+                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Taxation Node</Label>
                           <Select value={taxCategoryCode} onValueChange={setTaxCategoryCode}>
                             <SelectTrigger className="h-14 border-none bg-slate-50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-2xl border-none shadow-2xl">
-                                <SelectItem value="STANDARD" className="font-bold py-4">Standard Operational Rate</SelectItem>
-                                <SelectItem value="EXEMPT" className="font-bold py-4">Registry Exempt</SelectItem>
-                                <SelectItem value="REDUCED" className="font-bold py-4">Reduced Regulatory Rate</SelectItem>
+                                <SelectItem value="STANDARD" className="font-bold py-4 text-xs">Standard Operational Rate</SelectItem>
+                                <SelectItem value="EXEMPT" className="font-bold py-4 text-xs">Registry Exempt</SelectItem>
+                                <SelectItem value="REDUCED" className="font-bold py-4 text-xs">Reduced Regulatory Rate</SelectItem>
                             </SelectContent>
                           </Select>
                       </div>
@@ -344,9 +390,12 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                           <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Metric Measurement Unit</Label>
                           <div className="flex gap-4">
                             <Select value={uomId || ''} onValueChange={setUomId}>
-                                <SelectTrigger className="flex-1 h-14 border-none bg-slate-50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0"><SelectValue placeholder="Base Metric" /></SelectTrigger>
+                                <SelectTrigger className="flex-1 h-14 border-none bg-slate-50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0"><SelectValue placeholder="Base Metric (Box, Each, etc.)" /></SelectTrigger>
                                 <SelectContent className="rounded-2xl border-none shadow-2xl">
-                                    {units.map(u => <SelectItem key={u.id} value={String(u.id)} className="font-bold py-4">{u.name} ({u.abbreviation})</SelectItem>)}
+                                    <div className="p-2 border-b border-slate-50"><Search size={14} className="text-slate-300" /></div>
+                                    <ScrollArea className="h-64">
+                                      {units.map(u => <SelectItem key={u.id} value={String(u.id)} className="font-bold py-4">{u.name} ({u.abbreviation})</SelectItem>)}
+                                    </ScrollArea>
                                 </SelectContent>
                             </Select>
                             <Button variant="ghost" onClick={() => setIsUnitModalOpen(true)} className="h-14 w-14 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
@@ -356,7 +405,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                       </div>
                       <div className="flex items-center space-x-6 p-8 rounded-[2rem] bg-slate-50/50 border border-slate-100 h-16 shadow-sm">
                           <Switch checked={isMultiVariant} onCheckedChange={(checked) => { setIsMultiVariant(checked); if (!checked) setVariants([{ ...DEFAULT_VARIANT }]); }} />
-                          <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Authorize Multi-Variant Spec (Color Palette, Logic)</Label>
+                          <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer">Authorize Multi-Variant Spec (Formula, Size, Colors)</Label>
                       </div>
                   </div>
 
@@ -395,12 +444,12 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                 {attributes.map((attr, idx) => (
                                     <div key={idx} className="flex gap-8 items-end bg-slate-50/50 p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
                                         <div className="w-1/3 space-y-4">
-                                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Attribute Node (e.g. Color Palette)</Label>
+                                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Attribute Node (e.g. Size)</Label>
                                             <Input value={attr.name} onChange={e => { const updated = [...attributes]; updated[idx].name = e.target.value; setAttributes(updated); }} placeholder="Spec title" className="h-14 border-none bg-white rounded-2xl shadow-inner font-bold px-6" />
                                         </div>
                                         <div className="flex-1 space-y-4">
                                             <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Registry Values (Separate with Comma)</Label>
-                                            <Input value={attr.inputValue} onChange={e => { const updated = [...attributes]; updated[idx].inputValue = e.target.value; setAttributes(updated); }} placeholder="Industrial Red, Slate Gray, Cobalt Blue" className="h-14 border-none bg-white rounded-2xl shadow-inner font-bold px-6" />
+                                            <Input value={attr.inputValue} onChange={e => { const updated = [...attributes]; updated[idx].inputValue = e.target.value; setAttributes(updated); }} placeholder="Large, Medium, Small" className="h-14 border-none bg-white rounded-2xl shadow-inner font-bold px-6" />
                                         </div>
                                         <Button variant="ghost" size="icon" onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 h-14 w-14 rounded-2xl transition-colors">
                                             <Trash size={24} />
@@ -467,9 +516,8 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </div>
       </header>
 
-      {/* OPERATIONAL LEDGER MAIN INTERFACE */}
+      {/* LEDGER INTERFACE */}
       <main className="space-y-12">
-        {/* LEDGER ANALYTICS BAR */}
         <div className="flex flex-col md:flex-row gap-6 items-center justify-between bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100">
           <div className="relative w-full md:w-[500px]">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
@@ -482,7 +530,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
           <div className="flex items-center gap-12 px-12">
               <div className="text-right space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Nodes</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Nodes</span>
                 <p className="text-3xl font-bold text-slate-900 tracking-tighter">{products?.length || 0}</p>
               </div>
               <div className="h-12 w-px bg-slate-200" />
@@ -493,14 +541,13 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </div>
 
-        {/* LEDGER TABLE CARTRIDGE */}
         <Card className="rounded-[3.5rem] border-none shadow-[0_48px_80px_-15px_rgba(0,0,0,0.06)] overflow-hidden bg-white">
           <CardContent className="p-0">
             <ScrollArea className="w-full">
               <Table>
                 <TableHeader className="bg-slate-50/50 border-b border-slate-50">
                   <TableRow className="h-20 border-none hover:bg-transparent">
-                    <TableHead className="pl-12 font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Product Node / Specification</TableHead>
+                    <TableHead className="pl-12 font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Product / Specification</TableHead>
                     <TableHead className="font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Sector Category</TableHead>
                     <TableHead className="text-right font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Acquisition Rate</TableHead>
                     <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-[0.2em]">Ledger Balance</TableHead>
@@ -553,7 +600,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </Card>
       </main>
 
-      {/* FOOTER METADATA */}
       <footer className="pt-24 pb-20 flex justify-between items-center opacity-30 border-t border-slate-100">
         <div className="flex items-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.5em]">
            <ShieldCheck size={16} /> Distributed Asset Protocol v2.6.5
@@ -563,7 +609,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </div>
       </footer>
 
-      {/* UNIT DIALOG RETAINED */}
+      {/* UNIT DIALOG */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
           <DialogHeader className="px-12 py-10 bg-slate-950 text-white border-none">
