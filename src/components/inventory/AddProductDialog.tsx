@@ -106,6 +106,7 @@ const DEFAULT_VARIANT: VariantDraft = {
 export default function ProductManagementConsole({ categories }: ProductManagementProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [uomSearchQuery, setUomSearchQuery] = useState(""); // NEW: Search state for UOM
   const queryClient = useQueryClient();
   const supabase = createClient();
 
@@ -117,7 +118,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
   const [productName, setProductName] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [locationId, setLocationId] = useState<string | null>(null); // NEW: Location state
+  const [locationId, setLocationId] = useState<string | null>(null); 
   const [uomId, setUomId] = useState<string | null>(null);
   const [taxCategoryCode, setTaxCategoryCode] = useState('STANDARD'); 
   const [isMultiVariant, setIsMultiVariant] = useState(false);
@@ -136,7 +137,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     }
   });
 
-  // NEW: Fetch all available Branches/Locations for this business
   const { data: locations } = useQuery({
     queryKey: ['business_locations', profile?.business_id],
     enabled: !!profile?.business_id,
@@ -177,6 +177,13 @@ export default function ProductManagementConsole({ categories }: ProductManageme
       fetchUnits();
     }
   }, [open, supabase]);
+
+  const filteredUnits = useMemo(() => {
+    return units.filter(u => 
+      u.name.toLowerCase().includes(uomSearchQuery.toLowerCase()) || 
+      u.abbreviation.toLowerCase().includes(uomSearchQuery.toLowerCase())
+    );
+  }, [units, uomSearchQuery]);
 
   const generateReport = () => {
     const doc = new jsPDF();
@@ -249,7 +256,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           category_id: categoryId ? parseInt(categoryId) : null,
           uom_id: uomId || null, 
           business_id: profile?.business_id,
-          location_id: locationId, // AUTHORITATIVE SYNC: Added location
+          location_id: locationId, 
           is_active: true,
           status: 'active',
           tax_category_code: taxCategoryCode.toUpperCase()
@@ -270,7 +277,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         attributes: v.attributes,
         uom_id: v.uom_id || uomId || null, 
         business_id: profile?.business_id,
-        location_id: locationId, // AUTHORITATIVE SYNC: Added location to variants
+        location_id: locationId, 
         tax_category_code: taxCategoryCode.toUpperCase()
       }));
 
@@ -289,7 +296,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
   });
 
   const resetForm = () => {
-    setProductName(''); setCategoryId(null); setUomId(null); setTaxCategoryCode('STANDARD'); setLocationId(null);
+    setProductName(''); setCategoryId(null); setUomId(null); setTaxCategoryCode('STANDARD'); setLocationId(null); setUomSearchQuery("");
     setIsMultiVariant(false); setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Color Palette', inputValue: '', values: [] }]); setActiveTab("configuration");
   };
@@ -336,14 +343,12 @@ export default function ProductManagementConsole({ categories }: ProductManageme
               <ScrollArea className="flex-1 bg-white">
                 <div className="p-12 space-y-16">
                   
-                  {/* MAIN IDENTITY & STRATEGIC FIELDS */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                       <div className="space-y-4 lg:col-span-1">
                           <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Asset Identity</Label>
                           <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Material or product name" className="h-14 border-none bg-slate-50 rounded-2xl font-bold px-6 shadow-inner" />
                       </div>
 
-                      {/* NEW: BRANCH/LOCATION SELECTION */}
                       <div className="space-y-4">
                           <Label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest ml-1 flex items-center gap-1.5"><MapPin size={12}/> Target Node / Branch</Label>
                           <Select value={locationId || ''} onValueChange={setLocationId}>
@@ -390,11 +395,31 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                           <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Metric Measurement Unit</Label>
                           <div className="flex gap-4">
                             <Select value={uomId || ''} onValueChange={setUomId}>
-                                <SelectTrigger className="flex-1 h-14 border-none bg-slate-50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0"><SelectValue placeholder="Base Metric (Box, Each, etc.)" /></SelectTrigger>
-                                <SelectContent className="rounded-2xl border-none shadow-2xl">
-                                    <div className="p-2 border-b border-slate-50"><Search size={14} className="text-slate-300" /></div>
+                                <SelectTrigger className="flex-1 h-14 border-none bg-slate-50 rounded-2xl font-bold shadow-inner px-6 focus:ring-0">
+                                  <SelectValue placeholder="Base Metric (Box, Each, etc.)" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-2xl border-none shadow-2xl p-0">
+                                    <div className="p-3 bg-white border-b border-slate-100 flex items-center gap-3 sticky top-0 z-10">
+                                      <Search size={16} className="text-slate-300" />
+                                      <input 
+                                        type="text"
+                                        placeholder="Search units..."
+                                        value={uomSearchQuery}
+                                        onChange={(e) => setUomSearchQuery(e.target.value)}
+                                        className="w-full bg-transparent border-none outline-none font-bold text-sm"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                      />
+                                    </div>
                                     <ScrollArea className="h-64">
-                                      {units.map(u => <SelectItem key={u.id} value={String(u.id)} className="font-bold py-4">{u.name} ({u.abbreviation})</SelectItem>)}
+                                      {filteredUnits.length > 0 ? (
+                                        filteredUnits.map(u => (
+                                          <SelectItem key={u.id} value={String(u.id)} className="font-bold py-4">
+                                            {u.name} ({u.abbreviation})
+                                          </SelectItem>
+                                        ))
+                                      ) : (
+                                        <div className="p-10 text-center text-xs font-bold text-slate-300 uppercase tracking-widest">No results</div>
+                                      )}
                                     </ScrollArea>
                                 </SelectContent>
                             </Select>
@@ -405,7 +430,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                       </div>
                       <div className="flex items-center space-x-6 p-8 rounded-[2rem] bg-slate-50/50 border border-slate-100 h-16 shadow-sm">
                           <Switch checked={isMultiVariant} onCheckedChange={(checked) => { setIsMultiVariant(checked); if (!checked) setVariants([{ ...DEFAULT_VARIANT }]); }} />
-                          <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest cursor-pointer">Authorize Multi-Variant Spec (Formula, Size, Colors)</Label>
+                          <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest cursor-pointer">Authorize Multi-Variant Spec (Formula, Size, Colors)</Label>
                       </div>
                   </div>
 
@@ -516,7 +541,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </div>
       </header>
 
-      {/* LEDGER INTERFACE */}
       <main className="space-y-12">
         <div className="flex flex-col md:flex-row gap-6 items-center justify-between bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100">
           <div className="relative w-full md:w-[500px]">

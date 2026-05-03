@@ -31,7 +31,7 @@ export default function Header() {
   const businessName = tenant?.business_display_name || 
                        branding?.company_name_display || 
                        profile?.business_name || 
-                       "Sovereign Node";
+                       "Primary Business Unit";
 
   const [urgentCount, setUrgentCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -89,56 +89,54 @@ export default function Header() {
   };
 
   return (
-    <header className="flex justify-between items-center px-10 h-24 bg-white border-b border-slate-100 w-full sticky top-0 z-50 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.03)]">
+    <header className="flex justify-between items-center px-8 h-20 bg-white border-b border-slate-100 w-full sticky top-0 z-50 shadow-sm">
       
-      {/* --- LEFT: DYNAMIC OPERATOR IDENTITY --- */}
-      <div className="flex items-center gap-12">
-        <div className="flex flex-col min-w-[240px]">
-            <div className="flex items-center gap-3">
-                <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
+      {/* --- LEFT: OPERATOR IDENTITY --- */}
+      <div className="flex items-center gap-10">
+        <div className="flex flex-col min-w-[200px]">
+            <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold tracking-tight text-slate-900">
                     {profile?.full_name || "Authorized Operator"}
                 </h1>
-                <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[8px] font-black text-emerald-700 uppercase tracking-widest">Active</span>
-                </div>
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" title="System Connected" />
             </div>
             
-            <div className="flex items-center gap-3 mt-1.5">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+            <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
                     {profile?.role || "System Admin"}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
-                    <Building2 size={12} className="text-slate-300" /> 
+                <span className="h-3 w-[1px] bg-slate-200" />
+                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-tight flex items-center gap-1">
+                    <Building2 size={10} className="text-slate-400" /> 
                     {businessName}
                 </span>
             </div>
         </div>
 
-        {/* --- SEARCH BAR TERMINAL --- */}
+        {/* --- SEARCH TERMINAL --- */}
         <div className="relative hidden xl:block group">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+            <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
             <input 
                 type="text" 
-                placeholder="Query system records or node identifiers..."
-                className="pl-12 pr-6 py-3 w-[450px] text-xs bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-200 transition-all font-bold uppercase tracking-wider shadow-inner"
+                placeholder="Search records, accounts, or node identifiers..."
+                className="pl-11 pr-6 py-2.5 w-[400px] text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-200 transition-all font-medium shadow-inner"
             />
         </div>
       </div>
 
       {/* --- RIGHT: ACTIONS & METRICS --- */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
         
-        {/* Reporting Currency Node */}
-        <div className="hidden lg:flex items-center gap-4 pr-8 border-r border-slate-100">
+        {/* Currency Display Node */}
+        <div className="hidden lg:flex items-center gap-3 pr-6 border-r border-slate-100">
             <div className="text-right">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Accounting Node</p>
-                <p className="text-sm font-black text-slate-900 tabular-nums tracking-tighter mt-1">
-                    {tenant?.reporting_currency || branding?.currency_code || "UGX"} ISO-4217
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Currency Node</p>
+                <p className="text-sm font-bold text-slate-900 leading-none mt-1.5">
+                    {tenant?.reporting_currency || branding?.currency_code || "UGX"}
                 </p>
             </div>
-            <div className="h-12 w-12 rounded-[1.25rem] bg-slate-900 flex items-center justify-center text-blue-400 shadow-xl shadow-slate-200 border border-slate-800">
-                <Globe size={20} />
+            <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-200">
+                <Globe size={18} />
             </div>
         </div>
 
@@ -146,58 +144,55 @@ export default function Header() {
         <div className="flex items-center gap-2">
             <Sheet>
             <SheetTrigger asChild>
-                <button className="relative p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/50 transition-all cursor-pointer group active:scale-95 shadow-sm">
-                    <Bell className={`w-5 h-5 transition-transform group-hover:rotate-12 ${urgentCount > 0 ? "text-blue-600 animate-pulse" : "text-slate-400"}`} />
+                <button className="relative p-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer group active:scale-95">
+                    <Bell className={`w-5 h-5 ${urgentCount > 0 ? "text-blue-600 animate-pulse" : "text-slate-400"}`} />
                     {urgentCount > 0 && (
-                    <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm" />
                     )}
                 </button>
             </SheetTrigger>
-            <SheetContent className="w-[480px] p-0 flex flex-col shadow-2xl border-l border-slate-200 bg-white">
-                <SheetHeader className="p-10 border-b border-slate-50">
+            <SheetContent className="w-[420px] p-0 flex flex-col shadow-2xl border-l border-slate-200 bg-white">
+                <SheetHeader className="p-8 border-b border-slate-50">
                 <div className="flex justify-between items-center">
                     <div>
-                        <SheetTitle className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Command Feed</SheetTitle>
-                        <SheetDescription className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">
-                            Tactical System Communications
+                        <SheetTitle className="text-xl font-bold text-slate-900 uppercase tracking-tight">Notifications</SheetTitle>
+                        <SheetDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                            Live Telemetry & Activity Logs
                         </SheetDescription>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={clearNotifications} className="h-12 w-12 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
-                        <Trash2 size={22} />
+                    <Button variant="ghost" size="icon" onClick={clearNotifications} className="h-10 w-10 text-slate-300 hover:text-red-500 rounded-lg">
+                        <Trash2 size={18} />
                     </Button>
                 </div>
                 </SheetHeader>
 
-                <ScrollArea className="flex-1 px-10 py-8 bg-slate-50/30">
-                <div className="space-y-6">
+                <ScrollArea className="flex-1 px-8 py-6 bg-slate-50/30">
+                <div className="space-y-4">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-slate-300">
-                            <Activity className="animate-spin mb-6 h-10 w-10 text-blue-600" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.5em] animate-pulse">Syncing Communication Hub...</span>
+                        <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                            <Activity className="animate-spin mb-4 h-8 w-8 text-blue-600" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Synchronizing Hub...</span>
                         </div>
                     ) : notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-40 text-center">
-                            <div className="w-20 h-20 bg-white border border-slate-100 rounded-[2.5rem] flex items-center justify-center text-emerald-500 mb-8 shadow-xl shadow-slate-200/50">
-                                <CheckCircle2 size={40} />
+                        <div className="flex flex-col items-center justify-center py-32 text-center">
+                            <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-emerald-500 mb-4 shadow-sm">
+                                <CheckCircle2 size={28} />
                             </div>
-                            <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Nodes Operational: Normal</p>
-                            <p className="text-[11px] text-slate-400 font-bold mt-3 uppercase tracking-tighter">No telemetry alerts in the current buffer.</p>
+                            <p className="text-sm font-bold text-slate-900 uppercase">Status: Nominal</p>
+                            <p className="text-[11px] text-slate-500 mt-1">No alerts detected in current session.</p>
                         </div>
                     ) : (
                         notifications.map((n) => (
-                            <div key={n.id} className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-100 transition-all duration-300 group">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`h-2 w-2 rounded-full ${n.priority === 'URGENT' ? 'bg-red-500 animate-ping' : 'bg-blue-400'}`} />
-                                        <Badge variant={n.priority === 'URGENT' ? "destructive" : "secondary"} className="text-[9px] px-3 py-1 font-black rounded-lg uppercase tracking-widest border-none">
-                                            {n.priority === 'URGENT' ? "CRITICAL ALERT" : "LOG ENTRY"}
-                                        </Badge>
-                                    </div>
-                                    <div className="text-[9px] text-slate-300 font-black uppercase tracking-widest group-hover:text-blue-400 transition-colors">
+                            <div key={n.id} className="p-5 bg-white rounded-xl border border-slate-100 shadow-sm transition-all hover:border-blue-100">
+                                <div className="flex justify-between items-start mb-3">
+                                    <Badge variant={n.priority === 'URGENT' ? "destructive" : "secondary"} className="text-[8px] px-2 py-0.5 font-bold rounded-md uppercase tracking-wider">
+                                        {n.priority === 'URGENT' ? "Urgent" : "Log"}
+                                    </Badge>
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
                                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                                     </div>
                                 </div>
-                                <p className="text-[13px] text-slate-600 font-bold leading-relaxed">
+                                <p className="text-xs text-slate-600 font-semibold leading-relaxed">
                                     {n.body}
                                 </p>
                             </div>
@@ -206,25 +201,24 @@ export default function Header() {
                 </div>
                 </ScrollArea>
                 
-                <div className="p-8 bg-white border-t border-slate-50 flex flex-col items-center gap-4">
-                    <div className="flex items-center gap-4 text-slate-400">
-                        <ShieldCheck size={18} className="text-blue-600/40" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">
-                            Authoritative End-to-End Encryption
+                <div className="p-6 bg-white border-t border-slate-50 flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 text-slate-400">
+                        <ShieldCheck size={14} className="text-blue-600/40" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                            Encrypted System Node
                         </span>
                     </div>
-                    <p className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Engine Version 10.5.24-Stable</p>
                 </div>
             </SheetContent>
             </Sheet>
 
-            {/* --- AUTHORITATIVE SIGN OUT --- */}
+            {/* --- SIGN OUT --- */}
             <Button 
                 onClick={handleLogout} 
-                className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.2em] px-10 h-14 rounded-2xl flex items-center gap-4 text-[10px] shadow-2xl shadow-blue-600/30 transition-all active:scale-95 border border-blue-500"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest px-6 h-11 rounded-xl flex items-center gap-2.5 text-[10px] shadow-md transition-all active:scale-95"
             >
-                <Zap size={16} className="fill-white" />
-                Kill Session
+                <Zap size={14} className="fill-white" />
+                Sign Out
             </Button>
         </div>
       </div>

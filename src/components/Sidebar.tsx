@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
@@ -9,7 +9,6 @@ import { useCopilot } from '@/context/CopilotContext';
 import { Button } from '@/components/ui/button';
 import { useBranding } from '@/components/core/BrandingProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 
 // --- MASTER ICON REGISTRY ---
@@ -26,7 +25,8 @@ import {
     CreditCard, Repeat, FileStack, Loader2, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
-    Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint
+    Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
+    ChevronLeft, ChevronRight, Menu
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -44,7 +44,6 @@ interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; rol
 type NavItem = NavLink | NavAccordion;
 
 // --- MASTER NAVIGATION CONFIGURATION ---
-// UPGRADE: 'module' keys now strictly match the database slugs verified in the forensic audit.
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
@@ -70,10 +69,8 @@ const navSections: NavItem[] = [
         href: '/pos', 
         label: 'Point of Sale', 
         icon: ShoppingCart, 
-        // Authorized Roles: Includes standard sales roles plus your specialized DSR reps
         roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
-        module: 'sales', // Technical Slug matching public.modules
-        // Industry Logic: Now explicitly includes Distribution sectors for Nim Paints
+        module: 'sales', 
         businessTypes: [
             'Retail / Wholesale', 
             'Restaurant / Cafe', 
@@ -194,18 +191,8 @@ const navSections: NavItem[] = [
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, 
             { href: '/inventory/categories', label: 'Categories', icon: Tags }, 
- { 
-            href: '/inventory/raw-materials', 
-            label: 'Raw Materials', 
-            icon: FlaskConical,
-            businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale', 'Restaurant / Cafe'] 
-        },
-{ 
-            href: '/inventory/composites/designer', 
-            label: 'Production Catalog', 
-            icon: Layers, 
-            businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale'] 
-        },
+            { href: '/inventory/raw-materials', label: 'Raw Materials', icon: FlaskConical, businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale', 'Restaurant / Cafe'] },
+            { href: '/inventory/composites/designer', label: 'Production Catalog', icon: Layers, businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale'] },
             { href: '/inventory/composites', label: 'Recipes', icon: BookOpen, businessTypes: ['Retail / Wholesale', 'Distribution', 'Restaurant / Cafe'] }, 
             { href: '/inventory/work-center', label: 'Work Center', icon: CalendarDays, businessTypes: ['Distribution', 'Retail / Wholesale'] },
             { href: '/inventory/manufacturing-orders', label: 'Manufacturing', icon: Wrench, businessTypes: ['Distribution', 'Retail / Wholesale'] }, 
@@ -239,7 +226,6 @@ const navSections: NavItem[] = [
         ]
     },
 
-
    {
         type: 'accordion', 
         title: 'Audit & Assurance', 
@@ -263,7 +249,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-{
+    {
         type: 'accordion', 
         title: 'Compliance Hub', 
         icon: Gavel, 
@@ -271,7 +257,6 @@ const navSections: NavItem[] = [
         module: 'compliance',
         subItems: [
             { href: '/compliance', label: 'Overview', icon: LayoutDashboard },
-            { href: '/compliance', label: 'Tax and Compliance Hub', icon: ShieldCheck, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'] },
             { href: '/compliance/risk-dashboard', label: 'Risk Dashboard', icon: BarChart3 },
             { href: '/compliance/tax-reports', label: 'Tax Report Generator', icon: FileText },
             { href: '/compliance/kyc-aml', label: 'KYC / AML', icon: UserCheckIcon },
@@ -287,7 +272,7 @@ const navSections: NavItem[] = [
         ]
     },
 
-{
+    {
         type: 'accordion', 
         title: 'Accounting Tools', 
         icon: Calculator, 
@@ -359,7 +344,8 @@ const navSections: NavItem[] = [
             { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
         ]
     },
-{
+
+    {
         type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
         module: 'distribution',
         businessTypes: ['Distribution', 'Distribution / Wholesale Supply', 'Mixed/Conglomerate', 'Logistics', 'all'],
@@ -537,11 +523,7 @@ const navSections: NavItem[] = [
         module: 'management',
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
-{ 
-    href: '/settings/memberships', 
-    label: 'Linked Businesses', 
-    icon: Building2 
-},
+            { href: '/settings/memberships', label: 'Linked Businesses', icon: Building2 },
             { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
             { href: '/settings/locations', label: 'Branch Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/locations', label: 'Location Mgmt', icon: Building2, roles: ['admin', 'owner'] },
@@ -574,12 +556,12 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
         <Tooltip>
           <TooltipTrigger asChild>
             <Link href={href}>
-              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("w-full justify-center transition-all", isActive && "bg-blue-50 text-blue-600")} aria-label={label}>
+              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-50 text-blue-600 shadow-sm")} aria-label={label}>
                 <Icon className="h-5 w-5" />
               </Button>
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right"><p>{label}</p></TooltipContent>
+          <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{label}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
@@ -587,8 +569,8 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 
   return (
     <Link href={href}>
-      <Button variant={isActive ? "secondary" : "ghost"} className={cn("w-full justify-start font-semibold transition-all", isActive && "bg-blue-50 text-blue-600 border-l-4 border-blue-600 rounded-l-none")}>
-        <Icon className="mr-3 h-5 w-5" />{label}
+      <Button variant={isActive ? "secondary" : "ghost"} className={cn("w-full justify-start font-bold text-xs uppercase tracking-tight transition-all h-11 px-4 rounded-xl", isActive ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600 rounded-l-none" : "text-slate-500 hover:text-slate-900")}>
+        <Icon className="mr-3 h-5 w-5 shrink-0" />{label}
       </Button>
     </Link>
   );
@@ -596,9 +578,10 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 
 export default function Sidebar() {
     const pathname = usePathname();
-    
+    const { isSidebarOpen, toggleSidebar } = useSidebar();
+    const { openCopilot } = useCopilot();
+
     // 1. Authoritative Data Retrieval
-    // 'rawRole' isolates the hook result to allow for context resolution below
     const { role: rawRole, isLoading: isLoadingRole } = useUserRole();
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
@@ -606,14 +589,11 @@ export default function Sidebar() {
     const { branding } = useBranding();
     const { data: profile } = useUserProfile();
 
-    // 2. DEEP IDENTITY RESOLUTION (THE WELD)
-    // Resolves the context-aware role (e.g., Accountant) from the active business membership.
-    // Scoped at component root to be accessible to all sub-link filters.
+    // 2. Identity Resolution
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
-    // 3. INDUSTRY CONTEXT NORMALIZATION
-    // Centralized industry logic ensuring sub-items and main modules are in perfect sync.
+    // 3. Industry Context
     const rawBizType = tenant?.business_type || '';
     const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
                     rawBizType === 'Telecom Services' ? 'Telecom & Mobile Money' :
@@ -621,34 +601,26 @@ export default function Sidebar() {
                     rawBizType === 'Contractor' ? 'Contractor (General, Remodeling)' : 
                     (rawBizType === '' || rawBizType === null) ? 'Mixed/Conglomerate' : rawBizType;
 
-    // 4. SOVEREIGN AUTHORITY GATES
-    // Root-scoped booleans to resolve 'God-Mode' vs 'Restricted-Node' access instantly.
+    // 4. Authority gates
     const isSovereign = ['architect', 'commander'].includes(userRole);
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
-    // 5. BRANDING RESOLUTION CHAIN
-    const businessName = tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "SOVEREIGN OS";
+    // 5. Branding
+    const businessName = tenant?.business_display_name || branding?.company_name_display || tenant?.name || profile?.business_name || "LITONU OS";
     const operatorName = profile?.full_name || "Authorized Operator"; 
-    
-    const { isSidebarOpen, toggleSidebar } = useSidebar();
-    const { openCopilot } = useCopilot();
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
     // --- NAVIGATION LOGIC ENGINE ---
     const finalNavItems = useMemo(() => {
-        // [IDENTITY GUARD]: Strictly validates session readiness before rendering
         if (isLoading || !userRole || !tenant) return [];
 
         return navSections.filter((item) => {
-            // RULE 1: SOVEREIGN BYPASS (Only for mwesigwajimmy123@gmail.com)
             if (isSovereign) return true;
 
-            // RULE 2: ROLE PERMISSION GATE (Supports your 60+ Job Roles)
             const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
 
-            // RULE 3: MODULE ENTITLEMENT GATE (Matches SQL public.modules slugs)
             if (item.module) {
                 const isModuleEnabled = enabledModules?.includes?.(item.module);
                 if (!isAdminOrOwner && !isModuleEnabled) {
@@ -656,7 +628,6 @@ export default function Sidebar() {
                 }
             }
 
-            // RULE 4: INDUSTRY ALIGNMENT GATE
             if (item.businessTypes) {
                 const hasBizMatch = item.businessTypes.includes(rawBizType) || item.businessTypes.includes(bizType);
                 if (!hasBizMatch) return false;
@@ -664,8 +635,14 @@ export default function Sidebar() {
 
             return true;
         });
-        // [REACTIVE SYNC]: Recalculates instantly on business switch or identity swap
-    }, [isLoading, userRole, enabledModules, tenant, pathname, bizType, rawBizType, isSovereign, isAdminOrOwner]);
+    }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner]);
+
+    // Effect to close sidebar when navigating on mobile
+    useEffect(() => {
+        if (window.innerWidth < 1024 && isSidebarOpen) {
+            toggleSidebar();
+        }
+    }, [pathname]);
 
     const activeAccordionValue = useMemo(() => {
         for (const section of navSections) {
@@ -677,38 +654,33 @@ export default function Sidebar() {
     }, [pathname]);
 
     const renderAccordionNav = (items: NavItem[]) => (
-        <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full">
+        <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full space-y-1">
             {items.map((item) => {
                 if (item.type === 'link') {
                     return <NavLinkComponent key={item.href} href={item.href} label={item.label} Icon={item.icon} isSidebarOpen={isSidebarOpen} />;
                 }
                 
                 if (item.type === 'accordion') {
-                    // [DEEP SCOPE WELD]: Local declarations removed to utilize the authoritative 
-                    // root-level variables. This fixes the 'ReferenceError' and unlocks sub-links.
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
-                        
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
                         const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
-                        
                         return roleOk && bizOk;
                     });
 
                     if (filteredSubItems.length === 0 || !isSidebarOpen) return null;
-
                     const isModuleActive = activeAccordionValue === item.module;
 
                     return (
                         <AccordionItem key={item.module} value={item.module} className="border-none">
-                            <AccordionTrigger className={cn("px-3 py-2 text-sm font-semibold rounded-md hover:bg-slate-50 hover:no-underline transition-colors", isModuleActive && "text-blue-600 bg-blue-50/50")}>
+                            <AccordionTrigger className={cn("px-4 py-3 text-xs font-bold uppercase tracking-tight rounded-xl hover:bg-slate-50 hover:no-underline transition-colors", isModuleActive && "text-blue-600 bg-blue-50/50")}>
                                 <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
                             </AccordionTrigger>
-                            <AccordionContent className="pl-6 pt-1 space-y-1">
+                            <AccordionContent className="pl-6 pt-1 space-y-1 pb-2">
                                 {filteredSubItems.map(subItem => {
                                     const isSubItemActive = pathname.startsWith(subItem.href);
                                     return (
-                                        <Link key={subItem.href} href={subItem.href} className={cn("flex items-center py-2 px-3 text-[13px] font-medium rounded-md transition-colors", isSubItemActive ? "text-blue-600 font-bold bg-blue-50/30" : "text-slate-500 hover:text-blue-600 hover:bg-blue-50/20")}>
+                                        <Link key={subItem.href} href={subItem.href} className={cn("flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl transition-all", isSubItemActive ? "text-blue-600 bg-blue-50/80 shadow-inner" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}>
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
                                         </Link>
                                     );
@@ -723,103 +695,106 @@ export default function Sidebar() {
     );
 
     return (
-        <aside className={cn(
-            "h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-sm overflow-hidden",
-            isSidebarOpen ? "w-64" : "w-20"
-        )}>
-            {/* --- IDENTITY SELECTOR PORTAL --- */}
-            <div className={cn(
-                "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white transition-all",
-                isSidebarOpen ? "h-20" : "h-16"
-            )}>
-                {isSidebarOpen ? (
-                    <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-2 duration-500 overflow-hidden">
-                        <BusinessSwitcher />
-                        
-                        {/* [IDENTITY SEAL]: Real-time node name and operator role resolution */}
-                        <div className="flex flex-col mt-1 px-1 overflow-hidden">
-                            <span className="text-[10px] font-black uppercase tracking-tighter text-slate-900 truncate leading-none">
-                                {businessName}
-                            </span>
-                            <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-70 mt-0.5 leading-tight">
-                                {operatorName} • {activeRole}
-                            </span>
-                        </div>
-                    </div>
-                ) : (
-                    /* PROFESSIONAL IDENTITY ANCHOR (CLOSED VIEW) */
-                    <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                        {branding?.logo_url ? (
-                            <img 
-                                src={branding.logo_url} 
-                                className="h-9 w-9 object-contain rounded-xl shadow-sm border border-slate-50 p-0.5 bg-white" 
-                                alt="Logo" 
-                            />
-                        ) : (
-                            <div className="h-9 w-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
-                                {businessName.charAt(0).toUpperCase()}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <Button
+        <>
+            {/* --- SMART BACKDROP (MOBILE ONLY) --- */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-40 lg:hidden transition-opacity duration-300 animate-in fade-in"
                     onClick={toggleSidebar}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                        "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2",
-                        !isSidebarOpen && "bg-blue-50 text-blue-600"
-                    )}
-                >
-                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                </Button>
-            </div>
+                />
+            )}
 
-            {/* --- NAVIGATION SECTION --- */}
-            <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-4 scrollbar-hide">
-                {isLoading ? (
-                    <div className="p-4 flex flex-col items-center gap-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        {isSidebarOpen && <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Synchronizing Identity...</span>}
-                    </div>
-                ) : (
-                    <div className="animate-in fade-in duration-700">
-                        {renderAccordionNav(finalNavItems)}
-                    </div>
-                )}
-            </nav>
-
-            {/* --- FOOTER ACTION SECTION --- */}
-            <div className={cn(
-                "p-4 mt-auto border-t border-slate-100 space-y-3 flex-shrink-0 transition-colors",
-                isSidebarOpen ? "bg-slate-50/50" : "bg-white"
+            <aside className={cn(
+                "h-full bg-white border-r border-slate-200/60 flex flex-col transition-all duration-300 ease-in-out z-50 overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                "fixed lg:sticky top-0 left-0",
+                isSidebarOpen ? "w-72 translate-x-0" : "w-20 lg:translate-x-0 -translate-x-full lg:w-20"
             )}>
-                <Button 
-                    variant="default" 
-                    className={cn(
-                        "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95", 
-                        !isSidebarOpen && "justify-center px-0 h-12 w-12 mx-auto rounded-xl"
-                    )} 
-                    onClick={openCopilot}
-                >
-                    <Sparkles className={cn("h-5 w-5 fill-white/20", isSidebarOpen && "mr-3")} />
-                    {isSidebarOpen && <span className="tracking-tight">AI Assistant</span>}
-                </Button>
-                
-                <Link href="/settings" className="block">
-                    <Button 
-                        variant="ghost" 
+                {/* --- IDENTITY SECTION --- */}
+                <div className={cn(
+                    "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white",
+                    isSidebarOpen ? "h-24" : "h-20"
+                )}>
+                    {isSidebarOpen ? (
+                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
+                            <BusinessSwitcher />
+                            <div className="flex flex-col mt-2 px-1">
+                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">
+                                    {businessName}
+                                </span>
+                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">
+                                    {operatorName} • {activeRole}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
+                            {branding?.logo_url ? (
+                                <img src={branding.logo_url} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1" alt="Logo" />
+                            ) : (
+                                <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
+                                    {businessName.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <Button
+                        onClick={toggleSidebar}
+                        variant="ghost"
+                        size="icon"
                         className={cn(
-                            "w-full justify-start text-slate-500 font-bold hover:bg-white hover:text-blue-600 transition-all group", 
-                            !isSidebarOpen && "justify-center px-0 h-10 w-10 mx-auto rounded-xl"
+                            "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0",
+                            !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm"
                         )}
                     >
-                        <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && <span className="tracking-tight">General Settings</span>}
+                        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </Button>
-                </Link>
-            </div>
-        </aside>
+                </div>
+
+                {/* --- SCROLLABLE NAVIGATION --- */}
+                <nav className="flex-1 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
+                    {isLoading ? (
+                        <div className="py-20 flex flex-col items-center gap-4 opacity-40">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        </div>
+                    ) : (
+                        <div className="animate-in fade-in duration-700">
+                            {renderAccordionNav(finalNavItems)}
+                        </div>
+                    )}
+                </nav>
+
+                {/* --- AUTHORITATIVE FOOTER --- */}
+                <div className={cn(
+                    "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
+                    !isSidebarOpen && "flex flex-col items-center"
+                )}>
+                    <Button 
+                        variant="default" 
+                        className={cn(
+                            "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", 
+                            !isSidebarOpen && "justify-center px-0 w-12"
+                        )} 
+                        onClick={openCopilot}
+                    >
+                        <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
+                    </Button>
+                    
+                    <Link href="/settings" className="w-full">
+                        <Button 
+                            variant="ghost" 
+                            className={cn(
+                                "w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", 
+                                !isSidebarOpen && "justify-center px-0 w-11 mx-auto"
+                            )}
+                        >
+                            <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
+                            {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
+                        </Button>
+                    </Link>
+                </div>
+            </aside>
+        </>
     );
 }

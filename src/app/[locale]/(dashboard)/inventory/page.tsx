@@ -105,6 +105,10 @@ export default async function InventoryPage() {
             </div>
         </header>
 
+        <p className="text-sm text-slate-500 font-medium -mt-4 ml-1">
+            Viewing stock for: <span className="font-bold text-slate-900">{profile.business_name}</span>
+        </p>
+
         {/* --- NAVIGATION TABS --- */}
         <Tabs defaultValue="products" className="space-y-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
