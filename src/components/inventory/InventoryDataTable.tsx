@@ -315,7 +315,7 @@ export default function InventoryDataTable({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       
       {/* Search & Location Filter */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">

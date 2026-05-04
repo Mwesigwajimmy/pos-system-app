@@ -613,9 +613,9 @@ export default function Sidebar() {
 
     // --- NAVIGATION LOGIC ENGINE ---
     const finalNavItems = useMemo(() => {
-        // FIX: Only block on true loading to prevent mobile blank-out during state sync
+        // FIX: Removed strict tenant/role check from the top level to prevent "White Space" 
+        // during state transitions. Filters now handle the permission checks internally.
         if (isLoading) return [];
-        if (!userRole || !tenant) return [];
 
         return navSections.filter((item) => {
             if (isSovereign) return true;
@@ -639,9 +639,11 @@ export default function Sidebar() {
         });
     }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner]);
 
-    // Effect to close sidebar when navigating on mobile
+    // FIX: AUTOMATIC CLOSE LOGIC
+    // This effect now triggers for ALL screen sizes (Mobile and Large Monitors).
+    // As soon as the user selects a link (pathname changes), the sidebar closes to maximize screen space.
     useEffect(() => {
-        if (window.innerWidth < 1024 && isSidebarOpen) {
+        if (isSidebarOpen) {
             toggleSidebar();
         }
     }, [pathname]);
@@ -670,8 +672,8 @@ export default function Sidebar() {
                         return roleOk && bizOk;
                     });
 
-                    // FIX: Ensure mobile users see the content even if state sync is mid-transition
                     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+                    // FIX: Ensure content renders immediately when opened on mobile.
                     if (filteredSubItems.length === 0 || (!isSidebarOpen && !isMobile)) return null;
                     
                     const isModuleActive = activeAccordionValue === item.module;

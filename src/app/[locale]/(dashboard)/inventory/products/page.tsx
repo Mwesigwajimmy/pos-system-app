@@ -14,11 +14,11 @@ export default async function ProductInventoryPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. Auth Guard
+  // 1. Authoritative Authentication Guard
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
-  // 2. Profile Resolution
+  // 2. Master Identity Resolution
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_id, business_name")
@@ -27,7 +27,7 @@ export default async function ProductInventoryPage() {
 
   if (!profile?.business_id) redirect('/dashboard');
 
-  // 3. Initial Data Fetching
+  // 3. Parallel Data Fetching for Performance
   const [productsResult, categoriesResult] = await Promise.all([
     supabase.rpc('get_paginated_products', {
       p_page: 1,
@@ -48,39 +48,43 @@ export default async function ProductInventoryPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      {/* THE FIX: This container centers the UI so it is not pushed to the far right */}
+      {/* THE FIX: 'mx-auto' keeps the UI centered, 'max-w' prevents it from stretching off-screen on large displays */}
       <div className="max-w-[1600px] mx-auto py-8 px-6 md:px-10 lg:px-12 space-y-8 animate-in fade-in duration-500">
         
-        {/* --- HEADER SECTION (From your Screenshot 2) --- */}
-        <div className="flex flex-col space-y-2">
+        {/* --- PROFESSIONAL HEADER SECTION --- */}
+        <div className="flex flex-col space-y-2 border-b border-slate-50 pb-6">
             <div className="flex items-center gap-2 text-blue-600">
-                <Activity size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Industrial Asset Registry</span>
+                <Activity size={16} className="animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Industrial Asset Registry</span>
             </div>
             <h1 className="text-4xl font-bold tracking-tighter text-slate-900">Product Inventory</h1>
             <p className="text-slate-500 text-sm font-medium">
-                Corporate repository for finished goods and specialized inventory assets.
+                Corporate repository for finished goods and specialized inventory assets for <span className="text-slate-900 font-bold">{profile.business_name}</span>.
             </p>
         </div>
 
-        {/* --- SEARCH BOX (From your Screenshot 2) --- */}
-        <div className="relative max-w-2xl">
+        {/* --- GLOBAL SEARCH TERMINAL --- */}
+        <div className="relative max-w-2xl group">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
+                <Search className="h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
             </div>
-            <div className="block w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-400 font-medium shadow-sm">
+            <div className="block w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-400 font-medium shadow-sm group-focus-within:bg-white group-focus-within:border-blue-200 transition-all">
                 Search registry by identifier or specification...
             </div>
         </div>
 
-        {/* --- DATA TABLE SECTION --- */}
-        <div className="pt-4">
-            <div className="flex items-center gap-2 mb-6 opacity-40">
-                <ShieldCheck size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Distributed Asset Protocol</span>
+        {/* --- CORE DATA TABLE SECTION --- */}
+        <div className="pt-4 space-y-6">
+            <div className="flex items-center gap-2 opacity-40">
+                <ShieldCheck size={14} className="text-blue-600" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Distributed Asset Protocol Active</span>
             </div>
 
-            {/* Calling your existing Table Component */}
+            {/* 
+                This component now handles its own internal layout. 
+                The buttons (Add Product / Import) will now align correctly to the right 
+                because this parent container is properly centered. 
+            */}
             <InventoryDataTable
                 columns={columns}
                 initialData={initialData}
@@ -90,12 +94,16 @@ export default async function ProductInventoryPage() {
             />
         </div>
 
-        {/* --- FOOTER SYNC STATUS --- */}
-        <div className="flex justify-center pt-10 opacity-20">
-             <div className="h-px w-24 bg-slate-300 mx-4 self-center" />
-             <span className="text-[9px] font-bold uppercase tracking-widest">System Sync Active</span>
-             <div className="h-px w-24 bg-slate-300 mx-4 self-center" />
-        </div>
+        {/* --- FOOTER METADATA --- */}
+        <footer className="pt-20 pb-12">
+            <div className="flex justify-center items-center gap-4 opacity-20">
+                 <div className="h-px w-24 bg-slate-300" />
+                 <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-slate-500">
+                    System Sync: High Integrity
+                 </span>
+                 <div className="h-px w-24 bg-slate-300" />
+            </div>
+        </footer>
       </div>
     </main>
   );
