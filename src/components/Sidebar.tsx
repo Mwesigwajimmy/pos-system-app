@@ -613,7 +613,9 @@ export default function Sidebar() {
 
     // --- NAVIGATION LOGIC ENGINE ---
     const finalNavItems = useMemo(() => {
-        if (isLoading || !userRole || !tenant) return [];
+        // FIX: Only block on true loading to prevent mobile blank-out during state sync
+        if (isLoading) return [];
+        if (!userRole || !tenant) return [];
 
         return navSections.filter((item) => {
             if (isSovereign) return true;
@@ -668,7 +670,10 @@ export default function Sidebar() {
                         return roleOk && bizOk;
                     });
 
-                    if (filteredSubItems.length === 0 || !isSidebarOpen) return null;
+                    // FIX: Ensure mobile users see the content even if state sync is mid-transition
+                    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+                    if (filteredSubItems.length === 0 || (!isSidebarOpen && !isMobile)) return null;
+                    
                     const isModuleActive = activeAccordionValue === item.module;
 
                     return (
@@ -705,7 +710,7 @@ export default function Sidebar() {
             )}
 
             <aside className={cn(
-                "h-full bg-white border-r border-slate-200/60 flex flex-col transition-all duration-300 ease-in-out z-50 overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                "h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-300 ease-in-out z-50 overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
                 "fixed lg:sticky top-0 left-0",
                 isSidebarOpen ? "w-72 translate-x-0" : "w-20 lg:translate-x-0 -translate-x-full lg:w-20"
             )}>
@@ -752,7 +757,7 @@ export default function Sidebar() {
                 </div>
 
                 {/* --- SCROLLABLE NAVIGATION --- */}
-                <nav className="flex-1 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
+                <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
                     {isLoading ? (
                         <div className="py-20 flex flex-col items-center gap-4 opacity-40">
                             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
