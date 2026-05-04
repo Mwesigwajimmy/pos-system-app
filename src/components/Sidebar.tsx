@@ -616,16 +616,21 @@ export default function Sidebar() {
 
             // --- NIM PAINTS INSTITUTIONAL BLOCKERS ---
             if (isNimPaints) {
-                // Rule: All employees have access to Sales Module
+                // Company-wide removals (Links business doesn't use)
+                if (['activities', 'ecommerce'].includes(item.module || '')) return false;
+                
+                // Remove KDS specifically for NIM Node
+                if (item.label === 'Kitchen Display (KDS)') return false;
+
+                // Role-Specific NIM Blocks
+                if (['manager', 'admin'].includes(userRole)) {
+                    if (['hcm', 'accountant', 'procurement'].includes(item.module || '')) return false;
+                }
+                
+                // Special Grant: Sales is always visible to all NIM employees
                 if (item.module === 'sales') return true;
 
-                // Rule: Manager Blocks (HR, Accounting Tools, eCommerce, Activities, Procurement)
-                if (userRole === 'manager' && ['hcm', 'accountant', 'ecommerce', 'activities', 'procurement'].includes(item.module || '')) return false;
-
-                // Rule: Company-wide removals for NIM (eCommerce and Activities removed globally)
-                if (['ecommerce', 'activities'].includes(item.module || '')) return false;
-                
-                // Ensure Accountant gets Compliance Hub for NIM
+                // Accountant Gets Compliance Hub
                 if (userRole === 'accountant' && item.module === 'compliance') return true;
             }
 
@@ -648,7 +653,7 @@ export default function Sidebar() {
         });
     }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner, isNimPaints]);
 
-    // Effect to close sidebar when navigating to maximize screen space
+    // Close sidebar upon navigation to maximize workspace
     useEffect(() => {
         if (isSidebarOpen) {
             toggleSidebar();
@@ -677,18 +682,18 @@ export default function Sidebar() {
 
                         // --- DEEP ROLE FILTRATION ---
 
-                        // 1. GLOBAL CASHIER RESTRICTIONS
+                        // 1. GLOBAL CASHIER ACCESSIBILITY & RESTRICTIONS
                         if (userRole === 'cashier') {
-                            // Sales: Only Customers and Returns
+                            // Sales: Authorized for Customers & Returns
                             if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
                             
-                            // Inventory: Only Products, Categories, Adjustments, Purchases
+                            // Inventory: Fully Activated for Cashiers as requested
                             if (item.module === 'inventory' && !['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'].includes(sub.href)) return false;
                             
-                            // Reports: Only Sales and Sales History
+                            // Reports: Fully Activated for Cashiers as requested
                             if (item.module === 'reports' && !['/reports/sales', '/reports/sales-history'].includes(sub.href)) return false;
 
-                            // Management: Only Shift Reports
+                            // Management: Shift Reports
                             if (item.module === 'management' && sub.href !== '/shifts') return false;
 
                             // Invoicing Restrictions
@@ -698,16 +703,19 @@ export default function Sidebar() {
 
                         // 2. NIM PAINTS NODE CUSTOMIZATIONS
                         if (isNimPaints) {
-                            // Manager Restricted Links
-                            if (userRole === 'manager') {
-                                // Invoicing Blocks
-                                const managerInvoiceBlocks = ['/invoicing/recurring', '/invoicing/to-be-issued', '/invoicing/credit-notes', '/invoicing/debit-notes', '/invoicing/deferred-revenue', '/invoicing/compliance', '/invoicing/payments'];
-                                if (item.module === 'invoicing' && managerInvoiceBlocks.includes(sub.href)) return false;
+                            // Manager & Admin Link Removals
+                            if (['manager', 'admin'].includes(userRole)) {
+                                // Remove FX Forensic Audit
+                                if (sub.href === '/invoicing/fx-audit') return false;
 
-                                // Compliance Hub: Only Tax Reports and Sales Tax
+                                // Invoicing removals
+                                const invoiceBlocks = ['/invoicing/recurring', '/invoicing/to-be-issued', '/invoicing/credit-notes', '/invoicing/debit-notes', '/invoicing/deferred-revenue', '/invoicing/compliance', '/invoicing/payments'];
+                                if (item.module === 'invoicing' && invoiceBlocks.includes(sub.href)) return false;
+
+                                // Compliance restrictions
                                 if (item.module === 'compliance' && !['/compliance/tax-reports', '/compliance/sales-tax'].includes(sub.href)) return false;
 
-                                // Logistics (Distribution): Hide Aura HUD, Manifest, Customs, Market Scout
+                                // Logistics restrictions
                                 const logisticsBlocks = ['/distribution/aura-master', '/distribution/manifest-entry', '/distribution/customs', '/distribution/market-intel'];
                                 if (item.module === 'distribution' && logisticsBlocks.includes(sub.href)) return false;
                             }
@@ -761,11 +769,19 @@ export default function Sidebar() {
                 />
             )}
 
-            <aside className={cn(
-                "h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-300 ease-in-out z-50 overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                "fixed lg:sticky top-0 left-0",
-                isSidebarOpen ? "w-72 translate-x-0" : "w-20 lg:translate-x-0 -translate-x-full lg:w-20"
-            )}>
+            <aside 
+                onClick={() => {
+                    // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
+                    if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                        toggleSidebar();
+                    }
+                }}
+                className={cn(
+                    "h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-300 ease-in-out z-50 overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                    "fixed lg:sticky top-0 left-0",
+                    isSidebarOpen ? "w-72 translate-x-0 cursor-default" : "w-20 lg:translate-x-0 -translate-x-full lg:w-20 cursor-pointer hover:bg-slate-50/50"
+                )}
+            >
                 {/* --- IDENTITY SECTION --- */}
                 <div className={cn(
                     "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white",
@@ -796,7 +812,10 @@ export default function Sidebar() {
                     )}
 
                     <Button
-                        onClick={toggleSidebar}
+                        onClick={(e) => {
+                            e.stopPropagation(); // Prevents double toggle from the parent aside onClick
+                            toggleSidebar();
+                        }}
                         variant="ghost"
                         size="icon"
                         className={cn(
@@ -832,7 +851,10 @@ export default function Sidebar() {
                             "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", 
                             !isSidebarOpen && "justify-center px-0 w-12"
                         )} 
-                        onClick={openCopilot}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openCopilot();
+                        }}
                     >
                         <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
                         {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
