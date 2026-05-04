@@ -586,7 +586,7 @@ export default function Sidebar() {
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
-    // INSTITUTIONAL IDENTIFIER: NIM Paints (Distribution Branch)
+    // INSTITUTIONAL IDENTIFIER: NIM Paints Uganda (Distribution Node)
     const isNimPaints = tenant?.id === '51342887-69e2-456c-b835-629b8f2b0e49';
 
     // 3. Industry Context
@@ -614,13 +614,16 @@ export default function Sidebar() {
         return navSections.filter((item) => {
             if (isSovereign) return true;
 
-            // --- INSTITUTIONAL NODE BLOCKER (NIM Paints) ---
+            // --- NIM PAINTS INSTITUTIONAL BLOCKERS ---
             if (isNimPaints) {
-                // Remove entire modules as requested by NIM HQ
-                if (['ecommerce', 'activities'].includes(item.module || '')) return false;
+                // Rule: All employees have access to Sales Module
+                if (item.module === 'sales') return true;
 
-                // NIM Manager Specific Blockers
-                if (userRole === 'manager' && ['hcm', 'accountant'].includes(item.module || '')) return false;
+                // Rule: Manager Blocks (HR, Accounting Tools, eCommerce, Activities, Procurement)
+                if (userRole === 'manager' && ['hcm', 'accountant', 'ecommerce', 'activities', 'procurement'].includes(item.module || '')) return false;
+
+                // Rule: Company-wide removals for NIM (eCommerce and Activities removed globally)
+                if (['ecommerce', 'activities'].includes(item.module || '')) return false;
                 
                 // Ensure Accountant gets Compliance Hub for NIM
                 if (userRole === 'accountant' && item.module === 'compliance') return true;
@@ -645,8 +648,9 @@ export default function Sidebar() {
         });
     }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner, isNimPaints]);
 
+    // Effect to close sidebar when navigating to maximize screen space
     useEffect(() => {
-        if (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+        if (isSidebarOpen) {
             toggleSidebar();
         }
     }, [pathname]);
@@ -675,16 +679,16 @@ export default function Sidebar() {
 
                         // 1. GLOBAL CASHIER RESTRICTIONS
                         if (userRole === 'cashier') {
-                            // Sales Restrictions
+                            // Sales: Only Customers and Returns
                             if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
                             
-                            // Inventory Restrictions
+                            // Inventory: Only Products, Categories, Adjustments, Purchases
                             if (item.module === 'inventory' && !['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'].includes(sub.href)) return false;
                             
-                            // Reports Restrictions
+                            // Reports: Only Sales and Sales History
                             if (item.module === 'reports' && !['/reports/sales', '/reports/sales-history'].includes(sub.href)) return false;
 
-                            // Management Restrictions
+                            // Management: Only Shift Reports
                             if (item.module === 'management' && sub.href !== '/shifts') return false;
 
                             // Invoicing Restrictions
@@ -694,21 +698,21 @@ export default function Sidebar() {
 
                         // 2. NIM PAINTS NODE CUSTOMIZATIONS
                         if (isNimPaints) {
-                            // Manager Restrictions
+                            // Manager Restricted Links
                             if (userRole === 'manager') {
-                                // Invoicing removals
+                                // Invoicing Blocks
                                 const managerInvoiceBlocks = ['/invoicing/recurring', '/invoicing/to-be-issued', '/invoicing/credit-notes', '/invoicing/debit-notes', '/invoicing/deferred-revenue', '/invoicing/compliance', '/invoicing/payments'];
                                 if (item.module === 'invoicing' && managerInvoiceBlocks.includes(sub.href)) return false;
 
-                                // Compliance restrictions
+                                // Compliance Hub: Only Tax Reports and Sales Tax
                                 if (item.module === 'compliance' && !['/compliance/tax-reports', '/compliance/sales-tax'].includes(sub.href)) return false;
 
-                                // Logistics restrictions
+                                // Logistics (Distribution): Hide Aura HUD, Manifest, Customs, Market Scout
                                 const logisticsBlocks = ['/distribution/aura-master', '/distribution/manifest-entry', '/distribution/customs', '/distribution/market-intel'];
                                 if (item.module === 'distribution' && logisticsBlocks.includes(sub.href)) return false;
                             }
 
-                            // Accountant Additions
+                            // Accountant Additions for NIM
                             if (userRole === 'accountant') {
                                 if (item.module === 'management' && sub.href === '/payroll') return true;
                             }
