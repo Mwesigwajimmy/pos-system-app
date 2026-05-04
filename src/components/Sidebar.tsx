@@ -71,14 +71,7 @@ const navSections: NavItem[] = [
         icon: ShoppingCart, 
         roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
         module: 'sales', 
-        businessTypes: [
-            'Retail / Wholesale', 
-            'Restaurant / Cafe', 
-            'Mixed/Conglomerate', 
-            'Professional Services', 
-            'Distribution', 
-            'Distribution / Wholesale Supply'
-        ]
+        businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services', 'Distribution', 'Distribution / Wholesale Supply']
     },
     { 
         type: 'link', href: '/kds', label: 'Kitchen Display (KDS)', icon: Utensils, 
@@ -149,7 +142,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect'], 
+        type: 'accordion', title: 'Reports Center', icon: PieChart, roles: ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'cashier'], 
         module: 'reports',
         subItems: [
             { href: '/reports/finance-hub', label: 'Finance Hub', icon: Landmark },
@@ -173,7 +166,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist'], 
+        type: 'accordion', title: 'Sales', icon: BarChart3, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'cashier'], 
         module: 'sales',
         businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Distribution', 'Mixed/Conglomerate', 'Professional Services'], 
         subItems: [
@@ -186,7 +179,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager'], 
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes }, 
@@ -519,12 +512,12 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor', 'owner', 'architect'], 
+        type: 'accordion', title: 'Management', icon: UserCog, roles: ['admin', 'manager', 'auditor', 'owner', 'architect', 'cashier', 'accountant'], 
         module: 'management',
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
             { href: '/settings/memberships', label: 'Linked Businesses', icon: Building2 },
-            { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
+            { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect', 'accountant'] },
             { href: '/settings/locations', label: 'Branch Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/locations', label: 'Location Mgmt', icon: Building2, roles: ['admin', 'owner'] },
             { href: '/management/budgets', label: 'Budgeting', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect'] },
@@ -533,7 +526,7 @@ const navSections: NavItem[] = [
             { href: '/management/sentry-hub', label: 'Security Hub', icon: ShieldAlert, roles: ['admin', 'owner', 'architect'] },
             { href: '/management/monitoring', label: 'System Monitor', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale', 'Distribution'] }, 
             { href: '/loyalty', label: 'Loyalty Program', icon: Percent, roles: ['admin', 'manager', 'owner', 'architect'], businessTypes: ['Retail / Wholesale'] },
-            { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner', 'architect'] },
+            { href: '/shifts', label: 'Shift Reports', icon: ClipboardCheck, roles: ['admin', 'manager', 'owner', 'architect', 'cashier'] },
             { href: '/settings', label: 'General Settings', icon: Settings, roles: ['admin', 'owner', 'architect'] },
             { href: '/settings/branding', label: 'System Branding', icon: Sparkles, roles: ['admin', 'owner', 'architect'] }, 
             { href: '/settings/hardware', label: 'Hardware', icon: Printer, roles: ['admin', 'owner', 'architect'] },
@@ -593,6 +586,9 @@ export default function Sidebar() {
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
+    // INSTITUTIONAL IDENTIFIER: NIM Paints (Distribution Branch)
+    const isNimPaints = tenant?.id === '51342887-69e2-456c-b835-629b8f2b0e49';
+
     // 3. Industry Context
     const rawBizType = tenant?.business_type || '';
     const bizType = rawBizType === 'Distribution' ? 'Distribution / Wholesale Supply' :
@@ -613,12 +609,22 @@ export default function Sidebar() {
 
     // --- NAVIGATION LOGIC ENGINE ---
     const finalNavItems = useMemo(() => {
-        // FIX: Removed strict tenant/role check from the top level to prevent "White Space" 
-        // during state transitions. Filters now handle the permission checks internally.
         if (isLoading) return [];
 
         return navSections.filter((item) => {
             if (isSovereign) return true;
+
+            // --- INSTITUTIONAL NODE BLOCKER (NIM Paints) ---
+            if (isNimPaints) {
+                // Remove entire modules as requested by NIM HQ
+                if (['ecommerce', 'activities'].includes(item.module || '')) return false;
+
+                // NIM Manager Specific Blockers
+                if (userRole === 'manager' && ['hcm', 'accountant'].includes(item.module || '')) return false;
+                
+                // Ensure Accountant gets Compliance Hub for NIM
+                if (userRole === 'accountant' && item.module === 'compliance') return true;
+            }
 
             const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
             if (!hasRolePermission) return false;
@@ -637,13 +643,10 @@ export default function Sidebar() {
 
             return true;
         });
-    }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner]);
+    }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner, isNimPaints]);
 
-    // FIX: AUTOMATIC CLOSE LOGIC
-    // This effect now triggers for ALL screen sizes (Mobile and Large Monitors).
-    // As soon as the user selects a link (pathname changes), the sidebar closes to maximize screen space.
     useEffect(() => {
-        if (isSidebarOpen) {
+        if (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
             toggleSidebar();
         }
     }, [pathname]);
@@ -667,13 +670,56 @@ export default function Sidebar() {
                 if (item.type === 'accordion') {
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
+
+                        // --- DEEP ROLE FILTRATION ---
+
+                        // 1. GLOBAL CASHIER RESTRICTIONS
+                        if (userRole === 'cashier') {
+                            // Sales Restrictions
+                            if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
+                            
+                            // Inventory Restrictions
+                            if (item.module === 'inventory' && !['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'].includes(sub.href)) return false;
+                            
+                            // Reports Restrictions
+                            if (item.module === 'reports' && !['/reports/sales', '/reports/sales-history'].includes(sub.href)) return false;
+
+                            // Management Restrictions
+                            if (item.module === 'management' && sub.href !== '/shifts') return false;
+
+                            // Invoicing Restrictions
+                            const restrictedInvoiceLinks = ['/invoicing/recurring', '/invoicing/credit-notes', '/invoicing/debit-notes', '/invoicing/deferred-revenue', '/invoicing/deferred-expenses', '/invoicing/compliance', '/invoicing/payments'];
+                            if (item.module === 'invoicing' && restrictedInvoiceLinks.includes(sub.href)) return false;
+                        }
+
+                        // 2. NIM PAINTS NODE CUSTOMIZATIONS
+                        if (isNimPaints) {
+                            // Manager Restrictions
+                            if (userRole === 'manager') {
+                                // Invoicing removals
+                                const managerInvoiceBlocks = ['/invoicing/recurring', '/invoicing/to-be-issued', '/invoicing/credit-notes', '/invoicing/debit-notes', '/invoicing/deferred-revenue', '/invoicing/compliance', '/invoicing/payments'];
+                                if (item.module === 'invoicing' && managerInvoiceBlocks.includes(sub.href)) return false;
+
+                                // Compliance restrictions
+                                if (item.module === 'compliance' && !['/compliance/tax-reports', '/compliance/sales-tax'].includes(sub.href)) return false;
+
+                                // Logistics restrictions
+                                const logisticsBlocks = ['/distribution/aura-master', '/distribution/manifest-entry', '/distribution/customs', '/distribution/market-intel'];
+                                if (item.module === 'distribution' && logisticsBlocks.includes(sub.href)) return false;
+                            }
+
+                            // Accountant Additions
+                            if (userRole === 'accountant') {
+                                if (item.module === 'management' && sub.href === '/payroll') return true;
+                            }
+                        }
+
                         const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
                         const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
                         return roleOk && bizOk;
                     });
 
                     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-                    // FIX: Ensure content renders immediately when opened on mobile.
                     if (filteredSubItems.length === 0 || (!isSidebarOpen && !isMobile)) return null;
                     
                     const isModuleActive = activeAccordionValue === item.module;
