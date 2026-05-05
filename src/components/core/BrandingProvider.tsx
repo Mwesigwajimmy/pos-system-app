@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useMemo, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+// DEEP SYNC: Importing the cookie engine to maintain node-switching awareness
+import Cookies from 'js-cookie'; 
 
 // --- 1. ENTERPRISE TYPE DEFINITIONS ---
 // This matches the "Neural Identity View" we created in SQL
@@ -61,37 +63,63 @@ function hexToHsl(hex: string | null | undefined): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-// --- 3. THE MASTER PROVIDER ---
-
+/**
+ * LITONU BUSINESS BASE UNIVERSE LTD - MASTER BRANDING PROVIDER
+ * 
+ * UPGRADE: Authoritative Context Synchronization.
+ * This provider now authoritatively resolves the visual identity based on 
+ * the active business node, preventing "Identity Bleeding" between tenants.
+ */
 export default function BrandingProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
 
-  // 1. NEURAL FETCH: Get everything from the Verified Identity View
+  // 1. ACTIVE NODE RESOLUTION
+  // We monitor the secure cookie to know exactly which node the operator is visiting.
+  const activeBizId = Cookies.get('bbu1_active_business_id');
+
+  // 2. NEURAL FETCH: Get everything from the Verified Identity View
   const { data: branding, isLoading, refetch } = useQuery<CorporateIdentity>({
-    queryKey: ['bbu1_corporate_identity'],
+    // UPGRADE: Added activeBizId to the queryKey.
+    // This forces an immediate re-fetch whenever the user switches businesses.
+    queryKey: ['bbu1_corporate_identity', activeBizId],
     queryFn: async () => {
-      // Identity Handshake: Find which business we are serving
+      // Identity Handshake: Authoritatively resolve the target business ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+      // RESOLUTION HIERARCHY: Priority 1: Active Cookie | Priority 2: Root Profile
+      let targetId = activeBizId;
+
+      if (!targetId) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('business_id')
+            .eq('id', user.id)
+            .single();
+        targetId = profile?.business_id;
+      }
       
-      if (profile?.business_id) {
+      if (targetId) {
+        // AUTHORITATIVE SELECT: Fetch from the physical branding layer
         const { data, error } = await supabase
             .from('view_bbu1_corporate_identity')
             .select('*')
-            .eq('business_id', profile.business_id)
+            .eq('business_id', targetId)
             .single();
         
-        if (error) throw error;
+        if (error) {
+            console.warn("LITONU SECURITY: Branding node empty or restricted.", error.message);
+            return null;
+        }
         return data as CorporateIdentity;
       }
       return null;
     },
-    staleTime: 1000 * 60 * 5, // Refresh every 5 mins (standard enterprise)
+    staleTime: 1000 * 60 * 5, // 5-minute standard enterprise cache
+    refetchOnWindowFocus: false, // Prevents identity flickering during tab switches
   });
 
-  // 2. THE SOVEREIGN WELD: Side-effect to skin the CSS Variables
+  // 3. THE SOVEREIGN WELD: Side-effect to skin the CSS Variables
   useEffect(() => {
     if (!branding) return;
 
@@ -99,16 +127,17 @@ export default function BrandingProvider({ children }: { children: ReactNode }) 
     const primaryHsl = hexToHsl(branding.primary_color);
     
     if (primaryHsl) {
+      // Dynamic injection into the Document Object Model
       root.style.setProperty('--primary', primaryHsl);
-      root.style.setProperty('--brand-primary', branding.primary_color!); // Used by layout.tsx
+      root.style.setProperty('--brand-primary', branding.primary_color!); 
       
-      // Automatic Contrast Calculation
+      // Automatic Contrast Logic for readable Text on Brand Backgrounds
       const lightness = parseInt(primaryHsl.split(' ')[2], 10);
       root.style.setProperty('--primary-foreground', lightness > 60 ? '222 47% 11%' : '210 40% 98%');
     }
   }, [branding]);
 
-  // Provide the data globally
+  // Provide the data globally to the Header and Sidebar
   const value = useMemo(() => ({
     branding: branding || null,
     isLoading,
@@ -123,10 +152,13 @@ export default function BrandingProvider({ children }: { children: ReactNode }) 
 }
 
 // --- 4. ENTERPRISE HOOK ---
+/**
+ * Authoritative hook to access the Sealed Identity of the active node.
+ */
 export const useBranding = () => {
   const context = useContext(BrandingContext);
   if (context === undefined) {
-    throw new Error('useBranding must be used within a BrandingProvider');
+    throw new Error('Sovereignty Fault: useBranding must be used within a BrandingProvider');
   }
   return context;
 };
