@@ -19,44 +19,42 @@ import { cn } from '@/lib/utils';
 const supabase = createClient();
 
 /**
- * MY SOVEREIGN MEMBERSHIPS PAGE
- * The global registry for multi-tenant identity management.
+ * IDENTITY MANAGEMENT PAGE
+ * The global registry for managing access across multiple business units.
  */
 export default function MyMembershipsPage() {
     const queryClient = useQueryClient();
     const { branding, refreshBranding } = useBranding();
 
-    // --- 1. SOVEREIGN MEMBERSHIP DISCOVERY ---
+    // --- 1. BUSINESS ACCESS DISCOVERY ---
     const { data: memberships, isLoading } = useQuery({
         queryKey: ['my_full_memberships'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return [];
 
-            // Query the unified membership view we audited in the backend
             const { data, error } = await supabase
                 .from('view_my_memberships')
                 .select('*')
                 .eq('user_id', user.id);
             
             if (error) {
-                console.error("IDENTITY_DISCOVERY_ERROR:", error);
+                console.error("ACCESS_DISCOVERY_ERROR:", error);
                 throw error;
             }
             return data || [];
         }
     });
 
-    // --- 2. THE IDENTITY WELD PROTOCOL ---
-    // Executing the cross-business context swap for all nodes
+    // --- 2. IDENTITY SWITCH PROTOCOL ---
+    // Executing the cross-business context switch
     const handleSwitch = async (bizId: string, bizName: string) => {
         if (bizId === branding?.business_id) return; 
 
-        const toastId = toast.loading(`Swapping Identity to ${bizName}...`);
+        const toastId = toast.loading(`Switching to ${bizName}...`);
         
         try {
-            // STEP A: IDENTITY COOKIE INJECTION
-            // The Middleware reads this to prevent the "Logout Loop"
+            // STEP A: COOKIE UPDATES
             Cookies.set('bbu1_active_business_id', bizId, { 
                 expires: 30, 
                 path: '/',
@@ -64,7 +62,6 @@ export default function MyMembershipsPage() {
             });
 
             // STEP B: UPDATE AUTH METADATA
-            // Synchronize the user's permanent session data
             const { error: authError } = await supabase.auth.updateUser({
                 data: { 
                     business_id: bizId,
@@ -75,26 +72,24 @@ export default function MyMembershipsPage() {
             if (authError) throw authError;
 
             // STEP C: SESSION REFRESH
-            // Forces the generation of a new JWT with the updated role/context
             await supabase.auth.refreshSession();
 
-            // STEP D: ATOMIC CACHE WIPE
+            // STEP D: CLEAR CACHE
             await queryClient.clear(); 
 
-            // STEP E: BROADCAST REFRESH
+            // STEP E: REFRESH BRANDING
             refreshBranding();
 
-            toast.success(`Identity Successfully Morphed to ${bizName}`, { id: toastId });
+            toast.success(`Access successfully switched to ${bizName}`, { id: toastId });
 
-            // STEP F: NEURAL RELOAD
-            // Forces the Middleware and RLS to pick up the new session state
+            // STEP F: SYSTEM RELOAD
             setTimeout(() => {
                 window.location.reload(); 
             }, 600);
 
         } catch (err: any) {
-            console.error("IDENTITY_SWAP_FAILURE:", err);
-            toast.error(`Swap Failed: ${err.message}`, { id: toastId });
+            console.error("SWITCH_FAILURE:", err);
+            toast.error(`Switch Failed: ${err.message}`, { id: toastId });
         }
     };
 
@@ -107,22 +102,22 @@ export default function MyMembershipsPage() {
                         <div className="h-10 w-10 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
                             <UserCircle size={24} />
                         </div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">
-                            My Sovereign Identity
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">
+                            Identity Management
                         </h1>
                     </div>
-                    <p className="text-slate-400 font-black mt-1 uppercase text-[10px] tracking-[0.4em] ml-1">
-                        Global Authorization Registry & Access Nodes
+                    <p className="text-slate-400 font-bold mt-1 uppercase text-[10px] tracking-[0.4em] ml-1">
+                        Global Access Registry & Business Units
                     </p>
                 </div>
                 <Badge variant="outline" className="border-slate-200 text-slate-400 font-bold px-4 py-1.5 rounded-full bg-white">
-                    VERIFIED SECURE SESSION
+                    SECURE ACTIVE SESSION
                 </Badge>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 
-                {/* --- ACTIVE NODE CARD --- */}
+                {/* --- ACTIVE BUSINESS CARD --- */}
                 <Card className="lg:col-span-4 border-none shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] rounded-[3rem] bg-slate-900 text-white overflow-hidden relative">
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <ShieldCheck size={120} />
@@ -133,16 +128,16 @@ export default function MyMembershipsPage() {
                         </div>
                         
                         <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Currently Switched Node</p>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500">Current Active Branch</p>
                             <h2 className="text-3xl font-black uppercase tracking-tighter leading-tight">
-                                {branding?.legal_name || "BBU1 Sovereign"}
+                                {branding?.legal_name || "Active Business"}
                             </h2>
                         </div>
 
                         <div className="pt-8 border-t border-white/10 flex items-center justify-between">
                             <div>
-                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active Authorization</p>
-                                <Badge className="bg-white/10 hover:bg-white/20 text-white border-none font-black px-4 py-1.5 uppercase tracking-widest text-[10px]">
+                                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Assigned Role</p>
+                                <Badge className="bg-white/10 hover:bg-white/20 text-white border-none font-bold px-4 py-1.5 uppercase tracking-widest text-[10px]">
                                     {branding?.ceo_role || "MEMBER"}
                                 </Badge>
                             </div>
@@ -151,14 +146,14 @@ export default function MyMembershipsPage() {
                     </CardContent>
                 </Card>
 
-                {/* --- MEMBERSHIP GRID --- */}
+                {/* --- BUSINESS UNIT LIST --- */}
                 <Card className="lg:col-span-8 border-none shadow-2xl shadow-slate-200/60 rounded-[3rem] bg-white overflow-hidden">
                     <CardHeader className="p-10 bg-slate-50/50 border-b border-slate-100">
                         <div className="flex items-center justify-between">
                             <div>
-                                <CardTitle className="text-2xl font-black text-slate-800 tracking-tight uppercase">Authorized Nodes</CardTitle>
+                                <CardTitle className="text-2xl font-black text-slate-800 tracking-tight uppercase">Verified Business Access</CardTitle>
                                 <CardDescription className="font-bold text-slate-400 uppercase text-[10px] tracking-widest mt-1">
-                                    Click any entity to morph your identity and access its ledger
+                                    Select any business unit below to switch your current workspace
                                 </CardDescription>
                             </div>
                             {isLoading && <Loader2 className="h-6 w-6 animate-spin text-blue-600" />}
@@ -170,10 +165,10 @@ export default function MyMembershipsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-slate-50/50 border-none">
-                                        <TableHead className="px-10 py-6 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Business Entity</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Role Context</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Node Status</TableHead>
-                                        <TableHead className="text-right px-10 font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Identity Swap</TableHead>
+                                        <TableHead className="px-10 py-6 font-bold text-[10px] uppercase tracking-[0.2em] text-slate-400">Business Unit</TableHead>
+                                        <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-slate-400">Your Role</TableHead>
+                                        <TableHead className="font-bold text-[10px] uppercase tracking-[0.2em] text-slate-400">Status</TableHead>
+                                        <TableHead className="text-right px-10 font-bold text-[10px] uppercase tracking-[0.2em] text-slate-400">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -190,7 +185,7 @@ export default function MyMembershipsPage() {
                                             >
                                                 <TableCell className="px-10 py-8">
                                                     <div className="flex items-center gap-5">
-                                                        <div className="h-14 w-14 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden p-1 group-hover:scale-105 transition-transform">
+                                                        <div className="h-14 w-14 bg-white border border-slate-100 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden p-1">
                                                             {m.logo_url ? (
                                                                 <img src={m.logo_url} className="h-full w-full object-contain" alt="Logo" />
                                                             ) : (
@@ -198,15 +193,15 @@ export default function MyMembershipsPage() {
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <p className="font-black text-slate-900 uppercase tracking-tighter text-base">
+                                                            <p className="font-bold text-slate-900 uppercase tracking-tighter text-base">
                                                                 {m.business_name}
                                                             </p>
                                                             <div className="flex items-center gap-2 mt-1">
-                                                                <Badge variant="outline" className="text-[9px] font-black border-slate-200 text-slate-400 uppercase tracking-widest px-2">
+                                                                <Badge variant="outline" className="text-[9px] font-bold border-slate-200 text-slate-400 uppercase tracking-widest px-2">
                                                                     <Globe size={10} className="mr-1 opacity-50"/> {m.currency_code}
                                                                 </Badge>
                                                                 {m.is_primary && (
-                                                                    <span className="text-[8px] font-black text-blue-600 uppercase tracking-[0.2em]">Primary Node</span>
+                                                                    <span className="text-[8px] font-bold text-blue-600 uppercase tracking-widest">Main Branch</span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -217,7 +212,7 @@ export default function MyMembershipsPage() {
                                                     <Badge 
                                                         variant="outline" 
                                                         className={cn(
-                                                            "font-black border-slate-200 uppercase text-[10px] tracking-widest px-3 py-1 rounded-lg",
+                                                            "font-bold border-slate-200 uppercase text-[10px] tracking-widest px-3 py-1 rounded-lg",
                                                             isActive ? "text-blue-600 bg-white shadow-sm border-blue-100" : "text-slate-500 bg-slate-50"
                                                         )}
                                                     >
@@ -229,26 +224,26 @@ export default function MyMembershipsPage() {
                                                     {isActive ? (
                                                         <div className="flex items-center gap-2">
                                                             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                                                            <span className="font-black text-emerald-600 text-[10px] uppercase tracking-widest">Live Session</span>
+                                                            <span className="font-bold text-emerald-600 text-[10px] uppercase tracking-widest">Active Session</span>
                                                         </div>
                                                     ) : (
-                                                        <span className="font-bold text-slate-300 text-[10px] uppercase tracking-widest">Authorized</span>
+                                                        <span className="font-bold text-slate-300 text-[10px] uppercase tracking-widest">Access Verified</span>
                                                     )}
                                                 </TableCell>
 
                                                 <TableCell className="text-right px-10">
                                                     {isActive ? (
-                                                        <Button disabled size="sm" className="bg-emerald-50 text-emerald-600 border-emerald-100 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-none">
-                                                            Current Identity
+                                                        <Button disabled size="sm" className="bg-emerald-50 text-emerald-600 border-emerald-100 rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-none">
+                                                            Currently Using
                                                         </Button>
                                                     ) : (
                                                         <Button 
                                                             size="sm" 
                                                             variant="default" 
                                                             onClick={() => handleSwitch(m.business_id, m.business_name)}
-                                                            className="bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 group"
+                                                            className="bg-slate-900 hover:bg-blue-600 text-white font-bold text-[10px] uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 group"
                                                         >
-                                                            Swap Node <ArrowRightLeft size={12} className="ml-2 group-hover:rotate-180 transition-transform duration-500"/>
+                                                            Switch Business <ArrowRightLeft size={12} className="ml-2 group-hover:rotate-180 transition-transform duration-500"/>
                                                         </Button>
                                                     )}
                                                 </TableCell>

@@ -26,7 +26,7 @@ import {
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, ChevronRight, Menu
+    ChevronLeft, ChevronRight, Menu, Unlock
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -43,7 +43,7 @@ interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
 
-// --- MASTER NAVIGATION CONFIGURATION ---
+// --- MASTER NAVIGATION CONFIGURATION (FULL LONG LIST) ---
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
@@ -321,10 +321,11 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Finance', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
+        type: 'accordion', title: 'Accounting', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
         module: 'finance',
         subItems: [ 
             { href: '/finance/banking', label: 'Banking', icon: Landmark },
+            { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
             { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
             { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
             { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
@@ -630,8 +631,8 @@ export default function Sidebar() {
                 // Special Grant: Sales is always visible to all NIM employees
                 if (item.module === 'sales') return true;
 
-                // Accountant Gets Compliance Hub
-                if (userRole === 'accountant' && item.module === 'compliance') return true;
+                // Accountant Gets Compliance Hub & Finance (Accounting) Access
+                if (userRole === 'accountant' && (item.module === 'compliance' || item.module === 'finance')) return true;
             }
 
             const hasRolePermission = item.roles?.map(r => r.toLowerCase()).includes(userRole);
@@ -687,11 +688,13 @@ export default function Sidebar() {
                             // Sales: Authorized for Customers & Returns
                             if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
                             
-                            // Inventory: Fully Activated for Cashiers as requested
-                            if (item.module === 'inventory' && !['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'].includes(sub.href)) return false;
+                            // Inventory: FULL ACTIVATION for Cashiers as requested
+                            const cashierInventoryLinks = ['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'];
+                            if (item.module === 'inventory' && !cashierInventoryLinks.includes(sub.href)) return false;
                             
-                            // Reports: Fully Activated for Cashiers as requested
-                            if (item.module === 'reports' && !['/reports/sales', '/reports/sales-history'].includes(sub.href)) return false;
+                            // Reports: FULL ACTIVATION for Cashiers as requested
+                            const cashierReportLinks = ['/reports/sales', '/reports/sales-history'];
+                            if (item.module === 'reports' && !cashierReportLinks.includes(sub.href)) return false;
 
                             // Management: Shift Reports
                             if (item.module === 'management' && sub.href !== '/shifts') return false;
@@ -723,6 +726,7 @@ export default function Sidebar() {
                             // Accountant Additions for NIM
                             if (userRole === 'accountant') {
                                 if (item.module === 'management' && sub.href === '/payroll') return true;
+                                if (sub.href === '/accounting/daily-ledger') return true;
                             }
                         }
 
@@ -845,6 +849,15 @@ export default function Sidebar() {
                     "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
                     !isSidebarOpen && "flex flex-col items-center"
                 )}>
+                    {/* NEW: QUICK ACTION DAILY REGISTER BUTTON */}
+                    {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
+                        <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm" asChild>
+                            <Link href="/accounting/daily-ledger">
+                                <Unlock size={14} className="mr-3" /> <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
+                            </Link>
+                        </Button>
+                    )}
+
                     <Button 
                         variant="default" 
                         className={cn(

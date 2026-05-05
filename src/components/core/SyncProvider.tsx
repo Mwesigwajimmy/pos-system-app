@@ -1,12 +1,11 @@
 'use client';
 
-// 1. FIXED: Correctly import named exports from React
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { db, SellableProduct, Customer, Printer } from '@/lib/db';
 import { Toaster, toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -27,23 +26,59 @@ export const useSync = () => {
   return context;
 };
 
+/**
+ * --- UPGRADE: PROFESSIONAL ENTERPRISE INDICATOR ---
+ * Moved to sit alongside the AI button without overlapping.
+ * Features dynamic color switching and high-end styling.
+ */
 const OfflineIndicator: React.FC = () => {
   const { isOnline, isSyncing, lastSyncTime, triggerSync } = useSync();
+  
   const getStatus = () => {
-    if (isSyncing) return { Icon: RefreshCw, text: 'Syncing...', color: 'text-blue-500 bg-blue-50', spin: true };
-    if (isOnline) return { Icon: Wifi, text: `Online | Sync: ${lastSyncTime || 'never'}`, color: 'text-green-600 bg-green-50' };
-    return { Icon: WifiOff, text: 'Offline Mode', color: 'text-orange-600 bg-orange-50' };
+    if (isSyncing) return { 
+        Icon: RefreshCw, 
+        text: 'Synchronizing...', 
+        styles: 'bg-blue-500/10 text-blue-600 border-blue-200', 
+        spin: true,
+        dot: 'bg-blue-500'
+    };
+    if (isOnline) return { 
+        Icon: Wifi, 
+        text: `Online | Sync: ${lastSyncTime || 'Pending'}`, 
+        styles: 'bg-emerald-500/10 text-emerald-600 border-emerald-200',
+        dot: 'bg-emerald-500'
+    };
+    return { 
+        Icon: WifiOff, 
+        text: 'Offline Mode', 
+        styles: 'bg-amber-500/10 text-amber-600 border-amber-200',
+        dot: 'bg-amber-500'
+    };
   };
-  const { Icon, text, color, spin } = getStatus();
+
+  const { Icon, text, styles, spin, dot } = getStatus();
+
   return (
-    <div className="fixed bottom-4 right-4 z-[100] no-print">
+    // THE FIX: Positioned bottom-right but with 'right-24' to stay clear of the AI button
+    <div className="fixed bottom-6 right-24 z-50 no-print animate-in fade-in slide-in-from-right-4 duration-500">
       <button 
         onClick={() => !isSyncing && triggerSync()} 
         disabled={isSyncing}
-        className={cn("flex items-center gap-2 px-3 py-2 rounded-full text-sm font-semibold shadow-lg border transition-colors", color, isSyncing ? "cursor-not-allowed" : "cursor-pointer hover:bg-opacity-80")}
+        className={cn(
+            "group flex items-center gap-3 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl backdrop-blur-md border transition-all active:scale-95", 
+            styles, 
+            isSyncing ? "cursor-not-allowed" : "cursor-pointer hover:bg-white/80"
+        )}
       >
-        <Icon className={cn("h-4 w-4", spin && "animate-spin")} />
-        <span>{text}</span>
+        <div className="relative flex items-center justify-center">
+            <div className={cn("absolute h-2 w-2 rounded-full opacity-40 animate-ping", dot)} />
+            <div className={cn("relative h-1.5 w-1.5 rounded-full", dot)} />
+        </div>
+        
+        <div className="flex items-center gap-2 border-l border-current/20 pl-3">
+            <Icon className={cn("h-3.5 w-3.5", spin && "animate-spin")} />
+            <span>{text}</span>
+        </div>
       </button>
     </div>
   );
@@ -58,7 +93,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const triggerSync = useCallback(async () => {
     if (isSyncing) return;
     if (!navigator.onLine) {
-        toast.error("Cannot sync while offline.");
+        toast.error("Network unavailable: Synchronization deferred.");
         return;
     }
     setIsSyncing(true);
@@ -72,6 +107,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cError) throw new Error(`Customers sync failed: ${cError.message}`);
         const { data: printersData, error: prError } = await supabase.from('printers').select('*');
         if (prError) throw new Error(`Printers sync failed: ${prError.message}`);
+        
         const offlineSales = await db.offlineSales.toArray();
         let salesSynced = 0;
         let wasSyncSuccessful = false;
@@ -95,19 +131,19 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
 
-        if (salesSynced > 0) return `${salesSynced} offline sale(s) were synced successfully!`;
-        return 'Data is up to date!';
+        if (salesSynced > 0) return `${salesSynced} local transactions successfully verified and pushed.`;
+        return 'Local node is synchronized with global ledger.';
     };
 
     toast.promise(promise(), {
-        loading: 'Performing a full data sync...',
+        loading: 'Verifying data integrity and syncing ledger...',
         success: (message) => {
             const time = format(new Date(), 'dd MMM, hh:mm a');
             localStorage.setItem('lastSyncTime', time);
             setLastSyncTime(time);
             return message;
         },
-        error: (err: any) => `Sync failed: ${err.message}. Data remains saved locally.`,
+        error: (err: any) => `Sync Interrupted: ${err.message}. Data remains secured locally.`,
         finally: () => setIsSyncing(false),
     });
   }, [isSyncing, queryClient]);
@@ -116,12 +152,12 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsOnline(navigator.onLine);
     setLastSyncTime(localStorage.getItem('lastSyncTime'));
     const handleOnline = () => {
-      toast.success("Connection restored. Syncing data...");
+      toast.success("Identity Link Restored: Initiating automatic sync.");
       setIsOnline(true);
       triggerSync(); 
     };
     const handleOffline = () => {
-      toast.warning("You are offline. Sales will be saved locally.", { duration: 5000 });
+      toast.warning("Network Link Severed: Local cache mode active.", { duration: 5000 });
       setIsOnline(false);
     };
     window.addEventListener('online', handleOnline);
