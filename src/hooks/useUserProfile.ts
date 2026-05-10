@@ -11,6 +11,11 @@ export interface UserProfile {
   business_name: string;      // NEW: Captures the Dynamic Name
   business_type?: string;
   industry?: string;
+  
+  // --- ADDED FOR BILLING & SECURITY GATE ---
+  email: string;
+  subscription_status: string | null;
+  subscription_plan: string | null;
 }
 
 /**
@@ -18,7 +23,7 @@ export interface UserProfile {
  * 
  * UPGRADE: Aligned with the Deep Context RPC.
  * This ensures the Sidebar receives the correct "Active" identity
- * during multi-tenant node swaps.
+ * during multi-tenant node swaps and verifies billing status.
  */
 export function useUserProfile() {
   const { data, isLoading, error } = useBusinessContext();
@@ -45,7 +50,14 @@ export function useUserProfile() {
         business_name: profile.business_display_name || (profile as any).business_name || 'Sovereign Node',
         
         business_type: profile.business_type,
-        industry: profile.industry_sector || profile.industry
+        industry: profile.industry_sector || profile.industry,
+
+        // --- NEW: BILLING IDENTITY WELD ---
+        // These fields allow the Billing page to recognize the user
+        // and allow the DashboardGatekeeper to unlock the UI.
+        email: (profile as any).email || '', 
+        subscription_status: (profile as any).subscription_status || null,
+        subscription_plan: (profile as any).subscription_plan || null
     } : null,
     isLoading,
     isError: !!error,
