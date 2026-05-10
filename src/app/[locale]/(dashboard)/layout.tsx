@@ -16,7 +16,8 @@ import { toast } from 'sonner';
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
 
-import { usePathname } from 'next/navigation';
+// UPDATED: Added useRouter for the redirection logic
+import { usePathname, useRouter } from 'next/navigation';
 
 /**
  * --- UPGRADE: SOVEREIGN LIVE GUARD ---
@@ -151,10 +152,35 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
  * SOVEREIGN GATEKEEPER
  * UPGRADE: Now handles "In-Between" switch states gracefully to prevent logout loops.
  * This is the 'Stability Shield' that keeps the UI professional during node swaps.
+ * 
+ * NEW ADDITION: Subscription Verification Gate.
+ * Ensures users are redirected to billing if their 15,000/= deposit is not confirmed.
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
     const { isLoading: isBrandingLoading } = useBranding();
+    const pathname = usePathname();
+    const router = useRouter();
+
+    // --- NEW: SUBSCRIPTION SECURITY GATE ---
+    useEffect(() => {
+        // Only run check if loading has finished and a profile exists
+        if (profile && !isBusinessLoading && !isBrandingLoading) {
+            // Check the status from your existing 'subscription_status' column
+            const subStatus = (profile as any).subscription_status;
+            const isAuthorized = subStatus === 'trial' || subStatus === 'active';
+            
+            // Safety: Don't redirect if we are already on the billing or callback pages
+            const isOnBillingPath = pathname.includes('/settings/billing');
+
+            if (!isAuthorized && !isOnBillingPath) {
+                // Extract locale for correct routing (e.g., /en/settings/billing)
+                const segments = pathname.split('/');
+                const locale = segments[1] || 'en';
+                router.push(`/${locale}/settings/billing`);
+            }
+        }
+    }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
     // --- THE STABILITY SHIELD ---
     // While the system is actively loading OR if the profile is momentarily null during a swap,

@@ -26,6 +26,11 @@ export interface BusinessContextData {
   reporting_currency: string;
   setup_complete: boolean;
   branding_logo: string | null;
+
+  // --- NEW: SUBSCRIPTION KEYS ---
+  // Required for the Subscription Security Gate
+  subscription_status: string | null;
+  subscription_plan: string | null;
 }
 
 /**
@@ -58,19 +63,31 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
             .eq('id', (await supabase.auth.getUser()).data.user?.id)
             .single();
             
-        if (profile) return {
-            userId: profile.id,
-            businessId: profile.business_id,
-            businessName: profile.business_name || 'NIM UGANDA LTD', // Industrial Fallback
-            industry: profile.industry || 'Distribution',
-            user_role: profile.role || 'admin',
-            system_power: (profile as any).system_access_role || null,
-            business_display_name: profile.business_name || 'NIM UGANDA LTD',
-            business_type: 'Distribution',
-            reporting_currency: 'UGX',
-            setup_complete: profile.setup_complete,
-            branding_logo: null
-        };
+        if (profile) {
+            // NEW: Fetch subscription data from tenants table for the fallback
+            const { data: tenantData } = await supabase
+                .from('tenants')
+                .select('subscription_status, subscription_plan')
+                .eq('id', profile.business_id)
+                .single();
+
+            return {
+                userId: profile.id,
+                businessId: profile.business_id,
+                businessName: profile.business_name || 'NIM UGANDA LTD', // Industrial Fallback
+                industry: profile.industry || 'Distribution',
+                user_role: profile.role || 'admin',
+                system_power: (profile as any).system_access_role || null,
+                business_display_name: profile.business_name || 'NIM UGANDA LTD',
+                business_type: 'Distribution',
+                reporting_currency: 'UGX',
+                setup_complete: profile.setup_complete,
+                branding_logo: null,
+                // Fallback subscription resolution
+                subscription_status: tenantData?.subscription_status || null,
+                subscription_plan: tenantData?.subscription_plan || null
+            };
+        }
 
         return null;
     }
@@ -95,7 +112,11 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         business_type: context.business_type,
         reporting_currency: context.reporting_currency,
         setup_complete: context.setup_complete,
-        branding_logo: context.branding_logo
+        branding_logo: context.branding_logo,
+
+        // NEW: Map subscription data from the context RPC
+        subscription_status: context.subscription_status || null,
+        subscription_plan: context.subscription_plan || null
     };
 }
 
