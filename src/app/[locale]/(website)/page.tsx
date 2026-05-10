@@ -741,8 +741,7 @@ const MegaMenuHeader = () => {
                     </button>
                 </div>
             </div>
-
-            {/* Mobile Sidebar Overlay */}
+{/* Mobile Sidebar Overlay - FIXED FOR NO OVERLAP & ADDED DROPDOWNS */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div 
@@ -750,28 +749,80 @@ const MegaMenuHeader = () => {
                         animate={{ opacity: 1, x: 0 }} 
                         exit={{ opacity: 0, x: '100%' }} 
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
-                        className="lg:hidden fixed inset-0 top-16 bg-white z-[100] overflow-y-auto"
+                        className="lg:hidden fixed inset-0 top-16 bg-white dark:bg-slate-950 z-[200] overflow-y-auto"
                     >
                         <div className="container mx-auto py-8 px-6 space-y-6">
-                            <nav className="flex flex-col gap-4">
-                                <Link href="/features" className="text-xl font-bold text-slate-900 border-b pb-4" onClick={() => setIsMobileMenuOpen(false)}>Features</Link>
-                                <Link href="/industries" className="text-xl font-bold text-slate-900 border-b pb-4" onClick={() => setIsMobileMenuOpen(false)}>Industries</Link>
-                                <Link href="/download" className="text-xl font-bold text-blue-600 border-b pb-4 flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <DownloadCloud size={22} /> Download Application
+                            <nav className="flex flex-col">
+                                {/* Accordion for Mobile Dropdowns */}
+                                <Accordion type="single" collapsible className="w-full">
+                                    
+                                    {/* FEATURES DROPDOWN */}
+                                    <AccordionItem value="features" className="border-b border-slate-100 dark:border-slate-800">
+                                        <AccordionTrigger className="text-xl font-bold py-4 hover:no-underline text-slate-900 dark:text-white">
+                                            Features
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pt-2 pb-6 space-y-3">
+                                            {siteConfig.featureSets.map((feature) => (
+                                                <Link 
+                                                    key={feature.title} 
+                                                    href="/features" 
+                                                    className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                >
+                                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                                        <feature.icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                                    </div>
+                                                    <span className="font-bold text-slate-800 dark:text-slate-200">{feature.title}</span>
+                                                </Link>
+                                            ))}
+                                        </AccordionContent>
+                                    </AccordionItem>
+
+                                    {/* INDUSTRIES DROPDOWN */}
+                                    <AccordionItem value="industries" className="border-b border-slate-100 dark:border-slate-800">
+                                        <AccordionTrigger className="text-xl font-bold py-4 hover:no-underline text-slate-900 dark:text-white">
+                                            Industries
+                                        </AccordionTrigger>
+                                        <AccordionContent className="pt-2 pb-6 grid grid-cols-1 gap-2">
+                                            {siteConfig.industryItems.map((item) => (
+                                                <Link 
+                                                    key={item.name} 
+                                                    href="/industries" 
+                                                    className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                >
+                                                    <item.icon size={20} className="text-slate-400" />
+                                                    <span className="font-semibold text-slate-700 dark:text-slate-300">{item.name}</span>
+                                                </Link>
+                                            ))}
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+
+                                {/* Standard Mobile Links */}
+                                <Link href="/download" className="text-xl font-bold text-blue-600 border-b border-slate-100 dark:border-slate-800 py-5 flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <DownloadCloud size={24} /> Download Application
                                 </Link>
-                                <Link href="/aura-ai" className="text-xl font-bold text-blue-500 border-b pb-4" onClick={() => setIsMobileMenuOpen(false)}>Aura Intelligence</Link>
-                                <Link href="/blog" className="text-xl font-bold text-slate-900 border-b pb-4" onClick={() => setIsMobileMenuOpen(false)}>Engineering Journal</Link>
-                                <Link href="/help-centre" className="text-xl font-bold text-slate-900 border-b pb-4" onClick={() => setIsMobileMenuOpen(false)}>Help Center</Link>
+                                <Link href="/aura-ai" className="text-xl font-bold text-blue-500 border-b border-slate-100 dark:border-slate-800 py-5" onClick={() => setIsMobileMenuOpen(false)}>
+                                    Aura Intelligence
+                                </Link>
+                                <Link href="/blog" className="text-xl font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 py-5" onClick={() => setIsMobileMenuOpen(false)}>
+                                    Engineering Journal
+                                </Link>
+                                <Link href="/help-centre" className="text-xl font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 py-5" onClick={() => setIsMobileMenuOpen(false)}>
+                                    Help Center
+                                </Link>
                             </nav>
                             
-                            <div className="flex flex-col gap-4 pt-6">
-                                <Button asChild className="h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg">
-                                    <Link href="/signup">Create Account</Link>
+                            {/* Call to Action Buttons */}
+                            <div className="flex flex-col gap-4 pt-6 pb-24">
+                                <Button asChild className="h-16 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl shadow-lg">
+                                    <Link href="/signup">Create Free Account</Link>
                                 </Button>
-                                <Button variant="outline" asChild className="h-14 border-slate-200 text-slate-600 font-bold text-lg rounded-xl">
+                                <Button variant="outline" asChild className="h-16 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold text-lg rounded-2xl">
                                     <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Request Private Demo</a>
                                 </Button>
-                                <Button variant="ghost" asChild className="h-14 font-bold text-slate-500 text-lg">
+                                <Button variant="ghost" asChild className="h-16 font-bold text-slate-500 text-lg">
                                     <Link href="/login">Sign In</Link>
                                 </Button>
                             </div>
@@ -1179,8 +1230,17 @@ const DynamicPricingSection = () => {
 
     // Base Pricing in USD (Automatically converts)
     const PLANS = [
+{
+            name: "BUSINESS STARTER",
+            basePrice: 4, // $4 * 3750 = 15,000 UGX exactly
+            userLimit: "1 User",
+            idealFor: "Kiosks & Micro-Shops",
+            highlight: false,
+            btnText: "Start Free Trial",
+            features: ["Cloud POS", "Inventory Tracking", "Daily Sales Reports", "Invoicing", "Mobile App Access"]
+        },
         {
-            name: "Starter",
+            name: "GROWTH ",
             basePrice: 15, // Affordable entry point
             userLimit: "2 Users",
             idealFor: "Small Shops & Solo Founders",
@@ -1189,7 +1249,7 @@ const DynamicPricingSection = () => {
             features: ["Full ERP Core", "Mobile App", "Enterprise Reports", "invoicing system", "cloud accounting", "cloud auditing", "complete tax filling system"]
         },
         {
-            name: "Growth",
+            name: "SCALE SME ",
             basePrice: 49,
             userLimit: "10 Users",
             idealFor: "Growing SMEs & Teams",
@@ -1198,7 +1258,7 @@ const DynamicPricingSection = () => {
             features: ["All Industry Modules", "custom branding", "HR & Payroll", "Inventory Tracking", "Mobile App", "Enterprise Reports", "invoicing system", "cloud accounting", "cloud auditing", "complete tax filling system"]
         },
         {
-            name: "Scale",
+            name: "ENTERPRISE ERP ",
             basePrice: 119,
             userLimit: "Unlimited Users",
             idealFor: "Large Enterprises",
