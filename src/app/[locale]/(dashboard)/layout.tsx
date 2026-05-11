@@ -151,10 +151,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 /**
  * SOVEREIGN GATEKEEPER
  * UPGRADE: Now handles "In-Between" switch states gracefully to prevent logout loops.
- * This is the 'Stability Shield' that keeps the UI professional during node swaps.
  * 
- * NEW ADDITION: Subscription Verification Gate.
- * Ensures users are redirected to billing if their 15,000/= deposit is not confirmed.
+ * NEW ADDITION: Intelligent Subscription Verification Gate.
+ * Handles case-sensitivity and automatic entry for paid users.
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -162,30 +161,34 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const pathname = usePathname();
     const router = useRouter();
 
-    // --- NEW: SUBSCRIPTION SECURITY GATE ---
+    // --- AUTOMATED SUBSCRIPTION ENFORCEMENT ---
     useEffect(() => {
-        // Only run check if loading has finished and a profile exists
         if (profile && !isBusinessLoading && !isBrandingLoading) {
-            // Check the status from your existing 'subscription_status' column
-            const subStatus = (profile as any).subscription_status;
-            const isAuthorized = subStatus === 'trial' || subStatus === 'active';
             
-            // Safety: Don't redirect if we are already on the billing or callback pages
-            const isOnBillingPath = pathname.includes('/settings/billing');
+            // 1. Clean the status (Handle cases like 'Trial' vs 'trial')
+            const rawStatus = (profile as any).subscription_status || '';
+            const status = rawStatus.toLowerCase().trim();
+            
+            // 2. Determine authorization
+            const isAuthorized = ['trial', 'active', 'free'].includes(status);
+            
+            // 3. Define path context
+            const isOnBillingPage = pathname.includes('/settings/billing');
+            const locale = pathname.split('/')[1] || 'en';
 
-            if (!isAuthorized && !isOnBillingPath) {
-                // Extract locale for correct routing (e.g., /en/settings/billing)
-                const segments = pathname.split('/');
-                const locale = segments[1] || 'en';
+            // 4. THE ACTION:
+            if (!isAuthorized && !isOnBillingPage) {
+                // REDIRECT TO PAY: User is unpaid and trying to access dashboard
                 router.push(`/${locale}/settings/billing`);
+            } 
+            else if (isAuthorized && isOnBillingPage) {
+                // AUTO-ENTRY: User has paid but is still looking at the billing page
+                router.push(`/${locale}/dashboard`);
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
     // --- THE STABILITY SHIELD ---
-    // While the system is actively loading OR if the profile is momentarily null during a swap,
-    // we show the high-end loader instead of the error screen. 
-    // This prevents the system from "panicking" and forcing a logout.
     if (isBusinessLoading || isBrandingLoading || (!profile && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
