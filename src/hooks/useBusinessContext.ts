@@ -15,6 +15,7 @@ export interface BusinessContextData {
   businessName: string;
   industry: string;
   country?: string;
+  email: string; // ADDED: Required for billing handshake
   
   // --- DEEP SOVEREIGN EXTENSIONS ---
   // Mandatory for multi-tenant role filtering and branding resolution
@@ -38,6 +39,10 @@ export interface BusinessContextData {
  */
 async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const supabase = createClient();
+
+    // --- 0. AUTHENTICATION RESOLUTION ---
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
     
     // --- 1. AURA NEURAL LINK (Handshake Unification) ---
     // DEEP FIX: We pass 'p_target_biz_id' as null to resolve the PGRST203 ambiguity.
@@ -57,10 +62,11 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         console.error("LITONU_SECURITY: Handshake Desync Detected", { auraError, contextError });
         
         // PHYSICAL TABLE AUDIT: If the "Brain" (RPC) is confused, we read from the "Heart" (Profiles)
+        // Added 'email' to the select statement here
         const { data: profile } = await supabase
             .from('profiles')
-            .select('id, business_id, business_name, industry, role, system_access_role, setup_complete')
-            .eq('id', (await supabase.auth.getUser()).data.user?.id)
+            .select('id, email, business_id, business_name, industry, role, system_access_role, setup_complete')
+            .eq('id', user.id)
             .single();
             
         if (profile) {
@@ -76,6 +82,7 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
                 businessId: profile.business_id,
                 businessName: profile.business_name || 'NIM UGANDA LTD', // Industrial Fallback
                 industry: profile.industry || 'Distribution',
+                email: profile.email || user.email || '', // Priority: Profile -> Auth
                 user_role: profile.role || 'admin',
                 system_power: (profile as any).system_access_role || null,
                 business_display_name: profile.business_name || 'NIM UGANDA LTD',
@@ -97,12 +104,20 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const aura = Array.isArray(auraData) ? auraData[0] : auraData;
     const context = Array.isArray(contextData) ? contextData[0] : contextData;
 
+    // EXTRA DATA CAPTURE: We need the email and billing status which are not in the 8-column RPC
+    const { data: billingInfo } = await supabase
+        .from('profiles')
+        .select('email, tenants(subscription_status, subscription_plan)')
+        .eq('id', user.id)
+        .single();
+
     return {
         // Resolve Identity Anchors
-        userId: aura.userId || aura.user_id || context.user_id,
+        userId: aura.userId || aura.user_id || context.user_id || user.id,
         businessId: aura.businessId || aura.business_id || context.business_id,
         businessName: context.business_display_name || aura.businessName || aura.business_name,
         industry: context.industry_sector || aura.industry,
+        email: billingInfo?.email || user.email || '', // Mapped for billing
         
         // Resolve Sovereign Context (Synced to Sidebar/Middleware)
         user_role: context.user_role,
@@ -114,9 +129,9 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         setup_complete: context.setup_complete,
         branding_logo: context.branding_logo,
 
-        // NEW: Map subscription data from the context RPC
-        subscription_status: context.subscription_status || null,
-        subscription_plan: context.subscription_plan || null
+        // NEW: Map subscription data from the verification fetch
+        subscription_status: (billingInfo as any)?.tenants?.subscription_status || null,
+        subscription_plan: (billingInfo as any)?.tenants?.subscription_plan || null
     };
 }
 
