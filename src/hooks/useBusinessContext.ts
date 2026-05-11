@@ -62,7 +62,6 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         console.error("LITONU_SECURITY: Handshake Desync Detected", { auraError, contextError });
         
         // PHYSICAL TABLE AUDIT: If the "Brain" (RPC) is confused, we read from the "Heart" (Profiles)
-        // Added 'email' to the select statement here
         const { data: profile } = await supabase
             .from('profiles')
             .select('id, email, business_id, business_name, industry, role, system_access_role, setup_complete')
@@ -104,7 +103,7 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const aura = Array.isArray(auraData) ? auraData[0] : auraData;
     const context = Array.isArray(contextData) ? contextData[0] : contextData;
 
-    // EXTRA DATA CAPTURE: We need the email and billing status which are not in the 8-column RPC
+    // EXTRA DATA CAPTURE: We need the email and billing status which are not in the standard RPC
     const { data: billingInfo } = await supabase
         .from('profiles')
         .select('email, tenants(subscription_status, subscription_plan)')
@@ -141,7 +140,7 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
  */
 export function useBusinessContext() {
     return useQuery<BusinessContextData | null, Error>({
-      queryKey: ['businessContext'],
+      queryKey: ['businessContext'], // THE MAGIC KEY: Targeted by the callback for instant refresh
       queryFn: fetchBusinessContextData,
       staleTime: 1000 * 60 * 15, // 15-minute Enterprise cache
       refetchOnWindowFocus: false, // Prevents identity desync on tab switch
