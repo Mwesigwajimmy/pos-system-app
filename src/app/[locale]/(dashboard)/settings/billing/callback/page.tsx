@@ -1,19 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, ShieldAlert, ShieldCheck } from "lucide-react";
-import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 
 /**
- * PESAPAL PAYMENT CALLBACK HANDLER
- * This page serves as the secure landing zone for users returning from the payment gateway.
- * It coordinates with the backend to verify the transaction and unlock the business node.
+ * INTERNAL COMPONENT: Handling the actual verification logic
  */
-export default function PesaPalCallback() {
+function CallbackContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -24,15 +21,15 @@ export default function PesaPalCallback() {
 
     useEffect(() => {
         const verifyPayment = async () => {
-            // If the ID is missing from the URL, it's an invalid access attempt
+            // If the ID is missing from the URL, it is an unauthorized access attempt
             if (!trackingId) {
                 setStatus('error');
                 return;
             }
 
             try {
-                // INTERNAL HANDSHAKE: Call our verification API
-                // This API talks to PesaPal V3 and updates the Supabase 'tenants' table
+                // SECURE HANDSHAKE: Call our internal verification API
+                // This talks to PesaPal V3 and updates your business status in Supabase
                 const res = await fetch(`/api/payments/pesapal/verify?trackingId=${trackingId}`);
                 const result = await res.json();
 
@@ -40,10 +37,10 @@ export default function PesaPalCallback() {
                     setStatus('success');
                     toast.success("Security Deposit Verified Successfully.");
                     
-                    // Determine current locale (en, fr, lg, etc.) to maintain routing integrity
+                    // Maintain language routing integrity (en, lg, sw, etc.)
                     const locale = pathname.split('/')[1] || 'en';
                     
-                    // Allow the user to see the success state before auto-redirecting
+                    // Allow the user to see the success message before auto-redirecting to dashboard
                     setTimeout(() => {
                         router.push(`/${locale}/dashboard`);
                     }, 3500);
@@ -63,7 +60,7 @@ export default function PesaPalCallback() {
     return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50/50">
             <Card className="max-w-md w-full border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden animate-in fade-in zoom-in duration-700">
-                {/* Visual indicator of the professional blue brand color */}
+                {/* Brand Visual Indicator */}
                 <div className="p-1.5 h-2 bg-blue-600 w-full" />
                 
                 <CardContent className="p-12 text-center space-y-8">
@@ -78,7 +75,7 @@ export default function PesaPalCallback() {
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Verifying Deposit</h2>
                                 <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                                    Performing secure handshake with the payment gateway to activate your business node.
+                                    Finalizing the secure handshake with the payment gateway to activate your business suite.
                                 </p>
                             </div>
                         </div>
@@ -91,9 +88,9 @@ export default function PesaPalCallback() {
                                 <CheckCircle2 className="h-12 w-12 text-emerald-600" />
                             </div>
                             <div className="space-y-2">
-                                <h2 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">Activation Complete</h2>
+                                <h2 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">Access Activated</h2>
                                 <p className="text-slate-500 text-sm font-medium">
-                                    Your $1 security deposit has been verified. Welcome to the Sovereign OS ecosystem.
+                                    Your $1 security deposit has been confirmed. You now have full access to the BBU1 ecosystem.
                                 </p>
                             </div>
                             <div className="pt-6">
@@ -103,7 +100,7 @@ export default function PesaPalCallback() {
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.3s]" />
                                 </div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-4">
-                                    Opening Command Center...
+                                    Opening Business Management Suite...
                                 </p>
                             </div>
                         </div>
@@ -116,9 +113,9 @@ export default function PesaPalCallback() {
                                 <ShieldAlert className="h-10 w-10 text-red-500" />
                             </div>
                             <div className="space-y-2">
-                                <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Handshake Failed</h2>
+                                <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Connection Error</h2>
                                 <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                                    The system could not confirm your transaction. If your funds were deducted, please do not pay again and contact support.
+                                    The system could not verify your transaction. If your funds were deducted, please contact support for immediate manual activation.
                                 </p>
                             </div>
                             <div className="pt-4 flex flex-col gap-3">
@@ -140,14 +137,29 @@ export default function PesaPalCallback() {
                     )}
                 </CardContent>
 
-                {/* BOTTOM BRANDING STRIP */}
+                {/* FOOTER BRANDING */}
                 <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-3">
                     <ShieldCheck size={16} className="text-blue-600 opacity-50" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                        Authorized Payment Reconciliation Node
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                        Verified Financial Reconciliation Node
                     </span>
                 </div>
             </Card>
         </div>
+    );
+}
+
+/**
+ * EXPORTED PAGE: Wrapped in Suspense to prevent build errors
+ */
+export default function PesaPalCallback() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
+                <Loader2 className="h-10 w-10 animate-spin text-blue-600 opacity-20" />
+            </div>
+        }>
+            <CallbackContent />
+        </Suspense>
     );
 }
