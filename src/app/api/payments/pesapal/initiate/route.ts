@@ -3,29 +3,51 @@ import { getPesaPalToken, registerIPN } from '@/lib/payments/pesapal';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 
+/**
+ * START SUBSCRIPTION PROCESS
+ * This API initiates the secure payment process via PesaPal 
+ * for the $1 verification deposit.
+ */
 export async function POST(req: Request) {
     try {
+        // 1. Parse and validate the request data
         const body = await req.json();
         const { amount, planName, businessId, email } = body;
 
+        // Validation: Ensure the business and user identity are present
         if (!businessId || !email) {
-            return NextResponse.json({ error: "Missing identity context" }, { status: 400 });
+            return NextResponse.json(
+                { error: "Business identity not found. Please refresh and try again." }, 
+                { status: 400 }
+            );
         }
 
-        // 1. Get PesaPal Auth Token
+        // Validation: Ensure a valid amount is being charged
+        if (!amount || amount <= 0) {
+            return NextResponse.json(
+                { error: "Invalid payment amount detected." }, 
+                { status: 400 }
+            );
+        }
+
+        // 2. Obtain Access Token (Identity Handshake)
+        // Authenticates your server with PesaPal's global payment system.
         const token = await getPesaPalToken();
         
-        // 2. Register IPN (Background notification listener)
+        // 3. Register the IPN (Instant Payment Notification)
+        // This sets up the 'Background Guard' that confirms payment even if the browser closes.
         const ipnId = await registerIPN(token);
 
-        // 3. Create unique reference for this transaction
-        const merchantReference = `BBU1-${Math.floor(Date.now() / 1000)}`;
+        // 4. Generate a Unique Business Reference
+        // Creates a permanent record ID for this specific transaction.
+        const merchantReference = `BBU1-PAY-${Math.floor(Date.now() / 1000)}`;
 
+        // 5. Prepare the Payment Documentation
         const orderRequest = {
             id: merchantReference,
-            currency: 'USD', // Trial verification is in USD
+            currency: 'USD', 
             amount: amount,
-            description: `Sovereign OS Trial: ${planName} Plan`,
+            description: `Verification Deposit: ${planName} Plan`,
             callback_url: `https://www.bbu1.com/settings/billing/callback`,
             notification_id: ipnId,
             billing_address: {
@@ -33,7 +55,7 @@ export async function POST(req: Request) {
             }
         };
 
-        // 4. Submit to PesaPal
+        // 6. Submit Request to Payment Gateway
         const res = await fetch(`${process.env.PESAPAL_BASE_URL}/api/Transactions/SubmitOrderRequest`, {
             method: 'POST',
             headers: {
@@ -46,24 +68,40 @@ export async function POST(req: Request) {
         const data = await res.json();
 
         if (!res.ok) {
-            throw new Error(data.message || "PesaPal Gateway refused the connection.");
+            throw new Error(data.message || "The payment gateway is currently unavailable. Please try again shortly.");
         }
 
-        // 5. SECURE STEP: Store this tracking ID in Supabase so we know who is paying
+        // 7. SECURE RECORD KEEPING
+        // We store the Tracking ID in your database now so the system
+        // knows exactly which business to unlock once the payment finishes.
         const supabase = createClient(cookies());
-        await supabase
+        
+        const { error: dbError } = await supabase
             .from('tenants')
-            .update({ pesapal_order_tracking_id: data.order_tracking_id })
+            .update({ 
+                pesapal_order_tracking_id: data.order_tracking_id,
+                subscription_plan: planName // Pre-set the intended plan
+            })
             .eq('id', businessId);
 
-        // 6. Return the redirect URL to the frontend
+        if (dbError) {
+            console.error("DATABASE_SYNC_ERROR:", dbError.message);
+            // We continue anyway because the payment URL is already generated
+        }
+
+        // 8. Return the Secure Redirect URL to the browser
         return NextResponse.json({ 
             redirect_url: data.redirect_url,
             order_tracking_id: data.order_tracking_id 
         });
 
     } catch (error: any) {
-        console.error("PESAPAL_INITIATE_CRITICAL_FAILURE:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        // Log error with simple business terminology
+        console.error("PAYMENT_INITIATION_ERROR:", error.message);
+        
+        return NextResponse.json(
+            { error: "Internal System Error: Could not reach the payment provider." }, 
+            { status: 500 }
+        );
     }
 }
