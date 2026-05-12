@@ -110,6 +110,14 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         .eq('id', user.id)
         .single();
 
+    /**
+     * AMBIGUITY RESOLUTION:
+     * Supabase joins can return related data as an object OR an array.
+     * We check both to ensure subscription data is never 'undefined'.
+     */
+    const tenantNode = (billingInfo as any)?.tenants;
+    const resolvedTenant = Array.isArray(tenantNode) ? tenantNode[0] : tenantNode;
+
     return {
         // Resolve Identity Anchors
         userId: aura.userId || aura.user_id || context.user_id || user.id,
@@ -128,9 +136,9 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         setup_complete: context.setup_complete,
         branding_logo: context.branding_logo,
 
-        // NEW: Map subscription data from the verification fetch
-        subscription_status: (billingInfo as any)?.tenants?.subscription_status || null,
-        subscription_plan: (billingInfo as any)?.tenants?.subscription_plan || null
+        // THE FIX: Correctly mapping the resolved data from the join
+        subscription_status: resolvedTenant?.subscription_status || null,
+        subscription_plan: resolvedTenant?.subscription_plan || null
     };
 }
 

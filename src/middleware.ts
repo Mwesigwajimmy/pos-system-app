@@ -318,6 +318,25 @@ export async function middleware(request: NextRequest) {
     // This is returned from the new 'system_power' column in your DB function
     const systemPower = userContext.system_power || null;
 
+    // --- NEW: SUBSCRIPTION SECURITY GATE (WELDED) ---
+    // This logic handles the redirect loop by checking the billing status 
+    // returned from the SQL get_user_context function.
+    const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
+    const isPaid = ['trial', 'active', 'free'].includes(subStatus);
+    const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
+
+    // SCENARIO A: User is PAID but stuck on Billing -> Force to Dashboard
+    if (isPaid && isOnBillingPage) {
+        return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
+    }
+
+    // SCENARIO B: User is UNPAID and trying to access the app -> Force to Billing
+    // Note: We ignore bots and we ignore the 'welcome' setup page.
+    const isRestrictedPath = !isPublicPathForBot && !isOnBillingPage && pathWithoutLocale !== '/welcome';
+    if (!isPaid && isRestrictedPath) {
+        return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
+    }
+
     // --- THE SMART REDIRECT ENGINE ---
     // Calculates the correct landing node. 
     // ARCHITECTS go to /command-center. Standard ADMITS go to their Industry Dashboard.
