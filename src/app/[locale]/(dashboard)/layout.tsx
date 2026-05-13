@@ -150,7 +150,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: Fully synchronized with Middleware v1.4.2
+ * UPGRADE: Loop-Proof Synchronized Access Gate v1.4.3
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -162,32 +162,30 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (profile && !isBusinessLoading && !isBrandingLoading) {
             
-            // 1. Clean the status (Handle cases like 'Trial' vs 'trial')
+            // 1. Resolve raw status safely
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             
-            // 2. Determine authorization (Synchronized with Middleware)
+            // 2. Loop Guard: If status is empty, we are likely in a "Sync Buffer". 
+            // We wait for the Neural Link to provide the actual DB value.
+            if (status === "") return;
+
+            // 3. Determine authorization
             const isAuthorized = ['trial', 'active', 'free', 'completed'].includes(status);
             
-            // 3. Define path context
+            // 4. Resolve path context
             const isOnBillingPage = pathname.includes('/settings/billing');
-            
-            // BYPASS: If we are on the callback verification page, STOP logic.
-            // This prevents the Gatekeeper from fighting the Callback Page's verification process.
             const isCallbackPage = pathname.includes('/settings/billing/callback');
-            if (isCallbackPage) return;
-
-            const locale = pathname.split('/')[1] || 'en';
-
-            // 4. THE ACTION:
-            if (!isAuthorized && !isOnBillingPage) {
-                // REDIRECT TO PAY: User is unpaid and trying to access dashboard
-                console.log("GATEKEEPER: Redirecting to Billing. Status:", status);
+            
+            // 5. THE ACTION:
+            if (!isAuthorized && !isOnBillingPage && !isCallbackPage) {
+                // LOCKDOWN: User is confirmed unauthorized and not on a safe billing path
+                const locale = pathname.split('/')[1] || 'en';
                 router.push(`/${locale}/settings/billing`);
             } 
-            else if (isAuthorized && isOnBillingPage) {
-                // AUTO-ENTRY: User has paid but is still looking at the billing page
-                console.log("GATEKEEPER: Status verified as paid. Moving to Dashboard.");
+            else if (isAuthorized && isOnBillingPage && !isCallbackPage) {
+                // AUTO-ENTRY: User has cleared payment, instantly unlock dashboard
+                const locale = pathname.split('/')[1] || 'en';
                 router.push(`/${locale}/dashboard`);
             }
         }
