@@ -1535,66 +1535,16 @@ const DynamicPricingSection = () => {
                     </div>
                 </div>
 
-                {/* --- STANDARD TRUST BANNER --- */}
-                <div className="mt-16 max-w-7xl mx-auto p-8 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-dashed flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                            <ShieldCheck className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div>
-                            <h5 className="font-bold text-slate-900 dark:text-white">Enterprise Security Standard</h5>
-                            <p className="text-sm text-muted-foreground">SSO, 2FA, and Audit Logs are standard.</p>
-                        </div>
-                    </div>
-                    <div className="h-px w-full md:w-px md:h-12 bg-border" />
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                            <Bot className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                            <h5 className="font-bold text-slate-900 dark:text-white">Aura AI Built-In</h5>
-                            <p className="text-sm text-muted-foreground">Intelligence is a utility, not an upgrade.</p>
-                        </div>
-                    </div>
+                {/* The Trust Banner is now removed to let the Partner Section sit closer */}
+                <div className="mt-12 text-center text-xs text-muted-foreground">
+                    PLEASE NOTE: Prices exclude local VAT/GST where applicable. 
+                    Need On-Premise hosting or White-Label solutions? <a href={siteConfig.contactInfo.whatsappLink} className="text-blue-600 hover:underline font-medium">Contact Enterprise Sales</a>.
                 </div>
             </div>
         </section>
     );
 };
-{/* --- ENTERPRISE LEAD CAPTURE SECTION --- */}
-<AnimatedSection className="bg-blue-600 py-16">
-    <div className="max-w-4xl mx-auto text-center px-4">
-        <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase mb-4">
-            Ready for Sovereign Control?
-        </h2>
-        <p className="text-blue-100 text-lg mb-8 font-medium">
-            Enter your email to receive the BBU1 Enterprise Architecture Whitepaper and a direct line to our Architects.
-        </p>
-        <form 
-            onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                handleLeadCapture(formData.get('lead_email') as string);
-                e.currentTarget.reset();
-            }}
-            className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
-        >
-            <Input 
-                name="lead_email"
-                type="email" 
-                placeholder="Enter business email..." 
-                className="h-14 bg-white/10 border-white/20 text-white placeholder:text-blue-200 rounded-2xl focus:ring-white"
-                required
-            />
-            <Button 
-                type="submit"
-                className="h-14 px-8 bg-white text-blue-600 font-black uppercase tracking-widest hover:bg-blue-50 rounded-2xl transition-all"
-            >
-                Get Started
-            </Button>
-        </form>
-    </div>
-</AnimatedSection>
+
 // --- PARTNER WITH US SECTION (Fixed: Direct Action Buttons) ---
 const PartnerWithUsSection = () => {
     const [activeTab, setActiveTab] = useState<'affiliate' | 'investor' | 'solution'>('affiliate');
@@ -2049,7 +1999,7 @@ const AboutCompanyExecutiveSection = () => {
 // --- HomePage Component ---
 export default function HomePage({ params: { locale } }: { params: { locale: string } }) {
     const supabase = createClient();
-const [isSSR, setIsSSR] = useState(true);
+    const [isSSR, setIsSSR] = useState(true);
     useEffect(() => {
         setIsSSR(false);
     }, []);
@@ -2431,37 +2381,8 @@ const [isSSR, setIsSSR] = useState(true);
 
                 <DynamicPricingSection />
 
-                {/* --- ENTERPRISE LEAD CAPTURE SECTION (MOVED TO CORRECT POSITION) --- */}
-                <AnimatedSection className="bg-blue-600 py-16">
-                    <div className="max-w-4xl mx-auto text-center px-4">
-                        <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter uppercase mb-4">Ready for Sovereign Control?</h2>
-                        <p className="text-blue-100 text-lg mb-8 font-medium">Enter your email to receive the BBU1 Enterprise Architecture Whitepaper and a direct line to our Architects.</p>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            const formData = new FormData(e.currentTarget);
-                            handleLeadCapture(formData.get('lead_email') as string);
-                            e.currentTarget.reset();
-                        }} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-                            <Input name="lead_email" type="email" placeholder="Enter business email..." className="h-14 bg-white/10 border-white/20 text-white placeholder:text-blue-200 rounded-2xl focus:ring-white" required />
-                            <Button type="submit" className="h-14 px-8 bg-white text-blue-600 font-black uppercase tracking-widest hover:bg-blue-50 rounded-2xl transition-all">Get Started</Button>
-                        </form>
-                    </div>
-                </AnimatedSection>
-
                 <PartnerWithUsSection />
 
-                {/* LEGACY WEALTH SECTION */}
-                <AnimatedSection className="text-center py-16 md:py-20">
-                    <div className="relative py-12 md:py-16 bg-blue-600 text-white rounded-2xl shadow-2xl overflow-hidden">
-                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Build an Enterprise That Lasts Generations</h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-lg text-white/90">The tools, insights, and platform to revolutionize your business and build a durable legacy.</p>
-                        <div className="mt-8">
-                            <Button asChild size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100 transition-all duration-200">
-                                <Link href="/signup">Start Your Free Trial & Build Your Legacy <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                            </Button>
-                        </div>
-                    </div>
-                </AnimatedSection>
             </main>
 
             {mounted && <AdvancedChatWidget />}
