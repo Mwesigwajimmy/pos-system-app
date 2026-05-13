@@ -1294,11 +1294,19 @@ const DynamicPricingSection = () => {
     const [loading, setLoading] = useState(true);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-    // Base Pricing in USD (Automatically converts)
+    // --- Slideshow Logic for the "No-Addons" section ---
+    const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setActiveModuleIndex((prev) => (prev + 1) % ALL_INCLUDED_MODULES.length);
+        }, 5000); 
+        return () => clearInterval(interval);
+    }, []);
+
     const PLANS = [
-{
+        {
             name: "BUSINESS STARTER",
-            basePrice: 4, // $4 * 3750 = 15,000 UGX exactly
+            basePrice: 4, 
             userLimit: "1 User",
             idealFor: "Kiosks & Micro-Shops",
             highlight: false,
@@ -1307,7 +1315,7 @@ const DynamicPricingSection = () => {
         },
         {
             name: "GROWTH ",
-            basePrice: 15, // Affordable entry point
+            basePrice: 15, 
             userLimit: "2 Users",
             idealFor: "Small Shops & Solo Founders",
             highlight: false,
@@ -1334,49 +1342,23 @@ const DynamicPricingSection = () => {
         }
     ];
 
-useEffect(() => {
+    useEffect(() => {
         const detectLocation = async () => {
             try {
-                // --- 1. SET UP ABORT CONTROLLER (Prevents hanging) ---
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second limit
-
-                // --- 2. PROFESSIONAL GLOBAL HANDSHAKE (CORS-SAFE BYPASS) ---
-                // We utilize a high-availability loop to ensure location detection 
-                // never triggers a 403 Forbidden or Network crash.
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
                 let data = null;
-                const endpoints = [
-                    'https://api.country.is',
-                    'https://ipapi.co/json/',
-                    'https://ip-api.com/json'
-                ];
-
+                const endpoints = ['https://api.country.is', 'https://ipapi.co/json/', 'https://ip-api.com/json'];
                 for (const url of endpoints) {
                     try {
-                        const response = await fetch(url, { 
-                            signal: controller.signal,
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        if (response.ok) {
-                            data = await response.json();
-                            break; // Handshake successful
-                        }
-                    } catch (e) {
-                        continue; // Failover to next node
-                    }
+                        const response = await fetch(url, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
+                        if (response.ok) { data = await response.json(); break; }
+                    } catch (e) { continue; }
                 }
                 clearTimeout(timeoutId);
-
                 if (!data) throw new Error("Nodes unreachable");
-
-                // --- 4. NORMALIZE COUNTRY CODE ---
                 const countryCode = (data.country_code || data.country || data.ip_country || '').toUpperCase();
-
-                console.log(`BBU1 Smart Pricing: User detected in [${countryCode}]`);
-
-                // --- 5. OPTIMIZED DETECTION LOGIC ---
                 let detectedCurrency;
-
                 if (!countryCode || countryCode === 'RESERVED' || countryCode === 'LOCALHOST') {
                     detectedCurrency = GEO_CURRENCIES['DEFAULT'];
                 } else if (EUROZONE_COUNTRIES.includes(countryCode)) {
@@ -1386,255 +1368,197 @@ useEffect(() => {
                 } else {
                     detectedCurrency = GEO_CURRENCIES['DEFAULT'];
                 }
-
                 setCurrency(detectedCurrency);
-
-                // --- 6. AUTO-LANGUAGE TRANSFORMATION ENGINE ---
-                // Maps detected country to the correct Language Code for the Orchestrator
-                const languageMap = {
-                    'CN': 'zh-CN', // China
-                    'FR': 'fr',    // France
-                    'AE': 'ar',    // UAE/Arabic
-                    'DE': 'de',    // Germany
-                    'NL': 'nl',    // Netherlands
-                    'BR': 'pt',    // Brazil
-                };
-
+                const languageMap = { 'CN': 'zh-CN', 'FR': 'fr', 'AE': 'ar', 'DE': 'de', 'NL': 'nl', 'BR': 'pt' };
                 const targetLang = languageMap[countryCode];
-
                 if (targetLang) {
                     const checkEngine = setInterval(() => {
-                        const select = document.querySelector('.goog-te-combo');
-                        if (select) {
-                            select.value = targetLang;
-                            select.dispatchEvent(new Event('change'));
-                            clearInterval(checkEngine); 
-                            console.log(`BBU1 OS: System transformed to [${targetLang}]`);
-                        }
+                        const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
+                        if (select) { select.value = targetLang; select.dispatchEvent(new Event('change')); clearInterval(checkEngine); }
                     }, 500); 
                     setTimeout(() => clearInterval(checkEngine), 10000);
                 }
-
-            } catch (error) {
-                console.warn("BBU1 Smart Pricing: Geolocation blocked. Defaulting to Global (USD).");
-                setCurrency(GEO_CURRENCIES['DEFAULT']);
-            } finally {
-                setLoading(false);
-            }
+            } catch (error) { setCurrency(GEO_CURRENCIES['DEFAULT']); } finally { setLoading(false); }
         };
-
         detectLocation();
-    }, [setCurrency]); 
+    }, []); 
 
-    const formatPrice = (base) => {
+    const formatPrice = (base: number) => {
         let price = base * currency.rate;
-        if (billingCycle === 'yearly') price = price * 0.8; // 20% Discount
-        
-        if (currency.code === 'UGX' || currency.code === 'TZS' || currency.code === 'RWF') {
-            price = Math.floor(price / 1000) * 1000; 
-        } else if (currency.code === 'NGN' || currency.code === 'KES') {
-            price = Math.floor(price / 100) * 100; 
-        } else {
-            price = Math.floor(price); 
-        }
-
+        if (billingCycle === 'yearly') price = price * 0.8;
+        if (['UGX', 'TZS', 'RWF'].includes(currency.code)) price = Math.floor(price / 1000) * 1000; 
+        else if (['NGN', 'KES'].includes(currency.code)) price = Math.floor(price / 100) * 100; 
+        else price = Math.floor(price); 
         return new Intl.NumberFormat('en').format(price);
     };
-return (
-        <>
-            {/* SECTION 1: Standard Pricing (Light Background) */}
-            <section id="pricing" className="py-24 bg-background relative overflow-hidden">
-                {/* Background Gradient */}
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-600/30 to-transparent" />
-                
-                <div className="container mx-auto px-4 relative z-10">
-                    <div className="text-center max-w-4xl mx-auto mb-16">
-                        <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl mb-6">
-                            Fair Pricing for Every Business
-                        </h2>
-                        <p className="text-xl text-muted-foreground mb-8">
-                            We believe in fair access to technology. Whether you are a local shop or a global enterprise, 
-                            you get the full power of the BBU1 Operating System.
-                        </p>
 
-                        {/* Billing Toggle */}
-                        <div className="flex items-center justify-center gap-4">
-                            <span className={cn("text-sm font-medium transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
-                            <button 
-                                onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
-                                className="relative w-14 h-7 bg-blue-600/20 rounded-full p-1 transition-colors hover:bg-blue-600/30 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
-                            >
-                                <motion.div 
-                                    className="h-5 w-5 bg-blue-600 rounded-full shadow-sm"
-                                    animate={{ x: billingCycle === 'yearly' ? 28 : 0 }}
-                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                />
-                            </button>
-                            <span className={cn("text-sm font-medium transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
-                                Yearly <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
-                            </span>
-                        </div>
+    return (
+        <section id="pricing" className="py-24 bg-background relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-600/30 to-transparent" />
+            
+            <div className="container mx-auto px-4 relative z-10">
+                <div className="text-center max-w-4xl mx-auto mb-16">
+                    <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl mb-6">Fair Pricing for Every Business</h2>
+                    <div className="flex items-center justify-center gap-4 mb-8">
+                        <span className={cn("text-sm font-medium transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
+                        <button onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')} className="relative w-14 h-7 bg-blue-600/20 rounded-full p-1 transition-colors hover:bg-blue-600/30">
+                            <motion.div className="h-5 w-5 bg-blue-600 rounded-full shadow-sm" animate={{ x: billingCycle === 'yearly' ? 28 : 0 }} />
+                        </button>
+                        <span className={cn("text-sm font-medium transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
+                            Yearly <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
+                        </span>
+                    </div>
+                    {loading && <p className="text-xs text-muted-foreground animate-pulse">Detecting your local currency...</p>}
+                </div>
+
+                {/* --- PRICING GRID --- */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                    {/* Row 1: First 3 Plans */}
+                    {PLANS.slice(0, 3).map((plan, index) => (
+                        <Card key={index} className={cn("flex flex-col relative transition-all duration-300 hover:shadow-lg", plan.highlight ? "border-blue-600 shadow-2xl scale-105 z-10" : "border-border")}>
+                            <CardHeader>
+                                {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
+                                <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                                <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
+                                <div className="mt-6 flex items-baseline">
+                                    <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
+                                    <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-grow space-y-6">
+                                <div className="p-4 bg-muted/50 rounded-lg border text-sm font-bold flex items-center gap-2"><Users className="h-5 w-5 text-blue-600" /> {plan.userLimit}</div>
+                                <ul className="space-y-3">
+                                    {plan.features.map((f, i) => (
+                                        <li key={i} className="flex items-start gap-3 text-sm">
+                                            <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                                            <span className="font-semibold">{f}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                            <CardFooter><Button className="w-full h-11 font-semibold bg-blue-600 hover:bg-blue-700 text-white" asChild><Link href="/signup">{plan.btnText}</Link></Button></CardFooter>
+                        </Card>
+                    ))}
+
+                    {/* Row 2: Enterprise Card (Left) */}
+                    <Card className="flex flex-col relative transition-all duration-300 hover:shadow-lg border-border">
+                        <CardHeader>
+                            <CardTitle className="text-2xl font-bold">{PLANS[3].name}</CardTitle>
+                            <CardDescription className="text-sm font-medium mt-1">{PLANS[3].idealFor}</CardDescription>
+                            <div className="mt-6 flex items-baseline">
+                                <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(PLANS[3].basePrice)}</span>
+                                <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-6">
+                            <div className="p-4 bg-muted/50 rounded-lg border text-sm font-bold flex items-center gap-2"><Users className="h-5 w-5 text-blue-600" /> {PLANS[3].userLimit}</div>
+                            <ul className="space-y-3">
+                                {PLANS[3].features.map((f, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-sm">
+                                        <CheckCircle className="h-5 w-5 text-blue-600 shrink-0" />
+                                        <span className="font-semibold">{f}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                        <CardFooter><Button className="w-full h-11 font-semibold border-blue-600 text-blue-600 hover:bg-blue-50" variant="outline" asChild><Link href="/signup">{PLANS[3].btnText}</Link></Button></CardFooter>
+                    </Card>
+
+                    {/* Row 2: Slideshow Box (Right - Fills two columns) */}
+                    <div className="md:col-span-2 relative rounded-xl bg-slate-950 overflow-hidden border border-slate-800 shadow-2xl flex flex-col min-h-[450px]">
+                        {/* Background Decoration */}
+                        <div className="absolute top-0 right-0 p-8 opacity-10"><Sparkles className="h-32 w-32 text-blue-500" /></div>
                         
-                        {loading && <p className="text-xs text-muted-foreground mt-4 animate-pulse">Detecting your local currency...</p>}
-                    </div>
-
-                    {/* Pricing Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
-                        {PLANS.map((plan, index) => (
-                            <Card key={index} className={cn("flex flex-col relative transition-all duration-300 hover:shadow-lg", plan.highlight ? "border-blue-600 shadow-2xl scale-105 z-10" : "border-border hover:border-blue-600/50")}>
-                                {plan.highlight && (
-                                    <div className="absolute top-0 inset-x-0 h-1 bg-blue-600 rounded-t-xl" />
-                                )}
-                                <CardHeader>
-                                    {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
-                                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                                    <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
-                                    <div className="mt-6 flex items-baseline">
-                                        <span className="text-4xl font-extrabold tracking-tight">
-                                            {currency.symbol} {formatPrice(plan.basePrice)}
-                                        </span>
-                                        <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="flex-grow space-y-6">
-                                    <div className="p-4 bg-muted/50 rounded-lg border">
-                                        <p className="font-semibold flex items-center gap-2">
-                                            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" /> {plan.userLimit}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <p className="text-sm font-bold uppercase text-muted-foreground tracking-wider">What's Included:</p>
-                                        <ul className="space-y-3">
-                                            <li className="flex items-start gap-3 text-sm">
-                                                <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
-                                                <span className="font-semibold">Full System Access</span>
-                                            </li>
-                                            {plan.features.map((feature, idx) => (
-                                                <li key={idx} className="flex items-start gap-3 text-sm">
-                                                    <CheckCircle className="h-5 w-5 text-blue-600/60 shrink-0" />
-                                                    <span>{feature}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button className="w-full h-11 font-semibold bg-blue-600 hover:bg-blue-700 text-white" variant={plan.highlight ? "default" : "outline"} asChild>
-                                        <Link href="/signup">{plan.btnText}</Link>
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* SECTION 2: Enterprise/Included Modules (Deep Navy Background) */}
-            <section className="py-24 bg-slate-900 relative overflow-hidden">
-                 {/* Decorative background element */}
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
-                
-                <div className="container mx-auto px-4 relative z-10">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="text-center mb-12">
-                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 text-xs font-bold uppercase tracking-widest mb-4 border border-blue-500/20">
-                                <Sparkles className="h-3 w-3" /> Unlocked Potential
-                            </span>
-                            <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4 text-white">
-                                The "No-Addons" Promise
-                            </h3>
-                            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-                                Stop paying for "Extra Modules." With BBU1, the moment you sign up, 
-                                <span className="text-white font-semibold"> every single enterprise engine is unlocked</span> tailored to your industry.
-                            </p>
+                        <div className="p-8 z-20">
+                            <div className="flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase tracking-[0.2em] mb-3">
+                                <Sparkles className="h-4 w-4" /> The "No-Addons" Promise
+                            </div>
+                            <h3 className="text-2xl font-bold text-white tracking-tight">Complete Ecosystem Unlocked</h3>
+                            <p className="text-slate-400 text-sm mt-1">Every enterprise engine is included in your subscription.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {ALL_INCLUDED_MODULES.map((module, i) => {
-                                // Dynamic Icon Mapping based on Title
-                                let ModuleIcon = BadgeCheck;
-                                if (module.title.includes("Finance")) ModuleIcon = Landmark;
-                                if (module.title.includes("Human")) ModuleIcon = Users;
-                                if (module.title.includes("Inventory")) ModuleIcon = Warehouse;
-                                if (module.title.includes("Sales")) ModuleIcon = Handshake;
-                                if (module.title.includes("Specialized")) ModuleIcon = Briefcase;
-
-                                return (
-                                    <motion.div 
-                                        key={i}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        whileInView={{ opacity: 1, y: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: i * 0.1 }}
-                                        // MODIFIED: White bg, Slate-900 text for high contrast pop
-                                        className="group relative overflow-hidden rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-sm transition-all hover:shadow-xl hover:border-blue-600"
-                                    >
-                                        {/* Subtle gradient background on hover */}
-                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                                        <div className="p-6 relative z-10 h-full flex flex-col">
-                                            <div className="flex items-center gap-3 mb-5">
-                                                {/* MODIFIED: Icon colors for white background */}
-                                                <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 group-hover:scale-110 transition-transform duration-300">
-                                                    <ModuleIcon className="h-6 w-6" />
-                                                </div>
-                                                <h4 className="font-bold text-xl leading-tight text-slate-900">
-                                                    {module.title}
-                                                </h4>
+                        <div className="flex-grow p-6 relative">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={activeModuleIndex}
+                                    initial={{ opacity: 0, x: 30 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -30 }}
+                                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                                    className="h-full"
+                                >
+                                    {/* --- THE WHITE MODULE CARD --- */}
+                                    <div className="bg-white rounded-2xl p-6 h-full shadow-inner flex flex-col justify-center">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="h-14 w-14 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+                                                {(() => {
+                                                    const title = ALL_INCLUDED_MODULES[activeModuleIndex].title;
+                                                    if (title.includes("Finance")) return <Landmark size={28} />;
+                                                    if (title.includes("Human")) return <Users size={28} />;
+                                                    if (title.includes("Inventory")) return <Warehouse size={28} />;
+                                                    if (title.includes("Sales")) return <Handshake size={28} />;
+                                                    return <Briefcase size={28} />;
+                                                })()}
                                             </div>
-
-                                            <div className="flex flex-wrap gap-2 content-start">
-                                                {module.features.map((feature, j) => (
-                                                    <span 
-                                                        key={j} 
-                                                        // MODIFIED: Badge styling for white background
-                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 border border-blue-100 text-[13px] font-medium text-blue-700 transition-colors group-hover:border-blue-200 group-hover:text-blue-900"
-                                                    >
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        {feature}
-                                                    </span>
-                                                ))}
-                                            </div>
+                                            <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+                                                {ALL_INCLUDED_MODULES[activeModuleIndex].title}
+                                            </h4>
                                         </div>
-                                    </motion.div>
-                                );
-                            })}
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {ALL_INCLUDED_MODULES[activeModuleIndex].features.map((feature, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                                    <span className="text-[14px] font-bold text-slate-700 truncate">{feature}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </AnimatePresence>
                         </div>
 
-                        {/* Trust Banner at bottom of features */}
-                        {/* MODIFIED: Adjusted for dark background */}
-                        <div className="mt-12 p-6 bg-white/5 rounded-xl border border-dashed border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                                    <ShieldCheck className="h-6 w-6 text-green-400" />
-                                </div>
-                                <div>
-                                    <h5 className="font-bold text-lg text-white">Enterprise Security Included</h5>
-                                    <p className="text-sm text-slate-400">We don't charge extra for security. SSO, 2FA, and Audit Logs are standard.</p>
-                                </div>
+                        {/* Progress Indicators */}
+                        <div className="px-8 py-6 flex items-center justify-between border-t border-slate-900">
+                            <div className="flex gap-2">
+                                {ALL_INCLUDED_MODULES.map((_, i) => (
+                                    <div 
+                                        key={i} 
+                                        className={cn("h-1.5 rounded-full transition-all duration-500", activeModuleIndex === i ? "bg-blue-500 w-10" : "bg-slate-800 w-2")}
+                                    />
+                                ))}
                             </div>
-                            <div className="h-px w-full md:w-px md:h-12 bg-white/10" />
-                             <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                                    <Bot className="h-6 w-6 text-blue-400" />
-                                </div>
-                                <div>
-                                    <h5 className="font-bold text-lg text-white">Aura AI Built-In</h5>
-                                    <p className="text-sm text-slate-400">Artificial Intelligence is not an upgrade. It's the core of the system.</p>
-                                </div>
-                            </div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                Module {activeModuleIndex + 1} of {ALL_INCLUDED_MODULES.length}
+                            </span>
                         </div>
                     </div>
-                    
-                    <div className="mt-16 text-center">
-                        <p className="text-slate-500 text-sm">
-                             PLEASE NOTE: Prices exclude local  VAT/GST where applicable. 
-                            Need On-Premise hosting or White-Label solutions? <a href={siteConfig.contactInfo.whatsappLink} className="text-blue-400 hover:underline font-medium">Contact Enterprise Sales</a>.
-                        </p>
+                </div>
+
+                {/* --- STANDARD TRUST BANNER --- */}
+                <div className="mt-16 max-w-7xl mx-auto p-8 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-dashed flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                            <ShieldCheck className="h-6 w-6 text-green-600" />
+                        </div>
+                        <div>
+                            <h5 className="font-bold text-slate-900 dark:text-white">Enterprise Security Standard</h5>
+                            <p className="text-sm text-muted-foreground">SSO, 2FA, and Audit Logs are standard.</p>
+                        </div>
+                    </div>
+                    <div className="h-px w-full md:w-px md:h-12 bg-border" />
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <Bot className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                            <h5 className="font-bold text-slate-900 dark:text-white">Aura AI Built-In</h5>
+                            <p className="text-sm text-muted-foreground">Intelligence is a utility, not an upgrade.</p>
+                        </div>
                     </div>
                 </div>
-            </section>
-        </>
+            </div>
+        </section>
     );
 };
 {/* --- ENTERPRISE LEAD CAPTURE SECTION --- */}
