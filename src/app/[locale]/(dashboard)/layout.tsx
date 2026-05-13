@@ -150,7 +150,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: Loop-Proof Synchronized Access Gate v1.4.3
+ * UPGRADE: Loop-Proof Synchronized Access Gate v1.5.0
+ * FIXED: Circular Redirect Logic Weld
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -160,14 +161,14 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
     // --- AUTOMATED SUBSCRIPTION ENFORCEMENT ---
     useEffect(() => {
+        // Only run redirect logic if all data is finished loading
         if (profile && !isBusinessLoading && !isBrandingLoading) {
             
             // 1. Resolve raw status safely
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             
-            // 2. Loop Guard: If status is empty, we are likely in a "Sync Buffer". 
-            // We wait for the Neural Link to provide the actual DB value.
+            // 2. Loop Guard: Wait for the Neural Link to provide the actual DB value.
             if (status === "") return;
 
             // 3. Determine authorization
@@ -176,22 +177,29 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             // 4. Resolve path context
             const isOnBillingPage = pathname.includes('/settings/billing');
             const isCallbackPage = pathname.includes('/settings/billing/callback');
+            const locale = pathname.split('/')[1] || 'en';
             
-            // 5. THE ACTION:
+            // 5. THE ACTION (WELDED FOR LOOP PREVENTION):
+            // We only trigger router.push if the destination is different from where we are.
+            // This prevents the "Ping-Pong" between Middleware and Client.
+            
             if (!isAuthorized && !isOnBillingPage && !isCallbackPage) {
-                // LOCKDOWN: User is confirmed unauthorized and not on a safe billing path
-                const locale = pathname.split('/')[1] || 'en';
-                router.push(`/${locale}/settings/billing`);
+                const billingPath = `/${locale}/settings/billing`;
+                if (pathname !== billingPath) {
+                    router.push(billingPath);
+                }
             } 
             else if (isAuthorized && isOnBillingPage && !isCallbackPage) {
-                // AUTO-ENTRY: User has cleared payment, instantly unlock dashboard
-                const locale = pathname.split('/')[1] || 'en';
-                router.push(`/${locale}/dashboard`);
+                const dashboardPath = `/${locale}/dashboard`;
+                if (pathname !== dashboardPath) {
+                    router.push(dashboardPath);
+                }
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
     // --- THE STABILITY SHIELD ---
+    // This stays visible while Middleware is working and context is hydrating.
     if (isBusinessLoading || isBrandingLoading || (!profile && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
@@ -206,7 +214,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // ONLY show the error if we have finished loading and the profile is still missing/errored
+    // --- ERROR RECOVERY UI ---
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
