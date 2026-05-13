@@ -2158,9 +2158,27 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
 
                {/* HERO SECTION - 4-LINE PROFESSIONAL STRUCTURE */}
 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[850px] flex items-center justify-center">
-    <motion.div className="absolute inset-0 z-0" variants={heroImageVariants} initial="initial" animate="animate">
-        <Image src="/images/showcase/Greeting (41).jpeg" alt="BBU1 Business OS" fill style={{ objectFit: 'cover' }} className="opacity-90 dark:opacity-70" priority />
-        <div className="absolute inset-0 bg-black/75"></div>
+    {/* REPLACED IMAGE WITH PROFESSIONAL GLOBAL TECH GRADIENT */}
+    <motion.div 
+        className="absolute inset-0 z-0 bg-[#020617]" 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ duration: 1.5 }}
+    >
+        {/* Deep Mesh Gradients */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(37,99,235,0.15)_0%,transparent_50%),radial-gradient(circle_at_80%_70%,rgba(29,78,216,0.1)_0%,transparent_50%)]" />
+        
+        {/* Subtle Engineering Grid Pattern */}
+        <div 
+            className="absolute inset-0 opacity-[0.05]" 
+            style={{ 
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%23ffffff' fill-opacity='1'/%3E%3C/svg%3E")`,
+                backgroundSize: '40px 40px'
+            }} 
+        />
+
+        {/* Professional Overlay */}
+        <div className="absolute inset-0 bg-black/40"></div>
     </motion.div>
     
     <div className="container mx-auto relative z-10 text-white px-4">
@@ -2172,7 +2190,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             </motion.span>
             
             {/* THE 4-LINE HEADER STACK */}
-            <div className="flex flex-col items-center gap-10 mb-10"> {/* Fixed: Increased gap for professional spacing */}
+            <div className="flex flex-col items-center gap-10 mb-10">
                 
                 {/* LINE 1: Static */}
                 <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
@@ -2180,12 +2198,11 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                 </motion.span>
 
                 {/* LINE 2: Static "In." */}
-                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400"> {/* Fixed: Removed 'italic' - text is now straight */}
+                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400">
                     In.
                 </motion.span>
 
                 {/* LINE 3: Dynamic (The Slide Show) */}
-                {/* Fixed: Height and flex centering ensure moving words never overlap other lines */}
                 <div className="relative h-[80px] sm:h-[110px] lg:h-[130px] w-full overflow-hidden">
                     <AnimatePresence mode="wait">
                         <motion.span 
