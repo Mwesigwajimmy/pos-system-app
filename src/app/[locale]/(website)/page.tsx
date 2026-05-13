@@ -2158,34 +2158,38 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
 
                {/* HERO SECTION - 4-LINE PROFESSIONAL STRUCTURE */}
 <section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[850px] flex items-center justify-center">
-    {/* REPLACED IMAGE WITH PROFESSIONAL GLOBAL TECH GRADIENT */}
+    
+    {/* UPGRADED: HIGH-INTENSITY ENTERPRISE TECH BACKGROUND */}
     <motion.div 
         className="absolute inset-0 z-0 bg-[#020617]" 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         transition={{ duration: 1.5 }}
     >
-        {/* Deep Mesh Gradients */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(37,99,235,0.15)_0%,transparent_50%),radial-gradient(circle_at_80%_70%,rgba(29,78,216,0.1)_0%,transparent_50%)]" />
+        {/* Layer 1: High-Intensity Mesh Gradients (The "Universe" Glow) */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(37,99,235,0.25)_0%,transparent_50%),radial-gradient(circle_at_80%_70%,rgba(29,78,216,0.2)_0%,transparent_50%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.8)_0%,transparent_100%)]" />
         
-        {/* Subtle Engineering Grid Pattern */}
+        {/* Layer 2: Sharper Engineering Grid Pattern (Representing Structure) */}
         <div 
-            className="absolute inset-0 opacity-[0.05]" 
+            className="absolute inset-0 opacity-[0.1]" 
             style={{ 
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%23ffffff' fill-opacity='1'/%3E%3C/svg%3E")`,
                 backgroundSize: '40px 40px'
             }} 
         />
 
-        {/* Professional Overlay */}
-        <div className="absolute inset-0 bg-black/40"></div>
+        {/* Layer 3: Depth Fog - Makes the text pop in the center */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#020617] opacity-60" />
+
+        {/* Layer 4: Subtle Top Light */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
     </motion.div>
     
     <div className="container mx-auto relative z-10 text-white px-4">
         <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
             
             {/* TAGLINE */}
-            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-sm px-4 py-1.5 text-sm font-medium border border-white/20 mb-8">
+            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-blue-500/10 backdrop-blur-md px-4 py-1.5 text-sm font-bold border border-blue-500/20 text-blue-400 mb-8">
                 <Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS
             </motion.span>
             
@@ -2193,12 +2197,12 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             <div className="flex flex-col items-center gap-10 mb-10">
                 
                 {/* LINE 1: Static */}
-                <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight">
                     We are part of your business.
                 </motion.span>
 
                 {/* LINE 2: Static "In." */}
-                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-blue-400">
+                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-black text-blue-400">
                     In.
                 </motion.span>
 
@@ -2211,7 +2215,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -40 }}
                             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute inset-0 flex items-center justify-center text-3xl sm:text-5xl lg:text-6xl font-extrabold text-blue-300 drop-shadow-lg whitespace-nowrap"
+                            className="absolute inset-0 flex items-center justify-center text-3xl sm:text-5xl lg:text-6xl font-black text-blue-300 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
                         >
                             {memoizedRotatingTexts[currentTextIndex]}
                         </motion.span>
@@ -2219,22 +2223,22 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                 </div>
 
                 {/* LINE 4: Static Footer */}
-                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-gray-200">
+                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-slate-300">
                     From startup to enterprise. For every ambition.
                 </motion.span>
             </div>
 
             {/* SECONDARY SUBTEXT */}
-            <motion.p className="mt-6 text-lg sm:text-xl leading-8 text-gray-300 max-w-2xl mx-auto font-medium" variants={itemVariants}>
-                Stop juggling multiple apps. BBU1 is the single, unified operating system where growth is not an option—it's guaranteed.
+            <motion.p className="mt-6 text-lg sm:text-xl leading-8 text-slate-400 max-w-2xl mx-auto font-medium" variants={itemVariants}>
+                BBU1 is the single, unified operating system where growth is our priority.
             </motion.p>
             
             {/* BUTTONS */}
             <motion.div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4" variants={itemVariants}>
-                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 text-lg font-bold rounded-xl shadow-lg transition-transform hover:scale-105">
+                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 text-lg font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-transform hover:scale-105">
                     <Link href="/signup">Start Free Trial</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm px-10 h-14 text-lg font-bold rounded-xl transition-transform hover:scale-105">
+                <Button asChild size="lg" variant="outline" className="border-slate-700 text-white bg-white/5 hover:bg-white/10 backdrop-blur-sm px-10 h-14 text-lg font-bold rounded-xl transition-transform hover:scale-105">
                     <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a>
                 </Button>
             </motion.div>
