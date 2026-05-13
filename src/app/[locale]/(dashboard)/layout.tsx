@@ -150,8 +150,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: Loop-Proof Synchronized Access Gate v1.5.0
- * FIXED: Circular Redirect Logic Weld
+ * UPGRADE: Loop-Proof Synchronized Access Gate v1.5.2
+ * FIXED: Post-Payment Redirection Weld
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -174,32 +174,43 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             // 3. Determine authorization
             const isAuthorized = ['trial', 'active', 'free', 'completed'].includes(status);
             
-            // 4. Resolve path context
-            const isOnBillingPage = pathname.includes('/settings/billing');
-            const isCallbackPage = pathname.includes('/settings/billing/callback');
+            // 4. Resolve path and setup context
             const locale = pathname.split('/')[1] || 'en';
+            const isOnBillingPath = pathname.includes('/settings/billing');
+            const isCallbackPage = pathname.includes('/settings/billing/callback');
+            const isOnWelcomePage = pathname.includes('/welcome');
+            const isSetupComplete = (profile as any).setup_complete ?? true;
             
-            // 5. THE ACTION (WELDED FOR LOOP PREVENTION):
-            // We only trigger router.push if the destination is different from where we are.
-            // This prevents the "Ping-Pong" between Middleware and Client.
+            // 5. THE SMART REDIRECTION ENGINE (FULLY WELDED):
             
-            if (!isAuthorized && !isOnBillingPage && !isCallbackPage) {
+            // SCENARIO A: UNPAID/GHOST USER -> Force to Billing
+            if (!isAuthorized && !isOnBillingPath && !isCallbackPage) {
                 const billingPath = `/${locale}/settings/billing`;
                 if (pathname !== billingPath) {
                     router.push(billingPath);
                 }
             } 
-            else if (isAuthorized && isOnBillingPage && !isCallbackPage) {
-                const dashboardPath = `/${locale}/dashboard`;
-                if (pathname !== dashboardPath) {
-                    router.push(dashboardPath);
-                }
+            
+            // SCENARIO B: PAID USER STUCK ON BILLING -> Instant Unlock & Smart Landing
+            else if (isAuthorized && isOnBillingPath && !isCallbackPage) {
+                // If paid, they MUST be moved out of billing. We check setup to know where.
+                const targetPath = isSetupComplete ? `/${locale}/dashboard` : `/${locale}/welcome`;
+                router.push(targetPath);
+            }
+
+            // SCENARIO C: PAID USER ON WELCOME BUT SETUP IS DONE -> Push to Dashboard
+            else if (isAuthorized && isSetupComplete && isOnWelcomePage) {
+                router.push(`/${locale}/dashboard`);
+            }
+
+            // SCENARIO D: PAID USER ON DASHBOARD BUT SETUP IS MISSING -> Force to Welcome
+            else if (isAuthorized && !isSetupComplete && !isOnWelcomePage && !isCallbackPage && !isOnBillingPath) {
+                router.push(`/${locale}/welcome`);
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
     // --- THE STABILITY SHIELD ---
-    // This stays visible while Middleware is working and context is hydrating.
     if (isBusinessLoading || isBrandingLoading || (!profile && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">

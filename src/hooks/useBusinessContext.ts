@@ -43,18 +43,27 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     // --- 0. AUTHENTICATION RESOLUTION ---
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
+
+    // --- MISSING LOGIC: DYNAMIC NODE DETECTION ---
+    // We retrieve the active node from the forensic cookie set by the Sidebar/Callback.
+    // This ensures the hook stays synced during an 'Identity Swap' or Multi-Tenant switch.
+    const activeBizId = typeof document !== 'undefined' 
+        ? document.cookie
+            .split('; ')
+            .find(row => row.startsWith('bbu1_active_business_id='))
+            ?.split('=')[1] || null
+        : null;
     
     // --- 1. AURA NEURAL LINK (Handshake Unification) ---
-    // DEEP FIX: We pass 'p_target_biz_id' as null to resolve the PGRST203 ambiguity.
-    // This tells the API exactly which function candidate to execute.
+    // DEEP FIX: We pass the 'activeBizId' from the cookie to ensure Aura context matches the node.
     const { data: auraData, error: auraError } = await supabase.rpc('get_aura_handshake', {
-        p_target_biz_id: null 
+        p_target_biz_id: activeBizId 
     }); 
 
     // --- 2. SOVEREIGN CONTEXT ENGINE ---
-    // Fetches the 8-column industrial context for the current business node.
+    // Fetches the industrial context specifically for the active or default business node.
     const { data: contextData, error: contextError } = await supabase.rpc('get_user_context', {
-        p_target_biz_id: null
+        p_target_biz_id: activeBizId
     });
 
     // --- 3. EXCEPTION HANDLING & FORENSIC FALLBACK ---
@@ -70,15 +79,17 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
             
         if (profile) {
             // NEW: Fetch subscription data from tenants table for the fallback
+            // We target the activeBizId first to ensure fallback stays node-aware
+            const targetTenantId = activeBizId || profile.business_id;
             const { data: tenantData } = await supabase
                 .from('tenants')
                 .select('subscription_status, subscription_plan')
-                .eq('id', profile.business_id)
+                .eq('id', targetTenantId)
                 .single();
 
             return {
                 userId: profile.id,
-                businessId: profile.business_id,
+                businessId: targetTenantId,
                 businessName: profile.business_name || 'NIM UGANDA LTD', // Industrial Fallback
                 industry: profile.industry || 'Distribution',
                 email: profile.email || user.email || '', // Priority: Profile -> Auth
@@ -89,7 +100,6 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
                 reporting_currency: 'UGX',
                 setup_complete: profile.setup_complete,
                 branding_logo: null,
-                // Fallback subscription resolution
                 subscription_status: tenantData?.subscription_status || null,
                 subscription_plan: tenantData?.subscription_plan || null
             };
@@ -100,28 +110,29 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
 
     // --- 4. THE DEEP IDENTITY WELD ---
     // Merges both authoritative data sources into one singular Master Truth.
-    const aura = Array.isArray(auraData) ? auraData[0] : auraData;
-    const context = Array.isArray(contextData) ? contextData[0] : contextData;
+    const aura = (Array.isArray(auraData) ? auraData[0] : auraData) || {};
+    const context = (Array.isArray(contextData) ? contextData[0] : contextData) || {};
 
-    // EXTRA DATA CAPTURE: We need the email and billing status which are not in the standard RPC
+    // --- MISSING LOGIC: SUBSCRIPTION ISOLATION ---
+    // We must ensure the billing data belongs to the ACTIVE business node.
+    const targetIdForBilling = activeBizId || context.business_id || aura.business_id;
+    
     const { data: billingInfo } = await supabase
         .from('profiles')
-        .select('email, tenants(subscription_status, subscription_plan)')
+        .select('email')
         .eq('id', user.id)
         .single();
 
-    /**
-     * AMBIGUITY RESOLUTION:
-     * Supabase joins can return related data as an object OR an array.
-     * We check both to ensure subscription data is never 'undefined'.
-     */
-    const tenantNode = (billingInfo as any)?.tenants;
-    const resolvedTenant = Array.isArray(tenantNode) ? tenantNode[0] : tenantNode;
+    const { data: subscriptionInfo } = await supabase
+        .from('tenants')
+        .select('subscription_status, subscription_plan')
+        .eq('id', targetIdForBilling)
+        .single();
 
     return {
         // Resolve Identity Anchors
         userId: aura.userId || aura.user_id || context.user_id || user.id,
-        businessId: aura.businessId || aura.business_id || context.business_id,
+        businessId: targetIdForBilling,
         businessName: context.business_display_name || aura.businessName || aura.business_name,
         industry: context.industry_sector || aura.industry,
         email: billingInfo?.email || user.email || '', // Mapped for billing
@@ -136,9 +147,9 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         setup_complete: context.setup_complete,
         branding_logo: context.branding_logo,
 
-        // THE FIX: Correctly mapping the resolved data from the join
-        subscription_status: resolvedTenant?.subscription_status || null,
-        subscription_plan: resolvedTenant?.subscription_plan || null
+        // THE FIX: Mapping resolved node-specific data
+        subscription_status: subscriptionInfo?.subscription_status || null,
+        subscription_plan: subscriptionInfo?.subscription_plan || null
     };
 }
 

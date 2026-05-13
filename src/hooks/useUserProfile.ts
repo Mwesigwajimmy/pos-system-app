@@ -2,13 +2,18 @@
 
 import { useBusinessContext } from './useBusinessContext';
 
+/**
+ * LITONU BUSINESS BASE UNIVERSE LTD - ENTERPRISE PROFILE SCHEMA
+ * 
+ * UPGRADE: Deeply integrated identity and billing state.
+ */
 export interface UserProfile {
   id: string;
   business_id: string;
   role: string;
-  system_power: string | null; // NEW: Captures Architect status
+  system_power: string | null; 
   full_name: string;
-  business_name: string;      // NEW: Captures the Dynamic Name
+  business_name: string;      
   business_type?: string;
   industry?: string;
   
@@ -16,6 +21,11 @@ export interface UserProfile {
   email: string;
   subscription_status: string | null;
   subscription_plan: string | null;
+
+  // --- MISSING LOGIC: SYSTEM STATE KEYS ---
+  setup_complete: boolean;
+  currency: string;
+  branding_logo: string | null;
 }
 
 /**
@@ -28,6 +38,7 @@ export interface UserProfile {
 export function useUserProfile() {
   const { data, isLoading, error } = useBusinessContext();
   
+  // The Resolver: Handles both single objects and array returns from the Supabase RPC
   const profile = Array.isArray(data) ? data[0] : data;
 
   return {
@@ -39,25 +50,30 @@ export function useUserProfile() {
         // Maps the SQL return values to your Frontend variables
         full_name: (profile as any).full_name || 'Authorized Operator',
         
-        // Priority 1: The Context Role (e.g. Accountant) 
-        // Priority 2: The Fallback role
+        // Priority 1: The Context Role (e.g. Accountant) from the active business node
+        // Priority 2: The Fallback role from the global profile
         role: profile.user_role || (profile as any).role || 'admin',
         
-        // Captures if the user is an 'architect' or 'commander'
+        // Captures 'architect' or 'commander' status for God-Mode UI logic
         system_power: profile.system_power || null,
         
-        // Captures the Professional name (NIM UGANDA LTD)
+        // Captures the Professional name (e.g. NIM UGANDA LTD) resolved by the RPC
         business_name: profile.business_display_name || (profile as any).business_name || 'Sovereign Node',
         
         business_type: profile.business_type,
         industry: profile.industry_sector || profile.industry,
 
-        // --- NEW: BILLING IDENTITY WELD ---
-        // These fields allow the Billing page to recognize the user
-        // and allow the DashboardGatekeeper to unlock the UI.
-        email: (profile as any).email || '', 
-        subscription_status: (profile as any).subscription_status || null,
-        subscription_plan: (profile as any).subscription_plan || null
+        // --- BILLING IDENTITY WELD ---
+        // Essential for PesaPal initialization and Billing Page authorization
+        email: profile.email || (profile as any).email || '', 
+        subscription_status: profile.subscription_status || (profile as any).subscription_status || null,
+        subscription_plan: profile.subscription_plan || (profile as any).subscription_plan || null,
+
+        // --- MISSING LOGIC: SYSTEM SYNCHRONIZATION ---
+        // Forces the UI to respect the setup and currency context of the business
+        setup_complete: profile.setup_complete ?? true,
+        currency: profile.reporting_currency || 'UGX',
+        branding_logo: profile.branding_logo || null
     } : null,
     isLoading,
     isError: !!error,

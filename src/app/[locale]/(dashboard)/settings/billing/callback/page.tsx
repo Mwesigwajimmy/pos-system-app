@@ -6,69 +6,76 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, ShieldAlert, ShieldCheck } from "lucide-react";
 import toast from 'react-hot-toast';
-// ADDED: Import Query Client to handle the cache refresh
 import { useQueryClient } from '@tanstack/react-query';
 
 function CallbackContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
-    const queryClient = useQueryClient(); // Initialize the cache manager
+    const queryClient = useQueryClient();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     
     const trackingId = searchParams.get('OrderTrackingId');
 
     useEffect(() => {
+        // Prevent double-firing in Strict Mode
+        let isSubscribed = true;
+
         const verifyPayment = async () => {
             if (!trackingId) {
                 setStatus('error');
+                setErrorMessage("No transaction reference found.");
                 return;
             }
 
             try {
-                // Perform secure handshake with our internal verification API
                 const res = await fetch(`/api/payments/pesapal/verify?trackingId=${trackingId}`);
                 const result = await res.json();
 
+                if (!isSubscribed) return;
+
                 if (result.success) {
                     // --- THE SOVEREIGN IDENTITY WELD ---
-                    // We manually set the active business ID cookie. 
-                    // This is critical because it tells the Middleware exactly which business 
-                    // node to validate, even if the user just switched or cleared their cache.
+                    // Hard-bind the active business ID to the session.
                     if (result.businessId) {
                         document.cookie = `bbu1_active_business_id=${result.businessId}; path=/; max-age=31536000; SameSite=Lax`;
                     }
 
-                    // --- THE NEURAL REFRESH ---
-                    // This forces the 'useBusinessContext' hook to refetch immediately.
-                    // It clears the 'Identity Blindness' so the UI sees the 'trial' status.
+                    // --- THE NEURAL REFRESH (FORCED) ---
+                    // We invalidate AND refetch to ensure the Middleware 'sees' the active status.
                     await queryClient.invalidateQueries({ queryKey: ['businessContext'] });
+                    await queryClient.refetchQueries({ queryKey: ['businessContext'] });
                     
                     setStatus('success');
-                    toast.success("Deposit Verified. Business Access Granted.");
+                    toast.success("Identity Verified. Sovereign Node Activated.");
                     
                     const locale = pathname.split('/')[1] || 'en';
                     
-                    // Redirect to the dashboard. Because the cache is refreshed AND 
-                    // the cookie is set, the Gatekeeper (Middleware) will let them in instantly.
+                    // 2-second delay is optimal for the user to see the "Activated" UI
                     setTimeout(() => {
                         router.push(`/${locale}/dashboard`);
-                    }, 3000);
+                    }, 2500);
                 } else {
                     setStatus('error');
-                    console.error("Verification Refused:", result.message);
+                    const msg = result.message || result.error || "Verification refused by gateway.";
+                    setErrorMessage(msg);
+                    toast.error(msg);
                 }
             } catch (e) {
-                console.error("Verification Fault:", e);
+                console.error("FINANCIAL_HANDSHAKE_FAULT:", e);
                 setStatus('error');
+                setErrorMessage("Critical connection failure with the payment node.");
             }
         };
 
         verifyPayment();
+
+        return () => { isSubscribed = false; };
     }, [trackingId, router, pathname, queryClient]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50/50">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50/50 font-sans antialiased">
             <Card className="max-w-md w-full border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden animate-in fade-in zoom-in duration-700">
                 <div className="p-1.5 h-2 bg-blue-600 w-full" />
                 
@@ -82,7 +89,7 @@ function CallbackContent() {
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Verifying Deposit</h2>
                                 <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                                    Finalizing the secure handshake with the payment gateway to activate your business suite.
+                                    Finalizing secure handshake with PesaPal to synchronize your business credentials.
                                 </p>
                             </div>
                         </div>
@@ -96,7 +103,7 @@ function CallbackContent() {
                             <div className="space-y-2">
                                 <h2 className="text-3xl font-bold text-slate-900 uppercase tracking-tight">Access Activated</h2>
                                 <p className="text-slate-500 text-sm font-medium">
-                                    Your deposit has been confirmed. You now have full access to the BBU1 ecosystem.
+                                    Reconciliation complete. Your financial management suite is now authorized for use.
                                 </p>
                             </div>
                             <div className="pt-6">
@@ -105,8 +112,8 @@ function CallbackContent() {
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.15s]" />
                                     <div className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.3s]" />
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-4">
-                                    Opening Business Management Suite...
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-4">
+                                    Syncing Dashboard Context...
                                 </p>
                             </div>
                         </div>
@@ -118,13 +125,26 @@ function CallbackContent() {
                                 <ShieldAlert className="h-10 w-10 text-red-500" />
                             </div>
                             <div className="space-y-2">
-                                <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Connection Error</h2>
+                                <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Handshake Failed</h2>
                                 <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                                    The system could not verify your transaction. If your funds were deducted, please contact support for manual activation.
+                                    {errorMessage || "We encountered an error verifying your transaction. Please check your banking app for a deduction."}
                                 </p>
                             </div>
                             <div className="pt-4 flex flex-col gap-3">
-                                <Button onClick={() => router.push('/settings/billing')} className="w-full h-14 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-xl transition-all active:scale-95">
+                                <Button 
+                                    onClick={() => window.location.reload()} 
+                                    variant="outline" 
+                                    className="w-full h-14 rounded-2xl font-bold text-slate-600 border-slate-200"
+                                >
+                                    Retry Verification
+                                </Button>
+                                <Button 
+                                    onClick={() => {
+                                        const locale = pathname.split('/')[1] || 'en';
+                                        router.push(`/${locale}/settings/billing`);
+                                    }} 
+                                    className="w-full h-14 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-xl transition-all active:scale-95"
+                                >
                                     Return to Billing
                                 </Button>
                             </div>
@@ -135,7 +155,7 @@ function CallbackContent() {
                 <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-3 opacity-40">
                     <ShieldCheck size={16} className="text-blue-600" />
                     <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                        Verified Financial Reconciliation Node
+                        Sovereign Financial Security Verified
                     </span>
                 </div>
             </Card>
