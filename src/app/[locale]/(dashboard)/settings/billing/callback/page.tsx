@@ -31,9 +31,17 @@ function CallbackContent() {
                 const result = await res.json();
 
                 if (result.success) {
-                    // --- THE NEURAL REFRESH: This is the fix ---
+                    // --- THE SOVEREIGN IDENTITY WELD ---
+                    // We manually set the active business ID cookie. 
+                    // This is critical because it tells the Middleware exactly which business 
+                    // node to validate, even if the user just switched or cleared their cache.
+                    if (result.businessId) {
+                        document.cookie = `bbu1_active_business_id=${result.businessId}; path=/; max-age=31536000; SameSite=Lax`;
+                    }
+
+                    // --- THE NEURAL REFRESH ---
                     // This forces the 'useBusinessContext' hook to refetch immediately.
-                    // It clears the 'Identity Blindness' so the system sees the 'trial' status.
+                    // It clears the 'Identity Blindness' so the UI sees the 'trial' status.
                     await queryClient.invalidateQueries({ queryKey: ['businessContext'] });
                     
                     setStatus('success');
@@ -41,8 +49,8 @@ function CallbackContent() {
                     
                     const locale = pathname.split('/')[1] || 'en';
                     
-                    // Redirect to the dashboard. Because the cache is refreshed, 
-                    // the Gatekeeper will let them in instantly.
+                    // Redirect to the dashboard. Because the cache is refreshed AND 
+                    // the cookie is set, the Gatekeeper (Middleware) will let them in instantly.
                     setTimeout(() => {
                         router.push(`/${locale}/dashboard`);
                     }, 3000);

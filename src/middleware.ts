@@ -322,17 +322,22 @@ export async function middleware(request: NextRequest) {
     // This logic handles the redirect loop by checking the billing status 
     // returned from the SQL get_user_context function.
     const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
-    const isPaid = ['trial', 'active', 'free'].includes(subStatus);
+    
+    // FIX: Included 'completed' to capture all successful payment states.
+    const isPaid = ['trial', 'active', 'free', 'completed'].includes(subStatus);
     const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
 
+    // FIX: ADDED CALLBACK BYPASS - This allows the verify API to finish before middleware kicks in.
+    const isCallbackPage = pathWithoutLocale.includes('/settings/billing/callback');
+
     // SCENARIO A: User is PAID but stuck on Billing -> Force to Dashboard
-    if (isPaid && isOnBillingPage) {
+    if (isPaid && isOnBillingPage && !isCallbackPage) {
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
 
     // SCENARIO B: User is UNPAID and trying to access the app -> Force to Billing
-    // Note: We ignore bots and we ignore the 'welcome' setup page.
-    const isRestrictedPath = !isPublicPathForBot && !isOnBillingPage && pathWithoutLocale !== '/welcome';
+    // FIX: We skip the check if the user is currently on the Callback page.
+    const isRestrictedPath = !isPublicPathForBot && !isOnBillingPage && !isCallbackPage && pathWithoutLocale !== '/welcome';
     if (!isPaid && isRestrictedPath) {
         return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
     }

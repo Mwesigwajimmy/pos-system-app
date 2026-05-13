@@ -6,22 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
     ShieldCheck, Zap, Clock, CreditCard, Loader2, 
-    CheckCircle2, Building2, Crown, Star, Globe 
+    CheckCircle2, Building2, Crown, Star, Globe, 
+    ChevronRight, ExternalLink, ShieldQuestion
 } from "lucide-react";
 import { useBranding } from '@/components/core/BrandingProvider';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import toast from 'react-hot-toast';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function BillingSettings() {
     const { branding } = useBranding();
-    const { data: profile } = useUserProfile();
+    const { data: profile, isLoading: isProfileLoading } = useUserProfile();
     const [loading, setLoading] = useState<string | null>(null);
+    const router = useRouter();
+    const pathname = usePathname();
+
+    // --- DEEP SUBSCRIPTION GUARD ---
+    // Check if the user is already "Cleared"
+    const rawStatus = (profile as any)?.subscription_status || '';
+    const subStatus = rawStatus.toLowerCase().trim();
+    const isAuthorized = ['trial', 'active', 'free', 'completed'].includes(subStatus);
 
     // FULL ENTERPRISE SUITE: All 4 packages calibrated for global business
     const PLANS = [
         {
             name: "Small Business",
-            price: 4, // 15,000 UGX
+            price: 4, 
             description: "Essential tools for retail shops and micro-businesses.",
             features: ["Cloud POS System", "Inventory Tracking", "Sales Reports", "Digital Invoicing"],
             icon: Building2,
@@ -59,7 +69,6 @@ export default function BillingSettings() {
     ];
 
     const initiateTrial = async (plan: string, amount: number) => {
-        // AUTHORITATIVE IDENTITY CHECK
         const bizId = branding?.business_id || profile?.business_id;
         const userEmail = profile?.email;
 
@@ -96,10 +105,78 @@ export default function BillingSettings() {
         }
     };
 
+    // --- 1. LOADING STATE ---
+    if (isProfileLoading) {
+        return (
+            <div className="flex h-[80vh] w-full items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-blue-600 opacity-20" />
+            </div>
+        );
+    }
+
+    // --- 2. THE "CLEARED" VIEW: Users who have already paid see this instead of the prices ---
+    if (isAuthorized) {
+        return (
+            <div className="max-w-5xl mx-auto py-20 px-6 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <div className="space-y-4 text-center">
+                    <div className="h-16 w-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100 shadow-sm">
+                        <ShieldCheck className="text-emerald-600 h-8 w-8" />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Subscription Active</h1>
+                    <p className="text-slate-500 font-medium">Your business node is currently authorized and fully synchronized.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <Card className="border-none shadow-2xl rounded-[3rem] p-10 bg-slate-950 text-white space-y-8">
+                        <div className="space-y-2">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Current Intelligence Plan</p>
+                            <h2 className="text-4xl font-bold uppercase">{(profile as any)?.subscription_plan || 'Sovereign Node'}</h2>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Badge className="bg-emerald-500/20 text-emerald-400 border-none px-4 py-1.5 rounded-full font-bold uppercase text-[10px] tracking-widest">
+                                Status: {subStatus}
+                            </Badge>
+                            <span className="text-slate-500 text-xs font-medium">Verified via PesaPal V3</span>
+                        </div>
+                        <Button 
+                            onClick={() => router.push(`/${pathname.split('/')[1] || 'en'}/dashboard`)}
+                            className="w-full h-14 bg-white text-slate-950 hover:bg-slate-200 font-bold rounded-2xl transition-all"
+                        >
+                            Open Command Center <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Card>
+
+                    <Card className="border border-slate-100 shadow-xl rounded-[3rem] p-10 bg-white space-y-8">
+                        <div className="space-y-4">
+                            <h3 className="text-xl font-bold text-slate-900 uppercase">Billing Controls</h3>
+                            <p className="text-slate-500 text-sm leading-relaxed">
+                                To update your payment method, view invoices, or modify your industrial tier, please access our secure financial reconciliation hub.
+                            </p>
+                        </div>
+                        <div className="space-y-4 pt-4">
+                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <CreditCard className="text-slate-400 h-5 w-5" />
+                                    <span className="text-sm font-bold text-slate-700">Payment Reconciliation</span>
+                                </div>
+                                <Button variant="ghost" size="sm" className="text-blue-600 font-bold uppercase text-[10px] tracking-widest">
+                                    History
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+                <div className="flex justify-center pt-10">
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.5em]">Global Transaction ID: {(profile as any)?.business_id?.slice(0, 8)}</p>
+                </div>
+            </div>
+        );
+    }
+
+    // --- 3. THE "PURCHASE" VIEW: Only shown to unpaid/unverified users ---
     return (
         <div className="max-w-[1600px] mx-auto py-10 px-4 md:px-10 space-y-12 animate-in fade-in duration-500">
             
-            {/* CLEAN HEADER - No italics, professional text sizes */}
             <header className="space-y-2 border-b pb-10">
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">Subscription Management</h1>
                 <p className="text-slate-500 font-medium text-sm">
@@ -108,8 +185,6 @@ export default function BillingSettings() {
             </header>
 
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-                
-                {/* PRICING GRID: Handles all 4 packages across all screen sizes */}
                 <div className="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-6">
                     {PLANS.map((plan) => (
                         <Card key={plan.name} className="border border-slate-100 shadow-xl rounded-[2.5rem] bg-white overflow-hidden flex flex-col transition-all hover:border-blue-200">
@@ -159,7 +234,6 @@ export default function BillingSettings() {
                     ))}
                 </div>
 
-                {/* INFO SIDEBAR: Clean and responsive executive widget */}
                 <div className="xl:col-span-1">
                     <Card className="border-none shadow-2xl rounded-[2.5rem] bg-slate-950 text-white p-8 md:p-10 flex flex-col justify-between h-full min-h-[450px]">
                         <div className="space-y-8">
@@ -189,10 +263,9 @@ export default function BillingSettings() {
                 </div>
             </div>
 
-            {/* FOOTER METADATA */}
             <div className="flex justify-center pt-10 opacity-30">
                  <div className="h-px w-24 bg-slate-300 self-center" />
-                 <span className="mx-6 text-[10px] font-bold uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">Authorized Billing Entry v1.3</span>
+                 <span className="mx-6 text-[10px] font-bold uppercase tracking-[0.4em] text-slate-400 whitespace-nowrap">Authorized Billing Entry v1.4.2</span>
                  <div className="h-px w-24 bg-slate-300 self-center" />
             </div>
         </div>

@@ -150,10 +150,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: Now handles "In-Between" switch states gracefully to prevent logout loops.
- * 
- * NEW ADDITION: Intelligent Subscription Verification Gate.
- * Handles case-sensitivity and automatic entry for paid users.
+ * UPGRADE: Fully synchronized with Middleware v1.4.2
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -169,20 +166,28 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             
-            // 2. Determine authorization
-            const isAuthorized = ['trial', 'active', 'free'].includes(status);
+            // 2. Determine authorization (Synchronized with Middleware)
+            const isAuthorized = ['trial', 'active', 'free', 'completed'].includes(status);
             
             // 3. Define path context
             const isOnBillingPage = pathname.includes('/settings/billing');
+            
+            // BYPASS: If we are on the callback verification page, STOP logic.
+            // This prevents the Gatekeeper from fighting the Callback Page's verification process.
+            const isCallbackPage = pathname.includes('/settings/billing/callback');
+            if (isCallbackPage) return;
+
             const locale = pathname.split('/')[1] || 'en';
 
             // 4. THE ACTION:
             if (!isAuthorized && !isOnBillingPage) {
                 // REDIRECT TO PAY: User is unpaid and trying to access dashboard
+                console.log("GATEKEEPER: Redirecting to Billing. Status:", status);
                 router.push(`/${locale}/settings/billing`);
             } 
             else if (isAuthorized && isOnBillingPage) {
                 // AUTO-ENTRY: User has paid but is still looking at the billing page
+                console.log("GATEKEEPER: Status verified as paid. Moving to Dashboard.");
                 router.push(`/${locale}/dashboard`);
             }
         }
