@@ -1,56 +1,54 @@
-import { ChatOllama } from '@langchain/community/chat_models/ollama'; // FIX: Use the configured alias
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
+import { TaskType } from "@google/generative-ai";
 
 /**
- * A dedicated, high-performance Ollama model instance for generating text embeddings.
- * It is recommended to use a model specifically fine-tuned for this task.
- * 'nomic-embed-text' is a top-tier, open-source embedding model.
+ * SOVEREIGN CLOUD EMBEDDING ENGINE
+ * A dedicated, high-performance Google Gemini instance for generating high-dimensional vectors.
+ * Upgraded from local Ollama to text-embedding-004 for enterprise-grade semantic search
+ * across the 11 BBU1 industry modules.
  */
-const embeddingModel = new ChatOllama({
-  baseUrl: "http://localhost:11434",
-  model: "nomic-embed-text"
+const embeddingModel = new GoogleGenerativeAIEmbeddings({
+  apiKey: process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  modelName: "text-embedding-004", // Google's state-of-the-art embedding model
+  taskType: TaskType.RETRIEVAL_DOCUMENT,
 });
 
 /**
- * Generates a vector embedding for a given piece of text using a local Ollama model.
- * This function is the core of the AI's ability to "understand" and "remember" textual information.
+ * Generates a high-precision vector embedding for a given piece of business intelligence.
+ * This function is the core of Aura's "Long-term Memory," allowing her to cross-reference
+ * financial data, audit logs, and sector-specific manifests instantly.
  *
- * @param text The text to be converted into a vector embedding. Cannot be empty.
- * @returns A promise that resolves to an array of numbers representing the vector.
- * @throws An error if the embedding generation fails due to a network issue or an API error.
+ * @param text The business text to be converted into a vector embedding.
+ * @returns A promise that resolves to a numerical vector (768 or 1024 dimensions).
+ * @throws Professional error handling if the cloud handshake fails.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const sanitizedText = text.replace(/\n/g, ' ');
+  // ASCII & Whitespace Sanitization for Cloud Stability
+  const sanitizedText = text.replace(/\n/g, ' ').trim();
+  
   if (!sanitizedText) {
-    throw new Error("Cannot generate embedding for empty text.");
+    throw new Error("Aura Forensic Error: Cannot generate embedding for empty text.");
   }
 
   try {
-    const response = await fetch(`${embeddingModel.baseUrl}/api/embeddings`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: embeddingModel.model,
-        prompt: sanitizedText
-      })
-    });
+    // Perform the Cloud Handshake with Google's Embedding Engine
+    const embedding = await embeddingModel.embedQuery(sanitizedText);
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Failed to generate embedding. Status: ${response.status}. Body: ${errorBody}`);
+    if (!embedding || !Array.isArray(embedding) || embedding.length === 0) {
+        throw new Error("Invalid Cloud Response: The embedding vector is missing or malformed.");
     }
 
-    const data = await response.json();
-
-    if (!data.embedding || !Array.isArray(data.embedding)) {
-        throw new Error("Invalid response from embedding API. The 'embedding' field is missing or not an array.");
+    // Return the high-dimensional vector for storage in Supabase (ai_knowledge)
+    return embedding;
+    
+  } catch (error: any) {
+    console.error("Aura Neural Link Failure (Cloud Embedding):", error.message);
+    
+    // Provide a detailed fallback context for the Executive Kernel
+    if (error.message.includes("429")) {
+        throw new Error("Aura Rate Limit: The system is under high-density audit. Please wait a moment.");
     }
-
-    return data.embedding;
-  } catch (error) {
-    console.error("Embedding generation process failed:", error);
-    // Re-throw the error to be handled by the calling tool
+    
     throw error;
   }
 }

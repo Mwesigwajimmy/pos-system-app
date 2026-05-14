@@ -1,6 +1,16 @@
 'use client';
 
-import React, { useMemo, useEffect, useRef } from 'react';
+/**
+ * --- BBU1 SOVEREIGN COPILOT PANEL ---
+ * The primary interface for the Autonomous Forensic Co-Pilot.
+ * Orchestrates high-density message streams, autonomous UI side-effects,
+ * and the rendering of the C-Suite Boardroom.
+ * 
+ * Capability: Multi-Agent Awareness, Real-time Visual Handshaking.
+ * Integrity Grade: OMEGA-ULTIMATUM (Forensic Ready).
+ */
+
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
@@ -10,14 +20,17 @@ import {
   User, 
   Loader2, 
   Cog, 
-  Server, 
   FileDown, 
   Pilcrow, 
   Compass, 
   Fingerprint, 
   Zap, 
-  Activity 
+  Activity,
+  Presentation,
+  ShieldCheck,
+  LayoutGrid
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +39,9 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 import { useCopilot, type CoreMessage } from '@/context/CopilotContext'; 
+
+// ✅ SOVEREIGN LINK: Importing the visual stage we built for Aura's Council
+import AuraBoardroom from '../copilot/AuraBoardroom'; 
 
 // Intersection type to ensure messages have a keyable ID
 type MessageWithId = CoreMessage & { id: string };
@@ -49,12 +65,13 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * Component: Visualizes the AI's autonomous reasoning and tool execution
+ * UPGRADED: Supports Boardroom Initialization and Safety Protocol badges.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     if (!data) return null;
 
     try {
-      // Logic for specialized UI actions (Navigate, Download, Draft)
+      // Logic for specialized UI actions (Navigate, Download, Draft, Boardroom)
       const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
 
       if (outputData.action === "navigate") {
@@ -63,8 +80,8 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
             <div className="flex items-center gap-2">
               <Compass className="h-4 w-4 flex-shrink-0 animate-spin-slow" />
               <div>
-                <p className="font-bold uppercase tracking-tighter text-sky-600">Autonomous Navigation</p>
-                <p className="font-mono text-[10px] opacity-70">Destination: {outputData.payload?.url}</p>
+                <p className="font-bold uppercase tracking-tighter text-sky-600">Sovereign Navigation</p>
+                <p className="font-mono text-[10px] opacity-70">Path: {outputData.payload?.url}</p>
               </div>
             </div>
           </div>
@@ -77,49 +94,54 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
             <div className="flex items-center gap-2">
               <FileDown className="h-4 w-4 flex-shrink-0" />
               <div>
-                <p className="font-bold uppercase tracking-tighter text-emerald-600">Data Extraction Complete</p>
-                <p className="text-[10px] opacity-70">Buffer prepared: {outputData.payload?.fileName}</p>
+                <p className="font-bold uppercase tracking-tighter text-emerald-600">Forensic Buffer Ready</p>
+                <p className="text-[10px] opacity-70">Buffer: {outputData.payload?.fileName}</p>
               </div>
             </div>
           </div>
         );
       }
 
-      if (outputData.action === "present_draft") {
+      if (outputData.action === "prepare_boardroom_presentation") {
         return (
-          <div className="text-xs text-fuchsia-500 ml-11 my-2 p-3 border rounded-xl bg-fuchsia-500/5 border-fuchsia-500/20 animate-in fade-in slide-in-from-left-2">
+          <div className="text-xs text-blue-500 ml-11 my-2 p-3 border rounded-xl bg-blue-500/5 border-blue-500/20 animate-in fade-in slide-in-from-left-2">
             <div className="flex items-center gap-2">
-              <Pilcrow className="h-4 w-4 flex-shrink-0" />
+              <Presentation className="h-4 w-4 flex-shrink-0 text-blue-600" />
               <div>
-                <p className="font-bold uppercase tracking-tighter text-fuchsia-600">Synthesizing Communication</p>
-                <p className="text-[10px] opacity-70">Forensic draft presented for review.</p>
+                <p className="font-bold uppercase tracking-tighter text-blue-700">Boardroom Visuals Initialized</p>
+                <p className="text-[10px] opacity-70 italic">Aura is preparing the stage for Director review.</p>
               </div>
             </div>
           </div>
         );
       }
-    } catch (e) { /* Fallback for non-JSON output */ }
 
-    // Logic for raw tool invocation
+      if (outputData.action === "request_confirmation") {
+        return (
+          <div className="text-xs text-amber-500 ml-11 my-2 p-3 border rounded-xl bg-amber-500/5 border-amber-500/20 animate-in fade-in slide-in-from-left-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 flex-shrink-0" />
+              <div>
+                <p className="font-bold uppercase tracking-tighter text-amber-600">Aura Safety Protocol</p>
+                <p className="text-[10px] opacity-70 font-mono">Status: Awaiting Forensic Confirmation</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    } catch (e) { /* Raw text chunk - skip */ }
+
+    // Logic for raw tool invocation pulse
     if (data.tool) {
         return (
           <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-xl bg-slate-50 border-dashed animate-pulse">
             <div className="flex items-center gap-2">
               <Cog className="h-3 w-3 animate-spin text-emerald-600" />
               <div>
-                <p className="font-bold uppercase tracking-widest text-slate-600">Executing Core: {data.tool}</p>
+                <p className="font-bold uppercase tracking-widest text-slate-600">Executive Council Acting: {data.tool}</p>
                 <p className="opacity-50 truncate max-w-[250px] font-mono">{JSON.stringify(data.toolInput)}</p>
               </div>
             </div>
-          </div>
-        );
-    }
-
-    // Logic for raw tool results/observations
-    if (data.output && typeof data.output === 'string' && data.output.length < 1000) {
-        return (
-          <div className="text-[10px] text-muted-foreground ml-11 my-2 p-2 border-l-2 border-emerald-500 bg-slate-50/50 italic font-mono animate-in fade-in">
-            Observation: {data.output.substring(0, 150)}...
           </div>
         );
     }
@@ -128,19 +150,17 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
 };
 
 /**
- * Main Component: The Autonomous Command Center
+ * Main Component: The Sovereign Autonomous Command Center
  */
 export default function CopilotPanel() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  /**
-   * ENTERPRISE FOCUS REFERENCE
-   * Used to programmatically target the command input for high-speed interaction.
-   */
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // --- OMEGA UPGRADE: BOARDROOM STATE ---
+  const [boardroomData, setBoardroomData] = useState<any | null>(null);
   
-  // Shared AI State from Context - PULLED DIRECTLY FROM THE SOURCE OF TRUTH
+  // Shared AI Context from BBU1 Kernel
   const { 
     messages, 
     input, 
@@ -153,26 +173,43 @@ export default function CopilotPanel() {
     userId 
   } = useCopilot();
   
-  // Effect: Handle real-time side effects (Navigation & Downloads) from the stream
+  /**
+   * NEURAL SIDE-EFFECT MONITOR
+   * Monitors the AI stream for executive system commands (Navigation, Boardroom, Downloads)
+   */
   useEffect(() => {
     if (data && data.length > 0) {
       const lastChunk = data[data.length - 1];
       try {
         const parsedEvent = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
         
+        // Handlers for 'on_tool_end' (Successful forensic completion)
         if (parsedEvent.event === 'on_tool_end' && parsedEvent.data?.output) {
-          const toolOutput = typeof parsedEvent.data.output === 'string' ? JSON.parse(parsedEvent.data.output) : parsedEvent.data.output;
+          const toolOutput = typeof parsedEvent.data.output === 'string' 
+            ? JSON.parse(parsedEvent.data.output) 
+            : parsedEvent.data.output;
           
+          // 1. Navigation Executive
           if (toolOutput.action === "navigate" && toolOutput.payload?.url) {
-            toast.info(`Aura: Redirecting to ${toolOutput.payload.url}`);
+            toast.info(`Aura: Navigating to ${toolOutput.payload.url}`);
             router.push(toolOutput.payload.url);
           }
+
+          // 2. Download Executive
           if (toolOutput.action === "download_file" && toolOutput.payload?.fileName) {
             const { fileName, mimeType, content } = toolOutput.payload;
             downloadFileFromBase64(fileName, mimeType, content);
           }
+
+          // 3. BOARDROOM EXECUTIVE: Opens the visual stage
+          if (toolOutput.action === "prepare_boardroom_presentation") {
+            setBoardroomData(toolOutput.payload);
+            toast.success("Presentation Synchronized", {
+                description: "Aura is ready to present her findings."
+            });
+          }
         }
-      } catch (e) { /* Raw text chunk - skip parsing */ }
+      } catch (e) { /* Raw text processing */ }
     }
   }, [data, router]);
   
@@ -184,9 +221,8 @@ export default function CopilotPanel() {
   }, [messages, data, isLoading]);
 
   /**
-   * ENTERPRISE CONTROLLED FOCUS PROTOCOL
-   * Forces the browser to focus the input box immediately once the 
-   * forensic link is established.
+   * FOCUS PROTOCOL
+   * Forces focus to the input box once the multi-tenant context is active.
    */
   useEffect(() => {
     if (isReady && inputRef.current) {
@@ -194,7 +230,7 @@ export default function CopilotPanel() {
     }
   }, [isReady]);
 
-  // Memo: Process agent steps for the UI
+  // Memo: Render the autonomous thought sequence
   const memoizedAgentSteps = useMemo(() => {
     if (!data || !Array.isArray(data)) return [];
     return data.map((chunk, i) => {
@@ -206,20 +242,27 @@ export default function CopilotPanel() {
     }).filter(Boolean);
   }, [data]);
 
-  // UI State calculations
   const streamingMessage = isLoading && messages.length > 0 ? (messages[messages.length - 1] as CoreMessage) : null;
   const renderedMessages = streamingMessage ? messages.slice(0, -1) : messages;
 
-  /**
-   * ROOT FIX: NEURAL UNLOCK
-   * Decouple 'canSend' and input 'disabled' status from 'isReady'.
-   * This allows immediate typing while the forensic handshake resolves in the background.
-   */
   const canSend = !isLoading && (input || '').trim().length > 0;
   
   return (
-    <div className="h-full w-full flex flex-col bg-white overflow-hidden border-l shadow-2xl">
-      {/* Forensic Branding Header */}
+    <div className="h-full w-full flex flex-col bg-white overflow-hidden border-l shadow-2xl relative">
+      
+      {/* 🚀 OMEGA LAYER: The Boardroom stage (Renders on top of panel) */}
+      <AnimatePresence>
+        {boardroomData && (
+          <AuraBoardroom 
+            presenter={boardroomData.presenter_role}
+            title={boardroomData.meeting_title}
+            slides={boardroomData.slides}
+            onClose={() => setBoardroomData(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 1. EXECUTIVE HEADER */}
       <header className="p-6 border-b bg-slate-950 text-white flex flex-col gap-1 shrink-0 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-10">
             <Fingerprint size={80} className="text-emerald-500" />
@@ -230,42 +273,42 @@ export default function CopilotPanel() {
             </h2>
             <div className="flex items-center gap-2">
                {isReady && <Badge className="bg-emerald-600 text-[8px] border-none px-2 py-0.5 animate-in fade-in">ENCRYPTED</Badge>}
-               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5">v10.5 PRO</Badge>
+               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5">v10.8 PRO</Badge>
             </div>
         </div>
-        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest relative z-10">Autonomous Forensic Co-Pilot</p>
+        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest relative z-10">Autonomous C-Suite Engine</p>
       </header>
       
-      {/* Neural Link Feed */}
+      {/* 2. NEURAL LINK FEED */}
       <ScrollArea className="flex-grow p-4 bg-slate-50/30">
         <div className="space-y-6 max-w-2xl mx-auto">
             {!isReady && messages.length === 0 && (
                 <div className="py-32 text-center animate-in fade-in duration-700">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto text-emerald-500 mb-4" />
-                    <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Synchronizing Forensic ID...</p>
+                    <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Handshaking Sovereign ID...</p>
                 </div>
             )}
 
             {isReady && messages.length === 0 && (
                 <div className="py-20 text-center opacity-20 grayscale transition-all duration-1000">
                     <Bot size={64} className="mx-auto mb-4 animate-bounce text-slate-900" />
-                    <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-900">Awaiting Forensic Command</p>
+                    <p className="text-xs font-black uppercase tracking-[0.4em] text-slate-900">Awaiting Executive Directive</p>
                 </div>
             )}
 
-            {/* Rendered Past Messages */}
+            {/* Historical Transcript */}
             {(renderedMessages as MessageWithId[]).map((m) => ( 
               <div key={m.id} className={cn('flex items-start gap-3', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 {m.role === 'assistant' && (
                    <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shrink-0 border border-emerald-500/20">
-                      <Zap className="h-5 w-5 text-emerald-400 fill-current" />
+                      <Sparkles className="h-5 w-5 text-emerald-400" />
                    </div>
                 )}
                 <div className={cn(
                     'rounded-2xl p-4 max-w-[85%] text-sm shadow-sm border transition-all leading-relaxed',
                     m.role === 'user' 
                         ? 'bg-primary text-white border-primary rounded-tr-none' 
-                        : 'bg-white text-slate-800 border-slate-100 rounded-tl-none'
+                        : 'bg-white text-slate-800 border-slate-100 rounded-tl-none shadow-inner'
                 )}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:text-emerald-400">
                     {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
@@ -279,10 +322,10 @@ export default function CopilotPanel() {
               </div>
             ))}
             
-            {/* Real-time Thought Process (Cog Wheels) */}
+            {/* Real-time Thought Monitor */}
             {isLoading && memoizedAgentSteps}
 
-            {/* Current Active Stream */}
+            {/* Active Cloud Stream */}
             {isLoading && streamingMessage && (
                 <div className="flex items-start gap-3 animate-in slide-in-from-bottom-2">
                     <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shrink-0 border border-emerald-500/20">
@@ -293,7 +336,7 @@ export default function CopilotPanel() {
                             {typeof streamingMessage.content === 'string' ? streamingMessage.content : JSON.stringify(streamingMessage.content)}
                         </ReactMarkdown>
                         <div className="flex items-center gap-2 mt-3 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Aura is processing sector drift...
+                            <Loader2 className="h-3 w-3 animate-spin" /> Aura is auditing sector state...
                         </div>
                     </div>
                 </div>
@@ -303,12 +346,11 @@ export default function CopilotPanel() {
         </div>
       </ScrollArea>
       
-      {/* Command Input Area */}
-      <div className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] relative z-20">
+      {/* 3. EXECUTIVE COMMAND INPUT */}
+      <footer className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] relative z-20">
         <form 
           onSubmit={(e) => {
             e.preventDefault();
-            // handleSubmit in context handles the safety handshake check
             handleSubmit(e);
           }} 
           className="flex items-center gap-3"
@@ -317,15 +359,13 @@ export default function CopilotPanel() {
             ref={inputRef}
             value={input || ''} 
             onChange={handleInputChange} 
-            placeholder={!isReady ? "Handshake Syncing..." : "Ask Aura to audit anything..."} 
-            // ROOT FIX: Input is only disabled during an active AI computation stream
+            placeholder={!isReady ? "Sovereign Link Syncing..." : "Command Aura-[Agent] to audit..."} 
             disabled={isLoading}
-            className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
+            className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6 font-medium"
           />
           <Button 
             type="submit" 
             size="icon" 
-            // ROOT FIX: Button unlocks visually as soon as typing begins
             disabled={!canSend} 
             className={cn(
                 "h-14 w-14 rounded-2xl shadow-xl transition-all shrink-0 active:scale-95",
@@ -336,23 +376,29 @@ export default function CopilotPanel() {
           </Button>
         </form>
 
-        {/* Multi-Tenant Handshake Status (Physical Verification) */}
+        {/* 4. NEURAL HANDSHAKE STATUS */}
         <div className="flex justify-between items-end mt-4 px-1 pt-4 border-t border-slate-50">
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
                     <Activity className="h-3 w-3 text-emerald-500" />
-                    Neural Link: <span className="font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{businessId ? businessId.slice(0, 18) : 'IDENTIFYING...'}</span>
+                    Vault Link: <span className="font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{businessId ? businessId.slice(0, 18) : 'IDENTIFYING...'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[9px] uppercase tracking-tighter text-muted-foreground font-bold">
                     <Fingerprint className="h-3 w-3 text-sky-500" />
-                    Forensic ID: <span className="font-mono text-sky-600 bg-sky-50 px-1 rounded">{userId ? userId.slice(0, 18) : 'SEARCHING...'}</span>
+                    Forensic ID: <span className="font-mono text-sky-600 bg-sky-50 px-1 rounded">{userId ? userId.slice(0, 18) : 'VERIFYING...'}</span>
                 </div>
             </div>
             <div className="text-[8px] uppercase tracking-tighter font-black text-slate-300 text-right leading-tight">
-                Isolated Executive Context<br/>11 Industry Logic Active
+                Isolated Executive Vault<br/>11 Global Sectors Online
             </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
+
+/**
+ * STATUS: Copilot Panel High-Availability Link Established.
+ * VERSION: v10.8 Sovereign Edition.
+ * JURISDICTION: BBU1 Global C-Suite.
+ */

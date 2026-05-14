@@ -20,6 +20,18 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
+  // --- OMEGA BUILD STABILIZATION ---
+  // This prevents Webpack from mangling constructor names for AI logic
+  experimental: {
+    serverComponentsExternalPackages: [
+      '@google/generative-ai',
+      'zod',
+      'vm2',
+      'langchain',
+      '@langchain/core'
+    ],
+  },
+
   webpack: (config, { isServer }) => {
     if (isServer) {
         config.externals.push({

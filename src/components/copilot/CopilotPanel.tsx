@@ -1,11 +1,21 @@
 'use client';
 
-import React, { useMemo, useEffect, useRef } from 'react';
+/**
+ * --- BBU1 SOVEREIGN COPILOT PANEL ---
+ * The primary interface for the Autonomous Forensic Co-Pilot.
+ * Manages high-density message streams, autonomous UI side-effects,
+ * and the execution of the C-Suite Boardroom.
+ * 
+ * Integrity Grade: OMEGA-LEVEL / Multi-Agent Aware.
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
   Sparkles, Send, Bot, User, Loader2, Cog, Server, 
-  FileDown, Pilcrow, Compass, Fingerprint, Zap, Activity, ShieldCheck
+  FileDown, Pilcrow, Compass, Fingerprint, Zap, Activity, ShieldCheck,
+  Presentation, AlertTriangle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
@@ -16,6 +26,9 @@ import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 import { useCopilot } from '@/context/CopilotContext'; 
 
+// ✅ IMPORT: The Visual Stage we just built
+import AuraBoardroom from '../copilot/AuraBoardroom'; 
+
 const downloadFileFromBase64 = (fileName: string, mimeType: string, content: string): void => {
   try {
     const link = document.createElement('a');
@@ -24,17 +37,22 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Forensic Export Complete: ${fileName}`);
+    toast.success(`Sovereign Export Complete: ${fileName}`);
   } catch (error) {
     toast.error("Data Stream Error: Could not finalize download.");
     console.error("Download Error:", error);
   }
 };
 
+/**
+ * AGENT STEP COMPONENT
+ * Renders the autonomous "Thoughts" and "Actions" of Aura's agents (CFO, COO, etc.)
+ */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
   
   try {
+    // Parse the output for side-effect indicators
     const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
     
     if (outputData.action === "navigate") {
@@ -43,8 +61,8 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
             <div className="flex items-center gap-2">
               <Compass className="h-4 w-4 flex-shrink-0 animate-spin-slow" />
               <div>
-                <p className="font-bold uppercase tracking-tighter text-sky-600">Autonomous Navigation</p>
-                <p className="font-mono text-[10px] opacity-70">Path: {outputData.payload?.url}</p>
+                <p className="font-bold uppercase tracking-tighter text-sky-600">Sovereign Navigation</p>
+                <p className="font-mono text-[10px] opacity-70">Directing focus to: {outputData.payload?.url}</p>
               </div>
             </div>
           </div>
@@ -57,22 +75,36 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
             <div className="flex items-center gap-2">
               <FileDown className="h-4 w-4 flex-shrink-0" />
               <div>
-                <p className="font-bold uppercase tracking-tighter text-emerald-600">Data Extraction Complete</p>
-                <p className="text-[10px] opacity-70">Buffer ready: {outputData.payload?.fileName}</p>
+                <p className="font-bold uppercase tracking-tighter text-emerald-600">Forensic Buffer Generated</p>
+                <p className="text-[10px] opacity-70">Ready: {outputData.payload?.fileName}</p>
               </div>
             </div>
           </div>
         );
     }
 
-    if (outputData.action === "present_draft") {
+    if (outputData.action === "prepare_boardroom_presentation") {
       return (
-        <div className="text-xs text-fuchsia-500 ml-11 my-2 p-3 border rounded-xl bg-fuchsia-500/5 border-fuchsia-500/20 animate-in fade-in slide-in-from-left-2">
+        <div className="text-xs text-blue-500 ml-11 my-2 p-3 border rounded-xl bg-blue-500/5 border-blue-500/20 animate-in fade-in slide-in-from-left-2">
           <div className="flex items-center gap-2">
-            <Pilcrow className="h-4 w-4 flex-shrink-0" />
+            <Presentation className="h-4 w-4 flex-shrink-0" />
             <div>
-              <p className="font-bold uppercase tracking-tighter text-fuchsia-600">Synthesizing Communication</p>
-              <p className="text-[10px] opacity-70">Forensic draft presented for review.</p>
+              <p className="font-bold uppercase tracking-tighter text-blue-600">Boardroom Initialized</p>
+              <p className="text-[10px] opacity-70">Assembling visual stage for Director...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (outputData.action === "request_confirmation") {
+      return (
+        <div className="text-xs text-amber-500 ml-11 my-2 p-3 border rounded-xl bg-amber-500/5 border-amber-500/20 animate-in fade-in slide-in-from-left-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 flex-shrink-0" />
+            <div>
+              <p className="font-bold uppercase tracking-tighter text-amber-600">Aura Safety Protocol</p>
+              <p className="text-[10px] opacity-70">Awaiting forensic confirmation for risky action.</p>
             </div>
           </div>
         </div>
@@ -80,13 +112,14 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     }
   } catch (e) { }
 
+  // Generic tool execution pulse
   if (data.tool) {
     return (
       <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-xl bg-slate-50 border-dashed animate-pulse">
         <div className="flex items-center gap-2">
           <Cog className="h-3 w-3 animate-spin text-emerald-600" />
           <div>
-            <p className="font-bold uppercase tracking-widest text-slate-500">Aura Core Executing: {data.tool}</p>
+            <p className="font-bold uppercase tracking-widest text-slate-500">Autonomous Council Acting: {data.tool}</p>
             <p className="opacity-50 truncate max-w-[200px] font-mono">{JSON.stringify(data.toolInput)}</p>
           </div>
         </div>
@@ -102,6 +135,9 @@ export default function CopilotPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
+  // --- BOARDROOM STATE ---
+  const [boardroomData, setBoardroomData] = useState<any | null>(null);
+
   const { 
     messages, 
     input, 
@@ -114,20 +150,27 @@ export default function CopilotPanel() {
     userId
   } = useCopilot();
 
+  /**
+   * SOVEREIGN SIDE-EFFECT ORCHESTRATOR
+   * Monitors the AI stream for system commands (Navigation, Boardroom, Downloads)
+   */
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
         
+        // Listen for tool completion events
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           
+          // 1. Navigation Handler
           if (output.action === "navigate" && output.payload?.url) {
             toast.info(`Aura: Redirecting to ${output.payload.url}`);
             router.push(output.payload.url);
           }
           
+          // 2. Download Handler
           if (output.action === "download_file" && output.payload?.content) {
             downloadFileFromBase64(
                 output.payload.fileName, 
@@ -135,11 +178,18 @@ export default function CopilotPanel() {
                 output.payload.content
             );
           }
+
+          // 3. BOARDROOM HANDLER: Launches the high-density visual stage
+          if (output.action === "prepare_boardroom_presentation") {
+            setBoardroomData(output.payload);
+            toast.success("Boardroom Presentation Ready.");
+          }
         }
       } catch (e) { }
     }
   }, [streamData, router]);
 
+  // Auto-scroll to bottom of chat history
   useEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -157,7 +207,20 @@ export default function CopilotPanel() {
   }, [isLocked]);
 
   return (
-    <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l">
+    <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative">
+      
+      {/* 🚀 OMEGA UPGRADE: Boardroom Modal Layer */}
+      <AnimatePresence>
+        {boardroomData && (
+          <AuraBoardroom 
+            presenter={boardroomData.presenter_role}
+            title={boardroomData.meeting_title}
+            slides={boardroomData.slides}
+            onClose={() => setBoardroomData(null)}
+          />
+        )}
+      </AnimatePresence>
+
       <header className="p-6 border-b bg-slate-950 text-white flex flex-col gap-1 shrink-0 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
             <Fingerprint size={80} className="text-emerald-500" />
@@ -168,10 +231,10 @@ export default function CopilotPanel() {
             </h2>
             <div className="flex items-center gap-2">
                {isContextReady && <Badge className="bg-emerald-600 text-[8px] border-none px-2 py-0.5 animate-in fade-in">ENCRYPTED</Badge>}
-               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5">v10.5 PRO</Badge>
+               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5">v10.8 PRO</Badge>
             </div>
         </div>
-        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest relative z-10">Autonomous Forensic Co-Pilot</p>
+        <p className="text-[10px] text-slate-400 font-mono uppercase tracking-widest relative z-10">Autonomous C-Suite Engine</p>
       </header>
       
       <ScrollArea className="flex-grow p-6 bg-slate-50/30">
@@ -186,7 +249,7 @@ export default function CopilotPanel() {
             {isContextReady && messages.length === 0 && (
                 <div className="py-24 text-center opacity-10 transition-all duration-1000 grayscale">
                     <Bot size={80} className="mx-auto mb-4 animate-bounce text-slate-950" />
-                    <p className="text-xs font-black uppercase tracking-[0.6em] text-slate-950">Awaiting Forensic Instruction</p>
+                    <p className="text-xs font-black uppercase tracking-[0.6em] text-slate-950">Sovereign Intel Awaiting Task</p>
                 </div>
             )}
 
@@ -226,7 +289,7 @@ export default function CopilotPanel() {
 
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-14 py-4 animate-pulse">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Aura is synthesizing sector data...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Aura is auditing module state...
                 </div>
             )}
 
@@ -234,7 +297,7 @@ export default function CopilotPanel() {
         </div>
       </ScrollArea>
       
-      <div className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] relative z-20">
+      <footer className="p-6 border-t bg-white shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] relative z-20">
         <form 
           onSubmit={(e) => {
             e.preventDefault();
@@ -246,7 +309,7 @@ export default function CopilotPanel() {
             ref={inputRef}
             value={input || ''} 
             onChange={handleInputChange} 
-            placeholder={isLocked ? "Neural Link Synchronizing..." : "Ask Aura to audit your ledger..."} 
+            placeholder={isLocked ? "Sovereign Context Syncing..." : "Command Aura-[Agent] to execute audit..."} 
             className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all text-base px-6"
             disabled={isChatLoading}
           />
@@ -279,10 +342,16 @@ export default function CopilotPanel() {
                 </div>
             </div>
             <div className="text-[8px] uppercase tracking-tighter font-black text-slate-300 text-right leading-tight">
-                Isolated Executive Context<br/>11 Industry Logic Active
+                Isolated Executive Vault<br/>11 Global Sectors Online
             </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
+
+/**
+ * STATUS: Copilot Panel Synchronized.
+ * VERSION: v10.8 Sovereign Edition.
+ * ENGINE: Multi-Agent / Cloud Brain.
+ */

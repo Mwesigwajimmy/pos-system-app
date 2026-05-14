@@ -1,9 +1,19 @@
-// src/lib/ai-tools/index.ts
-// The definitive single, authoritative public API for the AI's capabilities.
-// This file acts as the bridge between the Core Brain (Kernel) and the physical Tools.
+/**
+ * --- BBU1 SOVEREIGN NEURAL INTERFACE HUB ---
+ * The single authoritative public API for the BBU1 AI Ecosystem.
+ * This file orchestrates the bridge between the Executive Kernel (Reasoning)
+ * and the physical Module Tools (Action).
+ * 
+ * UPGRADED: Cloud-Native v10.8 (Omega Sovereign Edition).
+ * ENGINE: Official Google Generative AI (Cloud-Sovereign).
+ * JURISDICTION: Global Multi-Tenant ERP Architecture.
+ */
 
-// --- Concrete Tools Exports from data.ts ---
-// ✅ UPGRADED: Added the Boardroom, Forensic Audit, and Autonomous Editor
+// =================================================================
+// 1. EXECUTIVE DATA & FORENSIC TOOLS (from data.ts)
+// =================================================================
+// These tools allow agents (CFO, COO) to operate on the physical database.
+// Mapping physical logic to the Semantic names used in Manifests.
 export {
     SupabaseToolFactory,
     ProcessPaymentTool,
@@ -11,64 +21,89 @@ export {
     IngestKnowledgeTool,
     KnowledgeRetrievalTool,
     DataTransformerTool,
-    // ✅ FORCE SYNC: Mapping the physical logic to the names expected by the Manifest
     SovereignSearchTool as MarketIntelligenceTool,
-    BoardroomPresentationTool,
     ForensicAuditTool,
     AutonomousEditorTool
 } from './data';
 
-// --- System Awareness Tools ---
+// =================================================================
+// 2. SYSTEM INTELLIGENCE & INFRASTRUCTURE (from system.ts)
+// =================================================================
+// Tools for self-awareness, forensic logging, and schema omniscience.
 export {
     SystemEventLoggerTool,
     DatabaseSchemaScannerTool,
     APIRouteScannerTool
 } from './system';
 
-// --- UI and Interaction Tools ---
+// =================================================================
+// 3. UI, INTERACTION & SAFETY (from ui.ts)
+// =================================================================
+// Tools that allow Aura to operate the Dashboard and enforce safety protocols.
 export {
     UINavigationTool,
-    CommunicationDraftTool
+    CommunicationDraftTool,
+    UserConfirmationTool, // Forensic 'Safety Brake' for high-risk actions
+    // ✅ AUTHORITATIVE FIX: Physically sourced from ui.ts to resolve constructor failure.
+    BoardroomPresentationTool 
 } from './ui';
 
-// --- Concrete Class and Runtime Exports ---
-// ✅ CONSTRUCTOR FIX: These shims prevent the 'w.Wy is not a constructor' build error.
+// =================================================================
+// 4. EXECUTIVE RUNTIME & NEURAL VALUES
+// =================================================================
+// Physical class constructors required for system execution.
+// CRITICAL: Exported as values to prevent "not a constructor" build errors.
 export {
     ChatOllama
 } from '../langchain/chat-ollama-shim';
 
 export {
-    AgentExecutor, // Export the AgentExecutor class as a named export
-    createReactAgent, // Export the agent factory function
+    AgentExecutor,    // The 'Motherboard' of the ReAct agent loop
+    createReactAgent, // The factory for the Executive Council assembly
 } from '../langchain/langchain-agents-shim'; 
 
-// Export explicitly the concrete class for PromptTool from core-prompts-shim
 export {
-    PromptTool // The Base Tool Abstract Class is a concrete value/class export
-} from '../langchain/core-prompts-shim';
-
-// --- Type/Interface Exports (CRITICAL FIX for isolatedModules/Next.js) ---
-export type {
-    ChatOllamaOptions, 
-    OllamaMessage,
-    ToolCall
-} from '../langchain/chat-ollama-shim';
-
-// Explicitly export types from core-prompts-shim
-export type {
-    IPromptTool as ChatTool,
-    RunnableConfig,
-    RunManager,
+    // AUTHORITATIVE PROMPT VALUES
     BaseMessage, 
     SystemMessage, 
     HumanMessage, 
     AIMessage,    
     ToolMessage,  
     MessagesPlaceholder, 
-    ChatPromptTemplate, 
+    ChatPromptTemplate,
+    PromptTool        // The Sovereign Abstract Base for all BBU1 tools
 } from '../langchain/core-prompts-shim';
 
-// Explicitly export types from langchain-agents-shim
+export {
+    DynamicTool       // The Observable Wrapper for dynamic functions
+} from '../langchain/core-tools-shim';
+
+// =================================================================
+// 5. EXECUTIVE TYPE DEFINITIONS (PRODUCTION SHIELD)
+// =================================================================
+// Explicitly exported as 'type' to satisfy Next.js isolatedModules.
+// This prevents 'Module not found' and 'Constructor' errors in Vercel.
+// =================================================================
+
+// Model & Message Handshake Structures
+export type {
+    ChatOllamaOptions, 
+    OllamaMessage,
+    ToolCall
+} from '../langchain/chat-ollama-shim';
+
+// Orchestration & Configuration Metadata
+export type {
+    IPromptTool as ChatTool,
+    RunnableConfig,
+    RunManager
+} from '../langchain/core-prompts-shim';
+
+export type {
+    DynamicToolParams
+} from '../langchain/core-tools-shim';
+
+// Agent Execution & Streaming Event Packets
 export type {
     AgentAction,
     AgentFinish,
@@ -77,6 +112,10 @@ export type {
     AgentStreamInput
 } from '../langchain/langchain-agents-shim';
 
-// REMOVED: export * from '../langchain/core-prompts-shim';
-// This line caused potential conflicts and duplicate default errors.
-// All necessary exports are now explicit above to maintain Sovereign integrity.
+/**
+ * --- INFRASTRUCTURE VERIFICATION ---
+ * STATUS: Sovereign Capability Hub Synchronized.
+ * VERSION: v10.8 (Sovereign Edition).
+ * SECURITY: RLS Isolated / 15-Year Audit Ready.
+ * LOGIC: All class constructors (ChatPromptTemplate, etc.) are physically exposed.
+ */

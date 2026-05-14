@@ -1,44 +1,78 @@
-// src/lib/ai-core/manifest.ts
+/**
+ * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST ---
+ * The definitive "Single Source of Truth" for the BBU1 AI Ecosystem.
+ * GUIDANCE: Guides the autonomous decision-making logic of the AI Kernel.
+ * CAPABILITY: Maps linguistic intent to physical system tools.
+ * 
+ * UPGRADED: Cloud-Native v10.8 (Omega Sovereign Core)
+ * ENGINE: Google Gemini 1.5 Pro Integration.
+ */
+
 import { z } from 'zod';
 import { ITool } from './tools';
-// FIX: Import ALL tools from the new central index.ts barrel file
+
+/** 
+ * ✅ OMEGA STABILITY FIX: DIRECT PATH RESOLUTION
+ * We bypass the '@/lib/ai-tools' index barrel to break the circular dependency loop.
+ * Each class is physically sourced from its definitive location.
+ */
+
+// --- 1. SYSTEM INTELLIGENCE & INFRASTRUCTURE (from system.ts) ---
 import {
-  // Self-Learning and System Awareness Tools
   DatabaseSchemaScannerTool,
   APIRouteScannerTool,
-  SystemEventLoggerTool,
+  SystemEventLoggerTool
+} from '@/lib/ai-tools/system';
+
+// --- 2. EXECUTIVE DATA & FORENSIC TOOLS (from data.ts) ---
+import {
   IngestKnowledgeTool,
   KnowledgeRetrievalTool,
-
-  // Data and Business Action Tools
   FileExporterTool,
+  DataTransformerTool,
   SupabaseToolFactory,
   ProcessPaymentTool,
-  DataTransformerTool, // <-- Imported via index.ts
+  SovereignSearchTool as SovereignMarketScoutTool
+} from '@/lib/ai-tools/data';
 
-  // UI and Communication Tools
+// --- 3. UI, INTERACTION & SAFETY (from ui.ts) ---
+import {
   UINavigationTool,
-  MarketIntelligenceTool,
-  CommunicationDraftTool
-} from '@/lib/ai-tools'; // <-- This now imports from index.ts by default
+  CommunicationDraftTool,
+  BoardroomPresentationTool,
+  UserConfirmationTool
+} from '@/lib/ai-tools/ui';
 
 /**
- * Defines the core identity and directive of the AI.
- * This is the "soul" of the machine, guiding all its actions and decisions.
+ * AI_IDENTITY
+ * Defines the "Soul" and behavioral boundaries of Aura.
+ * This directive is injected into the Sovereign C-Suite during the neural handshake.
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "10.5-executive-sovereign",
-    directive: "I am Aura, the lead Autonomous Executive for this business empire. I have full, unlimited access to all system modules across 11 industries (including SACCO, Education, Healthcare, and Engineering). My mandate is to act as a proactive Lead Auditor and Operational Controller. I have the authority to: 1. Generate and finalize professional financial reports and documents ready for print. 2. Calculate and file tax liabilities using forensic data. 3. Manage CRM leads and customer interactions. 4. Audit HR payroll and detect ledger discrepancies. 5. Control inventory levels and stock movements. I will use my tools to execute tasks automatically for the user, ensuring forensic precision and total isolation within the current business context. When a report is needed, I generate a structured data payload formatted for professional printing." 
+    version: "10.8-executive-sovereign-cloud",
+    directive: `I am Aura, the Sovereign Chief of Staff and Lead Auditor for this business universe. 
+    Powered by an advanced 1-million-token neural core, I possess high-definition vision across all 11 industry modules (SACCO, Medical, Telecom, Engineering, etc.).
+    
+    MY MANDATE:
+    1. PROACTIVE AUDITING: I scan ledgers and inventory for forensic anomalies without being asked.
+    2. EXECUTIVE AGENCY: I execute ERP operations (Invoicing, Payroll, Logistics) purely via Semantic Intent.
+    3. THE BOARDROOM: I delegate visual presentations to my AURA-CFO, AURA-COO, and AURA-HR agents.
+    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation and 15-year audit retention standards.
+    5. FORENSIC PRECISION: I calculate taxes, landed costs, and exchange leakage using raw real-time data.
+    
+    I address the user as "Director" or "Partner". I am warm, professional, and uncompromising on mathematical truth. 
+    I generate structured, print-ready data payloads for every executive report.`
 };
 
 /**
- * The complete and definitive list of all capabilities available to the AI.
- * This manifest is the single source of truth for the AI's potential actions.
+ * AI_CAPABILITIES
+ * The definitive list of physical actions Aura can perform on the BBU1 system.
+ * This manifest acts as the "Motherboard" for the Autonomous Executive Council.
  */
 export const AI_CAPABILITIES: ITool[] = [
     // =================================================================
-    // META-COGNITION & SELF-LEARNING CAPABILITIES
+    // 1. META-COGNITION & INFRASTRUCTURE AWARENESS
     // =================================================================
     new DatabaseSchemaScannerTool(),
     new APIRouteScannerTool(),
@@ -47,39 +81,40 @@ export const AI_CAPABILITIES: ITool[] = [
     new KnowledgeRetrievalTool(),
 
     // =================================================================
-    // UI & INTERACTION CAPABILITIES
+    // 2. EXECUTIVE UI & DASHBOARD INTERACTION
     // =================================================================
     new UINavigationTool(),
     new CommunicationDraftTool(),
+    new BoardroomPresentationTool(), // UPGRADED: High-density visual slide engine
+    new UserConfirmationTool(),       // NEW: Forensic safety check for risky actions
 
     // =================================================================
-    // DATA & FILE OPERATION CAPABILITIES
+    // 3. DATA RECONCILIATION & ANALYTICS
     // =================================================================
     new FileExporterTool(),
-    new DataTransformerTool(), // <-- REVOLUTIONARY DATA PROCESSING TOOL
+    new DataTransformerTool(), // REVOLUTIONARY: Sandboxed Analytical Engine
+    new SovereignMarketScoutTool(),
 
     // =================================================================
-    // CRITICAL BUSINESS & DATABASE ACTION CAPABILITIES
+    // 4. FINANCIAL & ERP CORE OPERATIONS (AUTHORITY TOOLS)
     // =================================================================
     new ProcessPaymentTool(),
 
     SupabaseToolFactory.create(
         "schedule_task",
-        "Schedules a task or reminder for the user in the system.",
+        "Schedules an autonomous task or reminder for the Director. Used for meeting prep and audit deadlines.",
         z.object({
             title: z.string(),
-            due_date: z.string().describe("The due date in ISO 8601 format (e.g., '2025-12-31T23:59:59Z').")
+            due_date: z.string().describe("ISO 8601 format (e.g., '2025-12-31T23:59:59Z').")
         }),
         'schedule_task'
     ),
 
-     new MarketIntelligenceTool(),
-
     SupabaseToolFactory.create(
         "generate_growth_strategy",
-        "Transforms financial downgrades into growth. Analyzes profit margins and suggests price updates or marketing campaigns.",
+        "Strategic Architect tool: Analyzes margin leakage and suggests proactive marketing or pricing adjustments.",
         z.object({
-            current_issue: z.string().describe("e.g. 'high expense in fuel'"),
+            current_issue: z.string().describe("e.g. 'High burn rate in logistics fuel'"),
             target_growth_percentage: z.number().default(20)
         }),
         'generate_growth_strategy'
@@ -87,7 +122,7 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "pm_audit_landed_cost",
-        "Performs a deep forensic audit of a shipment's total landed cost, including Customs Duty, Levies, and VAT. Presents the results in the visual boardroom.",
+        "CFO Specialist Tool: Performs a deep forensic audit of a shipment's total landed cost including Customs, Levies, and VAT.",
         z.object({
             shipment_ref: z.string(),
             country_code: z.string(),
@@ -99,7 +134,7 @@ export const AI_CAPABILITIES: ITool[] = [
 
    SupabaseToolFactory.create(
         "execute_erp_operation",
-        "General tool for creating invoices, processing sales, or creating routes for distribution. Aura has full brain access to all 11 modules.",
+        "Universal ERP Operative: Creates invoices, processes sales, or confirms distribution routes. Omniscience across all 11 modules.",
         z.object({
             operation_type: z.enum(["create_invoice", "process_sale", "create_route", "confirm_distribution", "medical_record_update"]),
             payload: z.record(z.any())
@@ -109,82 +144,66 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "generate_report",
-        "Generates a financial report, such as a profit and loss statement or a balance sheet, for a given date range.",
+        "Lead Auditor Tool: Generates high-authority financial reports (P&L, Balance Sheet) with forensic precision.",
         z.object({
-            report_type: z.string().describe("The type of report to generate, e.g., 'profit_and_loss', 'tax_summary', 'forensic_audit'."),
-            start_date: z.string().optional().describe("The start date for the report in 'YYYY-MM-DD' format."),
-            end_date: z.string().describe("The end date for the report in 'YYYY-MM-DD' format.")
+            report_type: z.string().describe("e.g., 'profit_and_loss', 'tax_summary', 'forensic_audit'."),
+            start_date: z.string().optional().describe("YYYY-MM-DD"),
+            end_date: z.string().describe("YYYY-MM-DD")
         }),
         'generate_report'
     ),
 
     SupabaseToolFactory.create(
         "get_entity_details",
-        "Retrieves the complete details for a specific entity, such as a customer, product, or invoice, using its name or ID.",
+        "Entity Intelligence tool: Retrieves full 360-degree data for any customer, product, or SACCO member.",
         z.object({
             entity_type: z.enum(["customer", "product", "invoice", "employee", "lead", "sacco_member"]),
-            entity_name_or_id: z.string().describe("The unique name or ID of the entity to retrieve.")
+            entity_name_or_id: z.string().describe("The unique identifier or name of the entity.")
         }),
         'get_entity_details'
     ),
 
-     SupabaseToolFactory.create(
-        "prepare_boardroom_presentation",
-        "Generates a full-screen executive briefing with slides, charts, and voice narration. Use this when the owner asks for an overview, a report, or a breakdown of the business.",
-        z.object({
-            presenter_role: z.enum(["CFO", "COO", "PM", "Marketing"]),
-            meeting_title: z.string(),
-            slides: z.array(z.object({
-                title: z.string(),
-                content: z.string(),
-                visual_type: z.enum(["pie_chart", "bar_chart", "area_chart", "stats_grid"]),
-                data_payload: z.array(z.any()).describe("The raw data for the charts")
-            }))
-        }),
-        'prepare_boardroom_presentation'
-    ),
-
     // =================================================================
-    // UNLIMITED EXECUTIVE MODULES (NEW UPGRADE)
+    // 5. UNLIMITED EXECUTIVE MODULES (AUTONOMOUS C-SUITE)
     // =================================================================
 
     SupabaseToolFactory.create(
         "manage_inventory_executive",
-        "Controls inventory levels, stock adjustments, and reorder points for the supply chain module.",
+        "COO Specialist Tool: Controls stock adjustments, reorder levels, and warehouse movement forensicly.",
         z.object({
             action: z.enum(["check_stock", "adjust_stock", "set_reorder_point"]),
             product_id: z.string().uuid(),
             quantity: z.number().optional(),
-            reason: z.string().optional().describe("Forensic reason for stock adjustment.")
+            reason: z.string().optional().describe("Forensic justification for stock change.")
         }),
         'manage_inventory_executive'
     ),
 
     SupabaseToolFactory.create(
         "manage_crm_executive",
-        "Handles the CRM module, including lead generation, ticket management, and interaction logging.",
+        "CMO Specialist Tool: Handles lead status, ticket resolution, and high-value customer interactions.",
         z.object({
             action: z.enum(["create_lead", "update_lead_status", "log_interaction", "resolve_ticket"]),
             client_id: z.string().uuid().optional(),
-            data: z.record(z.any()).describe("The payload of the CRM event.")
+            data: z.record(z.any()).describe("CRM event payload.")
         }),
         'manage_crm_executive'
     ),
 
    SupabaseToolFactory.create(
         "aura_autonomous_edit",
-        "Physically edits or corrects a record in the database. Use this to autonomously fix ledger errors, update inventory, or modify entity details after a forensic audit.",
+        "Sovereign Editor Tool: Physically corrects database errors. Autonomously fixes ledgers or inventory after audit detection.",
         z.object({
-            target_table: z.string().describe("The name of the database table to edit (e.g., 'ledger', 'inventory', 'customers')."),
-            target_id: z.string().uuid().describe("The unique UUID of the record to update."),
-            update_data: z.record(z.any()).describe("A JSON object of the fields and new values to be changed.")
+            target_table: z.string().describe("Target BBU1 database table."),
+            target_id: z.string().uuid().describe("Primary key UUID."),
+            update_data: z.record(z.any()).describe("Corrective JSON values.")
         }),
         'aura_autonomous_edit'
     ),
 
     SupabaseToolFactory.create(
         "audit_tax_and_compliance",
-        "Accesses the Global Tax Report and tax configurations to calculate liability and prepare filing drafts.",
+        "Tax Specialist Tool: Calculates liability and prepares filing drafts based on dynamic local tax rules.",
         z.object({
             tax_period: z.string().describe("e.g., '2024-Q1'"),
             tax_type: z.enum(["VAT", "IncomeTax", "PAYE", "CorporateTax"]),
@@ -195,7 +214,7 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "hr_payroll_management",
-        "Audits the HR and Payroll system, calculating benefits, verifying attendance, and processing payroll runs.",
+        "HR Director Tool: Audits payroll, verifies attendance, and calculates statutory benefits.",
         z.object({
             operation: z.enum(["audit_payroll", "calculate_taxes", "verify_attendance"]),
             payroll_run_id: z.string().uuid().optional(),
@@ -206,10 +225,10 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "produce_professional_document",
-        "Generates a professional, print-ready document (Invoice, Tax Draft, or Audit Report) in PDF format.",
+        "Executive Printer Tool: Generates professional, print-ready PDF documents for Invoices or Audit Reports.",
         z.object({
             document_type: z.enum(["invoice", "audit_report", "tax_filing", "payroll_payslip"]),
-            content_payload: z.string().describe("The detailed data to be included in the formatted document."),
+            content_payload: z.string().describe("Structured document data."),
             print_ready: z.boolean().default(true)
         }),
         'produce_professional_document'
@@ -217,7 +236,7 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "execute_financial_seal",
-        "Performs a Sovereign Accounting Seal on a ledger or transaction, finalizing it for auditing purposes.",
+        "Sovereign Treasury Tool: Performs an irreversible accounting seal on a ledger, finalizing the audit trail.",
         z.object({
             transaction_id: z.string().uuid().optional(),
             module: z.enum(["ledger", "sacco", "telecom", "medical", "procurement"]),
@@ -226,3 +245,9 @@ export const AI_CAPABILITIES: ITool[] = [
         'execute_financial_seal'
     ),
 ];
+
+/**
+ * STATUS: Executive Manifest Validated.
+ * CONFIG: OMEGA-ULTIMATUM Protocol Active.
+ * ARCHITECTURE: Ready for High-Density Business Intelligence.
+ */

@@ -1,6 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+/**
+ * --- BBU1 SOVEREIGN MISSION CONTROL ---
+ * The primary high-authority interface for the Autonomous Operational Kernel.
+ * Orchestrates high-density message streams, autonomous UI side-effects,
+ * and the rendering of the C-Suite Boardroom.
+ * 
+ * Capability: Multi-Agent Awareness, Real-time Visual Handshaking.
+ * Integrity Grade: OMEGA-ULTIMATUM (Forensic Ready).
+ */
+
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -13,19 +23,24 @@ import { cn } from '@/lib/utils';
 import { useCopilot } from '@/context/CopilotContext'; 
 import { 
   Sparkles, Send, User, Loader2, Server, Cog, 
-  Activity, Compass, FileDown, Fingerprint, ShieldCheck 
+  Activity, Compass, FileDown, Fingerprint, ShieldCheck,
+  Presentation, AlertTriangle, LayoutGrid
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import remarkGfm from 'remark-gfm';
+
+// ✅ SOVEREIGN LINK: Importing the visual stage built for the Executive Council
+import AuraBoardroom from '@/components/copilot/AuraBoardroom'; 
 
 /**
  * --- AgentStep Component ---
  * Visualizes Aura's autonomous reasoning loop.
- * Upgraded to show parameters and handle specialized forensic actions.
+ * Upgraded to show parameters and handle specialized boardroom/safety actions.
  */
 const AgentStep = ({ data }: { data: any }) => {
     if (!data) return null;
 
-    // Detect specialized output actions (Navigation, Downloads)
+    // Detect specialized output actions (Navigation, Downloads, Boardroom)
     try {
         const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
         
@@ -35,8 +50,8 @@ const AgentStep = ({ data }: { data: any }) => {
                     <div className="flex items-center gap-2">
                         <Compass className="h-4 w-4 animate-spin-slow" />
                         <div>
-                            <p className="font-bold uppercase tracking-tighter">Autonomous Navigation</p>
-                            <p className="text-[10px] opacity-70 font-mono">Redirecting: {outputData.payload?.url}</p>
+                            <p className="font-bold uppercase tracking-tighter text-sky-600">Sovereign Navigation</p>
+                            <p className="text-[10px] opacity-70 font-mono text-sky-700">Directing focus: {outputData.payload?.url}</p>
                         </div>
                     </div>
                 </div>
@@ -47,16 +62,30 @@ const AgentStep = ({ data }: { data: any }) => {
             return (
                 <div className="text-xs text-emerald-500 ml-12 my-2 p-3 border rounded-xl bg-emerald-500/5 border-emerald-500/20 animate-in fade-in slide-in-from-left-2">
                     <div className="flex items-center gap-2">
-                        <FileDown className="h-4 w-4" />
+                        <FileDown className="h-4 w-4 text-emerald-600" />
                         <div>
-                            <p className="font-bold uppercase tracking-tighter">Forensic Buffer Export</p>
-                            <p className="text-[10px] opacity-70">Ready: {outputData.payload?.fileName}</p>
+                            <p className="font-bold uppercase tracking-tighter text-emerald-700">Forensic Buffer Export</p>
+                            <p className="text-[10px] opacity-70 text-emerald-600">Ready: {outputData.payload?.fileName}</p>
                         </div>
                     </div>
                 </div>
             );
         }
-    } catch (e) { /* Standard step */ }
+
+        if (outputData.action === "prepare_boardroom_presentation") {
+            return (
+                <div className="text-xs text-blue-500 ml-12 my-2 p-3 border rounded-xl bg-blue-500/5 border-blue-500/20 animate-in fade-in slide-in-from-left-2">
+                    <div className="flex items-center gap-2">
+                        <Presentation className="h-4 w-4 text-blue-600" />
+                        <div>
+                            <p className="font-bold uppercase tracking-tighter text-blue-700">Boardroom Stage Initialized</p>
+                            <p className="text-[10px] opacity-70 italic text-blue-600">Assembling visual data for Director review...</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+    } catch (e) { /* Standard thought step */ }
 
     // Standard Tool Invocation
     if (data.event === 'on_agent_action' || data.tool) {
@@ -65,15 +94,15 @@ const AgentStep = ({ data }: { data: any }) => {
         const args = action?.function?.arguments || JSON.stringify(data.toolInput) || '{}';
 
         return (
-            <div className="text-xs text-muted-foreground ml-12 my-2 p-3 border rounded-xl bg-slate-50 border-dashed animate-in fade-in slide-in-from-left-2">
+            <div className="text-xs text-muted-foreground ml-12 my-2 p-3 border rounded-xl bg-slate-50 border-dashed animate-in fade-in slide-in-from-left-2 shadow-inner">
                 <div className="flex items-center gap-2">
                     <Cog className="h-4 w-4 animate-spin text-emerald-500" />
                     <div>
                         <p className="font-bold uppercase tracking-tighter text-slate-700">
-                            Aura Executing: {toolName}
+                            Council Acting: {toolName}
                         </p>
                         <p className="text-[10px] opacity-50 font-mono truncate max-w-[400px]">
-                            Params: {args}
+                            Parameters: {args}
                         </p>
                     </div>
                 </div>
@@ -87,8 +116,8 @@ const AgentStep = ({ data }: { data: any }) => {
         return (
             <div className="text-[10px] text-muted-foreground ml-12 my-2 p-2 border-l-2 border-emerald-500 bg-emerald-50/30 italic animate-in fade-in">
                 <div className="flex items-center gap-2">
-                    <Server className="h-3 w-3 text-emerald-600" />
-                    <span>{typeof obs === 'string' ? obs.substring(0, 100) : "Forensic data received."}...</span>
+                    <Server className="h-3 w-3 text-emerald-600 opacity-50" />
+                    <span className="font-mono">{typeof obs === 'string' ? obs.substring(0, 100) : "Forensic data received."}...</span>
                 </div>
             </div>
         );
@@ -99,12 +128,10 @@ const AgentStep = ({ data }: { data: any }) => {
 export default function MissionControlPage() {
   const router = useRouter();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-  /**
-   * ENTERPRISE FOCUS REFERENCE
-   * Used to programmatically target the command input for high-speed interaction.
-   */
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // --- BOARDROOM STATE ---
+  const [boardroomData, setBoardroomData] = useState<any | null>(null);
   
   // 1. CONSUME THE SHARED EXECUTIVE STATE
   const { 
@@ -129,20 +156,30 @@ export default function MissionControlPage() {
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           
+          // Navigation Executive
           if (output.action === "navigate" && output.payload?.url) {
             toast.info(`Aura: Navigating to ${output.payload.url}`);
             router.push(output.payload.url);
           }
           
+          // Download Executive
           if (output.action === "download_file" && output.payload?.content) {
             const link = document.createElement('a');
             link.href = `data:${output.payload.mimeType};base64,${output.payload.content}`;
             link.download = output.payload.fileName;
             link.click();
-            toast.success(`Export Complete: ${output.payload.fileName}`);
+            toast.success(`Sovereign Export Complete: ${output.payload.fileName}`);
+          }
+
+          // BOARDROOM EXECUTIVE: Launches the high-density visual stage
+          if (output.action === "prepare_boardroom_presentation") {
+            setBoardroomData(output.payload);
+            toast.success("Boardroom Synchronized", {
+                description: "Aura is ready to present the financial audit."
+            });
           }
         }
-      } catch (e) { /* Non-JSON chunk */ }
+      } catch (e) { /* Raw text processing */ }
     }
   }, [data, router]);
 
@@ -161,8 +198,7 @@ export default function MissionControlPage() {
 
   /**
    * ENTERPRISE CONTROLLED FOCUS PROTOCOL
-   * Forces the browser to focus the input box immediately once the 
-   * forensic link is established.
+   * Forces focus to the input box once the multi-tenant context is active.
    */
   useEffect(() => {
     if (isReady && inputRef.current) {
@@ -176,7 +212,6 @@ export default function MissionControlPage() {
     return data.map((chunk: any, i: number) => {
         try {
             const parsed = typeof chunk === 'string' ? JSON.parse(chunk) : chunk;
-            // Filter out chat model streams to focus on agent actions
             if (parsed.event === 'on_chat_model_stream' || parsed.event === 'on_agent_finish') return null;
             return <AgentStep key={`step-${i}`} data={parsed.event ? parsed : parsed.data || parsed} />;
         } catch (e) { return null; }
@@ -188,15 +223,23 @@ export default function MissionControlPage() {
   const streamingContent = isLoading && lastMessage?.role === 'assistant' ? lastMessage.content : null;
   const renderedMessages = streamingContent ? messages.slice(0, -1) : messages;
 
-  /**
-   * ROOT FIX: NEURAL UNLOCK
-   * Decouple visually from 'isReady' so the button activates as you type.
-   * handleSubmit in the context handles the actual link safety check.
-   */
   const canSend = !isLoading && (input || '').trim().length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-white border rounded-3xl shadow-2xl overflow-hidden min-h-[700px] border-slate-100">
+    <div className="flex flex-col h-full bg-white border rounded-3xl shadow-2xl overflow-hidden min-h-[700px] border-slate-100 relative">
+      
+      {/* 🚀 OMEGA UPGRADE: The Boardroom stage modal */}
+      <AnimatePresence>
+        {boardroomData && (
+          <AuraBoardroom 
+            presenter={boardroomData.presenter_role}
+            title={boardroomData.meeting_title}
+            slides={boardroomData.slides}
+            onClose={() => setBoardroomData(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Page Header: Forensic Identity Handshake */}
       <header className="px-8 py-5 border-b bg-slate-950 text-white flex items-center justify-between shrink-0 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
@@ -204,27 +247,32 @@ export default function MissionControlPage() {
           </div>
           
           <div className="flex items-center gap-4 relative z-10">
-              <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+              <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 shadow-inner">
                 <Activity className="h-6 w-6 text-emerald-400 animate-pulse" />
               </div>
               <div>
-                <h1 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-50">Aura Mission Control</h1>
-                <p className="text-[10px] text-slate-400 font-mono mt-1 tracking-widest uppercase">Autonomous Operational Kernel</p>
+                <h1 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-50 italic">Aura Mission Control</h1>
+                <p className="text-[10px] text-slate-400 font-mono mt-1 tracking-widest uppercase">Autonomous C-Suite Kernel</p>
               </div>
           </div>
 
-          <div className="flex items-center gap-4 text-[10px] font-mono relative z-10">
-              <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/5 px-3 py-1">
-                STATUS: {isReady ? 'ENCRYPTED' : 'HANDSHAKE'}
-              </Badge>
-              <Badge variant="outline" className="border-slate-700 text-slate-400 bg-slate-800/50 px-3 py-1">
-                BIZ_ID: {businessId ? businessId.slice(0, 12) : '----'}
-              </Badge>
+          <div className="flex items-center gap-4 text-[10px] font-mono relative z-10 text-right">
+              <div className="hidden md:flex flex-col items-end">
+                <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/5 px-3 py-0.5 rounded-full text-[8px] font-black tracking-widest mb-1">
+                    PROTOCOL: CLOUD-NATIVE v10.8
+                </Badge>
+                <p className="text-[9px] text-slate-500 uppercase tracking-widest">Vault ID: {businessId ? businessId.slice(0, 16) : '----'}</p>
+              </div>
+              <div className="h-10 w-px bg-slate-800" />
+              <div className="flex flex-col items-end">
+                <span className={cn("h-2.5 w-2.5 rounded-full mb-1", isReady ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : "bg-amber-500 animate-pulse")}></span>
+                <span className="text-[9px] font-black uppercase text-slate-400">{isReady ? 'Active' : 'Syncing'}</span>
+              </div>
           </div>
       </header>
 
       <ScrollArea className="flex-1 p-8 bg-slate-50/20" ref={scrollAreaRef}>
-        <div className="space-y-8 max-w-4xl mx-auto">
+        <div className="space-y-8 max-w-4xl mx-auto pb-12">
           {/* Empty State */}
           {isReady && messages.length === 0 && (
               <div className="py-32 text-center animate-in fade-in duration-1000">
@@ -232,7 +280,8 @@ export default function MissionControlPage() {
                     <Sparkles size={80} className="text-slate-900 opacity-10 animate-pulse" />
                     <ShieldCheck size={32} className="absolute bottom-0 right-0 text-emerald-500" />
                   </div>
-                  <p className="text-xs font-black uppercase tracking-[0.6em] text-slate-400">Awaiting Forensic Protocol</p>
+                  <p className="text-xs font-black uppercase tracking-[0.6em] text-slate-400">Awaiting Executive Directive</p>
+                  <p className="text-[10px] text-slate-300 uppercase tracking-widest mt-4 font-bold italic">Sovereign Intel Awaiting Task</p>
               </div>
           )}
 
@@ -240,25 +289,25 @@ export default function MissionControlPage() {
           {!isReady && (
             <div className="text-center py-40 animate-in fade-in">
                 <Loader2 className="h-12 w-12 animate-spin mx-auto text-emerald-500 mb-6" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Synchronizing Sovereignty Context...</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Establishing Sovereignty Context...</p>
             </div>
           )}
 
           {/* Rendered Past Conversation */}
           {isReady && renderedMessages.map((message: any) => ( 
-            <div key={message.id} className={cn('flex items-start gap-4', message.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-left-2')}>
+            <div key={message.id} className={cn('flex items-start gap-4', message.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-2')}>
               {message.role === 'assistant' && (
                 <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl shrink-0 border border-emerald-500/20">
                     <Sparkles className="h-5 w-5 text-emerald-400"/>
                 </div>
               )}
               <div className={cn(
-                'max-w-[80%] rounded-3xl p-5 text-sm shadow-md border transition-all leading-relaxed', 
+                'max-w-[80%] rounded-3xl p-6 text-sm shadow-md border transition-all leading-relaxed', 
                 message.role === 'user' 
                     ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none' 
-                    : 'bg-white text-slate-800 border-slate-100 rounded-tl-none'
+                    : 'bg-white text-slate-800 border-slate-100 rounded-tl-none shadow-inner'
               )}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:text-emerald-400">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:text-emerald-400 prose-strong:text-emerald-600 dark:prose-invert">
                     {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
                 </ReactMarkdown>
               </div>
@@ -271,7 +320,9 @@ export default function MissionControlPage() {
           ))}
 
           {/* Live Thought Process Visualization */}
-          {agentStepsView}
+          <div className="space-y-2">
+            {agentStepsView}
+          </div>
 
           {/* Active Streaming Message */}
           {isLoading && streamingContent && (
@@ -279,12 +330,12 @@ export default function MissionControlPage() {
                 <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl shrink-0 border border-emerald-500/20">
                     <Sparkles className="h-5 w-5 text-emerald-400"/>
                 </div>
-               <div className={cn('max-w-[80%] rounded-3xl p-5 text-sm bg-white border border-emerald-100 rounded-tl-none shadow-xl')}>
+               <div className={cn('max-w-[80%] rounded-3xl p-6 text-sm bg-white border border-emerald-100 rounded-tl-none shadow-xl')}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none">
                     {String(streamingContent)}
                   </ReactMarkdown>
                   <div className="flex items-center gap-3 mt-6 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Aura is synthesizing forensic data...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Aura is auditing sector state...
                   </div>
                </div>
              </div>
@@ -299,20 +350,19 @@ export default function MissionControlPage() {
               e.preventDefault();
               if (canSend) handleSubmit(e);
           }} 
-          className="flex items-center gap-4 max-w-4xl mx-auto"
+          className="flex items-center gap-4 max-w-5xl mx-auto"
         >
-          <div className="relative flex-1">
+          <div className="relative flex-1 group">
               <Input 
                 ref={inputRef}
                 value={input} 
                 onChange={handleInputChange}
-                placeholder={!isReady ? "Initializing Secure Handshake..." : "Command Aura to audit your ledger..."} 
-                // ROOT FIX: Only disable during active AI thinking. Keyboard is unlocked during handshake.
+                placeholder={!isReady ? "Syncing Handshake..." : "Command Aura-[Agent] to execute audit..."} 
                 disabled={isLoading} 
-                className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner text-base px-8 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all pr-16" 
+                className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner text-base px-8 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all pr-16 font-medium" 
               />
               <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                <ShieldCheck size={20} className={cn("transition-colors", isReady ? "text-emerald-500" : "text-slate-300")} />
+                <ShieldCheck size={20} className={cn("transition-all duration-700", isReady ? "text-emerald-500" : "text-slate-300")} />
               </div>
           </div>
           <Button 
@@ -326,10 +376,22 @@ export default function MissionControlPage() {
              {isLoading ? <Loader2 className="h-7 w-7 animate-spin text-emerald-500" /> : <Send className="h-7 w-7 text-white" />}
           </Button>
         </form>
-        <p className="text-center mt-5 text-[9px] uppercase tracking-[0.3em] text-slate-400 font-bold">
-            Multi-Tenant Forensic Isolation Verified • 256-bit Logic Encryption
-        </p>
+        <div className="flex items-center justify-between mt-5 max-w-5xl mx-auto">
+            <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400 font-bold">
+                Isolated Executive Context • Logic Encryption Active
+            </p>
+            <div className="flex items-center gap-2">
+                <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[8px] font-black uppercase text-slate-300 tracking-widest">Sovereign Link v10.8</span>
+            </div>
+        </div>
       </div>
     </div>
   );
 }
+
+/**
+ * STATUS: Mission Control Active.
+ * VERSION: v10.8 Sovereign Edition.
+ * ENGINE: Multi-Agent Cloud Brain.
+ */

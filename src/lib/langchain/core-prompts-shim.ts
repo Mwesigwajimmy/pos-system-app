@@ -1,15 +1,34 @@
-import { z } from 'zod';
-import { ToolCall } from '@langchain/community/chat_models/ollama'; // <--- IMPORT ToolCall here
+/**
+ * --- BBU1 SOVEREIGN PROMPT & MESSAGE ENGINE ---
+ * VERSION: v10.8 Cloud-Sovereign Edition.
+ * STATUS: CLEANED & STABILIZED
+ */
 
-type MessageRole = 'system' | 'human' | 'ai' | 'tool';
+import { z } from 'zod';
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export type MessageRole = 'system' | 'human' | 'ai' | 'tool' | 'executive';
 
 export class BaseMessage {
   content: string;
   role: MessageRole;
+  metadata: Record<string, any>;
 
-  constructor(content: string, role: MessageRole) {
+  constructor(content: string, role: MessageRole, metadata: Record<string, any> = {}) {
     this.content = content;
     this.role = role;
+    this.metadata = {
+        ...metadata,
+        timestamp: new Date().toISOString()
+    };
   }
 }
 
@@ -26,12 +45,10 @@ export class HumanMessage extends BaseMessage {
 }
 
 export class AIMessage extends BaseMessage {
-  // --- FIX: Add the tool_calls property ---
   tool_calls?: ToolCall[]; 
 
   constructor(content: string, fields?: { tool_calls?: ToolCall[] }) {
     super(content, 'ai');
-    // --- FIX: Assign tool_calls if provided ---
     this.tool_calls = fields?.tool_calls;
   }
 }
@@ -53,13 +70,9 @@ export class MessagesPlaceholder {
 
   getMessages(values: Record<string, any>): BaseMessage[] {
     const messages = values[this.variableName];
-    if (!messages) {
-      return [];
-    }
+    if (!messages) return [];
     if (!Array.isArray(messages)) {
-      throw new Error(
-        `Value for MessagesPlaceholder "${this.variableName}" must be an array of BaseMessage objects.`
-      );
+      throw new Error(`Aura Core Error: Value for MessagesPlaceholder "${this.variableName}" must be an array.`);
     }
     return messages;
   }
@@ -75,23 +88,15 @@ class MessageTemplate {
   }
 
   format(values: Record<string, any>): BaseMessage {
-    const content = this.template.replace(/{(\w+)}/g, (_, key) => {
-      if (values[key] !== undefined) {
-        return String(values[key]);
-      }
-      return `{${key}}`;
+    const content = this.template.replace(/{(\w+)}/g, (match, key) => {
+      return values[key] !== undefined ? String(values[key]) : match;
     });
 
     switch (this.role) {
-      case 'system':
-        return new SystemMessage(content);
-      case 'human':
-        return new HumanMessage(content);
-      case 'ai':
-        // No tool_calls logic here, as it's for parsing LLM output
-        return new AIMessage(content); 
-      default:
-        return new BaseMessage(content, this.role);
+      case 'system': return new SystemMessage(content);
+      case 'human': return new HumanMessage(content);
+      case 'ai': return new AIMessage(content); 
+      default: return new BaseMessage(content, this.role);
     }
   }
 }
@@ -108,11 +113,7 @@ export class ChatPromptTemplate {
   }
 
   static fromMessages(
-    messages: (
-      | [string, string]
-      | MessagesPlaceholder
-      | MessageTemplate
-    )[]
+    messages: ( [string, string] | MessagesPlaceholder | MessageTemplate )[]
   ): ChatPromptTemplate {
     const promptMessages = messages.map((msg) => {
       if (msg instanceof MessagesPlaceholder || msg instanceof MessageTemplate) {
@@ -122,7 +123,7 @@ export class ChatPromptTemplate {
         const [role, template] = msg;
         return new MessageTemplate(template, role as MessageRole);
       }
-      throw new Error('Invalid message format. Must be a tuple [role, template], a MessagesPlaceholder, or a MessageTemplate.');
+      throw new Error('Aura Template Error: Invalid prompt format.');
     });
     return new ChatPromptTemplate(promptMessages);
   }
@@ -132,27 +133,12 @@ export class ChatPromptTemplate {
     for (const msg of messages) {
       if (msg instanceof MessageTemplate) {
         const matches = msg.template.matchAll(/{(\w+)}/g);
-        for (const match of matches) {
-          variables.add(match[1]);
-        }
+        for (const match of matches) { variables.add(match[1]); }
       } else if (msg instanceof MessagesPlaceholder) {
         variables.add(msg.variableName);
       }
     }
     return Array.from(variables);
-  }
-
-  partial(values: Record<string, any>): ChatPromptTemplate {
-    const newMessages = this.messages.map((msg) => {
-      if (msg instanceof MessageTemplate) {
-        const newTemplateString = msg.template.replace(/{(\w+)}/g, (match, key) => {
-          return values[key] !== undefined ? String(values[key]) : match;
-        });
-        return new MessageTemplate(newTemplateString, msg.role);
-      }
-      return msg;
-    });
-    return new ChatPromptTemplate(newMessages);
   }
 
   format(values: Record<string, any> = {}): BaseMessage[] {
@@ -161,8 +147,7 @@ export class ChatPromptTemplate {
       if (msg instanceof MessageTemplate) {
         result.push(msg.format(values));
       } else if (msg instanceof MessagesPlaceholder) {
-        const placeholderMessages = msg.getMessages(values);
-        result.push(...placeholderMessages);
+        result.push(...msg.getMessages(values));
       }
     }
     return result;
@@ -174,9 +159,7 @@ export interface RunnableConfig {
   [key: string]: any;
 }
 
-export interface RunManager {
-  config: RunnableConfig;
-}
+export interface RunManager { config: RunnableConfig; }
 
 export interface IPromptTool {
   name: string;
@@ -198,24 +181,24 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
       const validatedInput = this.schema.parse(parsedInput);
       return await this._execute(validatedInput, { config });
     } catch (error: any) {
-      const errorMessage = error.message || 'An unexpected error occurred during tool execution.';
+      const errorMessage = error.message || 'Error occurred during tool execution.';
+      
+      /**
+       * CRITICAL: Using dynamic import to avoid circular dependency with Tool index
+       */
       try {
-        const { SystemEventLoggerTool } = await import('../ai-tools');
-        const logger = new SystemEventLoggerTool();
-        await logger.invoke({
-          event_type: "error",
-          payload: {
-            failed_tool: this.name,
-            error_message: errorMessage,
-            input_provided: input,
-            business_id: config.configurable?.businessId,
-            user_id: config.configurable?.userId,
-          }
-        }, config);
+        const tools = await import('../ai-tools');
+        if (tools.SystemEventLoggerTool) {
+          const logger = new tools.SystemEventLoggerTool();
+          await logger.invoke({
+            event_type: "error",
+            payload: { failed_tool: this.name, error_message: errorMessage }
+          }, config);
+        }
       } catch (logError) {
-        console.error("Critical: Failed to log system event from tool catch block.", logError);
+        console.error("Forensic logging failed.", logError);
       }
-      return JSON.stringify({ success: false, error: `Tool ${this.name} failed: ${errorMessage}` });
+      return JSON.stringify({ success: false, error: `Aura Link Failure: ${errorMessage}` });
     }
   }
 }

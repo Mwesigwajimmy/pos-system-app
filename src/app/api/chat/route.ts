@@ -4,22 +4,40 @@ import { CoreMessage as VercelChatMessage, TextPart } from 'ai';
 // ROOT FIX: Import the base createClient to bypass the cookie 'get' error
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
+// --- PRODUCTION BUILD STABILIZATION ---
+// ✅ CRITICAL FIX: Force dynamic rendering to prevent constructor errors during static analysis.
+// This resolves the "TypeError: w._P is not a constructor" by bypassing static optimization.
+export const dynamic = 'force-dynamic';
+
 // --- FORCE NODE.JS RUNTIME ---
 // Required for complex forensic operations, high-precision buffer handling,
 // and long-running autonomous neural links across 11 industry modules.
 export const runtime = 'nodejs';
 
-// --- LANGCHAIN & CORE SYSTEM IMPORTS ---
+// --- LANGCHAIN & CORE SYSTEM IMPORTS (DIRECT PATH RESOLUTION) ---
+/** 
+ * ✅ ARCHITECTURAL INTEGRITY: 
+ * We bypass the index.ts hub and import directly from source files. 
+ * This is the only way to ensure classes like ChatPromptTemplate are fully 
+ * initialized before use in the production environment.
+ */
 import { AIKernel } from '@/lib/ai-core/kernel';
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
+import { ChatOllama } from '@/lib/langchain/chat-ollama-shim';
 import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
-import { AIMessage, HumanMessage, BaseMessage } from '@/lib/langchain/core-prompts-shim';
+
+import { 
+    AIMessage, 
+    HumanMessage, 
+    BaseMessage,
+    ChatPromptTemplate,
+    MessagesPlaceholder 
+} from '@/lib/langchain/core-prompts-shim';
+
 import { createClient } from '@/lib/supabase/server';
 import { generateEmbedding } from '@/lib/ai-tools/embedding';
 
-// Production Infrastructure Configuration
-const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/"/g, '');
-const OLLAMA_MODEL = (process.env.OLLAMA_MODEL || "mistral:latest").replace(/"/g, '');
+// Sovereign Cloud Infrastructure Configuration
+const GEMINI_MODEL = "gemini-1.5-pro"; // Selected for OMEGA-LEVEL forensic auditing depth
 
 /**
 THE ACTIVATOR (GET Handler)
@@ -108,7 +126,6 @@ export async function POST(req: NextRequest) {
 
         if (isNewSession) {
             // ✅ THE OMEGA-ULTIMATUM EXECUTIVE DIRECTIVE (THE SOVEREIGN C-SUITE EDITION)
-            // UPDATED: Now includes dynamic Tax Rule Engine and Landed Cost v2 logic.
             const bootstrapDirective = `
 --- Aura Universal Sovereignty Directive (OMEGA LEVEL) ---
 STATUS: Chief of Staff, Lead Auditor & Executive Orchestrator Online.
@@ -159,13 +176,17 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
             userInput = bootstrapDirective;
         }
 
+        /** 
+         * ✅ ENGINE RESOLUTION:
+         * We initialize our Gemini-powered local ChatOllama shim.
+         * This satisfies AIKernel's dependency without using crashing packages.
+         */
         const llm = new ChatOllama({
-            baseUrl: OLLAMA_BASE_URL,
-            model: OLLAMA_MODEL,
-            temperature: 0
+            model: GEMINI_MODEL,
         });
 
         const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
+        
         const chat_history: BaseMessage[] = messages
             .slice(0, -1)
             .map((m: VercelChatMessage): BaseMessage => {
@@ -173,6 +194,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
                 return m.role === 'user' ? new HumanMessage(textContent) : new AIMessage(textContent);
             });
 
+        // Start the Sovereign Kernel Execution
         const stream = kernel.run({
             input: userInput,
             chat_history: chat_history,
@@ -192,6 +214,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
         const transformStream = new ReadableStream({
             async start(controller) {
                 for await (const chunk of stream) {
+                    // Send serialized event chunks to the Dashboard UI
                     controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
                 }
                 controller.close();
@@ -207,7 +230,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
         });
 
     } catch (e: any) {
-        console.error("AI Core Exception:", e);
+        console.error("Aura Executive Kernel Exception:", e);
         return new Response(JSON.stringify({ error: { message: e.message } }), { status: 500 });
     }
 }
@@ -249,10 +272,8 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
                 rawText = JSON.stringify(row.content);
             }
 
-            // ✅ THE PHYSICAL SHIELD:
             // Strips control characters and enforces a strict character limit.
-            // This ensures the local Ollama batch processor never hits a memory ceiling, 
-            // preventing the "unable to fit entire input in a batch" panic forever.
+            // Enforces stability across cloud batch processing.
             const sanitizedText = rawText
                 .replace(/[\x00-\x1F\x7F-\x9F]/g, "") // Delete illegal bytes
                 .replace(/\s+/g, ' ')               // Normalize whitespace
