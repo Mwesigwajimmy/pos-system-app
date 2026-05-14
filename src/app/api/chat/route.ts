@@ -89,6 +89,10 @@ export async function POST(req: NextRequest) {
     try {
         // ✅ EXTRACTED: Context IDs and active Modules drive the autonomous logic mapping
         const { messages, businessId, userId, tenantModules } = await req.json();
+
+        // --- FORENSIC IDENTITY LOGGING ---
+        console.log("AURA NEURAL HANDSHAKE:", { businessId, userId });
+
         if (!businessId || !userId) {
             return new Response(JSON.stringify({ error: "Sovereign Context Incomplete. Business ID and User ID required." }), { status: 400 });
         }
@@ -104,9 +108,10 @@ export async function POST(req: NextRequest) {
         const supabase = createClient();
         
         // ✅ FETCH IDENTITY & TENANT CONTEXT (For Personality, Greet-by-name, and Scope)
+        // DEEP WELD: Changed 'base_currency' to 'currency_code' based on SQL Table Audit
         const { data: tenantData } = await supabase
             .from('tenants')
-            .select('name, industry, business_type, base_currency')
+            .select('name, industry, business_type, currency_code')
             .eq('id', businessId)
             .single();
 
@@ -119,7 +124,8 @@ export async function POST(req: NextRequest) {
         const industryName = tenantData?.industry || tenantData?.business_type || 'General Enterprise';
         const businessName = tenantData?.name || 'Sovereign Entity';
         const userName = profileData?.full_name || 'Director';
-        const baseCurrency = tenantData?.base_currency || 'UGX';
+        // DEEP WELD: Aligned to verified SQL column name
+        const baseCurrency = tenantData?.currency_code || 'UGX';
 
         const isNewSession = messages.length === 1;
         let userInput = extractTextFromContent(messages[messages.length - 1].content);
