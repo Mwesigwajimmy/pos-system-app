@@ -17,6 +17,10 @@ import {
   FileDown, Pilcrow, Compass, Fingerprint, Zap, Activity, ShieldCheck,
   Presentation, AlertTriangle
 } from 'lucide-react';
+
+// ✅ OMEGA STABILITY FIX: Added missing animation imports to prevent ReferenceError
+import { AnimatePresence, motion } from 'framer-motion';
+
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +30,7 @@ import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 import { useCopilot } from '@/context/CopilotContext'; 
 
-// ✅ IMPORT: The Visual Stage we just built
+// ✅ SOVEREIGN LINK: Importing the visual stage we built for Aura's Council
 import AuraBoardroom from '../copilot/AuraBoardroom'; 
 
 const downloadFileFromBase64 = (fileName: string, mimeType: string, content: string): void => {

@@ -18,7 +18,7 @@ import {
   Presentation, AlertTriangle
 } from 'lucide-react';
 
-// ✅ OMEGA FIX: Added missing AnimatePresence and motion imports
+// ✅ OMEGA FIX: VERIFIED ANIMATION IMPORTS
 import { AnimatePresence, motion } from 'framer-motion';
 
 import ReactMarkdown from 'react-markdown';
