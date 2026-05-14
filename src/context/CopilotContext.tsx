@@ -2,13 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v11.1 Sovereign Edition (ATOMIC STABILIZATION)
+ * VERSION: v11.2 Sovereign Edition (STABLE KERNEL)
  * 
- * BUILD FIX: Eliminates "append is not a function" by using stable functional refs.
- * PERFORMANCE: Zero-latency identity injection for production builds.
+ * FIX LOG: 
+ * 1. Persistent Mounting: Removed 'key' prop to prevent Chat Engine resets.
+ * 2. Race Condition Logic: Native useChat dependency tracking.
+ * 3. Lifecycle Stability: Ensures Aura initializes once and stays active.
  */
 
-import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useChat } from '@ai-sdk/react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -46,57 +48,60 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
 
-  // 1. Initialize Engine
-  const chat = useChat({
+  // 1. Initialize Engine 
+  // We pass businessId and userId directly into the body. 
+  // When these change, useChat updates the request body automatically without unmounting.
+  const { messages, append, isLoading, setMessages, data } = useChat({
     api: '/api/chat',
     body: { businessId, userId, tenantModules: modules || [] }, 
     experimental_streamData: true,
   });
 
-  // 2. Physical Function Weld (Prevents "h.append" errors in production)
-  const appendRef = useRef(chat.append);
-  useEffect(() => {
-    appendRef.current = chat.append;
-  }, [chat.append]);
-
+  // 2. Core Submission Logic
   const handleSubmit = useCallback((e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
+    
     const content = inputState.trim();
     if (!content) return;
 
-    if (typeof appendRef.current === 'function') {
-        appendRef.current({ 
+    // Check if the engine (append) and the identity (isReady) are synced
+    if (isReady && typeof append === 'function') {
+        append({ 
           role: 'user', 
           content,
           data: { businessId, userId } 
         });
         setInputState('');
     } else {
-        toast.error("Neural Link Syncing... Please try again in a moment.");
+        // This only triggers if the user clicks before the IDs are loaded from the database
+        toast.info("Aura is initializing neural links... Please wait a second.");
     }
-  }, [inputState, businessId, userId]);
+  }, [inputState, businessId, userId, isReady, append]);
 
-  const startAIAssistance = (prompt: string) => {
+  // 3. Remote Start Logic (e.g., from clicking a button on a dashboard)
+  const startAIAssistance = useCallback((prompt: string) => {
     if (!prompt) return;
     setInputState(prompt);
     setIsOpen(true);
+    
+    // Slight delay to ensure the Sheet animation has started
     setTimeout(() => {
-      if (typeof appendRef.current === 'function') {
-        appendRef.current({ role: 'user', content: prompt, data: { businessId, userId } });
+      if (typeof append === 'function' && isReady) {
+        append({ role: 'user', content: prompt, data: { businessId, userId } });
         setInputState('');
       }
-    }, 400);
-  };
+    }, 500);
+  }, [append, isReady, businessId, userId]);
 
   const contextValue = useMemo(() => ({
-    messages: chat.messages || [],
+    messages: messages || [],
     input: inputState,
     setInput: setInputState,
     handleInputChange: (e: any) => setInputState(e?.target?.value ?? ''),
     handleSubmit,
-    isLoading: chat.isLoading,
-    setMessages: chat.setMessages,
-    data: chat.data,
+    isLoading,
+    setMessages,
+    data,
     isOpen,
     openCopilot: () => setIsOpen(true),
     closeCopilot: () => setIsOpen(false),
@@ -107,7 +112,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     userId,
     tenantData,
     tenantModules: modules
-  }), [chat.messages, chat.isLoading, chat.data, inputState, isOpen, isReady, businessId, userId, tenantData, modules, handleSubmit]);
+  }), [messages, isLoading, data, inputState, isOpen, isReady, businessId, userId, tenantData, modules, handleSubmit, startAIAssistance, setMessages]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -125,6 +130,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  // Fetching all required context and identity data
   const { data: bizContext } = useBusinessContext();
   const { data: userProfile } = useUserProfile();
   const { data: tenantData } = useTenant();
@@ -141,11 +147,11 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return userProfile?.id || '';
   }, [bizContext, userProfile]);
 
+  // isReady confirms the UI is mounted and we have valid credentials
   const isReady = mounted && !!activeBusinessId && !!activeUserId;
 
   return (
     <CopilotWorker 
-      key={activeBusinessId || 'loading'}
       businessId={activeBusinessId} 
       userId={activeUserId}
       tenantData={tenantData}
