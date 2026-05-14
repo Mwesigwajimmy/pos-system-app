@@ -6,6 +6,7 @@ import { useBusinessContext } from './useBusinessContext';
  * LITONU BUSINESS BASE UNIVERSE LTD - ENTERPRISE PROFILE SCHEMA
  * 
  * UPGRADE: Deeply integrated identity and billing state.
+ * This schema defines the C-Suite authority for the BBU1 Universe.
  */
 export interface UserProfile {
   id: string;
@@ -22,7 +23,7 @@ export interface UserProfile {
   subscription_status: string | null;
   subscription_plan: string | null;
 
-  // --- MISSING LOGIC: SYSTEM STATE KEYS ---
+  // --- SYSTEM STATE KEYS ---
   setup_complete: boolean;
   currency: string;
   branding_logo: string | null;
@@ -32,8 +33,8 @@ export interface UserProfile {
  * LITONU BUSINESS BASE UNIVERSE LTD - IDENTITY TRANSLATOR
  * 
  * UPGRADE: Aligned with the Deep Context RPC.
- * This ensures the Sidebar receives the correct "Active" identity
- * during multi-tenant node swaps and verifies billing status.
+ * This ensures the Sidebar and Copilot receive the correct "Active" identity
+ * during multi-tenant node swaps and verifies billing status for Aura access.
  */
 export function useUserProfile() {
   const { data, isLoading, error } = useBusinessContext();
@@ -43,12 +44,12 @@ export function useUserProfile() {
 
   return {
     data: profile ? {
-        id: profile.userId || (profile as any).id,
-        business_id: profile.businessId || (profile as any).business_id,
+        id: profile.userId || (profile as any).id || (profile as any).user_id,
+        business_id: profile.businessId || (profile as any).business_id || (profile as any).tenant_id,
         
         // --- DEEP CONTEXT MAPPING ---
         // Maps the SQL return values to your Frontend variables
-        full_name: (profile as any).full_name || 'Authorized Operator',
+        full_name: (profile as any).full_name || (profile as any).name || 'Authorized Operator',
         
         // Priority 1: The Context Role (e.g. Accountant) from the active business node
         // Priority 2: The Fallback role from the global profile
@@ -69,10 +70,10 @@ export function useUserProfile() {
         subscription_status: profile.subscription_status || (profile as any).subscription_status || null,
         subscription_plan: profile.subscription_plan || (profile as any).subscription_plan || null,
 
-        // --- MISSING LOGIC: SYSTEM SYNCHRONIZATION ---
+        // --- SYSTEM SYNCHRONIZATION ---
         // Forces the UI to respect the setup and currency context of the business
         setup_complete: profile.setup_complete ?? true,
-        currency: profile.reporting_currency || 'UGX',
+        currency: profile.reporting_currency || (profile as any).base_currency || 'UGX',
         branding_logo: profile.branding_logo || null
     } : null,
     isLoading,
