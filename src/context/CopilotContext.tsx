@@ -3,11 +3,10 @@
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
  * The primary orchestration layer for the Aura Autonomous C-Suite.
- * This component bridges the Deep Identity Hooks with the AI Reasoning Engine.
+ * VERSION: v10.8 Sovereign Edition (STABILIZED)
  * 
- * Capability: Multi-Agent State Management, Identity Handshaking.
+ * Capability: Persistent Neural Links, Identity Handshaking, Multi-Agent Awareness.
  * Integrity Grade: OMEGA-ULTIMATUM (Forensic Ready).
- * VERSION: v10.8 Cloud-Sovereign Edition.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
@@ -24,7 +23,6 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 /**
  * Interface: CopilotContextType
- * Defines the public API for interacting with Aura across the BBU1 Universe.
  */
 interface CopilotContextType {
   messages: any[]; 
@@ -51,11 +49,11 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
  * COMPONENT: CopilotWorkerProvider
- * Manages the UI state and physical message-sending handshake.
+ * ✅ EXECUTIVE FIX: The Chat Engine is isolated here.
+ * This prevents identity-hook re-renders from clearing the chat state.
  */
 function CopilotWorkerProvider({ 
     children, 
-    chat,
     businessId, 
     userId,
     tenantData,
@@ -63,7 +61,6 @@ function CopilotWorkerProvider({
     isReady 
 }: { 
     children: ReactNode; 
-    chat: any;
     businessId: string; 
     userId: string;
     tenantData: any;
@@ -73,31 +70,53 @@ function CopilotWorkerProvider({
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
 
+  // --- THE STABILIZED EXECUTIVE AI ENGINE ---
+  const chat = useChat({
+    api: '/api/chat',
+    // Stable body configuration
+    body: {
+        businessId, 
+        userId,
+        tenantModules: modules || [],
+        contextType: 'forensic_sovereign_executive'
+    }, 
+    experimental_streamData: true,
+    onResponse: (res) => {
+        if (!res.ok) {
+            toast.error("Aura Protocol Error: Connection to Executive Council interrupted.");
+        }
+    },
+    onError: (err) => {
+        console.error("Aura Engine Failure:", err);
+        toast.error("Neural Link Fault: Aura is offline. Check system logs.");
+    }
+  });
+
   const openCopilot = () => setIsOpen(true);
   const closeCopilot = () => setIsOpen(false);
   const toggleCopilot = () => setIsOpen(prev => !prev);
   
   /**
    * Method: startAIAssistance
-   * Allows external UI components to trigger Aura with a specific directive.
+   * Triggers Aura with a prompt and forces the sheet to open.
    */
   const startAIAssistance = (prompt: string) => {
     if (!prompt) return;
     setInputState(prompt);
     setIsOpen(true);
     
-    // Neural Handshake Delay: Ensures the Panel is mounted before appending
     setTimeout(() => {
       if (chat?.append) {
         try {
             chat.append({ 
               role: 'user', 
               content: prompt,
+              // Physical data injection for the backend kernel
               data: { businessId, userId }
             });
             setInputState('');
         } catch (err) {
-          console.error('Aura-Context: Directive Injection Failed:', err);
+          console.error('Aura-Context: Injection Failure:', err);
         }
       }
     }, 200);
@@ -113,10 +132,10 @@ function CopilotWorkerProvider({
   }, [isReady, businessId, userId]);
 
   const contextValue = useMemo(() => {
-    const isActuallyLoading = chat?.isLoading || chat?.status === 'in_progress' || chat?.status === 'streaming';
+    const isActuallyLoading = chat.isLoading || chat.status === 'streaming';
 
     return {
-      messages: chat?.messages || [],
+      messages: chat.messages || [],
       input: inputState, 
       setInput: setInputState,
       handleInputChange: (e: any) => {
@@ -125,24 +144,28 @@ function CopilotWorkerProvider({
       },
       handleSubmit: (e: any) => {
         if (e && e.preventDefault) e.preventDefault();
-        if (!inputState.trim()) return;
+        const content = inputState.trim();
+        if (!content) return;
 
         try { 
-          if (typeof chat?.append === 'function') {
-            chat.append({ 
-              role: 'user', 
-              content: inputState,
-              data: { businessId, userId } 
-            });
-          }
+          /**
+           * ✅ THE SOVEREIGN WELD
+           * We use chat.append() instead of handleSubmit() to force-inject 
+           * the Identity metadata into every packet. This prevents message vanishing.
+           */
+          chat.append({ 
+            role: 'user', 
+            content: content,
+            data: { businessId, userId } 
+          });
           setInputState('');
         } catch (err: any) { 
-          toast.error(`Neural Link Fault: ${err.message}`);
+          toast.error(`Aura Handshake Interrupted: ${err.message}`);
         }
       },
       isLoading: isActuallyLoading,
-      setMessages: chat?.setMessages || (() => {}),
-      data: chat?.data,
+      setMessages: chat.setMessages,
+      data: chat.data,
       isOpen,
       openCopilot,
       closeCopilot,
@@ -160,7 +183,6 @@ function CopilotWorkerProvider({
     <CopilotContext.Provider value={contextValue}>
       {children}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        {/* The C-Suite Sidebar Panel */}
         <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 flex flex-col border-l shadow-2xl overflow-hidden">
            <CopilotPanel />
         </SheetContent>
@@ -184,48 +206,30 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { data: modules } = useTenantModules();
 
   /**
-   * ✅ IDENTITY RESOLUTION WELD
-   * Prioritizes the advanced BusinessContext resolution first.
-   * Ensures the handshake completes correctly regardless of hook naming conventions.
+   * ✅ IDENTITY RESOLUTION
+   * Resolves ID anchors from the most stable source available.
    */
   const activeBusinessId = useMemo(() => {
-    if (bizContext?.businessId) return bizContext.businessId; // Matches your BusinessContextData interface
+    if (bizContext?.businessId) return bizContext.businessId;
     if (userProfile?.business_id) return userProfile.business_id;
     if (tenantData?.id) return tenantData.id;
     return '';
   }, [bizContext, userProfile, tenantData]);
 
   const activeUserId = useMemo(() => {
-    if (bizContext?.userId) return bizContext.userId; // Matches your BusinessContextData interface
+    if (bizContext?.userId) return bizContext.userId;
     if (userProfile?.id) return userProfile.id;
     return '';
   }, [bizContext, userProfile]);
 
   /**
-   * THE EXECUTIVE AI ENGINE (useChat)
-   * Feeds the resolved IDs into the backend reasoning kernel.
-   */
-  const chat = useChat({
-    api: '/api/chat',
-    body: {
-        businessId: activeBusinessId, 
-        userId: activeUserId,
-        tenantModules: modules || [],
-        contextType: 'forensic_sovereign_executive'
-    }, 
-    experimental_streamData: true,
-  });
-
-  /**
-   * ✅ NEURAL READINESS PROTOCOL
-   * The "Sovereign Syncing" screen closes exactly when the physical IDs are found.
-   * This breaks the loading hang by focusing only on the mandatory identity anchors.
+   * ✅ NEURAL READINESS
+   * The loading screen closes exactly when the physical IDs are found.
    */
   const isReady = mounted && !!activeBusinessId && !!activeUserId;
 
   return (
     <CopilotWorkerProvider 
-      chat={chat}
       businessId={activeBusinessId} 
       userId={activeUserId}
       tenantData={tenantData}
@@ -239,7 +243,6 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
 /**
  * HOOK: useCopilot
- * Access the Sovereign Executive Council from any component.
  */
 export function useCopilot() {
   const context = useContext(CopilotContext);
