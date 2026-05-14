@@ -2,10 +2,8 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * The primary orchestration layer for the Aura Autonomous C-Suite.
- * VERSION: v10.8 Sovereign Edition (STABILIZED)
- * 
- * Capability: Persistent Neural Links, Identity Handshaking, Multi-Agent Awareness.
+ * VERSION: v10.9 Sovereign Edition (PRODUCTION STABILIZED)
+ * Logic: Explicitly destructures useChat for absolute minifier stability.
  * Integrity Grade: OMEGA-ULTIMATUM (Forensic Ready).
  */
 
@@ -21,9 +19,6 @@ import { useTenantModules } from '@/hooks/useTenantModules';
 import { useTenant } from '@/hooks/useTenant'; 
 import { useUserProfile } from '@/hooks/useUserProfile';
 
-/**
- * Interface: CopilotContextType
- */
 interface CopilotContextType {
   messages: any[]; 
   input: string;
@@ -49,8 +44,7 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
  * COMPONENT: CopilotWorkerProvider
- * ✅ EXECUTIVE FIX: The Chat Engine is isolated here.
- * This prevents identity-hook re-renders from clearing the chat state.
+ * Orchestrates the persistent AI Engine state.
  */
 function CopilotWorkerProvider({ 
     children, 
@@ -71,9 +65,16 @@ function CopilotWorkerProvider({
   const [inputState, setInputState] = useState('');
 
   // --- THE STABILIZED EXECUTIVE AI ENGINE ---
-  const chat = useChat({
+  // ✅ DEEP FIX: Destructuring explicitly to prevent "is not a function" errors in production minification.
+  const { 
+    messages, 
+    append, 
+    setMessages, 
+    data, 
+    isLoading: chatLoading,
+    status 
+  } = useChat({
     api: '/api/chat',
-    // Stable body configuration
     body: {
         businessId, 
         userId,
@@ -81,15 +82,6 @@ function CopilotWorkerProvider({
         contextType: 'forensic_sovereign_executive'
     }, 
     experimental_streamData: true,
-    onResponse: (res) => {
-        if (!res.ok) {
-            toast.error("Aura Protocol Error: Connection to Executive Council interrupted.");
-        }
-    },
-    onError: (err) => {
-        console.error("Aura Engine Failure:", err);
-        toast.error("Neural Link Fault: Aura is offline. Check system logs.");
-    }
   });
 
   const openCopilot = () => setIsOpen(true);
@@ -98,7 +90,7 @@ function CopilotWorkerProvider({
   
   /**
    * Method: startAIAssistance
-   * Triggers Aura with a prompt and forces the sheet to open.
+   * Safely injects a directive into the neural stream.
    */
   const startAIAssistance = (prompt: string) => {
     if (!prompt) return;
@@ -106,20 +98,20 @@ function CopilotWorkerProvider({
     setIsOpen(true);
     
     setTimeout(() => {
-      if (chat?.append) {
+      // Forensic Safety Check
+      if (typeof append === 'function') {
         try {
-            chat.append({ 
+            append({ 
               role: 'user', 
               content: prompt,
-              // Physical data injection for the backend kernel
               data: { businessId, userId }
             });
             setInputState('');
         } catch (err) {
-          console.error('Aura-Context: Injection Failure:', err);
+          console.error('Aura Injection Error:', err);
         }
       }
-    }, 200);
+    }, 250);
   };
 
   // Diagnostic: Log successful link establishment
@@ -132,15 +124,14 @@ function CopilotWorkerProvider({
   }, [isReady, businessId, userId]);
 
   const contextValue = useMemo(() => {
-    const isActuallyLoading = chat.isLoading || chat.status === 'streaming';
+    const isActuallyLoading = chatLoading || status === 'streaming';
 
     return {
-      messages: chat.messages || [],
+      messages: messages || [],
       input: inputState, 
       setInput: setInputState,
       handleInputChange: (e: any) => {
-        const val = e?.target?.value ?? '';
-        setInputState(val); 
+        setInputState(e?.target?.value ?? ''); 
       },
       handleSubmit: (e: any) => {
         if (e && e.preventDefault) e.preventDefault();
@@ -149,23 +140,27 @@ function CopilotWorkerProvider({
 
         try { 
           /**
-           * ✅ THE SOVEREIGN WELD
-           * We use chat.append() instead of handleSubmit() to force-inject 
-           * the Identity metadata into every packet. This prevents message vanishing.
+           * ✅ THE OMEGA-STABILITY WELD
+           * We verify the physical existence of the 'append' function before invocation.
+           * This prevents the "h.append is not a function" crash in minified builds.
            */
-          chat.append({ 
-            role: 'user', 
-            content: content,
-            data: { businessId, userId } 
-          });
-          setInputState('');
+          if (typeof append === 'function') {
+            append({ 
+              role: 'user', 
+              content: content,
+              data: { businessId, userId } 
+            });
+            setInputState('');
+          } else {
+            throw new Error("Neural link 'append' protocol not yet initialized.");
+          }
         } catch (err: any) { 
           toast.error(`Aura Handshake Interrupted: ${err.message}`);
         }
       },
       isLoading: isActuallyLoading,
-      setMessages: chat.setMessages,
-      data: chat.data,
+      setMessages: setMessages || (() => {}),
+      data: data,
       isOpen,
       openCopilot,
       closeCopilot,
@@ -177,7 +172,7 @@ function CopilotWorkerProvider({
       tenantData,
       tenantModules: modules
     };
-  }, [chat, inputState, isOpen, businessId, userId, tenantData, modules, isReady]);
+  }, [messages, append, setMessages, data, chatLoading, status, inputState, isOpen, businessId, userId, tenantData, modules, isReady]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -199,16 +194,12 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // --- IDENTITY PILLARS (Cascading Data Sources) ---
+  // --- IDENTITY PILLARS ---
   const { data: bizContext } = useBusinessContext();
   const { data: userProfile } = useUserProfile();
   const { data: tenantData } = useTenant();
   const { data: modules } = useTenantModules();
 
-  /**
-   * ✅ IDENTITY RESOLUTION
-   * Resolves ID anchors from the most stable source available.
-   */
   const activeBusinessId = useMemo(() => {
     if (bizContext?.businessId) return bizContext.businessId;
     if (userProfile?.business_id) return userProfile.business_id;
@@ -222,10 +213,6 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return '';
   }, [bizContext, userProfile]);
 
-  /**
-   * ✅ NEURAL READINESS
-   * The loading screen closes exactly when the physical IDs are found.
-   */
   const isReady = mounted && !!activeBusinessId && !!activeUserId;
 
   return (
