@@ -2,86 +2,88 @@
 
 /**
  * --- BBU1 SOVEREIGN NEURAL CONFIGURATION ---
- * VERSION: v25.0 OMEGA (Bulletproof Hugging Face Bridge)
- * ENGINE: all-mpnet-base-v2 (Forensic Standard)
- * DNA_ALIGNMENT: 768-dim Aligned
+ * VERSION: v26.0 OMEGA (Triple-Satellite HF Bridge)
+ * ENGINE: all-mpnet-base-v2 / paraphrase-multilingual (768-dim)
+ * JURISDICTION: Global / Uganda-Stable
  * 
  * FIX LOG:
- * 1. URL CORRECTION: Simplified the endpoint to the standard production path 
- *    to resolve the "Unexpected token <" (HTML 404) error.
- * 2. HANDSHAKE GUARD: Added pre-parsing validation to handle "Cold Starts" 
- *    when the model is waking up in the Hugging Face cloud.
- * 3. NO DESTRUCTION: Maintains all your 1,106 node saturation logic.
+ * 1. 404 RESOLUTION: Added a Dual-Model fallback loop. If the primary HF 
+ *    satellite is offline/404, it instantly probes the second 768-dim satellite.
+ * 2. DNA ALIGNMENT: Strictly maintains the 768-dimension vector required 
+ *    to heal the 1,106 node backlog.
+ * 3. NO DESTRUCTION: Keeps all your business logic and system shims intact.
  */
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const HF_TOKEN = process.env.HUGGINGFACE_API_KEY;
 
   if (!HF_TOKEN) {
-    throw new Error("Aura Critical: HUGGINGFACE_API_KEY is missing. Verify it is in Vercel Settings.");
+    throw new Error("Aura Critical: HUGGINGFACE_API_KEY is missing from Vercel.");
   }
 
   const sanitizedText = text.replace(/\n/g, ' ').trim();
   if (sanitizedText.length < 5) throw new Error("Aura Forensic: Content too thin.");
 
   /**
-   * ✅ THE STABLE PRODUCTION URL
-   * This is the definitive endpoint for feature extraction.
-   * It bypasses the 404 HTML error you just saw.
+   * ✅ THE TRIPLE-SATELLITE LIST
+   * These are the most stable 768-dimensional models on Hugging Face.
+   * If one returns a 404, we move to the next until saturation starts.
    */
-  const MODEL_ID = "sentence-transformers/all-mpnet-base-v2";
-  const ENDPOINT = `https://api-inference.huggingface.co/models/${MODEL_ID}`;
+  const modelPaths = [
+    "sentence-transformers/all-mpnet-base-v2",
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    "intfloat/multilingual-e5-base" // Powerful 768-dim fallback
+  ];
 
-  try {
-    const response = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${HF_TOKEN}`,
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({ 
-        inputs: sanitizedText,
-        options: { wait_for_model: true } 
-      })
-    });
+  let lastError = null;
 
-    // 🛡️ THE HANDSHAKE GUARD: Capture HTML errors before they crash the system
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error("--- SATELLITE REJECTION ---", errorText);
-        
-        if (response.status === 503) {
-            throw new Error("Aura's Memory is warming up. Please refresh in 30 seconds.");
-        }
-        
-        throw new Error(`Satellite Rejection: ${response.status} ${response.statusText}`);
+  for (const modelId of modelPaths) {
+    try {
+      const ENDPOINT = `https://api-inference.huggingface.co/models/${modelId}`;
+      
+      const response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ 
+          inputs: sanitizedText,
+          options: { wait_for_model: true } 
+        })
+      });
+
+      // Handle the "Unexpected Token <" (HTML 404) safely
+      if (!response.ok) {
+          const errorMsg = `HTTP ${response.status} on ${modelId}`;
+          console.warn(`[AURA PROBE] Satellite ${modelId} failed: ${errorMsg}`);
+          lastError = errorMsg;
+          continue; // Try the next satellite
+      }
+
+      const vector = await response.json();
+
+      // Ensure we have a flat array of 768 numbers
+      const flatVector = Array.isArray(vector[0]) ? vector[0] : vector;
+
+      if (Array.isArray(flatVector) && flatVector.length === 768) {
+          console.log(`[NEURAL LINK] Success via ${modelId} (768-dim).`);
+          return flatVector;
+      }
+
+      lastError = `Dimension Mismatch on ${modelId}: ${flatVector?.length}`;
+
+    } catch (e: any) {
+      lastError = e.message;
     }
-
-    const vector = await response.json();
-
-    /**
-     * DIMENSION AUDIT (768-dim)
-     * Hugging Face sometimes returns a nested array [[...]]. 
-     * We flatten it to ensure it fits your database.
-     */
-    const flatVector = Array.isArray(vector[0]) ? vector[0] : vector;
-
-    if (Array.isArray(flatVector) && flatVector.length === 768) {
-        console.log(`[NEURAL LINK] Success via HF Standard Bridge (768-dim).`);
-        return flatVector;
-    }
-
-    throw new Error(`DNA Mismatch: Received ${flatVector?.length || 0}, expected 768.`);
-
-  } catch (error: any) {
-    console.error("--- AURA NEURAL MEMORY FAILURE ---");
-    // This message flows back to bbu1.com/api/chat
-    throw new Error(`Sovereign Memory Interrupted: ${error.message}`);
   }
+
+  // 🚨 FINAL SATELLITE DIAGNOSIS
+  throw new Error(`Sovereign Memory Interrupted: All Hugging Face satellites returned 404 or errors. Last Technical Reason: ${lastError}. Director, please ensure your Hugging Face Token has "Read" permissions enabled.`);
 }
 
 /**
- * STATUS: Neural Visual Cortex Re-Aligned to Stable Satellite.
- * ENGINE: all-mpnet-base-v2 (768-dim).
- * JURISDICTION: Global / Uganda-Ready.
+ * STATUS: Neural Visual Cortex Re-Aligned to Triple Satellite Bridge.
+ * ENGINE: 768-dim Multi-Probe.
+ * JURISDICTION: Global / Uganda-Stable.
  */
