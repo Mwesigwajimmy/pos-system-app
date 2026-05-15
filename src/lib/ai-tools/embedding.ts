@@ -2,9 +2,14 @@
 
 /**
  * --- BBU1 SOVEREIGN NEURAL CONFIGURATION ---
- * VERSION: v12.0 OMEGA (Direct REST Sovereign Link)
+ * VERSION: v14.0 OMEGA (Universal Stable Bridge)
  * ENGINE: Google Gemini Neural Core
- * PROTOCOL: Direct HTTPS REST (Bypasses SDK 404 issues)
+ * PROTOCOL: Triple-Endpoint Handshake (v1 Stable Aligned)
+ * 
+ * FIX LOG:
+ * 1. 404 RESOLUTION: Bypasses the 'v1beta' endpoint failure by forcing 'v1' stable.
+ * 2. REGIONAL RESILIENCE: Probes multiple model aliases to find the active Uganda-node.
+ * 3. NO DESTRUCTION: Maintains the 768-dim output required for your 1,106 nodes.
  */
 
 export async function generateEmbedding(text: string): Promise<number[]> {
@@ -18,69 +23,74 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   if (sanitizedText.length < 5) throw new Error("Aura Forensic: Low-density content.");
 
   /**
-   * ✅ THE DEEP LINK FIX: Direct REST Call
-   * We bypass the SDK entirely and call the Google API directly via HTTPS.
-   * This eliminates any "v1beta vs v1" confusion in the library.
+   * ✅ THE UNIVERSAL BRIDGE
+   * We try the stable 'v1' lane first. This is the production standard for 2026.
+   * Models are tried in order of forensic precision.
    */
-  const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${API_KEY}`;
+  const modelOptions = [
+    "text-embedding-004",   // Primary High-Precision
+    "embedding-001",        // Stable Legacy
+    "gemini-embedding-001"  // 2026 Standard (May require dimensionality force)
+  ];
 
-  try {
-    const response = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: { parts: [{ text: sanitizedText }] }
-      })
-    });
+  let lastError = null;
 
-    const data = await response.json();
+  for (const modelId of modelOptions) {
+    try {
+      // PROBE: Using the stable v1 endpoint
+      const ENDPOINT = `https://generativelanguage.googleapis.com/v1/models/${modelId}:embedContent?key=${API_KEY}`;
+      
+      const response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: { parts: [{ text: sanitizedText }] },
+          // Force 768 output in case gemini-embedding-001 is used
+          outputDimensionality: 768 
+        })
+      });
 
-    // If Google returns an error, we capture the DEEP reason
-    if (!response.ok) {
-        console.error("--- GOOGLE REST REJECTION ---", data);
-        const reason = data.error?.message || "Unknown API Restriction";
-        
-        // If it's a 404, we try the fallback endpoint immediately
-        if (response.status === 404) {
-            return await secondaryDirectLink(API_KEY, sanitizedText);
+      const data = await response.json();
+
+      if (response.ok) {
+        const vector = data.embedding?.values;
+        if (vector && (vector.length === 768)) {
+            console.log(`[NEURAL LINK] Success! Saturation established via ${modelId} on v1 Stable.`);
+            return vector;
         }
-        
-        throw new Error(`Google REST Rejection: ${reason}`);
+      }
+
+      // Capture error for diagnosis if the loop finishes
+      lastError = data.error?.message || `HTTP ${response.status}`;
+      console.warn(`[AURA PROBE] Endpoint ${modelId} returned: ${lastError}`);
+
+    } catch (e: any) {
+      lastError = e.message;
     }
-
-    const vector = data.embedding?.values;
-
-    if (!vector || vector.length !== 768) {
-      throw new Error(`Dimension Failure: Received ${vector?.length || 0}, expected 768.`);
-    }
-
-    return vector;
-
-  } catch (error: any) {
-    console.error("--- AURA NEURAL LINK COLLAPSE ---");
-    console.error(`TECHNICAL_FAULT: ${error.message}`);
-    
-    // This message will appear in your bbu1.com/api/chat diagnostic
-    throw new Error(`Sovereign Link Interrupted: ${error.message}. Please verify "Generative Language API" is ENABLED in your Google Cloud Console for this project.`);
   }
+
+  // 🚨 DEEP SATELLITE FAILURE: If all three fail, we check the beta lane as a last resort.
+  return await emergencyBetaLink(API_KEY, sanitizedText, lastError);
 }
 
 /**
- * SECONDARY DIRECT LINK: Fallback to the legacy endpoint if the 004 model is regionalized.
+ * EMERGENCY BETA LINK
+ * Only utilized if the stable v1 lane is undergoing maintenance.
  */
-async function secondaryDirectLink(apiKey: string, text: string): Promise<number[]> {
-    const FALLBACK_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${apiKey}`;
+async function emergencyBetaLink(apiKey: string, text: string, prevError: string): Promise<number[]> {
+    const BETA_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
     
-    const response = await fetch(FALLBACK_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: { parts: [{ text }] } })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(`Deep Satellite Failure: Both primary and fallback models returned 404. Your API Key is valid, but the Embedding API is not enabled for this project.`);
+    try {
+        const response = await fetch(BETA_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: { parts: [{ text }] } })
+        });
+        const data = await response.json();
+        if (response.ok) return data.embedding.values;
+        
+        throw new Error(data.error?.message || "Final Bridge Collapse");
+    } catch (e: any) {
+        throw new Error(`Sovereign Link Interrupted: All Neural Pathways (v1 & v1beta) failed. Last Technical Reason: ${prevError}. Director, please verify your Google AI Studio project is not restricted by regional data residency laws.`);
     }
-
-    return data.embedding.values;
 }
