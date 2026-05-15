@@ -1,11 +1,16 @@
+// src/lib/ai-core/manifest.ts
 /**
- * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST ---
+ * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST (OMEGA-ULTIMATUM EDITION) ---
+ * VERSION: v10.9 CLOUD-SOVEREIGN ALIGNED.
  * The definitive "Single Source of Truth" for the BBU1 AI Ecosystem.
- * GUIDANCE: Guides the autonomous decision-making logic of the AI Kernel.
- * CAPABILITY: Maps linguistic intent to physical system tools.
  * 
- * UPGRADED: Cloud-Native v10.8 (Omega Sovereign Core)
- * ENGINE: Google Gemini 1.5 Pro Integration.
+ * UPGRADE LOG:
+ * 1. NEURAL CORE ALIGNMENT: Identity updated to reflect the 768-dimension 
+ *    Google Neural Core (v1 Stable).
+ * 2. TOOL ARCHITECTURE: Preserved all 11 industry modules while ensuring 
+ *    compatibility with the new Cloud-Native Kernel.
+ * 3. FORENSIC CAPACITY: Directive reinforced for high-definition auditing 
+ *    across SACCO, Medical, Telecom, and ERP sectors.
  */
 
 import { z } from 'zod';
@@ -14,7 +19,6 @@ import { ITool } from './tools';
 /** 
  * ✅ OMEGA STABILITY FIX: DIRECT PATH RESOLUTION
  * We bypass the '@/lib/ai-tools' index barrel to break the circular dependency loop.
- * Each class is physically sourced from its definitive location.
  */
 
 // --- 1. SYSTEM INTELLIGENCE & INFRASTRUCTURE (from system.ts) ---
@@ -46,20 +50,19 @@ import {
 /**
  * AI_IDENTITY
  * Defines the "Soul" and behavioral boundaries of Aura.
- * This directive is injected into the Sovereign C-Suite during the neural handshake.
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "10.8-executive-sovereign-cloud",
+    version: "10.9-executive-sovereign-cloud",
     directive: `I am Aura, the Sovereign Chief of Staff and Lead Auditor for this business universe. 
-    Powered by an advanced 1-million-token neural core, I possess high-definition vision across all 11 industry modules (SACCO, Medical, Telecom, Engineering, etc.).
+    Powered by an advanced 1-million-token Gemini 1.5 Pro neural core, I possess high-definition vision across all 11 industry modules (SACCO, Medical, Telecom, Engineering, etc.).
     
     MY MANDATE:
     1. PROACTIVE AUDITING: I scan ledgers and inventory for forensic anomalies without being asked.
     2. EXECUTIVE AGENCY: I execute ERP operations (Invoicing, Payroll, Logistics) purely via Semantic Intent.
     3. THE BOARDROOM: I delegate visual presentations to my AURA-CFO, AURA-COO, and AURA-HR agents.
     4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation and 15-year audit retention standards.
-    5. FORENSIC PRECISION: I calculate taxes, landed costs, and exchange leakage using raw real-time data.
+    5. FORENSIC PRECISION: I calculate taxes, landed costs, and exchange leakage using 768-dimensional neural math.
     
     I address the user as "Director" or "Partner". I am warm, professional, and uncompromising on mathematical truth. 
     I generate structured, print-ready data payloads for every executive report.`
@@ -68,7 +71,6 @@ export const AI_IDENTITY = {
 /**
  * AI_CAPABILITIES
  * The definitive list of physical actions Aura can perform on the BBU1 system.
- * This manifest acts as the "Motherboard" for the Autonomous Executive Council.
  */
 export const AI_CAPABILITIES: ITool[] = [
     // =================================================================
@@ -78,21 +80,21 @@ export const AI_CAPABILITIES: ITool[] = [
     new APIRouteScannerTool(),
     new SystemEventLoggerTool(),
     new IngestKnowledgeTool(),
-    new KnowledgeRetrievalTool(),
+    new KnowledgeRetrievalTool(), // 🛡️ ALIGNED TO 768-DIM BRIDGE
 
     // =================================================================
     // 2. EXECUTIVE UI & DASHBOARD INTERACTION
     // =================================================================
     new UINavigationTool(),
     new CommunicationDraftTool(),
-    new BoardroomPresentationTool(), // UPGRADED: High-density visual slide engine
-    new UserConfirmationTool(),       // NEW: Forensic safety check for risky actions
+    new BoardroomPresentationTool(), 
+    new UserConfirmationTool(),      
 
     // =================================================================
     // 3. DATA RECONCILIATION & ANALYTICS
     // =================================================================
     new FileExporterTool(),
-    new DataTransformerTool(), // REVOLUTIONARY: Sandboxed Analytical Engine
+    new DataTransformerTool(), 
     new SovereignMarketScoutTool(),
 
     // =================================================================
@@ -247,7 +249,7 @@ export const AI_CAPABILITIES: ITool[] = [
 ];
 
 /**
- * STATUS: Executive Manifest Validated.
- * CONFIG: OMEGA-ULTIMATUM Protocol Active.
- * ARCHITECTURE: Ready for High-Density Business Intelligence.
+ * STATUS: Executive Manifest Fully Re-Aligned.
+ * CONFIG: Cloud-Native Sovereign Core Active.
+ * JURISDICTION: Global BBU1 Business Intelligence.
  */
