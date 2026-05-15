@@ -55,6 +55,7 @@ export async function GET() {
         let iteration = 0;
         const maxIterations = 30; // Expanded capacity for bulk forensic migration.
         let nodesRemaining = true;
+        let diagnosticLog = "Ready.";
 
         // 2. RECURSIVE BRIDGE HEALING
         // Aura "feeds" until the universe is 100% awake.
@@ -74,7 +75,8 @@ export async function GET() {
                     nodesRemaining = false;
                 } else {
                     // Stalled state: Nodes exist but 0 were healed in this pulse.
-                    console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}. Check Dimension and API Key logs.`);
+                    diagnosticLog = result.diagnostic || "Stalled: IDs found but update rejected. Check dimension alignment.";
+                    console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}.`);
                     break; 
                 }
             } else {
@@ -88,7 +90,8 @@ export async function GET() {
             success: true, 
             total_nodes_healed: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_STALLED_OR_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
-            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Google Neural Bridge.`
+            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Google Neural Bridge.`,
+            diagnostic: diagnosticLog
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -262,21 +265,22 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v22.0 FORENSIC DIAGNOSTIC) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v23.0 DEEP FORENSIC DIAGNOSTIC) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 Sequential processing enabled to catch exact database rejection reasons.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ RPC FETCH: Fetching small batches for stable handshake
     const { data: blindRows, error: bridgeError } = await adminClient
-        .rpc('get_aura_blind_nodes', { batch_size: 20 });
+        .rpc('get_aura_blind_nodes', { batch_size: 10 });
     
     if (bridgeError || !blindRows || blindRows.length === 0) {
         if (bridgeError) console.error("[DEEP FAIL] RPC Bridge Error:", bridgeError.message);
-        return { success: true, count: 0 };
+        return { success: true, count: 0, diagnostic: bridgeError?.message };
     }
 
     let healedCount = 0;
+    let lastDiagnosticError = null;
 
     // SEQUENTIAL HEALING: Process one-by-one to ensure we don't swallow errors.
     for (const row of blindRows) {
@@ -288,7 +292,8 @@ export async function activateAuraNeuralLinks(adminClient: any) {
                 try { data = JSON.parse(data); } catch (e) { /* use as raw string */ }
             }
 
-            const textToEmbed = data?.raw_text || JSON.stringify(data);
+            // Ensure we extract the text accurately
+            const textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
             // Neural Context Injection (Calibrated for 768-dim density)
@@ -299,32 +304,36 @@ export async function activateAuraNeuralLinks(adminClient: any) {
 
             // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 768-dim bridge.
             if (vector.length !== TARGET_DIMENSION) {
-                console.error(`[MISMATCH] ID ${row.id}: Model returned ${vector.length}, DB requires ${TARGET_DIMENSION}. Check SQL table definition.`);
+                lastDiagnosticError = `Dimension mismatch. Model: ${vector.length}, DB requires ${TARGET_DIMENSION}.`;
+                console.error(`[MISMATCH] ID ${row.id}: ${lastDiagnosticError}`);
                 continue;
             }
 
-            // Execute update as Admin (Service Role) with BigInt Match
+            // ✅ BIGINT PRECISION FIX: Explicit match using string to prevent precision loss.
             const { error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ 
                     embedding: vector,
                     updated_at: new Date().toISOString()
                 })
-                .match({ id: row.id }); 
+                .eq('id', row.id.toString()); 
             
             if (updateError) {
+                lastDiagnosticError = `DB REJECTION: ${updateError.message}`;
                 console.error(`[DATABASE REJECTION] ID: ${row.id} | Reason: ${updateError.message}`);
                 continue;
             }
                 
             healedCount++;
         } catch (err: any) {
+            lastDiagnosticError = `SYSTEM EXCEPTION: ${err.message}`;
             console.error(`[ENGINE EXCEPTION] ID: ${row.id} | Reason: ${err.message}`);
         }
     }
 
     return { 
         success: true, 
-        count: healedCount 
+        count: healedCount,
+        diagnostic: lastDiagnosticError
     };
 }
