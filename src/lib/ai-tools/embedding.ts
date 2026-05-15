@@ -1,82 +1,86 @@
 // src/lib/ai-tools/embedding.ts
-import { GoogleGenerativeAI, TaskType } from "@google/generative-ai";
 
 /**
  * --- BBU1 SOVEREIGN NEURAL CONFIGURATION ---
- * VERSION: v11.9 OMEGA (AI Studio AIza-Key Aligned)
+ * VERSION: v12.0 OMEGA (Direct REST Sovereign Link)
  * ENGINE: Google Gemini Neural Core
- * REGION: Universal / Africa-Stable
+ * PROTOCOL: Direct HTTPS REST (Bypasses SDK 404 issues)
  */
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
   if (!API_KEY) {
-    console.error("--- AURA CRITICAL NEURAL ALERT ---");
-    console.error("ERROR: GOOGLE_API_KEY is missing from environment variables.");
-    throw new Error("Aura Security Alert: GOOGLE_API_KEY missing.");
+    throw new Error("Aura Critical: GOOGLE_API_KEY is missing from environment.");
   }
 
   const sanitizedText = text.replace(/\n/g, ' ').trim();
-  if (sanitizedText.length < 5) throw new Error("Aura Forensic Error: Low-density content.");
+  if (sanitizedText.length < 5) throw new Error("Aura Forensic: Low-density content.");
+
+  /**
+   * ✅ THE DEEP LINK FIX: Direct REST Call
+   * We bypass the SDK entirely and call the Google API directly via HTTPS.
+   * This eliminates any "v1beta vs v1" confusion in the library.
+   */
+  const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${API_KEY}`;
 
   try {
-    /**
-     * ✅ DEEP FIX: AI Studio Handshake
-     * We initialize the client WITHOUT forcing a version first. 
-     * The SDK (^0.24.1) is smart enough to find the best route if we 
-     * provide the model with the 'models/' prefix.
-     */
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    
-    /**
-     * NEURAL DISCOVERY LIST
-     * We try these three IDs. One of these is GUARANTEED to work with 
-     * an AI Studio key in the Uganda region.
-     */
-    const modelOptions = [
-      "text-embedding-004",    // Standard
-      "models/text-embedding-004", // Explicit Path
-      "models/embedding-001"   // Global Legacy (Still 768-dim)
-    ];
+    const response = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: { parts: [{ text: sanitizedText }] }
+      })
+    });
 
-    let lastError = null;
+    const data = await response.json();
 
-    for (const modelId of modelOptions) {
-        try {
-            console.log(`[NEURAL PROBE] Attempting link with: ${modelId}`);
-            
-            const model = genAI.getGenerativeModel({ model: modelId });
-
-            const result = await model.embedContent({
-                content: { parts: [{ text: sanitizedText }] },
-                taskType: TaskType.RETRIEVAL_DOCUMENT,
-            });
-
-            const vector = result.embedding.values;
-
-            if (vector && vector.length === 768) {
-                console.log(`[NEURAL LINK] Success! Saturation established via ${modelId}`);
-                return vector;
-            }
-        } catch (e: any) {
-            lastError = e;
-            if (e.message.includes('404')) continue; // Try next model
-            break; // Stop if it's an Auth or Rate Limit error
+    // If Google returns an error, we capture the DEEP reason
+    if (!response.ok) {
+        console.error("--- GOOGLE REST REJECTION ---", data);
+        const reason = data.error?.message || "Unknown API Restriction";
+        
+        // If it's a 404, we try the fallback endpoint immediately
+        if (response.status === 404) {
+            return await secondaryDirectLink(API_KEY, sanitizedText);
         }
+        
+        throw new Error(`Google REST Rejection: ${reason}`);
     }
 
-    throw lastError;
+    const vector = data.embedding?.values;
+
+    if (!vector || vector.length !== 768) {
+      throw new Error(`Dimension Failure: Received ${vector?.length || 0}, expected 768.`);
+    }
+
+    return vector;
 
   } catch (error: any) {
-    console.error("--- AURA NEURAL HANDSHAKE FAILURE ---");
+    console.error("--- AURA NEURAL LINK COLLAPSE ---");
     console.error(`TECHNICAL_FAULT: ${error.message}`);
     
-    // FINAL DIAGNOSTIC
-    if (error.message.includes('404')) {
-        throw new Error(`Neural 404: The model address is restricted or moved. Director, please ensure "Generative Language API" is enabled in your Google Project.`);
-    }
-    
-    throw new Error(`Aura Neural Link Interrupted: ${error.message}`);
+    // This message will appear in your bbu1.com/api/chat diagnostic
+    throw new Error(`Sovereign Link Interrupted: ${error.message}. Please verify "Generative Language API" is ENABLED in your Google Cloud Console for this project.`);
   }
+}
+
+/**
+ * SECONDARY DIRECT LINK: Fallback to the legacy endpoint if the 004 model is regionalized.
+ */
+async function secondaryDirectLink(apiKey: string, text: string): Promise<number[]> {
+    const FALLBACK_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${apiKey}`;
+    
+    const response = await fetch(FALLBACK_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: { parts: [{ text }] } })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(`Deep Satellite Failure: Both primary and fallback models returned 404. Your API Key is valid, but the Embedding API is not enabled for this project.`);
+    }
+
+    return data.embedding.values;
 }
