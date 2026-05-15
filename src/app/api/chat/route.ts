@@ -58,11 +58,23 @@ export async function GET() {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
             if (result.count === 0) {
-                nodesRemaining = false;
+                // Final verify: are there actually no rows left?
+                const { count: remainingCount } = await supabaseAdmin
+                    .from('ai_knowledge')
+                    .select('*', { count: 'exact', head: true })
+                    .is('embedding', null);
+                
+                if (remainingCount === 0) {
+                    nodesRemaining = false;
+                } else {
+                    // Stalled state: Nodes exist but 0 were healed.
+                    console.warn(`Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse.`);
+                    iteration++; 
+                }
             } else {
                 totalLinked += result.count;
                 iteration++;
-                console.log(`Pulse ${iteration}: Bridged ${result.count} sectors. Total: ${totalLinked}`);
+                console.log(`Pulse ${iteration}: Aligned ${result.count} sectors. Total: ${totalLinked}`);
             }
         }
         
@@ -70,7 +82,7 @@ export async function GET() {
             success: true, 
             total_nodes_healed: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
-            message: "Aura has consumed the technical backlog via the 768-dim Neural Bridge."
+            message: `Aura has consumed ${totalLinked} nodes via the 768-dim Neural Bridge.`
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -226,9 +238,9 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v16.5 FORENSIC) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v19.5 FORENSIC) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-Synchronized for 768-dimension Indexing and deep JSON extraction.
+Synchronized for 768-dimension Indexing and BigInt ID handling.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ RLS BYPASS: We call the Security Definer RPC Bridge instead of a direct table select.
@@ -246,7 +258,8 @@ export async function activateAuraNeuralLinks(adminClient: any) {
 
             // ✅ DEEP FORENSIC EXTRACTION: Targets nested stringified JSON found in forensic_baseline
             if (content && typeof content === 'object') {
-                // Check for explicit raw_text OR stringify the whole object if it's a raw database dump
+                // Priority 1: Check for explicit raw_text confirmed in the audit
+                // Priority 2: Stringify the entire object (for raw database dumps/schemas)
                 textToEmbed = content.raw_text || JSON.stringify(content);
             } else if (typeof content === 'string') {
                 textToEmbed = content;
@@ -254,15 +267,15 @@ export async function activateAuraNeuralLinks(adminClient: any) {
 
             if (!textToEmbed || textToEmbed.length < 10) return false;
 
-            // Wide context injection for Gemini 768-dimension density
+            // Neural Context Injection - Expansion to 10,000 chars for deep forensic transaction density
             const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 10000);
 
             // Generate the native 768-dimension vector
             const vector = await generateEmbedding(finalString);
 
-            // DIMENSION SAFETY CHECK: Ensure we don't try to push a mismatch to the HNSW index
+            // ✅ DIMENSION GUARD: Database HNSW column is vector(768). Rejects 1536/3072.
             if (vector.length !== 768) {
-                console.error(`Neural Bridge Dimension Conflict: Column requires 768, Model returned ${vector.length}`);
+                console.error(`Neural Handshake Mismatch ID ${row.id}: Model returned ${vector.length}, Column requires 768.`);
                 return false;
             }
 
@@ -271,9 +284,9 @@ export async function activateAuraNeuralLinks(adminClient: any) {
                 .from('ai_knowledge')
                 .update({ 
                     embedding: vector,
-                    updated_at: new Date().toISOString() // Prevents background maintenance logic crashes
+                    updated_at: new Date().toISOString() // Keeps background maintenance logic alive
                 })
-                .eq('id', row.id);
+                .eq('id', row.id); // row.id is correctly handled as bigint
             
             if (updateError) {
                 console.error(`NEURAL ALIGNMENT FAILURE [ID: ${row.id}]:`, updateError.message);
