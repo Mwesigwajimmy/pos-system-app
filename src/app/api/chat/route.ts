@@ -31,8 +31,13 @@ import { createClient } from '@/lib/supabase/server';
 import { generateEmbedding } from '@/lib/ai-tools/embedding';
 
 // Sovereign Cloud Infrastructure Configuration
-const GEMINI_MODEL = "gemini-1.5-pro"; // OMEGA-LEVEL forensic auditing depth
-const TARGET_DIMENSION = 768; // AURA MEGA GOOGLE NEURAL STANDARD
+const GEMINI_MODEL = "gemini-1.5-pro"; 
+
+/**
+ * ✅ OMEGA DIMENSION REALIGNMENT
+ * Changed from 768 to 1024 to match the Voyage AI Elite Standard and upgraded Supabase schema.
+ */
+const TARGET_DIMENSION = 1024; 
 
 /**
 THE ACTIVATOR (GET Handler)
@@ -46,7 +51,7 @@ export async function GET() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        console.log("AURA OMEGA WAKE: Initiating Deep Saturation of 1,106 Logic Nodes...");
+        console.log(`AURA OMEGA WAKE: Initiating Deep Saturation of 1,106 Logic Nodes at ${TARGET_DIMENSION}-dim...`);
 
         // 1. Technical Map Refresh
         await supabaseAdmin.rpc('aura_refresh_master_schema');
@@ -90,7 +95,7 @@ export async function GET() {
             success: true, 
             total_nodes_healed: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_STALLED_OR_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
-            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Google Neural Bridge.`,
+            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Elite Neural Bridge.`,
             diagnostic: diagnosticLog
         }), {
             status: 200,
@@ -265,7 +270,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v23.0 DEEP FORENSIC DIAGNOSTIC) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v30.0 ELITE ALIGNMENT) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 Sequential processing enabled to catch exact database rejection reasons.
 */
@@ -296,13 +301,13 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             const textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
-            // Neural Context Injection (Calibrated for 768-dim density)
+            // Neural Context Injection (Calibrated for Elite density)
             const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 8000);
 
-            // Generate the native 768-dimension vector (Calls upgraded embedding.ts)
+            // Generate the native 1024-dimension vector (Calls upgraded embedding.ts)
             const vector = await generateEmbedding(finalString);
 
-            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 768-dim bridge.
+            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 1024-dim bridge.
             if (vector.length !== TARGET_DIMENSION) {
                 lastDiagnosticError = `Dimension mismatch. Model: ${vector.length}, DB requires ${TARGET_DIMENSION}.`;
                 console.error(`[MISMATCH] ID ${row.id}: ${lastDiagnosticError}`);
