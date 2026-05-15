@@ -226,9 +226,9 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v14.5) ---
+--- REPAIRED OMEGA NEURAL BRIDGE (v15.1) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-Targets the 'raw_text' property identified in the deep forensic audit.
+Targets the 'raw_text' property and handles complex sector data forensic logic.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ RLS BYPASS: We call the Security Definer RPC Bridge instead of a direct table select.
@@ -242,32 +242,37 @@ export async function activateAuraNeuralLinks(adminClient: any) {
     const healingTasks = blindRows.map(async (row: any) => {
         try {
             let textToEmbed = "";
-            const content = row.content || {};
+            const content = row.content;
 
-            // FORENSIC EXTRACTION: Targets 'raw_text' property found in Samuel's audit.
-            if (content.raw_text) {
-                textToEmbed = content.raw_text;
+            // ✅ FORENSIC EXTRACTION: Enhanced handling for Object vs Stringified JSON
+            if (content && typeof content === 'object') {
+                textToEmbed = content.raw_text || JSON.stringify(content);
             } else if (typeof content === 'string') {
                 textToEmbed = content;
-            } else {
-                textToEmbed = JSON.stringify(content);
             }
 
             if (!textToEmbed || textToEmbed.length < 5) return false;
 
-            // Neural Context Injection
-            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`;
+            // Neural Context Injection - Expansion to 8,000 chars for deeper schema context
+            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 8000);
 
-            const vector = await generateEmbedding(finalString.substring(0, 4500));
+            const vector = await generateEmbedding(finalString);
 
             // Execute update as Admin (Service Role)
             const { error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ embedding: vector })
                 .eq('id', row.id);
+            
+            if (updateError) {
+                // LOGGING: Crucial to see if there is a dimension mismatch or RLS issue
+                console.error(`NEURAL ALIGNMENT FAILURE [ID: ${row.id}]:`, updateError.message);
+                return false;
+            }
                 
-            return !updateError;
-        } catch (err) {
+            return true;
+        } catch (err: any) {
+            console.error("NEURAL BRIDGE EXCEPTION:", err.message);
             return false;
         }
     });
