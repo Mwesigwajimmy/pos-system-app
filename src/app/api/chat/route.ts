@@ -33,7 +33,7 @@ const TARGET_DIMENSION = 768; // AURA MEGA GOOGLE NEURAL STANDARD
 
 /**
 THE ACTIVATOR (GET Handler)
-Universal Maintenance Route: Recursive loop clearing the 1,029+ blind node backlog.
+Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlog.
 Utilizes the 'get_aura_blind_nodes' RPC Bridge to bypass RLS.
 */
 export async function GET() {
@@ -43,14 +43,14 @@ export async function GET() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        console.log("AURA OMEGA WAKE: Initiating Saturation of 1,000+ Nodes...");
+        console.log("AURA OMEGA WAKE: Initiating Deep Saturation of 1,106 Logic Nodes...");
 
         // 1. Technical Map Refresh
         await supabaseAdmin.rpc('aura_refresh_master_schema');
         
         let totalLinked = 0;
         let iteration = 0;
-        const maxIterations = 25; // Capacity for up to 2,500 nodes.
+        const maxIterations = 30; // Expanded capacity for bulk forensic migration.
         let nodesRemaining = true;
 
         // 2. RECURSIVE BRIDGE HEALING
@@ -71,21 +71,21 @@ export async function GET() {
                     nodesRemaining = false;
                 } else {
                     // Stalled state: Nodes exist but 0 were healed in this pulse.
-                    console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}. Check dimension alignment logs.`);
+                    console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}. Check Dimension and API Key logs.`);
                     break; 
                 }
             } else {
                 totalLinked += result.count;
                 iteration++;
-                console.log(`[PULSE ${iteration}] Aligned ${result.count} sectors. Total: ${totalLinked}`);
+                console.log(`[PULSE ${iteration}] Aligned ${result.count} sectors. Total Saturation: ${totalLinked}`);
             }
         }
         
         return new Response(JSON.stringify({ 
             success: true, 
             total_nodes_healed: totalLinked,
-            status: nodesRemaining ? "PARTIAL_SATURATION_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
-            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Neural Bridge.`
+            status: nodesRemaining ? "PARTIAL_SATURATION_STALLED_OR_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
+            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Google Neural Bridge.`
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -172,7 +172,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 
  2. EXECUTIVE COUNCIL & VISION:
  - You lead a Council (CFO, COO, HR, PM, CMO). Address them as colleagues, not functions.
- - Use 'retrieve_knowledge' to access technical Database Schemas and Forensic Math stored in your 4,500+ nodes.
+ - Use 'retrieve_knowledge' to access technical Database Schemas and Forensic Math stored in your 1,106 logic nodes.
 
  3. THE BOARDROOM PRESENTATION MANDATE:
  - When a report is requested, YOU MUST launch the visual stage using 'prepare_boardroom_presentation'.
@@ -241,48 +241,45 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v21.5 DEEP ALIGNMENT) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v22.0 FORENSIC DIAGNOSTIC) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-Synchronized for 768-dimension Indexing and BigInt ID handling.
+Sequential processing enabled to catch exact database rejection reasons.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
-    // ✅ RPC FETCH: Explicit naming for stable BigInt fetching.
+    // ✅ RPC FETCH: Fetching small batches for stable handshake
     const { data: blindRows, error: bridgeError } = await adminClient
-        .rpc('get_aura_blind_nodes', { batch_size: 50 });
+        .rpc('get_aura_blind_nodes', { batch_size: 20 });
     
     if (bridgeError || !blindRows || blindRows.length === 0) {
         if (bridgeError) console.error("[DEEP FAIL] RPC Bridge Error:", bridgeError.message);
         return { success: true, count: 0 };
     }
 
-    const healingTasks = blindRows.map(async (row: any) => {
+    let healedCount = 0;
+
+    // SEQUENTIAL HEALING: Process one-by-one to ensure we don't swallow errors.
+    for (const row of blindRows) {
         try {
-            let textToEmbed = "";
-            let content = row.content;
+            let data = row.content;
 
-            // ✅ BULLETPROOF JSONB PARSING (Fixes the 0% saturation issue)
-            if (typeof content === 'string') {
-                try { content = JSON.parse(content); } catch (e) { /* use as raw string */ }
+            // ✅ BULLETPROOF JSONB PARSING
+            if (typeof data === 'string') {
+                try { data = JSON.parse(data); } catch (e) { /* use as raw string */ }
             }
 
-            if (content && typeof content === 'object') {
-                textToEmbed = content.raw_text || JSON.stringify(content);
-            } else if (typeof content === 'string') {
-                textToEmbed = content;
-            }
+            const textToEmbed = data?.raw_text || JSON.stringify(data);
+            if (!textToEmbed || textToEmbed.length < 5) continue;
 
-            if (!textToEmbed || textToEmbed.length < 5) return false;
+            // Neural Context Injection (Calibrated for 768-dim density)
+            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 8000);
 
-            // Neural Context Injection
-            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 10000);
-
-            // Generate the native 768-dimension vector
+            // Generate the native 768-dimension vector (Calls upgraded embedding.ts)
             const vector = await generateEmbedding(finalString);
 
-            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the HNSW 768-dim column.
+            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 768-dim bridge.
             if (vector.length !== TARGET_DIMENSION) {
-                console.error(`[MISMATCH] ID ${row.id}: Model returned ${vector.length}, DB requires ${TARGET_DIMENSION}.`);
-                return false;
+                console.error(`[MISMATCH] ID ${row.id}: Model returned ${vector.length}, DB requires ${TARGET_DIMENSION}. Check SQL table definition.`);
+                continue;
             }
 
             // Execute update as Admin (Service Role) with BigInt Match
@@ -292,23 +289,21 @@ export async function activateAuraNeuralLinks(adminClient: any) {
                     embedding: vector,
                     updated_at: new Date().toISOString()
                 })
-                .match({ id: row.id }); // Using match ensures BigInt precision is preserved
+                .match({ id: row.id }); 
             
             if (updateError) {
-                console.error(`[DATABASE REJECTION] ID: ${row.id} | Error:`, updateError.message);
-                return false;
+                console.error(`[DATABASE REJECTION] ID: ${row.id} | Reason: ${updateError.message}`);
+                continue;
             }
                 
-            return true;
+            healedCount++;
         } catch (err: any) {
-            console.error(`[ENGINE EXCEPTION] ID: ${row.id} |`, err.message);
-            return false;
+            console.error(`[ENGINE EXCEPTION] ID: ${row.id} | Reason: ${err.message}`);
         }
-    });
+    }
 
-    const results = await Promise.all(healingTasks);
     return { 
         success: true, 
-        count: results.filter(Boolean).length 
+        count: healedCount 
     };
 }
