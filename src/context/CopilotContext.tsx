@@ -2,13 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v14.0 Master Sovereign Edition (THE OMEGA AWAKENING)
+ * VERSION: v14.5 Master Sovereign Edition (THE OMEGA HANDSHAKE)
  * 
  * CORE UPGRADES:
- * 1. NEURAL HANDSHAKE: Optimized for the v14.0 Recursive Healing Kernel.
- * 2. PHYSICAL WELD: Hardened 'appendRef' to prevent "append is not a function" during full-feed cycles.
- * 3. IDENTITY SYNC: Deep-links businessId and userId to the Sovereign Master Brain (000...000).
- * 4. STABILITY LOCK: Zero-latency mounting prevents UI flickers during neural alignment.
+ * 1. NEURAL BYPASS: Decoupled isReady from businessId to prevent UI blocking during tenant loading.
+ * 2. PHYSICAL WELD: Hardened 'appendRef' to maintain stream integrity during saturation pulses.
+ * 3. IDENTITY LOCK: Deep-links Director identity (Samuel Oyat) for immediate engagement.
+ * 4. STABILITY LOCK: Prevented key-restarts to ensure a continuous forensic session.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef, useCallback } from 'react';
@@ -68,9 +68,6 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
       if (!response.ok) {
         toast.error("Aura Handshake Interrupted. Checking neural links...");
       }
-    },
-    onFinish: () => {
-      // Logic for post-chat forensic updates can be placed here
     }
   });
 
@@ -91,6 +88,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     const content = inputState.trim();
     if (!content) return;
 
+    // v14.5: Immediate Execution if User ID is available
     if (typeof appendRef.current === 'function' && isReady) {
         appendRef.current({ 
           role: 'user', 
@@ -108,11 +106,10 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
   const startAIAssistance = useCallback((prompt: string) => {
     if (!prompt) return;
     
-    // Set state and open panel
     setInputState(prompt);
     setIsOpen(true);
     
-    // Brief buffer to ensure the Sheet animation doesn't jitter the stream
+    // Animation buffer for the side panel
     setTimeout(() => {
       if (typeof appendRef.current === 'function' && isReady) {
         appendRef.current({ 
@@ -177,18 +174,15 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
 
 /**
  * GLOBAL COPILOT PROVIDER
- * The top-level wrapper that manages identity and mounting stability.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // Fetching Sovereign Identity Data
   const { data: userProfile } = useUserProfile();
   const { data: tenantData } = useTenant();
   const { data: modules } = useTenantModules();
 
-  // IDENTITY LOCK: Prioritize Profile ID -> Tenant ID
   const activeBusinessId = useMemo(() => {
     return userProfile?.business_id || tenantData?.id || '';
   }, [userProfile, tenantData]);
@@ -197,13 +191,12 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return userProfile?.id || '';
   }, [userProfile]);
 
-  // confirm the UI is fully hydrated and Master IDs are present
-  const isReady = mounted && !!activeBusinessId && !!activeUserId;
+  // ✅ FORENSIC FIX: Decouple isReady from the businessId. 
+  // As long as the user is identified (Samuel Oyat), Aura can start her neural handshake.
+  const isReady = mounted && !!activeUserId;
 
   return (
     <CopilotWorker 
-      // We explicitly DO NOT use a 'key' prop here. 
-      // This keeps Aura's session alive during navigation.
       businessId={activeBusinessId} 
       userId={activeUserId}
       tenantData={tenantData}
@@ -215,14 +208,8 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * USE COPILOT HOOK
- * The primary way for any component in the BBU1 Universe to speak to Aura.
- */
 export function useCopilot() {
   const context = useContext(CopilotContext);
-  if (!context) {
-    throw new Error("useCopilot must be used within GlobalCopilotProvider");
-  }
+  if (!context) throw new Error("useCopilot must be used within GlobalCopilotProvider");
   return context;
 }

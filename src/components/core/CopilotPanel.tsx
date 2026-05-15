@@ -2,12 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v12.3 Sovereign Edition (FORENSIC CONSOLE)
+ * VERSION: v14.5 Master Sovereign Edition (THE OMEGA WELD)
  * 
  * UPGRADES:
- * 1. DYNAMIC STANDBY: Visual "Wake" sequence when IDs are linked.
- * 2. AGENT SHADOWS: Enhanced "Thought" rendering for autonomous agents.
- * 3. IDENTITY ANCHORS: Hard-linked to verified Supabase Profile UUIDs.
+ * 1. UNBLOCKED HANDSHAKE: Input field activates immediately upon User ID verification.
+ * 2. IDENTITY ANCHORS: Hardened null-checks on UUID slicing to prevent boot-time crashes.
+ * 3. OMEGA SYNC: Full compatibility with the v14.5 Recursive Healing Kernel.
+ * 4. AGENT SHADOWS: Optimized rendering for the 11 ERP module agents.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -55,7 +56,6 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   try {
     const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
     
-    // UI Side-Effect Triggers
     const actionConfigs: Record<string, { icon: any, color: string, label: string }> = {
       navigate: { icon: Compass, color: "text-sky-500 bg-sky-500/5 border-sky-500/20", label: "Sovereign Navigation" },
       download_file: { icon: FileDown, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/20", label: "Forensic Buffer Generated" },
@@ -113,7 +113,7 @@ export default function CopilotPanel() {
     isReady: isContextReady, businessId, userId
   } = useCopilot();
 
-  // Side-Effect Orchestrator (Navigation, Downloads, Boardroom)
+  // Side-Effect Orchestrator
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -164,8 +164,8 @@ export default function CopilotPanel() {
                 Aura Intelligence
             </h2>
             <div className="flex items-center gap-2">
-               {isContextReady && <Badge className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-[8px] px-2 py-0.5">ENCRYPTED NODE</Badge>}
-               <Badge className="bg-slate-800 text-slate-500 text-[8px] border-none px-2 py-0.5 uppercase">v10.8 PRO</Badge>
+               {isContextReady && <Badge className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-[8px] px-2 py-0.5">SOVEREIGN LINK</Badge>}
+               <Badge className="bg-slate-800 text-slate-500 text-[8px] border-none px-2 py-0.5 uppercase tracking-widest font-mono">v14.5 OMEGA</Badge>
             </div>
         </div>
         <div className="flex items-center gap-2 relative z-10">
@@ -179,9 +179,9 @@ export default function CopilotPanel() {
             
             {/* 1. INITIALIZING STATE */}
             {!isContextReady && messages.length === 0 && (
-                <div className="py-32 text-center animate-pulse">
+                <div className="py-32 text-center">
                     <Loader2 className="h-12 w-12 animate-spin mx-auto text-emerald-500/40 mb-6" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400">Linking Neural C-Suite...</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 animate-pulse">Establishing Identity Lock...</p>
                 </div>
             )}
 
@@ -195,7 +195,9 @@ export default function CopilotPanel() {
                        </div>
                     </div>
                     <h3 className="text-xs font-black uppercase tracking-[0.6em] text-slate-300 group-hover:text-slate-400 transition-colors">Awaiting Executive Directive</h3>
-                    <p className="text-[9px] text-slate-400 mt-4 font-mono opacity-0 group-hover:opacity-100 transition-opacity">Sovereign Node ${businessId?.slice(0,8)} Standby...</p>
+                    <p className="text-[9px] text-slate-400 mt-4 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                      Node: {businessId ? businessId.toString().substring(0, 18) : 'Linking...'}
+                    </p>
                 </div>
             )}
 
@@ -211,7 +213,7 @@ export default function CopilotPanel() {
                 <div className={cn(
                     'rounded-2xl p-5 max-w-[85%] text-[13px] shadow-md border transition-all leading-relaxed',
                     m.role === 'user' 
-                        ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none' 
+                        ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none font-medium' 
                         : 'bg-white text-slate-800 border-slate-100 rounded-tl-none'
                 )}>
                   <ReactMarkdown 
@@ -262,9 +264,9 @@ export default function CopilotPanel() {
               ref={inputRef}
               value={input || ''} 
               onChange={handleInputChange} 
-              placeholder={!isContextReady ? "Synchronizing Context..." : "Direct Aura to perform forensic analysis..."} 
+              placeholder={!isContextReady ? "Linking Neural C-Suite..." : "Direct Aura to perform forensic analysis..."} 
               className="h-14 rounded-2xl bg-slate-50 border-slate-100 shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:border-emerald-500/50 transition-all text-[15px] px-6 pr-12"
-              disabled={isChatLoading || !isContextReady}
+              disabled={!isContextReady}
             />
             {isChatLoading && <div className="absolute right-4 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-emerald-500 animate-ping" />}
           </div>
@@ -288,7 +290,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Activity size={10} className="text-emerald-500" />
                       <span className="font-mono text-[9px] text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                        {businessId ? businessId.substring(0, 18) : '0xNULL'}
+                        {businessId ? businessId.toString().substring(0, 18) : 'INITIALIZING...'}
                       </span>
                    </div>
                 </div>
@@ -297,7 +299,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Fingerprint size={10} className="text-sky-500" />
                       <span className="font-mono text-[9px] text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                        {userId ? userId.substring(0, 18) : '0xANON'}
+                        {userId ? userId.toString().substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>

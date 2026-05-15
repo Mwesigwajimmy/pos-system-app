@@ -2,12 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN MISSION CONTROL ---
- * The primary high-authority interface for the Autonomous Operational Kernel.
- * Orchestrates high-density message streams, autonomous UI side-effects,
- * and the rendering of the C-Suite Boardroom.
+ * VERSION: v14.5 Master Sovereign Edition (THE OMEGA WELD)
  * 
- * Capability: Multi-Agent Awareness, Real-time Visual Handshaking.
- * Integrity Grade: OMEGA-ULTIMATUM (Forensic Ready).
+ * CORE UPGRADES:
+ * 1. UNBLOCKED HANDSHAKE: Input actives immediately upon User ID verification.
+ * 2. IDENTITY SAFETY: Null-safe UUID slicing for Samuel Oyat / Nak Business.
+ * 3. AGENT SATURATION: Deep-links to the v14.5 Recursive Healing Kernel.
+ * 4. VISUAL HARMONY: Retained high-density forensic scan animations.
  */
 
 import { useEffect, useRef, useMemo, useState } from 'react';
@@ -24,23 +25,21 @@ import { useCopilot } from '@/context/CopilotContext';
 import { 
   Sparkles, Send, User, Loader2, Server, Cog, 
   Activity, Compass, FileDown, Fingerprint, ShieldCheck,
-  Presentation, AlertTriangle, LayoutGrid
+  Presentation, AlertTriangle, LayoutGrid, Terminal, Globe, Lock
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import remarkGfm from 'remark-gfm';
 
-// ✅ SOVEREIGN LINK: Importing the visual stage built for the Executive Council
+// ✅ SOVEREIGN LINK: The visual stage for the Executive Council
 import AuraBoardroom from '@/components/copilot/AuraBoardroom'; 
 
 /**
- * --- AgentStep Component ---
+ * AgentStep Component
  * Visualizes Aura's autonomous reasoning loop.
- * Upgraded to show parameters and handle specialized boardroom/safety actions.
  */
 const AgentStep = ({ data }: { data: any }) => {
     if (!data) return null;
 
-    // Detect specialized output actions (Navigation, Downloads, Boardroom)
     try {
         const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
         
@@ -51,7 +50,7 @@ const AgentStep = ({ data }: { data: any }) => {
                         <Compass className="h-4 w-4 animate-spin-slow" />
                         <div>
                             <p className="font-bold uppercase tracking-tighter text-sky-600">Sovereign Navigation</p>
-                            <p className="text-[10px] opacity-70 font-mono text-sky-700">Directing focus: {outputData.payload?.url}</p>
+                            <p className="text-[10px] opacity-70 font-mono text-sky-700">Focus: {outputData.payload?.url}</p>
                         </div>
                     </div>
                 </div>
@@ -65,7 +64,7 @@ const AgentStep = ({ data }: { data: any }) => {
                         <FileDown className="h-4 w-4 text-emerald-600" />
                         <div>
                             <p className="font-bold uppercase tracking-tighter text-emerald-700">Forensic Buffer Export</p>
-                            <p className="text-[10px] opacity-70 text-emerald-600">Ready: {outputData.payload?.fileName}</p>
+                            <p className="text-[10px] opacity-70 text-emerald-600">File: {outputData.payload?.fileName}</p>
                         </div>
                     </div>
                 </div>
@@ -78,16 +77,15 @@ const AgentStep = ({ data }: { data: any }) => {
                     <div className="flex items-center gap-2">
                         <Presentation className="h-4 w-4 text-blue-600" />
                         <div>
-                            <p className="font-bold uppercase tracking-tighter text-blue-700">Boardroom Stage Initialized</p>
+                            <p className="font-bold uppercase tracking-tighter text-blue-700">Boardroom Stage Ready</p>
                             <p className="text-[10px] opacity-70 italic text-blue-600">Assembling visual data for Director review...</p>
                         </div>
                     </div>
                 </div>
             );
         }
-    } catch (e) { /* Standard thought step */ }
+    } catch (e) { }
 
-    // Standard Tool Invocation
     if (data.event === 'on_agent_action' || data.tool) {
         const action = data.data?.data?.[0] || data.data?.[0] || data; 
         const toolName = action?.function?.name || data.tool || 'Forensic Analysis';
@@ -98,26 +96,21 @@ const AgentStep = ({ data }: { data: any }) => {
                 <div className="flex items-center gap-2">
                     <Cog className="h-4 w-4 animate-spin text-emerald-500" />
                     <div>
-                        <p className="font-bold uppercase tracking-tighter text-slate-700">
-                            Council Acting: {toolName}
-                        </p>
-                        <p className="text-[10px] opacity-50 font-mono truncate max-w-[400px]">
-                            Parameters: {args}
-                        </p>
+                        <p className="font-bold uppercase tracking-tighter text-slate-700">Council Task: {toolName}</p>
+                        <p className="text-[10px] opacity-50 font-mono truncate max-w-[400px]">Args: {args}</p>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // Standard Observation Results
     if (data.event === 'on_tool_end' || (data.output && data.output.length < 500)) {
         const obs = data.data?.output || data.output || "Observation synchronized.";
         return (
             <div className="text-[10px] text-muted-foreground ml-12 my-2 p-2 border-l-2 border-emerald-500 bg-emerald-50/30 italic animate-in fade-in">
                 <div className="flex items-center gap-2">
                     <Server className="h-3 w-3 text-emerald-600 opacity-50" />
-                    <span className="font-mono">{typeof obs === 'string' ? obs.substring(0, 100) : "Forensic data received."}...</span>
+                    <span className="font-mono text-emerald-800">{typeof obs === 'string' ? obs.substring(0, 100) : "Forensic data received."}...</span>
                 </div>
             </div>
         );
@@ -129,84 +122,48 @@ export default function MissionControlPage() {
   const router = useRouter();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // --- BOARDROOM STATE ---
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
   
-  // 1. CONSUME THE SHARED EXECUTIVE STATE
   const { 
-    messages, 
-    input, 
-    handleInputChange, 
-    handleSubmit, 
-    isLoading, 
-    data, 
-    isReady, 
-    businessId,
-    userId 
+    messages, input, handleInputChange, handleSubmit, 
+    isLoading, data, isReady, businessId, userId 
   } = useCopilot();
 
-  // 2. NEURAL ACTION HANDLER (Physical side-effects)
+  // SIDE-EFFECT HANDLER
   useEffect(() => {
     if (data && data.length > 0) {
       const lastChunk = data[data.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
-        
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           
-          // Navigation Executive
-          if (output.action === "navigate" && output.payload?.url) {
-            toast.info(`Aura: Navigating to ${output.payload.url}`);
-            router.push(output.payload.url);
-          }
-          
-          // Download Executive
-          if (output.action === "download_file" && output.payload?.content) {
+          if (output.action === "navigate") router.push(output.payload.url);
+          if (output.action === "download_file") {
             const link = document.createElement('a');
             link.href = `data:${output.payload.mimeType};base64,${output.payload.content}`;
             link.download = output.payload.fileName;
             link.click();
-            toast.success(`Sovereign Export Complete: ${output.payload.fileName}`);
           }
-
-          // BOARDROOM EXECUTIVE: Launches the high-density visual stage
-          if (output.action === "prepare_boardroom_presentation") {
-            setBoardroomData(output.payload);
-            toast.success("Boardroom Synchronized", {
-                description: "Aura is ready to present the financial audit."
-            });
-          }
+          if (output.action === "prepare_boardroom_presentation") setBoardroomData(output.payload);
         }
-      } catch (e) { /* Raw text processing */ }
+      } catch (e) { }
     }
   }, [data, router]);
 
-  // 3. High-Precision Auto-scrolling
+  // SCROLL SYNC
   useEffect(() => {
     if (scrollAreaRef.current) {
         const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (viewport) {
-            viewport.scrollTo({
-                top: viewport.scrollHeight,
-                behavior: 'smooth',
-            });
-        }
+        if (viewport) viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, isLoading, data]);
 
-  /**
-   * ENTERPRISE CONTROLLED FOCUS PROTOCOL
-   * Forces focus to the input box once the multi-tenant context is active.
-   */
+  // FOCUS CONTROL
   useEffect(() => {
-    if (isReady && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (isReady && inputRef.current) inputRef.current.focus();
   }, [isReady]);
 
-  // 4. Logic: Process incoming tool-call data chunks
   const agentStepsView = useMemo(() => {
     if (!data || !Array.isArray(data)) return [];
     return data.map((chunk: any, i: number) => {
@@ -218,17 +175,13 @@ export default function MissionControlPage() {
     }).filter(Boolean);
   }, [data]);
 
-  // 5. Message Streaming Logic
-  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-  const streamingContent = isLoading && lastMessage?.role === 'assistant' ? lastMessage.content : null;
+  const streamingContent = isLoading && messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : null;
   const renderedMessages = streamingContent ? messages.slice(0, -1) : messages;
-
-  const canSend = !isLoading && (input || '').trim().length > 0;
+  const canSend = !isLoading && (input || '').trim().length > 0 && isReady;
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-3xl shadow-2xl overflow-hidden min-h-[700px] border-slate-100 relative">
       
-      {/* 🚀 OMEGA UPGRADE: The Boardroom stage modal */}
       <AnimatePresence>
         {boardroomData && (
           <AuraBoardroom 
@@ -240,14 +193,13 @@ export default function MissionControlPage() {
         )}
       </AnimatePresence>
 
-      {/* Page Header: Forensic Identity Handshake */}
       <header className="px-8 py-5 border-b bg-slate-950 text-white flex items-center justify-between shrink-0 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
               <Fingerprint size={120} className="text-emerald-500" />
           </div>
           
           <div className="flex items-center gap-4 relative z-10">
-              <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 shadow-inner">
+              <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                 <Activity className="h-6 w-6 text-emerald-400 animate-pulse" />
               </div>
               <div>
@@ -256,15 +208,18 @@ export default function MissionControlPage() {
               </div>
           </div>
 
-          <div className="flex items-center gap-4 text-[10px] font-mono relative z-10 text-right">
-              <div className="hidden md:flex flex-col items-end">
+          <div className="flex items-center gap-4 text-[10px] font-mono relative z-10">
+              <div className="hidden md:flex flex-col items-end mr-4">
                 <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/5 px-3 py-0.5 rounded-full text-[8px] font-black tracking-widest mb-1">
-                    PROTOCOL: CLOUD-NATIVE v10.8
+                   OMEGA PROTOCOL v14.5
                 </Badge>
-                <p className="text-[9px] text-slate-500 uppercase tracking-widest">Vault ID: {businessId ? businessId.slice(0, 16) : '----'}</p>
+                {/* NULL-SAFE UUID Slicing */}
+                <p className="text-[9px] text-slate-500 uppercase tracking-widest">
+                  VAULT: {businessId ? businessId.toString().substring(0, 16) : 'LINKING...'}
+                </p>
               </div>
               <div className="h-10 w-px bg-slate-800" />
-              <div className="flex flex-col items-end">
+              <div className="flex flex-col items-center ml-4">
                 <span className={cn("h-2.5 w-2.5 rounded-full mb-1", isReady ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : "bg-amber-500 animate-pulse")}></span>
                 <span className="text-[9px] font-black uppercase text-slate-400">{isReady ? 'Active' : 'Syncing'}</span>
               </div>
@@ -273,7 +228,8 @@ export default function MissionControlPage() {
 
       <ScrollArea className="flex-1 p-8 bg-slate-50/20" ref={scrollAreaRef}>
         <div className="space-y-8 max-w-4xl mx-auto pb-12">
-          {/* Empty State */}
+          
+          {/* Standby State */}
           {isReady && messages.length === 0 && (
               <div className="py-32 text-center animate-in fade-in duration-1000">
                   <div className="relative inline-block mb-6">
@@ -281,19 +237,18 @@ export default function MissionControlPage() {
                     <ShieldCheck size={32} className="absolute bottom-0 right-0 text-emerald-500" />
                   </div>
                   <p className="text-xs font-black uppercase tracking-[0.6em] text-slate-400">Awaiting Executive Directive</p>
-                  <p className="text-[10px] text-slate-300 uppercase tracking-widest mt-4 font-bold italic">Sovereign Intel Awaiting Task</p>
               </div>
           )}
 
-          {/* Identity Sync Loader */}
+          {/* Sync Loader */}
           {!isReady && (
             <div className="text-center py-40 animate-in fade-in">
                 <Loader2 className="h-12 w-12 animate-spin mx-auto text-emerald-500 mb-6" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Establishing Sovereignty Context...</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Establishing Sovereignty...</p>
             </div>
           )}
 
-          {/* Rendered Past Conversation */}
+          {/* Messages */}
           {isReady && renderedMessages.map((message: any) => ( 
             <div key={message.id} className={cn('flex items-start gap-4', message.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-2')}>
               {message.role === 'assistant' && (
@@ -302,40 +257,36 @@ export default function MissionControlPage() {
                 </div>
               )}
               <div className={cn(
-                'max-w-[80%] rounded-3xl p-6 text-sm shadow-md border transition-all leading-relaxed', 
+                'max-w-[80%] rounded-3xl p-6 text-[14px] shadow-sm border transition-all leading-relaxed', 
                 message.role === 'user' 
                     ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none' 
                     : 'bg-white text-slate-800 border-slate-100 rounded-tl-none shadow-inner'
               )}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:text-emerald-400 prose-strong:text-emerald-600 dark:prose-invert">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none prose-p:leading-relaxed prose-table:border prose-table:rounded-xl">
                     {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
                 </ReactMarkdown>
               </div>
               {message.role === 'user' && (
-                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
+                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0">
                     <User className="h-5 w-5 text-slate-500"/>
                 </div>
               )}
             </div>
           ))}
 
-          {/* Live Thought Process Visualization */}
-          <div className="space-y-2">
-            {agentStepsView}
-          </div>
+          <div className="space-y-2">{agentStepsView}</div>
 
-          {/* Active Streaming Message */}
           {isLoading && streamingContent && (
              <div className="flex items-start gap-4 animate-in fade-in slide-in-from-bottom-2">
                 <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl shrink-0 border border-emerald-500/20">
                     <Sparkles className="h-5 w-5 text-emerald-400"/>
                 </div>
-               <div className={cn('max-w-[80%] rounded-3xl p-6 text-sm bg-white border border-emerald-100 rounded-tl-none shadow-xl')}>
+               <div className="max-w-[80%] rounded-3xl p-6 text-[14px] bg-white border border-emerald-100 rounded-tl-none shadow-xl">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none">
                     {String(streamingContent)}
                   </ReactMarkdown>
                   <div className="flex items-center gap-3 mt-6 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Aura is auditing sector state...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Audit engine active...
                   </div>
                </div>
              </div>
@@ -343,7 +294,6 @@ export default function MissionControlPage() {
         </div>
       </ScrollArea>
 
-      {/* Controller: Sovereign Command Input */}
       <div className="border-t bg-white p-8 shadow-[0_-10px_50px_rgba(0,0,0,0.04)] relative z-20">
         <form 
           onSubmit={(e) => {
@@ -357,9 +307,9 @@ export default function MissionControlPage() {
                 ref={inputRef}
                 value={input} 
                 onChange={handleInputChange}
-                placeholder={!isReady ? "Syncing Handshake..." : "Command Aura-[Agent] to execute audit..."} 
-                disabled={isLoading} 
-                className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner text-base px-8 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all pr-16 font-medium" 
+                placeholder={!isReady ? "Aligning Neural Channels..." : "Command Aura-[Agent] to perform forensic audit..."} 
+                disabled={isLoading || !isReady} 
+                className="h-16 rounded-2xl bg-slate-50 border-none shadow-inner text-[15px] px-8 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all pr-16" 
               />
               <div className="absolute right-6 top-1/2 -translate-y-1/2">
                 <ShieldCheck size={20} className={cn("transition-all duration-700", isReady ? "text-emerald-500" : "text-slate-300")} />
@@ -369,29 +319,40 @@ export default function MissionControlPage() {
             type="submit" 
             disabled={!canSend} 
             className={cn(
-                "h-16 w-16 rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0",
-                canSend ? "bg-slate-950 hover:bg-slate-800" : "bg-slate-100 grayscale opacity-40"
+                "h-16 w-16 rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 shrink-0",
+                canSend ? "bg-slate-950 hover:bg-slate-800" : "bg-slate-100 opacity-40"
             )}
           >
              {isLoading ? <Loader2 className="h-7 w-7 animate-spin text-emerald-500" /> : <Send className="h-7 w-7 text-white" />}
           </Button>
         </form>
+        
         <div className="flex items-center justify-between mt-5 max-w-5xl mx-auto">
-            <p className="text-[9px] uppercase tracking-[0.3em] text-slate-400 font-bold">
-                Isolated Executive Context • Logic Encryption Active
-            </p>
-            <div className="flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[8px] font-black uppercase text-slate-300 tracking-widest">Sovereign Link v10.8</span>
+            <div className="flex gap-4">
+                <div className="flex flex-col">
+                   <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Linked Node</span>
+                   <div className="flex items-center gap-1.5 mt-0.5">
+                      <Globe size={10} className="text-emerald-500" />
+                      <span className="font-mono text-[9px] text-slate-500">
+                        {businessId ? businessId.toString().substring(0, 18) : '0xNULL'}
+                      </span>
+                   </div>
+                </div>
+                <div className="flex flex-col border-l pl-4">
+                   <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Identity UUID</span>
+                   <div className="flex items-center gap-1.5 mt-0.5">
+                      <Fingerprint size={10} className="text-sky-500" />
+                      <span className="font-mono text-[9px] text-slate-500">
+                        {userId ? userId.toString().substring(0, 18) : '0xANON'}
+                      </span>
+                   </div>
+                </div>
+            </div>
+            <div className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em] italic">
+                Isolated Executive Environment • Sovereignty v14.5
             </div>
         </div>
       </div>
     </div>
   );
 }
-
-/**
- * STATUS: Mission Control Active.
- * VERSION: v10.8 Sovereign Edition.
- * ENGINE: Multi-Agent Cloud Brain.
- */

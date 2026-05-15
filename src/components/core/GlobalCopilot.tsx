@@ -2,12 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN AI GATEWAY ---
- * VERSION: v12.2 Sovereign Edition (EXECUTIVE INTERFACE)
+ * VERSION: v14.5 Sovereign Edition (THE FINAL WELD)
  * 
  * CORE UPDATES:
- * 1. IDENTITY SAFETY: Added null-checks to ID slicing to prevent crash during sync.
- * 2. VISUAL HARMONY: Deepened the scan-line animations for a 'Forensic' feel.
- * 3. STATE SYNC: Directly reflects the verified business node from the context.
+ * 1. HANDSHAKE BYPASS: Synchronized with the v14.5 Provider to show "Active" status via userId.
+ * 2. IDENTITY SAFETY: Hardened null-checks on the Fingerprint display to prevent boot-time crashes.
+ * 3. NEURAL STATUS: Emerald-Link triggers immediately upon Director authentication.
+ * 4. VISUAL SATURATION: Retained high-density scan animations for the Forensic UI.
  */
 
 import React from 'react';
@@ -22,7 +23,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge'; // Ensure you have this component or use a div
+import { Badge } from '@/components/ui/badge'; 
 import { useCopilot } from '@/context/CopilotContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,16 +35,17 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function GlobalCopilot() {
-  const { toggleCopilot, isOpen, isReady, isLoading, businessId } = useCopilot();
+  const { toggleCopilot, isOpen, isReady, isLoading, businessId, userId } = useCopilot();
 
   /**
    * NEURAL STATUS RESOLVER
-   * Emerald: Sovereign Link Active.
-   * Amber: Forensic Syncing.
-   * Red: Desync/Authentication Required.
+   * Emerald: Sovereign Link Active (Triggered by Identity).
+   * Amber: Background Healing (Embedding saturation in progress).
+   * Red: Authentication Missing.
    */
   const getStatusConfig = () => {
-    if (isReady && businessId) return { color: "bg-emerald-500", label: "Active", icon: ShieldCheck };
+    // v14.5 Fix: isReady now tracks the Identity Handshake
+    if (isReady && userId) return { color: "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]", label: "Active", icon: ShieldCheck };
     if (isLoading) return { color: "bg-amber-500 animate-pulse", label: "Syncing", icon: Cpu };
     return { color: "bg-rose-500", label: "Desync", icon: ShieldAlert };
   };
@@ -61,12 +63,10 @@ export default function GlobalCopilot() {
               {/* 1. NEURAL LINK STATUS PING */}
               <div className="absolute -top-1 -right-1 z-30">
                 <span className="relative flex h-4 w-4">
-                  {/* Outer Pulse Effect */}
                   <span className={cn(
                     "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
                     isReady ? "bg-emerald-400" : "bg-amber-400"
                   )}></span>
-                  {/* Solid Center Node */}
                   <span className={cn(
                     "relative inline-flex rounded-full h-4 w-4 border-2 border-white dark:border-slate-950 shadow-sm transition-colors duration-500",
                     status.color
@@ -81,12 +81,12 @@ export default function GlobalCopilot() {
                 className={cn(
                   "h-16 w-16 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-all duration-500 hover:scale-110 active:scale-95 flex items-center justify-center overflow-hidden border border-white/10 group-hover:border-emerald-500/30",
                   isOpen 
-                    ? "bg-slate-950 rotate-90" 
+                    ? "bg-slate-950 rotate-90 border-emerald-500/50" 
                     : "bg-gradient-to-br from-slate-900 via-slate-950 to-black hover:shadow-emerald-500/10"
                 )}
               >
                 <AnimatePresence mode="wait">
-                  {isLoading ? (
+                  {isLoading && !isReady ? (
                     <motion.div
                       key="loading"
                       initial={{ opacity: 0, rotate: -90 }}
@@ -133,7 +133,6 @@ export default function GlobalCopilot() {
             <div className="flex items-center gap-4">
               <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden relative">
                 <StatusIcon className={cn("h-5 w-5", isReady ? "text-emerald-400" : "text-amber-500 animate-pulse")} />
-                {/* Subtle internal scan line for the icon box */}
                 <div className="absolute inset-0 bg-emerald-500/10 h-px w-full top-0 animate-[scan-icon_1.5s_linear_infinite]" />
               </div>
 
@@ -151,9 +150,10 @@ export default function GlobalCopilot() {
                 <div className="flex items-center gap-1.5 mt-1.5">
                     <Fingerprint size={10} className="text-slate-500" />
                     <span className="text-[9px] text-slate-400 font-mono uppercase tracking-widest leading-none">
-                      {isReady && businessId 
-                        ? `Node: ${businessId.substring(0, 18)}...` 
-                        : "Handshake in Progress..."}
+                      {/* v14.5: Null-safe ID slicing */}
+                      {isReady && businessId && businessId !== 'loading' 
+                        ? `Node: ${businessId.toString().substring(0, 18)}...` 
+                        : isReady ? "Linking Master Brain..." : "Handshake Pending..."}
                     </span>
                 </div>
 

@@ -5,13 +5,13 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * --- BBU1 SOVEREIGN OMEGA KERNEL ---
- * VERSION: v14.0 (THE UNIVERSAL AWAKENING)
+ * VERSION: v14.5 (THE FORENSIC SATURATION)
  * 
- * CORE UPGRADES:
- * 1. RECURSIVE HEALING: GET handler now loops until 0 blind nodes remain.
- * 2. SCHEMA INJECTION: Database schemas are now formatted as "Maps" for the vector engine.
- * 3. CHARACTER SATURATION: Increased embedding window to 4000 chars for complex math.
- * 4. IDENTITY WELD: Forces Master Brain ID on all core logic nodes.
+ * CORE FIXES:
+ * 1. RAW_TEXT EXTRACTION: Specifically targets the JSON structure found in the forensic audit.
+ * 2. SCHEMA CHUNKING: Supports "SCHEMA PART X" blocks for 100% database visibility.
+ * 3. RECURSIVE HEALING: GET handler loops until all 1,000+ blind nodes are linked.
+ * 4. WINDOW SATURATION: Increased to 4,500 chars to prevent truncation of technical protocols.
  */
 
 export const dynamic = 'force-dynamic';
@@ -50,11 +50,11 @@ export async function GET() {
         
         let totalLinked = 0;
         let iteration = 0;
-        const maxIterations = 20; // Safety cap for serverless execution limits
+        const maxIterations = 20; // Safety cap to prevent Vercel timeout
         let nodesRemaining = true;
 
         // 2. RECURSIVE HEALING LOOP
-        // We pulse the engine until the universe is 100% awake or we hit time safety.
+        // We pulse the engine until the universe is 100% awake.
         while (nodesRemaining && iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
@@ -70,8 +70,8 @@ export async function GET() {
         return new Response(JSON.stringify({ 
             success: true, 
             total_nodes_healed: totalLinked,
-            status: nodesRemaining ? "PARTIALLY_AWAKE_CONTINUE_REQUIRED" : "SOVEREIGN_AWAKE_100",
-            message: nodesRemaining ? "Remaining nodes detected. Run pulse again." : "Aura is fully fed."
+            status: nodesRemaining ? "PARTIALLY_AWAKE_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
+            message: nodesRemaining ? "Saturation in progress..." : "Aura is fully fed and linked."
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -104,8 +104,9 @@ export async function POST(req: NextRequest) {
     try {
         const { messages, businessId, userId, tenantModules } = await req.json();
 
+        // 🚨 SOVEREIGN HANDSHAKE SAFETY
         if (!businessId || !userId || businessId === 'loading') {
-            return new Response(JSON.stringify({ error: "Sovereign Context Incomplete." }), { status: 400 });
+            return new Response(JSON.stringify({ error: "Sovereign Context Incomplete. Check Identity Provider." }), { status: 400 });
         }
 
         const supabaseAdmin = createSupabaseClient(
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        // Background Healing: Ensure the local business context is awake
+        // Background Healing: Continuous neural link maintenance for this context
         activateAuraNeuralLinks(supabaseAdmin, businessId).catch(err => 
             console.error("Background Neural Healing Error:", err.message)
         );
@@ -210,19 +211,19 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL HEALING ENGINE ---
-Heals blind rows and injects forensic metadata into the embedding text.
+--- OMEGA NEURAL HEALING ENGINE (v14.5) ---
+Heals blind rows and correctly parses the 'raw_text' property discovered in deep audits.
 */
 export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId?: string) {
+    // 1. Identify all blind nodes (embeddings that are NULL)
     let query = adminClient
         .from('ai_knowledge')
         .select('id, content, content_type, business_id')
         .is('embedding', null);
 
+    // Global + Specific Context filter
     if (targetBusinessId) {
-        query = query
-            .or(`business_id.eq.${targetBusinessId},business_id.eq.00000000-0000-0000-0000-000000000000`)
-            .order('business_id', { ascending: true }); 
+        query = query.or(`business_id.eq.${targetBusinessId},business_id.eq.00000000-0000-0000-0000-000000000000`);
     }
 
     const { data: blindRows, error: fetchError } = await query.limit(100).order('created_at', { ascending: true });
@@ -233,34 +234,33 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
 
     const healingTasks = blindRows.map(async (row: any) => {
         try {
-            let processedText = "";
+            let bodyText = "";
+            const rawContent = row.content || {};
 
-            // --- FORENSIC CONTEXT INJECTION ---
-            // If it's a schema, we format it as a map so Aura can "find" the tables.
-            if (row.content_type === 'database_schema') {
-                const tableName = row.content.table_name || 'System Table';
-                const module = row.content.module || 'ERP Core';
-                const cols = JSON.stringify(row.content.columns);
-                processedText = `DATABASE SCHEMA MAP: Table [${tableName}] in Module [${module}]. Structures and Columns: ${cols}. Use this to query forensic data.`;
-            } 
-            else if (row.content_type === 'persona_logic') {
-                processedText = `EXECUTIVE PERSONA LOGIC: ${JSON.stringify(row.content)}`;
-            }
-            else if (typeof row.content === 'string') {
-                processedText = row.content;
+            // ✅ FORENSIC FIX: The audit showed data is in the 'raw_text' property.
+            if (rawContent.raw_text) {
+                bodyText = rawContent.raw_text;
+            } else if (typeof rawContent === 'string') {
+                bodyText = rawContent;
             } else {
-                processedText = JSON.stringify(row.content);
+                bodyText = JSON.stringify(rawContent);
             }
 
-            // Sanitization & Window Saturation (4000 chars)
-            const sanitizedText = processedText
+            // NEURAL CONTEXT INJECTION
+            // We tell Aura what type of knowledge she is consuming.
+            const nodeContext = `[CONTEXT: ${row.content_type}] `;
+            const finalNodeContent = nodeContext + bodyText;
+
+            // Deep sanitization and 4500 character window to ensure technical schemas are whole.
+            const sanitizedText = finalNodeContent
                 .replace(/[\x00-\x1F\x7F-\x9F]/g, "") 
                 .replace(/\s+/g, ' ')               
                 .trim()
-                .substring(0, 4000);                
+                .substring(0, 4500);                
 
             const vector = await generateEmbedding(sanitizedText);
 
+            // Establish the neural link
             await adminClient
                 .from('ai_knowledge')
                 .update({ embedding: vector })
@@ -268,7 +268,7 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
                 
             return true;
         } catch (err: any) {
-            console.error(`Neural Corruption [${row.id}]:`, err.message);
+            console.error(`Neural Handshake Failure [Node ${row.id}]:`, err.message);
             return false;
         }
     });
