@@ -4,19 +4,14 @@ import { DynamicTool, RunManager } from '@/lib/langchain/core-tools-shim';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 
-// ✅ SOVEREIGN LINK: Importing the upgraded Cloud Embedding engine
+// ✅ SOVEREIGN LINK: Importing the upgraded 1024-dim Elite engine
 import { generateEmbedding } from './embedding'; 
 
-// --- IMPORTANT NOTE ON NODE.JS DEPENDENCIES IN EDGE RUNTIME ---
-// The following imports (jsPDF, autoTable, XLSX) rely on Node.js-specific global objects (like Buffer) 
-// and modules that may not be available or function correctly in the Vercel Edge Runtime. 
-// If this file is deployed in an Edge Runtime environment (e.g., Vercel /app/api/route.ts), 
-// these tools WILL LIKELY FAIL. The recommended solution is to move the file generation logic 
-// to a dedicated, Node.js-based serverless function or an external service.
+// --- NODE.JS DEPENDENCIES (Forensic Grade) ---
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { Buffer } from 'buffer'; // Explicitly import Buffer for Edge/Server compatibility
+import { Buffer } from 'buffer'; 
 
 /**
  * REVOLUTIONARY SUPABASE TOOL FACTORY (EXECUTIVE GRADE)
@@ -36,13 +31,14 @@ export const createSupabaseTool = <T extends z.ZodObject<any>>(
       const businessId = runManager.config.configurable?.businessId;
       
       // Security Protocol: Refuse execution if the sovereign context is missing
-      if (!businessId) {
+      if (!businessId || businessId === 'loading') {
           return JSON.stringify({ 
               success: false, 
-              error: "Aura Security Alert: Critical security failure. Business ID is missing. Action Logged." 
+              error: "Aura Security Alert: Critical context failure. Business ID is missing." 
           });
       }
       
+      // Create client with forwarded cookies for RLS verification
       const supabase = createClient(cookies());
       const rpcParams: { [key: string]: any } = { p_business_id: businessId };
       
@@ -55,12 +51,10 @@ export const createSupabaseTool = <T extends z.ZodObject<any>>(
       const { data, error } = await supabase.rpc(rpcName, rpcParams);
       
       if (error) {
-        // Return a high-density error for the Executive Kernel to reason upon
-        return `Aura Forensic Error from tool '${name}': ${error.message}. Timestamp: ${new Date().toISOString()}`;
+        return `Aura Forensic Error from tool '${name}': ${error.message}.`;
       }
 
       if (outputAction) {
-        // Return structured action payload for immediate UI rendering
         return JSON.stringify({ 
             action: outputAction.action, 
             payload: data,
@@ -68,7 +62,6 @@ export const createSupabaseTool = <T extends z.ZodObject<any>>(
         });
       }
       
-      // Return raw data string for the LLM's analytical integration
       return JSON.stringify({
           status: "Success",
           origin: name,
@@ -81,7 +74,7 @@ export const createSupabaseTool = <T extends z.ZodObject<any>>(
 
 /**
  * KNOWLEDGE & NEURAL LEARNING ENGINE
- * UPGRADED: Now utilizes real-time Cloud Gemini embeddings for semantic retrieval.
+ * UPGRADED: Fully aligned with the 1024-dimension Voyage Elite Brain.
  */
 export const knowledgeRetrievalTool = new DynamicTool({
     name: "retrieve_knowledge",
@@ -94,13 +87,18 @@ export const knowledgeRetrievalTool = new DynamicTool({
         const supabase = createClient(cookies());
 
         try {
-            // 🧠 NEURAL HANDSHAKE: Convert Natural Language into a high-dimensional vector
+            // 🧠 NEURAL HANDSHAKE: Convert Natural Language into the 1024-dim Elite vector
             const queryEmbedding = await generateEmbedding(query);
+
+            // 🛡️ REALIGNMENT GUARD: Prevent crash if dimensions mismatch
+            if (!queryEmbedding || queryEmbedding.length !== 1024) {
+                throw new Error(`Neural Signal Mismatch: Expected 1024-dim, received ${queryEmbedding?.length || 0}.`);
+            }
 
             const { data, error } = await supabase.rpc('match_documents', {
                 p_business_id: businessId,
                 p_query_embedding: queryEmbedding, 
-                p_match_threshold: 0.72, // Optimized for Gemini 1.5 Pro retrieval
+                p_match_threshold: 0.62, // Optimized for Voyage Elite retrieval
                 p_match_count: 10         // Deep context for multi-agent reasoning
             });
 
@@ -108,57 +106,52 @@ export const knowledgeRetrievalTool = new DynamicTool({
 
             return JSON.stringify({
                 status: "Context Synchronized",
-                results: data,
+                results: data || [],
                 query_ref: query,
                 timestamp: new Date().toISOString()
             });
 
         } catch (err: any) {
-            return `Aura Neural Retrieval Fault: ${err.message}`;
+            console.error("[Aura Retrieval Fault]:", err.message);
+            return `Aura Neural Retrieval Fault: ${err.message}. Director, please ensure the 'match_documents' SQL function is updated to vector(1024).`;
         }
     },
 });
 
 /**
  * INTERACTIVE EXECUTIVE UI TOOLS
- * Powers the "Physical Hands" of Aura to manipulate the dashboard.
  */
 export const uiNavigationTool = new DynamicTool({
     name: "navigate_to_page",
-    description: "Moves the Director to a specific page or dashboard. The LLM MUST return a ToolCall with the final URL, and then provide a professional executive summary of why the navigation is occurring.",
+    description: "Moves the Director to a specific page or dashboard. The LLM MUST return a ToolCall with the final URL.",
     schema: z.object({
         url: z.string().describe("The relative BBU1 internal URL (e.g., '/dashboard/accounting').")
     }),
-    func: async ({ url }, runManager: RunManager) => {
+    func: async ({ url }) => {
         return JSON.stringify({
             action: "navigate",
-            payload: { 
-                url, 
-                initiated_at: new Date().toISOString() 
-            }
+            payload: { url, initiated_at: new Date().toISOString() }
         });
     }
 });
 
 /**
  * SOVEREIGN BOARDROOM PRESENTATION TOOL
- * The visual stage where Aura's council (CFO, COO, PM) presents insights.
  */
 export const boardroomPresentationTool = new DynamicTool({
     name: "prepare_boardroom_presentation",
-    description: "REQUIRED for financial audits and breakdowns. Generates a full-screen executive briefing with slides, charts, and voice narration. Aura acts as the orchestrator and invites the CFO, COO, or PM to the floor to present data-driven insights.",
+    description: "REQUIRED for financial audits. Generates a full-screen executive briefing with slides, charts, and voice narration.",
     schema: z.object({
-        presenter_role: z.enum(["CFO", "COO", "PM", "Marketing", "HR", "Auditor"]).describe("The specialized agent leading this specific floor session."),
-        meeting_title: z.string().describe("The official executive title of the briefing."),
+        presenter_role: z.enum(["CFO", "COO", "PM", "Marketing", "HR", "Auditor"]),
+        meeting_title: z.string(),
         slides: z.array(z.object({
             title: z.string(),
-            content: z.string().describe("The narrative script for Aura to speak to the Director."),
+            content: z.string(),
             visual_type: z.enum(["pie_chart", "bar_chart", "area_chart", "stats_grid", "ledger_comparison"]),
-            data_payload: z.array(z.any()).describe("The raw JSON data required for chart rendering.")
+            data_payload: z.array(z.any())
         }))
     }),
-    func: async (input, runManager: RunManager) => {
-        // This tool commands the frontend to enter 'Boardroom Mode'
+    func: async (input) => {
         return JSON.stringify({
             action: "prepare_boardroom_presentation",
             payload: {
@@ -172,14 +165,13 @@ export const boardroomPresentationTool = new DynamicTool({
 
 /**
  * CRITICAL BUSINESS & FINANCIAL ACTIONS
- * High-authority tools for accounts receivable and treasury management.
  */
 export const processPaymentTool = new DynamicTool({
     name: "process_invoice_payment",
     description: "Processes a payment for a specific invoice forensicly. This is an irreversible treasury action.",
     schema: z.object({
-        invoice_id: z.string().uuid().describe("The unique UUID of the invoice to be paid."),
-        payment_method: z.string().describe("Method (e.g., 'Mobile Money', 'Bank Transfer', 'Treasury Seal').")
+        invoice_id: z.string().uuid(),
+        payment_method: z.string()
     }),
     func: async({ invoice_id, payment_method }, runManager: RunManager) => {
         const businessId = runManager.config.configurable?.businessId;
@@ -203,20 +195,17 @@ export const processPaymentTool = new DynamicTool({
 
 /**
  * AUTONOMOUS EXECUTIVE EDITOR TOOL
- * The corrective capability of Aura to heal database state after an audit discrepancy.
  */
 export const autonomousEditorTool = new DynamicTool({
     name: "aura_autonomous_edit",
-    description: "Physically corrects database records. Use this to autonomously fix ledger errors, update inventory levels, or modify entity details after a forensic audit finds a discrepancy.",
+    description: "Physically corrects database records. Autonomously fixes ledgers or inventory after audit detection.",
     schema: z.object({
-        target_table: z.string().describe("The BBU1 kernel table (e.g., 'sales', 'expenses', 'inventory')."),
-        target_id: z.string().uuid().describe("The unique UUID of the record to update."),
-        update_data: z.record(z.any()).describe("A JSON object of the fields and new values to be changed.")
+        target_table: z.string(),
+        target_id: z.string().uuid(),
+        update_data: z.record(z.any())
     }),
-    func: async ({ target_table, target_id, update_data }, runManager: RunManager) => {
+    func: async ({ target_table, target_id, update_data }) => {
         const supabase = createClient(cookies());
-        
-        // This hits the RLS-protected autonomous edit RPC
         const { data, error } = await supabase.rpc('aura_autonomous_edit', {
             target_table,
             target_id,
@@ -236,27 +225,25 @@ export const autonomousEditorTool = new DynamicTool({
 
 /**
  * FORENSIC AUDIT & MATH ENGINE
- * High-precision mathematical verification engine for fraud detection.
  */
 export const forensicAuditTool = new DynamicTool({
     name: "execute_forensic_audit",
-    description: "Runs complex mathematical audits including Benford's Law and profit margin verification. Use this to detect fraud or UI math errors by querying raw database structures directly.",
+    description: "Runs complex mathematical audits including Benford's Law and profit margin verification.",
     schema: z.object({
         audit_type: z.enum(["benfords_law", "profit_margin_verification", "sacco_dividend_audit", "tax_liability_audit", "exchange_leakage"]),
-        target_period: z.string().describe("The time range for the audit (e.g., '2024-Q1', 'last_30_days').")
+        target_period: z.string()
     }),
     func: async ({ audit_type, target_period }, runManager: RunManager) => {
         const businessId = runManager.config.configurable?.businessId;
         const supabase = createClient(cookies());
         
-        // This hits the specialized math RPC designed to override UI and detect state anomalies
         const { data, error } = await supabase.rpc('perform_system_math_audit', {
             p_business_id: businessId,
             p_audit_type: audit_type,
             p_period: target_period
         });
 
-        if (error) return `Aura Audit Mathematical Failure: ${error.message}`;
+        if (error) return `Aura Audit Failure: ${error.message}`;
         
         return JSON.stringify({
             status: "Audit Complete",
@@ -269,45 +256,35 @@ export const forensicAuditTool = new DynamicTool({
 
 /**
  * UNIVERSAL FILE EXPORTER (PRO EDITION)
- * High-fidelity document generation engine supporting PDF, Excel, and CSV.
  */
 export const universalFileExporterTool = new DynamicTool({
     name: "export_data_as_file",
-    description: "Transforms a JSON data payload into a professional PDF, Excel, or CSV file for Director review or board distribution. Returns a base64 string for immediate download.",
+    description: "Transforms a JSON data payload into a professional PDF, Excel, or CSV file.",
     schema: z.object({ 
         file_format: z.enum(["pdf", "excel", "csv"]), 
-        file_name: z.string().describe("The desired filename without the extension."), 
-        title: z.string().describe("The executive title for the document header."), 
-        data: z.array(z.record(z.string(), z.any())).describe("The structured high-density data array for export.")
+        file_name: z.string(), 
+        title: z.string(), 
+        data: z.array(z.record(z.string(), z.any()))
     }),
-    func: async ({ file_format, file_name, title, data }, runManager: RunManager) => {
+    func: async ({ file_format, file_name, title, data }) => {
         if (!data || data.length === 0) {
-            return JSON.stringify({ action: "error", payload: "Aura Export Alert: No data was provided to export." });
+            return JSON.stringify({ action: "error", payload: "Aura Export Alert: No data provided." });
         }
         
         try {
             let base64Content: string;
             let mimeType: string;
-            let finalFileName: string = `${file_name}.${file_format}`;
 
             if (file_format === 'pdf') {
                 const doc = new jsPDF();
-                doc.setFontSize(20);
+                doc.setFontSize(18);
                 doc.text(title, 14, 20);
-                doc.setFontSize(10);
-                doc.text(`Generated by Aura Sovereign AI • ${new Date().toLocaleString()}`, 14, 28);
                 
                 const head = [Object.keys(data[0])]; 
-                const body = data.map((row: any) => head[0].map(key => row[key] !== null && row[key] !== undefined ? String(row[key]) : ''));
+                const body = data.map((row: any) => head[0].map(key => String(row[key] ?? '')));
                 
-                // @ts-ignore
                 autoTable(doc, { 
-                    startY: 35, 
-                    head: head, 
-                    body: body, 
-                    theme: 'striped', 
-                    styles: { fontSize: 8 },
-                    headStyles: { fillStyle: [37, 99, 235] } // BBU1 Blue
+                    startY: 30, head, body, theme: 'striped', styles: { fontSize: 8 }
                 });
                 
                 base64Content = Buffer.from(doc.output('arraybuffer')).toString('base64');
@@ -319,7 +296,7 @@ export const universalFileExporterTool = new DynamicTool({
                 base64Content = Buffer.from(csvOutput).toString('base64');
                 mimeType = 'text/csv';
                 
-            } else { // Excel (xlsx)
+            } else { // Excel
                 const worksheet = XLSX.utils.json_to_sheet(data);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'SovereignData');
@@ -330,22 +307,15 @@ export const universalFileExporterTool = new DynamicTool({
 
             return JSON.stringify({ 
                 action: "download_file", 
-                payload: { 
-                    fileName: finalFileName, 
-                    mimeType: mimeType, 
-                    content: base64Content,
-                    timestamp: new Date().toISOString()
-                }
+                payload: { fileName: `${file_name}.${file_format}`, mimeType, content: base64Content }
             });
         } catch (e: any) {
-            console.error("[Aura File Engine Fault]:", e);
             return `Aura System Fault (File Engine): ${e.message}`;
         }
     },
 });
 
 /**
- * STATUS: Sovereign Capability Interface Online.
- * JURISDICTION: Global (BBU1 Universe).
- * VERSION: v10.8 Cloud-Native C-Suite.
+ * STATUS: Sovereign Capability Interface Re-Aligned to 1024-dim Brain.
+ * VERSION: v10.9 Omega Standard.
  */

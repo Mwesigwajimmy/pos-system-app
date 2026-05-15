@@ -1,12 +1,13 @@
+// src/lib/ai-tools/data.ts
 /**
  * --- BBU1 SOVEREIGN DATA & FORENSIC GATEWAY ---
- * VERSION: v13.0 Sovereign Edition (OMEGA-ULTIMATUM ALIGNMENT)
+ * VERSION: v14.0 Sovereign Edition (OMEGA-ULTIMATUM ALIGNMENT)
  * 
  * UPGRADED: 
- * 1. NEURAL ALIGNMENT: Fully synchronized for 768-dimension Google text-embedding-004.
- * 2. SHADOW WELD FIX: Resolved relative path risks for the Forensic Text Splitter.
- * 3. RETRIEVAL CALIBRATION: Optimized p_match_threshold for Gemini semantic density.
- * 4. FORENSIC INTEGRITY: 100% of original logic, comments, and shadow-welds preserved.
+ * 1. ELITE NEURAL ALIGNMENT: Fully synchronized for 1024-dimension Voyage-2 Elite.
+ * 2. SHADOW WELD INTEGRITY: Preserved dynamic server-side module resolution.
+ * 3. RETRIEVAL CALIBRATION: Optimized p_match_threshold for 1024-dim semantic density.
+ * 4. FORENSIC DNA: Realigned all knowledge tools to the new Super-Brain standard.
  */
 
 import { z } from 'zod';
@@ -15,6 +16,7 @@ import { generateEmbedding } from './embedding';
 
 /**
  * REVOLUTIONARY SUPABASE TOOL FACTORY (ENTERPRISE STABILIZED)
+ * Dynamically constructs high-authority tools that bridge Natural Language to Postgres RPCs.
  */
 export class SupabaseToolFactory {
     static create<T extends z.ZodObject<any>>(
@@ -31,7 +33,7 @@ export class SupabaseToolFactory {
             protected async _execute(input: z.infer<T>, runManager: RunManager) {
                 if (typeof window !== 'undefined') return "Browser Blocked";
 
-                // ✅ SHADOW WELD: Hides server-only modules from Webpack
+                // ✅ SHADOW WELD: Hides server-only modules from Webpack optimization
                 const { createClient } = eval('require')('@/lib/supabase/server');
                 const { cookies } = eval('require')('next/headers');
 
@@ -235,7 +237,7 @@ export class FileExporterTool extends Tool<typeof FileExporterSchema> {
         if (typeof window !== 'undefined') return "Browser Blocked";
         if (!input.data || input.data.length === 0) throw new Error("Aura Export Error: No data payload detected.");
         
-        // ✅ SHADOW WELD: Hide heavy Node-libraries from Webpack
+        // ✅ SHADOW WELD: Hide heavy Node-libraries from Webpack bundling
         const jsPDF = eval('require')('jspdf');
         const autoTable = eval('require')('jspdf-autotable');
         const XLSX = eval('require')('xlsx');
@@ -296,14 +298,14 @@ export class IngestKnowledgeTool extends Tool<typeof IngestKnowledgeSchema> {
     protected async _execute(input: z.infer<typeof IngestKnowledgeSchema>, runManager: RunManager) {
         if (typeof window !== 'undefined') return "Browser Blocked";
 
-        // ✅ SHADOW WELD FIX: Explicit path resolution to prevent constructor failures
+        // ✅ SHADOW WELD: Explicit path resolution to prevent constructor failures
         const { RecursiveCharacterTextSplitter } = eval('require')('langchain/text_splitter');
         const { createClient } = eval('require')('@/lib/supabase/server');
         const { cookies } = eval('require')('next/headers');
 
         const businessId = runManager.config.configurable?.businessId;
         
-        // Calibrated for 768-dimension semantic density (Gemini Standard)
+        // Calibrated for high-density semantic processing (Elite Standard)
         const textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 150 });
         const chunks = await textSplitter.splitText(input.content);
         
@@ -315,7 +317,7 @@ export class IngestKnowledgeTool extends Tool<typeof IngestKnowledgeSchema> {
             business_id: businessId,
             content: { raw_text: chunk, ingested_source: input.source }, 
             content_type: 'executive_knowledge',
-            embedding: await generateEmbedding(chunk), // Fully aligned 768-dim output
+            embedding: await generateEmbedding(chunk), // ✅ ALIGNED: Outputs 1024-dim Elite DNA
         })));
         
         const { error } = await supabase.from('ai_knowledge').insert(documentsToInsert);
@@ -343,17 +345,17 @@ export class KnowledgeRetrievalTool extends Tool<typeof KnowledgeRetrievalSchema
 
         const businessId = runManager.config.configurable?.businessId;
         
-        // 1. GENERATE THE 768-DIM HANDSHAKE
+        // 1. GENERATE THE 1024-DIM ELITE HANDSHAKE
         const queryEmbedding = await generateEmbedding(input.query);
         const supabase = createClient(cookies());
         
         console.log(`[Aura Bridge] Neural Search: querying memory with ${queryEmbedding.length} dims...`);
 
-        // 2. THE RPC MATCH (Requires SQL update to accept 768-dim input)
+        // 2. THE RPC MATCH (Requires SQL update to accept 1024-dim input)
         const { data, error } = await supabase.rpc('match_documents', {
             p_business_id: businessId,
             p_query_embedding: queryEmbedding,
-            p_match_threshold: 0.65, // Calibrated threshold for Gemini semantic density
+            p_match_threshold: 0.62, // ✅ CALIBRATED: Optimized for 1024-dim Voyage Elite precision
             p_match_count: 10
         });
         
@@ -384,7 +386,7 @@ export class DataTransformerTool extends Tool<typeof DataTransformerSchema> {
     protected async _execute(input: z.infer<typeof DataTransformerSchema>) {
         if (typeof window !== 'undefined') return "Browser Blocked";
 
-        // ✅ SHADOW WELD: This is the critical fix for the VM2 errors
+        // ✅ SHADOW WELD: Fix for VM2 environment isolation
         const { VM } = eval('require')('vm2'); 
         try {
             const vm = new VM({
@@ -411,5 +413,6 @@ export class DataTransformerTool extends Tool<typeof DataTransformerSchema> {
 
 /**
  * STATUS: Sovereign Capability Suite Synchronized. SHADOW BUNDLE ACTIVE.
- * ARCHITECTURE: 768-dim Google Neural Bridge Enabled.
+ * ARCHITECTURE: 1024-dim Voyage AI Elite Bridge Enabled.
+ * JURISDICTION: Unified Business Universe (BBU1).
  */

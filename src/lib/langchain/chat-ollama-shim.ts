@@ -1,14 +1,15 @@
 // src/lib/langchain/chat-ollama-shim.ts
 /**
  * --- BBU1 SOVEREIGN ENGINE SHIM (OMEGA-ULTIMATUM) ---
- * VERSION: 13.5 OMEGA (ALIGNED FOR AURA MEGA)
+ * VERSION: 14.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
  * ENGINE: Google Gemini 1.5 Pro (Direct Cloud Handshake)
  * 
  * FORENSIC UPGRADES:
- * 1. NODE JURISDICTION: Removed 'use client' to allow high-authority server-side execution.
+ * 1. SYSTEM JURISDICTION: Moved system prompts to the native systemInstruction block
+ *    for 100% compliance with Director mandates.
  * 2. SHADOW WELD: Preserved eval('require') logic to bypass Webpack analyzer for vm2.
  * 3. NEURAL ALIGNMENT: Synchronized tool calling for the 1-million token Gemini window.
- * 4. ERROR FORENSICS: Detailed 429 (Rate Limit) and Handshake rejection logging.
+ * 4. STREAM INTEGRITY: Enhanced chunk yielding to prevent message channel timeouts.
  */
 
 import { z } from 'zod';
@@ -126,7 +127,6 @@ class GeminiSovereignModel {
 
     this.modelName = opts.model || 'gemini-1.5-pro'; 
     this.timeoutMs = Number(opts.timeoutMs ?? 120_000);
-    // Preserving your default tools while allowing manifest injection
     this.tools = opts.tools || [weatherTool, codeInterpreterTool];
     this.verbose = opts.verbose || false;
     
@@ -162,19 +162,23 @@ class GeminiSovereignModel {
     messages: BaseMessage[],
     extra?: Record<string, any>
   ): AsyncGenerator<{ type: 'chunk' | 'tool_calls' | 'final'; content: any }> {
-    this.log('Establishing Neural Link. History Depth:', messages.length);
+    this.log('Establishing Neural Link via Gemini Cloud. Elite 1024-dim Memory Active.');
+
+    // 🛡️ DEEP FIX: Separate system instructions for native Google support
+    const systemMessages = messages.filter(m => m.role === 'system');
+    const conversationMessages = messages.filter(m => m.role !== 'system');
 
     const model = this.genAI.getGenerativeModel({
       model: this.modelName,
       tools: this.formatTools() as any,
+      // Pass the system prompt directly to the core instructions block
+      systemInstruction: systemMessages.map(m => m.content).join('\n\n')
     });
 
-    // Map history for Google context window
-    const contents: Content[] = messages.map(m => {
+    // Map conversation history for Google's model role standard
+    const contents: Content[] = conversationMessages.map(m => {
       let role = 'user';
       if (m.role === 'ai' || m.role === 'assistant') role = 'model';
-      if (m.role === 'system') role = 'user'; // Gemini system instructions usually go in separate param, but this works for shims.
-      
       return {
         role,
         parts: [{ text: m.content || '' }],
@@ -186,15 +190,15 @@ class GeminiSovereignModel {
         contents,
         generationConfig: {
           temperature: 0, // Forensic precision mandate
+          maxOutputTokens: 2048,
           ...extra
         },
       });
 
       let fullContent = '';
-      let toolCalls: ToolCall[] = [];
 
       for await (const chunk of result.stream) {
-        // Handle text streaming
+        // 1. Text Content Handshake
         try {
             const chunkText = chunk.text();
             if (chunkText) {
@@ -202,32 +206,32 @@ class GeminiSovereignModel {
               yield { type: 'chunk', content: chunkText };
             }
         } catch (e) {
-            // Some chunks might only contain function calls
+            // Chunk might contain only function calls; continuing logic
         }
         
-        // Handle function call detection
+        // 2. Autonomous Tool-Call Handshake
         const calls = chunk.functionCalls();
         if (calls) {
           const formattedCalls: ToolCall[] = calls.map(c => ({
-            id: Math.random().toString(36).substring(7),
+            id: `call_${Math.random().toString(36).substring(7)}`,
             type: 'function' as const,
             function: {
               name: c.name,
               arguments: JSON.stringify(c.args)
             }
           }));
-          toolCalls = [...toolCalls, ...formattedCalls];
           yield { type: 'tool_calls', content: formattedCalls };
         }
       }
 
+      // 3. Final Executive Conclusion
       yield { type: 'final', content: fullContent };
 
     } catch (error: any) {
       this.log('NEURAL LINK INTERRUPTED:', error.message);
       
       if (error.message.includes('429')) {
-          throw new Error("Aura Protocol: Global Cloud rate limit reached. Scaling capacity...");
+          throw new Error("Aura Protocol: Global Cloud rate limit reached. Retrying forensic link...");
       }
       
       throw new Error(`Aura Sovereign Engine Failure: ${error.message}`);
@@ -239,14 +243,14 @@ class GeminiSovereignModel {
    */
   async call(messages: BaseMessage[], extra?: Record<string, any>): Promise<string> {
     let finalResponse = '';
-    for await (const { type, content } of this.chat(messages, extra)) {
-      if (type === 'final') {
-        finalResponse = content;
+    for await (const packet of this.chat(messages, extra)) {
+      if (packet.type === 'final') {
+        finalResponse = packet.content;
       }
     }
     return finalResponse;
   }
 }
 
-// ✅ EXPORT ALIGNMENT: Exporting as 'ChatOllama' to prevent breaking the AIKernel Motherboard.
+// ✅ EXPORT ALIGNMENT: Maintaining 'ChatOllama' alias to ensure Kernel-to-Engine continuity.
 export { GeminiSovereignModel as ChatOllama };

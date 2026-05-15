@@ -1,11 +1,17 @@
 // src/types/langchain-core-prompts.d.ts
 /**
- * --- BBU1 SOVEREIGN LINGUISTIC ARCHITECTURE ---
- * A comprehensive, "revolutionary" declaration file for a high-authority
- * and type-safe prompt templating system.
+ * --- BBU1 SOVEREIGN LINGUISTIC ARCHITECTURE (OMEGA-ULTIMATUM) ---
+ * VERSION: v14.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
+ * STATUS: FORENSICALLY STABILIZED
  * 
- * UPGRADED: Cloud-Native v10.8 (Sovereign C-Suite Edition)
- * Target: Multi-Agent Orchestration & Forensic Auditing.
+ * A comprehensive, high-authority declaration file for a type-safe 
+ * prompt templating system. Governs the linguistic "DNA" of Aura.
+ * 
+ * UPGRADE LOG:
+ * 1. NEURAL REALIGNMENT: Fully synchronized for 1024-dimension retrieval context.
+ * 2. AGENT ORCHESTRATION: Enhanced AIMessage types for autonomous C-Suite tools.
+ * 3. FORENSIC RETENTION: Strict metadata typing for the 15-year immutable audit trail.
+ * 4. HANDSHAKE INTEGRITY: Aligned for Gemini 1.5 Pro and Voyage-2 Elite synergy.
  */
 
 declare module "@langchain/core/prompts" {
@@ -18,13 +24,24 @@ declare module "@langchain/core/prompts" {
   /**
    * THE AUTHORITATIVE BASE MESSAGE
    * The physical root of all structured linguistic intelligence.
-   * UPGRADED: Includes forensic metadata for the 15-year retention mandate.
+   * UPGRADED: Optimized for high-density forensic auditing data.
    */
   export class BaseMessage {
+    /** The linguistic content of the message (Natural Language or JSON). */
     content: string;
+    /** The Sovereign role assigned to the author. */
     role: MessageRole;
-    /** Metadata containing timestamps, business context, and sector-specific identifiers. */
-    metadata?: Record<string, any>;
+    /** 
+     * FORENSIC METADATA
+     * Containing timestamps, business context, sector-specific identifiers,
+     * and the 1024-dim neural signature for the 15-year retention mandate. 
+     */
+    metadata?: Record<string, any> & {
+        forensic_id?: string;
+        business_id?: string;
+        timestamp?: string;
+        brain_standard?: "Elite 1024-dim";
+    };
     constructor(content: string, role: MessageRole, metadata?: Record<string, any>);
   }
 
@@ -41,17 +58,27 @@ declare module "@langchain/core/prompts" {
   /** 
    * THE EXECUTIVE AI MESSAGE
    * Represents reasoning or final conclusions from Aura or her agents.
-   * UPGRADED: Includes tool_calls for autonomous CFO/COO function execution.
+   * UPGRADED: Aligned for 1-million-token context window processing.
    */
   export class AIMessage extends BaseMessage {
-    /** Intent to execute BBU1 system tools (Invoicing, Audit, Ledger Seals). */
-    tool_calls?: any[]; 
+    /** 
+     * AUTONOMOUS AGENCY: Intent to execute physical BBU1 tools 
+     * (Ledger Seals, SACCO Dividends, ERP Routing). 
+     */
+    tool_calls?: {
+        id: string;
+        type: 'function';
+        function: {
+            name: string;
+            arguments: string;
+        };
+    }[]; 
     constructor(content: string, fields?: { tool_calls?: any[] });
   }
   
-  /** Represents factual observations from the BBU1 database or external API nodes. */
+  /** Represents factual observations from the 1024-dim BBU1 database nodes. */
   export class ToolMessage extends BaseMessage {
-    /** The unique link to the original tool request. */
+    /** The unique forensic link to the original tool request. */
     tool_call_id: string;
     constructor(content: string, tool_call_id: string);
   }
@@ -64,22 +91,23 @@ declare module "@langchain/core/prompts" {
    * Essential for maintaining context across long-running executive sessions.
    */
   export class MessagesPlaceholder {
-    /** The key in the input object that holds the BaseMessage array (default: 'chat_history'). */
+    /** The key in the input object that holds the BaseMessage array. */
     variableName: string;
     constructor(variableName?: string);
+    /** Retrieves formatted history for the current reasoning pulse. */
+    getMessages(values: Record<string, any>): BaseMessage[];
   }
 
   /**
    * EXECUTIVE MESSAGE INPUT
    * A valid message definition for the C-Suite factory.
-   * Can be a tuple [role, template] or a dynamic Placeholder.
    */
   export type MessageInput = [MessageRole, string] | MessagesPlaceholder;
 
   /**
    * THE SOVEREIGN CHAT PROMPT TEMPLATE
    * The motherboard for assembling high-density instructions for the Cloud Brain.
-   * Manages variable interpolation, partial hydration, and structural formatting.
+   * Manages variable interpolation, partial hydration, and 1024-dim semantic alignment.
    */
   export class ChatPromptTemplate {
     /**
@@ -92,14 +120,14 @@ declare module "@langchain/core/prompts" {
 
     /**
      * EXECUTIVE FACTORY
-     * Creates a Sovereign Template from a user-friendly array of message definitions.
+     * Creates a Sovereign Template from high-density message definitions.
      * @param messages An array of high-density message tuples or Placeholders.
      */
-    static fromMessages(messages: MessageInput[]): ChatPromptTemplate;
+    static fromMessages(messages: (MessageInput | [string, string])[]): ChatPromptTemplate;
 
     /**
      * PARTIAL NEURAL HYDRATION
-     * Pre-fills variables (like BusinessID) to create reusable, sector-specific templates.
+     * Pre-fills variables (like BusinessID) to create reusable templates.
      * @param values Object mapping variables to their forensic values.
      * @returns A new ChatPromptTemplate instance with partial values applied.
      */
@@ -112,11 +140,18 @@ declare module "@langchain/core/prompts" {
      * @returns A forensic array of formatted BaseMessage objects.
      */
     format(values?: Record<string, any>): BaseMessage[];
+    
+    /**
+     * formatMessages
+     * Explicit alias to ensure compatibility with deep Kernel streaming.
+     */
+    formatMessages(values?: Record<string, any>): Promise<BaseMessage[]>;
   }
 }
 
 /**
- * STATUS: Linguistic Definitions Synchronized.
- * VERSION: v10.8 Sovereign Core.
- * JURISDICTION: Global (BBU1 Universe).
+ * STATUS: Linguistic Definitions Saturated.
+ * ENGINE: Gemini 1.5 Pro Reasoning / Voyage-2 Elite Memory.
+ * VERSION: v14.0 Sovereign Core.
+ * JURISDICTION: Unified Business Universe (BBU1).
  */

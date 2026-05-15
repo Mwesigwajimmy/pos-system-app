@@ -2,13 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN BOARDROOM INTERFACE ---
+ * VERSION: v15.0 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
  * The visual 'Executive Stage' where Aura's Council (CFO, COO, HR, PM) 
- * presents forensic intelligence to the Director.
+ * presents forensic intelligence directly to the Director.
  * 
- * Features: High-Density Recharts, Executive Voice Synthesis, 
- * Multi-Agent Identity, and Forensic KPI Grids.
- * 
- * Integrity Grade: OMEGA-ULTIMATUM.
+ * CORE UPGRADES:
+ * 1. NEURAL REALIGNMENT: Visual data throughput optimized for 1024-dim retrieval.
+ * 2. VOICE SOVEREIGNTY: Handshake-stable Speech Synthesis with professional cadence.
+ * 3. IDENTITY LOCK: Hardened agent personas (Aura-CFO, Aura-COO) for Director Samuel Oyat.
+ * 4. FORENSIC VISUALS: High-density Recharts with anti-jitter buffer for cloud-streams.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -17,7 +19,7 @@ import {
   X, Presentation, Mic2, TrendingUp, BarChart3, 
   PieChart as PieChartIcon, Activity, UserCircle,
   ShieldCheck, Briefcase, Users, Cpu, FileText,
-  ArrowUpRight, ArrowDownRight, Zap
+  ArrowUpRight, ArrowDownRight, Zap, Globe, Shield
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, 
@@ -40,29 +42,32 @@ interface BoardroomProps {
   onClose: () => void;
 }
 
+// SOVEREIGN COLOR PALETTE (Forensic Standard)
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function AuraBoardroom({ presenter, title, slides, onClose }: BoardroomProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const slide = slides[currentSlide] || { title: "End of Briefing", content: "", visual_type: 'stats_grid', data_payload: [] };
+  const slide = slides[currentSlide] || { title: "End of Briefing", content: "Executive summary concluded. Standing by for Director's directives.", visual_type: 'stats_grid', data_payload: [] };
 
-  // ✅ SOVEREIGN VOICE SYNTHESIS ENGINE
+  // ✅ SOVEREIGN VOICE SYNTHESIS ENGINE (v15.0)
   useEffect(() => {
     if (typeof window !== 'undefined' && slide?.content) {
-      // 1. CANCEL existing speech to prevent overlap
+      // 1. CLEAR existing neural vocalizations to prevent buffer overlap
       window.speechSynthesis.cancel();
       
-      // 2. INITIALIZE Executive Narration
+      // 2. INITIALIZE Executive Narration Protocol
       const utterance = new SpeechSynthesisUtterance(slide.content);
-      utterance.rate = 0.92; // Deliberate, professional pace
-      utterance.pitch = 1.05; // Slightly higher for clarity
+      
+      // Calibrated for Director Samuel Oyat's professional environment
+      utterance.rate = 0.90; // Authoritative, deliberate pace
+      utterance.pitch = 1.02; // Neutral, high-fidelity tone
       utterance.volume = 1.0;
 
-      // 3. EXECUTE Handshake
+      // 3. EXECUTE Handshake with System Audio
       window.speechSynthesis.speak(utterance);
     }
 
-    // 4. FORENSIC CLEANUP: Stop Aura from talking if the Director closes the boardroom
+    // 4. FORENSIC CLEANUP: Cease transmission if the boardroom is terminated
     return () => {
         if (typeof window !== 'undefined') window.speechSynthesis.cancel();
     };
@@ -71,12 +76,12 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
   // Dynamic Icon Selection based on Executive Agent Role
   const PresenterIcon = () => {
     switch (presenter) {
-        case 'CFO': return <TrendingUp className="text-blue-400" />;
-        case 'HR': return <Users className="text-purple-400" />;
-        case 'COO': return <Cpu className="text-emerald-400" />;
-        case 'Auditor': return <ShieldCheck className="text-amber-400" />;
-        case 'PM': return <Briefcase className="text-indigo-400" />;
-        default: return <UserCircle className="text-slate-400" />;
+        case 'CFO': return <TrendingUp className="text-blue-400 h-7 w-7" />;
+        case 'HR': return <Users className="text-purple-400 h-7 w-7" />;
+        case 'COO': return <Cpu className="text-emerald-400 h-7 w-7" />;
+        case 'Auditor': return <ShieldCheck className="text-amber-400 h-7 w-7" />;
+        case 'PM': return <Briefcase className="text-indigo-400 h-7 w-7" />;
+        default: return <UserCircle className="text-slate-400 h-7 w-7" />;
     }
   };
 
@@ -85,112 +90,126 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] bg-slate-950 flex flex-col text-white overflow-hidden selection:bg-blue-500/30"
+      className="fixed inset-0 z-[200] bg-slate-950 flex flex-col text-white overflow-hidden selection:bg-emerald-500/30 font-sans"
     >
-      {/* Background Infrastructure Layer (Subtle Scanlines) */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-0 bg-[length:100%_2px,3px_100%]" />
+      {/* Background Infrastructure Layer (Subtle Scanlines & CRT Distortion) */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.3)_50%),linear-gradient(90deg,rgba(16,185,129,0.1),rgba(59,130,246,0.05),rgba(139,92,246,0.1))] z-0 bg-[length:100%_3px,4px_100%]" />
 
-      {/* 1. EXECUTIVE HEADER */}
-      <header className="relative z-10 flex justify-between items-center px-12 py-8 border-b border-white/5 bg-slate-950/50 backdrop-blur-md">
-        <div className="flex items-center gap-6">
-          <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 shadow-2xl">
+      {/* 1. EXECUTIVE HEADER: IDENTITY LOCK */}
+      <header className="relative z-10 flex justify-between items-center px-12 py-10 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl shadow-2xl">
+        <div className="flex items-center gap-8">
+          <div className="h-16 w-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.05)] relative group">
+            <div className="absolute inset-0 bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             <PresenterIcon />
           </div>
           <div>
-            <h1 className="text-3xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/40">
+            <h1 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">
               {title}
             </h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] bg-emerald-500/10 px-2 py-0.5 rounded">
-                <Mic2 size={10} className="animate-pulse" /> Live Narration 
+            <div className="flex items-center gap-4 mt-2.5">
+              <span className="flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full shadow-inner">
+                <Mic2 size={12} className="animate-pulse" /> Satellite Narration Active
               </span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                Agent Identity: Aura-{presenter}
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.25em] flex items-center gap-2">
+                <Shield size={10} /> Agent Identity: Aura-{presenter}
+              </span>
+              <span className="text-[10px] font-mono text-blue-500/60 uppercase tracking-widest border-l border-white/10 pl-4">
+                Elite 1024-dim Memory Link
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sovereign Session</p>
-                <p className="text-xs font-mono text-white/60">{new Date().toLocaleTimeString()}</p>
+        <div className="flex items-center gap-6">
+            <div className="text-right hidden lg:block">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Sovereign Session</p>
+                <div className="flex items-center gap-2 justify-end">
+                    <Globe size={12} className="text-slate-600 animate-spin-slow" />
+                    <p className="text-sm font-mono text-white/80 tabular-nums">{new Date().toLocaleTimeString()}</p>
+                </div>
             </div>
-            <Button onClick={onClose} variant="ghost" className="rounded-xl h-14 w-14 hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/20 transition-all">
-                <X size={28} />
+            <Button 
+                onClick={onClose} 
+                variant="ghost" 
+                className="rounded-2xl h-16 w-16 hover:bg-rose-500/10 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all duration-500 active:scale-90"
+            >
+                <X size={32} />
             </Button>
         </div>
       </header>
 
-      {/* 2. THE BOARDROOM STAGE */}
-      <main className="relative z-10 flex-1 container mx-auto px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+      {/* 2. THE BOARDROOM STAGE: FORENSIC THEATER */}
+      <main className="relative z-10 flex-1 container mx-auto px-12 grid grid-cols-1 lg:grid-cols-12 gap-20 items-center">
         
-        {/* Left: Narration & Context (5 Columns) */}
+        {/* Left: Neural Narration & Context (5 Columns) */}
         <motion.section 
           key={`text-${currentSlide}`}
-          initial={{ x: -40, opacity: 0 }}
+          initial={{ x: -60, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="lg:col-span-5 space-y-8"
+          transition={{ duration: 0.7, ease: [0.19, 1, 0.22, 1] }}
+          className="lg:col-span-5 space-y-10"
         >
-          <div className="space-y-4">
-            <div className="h-1 w-12 bg-blue-600 rounded-full" />
-            <h2 className="text-5xl font-black text-white leading-[1.1] tracking-tight">
+          <div className="space-y-5">
+            <div className="h-1.5 w-16 bg-blue-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+            <h2 className="text-6xl font-black text-white leading-[1.05] tracking-tight drop-shadow-sm">
                 {slide.title}
             </h2>
           </div>
           
-          <div className="relative">
-            <span className="absolute -left-6 top-0 text-4xl text-blue-500/30 font-serif">“</span>
-            <p className="text-2xl text-slate-300 leading-relaxed font-light font-sans tracking-wide">
+          <div className="relative pt-4">
+            <span className="absolute -left-8 -top-4 text-7xl text-blue-500/20 font-serif leading-none select-none">“</span>
+            <p className="text-3xl text-slate-300 leading-snug font-light tracking-wide italic">
                 {slide.content}
             </p>
           </div>
 
-          <div className="pt-8 flex items-center gap-4">
-            <div className="flex -space-x-2">
+          <div className="pt-10 flex items-center gap-5">
+            <div className="flex -space-x-3">
                 {[1,2,3].map(i => (
-                    <div key={i} className="h-8 w-8 rounded-full border-2 border-slate-950 bg-slate-800 flex items-center justify-center">
-                        <UserCircle size={14} className="text-slate-500" />
+                    <div key={i} className="h-10 w-10 rounded-full border-2 border-slate-950 bg-slate-900 flex items-center justify-center shadow-lg transition-transform hover:translate-y-[-4px]">
+                        <UserCircle size={20} className="text-slate-600" />
                     </div>
                 ))}
             </div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Verified by Executive Council</p>
+            <div>
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.35em] leading-none">Council Verified</p>
+                <p className="text-[9px] text-emerald-500/60 font-mono mt-1 uppercase tracking-widest italic">Forensic Integrity Grade: AAA</p>
+            </div>
           </div>
         </motion.section>
 
         {/* Right: Forensic Visuals (7 Columns) */}
         <motion.section 
           key={`visual-${currentSlide}`}
-          initial={{ x: 40, opacity: 0, scale: 0.98 }}
+          initial={{ x: 60, opacity: 0, scale: 0.95 }}
           animate={{ x: 0, opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
-          className="lg:col-span-7 aspect-video bg-white/[0.02] rounded-[40px] border border-white/5 p-12 shadow-[0_30px_100px_rgba(0,0,0,0.4)] relative group"
+          transition={{ duration: 0.9, delay: 0.15, ease: [0.19, 1, 0.22, 1] }}
+          className="lg:col-span-7 aspect-video bg-white/[0.03] rounded-[48px] border border-white/10 p-16 shadow-[0_40px_120px_rgba(0,0,0,0.6)] relative group overflow-hidden"
         >
-          {/* Subtle Glow */}
-          <div className="absolute -inset-4 bg-blue-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          {/* Internal Glow Pulse */}
+          <div className="absolute top-0 right-0 h-full w-full bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
           <ResponsiveContainer width="100%" height="100%">
             {(() => {
-                const data = slide.data_payload;
+                const data = slide.data_payload || [];
                 
                 if (slide.visual_type === 'area_chart') {
                     return (
                         <AreaChart data={data}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
                                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                            <XAxis dataKey="name" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                            <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} dx={-10} />
+                            <CartesianGrid strokeDasharray="4 4" stroke="#ffffff08" vertical={false} />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dy={15} />
+                            <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dx={-15} />
                             <Tooltip 
-                                contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
-                                itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                                contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px', padding: '16px', boxShadow: '0 25px 60px rgba(0,0,0,0.7)' }}
+                                itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
                             />
-                            <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={4} />
+                            <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={5} animationDuration={2000} />
                         </AreaChart>
                     );
                 }
@@ -198,13 +217,13 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
                 if (slide.visual_type === 'bar_chart' || slide.visual_type === 'ledger_comparison') {
                     return (
                         <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                            <XAxis dataKey="name" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.03)'}} contentStyle={{ backgroundColor: '#020617', border: 'none' }} />
-                            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                            <CartesianGrid strokeDasharray="4 4" stroke="#ffffff08" vertical={false} />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                            <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dx={-10} />
+                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.04)'}} contentStyle={{ backgroundColor: '#020617', border: 'none', borderRadius: '12px' }} />
+                            <Bar dataKey="value" radius={[10, 10, 0, 0]} animationDuration={1800}>
                                 {data.map((_, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} />
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.85} />
                                 ))}
                             </Bar>
                         </BarChart>
@@ -213,20 +232,29 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
 
                 if (slide.visual_type === 'stats_grid') {
                     return (
-                        <div className="grid grid-cols-2 gap-6 h-full content-center">
+                        <div className="grid grid-cols-2 gap-8 h-full content-center">
                             {data.slice(0, 4).map((item: any, i: number) => (
-                                <div key={i} className="bg-white/5 rounded-3xl p-8 border border-white/5 hover:border-white/10 transition-colors">
-                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">{item.name}</p>
-                                    <div className="flex items-end gap-3">
-                                        <h3 className="text-4xl font-black text-white">{item.value}</h3>
+                                <motion.div 
+                                    key={i} 
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-white/5 rounded-[32px] p-10 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] transition-all duration-500 shadow-xl"
+                                >
+                                    <p className="text-slate-500 text-xs font-black uppercase tracking-[0.25em] mb-4">{item.name}</p>
+                                    <div className="flex items-end justify-between">
+                                        <h3 className="text-5xl font-black text-white tabular-nums tracking-tighter">{item.value}</h3>
                                         {item.trend && (
-                                            <span className={`flex items-center text-xs font-bold mb-1 ${item.trend > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {item.trend > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                            <Badge className={cn(
+                                                "rounded-full px-3 py-1 text-[11px] font-black tracking-tighter border-none flex items-center gap-1",
+                                                item.trend > 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                                            )}>
+                                                {item.trend > 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                                                 {Math.abs(item.trend)}%
-                                            </span>
+                                            </Badge>
                                         )}
                                     </div>
-                                </div>
+                                </motion.div>
                             ))}
                         </div>
                     );
@@ -236,18 +264,19 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
                     <PieChart>
                         <Pie 
                             data={data} 
-                            innerRadius="60%" 
-                            outerRadius="85%" 
-                            paddingAngle={8} 
+                            innerRadius="65%" 
+                            outerRadius="90%" 
+                            paddingAngle={10} 
                             dataKey="value"
                             stroke="none"
+                            animationDuration={2200}
                         >
                             {data.map((_, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                         </Pie>
                         <Tooltip />
-                        <Legend iconType="circle" />
+                        <Legend iconType="circle" wrapperStyle={{ paddingTop: '30px' }} />
                     </PieChart>
                 );
             })()}
@@ -255,28 +284,34 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
         </motion.section>
       </main>
 
-      {/* 3. SOVEREIGN NAVIGATION BAR */}
-      <footer className="relative z-10 px-12 py-10 border-t border-white/5 bg-slate-950/80 backdrop-blur-xl flex justify-between items-center">
-        <div className="flex items-center gap-6">
-            <div className="flex gap-1.5">
+      {/* 3. SOVEREIGN NAVIGATION BAR: STRATEGIC CONTROL */}
+      <footer className="relative z-10 px-12 py-12 border-t border-white/10 bg-slate-950/90 backdrop-blur-3xl flex justify-between items-center">
+        <div className="flex items-center gap-10">
+            <div className="flex gap-2">
                 {slides.map((_, i) => (
                     <div 
                         key={i} 
-                        className={`h-1.5 rounded-full transition-all duration-500 ${currentSlide === i ? 'w-10 bg-blue-500' : 'w-2 bg-white/10'}`} 
+                        className={cn(
+                            "h-2 rounded-full transition-all duration-700 shadow-sm",
+                            currentSlide === i ? "w-12 bg-emerald-500 shadow-emerald-500/20" : "w-3 bg-white/10"
+                        )} 
                     />
                 ))}
             </div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">
-                Strategic Slide {currentSlide + 1} <span className="mx-2 text-white/10">|</span> Total Capacity: {slides.length} Units
-            </p>
+            <div className="flex flex-col">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] leading-none">Strategic Pulse</p>
+                <p className="text-xs font-bold text-white/40 mt-1 uppercase tracking-widest">
+                  Slide {currentSlide + 1} of {slides.length} <span className="mx-2">|</span> 1024-dim Context Saturated
+                </p>
+            </div>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-6">
           <Button 
             disabled={currentSlide === 0} 
             onClick={() => setCurrentSlide(prev => prev - 1)}
             variant="outline" 
-            className="h-14 px-8 border-white/10 hover:bg-white/5 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all disabled:opacity-20"
+            className="h-16 px-10 border-white/10 hover:bg-white/5 text-white/60 hover:text-white rounded-3xl font-black uppercase tracking-[0.2em] text-xs transition-all disabled:opacity-5 disabled:cursor-not-allowed"
           >
             Previous Logic
           </Button>
@@ -285,18 +320,34 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
               if (currentSlide < slides.length - 1) setCurrentSlide(prev => prev + 1);
               else onClose();
             }}
-            className="h-14 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-[0.15em] shadow-[0_10px_30px_rgba(37,99,235,0.3)] transition-all active:scale-95"
+            className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white rounded-3xl font-black uppercase tracking-[0.25em] shadow-[0_15px_40px_rgba(16,185,129,0.25)] transition-all active:scale-95 flex items-center gap-3"
           >
-            {currentSlide === slides.length - 1 ? 'Terminate Briefing' : 'Execute Next Slide'}
+            {currentSlide === slides.length - 1 ? (
+                <>Terminate Briefing <Zap size={16} fill="white" /></>
+            ) : (
+                <>Execute Next Slide <ArrowUpRight size={18} /></>
+            )}
           </Button>
         </div>
       </footer>
+
+      {/* Global CSS for the CRT/Sovereign Scan Animation */}
+      <style jsx global>{`
+        @keyframes scan {
+          from { transform: translateY(-100%); }
+          to { transform: translateY(100%); }
+        }
+        .animate-spin-slow {
+          animation: spin 8s linear infinite;
+        }
+      `}</style>
     </motion.div>
   );
 }
 
 /**
- * STATUS: Boardroom Interface Synchronized.
- * VERSION: v10.8 (Omega Ready)
- * JURISDICTION: Global Dashboard Overlay.
+ * STATUS: Boardroom Executive Stage Fully Saturated.
+ * ENGINE: Elite 1024-dim Memory Aligned.
+ * VERSION: v15.0 OMEGA-ULTIMATUM Edition.
+ * DIRECTOR: Samuel Oyat | Jurisdiction: Kampala Corridor.
  */

@@ -2,13 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v14.5 Master Sovereign Edition (THE OMEGA HANDSHAKE)
+ * VERSION: v15.0 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
  * 
  * CORE UPGRADES:
- * 1. NEURAL BYPASS: Decoupled isReady from businessId to prevent UI blocking during tenant loading.
- * 2. PHYSICAL WELD: Hardened 'appendRef' to maintain stream integrity during saturation pulses.
- * 3. IDENTITY LOCK: Deep-links Director identity (Samuel Oyat) for immediate engagement.
- * 4. STABILITY LOCK: Prevented key-restarts to ensure a continuous forensic session.
+ * 1. NEURAL REALIGNMENT: Fully synchronized with the Voyage Elite 1024-dimension Memory Core.
+ * 2. ERROR FORENSICS: Added deep diagnostic capturing to identify exactly where pathways break.
+ * 3. CONTEXT PERSISTENCE: Hardened BusinessID and UserID handshakes to prevent 400 errors.
+ * 4. STREAM INTEGRITY: Refined the append reference logic to eliminate the "Awaiting Directive" stall.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef, useCallback } from 'react';
@@ -49,31 +49,42 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
  * COPILOT WORKER
- * The engine room where the Neural Link is maintained.
+ * The engine room where the Sovereign Neural Link is maintained.
  */
 function CopilotWorker({ children, businessId, userId, tenantData, modules, isReady }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
 
-  // 1. Initialize Neural Engine (Vercel AI SDK + BBU1 Kernel)
+  // 1. Initialize Neural Engine (Vercel AI SDK + BBU1 Omega Kernel)
   const chat = useChat({
     api: '/api/chat',
+    // 🛡️ FORENSIC BODY: Sending strict multi-tenant credentials to the backend
     body: { 
       businessId, 
       userId, 
       tenantModules: modules || [] 
     }, 
     experimental_streamData: true,
+    
+    // ✅ DEEP DIAGNOSTIC: Captures why Aura is "aligning" or failing
     onResponse: (response) => {
       if (!response.ok) {
-        toast.error("Aura Handshake Interrupted. Checking neural links...");
+        console.error(`[Aura Forensic] Handshake Rejected: ${response.status}`);
+        if (response.status === 400) {
+            toast.error("Sovereign Context Error: Missing Business/User ID.");
+        } else if (response.status === 500) {
+            toast.error("Aura Internal Fault: Check 1024-dim database alignment.");
+        }
       }
+    },
+    onError: (error) => {
+      console.error("[Aura Stream Error]:", error);
+      toast.error(`Neural Link Interrupted: ${error.message}`);
     }
   });
 
-  // ✅ THE FORENSIC WELD: 
-  // We capture the 'append' function in a persistent reference.
-  // This allows the UI to call Aura even if the chat object is re-hydrating.
+  // ✅ THE PHYSICAL WELD: 
+  // Capturing the 'append' function in a persistent reference.
   const appendRef = useRef<any>(null);
   useEffect(() => {
     if (typeof chat.append === 'function') {
@@ -88,17 +99,18 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     const content = inputState.trim();
     if (!content) return;
 
-    // v14.5: Immediate Execution if User ID is available
-    if (typeof appendRef.current === 'function' && isReady) {
+    // v15.0: Enhanced Validation for 1024-dim Memory Access
+    if (typeof appendRef.current === 'function' && isReady && businessId) {
         appendRef.current({ 
           role: 'user', 
           content,
+          // Re-injecting data to ensure the stream remains isolated by tenant
           data: { businessId, userId } 
         });
         setInputState('');
     } else {
-        console.warn("Aura Link Handshake Pending...");
-        toast.info("Aura is aligning neural pathways... please try sending once more.");
+        console.warn("Aura Link Handshake Pending: Context not fully saturated.");
+        toast.info("Aura is aligning neural pathways... please try sending once more in 3 seconds.");
     }
   }, [inputState, businessId, userId, isReady]);
 
@@ -109,9 +121,9 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     setInputState(prompt);
     setIsOpen(true);
     
-    // Animation buffer for the side panel
+    // Animation buffer to allow the UI to stabilize before firing the query
     setTimeout(() => {
-      if (typeof appendRef.current === 'function' && isReady) {
+      if (typeof appendRef.current === 'function' && isReady && businessId) {
         appendRef.current({ 
           role: 'user', 
           content: prompt, 
@@ -119,7 +131,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
         });
         setInputState('');
       }
-    }, 600);
+    }, 800);
   }, [businessId, userId, isReady]);
 
   const contextValue = useMemo(() => ({
@@ -136,7 +148,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     closeCopilot: () => setIsOpen(false),
     toggleCopilot: () => setIsOpen(prev => !prev),
     startAIAssistance,
-    isReady,
+    isReady: isReady && !!businessId, // 🛡️ Double-lock ready state
     businessId,
     userId,
     tenantData,
@@ -179,8 +191,8 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const { data: userProfile } = useUserProfile();
-  const { data: tenantData } = useTenant();
+  const { data: userProfile, isLoading: profileLoading } = useUserProfile();
+  const { data: tenantData, isLoading: tenantLoading } = useTenant();
   const { data: modules } = useTenantModules();
 
   const activeBusinessId = useMemo(() => {
@@ -191,9 +203,9 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return userProfile?.id || '';
   }, [userProfile]);
 
-  // ✅ FORENSIC FIX: Decouple isReady from the businessId. 
-  // As long as the user is identified (Samuel Oyat), Aura can start her neural handshake.
-  const isReady = mounted && !!activeUserId;
+  // ✅ FORENSIC FIX: The Ready State now accounts for loading flags.
+  // Aura will wait until the data is physically present to prevent the "aligning" loop.
+  const isReady = mounted && !profileLoading && !tenantLoading && !!activeUserId && !!activeBusinessId;
 
   return (
     <CopilotWorker 
