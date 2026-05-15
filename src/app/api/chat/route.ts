@@ -11,9 +11,12 @@ export const dynamic = 'force-dynamic';
 // Required for complex forensic operations and long-running autonomous neural links.
 export const runtime = 'nodejs';
 
+// --- NATIVE GOOGLE SDK IMPORT (Replacing Ollama) ---
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 // --- LANGCHAIN & CORE SYSTEM IMPORTS (DIRECT PATH RESOLUTION) ---
 import { AIKernel } from '@/lib/ai-core/kernel';
-import { ChatOllama } from '@/lib/langchain/chat-ollama-shim';
+// import { ChatOllama } from '@/lib/langchain/chat-ollama-shim'; // REMOVED TO PREVENT TIMEOUTS
 import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
 
 import { 
@@ -190,8 +193,21 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
             userInput = bootstrapDirective;
         }
 
-        const llm = new ChatOllama({ model: GEMINI_MODEL });
-        const kernel = new AIKernel(llm, AI_CAPABILITIES, true);
+        // --- NATIVE GOOGLE ENGINE INITIALIZATION ---
+        // Replacing the local Ollama initialization with a bridge to your AI Studio Key.
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+        const googleModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+
+        // BRIDGE ADAPTER: Ensures your existing AIKernel functions with the native Google SDK.
+        const llm = {
+            modelName: GEMINI_MODEL,
+            invoke: async (input: any) => {
+                const result = await googleModel.generateContent(input.toString());
+                return { content: result.response.text() };
+            }
+        };
+
+        const kernel = new AIKernel(llm as any, AI_CAPABILITIES, true);
         
         const chat_history: BaseMessage[] = messages
             .slice(0, -1)
@@ -219,10 +235,15 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 
         const transformStream = new ReadableStream({
             async start(controller) {
-                for await (const chunk of stream) {
-                    controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
+                try {
+                    for await (const chunk of stream) {
+                        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
+                    }
+                } catch (err) {
+                    console.error("Streaming Exception:", err);
+                } finally {
+                    controller.close();
                 }
-                controller.close();
             }
         });
 
