@@ -70,7 +70,7 @@ export async function GET() {
             success: true, 
             total_nodes_healed: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
-            message: "Aura has consumed the technical backlog via the Neural Bridge."
+            message: "Aura has consumed the technical backlog via the 768-dim Neural Bridge."
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -226,9 +226,9 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- REPAIRED OMEGA NEURAL BRIDGE (v15.1) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v16.5 FORENSIC) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-Targets the 'raw_text' property and handles complex sector data forensic logic.
+Synchronized for 768-dimension Indexing and deep JSON extraction.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ RLS BYPASS: We call the Security Definer RPC Bridge instead of a direct table select.
@@ -244,28 +244,38 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             let textToEmbed = "";
             const content = row.content;
 
-            // ✅ FORENSIC EXTRACTION: Enhanced handling for Object vs Stringified JSON
+            // ✅ DEEP FORENSIC EXTRACTION: Targets nested stringified JSON found in forensic_baseline
             if (content && typeof content === 'object') {
+                // Check for explicit raw_text OR stringify the whole object if it's a raw database dump
                 textToEmbed = content.raw_text || JSON.stringify(content);
             } else if (typeof content === 'string') {
                 textToEmbed = content;
             }
 
-            if (!textToEmbed || textToEmbed.length < 5) return false;
+            if (!textToEmbed || textToEmbed.length < 10) return false;
 
-            // Neural Context Injection - Expansion to 8,000 chars for deeper schema context
-            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 8000);
+            // Wide context injection for Gemini 768-dimension density
+            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 10000);
 
+            // Generate the native 768-dimension vector
             const vector = await generateEmbedding(finalString);
+
+            // DIMENSION SAFETY CHECK: Ensure we don't try to push a mismatch to the HNSW index
+            if (vector.length !== 768) {
+                console.error(`Neural Bridge Dimension Conflict: Column requires 768, Model returned ${vector.length}`);
+                return false;
+            }
 
             // Execute update as Admin (Service Role)
             const { error: updateError } = await adminClient
                 .from('ai_knowledge')
-                .update({ embedding: vector })
+                .update({ 
+                    embedding: vector,
+                    updated_at: new Date().toISOString() // Prevents background maintenance logic crashes
+                })
                 .eq('id', row.id);
             
             if (updateError) {
-                // LOGGING: Crucial to see if there is a dimension mismatch or RLS issue
                 console.error(`NEURAL ALIGNMENT FAILURE [ID: ${row.id}]:`, updateError.message);
                 return false;
             }
