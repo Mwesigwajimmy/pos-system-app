@@ -1,3 +1,5 @@
+'use client';
+
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { BaseMessage } from './core-prompts-shim';
@@ -5,12 +7,13 @@ import { GoogleGenerativeAI, Part, Content } from '@google/generative-ai';
 
 /**
  * --- BBU1 SOVEREIGN ENGINE SHIM ---
- * VERSION: 10.8 PRO (Cloud-Native)
+ * VERSION: 12.8 PRO (SHADOW BUNDLE STABILIZED)
  * ENGINE: Google Gemini 1.5 Pro
  * 
- * This file implements the 'ChatOllama' interface while physically 
- * routing all neural traffic to Google's Global Infrastructure. 
- * This ensures BBU1 operates 24/7 without local hardware dependency.
+ * FIX LOG:
+ * 1. SHADOW WELD: Implemented eval('require') for vm2 to bypass Webpack analyzer.
+ * 2. BUILD INTEGRITY: Eliminates "Can't resolve fs/module" errors in browser builds.
+ * 3. SOVEREIGN PERSISTENCE: 100% of executive logic and tool capabilities preserved.
  */
 
 // --- Tool Definition ---
@@ -29,9 +32,14 @@ const codeInterpreterTool: ChatOllamaTool = {
     code: z.string().describe("The Python-like code to execute. Must be self-contained. Use 'return' for the final output."),
   }),
   async execute(args): Promise<any> {
+    // Safety check for browser-side analysis
+    if (typeof window !== 'undefined') return { success: false, error: "Runtime Restriction: Forensic Code execution requires Server-Level Authority." };
+
     const { code } = args as { code: string };
-    // Node.js VM2 requirement for isolated logic execution
-    const { VM } = require('vm2');
+    
+    // ✅ SHADOW WELD: Cloaks vm2 from Webpack static analysis
+    const { VM } = eval('require')('vm2');
+    
     console.log(`[Aura Executive] Executing Code Block...`);
     
     const vmOptions = {
@@ -77,8 +85,8 @@ const weatherTool: ChatOllamaTool = {
 
 // --- Engine Interface Types ---
 export interface ChatOllamaOptions {
-  baseUrl?: string; // Kept for interface compatibility
-  model?: string;   // Maps to gemini-1.5-pro or gemini-1.5-flash
+  baseUrl?: string; 
+  model?: string;   
   timeoutMs?: number;
   tools?: ChatOllamaTool[];
   verbose?: boolean;
@@ -118,7 +126,6 @@ class GeminiSovereignModel {
         console.warn("Aura Critical Warning: GOOGLE_API_KEY is missing from environment variables.");
     }
 
-    // Defaulting to the high-authority Pro model for the Omega Directive
     this.modelName = opts.model || 'gemini-1.5-pro'; 
     this.timeoutMs = Number(opts.timeoutMs ?? 120_000);
     this.tools = opts.tools || [weatherTool, codeInterpreterTool];
@@ -133,9 +140,6 @@ class GeminiSovereignModel {
     }
   }
 
-  /**
-   * Translates BBU1 Tool Schemas into Google Function Declarations
-   */
   private formatTools() {
     if (!this.tools || this.tools.length === 0) return undefined;
     
@@ -148,10 +152,6 @@ class GeminiSovereignModel {
     }];
   }
 
-  /**
-   * PRIMARY NEURAL CHAT INTERFACE
-   * Managed AsyncGenerator for real-time streaming in the Dashboard.
-   */
   async *chat(
     messages: BaseMessage[],
     extra?: Record<string, any>
@@ -163,8 +163,6 @@ class GeminiSovereignModel {
       tools: this.formatTools() as any,
     });
 
-    // Translate BBU1/LangChain roles to Google Cloud native roles
-    // System instructions are intelligently moved to user context for this shim
     const contents: Content[] = messages.map(m => {
       let role = 'user';
       if (m.role === 'ai' || m.role === 'assistant') role = 'model';
@@ -179,7 +177,7 @@ class GeminiSovereignModel {
       const result = await model.generateContentStream({
         contents,
         generationConfig: {
-          temperature: 0, // Forensic precision mode
+          temperature: 0, 
           ...extra
         },
       });
@@ -194,7 +192,6 @@ class GeminiSovereignModel {
           yield { type: 'chunk', content: chunkText };
         }
         
-        // INTERCEPT: Cloud-side Autonomous Agent tool requests
         const calls = chunk.functionCalls();
         if (calls) {
           const formattedCalls: ToolCall[] = calls.map(c => ({
@@ -209,7 +206,6 @@ class GeminiSovereignModel {
         }
       }
 
-      // If the Council (CFO/COO) requested actions, yield them to the Executor
       if (toolCalls.length > 0) {
         this.log('Council Actions Detected:', toolCalls.map(tc => tc.function.name));
         yield { type: 'tool_calls', content: toolCalls };
@@ -228,10 +224,6 @@ class GeminiSovereignModel {
     }
   }
 
-  /**
-   * UNIFIED CALL
-   * Resolves the entire reasoning cycle into a single business conclusion.
-   */
   async call(messages: BaseMessage[], extra?: Record<string, any>): Promise<string> {
     let finalResponse = '';
     for await (const { type, content } of this.chat(messages, extra)) {
@@ -243,5 +235,4 @@ class GeminiSovereignModel {
   }
 }
 
-// Export as ChatOllama to maintain system-wide compatibility with AIKernel and Manifests.
 export { GeminiSovereignModel as ChatOllama };
