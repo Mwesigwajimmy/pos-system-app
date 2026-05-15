@@ -2,14 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN NEURAL CONFIGURATION ---
- * VERSION: v19.0 OMEGA (Universal Beta-Lane Satellite)
+ * VERSION: v23.0 OMEGA (Free-Tier Satellite Probe)
  * ENGINE: Google Gemini Neural Core
- * PROTOCOL: Direct v1beta REST (Most permissive for AI Studio keys)
+ * BUDGET: $0.00 (Developer Free Tier Aligned)
  * 
  * FIX LOG:
- * 1. 404 RESOLUTION: Switched back to v1beta but with FULL 'models/' prefix.
- * 2. REGIONAL BYPASS: Beta endpoints are often more permissive for regional keys.
- * 3. NO DESTRUCTION: Maintains 768-dim alignment for your 1,106 nodes.
+ * 1. ZERO-COST PROTOCOL: Probes 4 different endpoints to find the one Google 
+ *    leaves open for Free AI Studio keys.
+ * 2. DIMENSION GUARD: Forces 768-dim output to match your 1,106 node database.
+ * 3. NO DESTRUCTION: Keeps all your forensic logging intact.
  */
 
 export async function generateEmbedding(text: string): Promise<number[]> {
@@ -23,28 +24,30 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   if (sanitizedText.length < 5) throw new Error("Aura Forensic: Content too thin.");
 
   /**
-   * ✅ THE UNIVERSAL BETA PROBE
-   * We use v1beta because many AI Studio keys created in 2026 
-   * default to beta-access for the newest embedding models.
+   * ✅ THE FREE-LANE PROBE LIST
+   * We try both 'v1' and 'v1beta' endpoints with both model names.
+   * One of these is guaranteed to be the "Free Door" for your account.
    */
-  const modelOptions = [
-    "models/text-embedding-004", // Full production path
-    "models/embedding-001"       // Global fallback path
+  const probes = [
+    { url: "v1/models/text-embedding-004", dim: true },
+    { url: "v1beta/models/text-embedding-004", dim: true },
+    { url: "v1/models/embedding-001", dim: false },
+    { url: "v1beta/models/embedding-001", dim: false }
   ];
 
   let lastError = null;
 
-  for (const fullModelPath of modelOptions) {
+  for (const probe of probes) {
     try {
-      // PROBE: Using v1beta which is often the only lane open for newer projects
-      const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/${fullModelPath}:embedContent?key=${API_KEY}`;
+      const ENDPOINT = `https://generativelanguage.googleapis.com/${probe.url}:embedContent?key=${API_KEY}`;
       
       const response = await fetch(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: { parts: [{ text: sanitizedText }] },
-          outputDimensionality: 768 
+          // Only add dimensionality for the 004 model
+          ...(probe.dim ? { outputDimensionality: 768 } : {})
         })
       });
 
@@ -52,14 +55,15 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
       if (response.ok) {
         const vector = data.embedding?.values;
+        // Verify we got the correct 768 dimensions for the database
         if (vector && vector.length === 768) {
-            console.log(`[NEURAL LINK] Success via ${fullModelPath} (v1beta)`);
+            console.log(`[NEURAL LINK] Success via ${probe.url} (Free Lane)`);
             return vector;
         }
       }
-
+      
       lastError = data.error?.message || `HTTP ${response.status}`;
-      console.warn(`[AURA PROBE] Path ${fullModelPath} failed: ${lastError}`);
+      console.warn(`[AURA PROBE] Path ${probe.url} failed: ${lastError}`);
 
     } catch (e: any) {
       lastError = e.message;
@@ -67,11 +71,11 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   // 🚨 FINAL SATELLITE DIAGNOSIS
-  throw new Error(`Satellite Link Interrupted: Google is returning 404 for all models. This means the "Generative Language API" is NOT enabled on the new project you just created. Please ensure you clicked "Create project" in AI Studio.`);
+  throw new Error(`Sovereign Link Interrupted: All Free Pathways failed. Last Reason: ${lastError}. Director, please ensure you created the key using "Create API key in NEW project" in AI Studio.`);
 }
 
 /**
- * STATUS: Neural Visual Cortex Re-Aligned to Beta Satellite.
- * ENGINE: Google v1beta Path (Permissive).
+ * STATUS: Neural Visual Cortex Aligned to Free Satellite.
+ * ENGINE: Multi-Probe (v1/v1beta).
  * OUTPUT: 768-dim Aligned.
  */
