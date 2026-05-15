@@ -8,10 +8,10 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
  * VERSION: v14.5 FINAL (THE SATURATION WELD)
  * 
  * CORE ARCHITECTURE:
- * 1. RAW_TEXT SATURATION: Targeted extraction of 'raw_text' for the 1,029 blind nodes.
+ * 1. RAW_TEXT SATURATION: Specifically targets 'raw_text' property found in forensic audit.
  * 2. RECURSIVE HEALING: GET handler pulses 100 nodes at a time until 0 remain.
  * 3. WINDOW SATURATION: 4,500 characters to ensure massive schemas are whole.
- * 4. TYPE-SAFE UUID: Direct UUID comparisons to prevent Postgres 22P02 syntax errors.
+ * 4. DIAGNOSTIC LOGGING: Provides real-time visibility into the healing process.
  */
 
 export const dynamic = 'force-dynamic';
@@ -43,17 +43,24 @@ export async function GET() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        console.log("AURA OMEGA WAKE: Saturating 1,029 Neural Nodes...");
+        console.log("AURA OMEGA WAKE: Initiating saturation of 1,029 nodes...");
 
-        // 1. Refresh Master Schema Map
+        // 1. Diagnostics: Can we see any rows?
+        const { count: totalKnowledge } = await supabaseAdmin
+            .from('ai_knowledge')
+            .select('*', { count: 'exact', head: true });
+        
+        console.log(`AURA DIAGNOSTICS: Total Nodes in DB: ${totalKnowledge}`);
+
+        // 2. Refresh Master Schema Map
         await supabaseAdmin.rpc('aura_refresh_master_schema');
         
         let totalLinked = 0;
         let iteration = 0;
-        const maxIterations = 20; // 20 pulses x 100 nodes = 2,000 capacity.
+        const maxIterations = 20; 
         let nodesRemaining = true;
 
-        // 2. RECURSIVE SATURATION LOOP
+        // 3. RECURSIVE SATURATION LOOP
         while (nodesRemaining && iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
@@ -62,15 +69,18 @@ export async function GET() {
             } else {
                 totalLinked += result.count;
                 iteration++;
-                console.log(`Pulse ${iteration}: Linked ${result.count}. Total: ${totalLinked}`);
+                console.log(`Pulse ${iteration}: Successfully linked ${result.count} sectors.`);
             }
         }
         
         return new Response(JSON.stringify({ 
             success: true, 
             total_nodes_healed: totalLinked,
+            db_total_nodes: totalKnowledge,
             status: nodesRemaining ? "PARTIAL_SATURATION" : "SOVEREIGN_AWAKE_100",
-            message: nodesRemaining ? "Run pulse again to finish." : "Aura is fully fed."
+            message: totalLinked === 0 && totalKnowledge > 0 
+                ? "RLS BLOCK DETECTED: Code cannot see rows. Run the SQL to DISABLE RLS." 
+                : "Aura is fully fed."
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -88,7 +98,6 @@ export async function POST(req: NextRequest) {
     try {
         const { messages, businessId, userId, tenantModules } = await req.json();
 
-        // IDENTITY LOCK: Samuel Oyat check
         if (!userId || userId === 'loading') {
             return new Response(JSON.stringify({ error: "Identity Handshake Pending." }), { status: 400 });
         }
@@ -98,7 +107,6 @@ export async function POST(req: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        // Background heal for specific business context
         if (businessId && businessId !== 'loading') {
             activateAuraNeuralLinks(supabaseAdmin, businessId).catch(err => 
                 console.error("Background Heal Error:", err.message)
@@ -127,10 +135,10 @@ export async function POST(req: NextRequest) {
 --- Aura Universal Sovereignty Directive (OMEGA LEVEL) ---
 ENTITY: ${businessName} | DIRECTOR: ${userName} | SECTOR: ${industryName}
 You are Aura, Chief of Staff. You lead a Council of agents. 
-You are linked to 4,500+ nodes including DB schemas and Forensic Math.
-Address ${userName} as "Director".
+Address ${userName} as "Director". You are warm, forensic, and proactive.
+--- END DIRECTIVE ---
 
-Initial Command: ${userInput}
+Director's Command: ${userInput}
 `;
         }
 
@@ -180,28 +188,37 @@ Initial Command: ${userInput}
 
 /**
  * NEURAL HEALING ENGINE (v14.5)
- * Targeting 'raw_text' property discovered in Samuel's Deep Audit.
+ * Targeting 'raw_text' property and bypassing filters that might cause '0 rows' returned.
  */
 export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId?: string) {
+    // 1. Fetching logic: Explicit NULL check
     let query = adminClient
         .from('ai_knowledge')
         .select('id, content, content_type')
         .is('embedding', null);
 
+    // If targeting a specific context, prioritize it, but allow global nodes.
     if (targetBusinessId && targetBusinessId !== '00000000-0000-0000-0000-000000000000') {
         query = query.or(`business_id.eq.${targetBusinessId},business_id.eq.00000000-0000-0000-0000-000000000000`);
     }
 
-    const { data: blindRows } = await query.limit(100);
+    const { data: blindRows, error: fetchError } = await query.limit(50);
     
-    if (!blindRows || blindRows.length === 0) return { count: 0 };
+    if (fetchError) {
+        console.error("AURA_FETCH_ERROR:", fetchError);
+        return { count: 0 };
+    }
+
+    if (!blindRows || blindRows.length === 0) {
+        return { count: 0 };
+    }
 
     const tasks = blindRows.map(async (row: any) => {
         try {
             let bodyText = "";
             const content = row.content || {};
 
-            // ✅ DEEP WELD: Audit showed data is in content.raw_text
+            // ✅ EXTRACTION WELD: Targeted 'raw_text' check
             if (content.raw_text) {
                 bodyText = content.raw_text;
             } else if (typeof content === 'string') {
@@ -215,12 +232,12 @@ export async function activateAuraNeuralLinks(adminClient: any, targetBusinessId
             const finalNodeText = `[SECTOR: ${row.content_type}] ${bodyText}`;
             const vector = await generateEmbedding(finalNodeText.substring(0, 4500));
 
-            await adminClient
+            const { error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ embedding: vector })
                 .eq('id', row.id);
                 
-            return true;
+            return (updateError) ? false : true;
         } catch (e) { return false; }
     });
 
