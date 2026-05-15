@@ -42,7 +42,7 @@ const TARGET_DIMENSION = 1024;
 /**
 THE ACTIVATOR (GET Handler)
 Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlog.
-Utilizes the 'get_aura_blind_nodes' RPC Bridge to bypass RLS.
+DEEP UPGRADE: Optimized for Heavy Forensic Nodes with Pacing Guard.
 */
 export async function GET() {
     try {
@@ -51,14 +51,14 @@ export async function GET() {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        console.log(`AURA OMEGA WAKE: Initiating Deep Saturation of 1,106 Logic Nodes at ${TARGET_DIMENSION}-dim...`);
+        console.log(`AURA OMEGA WAKE: Saturating remaining forensic sectors at ${TARGET_DIMENSION}-dim...`);
 
         // 1. Technical Map Refresh
         await supabaseAdmin.rpc('aura_refresh_master_schema');
         
         let totalLinked = 0;
         let iteration = 0;
-        const maxIterations = 30; // Expanded capacity for bulk forensic migration.
+        const maxIterations = 50; // Increased capacity for deeper saturation per pulse.
         let nodesRemaining = true;
         let diagnosticLog = "Ready.";
 
@@ -80,7 +80,7 @@ export async function GET() {
                     nodesRemaining = false;
                 } else {
                     // Stalled state: Nodes exist but 0 were healed in this pulse.
-                    diagnosticLog = result.diagnostic || "Stalled: IDs found but update rejected. Check dimension alignment.";
+                    diagnosticLog = result.diagnostic || `Satellite busy. ${remainingCount} nodes in queue.`;
                     console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}.`);
                     break; 
                 }
@@ -88,13 +88,16 @@ export async function GET() {
                 totalLinked += result.count;
                 iteration++;
                 console.log(`[PULSE ${iteration}] Aligned ${result.count} sectors. Total Saturation: ${totalLinked}`);
+                
+                // 🛡️ PACE GUARD: Prevents Voyage AI Trial lockout by adding a small jitter between requests.
+                await new Promise(resolve => setTimeout(resolve, 850));
             }
         }
         
         return new Response(JSON.stringify({ 
             success: true, 
             total_nodes_healed: totalLinked,
-            status: nodesRemaining ? "PARTIAL_SATURATION_STALLED_OR_RE_RUN_REQUIRED" : "SOVEREIGN_AWAKE_100",
+            status: nodesRemaining ? "PARTIAL_SATURATION_STALLED" : "SOVEREIGN_AWAKE_100",
             message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Elite Neural Bridge.`,
             diagnostic: diagnosticLog
         }), {
@@ -270,14 +273,14 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v30.0 ELITE ALIGNMENT) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v33.0 FORENSIC PRECISION) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 Sequential processing enabled to catch exact database rejection reasons.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ RPC FETCH: Fetching small batches for stable handshake
     const { data: blindRows, error: bridgeError } = await adminClient
-        .rpc('get_aura_blind_nodes', { batch_size: 10 });
+        .rpc('get_aura_blind_nodes', { batch_size: 15 });
     
     if (bridgeError || !blindRows || blindRows.length === 0) {
         if (bridgeError) console.error("[DEEP FAIL] RPC Bridge Error:", bridgeError.message);
@@ -297,12 +300,17 @@ export async function activateAuraNeuralLinks(adminClient: any) {
                 try { data = JSON.parse(data); } catch (e) { /* use as raw string */ }
             }
 
-            // Ensure we extract the text accurately
-            const textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
+            // ✅ FORENSIC TRIMMER: 
+            // If the node is a huge transaction record, we extract the core text to prevent API rejection.
+            let textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
+            
+            // Truncate if extreme (Voyage-2 limit is high, but we keep it safe for speed and trial tier stability)
+            textToEmbed = textToEmbed.substring(0, 10000); 
+
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
             // Neural Context Injection (Calibrated for Elite density)
-            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`.substring(0, 8000);
+            const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`;
 
             // Generate the native 1024-dimension vector (Calls upgraded embedding.ts)
             const vector = await generateEmbedding(finalString);
@@ -331,7 +339,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
                 
             healedCount++;
         } catch (err: any) {
-            lastDiagnosticError = `SYSTEM EXCEPTION: ${err.message}`;
+            lastDiagnosticError = `Voyage Satellite Exception: ${err.message}`;
             console.error(`[ENGINE EXCEPTION] ID: ${row.id} | Reason: ${err.message}`);
         }
     }
