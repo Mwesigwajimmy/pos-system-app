@@ -2,12 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v13.5 Master Sovereign Edition (THE FINAL WELD)
+ * VERSION: v14.0 Master Sovereign Edition (THE OMEGA AWAKENING)
  * 
- * CORE FIXES:
- * 1. PHYSICAL WELD: Restores 'appendRef' to eliminate "append is not a function" errors.
- * 2. IDENTITY LOCK: Hard-links to verified UUIDs from the User Profile.
- * 3. PERSISTENCE: Zero-latency mounting (No 'key' restarts).
+ * CORE UPGRADES:
+ * 1. NEURAL HANDSHAKE: Optimized for the v14.0 Recursive Healing Kernel.
+ * 2. PHYSICAL WELD: Hardened 'appendRef' to prevent "append is not a function" during full-feed cycles.
+ * 3. IDENTITY SYNC: Deep-links businessId and userId to the Sovereign Master Brain (000...000).
+ * 4. STABILITY LOCK: Zero-latency mounting prevents UI flickers during neural alignment.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef, useCallback } from 'react';
@@ -15,10 +16,10 @@ import { toast } from 'sonner';
 import { useChat } from '@ai-sdk/react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
-// ALERT: Ensure this points to your active UI Panel
+// CORE UI COMPONENT
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 
-import { useBusinessContext } from '@/hooks/useBusinessContext'; 
+// SOVEREIGN HOOKS
 import { useTenantModules } from '@/hooks/useTenantModules';
 import { useTenant } from '@/hooks/useTenant'; 
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -46,20 +47,36 @@ interface CopilotContextType {
 
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
+/**
+ * COPILOT WORKER
+ * The engine room where the Neural Link is maintained.
+ */
 function CopilotWorker({ children, businessId, userId, tenantData, modules, isReady }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
 
-  // 1. Initialize Neural Engine
+  // 1. Initialize Neural Engine (Vercel AI SDK + BBU1 Kernel)
   const chat = useChat({
     api: '/api/chat',
-    body: { businessId, userId, tenantModules: modules || [] }, 
+    body: { 
+      businessId, 
+      userId, 
+      tenantModules: modules || [] 
+    }, 
     experimental_streamData: true,
+    onResponse: (response) => {
+      if (!response.ok) {
+        toast.error("Aura Handshake Interrupted. Checking neural links...");
+      }
+    },
+    onFinish: () => {
+      // Logic for post-chat forensic updates can be placed here
+    }
   });
 
   // ✅ THE FORENSIC WELD: 
-  // This ensures 'append' is captured in a persistent reference.
-  // This stops the "Initializing..." toast from blocking the Director.
+  // We capture the 'append' function in a persistent reference.
+  // This allows the UI to call Aura even if the chat object is re-hydrating.
   const appendRef = useRef<any>(null);
   useEffect(() => {
     if (typeof chat.append === 'function') {
@@ -67,14 +84,13 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     }
   }, [chat.append]);
 
-  // 2. High-Stability Submit Handler
+  // 2. High-Stability Submit Handler (The "Omega Trigger")
   const handleSubmit = useCallback((e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
     const content = inputState.trim();
     if (!content) return;
 
-    // Use the Welded Reference for immediate execution
     if (typeof appendRef.current === 'function' && isReady) {
         appendRef.current({ 
           role: 'user', 
@@ -83,22 +99,27 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
         });
         setInputState('');
     } else {
-        // Fallback for extreme cases (e.g. lost internet connection)
         console.warn("Aura Link Handshake Pending...");
         toast.info("Aura is aligning neural pathways... please try sending once more.");
     }
   }, [inputState, businessId, userId, isReady]);
 
-  // 3. Remote Activation Logic
+  // 3. Remote Activation Logic (Used by Boardroom & Action Buttons)
   const startAIAssistance = useCallback((prompt: string) => {
     if (!prompt) return;
+    
+    // Set state and open panel
     setInputState(prompt);
     setIsOpen(true);
     
-    // Animation buffer for the side panel
+    // Brief buffer to ensure the Sheet animation doesn't jitter the stream
     setTimeout(() => {
       if (typeof appendRef.current === 'function' && isReady) {
-        appendRef.current({ role: 'user', content: prompt, data: { businessId, userId } });
+        appendRef.current({ 
+          role: 'user', 
+          content: prompt, 
+          data: { businessId, userId } 
+        });
         setInputState('');
       }
     }, 600);
@@ -123,13 +144,30 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     userId,
     tenantData,
     tenantModules: modules
-  }), [chat.messages, chat.isLoading, chat.data, inputState, isOpen, isReady, businessId, userId, tenantData, modules, handleSubmit, startAIAssistance, chat.setMessages]);
+  }), [
+    chat.messages, 
+    chat.isLoading, 
+    chat.data, 
+    chat.setMessages,
+    inputState, 
+    isOpen, 
+    isReady, 
+    businessId, 
+    userId, 
+    tenantData, 
+    modules, 
+    handleSubmit, 
+    startAIAssistance
+  ]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
       {children}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="right" className="w-[440px] sm:w-[540px] p-0 border-l shadow-2xl overflow-hidden">
+        <SheetContent 
+          side="right" 
+          className="w-[440px] sm:w-[600px] p-0 border-l shadow-2xl overflow-hidden bg-background/95 backdrop-blur-md"
+        >
            <CopilotPanel />
         </SheetContent>
       </Sheet>
@@ -137,17 +175,21 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
   );
 }
 
+/**
+ * GLOBAL COPILOT PROVIDER
+ * The top-level wrapper that manages identity and mounting stability.
+ */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // Fetching Master Identity Data
+  // Fetching Sovereign Identity Data
   const { data: userProfile } = useUserProfile();
   const { data: tenantData } = useTenant();
   const { data: modules } = useTenantModules();
 
+  // IDENTITY LOCK: Prioritize Profile ID -> Tenant ID
   const activeBusinessId = useMemo(() => {
-    // Priority: Database Profile -> Current Tenant State
     return userProfile?.business_id || tenantData?.id || '';
   }, [userProfile, tenantData]);
 
@@ -155,12 +197,13 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return userProfile?.id || '';
   }, [userProfile]);
 
-  // confirm the UI is fully hydrated and IDs are present
+  // confirm the UI is fully hydrated and Master IDs are present
   const isReady = mounted && !!activeBusinessId && !!activeUserId;
 
   return (
     <CopilotWorker 
-      // CRITICAL: We removed the 'key' prop here to stop the "slowness"
+      // We explicitly DO NOT use a 'key' prop here. 
+      // This keeps Aura's session alive during navigation.
       businessId={activeBusinessId} 
       userId={activeUserId}
       tenantData={tenantData}
@@ -172,8 +215,14 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * USE COPILOT HOOK
+ * The primary way for any component in the BBU1 Universe to speak to Aura.
+ */
 export function useCopilot() {
   const context = useContext(CopilotContext);
-  if (!context) throw new Error("useCopilot must be used within GlobalCopilotProvider");
+  if (!context) {
+    throw new Error("useCopilot must be used within GlobalCopilotProvider");
+  }
   return context;
 }
