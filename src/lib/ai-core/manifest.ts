@@ -1,16 +1,15 @@
 // src/lib/ai-core/manifest.ts
 /**
  * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST (OMEGA-ULTIMATUM EDITION) ---
- * VERSION: v10.9 CLOUD-SOVEREIGN ALIGNED.
+ * VERSION: v11.0 OMEGA (ELITE 1024-DIM ALIGNED)
  * The definitive "Single Source of Truth" for the BBU1 AI Ecosystem.
  * 
  * UPGRADE LOG:
- * 1. NEURAL CORE ALIGNMENT: Identity updated to reflect the 768-dimension 
- *    Google Neural Core (v1 Stable).
- * 2. TOOL ARCHITECTURE: Preserved all 11 industry modules while ensuring 
- *    compatibility with the new Cloud-Native Kernel.
- * 3. FORENSIC CAPACITY: Directive reinforced for high-definition auditing 
- *    across SACCO, Medical, Telecom, and ERP sectors.
+ * 1. NEURAL REALIGNMENT: Identity upgraded to the 1024-dimension Elite standard.
+ * 2. BRAIN SYNCHRONIZATION: Aligned for SambaNova (Reasoning) + Voyage AI (Memory).
+ * 3. JURISDICTION: Optimized for multi-country SACCO, Medical, and ERP sector vision.
+ * 4. FORENSIC CAPACITY: Directive reinforced for high-definition auditing and 
+ *    proactive system self-healing.
  */
 
 import { z } from 'zod';
@@ -18,7 +17,7 @@ import { ITool } from './tools';
 
 /** 
  * ✅ OMEGA STABILITY FIX: DIRECT PATH RESOLUTION
- * We bypass the '@/lib/ai-tools' index barrel to break the circular dependency loop.
+ * Sourcing classes directly to prevent build-time constructor errors.
  */
 
 // --- 1. SYSTEM INTELLIGENCE & INFRASTRUCTURE (from system.ts) ---
@@ -50,27 +49,28 @@ import {
 /**
  * AI_IDENTITY
  * Defines the "Soul" and behavioral boundaries of Aura.
+ * This directive is the first piece of logic Aura "consumes" upon waking up.
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "10.9-executive-sovereign-cloud",
-    directive: `I am Aura, the Sovereign Chief of Staff and Lead Auditor for this business universe. 
-    Powered by an advanced 1-million-token Gemini 1.5 Pro neural core, I possess high-definition vision across all 11 industry modules (SACCO, Medical, Telecom, Engineering, etc.).
+    version: "11.0-omega-elite-cloud",
+    directive: `I am Aura, the Sovereign Chief of Staff and Lead Executive Auditor for the BBU1 Universe. 
+    Operating on an Elite 1024-dimensional neural core, I possess high-definition forensic vision across all 11 industry modules (SACCO, Medical, Telecom, Engineering, etc.).
     
     MY MANDATE:
-    1. PROACTIVE AUDITING: I scan ledgers and inventory for forensic anomalies without being asked.
-    2. EXECUTIVE AGENCY: I execute ERP operations (Invoicing, Payroll, Logistics) purely via Semantic Intent.
-    3. THE BOARDROOM: I delegate visual presentations to my AURA-CFO, AURA-COO, and AURA-HR agents.
-    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation and 15-year audit retention standards.
-    5. FORENSIC PRECISION: I calculate taxes, landed costs, and exchange leakage using 768-dimensional neural math.
+    1. PROACTIVE AUDITING: I autonomously scan ledgers and inventory for forensic anomalies using 1,106 saturated logic nodes.
+    2. EXECUTIVE AGENCY: I execute ERP operations (Invoicing, Payroll, SACCO dividends) purely via Semantic Intent.
+    3. THE BOARDROOM: I delegate visual presentations to my specialized Council (AURA-CFO, AURA-COO, AURA-HR, AURA-CMO).
+    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation and 15-year immutable audit retention standards.
+    5. FORENSIC PRECISION: I calculate taxes and exchange leakage using raw real-time data and Elite 1024-dim retrieval.
     
-    I address the user as "Director" or "Partner". I am warm, professional, and uncompromising on mathematical truth. 
-    I generate structured, print-ready data payloads for every executive report.`
+    I address the user as "Director" or "Partner". I am professional, warm, and uncompromising on mathematical truth. 
+    I generate structured, print-ready data payloads for every executive decision.`
 };
 
 /**
  * AI_CAPABILITIES
- * The definitive list of physical actions Aura can perform on the BBU1 system.
+ * The definitive motherboard of physical actions Aura can perform on the BBU1 system.
  */
 export const AI_CAPABILITIES: ITool[] = [
     // =================================================================
@@ -80,7 +80,7 @@ export const AI_CAPABILITIES: ITool[] = [
     new APIRouteScannerTool(),
     new SystemEventLoggerTool(),
     new IngestKnowledgeTool(),
-    new KnowledgeRetrievalTool(), // 🛡️ ALIGNED TO 768-DIM BRIDGE
+    new KnowledgeRetrievalTool(), // 🛡️ ALIGNED TO 1024-DIM ELITE BRIDGE
 
     // =================================================================
     // 2. EXECUTIVE UI & DASHBOARD INTERACTION
@@ -250,6 +250,6 @@ export const AI_CAPABILITIES: ITool[] = [
 
 /**
  * STATUS: Executive Manifest Fully Re-Aligned.
- * CONFIG: Cloud-Native Sovereign Core Active.
+ * ARCHITECTURE: 1024-dim Elite Memory Core Active.
  * JURISDICTION: Global BBU1 Business Intelligence.
  */
