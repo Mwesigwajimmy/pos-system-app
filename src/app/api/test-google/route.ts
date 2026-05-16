@@ -6,21 +6,21 @@ export async function GET() {
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
         
         /** 
-         * ✅ FORENSIC FIX: Using the model we SAW in your Discovery List.
-         * We use the 'v1' stable endpoint.
+         * ✅ OMEGA LITE ALIGNMENT
+         * Switching to the 'lite' model which has higher free-tier availability.
          */
         const model = genAI.getGenerativeModel(
-            { model: "gemini-2.0-flash" }, // Using the 2.0 version from your logs
+            { model: "gemini-2.0-flash-lite" }, 
             { apiVersion: 'v1' }
         );
         
-        const result = await model.generateContent("Aura Pulse Check: Confirming 2.0 Link.");
+        const result = await model.generateContent("Pulse Check: Are you there Aura?");
         const text = result.response.text();
 
         return NextResponse.json({ 
             success: true, 
             google_status: "ONLINE", 
-            brain_version: "2.0-FLASH",
+            brain_version: "2.0-FLASH-LITE",
             message: text 
         });
     } catch (e: any) {
@@ -28,7 +28,7 @@ export async function GET() {
             success: false, 
             google_status: "OFFLINE", 
             error: e.message,
-            tip: "Try changing the model to 'gemini-2.5-flash' if 2.0 is restricted."
+            suggestion: "If this also says Limit 0, wait 60 seconds and refresh."
         }, { status: 500 });
     }
 }
