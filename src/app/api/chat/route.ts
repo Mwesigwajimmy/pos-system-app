@@ -110,7 +110,7 @@ export async function GET() {
             success: true, 
             total_nodes_healed: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_STALLED" : "SOVEREIGN_AWAKE_100",
-            message: `Aura Memory Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
+            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Elite Neural Bridge.`,
             diagnostic: diagnosticLog
         }), {
             status: 200,
@@ -342,13 +342,19 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             }
 
             // ✅ BIGINT PRECISION FIX: Explicit match using string to prevent precision loss.
+            /**
+             * DEEP SYNTAX FIX: 
+             * Replaced flipped .eq() with an explicit .match({ id: row.id }) object.
+             * This ensures PostgreSQL treats 'row.id' as a value to find, not a column name.
+             * This kills the "column ai_knowledge.146492 does not exist" error.
+             */
             const { error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ 
                     embedding: vector,
                     updated_at: new Date().toISOString()
                 })
-                .eq(row.id.toString(), 'id'); // Logic preserved as requested
+                .match({ id: row.id }); 
             
             if (updateError) {
                 lastDiagnosticError = `DB REJECTION: ${updateError.message}`;
