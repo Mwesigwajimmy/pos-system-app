@@ -1,34 +1,44 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 export async function GET() {
     try {
-        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
-        
-        /** 
-         * ✅ OMEGA LITE ALIGNMENT
-         * Switching to the 'lite' model which has higher free-tier availability.
+        const API_KEY = process.env.SAMBANOVA_API_KEY;
+
+        /**
+         * ✅ SAMBANOVA HANDSHAKE
+         * Using the Llama 3.3 70B model seen in your dashboard screenshot.
          */
-        const model = genAI.getGenerativeModel(
-            { model: "gemini-2.0-flash-lite" }, 
-            { apiVersion: 'v1' }
-        );
-        
-        const result = await model.generateContent("Pulse Check: Are you there Aura?");
-        const text = result.response.text();
+        const response = await fetch("https://api.sambanova.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "Meta-Llama-3.3-70B-Instruct",
+                messages: [{ role: "user", content: "Aura Pulse Check: Are you online?" }],
+                temperature: 0.1
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return NextResponse.json({ 
+                success: false, 
+                status: "OFFLINE", 
+                error: data.error?.message || "Connection Refused" 
+            }, { status: response.status });
+        }
 
         return NextResponse.json({ 
             success: true, 
-            google_status: "ONLINE", 
-            brain_version: "2.0-FLASH-LITE",
-            message: text 
+            status: "ONLINE", 
+            brain: "SambaNova Llama 3.3 70B",
+            message: data.choices[0].message.content 
         });
+
     } catch (e: any) {
-        return NextResponse.json({ 
-            success: false, 
-            google_status: "OFFLINE", 
-            error: e.message,
-            suggestion: "If this also says Limit 0, wait 60 seconds and refresh."
-        }, { status: 500 });
+        return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
 }
