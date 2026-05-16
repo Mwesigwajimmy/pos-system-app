@@ -1,7 +1,7 @@
 // src/lib/langchain/core-prompts-shim.ts
 /**
  * --- BBU1 SOVEREIGN PROMPT & MESSAGE ENGINE ---
- * VERSION: v14.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
+ * VERSION: v15.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
  * STATUS: FORENSICALLY STABILIZED & HANDSHAKE ALIGNED
  * 
  * This engine governs the linguistic structure of the BBU1 Universe.
@@ -19,7 +19,7 @@ import { z } from 'zod';
 
 /**
  * TOOL CALL INTERFACE
- * Standardized structure for Gemini's autonomous tool requests.
+ * Standardized structure for Gemini/Llama autonomous tool requests.
  */
 export interface ToolCall {
   id: string;
@@ -51,7 +51,8 @@ export class BaseMessage {
         ...metadata,
         forensic_id: forensicId,
         timestamp: new Date().toISOString(),
-        brain_standard: "Elite 1024-dim"
+        brain_standard: "Elite 1024-dim",
+        jurisdiction: "Global BBU1"
     };
   }
 }
@@ -248,17 +249,19 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
       /**
        * ASYNCHRONOUS DYNAMIC IMPORT
        * Prevents circular dependency with the data/system tool barrels.
+       * ✅ v15.0 FIX: Targeting the system-specific tool hub.
        */
       try {
         const tools = await import('../ai-tools/system');
         if (tools.SystemEventLoggerTool) {
           const logger = new tools.SystemEventLoggerTool();
           await logger.invoke({
-            event_type: "error",
+            event_type: "forensic_error",
             payload: { 
                 failed_tool: this.name, 
                 error_message: errorMessage,
-                timestamp: new Date().toISOString() 
+                timestamp: new Date().toISOString(),
+                brain_standard: "Elite 1024-dim"
             }
           }, config);
         }
@@ -267,7 +270,7 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
       }
       return JSON.stringify({ 
           success: false, 
-          status: "Link Interrupted", 
+          status: "Neural Link Interrupted", 
           error: errorMessage 
       });
     }
@@ -286,6 +289,6 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
 
 /**
  * STATUS: Prompt & Message Engine Fully Re-Aligned.
- * ARCHITECTURE: Elite 1024-dim Memory Ready.
- * VERSION: v14.0 (Omega-Ultimatum Core).
+ * ARCHITECTURE: Elite 1024-dim Memory Saturated.
+ * VERSION: v15.0 (Omega-Ultimatum Core Ready).
  */

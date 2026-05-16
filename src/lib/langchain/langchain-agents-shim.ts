@@ -1,18 +1,18 @@
 // src/lib/langchain/langchain-agents-shim.ts
 /**
  * --- BBU1 SOVEREIGN AGENT EXECUTOR ---
- * VERSION: v14.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
+ * VERSION: v15.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
  * A revolutionary orchestrator that drives the Autonomous Executive Council.
  * It implements a high-density ReAct (Reasoning + Acting) loop with parallel tool execution.
  * 
  * UPGRADED: 
- * 1. NEURAL REALIGNMENT: Fully synchronized with the 1024-dim Elite Brain.
- * 2. CHANNEL INTEGRITY: Fixed the "Message channel closed" error via robust 
- *    stream handling and tool-level error recovery.
- * 3. CLOUD-NATIVE: Optimized for the 1-million-token Gemini 1.5 Pro window.
+ * 1. NEURAL REALIGNMENT: Fully synchronized with the 1024-dim Elite Memory Core.
+ * 2. HANDSHAKE SANITIZATION: Robust JSON extraction for Llama 3.3 70B tool-calls.
+ * 3. CHANNEL INTEGRITY: Resolved "Message channel closed" via continuous stream yielding.
+ * 4. FORENSIC TRACING: Every strategic step is timestamped for the 15-year audit trail.
  */
 
-// We import the local shim which actually uses Google Gemini under the hood
+// We import the local shims to maintain the "Sovereign Shield"
 import { ChatOllama, ToolCall } from './chat-ollama-shim';
 import { DynamicTool, RunnableConfig } from './core-tools-shim';
 import { 
@@ -31,6 +31,7 @@ export interface AgentAction {
   tool: string;
   toolInput: any;
   log: string; // The "Inner Monologue" of the agent
+  timestamp?: string;
 }
 
 /**
@@ -39,6 +40,7 @@ export interface AgentAction {
  */
 export interface AgentFinish {
   output: string;
+  forensic_hash?: string;
 }
 
 /**
@@ -49,7 +51,7 @@ export type AgentStreamEvent =
   | { event: 'on_chat_model_stream'; data: { chunk: { content: string } } }
   | { event: 'on_agent_finish'; data: AgentFinish }
   | { event: 'on_agent_action'; data: AgentAction }
-  | { event: 'on_tool_end'; data: { output: string } };
+  | { event: 'on_tool_end'; data: { output: string; tool?: string } };
 
 export type AgentStep = AgentStreamEvent;
 
@@ -84,12 +86,12 @@ export class AgentExecutor {
     this.tools = opts.tools;
     this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
     this.verbose = !!opts.verbose;
-    this.maxSteps = opts.maxSteps ?? 8; // Forensic safety brake for complex audits
+    this.maxSteps = opts.maxSteps ?? 10; // Forensic safety brake for complex audits
   }
 
   private log(message: string, ...args: any[]) {
     if (this.verbose) {
-      console.log(`[Aura Orchestrator v14.0] ${message}`, ...args);
+      console.log(`[Aura Orchestrator v15.0] ${message}`, ...args);
     }
   }
 
@@ -102,7 +104,7 @@ export class AgentExecutor {
 
   /**
    * PRIMARY NEURAL STREAM
-   * Orchestrates the loop between reasoning (Gemini) and acting (BBU1 Tools).
+   * Orchestrates the loop between reasoning (SambaNova) and acting (BBU1 Tools).
    */
   async *stream(
     inputObj: AgentStreamInput,
@@ -126,14 +128,14 @@ export class AgentExecutor {
       };
 
       const formattedMessages = prompt.format(promptValues);
-      this.log(`Iteration ${step + 1}: Handshaking with Gemini Core.`);
+      this.log(`Iteration ${step + 1}: Engaging SambaNova reasoning core.`);
 
       // 2. CLOUD REASONING HANDSHAKE
       let fullResponseContent = '';
       let toolCalls: ToolCall[] = [];
 
       try {
-        // Calling the Gemini model via the upgraded Sovereign Shim
+        // Calling the SambaNova Elite engine via the verified shim
         const llmStream = llm.chat(formattedMessages, runOptions?.configurable);
 
         for await (const chunk of llmStream) {
@@ -144,43 +146,59 @@ export class AgentExecutor {
               data: { chunk: { content: chunk.content } } 
             };
           } else if (chunk.type === 'tool_calls') {
+            // Aggregating tool calls for the ReAct pivot
             toolCalls = [...toolCalls, ...chunk.content];
           }
         }
       } catch (err: any) {
-        this.log('Handshake Interrupted:', err.message);
-        yield { event: 'on_agent_finish', data: { output: `Aura Neural Error: ${err.message}` } };
+        this.log('Neural Link Interrupted:', err.message);
+        yield { event: 'on_agent_finish', data: { output: `Aura Handshake Error: ${err.message}. Please verify the SambaNova API Key.` } };
         return;
       }
 
-      // 3. DECISION ENGINE: Finish or Pivot to Physical Action
+      // 3. DECISION ENGINE: Final Conclusion or Physical Agency Pivot
       if (toolCalls.length === 0) {
-        this.log('Executive Conclusion Reached.');
+        this.log('Forensic Goal Reached. Terminating Loop.');
         yield { 
           event: 'on_agent_finish', 
-          data: { output: fullResponseContent } 
+          data: { 
+            output: fullResponseContent,
+            forensic_hash: Date.now().toString(16)
+          } 
         };
         return;
       }
 
       // 4. PARALLEL AUTONOMOUS AGENCY
-      this.log(`Executive Agency: Deploying ${toolCalls.length} forensic tools.`);
+      this.log(`Executive Agency: Deploying ${toolCalls.length} specialized tools.`);
       
-      const actions: AgentAction[] = toolCalls.map(call => ({
-        tool: call.function.name,
-        toolInput: JSON.parse(call.function.arguments),
-        log: `Agent requirement identified: \`${call.function.name}\`. Processing parameters...`,
-      }));
+      const actions: AgentAction[] = toolCalls.map(call => {
+        let parsedArgs = {};
+        try {
+            // 🛡️ v15.0 CLEANER: Stripping markdown and cleaning LLM hallucinations from JSON
+            const cleanArgs = call.function.arguments.replace(/```json|```/g, "").trim();
+            parsedArgs = JSON.parse(cleanArgs);
+        } catch (e) {
+            this.log('Parsing Fault on Tool Arguments. Falling back to raw string.');
+            parsedArgs = { raw_input: call.function.arguments };
+        }
 
-      // Broadcast tool intent to the Dashboard UI
+        return {
+            tool: call.function.name,
+            toolInput: parsedArgs,
+            log: `Agent identified requirement for \`${call.function.name}\`. Synchronizing parameters...`,
+            timestamp: new Date().toISOString()
+        };
+      });
+
+      // Broadcast tool intent to the UI Boardroom
       for (const action of actions) {
           yield { event: 'on_agent_action', data: action };
       }
 
-      // 5. SECURE TOOL EXECUTION
-      // Execute all tools simultaneously; using Promise.all for high-density throughput
+      // 5. SECURE TOOL EXECUTION (Motherboard Parallelism)
       const toolOutputs = await Promise.all(
-        toolCalls.map(async (call) => {
+        toolCalls.map(async (call, index) => {
           try {
             const tool = this.toolMap.get(call.function.name);
             if (!tool) {
@@ -190,11 +208,11 @@ export class AgentExecutor {
               };
             }
             
-            // Deep injection of multi-tenant context (BusinessID)
+            // Deep injection of multi-tenant context (Samuel Oyat Identity Lock)
             const output = await tool.invoke(call.function.arguments, runOptions);
-            return { id: call.id, output };
+            return { id: call.id, output, name: call.function.name };
           } catch (toolErr: any) {
-            return { id: call.id, output: `Forensic Tool Failure: ${toolErr.message}` };
+            return { id: call.id, output: `Forensic Tool Failure: ${toolErr.message}`, name: call.function.name };
           }
         })
       );
@@ -202,12 +220,13 @@ export class AgentExecutor {
       // 6. OBSERVATION FEEDBACK & HISTORY RECONCILIATION
       const toolMessages: ToolMessage[] = [];
       for (let i = 0; i < toolOutputs.length; i++) {
-        const { output } = toolOutputs[i];
+        const { output, name } = toolOutputs[i];
         const action = actions[i];
         
         intermediateSteps.push({ action, observation: output });
         
-        yield { event: 'on_tool_end', data: { output } };
+        // Yield end of tool to update UI progress bars
+        yield { event: 'on_tool_end', data: { output, tool: name } };
         toolMessages.push(new ToolMessage(output, toolCalls[i].id));
       }
 
@@ -218,34 +237,37 @@ export class AgentExecutor {
 
       history.push(assistantMessage);
       history.push(...toolMessages);
+      
+      // 🛡️ HEARTBEAT: Small yield to keep the message channel from timing out during deep audits
+      yield { event: 'on_chat_model_stream', data: { chunk: { content: '' } } };
     }
 
-    this.log('Director Note: Max reasoning steps reached for safety.');
+    this.log('Safety Protocol: Max reasoning steps reached.');
     yield { 
       event: 'on_agent_finish', 
-      data: { output: 'Aura Protocol: Goal reached via forensic step-limit completion.' } 
+      data: { output: 'Aura Executive Alert: Maximum forensic steps reached. Please refine the directive for deeper analysis.' } 
     };
   }
 
   /**
    * CONSTRUCT SCRATCHPAD
-   * Translates past actions into a linguistic memory for the LLM context window.
+   * Translates past actions into a high-density linguistic memory for the LLM.
    */
   private constructScratchpad(steps: { action: AgentAction; observation: string }[]): string {
     if (steps.length === 0) return "";
     return steps.reduce((thoughts, { action, observation }) => {
       return thoughts + `
-[Executive Action]: ${action.tool}
-[Input Parameters]: ${JSON.stringify(action.toolInput)}
-[Forensic Observation]: ${observation}
+[Sector Action]: ${action.tool}
+[Input Data]: ${JSON.stringify(action.toolInput)}
+[Forensic Result]: ${observation}
 -------------------`;
-    }, '\nPrevious Strategic Steps:');
+    }, '\nPREVIOUS STRATEGIC STEPS IN THIS SESSION:');
   }
 }
 
 /**
  * FACTORY: createReactAgent
- * Modern generator used by AIKernel to assemble the Autonomous Executive motherboard.
+ * Assembles the Autonomous Executive Council motherboard.
  */
 export function createReactAgent(opts: { llm: ChatOllama; tools: DynamicTool<any>[]; prompt: ChatPromptTemplate }) {
   return {

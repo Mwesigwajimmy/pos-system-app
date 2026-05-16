@@ -21,16 +21,16 @@ const nextConfig = {
   },
 
   // --- OMEGA BUILD STABILIZATION ---
-  // This prevents Webpack from mangling constructor names for AI logic
-  experimental: {
-    serverComponentsExternalPackages: [
-      '@google/generative-ai',
-      'zod',
-      'vm2',
-      'langchain',
-      '@langchain/core'
-    ],
-  },
+  // Re-aligned for Next.js 15: Moved out of experimental
+  serverExternalPackages: [
+    '@google/generative-ai',
+    'zod',
+    'vm2',
+    'langchain',
+    '@langchain/core',
+    '@langchain/openai',
+    '@langchain/community'
+  ],
 
   webpack: (config, { isServer }) => {
     if (isServer) {
@@ -43,10 +43,7 @@ const nextConfig = {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       '@': path.resolve(__dirname, 'src'),
-      '@langchain/community/chat_models/ollama': path.resolve(__dirname, 'src/lib/langchain/chat-ollama-shim.ts'),
-      'langchain/agents': path.resolve(__dirname, 'src/lib/langchain/langchain-agents-shim.ts'),
-      '@langchain/core/prompts': path.resolve(__dirname, 'src/lib/langchain/core-prompts-shim.ts'),
-      '@langchain/core/tools': path.resolve(__dirname, 'src/lib/langchain/core-tools-shim.ts'),
+      // LANGCHAIN SHIMS REMOVED TO RESTORE CORE FUNCTIONALITY
     };
 
     return config;
