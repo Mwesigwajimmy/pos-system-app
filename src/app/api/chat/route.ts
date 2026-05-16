@@ -256,17 +256,19 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
             },
         });
 
-        // ✅ REVOLUTIONARY SSE STREAMING: 
-        // We ensure each neural chunk is perfectly yielded to resolve the "Message channel closed" error.
+        // ✅ REVOLUTIONARY SSE STREAMING (VERCEL OPTIMIZED): 
+        // Using TextEncoder to prevent "Aligning" stalls on production builds.
+        const encoder = new TextEncoder();
         const transformStream = new ReadableStream({
             async start(controller) {
                 try {
                     for await (const chunk of stream) {
-                        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
+                        const payload = `data: ${JSON.stringify(chunk)}\n\n`;
+                        controller.enqueue(encoder.encode(payload));
                     }
                 } catch (err: any) {
                     console.error("Kernel Stream Fault:", err);
-                    controller.enqueue(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
                 } finally {
                     controller.close();
                 }
@@ -278,6 +280,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
                 'Content-Type': 'text/event-stream; charset=utf-8',
                 'Cache-Control': 'no-cache, no-transform',
                 'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no', // ✅ CRITICAL: Prevents Vercel/Nginx from buffering the stream.
             }
         });
 
