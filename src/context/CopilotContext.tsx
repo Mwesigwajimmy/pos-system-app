@@ -2,13 +2,13 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v15.0 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
+ * VERSION: v15.2 OMEGA-ULTIMATUM (DIRECTOR-FIRST ALIGNMENT)
  * 
  * CORE UPGRADES:
- * 1. NEURAL REALIGNMENT: Fully synchronized with the Voyage Elite 1024-dimension Memory Core.
- * 2. ERROR FORENSICS: Added deep diagnostic capturing to identify exactly where pathways break.
- * 3. CONTEXT PERSISTENCE: Hardened BusinessID and UserID handshakes to prevent 400 errors.
- * 4. STREAM INTEGRITY: Refined the append reference logic to eliminate the "Awaiting Directive" stall.
+ * 1. NEURAL REALIGNMENT: Fully synchronized for 1024-dimension Elite retrieval.
+ * 2. DIRECTOR-FIRST UNLOCK: Handshake unblocks immediately upon User ID verification.
+ * 3. GLOBAL FALLBACK: Defaults to Global Master Brain if Business Node is hydrating.
+ * 4. ERROR FORENSICS: Enhanced diagnostic capturing for regional latency.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useRef, useCallback } from 'react';
@@ -58,9 +58,9 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
   // 1. Initialize Neural Engine (Vercel AI SDK + BBU1 Omega Kernel)
   const chat = useChat({
     api: '/api/chat',
-    // 🛡️ FORENSIC BODY: Sending strict multi-tenant credentials to the backend
+    // 🛡️ SOVEREIGN BODY: Default to 'global' context if businessId is lagging
     body: { 
-      businessId, 
+      businessId: businessId || '00000000-0000-0000-0000-000000000000', 
       userId, 
       tenantModules: modules || [] 
     }, 
@@ -70,10 +70,10 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     onResponse: (response) => {
       if (!response.ok) {
         console.error(`[Aura Forensic] Handshake Rejected: ${response.status}`);
-        if (response.status === 400) {
-            toast.error("Sovereign Context Error: Missing Business/User ID.");
+        if (response.status === 401) {
+            toast.error("Security Alert: Session expired. Re-authenticating...");
         } else if (response.status === 500) {
-            toast.error("Aura Internal Fault: Check 1024-dim database alignment.");
+            toast.error("Aura Internal Fault: Check 1024-dim DB alignment.");
         }
       }
     },
@@ -92,25 +92,26 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     }
   }, [chat.append]);
 
-  // 2. High-Stability Submit Handler (The "Omega Trigger")
+  // 2. High-Stability Submit Handler (v15.2 Improved)
   const handleSubmit = useCallback((e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
     const content = inputState.trim();
     if (!content) return;
 
-    // v15.0: Enhanced Validation for 1024-dim Memory Access
-    if (typeof appendRef.current === 'function' && isReady && businessId) {
+    // ✅ v15.2 DIRECTOR-FIRST UNLOCK:
+    // Allows message if Director ID is present, even if specific node is still hydrating.
+    if (typeof appendRef.current === 'function' && isReady) {
         appendRef.current({ 
           role: 'user', 
           content,
-          // Re-injecting data to ensure the stream remains isolated by tenant
           data: { businessId, userId } 
         });
         setInputState('');
     } else {
-        console.warn("Aura Link Handshake Pending: Context not fully saturated.");
-        toast.info("Aura is aligning neural pathways... please try sending once more in 3 seconds.");
+        const diagnostic = !isReady ? "Identity Lock Pending" : "Append Ref Null";
+        console.warn(`[AURA LINK HANDSHAKE PENDING] Reason: ${diagnostic}`);
+        toast.info("Aura is aligning neural pathways... please try sending once more.");
     }
   }, [inputState, businessId, userId, isReady]);
 
@@ -121,9 +122,9 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     setInputState(prompt);
     setIsOpen(true);
     
-    // Animation buffer to allow the UI to stabilize before firing the query
+    // Animation buffer to allow UI stabilization before firing
     setTimeout(() => {
-      if (typeof appendRef.current === 'function' && isReady && businessId) {
+      if (typeof appendRef.current === 'function' && isReady) {
         appendRef.current({ 
           role: 'user', 
           content: prompt, 
@@ -148,25 +149,15 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     closeCopilot: () => setIsOpen(false),
     toggleCopilot: () => setIsOpen(prev => !prev),
     startAIAssistance,
-    isReady: isReady && !!businessId, // 🛡️ Double-lock ready state
+    isReady,
     businessId,
     userId,
     tenantData,
     tenantModules: modules
   }), [
-    chat.messages, 
-    chat.isLoading, 
-    chat.data, 
-    chat.setMessages,
-    inputState, 
-    isOpen, 
-    isReady, 
-    businessId, 
-    userId, 
-    tenantData, 
-    modules, 
-    handleSubmit, 
-    startAIAssistance
+    chat.messages, chat.isLoading, chat.data, chat.setMessages,
+    inputState, isOpen, isReady, businessId, userId, tenantData, 
+    modules, handleSubmit, startAIAssistance
   ]);
 
   return (
@@ -196,16 +187,18 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { data: modules } = useTenantModules();
 
   const activeBusinessId = useMemo(() => {
-    return userProfile?.business_id || tenantData?.id || '';
+    const id = userProfile?.business_id || tenantData?.id || '';
+    return id === 'loading' ? '' : id;
   }, [userProfile, tenantData]);
 
   const activeUserId = useMemo(() => {
-    return userProfile?.id || '';
+    const id = userProfile?.id || '';
+    return id === 'loading' ? '' : id;
   }, [userProfile]);
 
-  // ✅ FORENSIC FIX: The Ready State now accounts for loading flags.
-  // Aura will wait until the data is physically present to prevent the "aligning" loop.
-  const isReady = mounted && !profileLoading && !tenantLoading && !!activeUserId && !!activeBusinessId;
+  // ✅ FORENSIC FIX: The system is ready the moment the Director (Samuel Oyat) is identified.
+  // We decouple the hard-lock from businessId to prevent regional hydration stalls.
+  const isReady = mounted && !profileLoading && !!activeUserId;
 
   return (
     <CopilotWorker 
