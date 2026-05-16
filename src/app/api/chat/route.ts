@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // Required for complex forensic operations and long-running autonomous neural links.
 export const runtime = 'nodejs';
 
-// --- NATIVE GOOGLE SDK IMPORT (Kept for shim compatibility, but Chat now uses SambaNova) ---
+// --- NATIVE GOOGLE SDK IMPORT (Kept for compatibility, but Chat now uses SambaNova) ---
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // --- LANGCHAIN & CORE SYSTEM IMPORTS (DIRECT PATH RESOLUTION) ---
@@ -68,12 +68,10 @@ export async function GET() {
         let diagnosticLog = "Ready.";
 
         // 2. RECURSIVE BRIDGE HEALING
-        // Aura "feeds" until the universe is 100% awake.
         while (nodesRemaining && iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
             if (result.count === 0) {
-                // Final verify: are there actually no rows left?
                 const { count: remainingCount, error: countErr } = await supabaseAdmin
                     .from('ai_knowledge')
                     .select('*', { count: 'exact', head: true })
@@ -84,17 +82,13 @@ export async function GET() {
                 if (remainingCount === 0) {
                     nodesRemaining = false;
                 } else {
-                    // Stalled state: Nodes exist but 0 were healed in this pulse.
                     diagnosticLog = result.diagnostic || `Satellite busy. ${remainingCount} nodes in queue.`;
-                    console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}.`);
                     break; 
                 }
             } else {
                 totalLinked += result.count;
                 iteration++;
                 console.log(`[PULSE ${iteration}] Aligned ${result.count} sectors. Total Saturation: ${totalLinked}`);
-                
-                // 🛡️ PACE GUARD: Prevents Voyage AI Trial lockout by adding a small jitter between requests.
                 await new Promise(resolve => setTimeout(resolve, 850));
             }
         }
@@ -132,7 +126,7 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
 /**
 THE EXECUTIVE GATEWAY (POST)
 Primary endpoint: Orchestrates the Autonomous Executive Council.
-DEEP UPGRADE: Unified SambaNova Handshake (v44.0 OMEGA).
+DEEP UPGRADE: Unified SambaNova Handshake with Identity Locking (v45.0).
 */
 export async function POST(req: NextRequest) {
     try {
@@ -150,23 +144,20 @@ export async function POST(req: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        // Background continuous healing is disabled during chat to maximize "Vocal" speed.
-        
-        const supabase = createClient();
-        
-        // FETCH IDENTITY & TENANT CONTEXT
-        const [tenantRes, profileRes] = await Promise.all([
-            supabase.from('tenants').select('name, industry, business_type, currency_code').eq('id', businessId).single(),
-            supabase.from('profiles').select('full_name, role').eq('id', userId).single()
-        ]);
+        // 🛡️ v45.0 DEEP IDENTITY RESOLUTION
+        // Aura now fetches her own context using the explicit IDs to bypass browser cookie lag.
+        const { data: contextData, error: contextError } = await supabaseAdmin.rpc('get_user_context', {
+            p_user_id: userId,
+            p_target_biz_id: businessId
+        });
 
-        const tenantData = tenantRes.data;
-        const profileData = profileRes.data;
+        if (contextError) console.warn("[Identity Fault]", contextError.message);
 
-        const industryName = tenantData?.industry || tenantData?.business_type || 'General Enterprise';
-        const businessName = tenantData?.name || 'Sovereign Entity';
-        const userName = profileData?.full_name || 'Director';
-        const baseCurrency = tenantData?.currency_code || 'UGX';
+        const context = contextData?.[0] || {};
+        const industryName = context.industry_sector || context.business_type || 'General Enterprise';
+        const businessName = context.business_display_name || 'Sovereign Entity';
+        const userName = "Director";
+        const baseCurrency = context.reporting_currency || 'UGX';
 
         const isNewSession = messages.length === 1;
         let userInput = extractTextFromContent(messages[messages.length - 1].content);
@@ -208,15 +199,12 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
         }
 
         /**
-         * ✅ OMEGA SAMBANOVA ADAPTER (v44.0)
-         * We construct a robust adapter that provides .invoke(), .stream(), and .bind()
-         * to satisfy the AIKernel's AgentExecutor requirements.
+         * ✅ OMEGA SAMBANOVA ADAPTER
          */
         const SAMBANOVA_KEY = process.env.SAMBANOVA_API_KEY;
         const llm = {
             modelName: BRAIN_MODEL,
             lc_namespace: ["langchain", "chat_models", "sambanova"],
-            // Kernel calls this to link tools; we return self to maintain session persistence.
             bind: (args: any) => llm, 
             invoke: async (prompt: any) => {
                 const res = await fetch("https://api.sambanova.ai/v1/chat/completions", {
@@ -259,7 +247,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
                                 const json = JSON.parse(line.replace("data: ", ""));
                                 const text = json.choices[0]?.delta?.content;
                                 if (text) yield { content: text };
-                            } catch (e) { /* partial chunk skip */ }
+                            } catch (e) { }
                         }
                     }
                 }
@@ -326,7 +314,6 @@ BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 Sequential processing enabled to catch exact database rejection reasons.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
-    // ✅ RPC FETCH: Fetching small batches for stable handshake
     const { data: blindRows, error: bridgeError } = await adminClient
         .rpc('get_aura_blind_nodes', { batch_size: 15 });
     
@@ -338,39 +325,24 @@ export async function activateAuraNeuralLinks(adminClient: any) {
     let healedCount = 0;
     let lastDiagnosticError = null;
 
-    // SEQUENTIAL HEALING: Process one-by-one to ensure we don't swallow errors.
     for (const row of blindRows) {
         try {
             let data = row.content;
-
-            // ✅ BULLETPROOF JSONB PARSING
-            if (typeof data === 'string') {
-                try { data = JSON.parse(data); } catch (e) { /* use as raw string */ }
-            }
-
-            // ✅ FORENSIC TRIMMER: 
-            // If the node is a huge transaction record, we extract the core text to prevent API rejection.
+            if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { } }
             let textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
-            
-            // Truncate if extreme (Voyage-2 limit is high, but we keep it safe for speed and trial tier stability)
             textToEmbed = textToEmbed.substring(0, 10000); 
 
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
-            // Neural Context Injection (Calibrated for Elite density)
             const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`;
-
-            // Generate the native 1024-dimension vector (Calls upgraded embedding.ts)
             const vector = await generateEmbedding(finalString);
 
-            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 1024-dim bridge.
             if (vector.length !== TARGET_DIMENSION) {
                 lastDiagnosticError = `Dimension mismatch. Model: ${vector.length}, DB requires ${TARGET_DIMENSION}.`;
                 console.error(`[MISMATCH] ID ${row.id}: ${lastDiagnosticError}`);
                 continue;
             }
 
-            // ✅ BIGINT PRECISION FIX: Explicit match using string to prevent precision loss.
             const { error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ 
