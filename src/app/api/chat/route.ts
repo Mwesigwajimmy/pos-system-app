@@ -55,9 +55,10 @@ const TARGET_DIMENSION = 1024;
 
 /**
 THE ACTIVATOR (GET Handler)
-Universal Maintenance Route: Recursive loop clearing the 1,112 blind node backlog.
+Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlog.
 DEEP UPGRADE: Now explicitly reports the SambaNova/Mistral Unified Handshake.
-✅ RATE-LIMIT SHIELD: Added Pace Guard to ensure 100% saturation without cloud rejection.
+✅ VERCEL SURVIVAL FIX: Set to perform 3 iterations (15 nodes) per refresh.
+This ensures the function finishes in ~9s, preventing the 504 Gateway Timeout.
 */
 export async function GET() {
     try {
@@ -73,12 +74,15 @@ export async function GET() {
         
         let totalLinked = 0;
         let iteration = 0;
-        const maxIterations = 250; // Increased to ensure all 1,112 nodes are consumed in smaller batches
+        
+        // ✅ OMEGA BURST LIMIT: 
+        // We limit to 3 iterations (15 nodes) to survive Vercel's 10-second timeout.
+        const maxIterations = 3; 
+        
         let nodesRemaining = true;
         let diagnosticLog = "Ready.";
 
-        // 2. RECURSIVE BRIDGE HEALING
-        // Aura "feeds" until the universe is 100% awake.
+        // 2. RECURSIVE BRIDGE HEALING (Burst Mode)
         while (nodesRemaining && iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
@@ -94,27 +98,27 @@ export async function GET() {
                 if (remainingCount === 0) {
                     nodesRemaining = false;
                 } else {
-                    // Stalled state: Nodes exist but 0 were healed in this pulse (likely a rate limit)
+                    // Stalled state: likely hit a rate limit pause.
                     diagnosticLog = result.diagnostic || `Satellite busy. ${remainingCount} nodes in queue.`;
-                    console.warn(`[STALL] Neural Bridge Stalled: ${remainingCount} nodes remaining but 0 linked in pulse ${iteration}.`);
                     break; 
                 }
             } else {
                 totalLinked += result.count;
                 iteration++;
-                console.log(`[PULSE ${iteration}] Aligned ${result.count} sectors. Total Saturation: ${totalLinked}`);
+                console.log(`[PULSE ${iteration}] Burst Progress: ${totalLinked} nodes.`);
                 
-                // 🛡️ OMEGA PACE GUARD: 
-                // Increased to 2.5 seconds to prevent Mistral API saturation and ensure stable node delivery.
+                // 🛡️ PACE GUARD: Prevents Mistral rejection.
                 await new Promise(resolve => setTimeout(resolve, 2500));
             }
         }
         
         return new Response(JSON.stringify({ 
             success: true, 
-            total_nodes_healed: totalLinked,
-            status: nodesRemaining ? "PARTIAL_SATURATION_STALLED" : "SOVEREIGN_AWAKE_100",
-            message: `Aura has consumed ${totalLinked} nodes via the ${TARGET_DIMENSION}-dim Mistral Bridge.`,
+            nodes_healed_in_this_pulse: totalLinked,
+            status: nodesRemaining ? "PARTIAL_SATURATION_BURST_COMPLETE" : "SOVEREIGN_AWAKE_100",
+            message: nodesRemaining 
+                ? `Aura healed ${totalLinked} nodes. REFRESH THIS PAGE to continue saturation.`
+                : `Aura Memory Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
             diagnostic: diagnosticLog
         }), {
             status: 200,
@@ -332,7 +336,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
 
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
-            // Neural Context Injection
+            // Neural Context Injection (Calibrated for Mistral density)
             const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`;
 
             // Generate the native 1024-dimension vector (Mistral Engine)
