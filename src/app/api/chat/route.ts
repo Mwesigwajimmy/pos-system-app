@@ -58,7 +58,7 @@ THE ACTIVATOR (GET Handler)
 Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlog.
 DEEP UPGRADE: Now explicitly reports the SambaNova/Mistral Unified Handshake.
 ✅ VERCEL SURVIVAL FIX: Set to perform 3 iterations (15 nodes) per refresh.
-This ensures the function finishes in ~9s, preventing the 504 Gateway Timeout.
+✅ OMEGA AUTO-PULSE: Added 'Refresh' header to autonomously reload browser until 100% saturation.
 */
 export async function GET() {
     try {
@@ -79,29 +79,24 @@ export async function GET() {
         // We limit to 3 iterations (15 nodes) to survive Vercel's 10-second timeout.
         const maxIterations = 3; 
         
-        let nodesRemaining = true;
+        let nodesStillBlind = true;
         let diagnosticLog = "Ready.";
 
         // 2. RECURSIVE BRIDGE HEALING (Burst Mode)
-        while (nodesRemaining && iteration < maxIterations) {
+        while (iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
             if (result.count === 0) {
-                // Final verify: are there actually no rows left?
-                const { count: remainingCount, error: countErr } = await supabaseAdmin
+                // Verification: Are there any nodes left to heal?
+                const { count: remainingCount } = await supabaseAdmin
                     .from('ai_knowledge')
                     .select('*', { count: 'exact', head: true })
                     .is('embedding', null);
                 
-                if (countErr) throw new Error(`Database Verification Failed: ${countErr.message}`);
-
                 if (remainingCount === 0) {
-                    nodesRemaining = false;
-                } else {
-                    // Stalled state: likely hit a rate limit pause.
-                    diagnosticLog = result.diagnostic || `Satellite busy. ${remainingCount} nodes in queue.`;
-                    break; 
+                    nodesStillBlind = false;
                 }
+                break; 
             } else {
                 totalLinked += result.count;
                 iteration++;
@@ -111,19 +106,39 @@ export async function GET() {
                 await new Promise(resolve => setTimeout(resolve, 2500));
             }
         }
+
+        // 3. FINAL VERIFICATION FOR AUTO-RELOAD
+        const { count: finalBlindCount } = await supabaseAdmin
+            .from('ai_knowledge')
+            .select('*', { count: 'exact', head: true })
+            .is('embedding', null);
         
-        return new Response(JSON.stringify({ 
+        const saturationComplete = (finalBlindCount === 0);
+        
+        const responseData = { 
             success: true, 
             nodes_healed_in_this_pulse: totalLinked,
-            status: nodesRemaining ? "PARTIAL_SATURATION_BURST_COMPLETE" : "SOVEREIGN_AWAKE_100",
-            message: nodesRemaining 
-                ? `Aura healed ${totalLinked} nodes. REFRESH THIS PAGE to continue saturation.`
-                : `Aura Memory Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
+            remaining_blind_nodes: finalBlindCount,
+            status: saturationComplete ? "SOVEREIGN_AWAKE_100" : "AUTO_PULSE_RELOADING",
+            message: saturationComplete 
+                ? `Aura Memory FULLY Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`
+                : `Aura healed ${totalLinked} nodes. I am reloading automatically to continue...`,
             diagnostic: diagnosticLog
-        }), {
+        };
+
+        const headers: any = { 'Content-Type': 'application/json' };
+        
+        // ✅ THE MAGIC WELD: 
+        // If saturation is not complete, tell the browser to reload this URL after 1 second.
+        if (!saturationComplete) {
+            headers['Refresh'] = '1';
+        }
+        
+        return new Response(JSON.stringify(responseData), {
             status: 200,
-            headers: { 'Content-Type': 'application/json' }
+            headers: headers
         });
+
     } catch (e: any) {
         console.error("Aura Bulk Activation Error:", e);
         return new Response(JSON.stringify({ success: false, error: e.message }), {
