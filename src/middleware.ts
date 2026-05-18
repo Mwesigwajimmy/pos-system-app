@@ -185,6 +185,12 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
+    // ✅ ADD THESE 3 LINES RIGHT HERE:
+    if (pathname.startsWith('/api/') || pathname.includes('.')) {
+        return NextResponse.next();
+    }
+    // -------------------------------
+
     // --- START: next-intl Integration ---
     const pathnameIsMissingLocale = locales.every(
         (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
@@ -342,6 +348,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
+    '/((?!api/|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
   ],
 };
