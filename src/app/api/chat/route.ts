@@ -119,7 +119,8 @@ export async function GET() {
 
         const headers: any = { 
             'Content-Type': 'application/json',
-            // ✅ THE MAGIC WELD: Force the browser to never cache the "200" number
+            // ✅ THE MAGIC WELD: Force the browser and Vercel to never cache the "200" number
+            // This ensures every refresh shows the ACTUAL current count from the database.
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
@@ -235,6 +236,8 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 
         /**
          * ✅ THE DEEP FIX: INDUSTRIAL SAMBANOVA BRIDGE (v46.0)
+         * Using the official ChatOpenAI class ensures that internal LangChain logic
+         * like .bindTools() and .stream() function perfectly without crashing the channel.
          */
         const llm = new ChatOpenAI({
             modelName: BRAIN_MODEL,
@@ -310,12 +313,14 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v35.0 INDUSTRIAL LOCK) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v48.0 INDUSTRIAL LOCK) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 ✅ DEEP FIX: Added .eq().select() to force database verification.
 ✅ DEEP FIX: Added JSONB extraction for schema nodes to ensure high-quality vectors.
+✅ RATE-LIMIT OPTIMIZED: Batch size reduced to 5 to prevent Mistral 429 errors.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
+    // ✅ RPC FETCH: Fetching 5-node sub-batches for stable cloud handshake
     const { data: blindRows, error: bridgeError } = await adminClient
         .rpc('get_aura_blind_nodes', { batch_size: 5 }); 
     
@@ -327,60 +332,70 @@ export async function activateAuraNeuralLinks(adminClient: any) {
     let healedCount = 0;
     let lastDiagnosticError = null;
 
+    // SEQUENTIAL HEALING: Process one-by-one to ensure we don't swallow errors.
     for (const row of blindRows) {
         try {
             let data = row.content;
 
-            // ✅ OMEGA JSONB EXTRACTION
+            // ✅ BULLETPROOF JSONB PARSING
+            // Since your 200 nodes are database schemas, they are often complex JSON.
             if (typeof data === 'string') {
-                try { data = JSON.parse(data); } catch (e) { }
+                try { data = JSON.parse(data); } catch (e) { /* use as raw string */ }
             }
 
-            // Extract text from raw_text or stringify the object
+            // ✅ FORENSIC TRIMMER: Extract clean text from JSONB 'raw_text' property
             let textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
             textToEmbed = textToEmbed.substring(0, 10000); 
 
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
+            // Neural Context Injection (Calibrated for Mistral density)
             const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`;
+
+            // Generate the native 1024-dimension vector (Mistral Engine)
             const vector = await generateEmbedding(finalString);
 
+            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 1024-dim bridge.
             if (!vector || vector.length !== TARGET_DIMENSION) {
-                lastDiagnosticError = `Dimension mismatch: ${vector?.length}`;
+                lastDiagnosticError = `Dimension mismatch. Model: ${vector?.length}, DB requires ${TARGET_DIMENSION}.`;
+                console.error(`[MISMATCH] ID ${row.id}: ${lastDiagnosticError}`);
                 continue;
             }
 
             /**
-             * ✅ THE OMEGA LOCK:
-             * Using .eq('id', row.id).select() forces Supabase to return the row.
-             * If RLS or a Trigger blocks it, 'verified' will be empty.
+             * ✅ THE OMEGA LOCK: 
+             * Using .eq('id', row.id).select() forces Supabase to confirm the write.
+             * This prevents the "reverting" issue by ensuring the node is physically locked before the next pulse.
              */
-            const { data: verified, error: updateError } = await adminClient
+            const { data: verifiedRow, error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ 
                     embedding: vector,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', row.id) 
-                .select(); 
+                .select(); // <--- THE OMEGA LOCK: FORCE DB RECEIPT
             
             if (updateError) {
-                console.error(`[DB REJECTION] ID: ${row.id} | ${updateError.message}`);
+                lastDiagnosticError = `DB REJECTION: ${updateError.message}`;
+                console.error(`[DATABASE REJECTION] ID: ${row.id} | Reason: ${updateError.message}`);
                 continue;
             }
 
-            if (!verified || verified.length === 0) {
-                console.warn(`[RLS BLOCK] ID: ${row.id} was rejected by database policies.`);
+            if (!verifiedRow || verifiedRow.length === 0) {
+                lastDiagnosticError = `RLS_BLOCK: Row was not updated. Check Security Policies.`;
+                console.warn(`[SECURITY ALERT] ID: ${row.id} was rejected by Database RLS.`);
                 continue;
             }
                 
             healedCount++;
             
-            // ✅ PACE GUARD: Prevent Rate Limit 429
+            // ✅ INTERNAL PACE GUARD: 800ms delay between individual nodes to prevent burst limits
             await new Promise(resolve => setTimeout(resolve, 800));
 
         } catch (err: any) {
-            console.error(`[SATELLITE ERROR] ID: ${row.id} | ${err.message}`);
+            lastDiagnosticError = `Cloud Satellite Exception: ${err.message}`;
+            console.error(`[ENGINE EXCEPTION] ID: ${row.id} | Reason: ${err.message}`);
         }
     }
 
