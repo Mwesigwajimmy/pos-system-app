@@ -59,6 +59,7 @@ Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlo
 DEEP UPGRADE: Now explicitly reports the SambaNova/Mistral Unified Handshake.
 ✅ VERCEL SURVIVAL FIX: Set to perform 3 iterations (15 nodes) per refresh.
 ✅ OMEGA AUTO-PULSE: Added 'Refresh' header to autonomously reload browser until 100% saturation.
+✅ CACHE KILLER: Added strict no-cache headers to prevent the 200 count from repeating.
 */
 export async function GET() {
     try {
@@ -79,7 +80,6 @@ export async function GET() {
         // We limit to 3 iterations (15 nodes) to survive Vercel's 10-second timeout.
         const maxIterations = 3; 
         
-        let nodesStillBlind = true;
         let diagnosticLog = "Ready.";
 
         // 2. RECURSIVE BRIDGE HEALING (Burst Mode)
@@ -87,15 +87,6 @@ export async function GET() {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
             if (result.count === 0) {
-                // Verification: Are there any nodes left to heal?
-                const { count: remainingCount } = await supabaseAdmin
-                    .from('ai_knowledge')
-                    .select('*', { count: 'exact', head: true })
-                    .is('embedding', null);
-                
-                if (remainingCount === 0) {
-                    nodesStillBlind = false;
-                }
                 break; 
             } else {
                 totalLinked += result.count;
@@ -126,9 +117,14 @@ export async function GET() {
             diagnostic: diagnosticLog
         };
 
-        const headers: any = { 'Content-Type': 'application/json' };
+        const headers: any = { 
+            'Content-Type': 'application/json',
+            // ✅ THE MAGIC WELD: Force the browser to never cache the "200" number
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        };
         
-        // ✅ THE MAGIC WELD: 
         // If saturation is not complete, tell the browser to reload this URL after 1 second.
         if (!saturationComplete) {
             headers['Refresh'] = '1';
@@ -143,7 +139,7 @@ export async function GET() {
         console.error("Aura Bulk Activation Error:", e);
         return new Response(JSON.stringify({ success: false, error: e.message }), {
             status: 500,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
         });
     }
 }
@@ -239,8 +235,6 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 
         /**
          * ✅ THE DEEP FIX: INDUSTRIAL SAMBANOVA BRIDGE (v46.0)
-         * Using the official ChatOpenAI class ensures that internal LangChain logic
-         * like .bindTools() and .stream() function perfectly without crashing the channel.
          */
         const llm = new ChatOpenAI({
             modelName: BRAIN_MODEL,
@@ -279,8 +273,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
             },
         });
 
-        // ✅ REVOLUTIONARY SSE STREAMING (VERCEL OPTIMIZED): 
-        // Using TextEncoder to prevent "Aligning" stalls on production builds.
+        // ✅ REVOLUTIONARY SSE STREAMING (VERCEL OPTIMIZED)
         const encoder = new TextEncoder();
         const transformStream = new ReadableStream({
             async start(controller) {
@@ -303,13 +296,12 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
                 'Content-Type': 'text/event-stream; charset=utf-8',
                 'Cache-Control': 'no-cache, no-transform',
                 'Connection': 'keep-alive',
-                'X-Accel-Buffering': 'no', // ✅ CRITICAL: Prevents Vercel/Nginx from buffering the stream.
+                'X-Accel-Buffering': 'no', 
             }
         });
 
     } catch (e: any) {
         console.error("Aura Executive Kernel Exception:", e);
-        // ✅ DEEP ROOT ERROR REPORTING: Sends the real error in a format the UI can capture.
         return new Response(JSON.stringify({ error: { message: `Aura Neural Crash: ${e.message}` } }), { 
             status: 500,
             headers: { 'Content-Type': 'application/json' }
@@ -318,12 +310,12 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v33.0 FORENSIC PRECISION) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v35.0 INDUSTRIAL LOCK) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-✅ RATE-LIMIT OPTIMIZED: Batch size reduced to 5 to prevent Mistral 429 errors.
+✅ DEEP FIX: Added .eq().select() to force database verification.
+✅ DEEP FIX: Added JSONB extraction for schema nodes to ensure high-quality vectors.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
-    // ✅ RPC FETCH: Fetching 5-node sub-batches for stable cloud handshake
     const { data: blindRows, error: bridgeError } = await adminClient
         .rpc('get_aura_blind_nodes', { batch_size: 5 }); 
     
@@ -335,58 +327,60 @@ export async function activateAuraNeuralLinks(adminClient: any) {
     let healedCount = 0;
     let lastDiagnosticError = null;
 
-    // SEQUENTIAL HEALING: Process one-by-one to ensure we don't swallow errors.
     for (const row of blindRows) {
         try {
             let data = row.content;
 
-            // ✅ BULLETPROOF JSONB PARSING
+            // ✅ OMEGA JSONB EXTRACTION
             if (typeof data === 'string') {
-                try { data = JSON.parse(data); } catch (e) { /* use as raw string */ }
+                try { data = JSON.parse(data); } catch (e) { }
             }
 
-            // ✅ FORENSIC TRIMMER
+            // Extract text from raw_text or stringify the object
             let textToEmbed = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
             textToEmbed = textToEmbed.substring(0, 10000); 
 
             if (!textToEmbed || textToEmbed.length < 5) continue;
 
-            // Neural Context Injection (Calibrated for Mistral density)
             const finalString = `[SECTOR: ${row.content_type}] ${textToEmbed}`;
-
-            // Generate the native 1024-dimension vector (Mistral Engine)
             const vector = await generateEmbedding(finalString);
 
-            // ✅ DIMENSION AUDIT: Rejects anything that doesn't fit the 1024-dim bridge.
-            if (vector.length !== TARGET_DIMENSION) {
-                lastDiagnosticError = `Dimension mismatch. Model: ${vector.length}, DB requires ${TARGET_DIMENSION}.`;
-                console.error(`[MISMATCH] ID ${row.id}: ${lastDiagnosticError}`);
+            if (!vector || vector.length !== TARGET_DIMENSION) {
+                lastDiagnosticError = `Dimension mismatch: ${vector?.length}`;
                 continue;
             }
 
-            // ✅ BIGINT PRECISION FIX: Explicit match using object syntax
-            const { error: updateError } = await adminClient
+            /**
+             * ✅ THE OMEGA LOCK:
+             * Using .eq('id', row.id).select() forces Supabase to return the row.
+             * If RLS or a Trigger blocks it, 'verified' will be empty.
+             */
+            const { data: verified, error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ 
                     embedding: vector,
                     updated_at: new Date().toISOString()
                 })
-                .match({ id: row.id }); 
+                .eq('id', row.id) 
+                .select(); 
             
             if (updateError) {
-                lastDiagnosticError = `DB REJECTION: ${updateError.message}`;
-                console.error(`[DATABASE REJECTION] ID: ${row.id} | Reason: ${updateError.message}`);
+                console.error(`[DB REJECTION] ID: ${row.id} | ${updateError.message}`);
+                continue;
+            }
+
+            if (!verified || verified.length === 0) {
+                console.warn(`[RLS BLOCK] ID: ${row.id} was rejected by database policies.`);
                 continue;
             }
                 
             healedCount++;
             
-            // ✅ INTERNAL PACE GUARD: 500ms delay between individual nodes to prevent burst limits
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // ✅ PACE GUARD: Prevent Rate Limit 429
+            await new Promise(resolve => setTimeout(resolve, 800));
 
         } catch (err: any) {
-            lastDiagnosticError = `Cloud Satellite Exception: ${err.message}`;
-            console.error(`[ENGINE EXCEPTION] ID: ${row.id} | Reason: ${err.message}`);
+            console.error(`[SATELLITE ERROR] ID: ${row.id} | ${err.message}`);
         }
     }
 
