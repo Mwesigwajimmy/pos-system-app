@@ -19,21 +19,23 @@ import { ChatOpenAI } from "@langchain/openai";
 // --- NATIVE GOOGLE SDK IMPORT (Kept for shim compatibility shims) ---
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// --- LANGCHAIN & CORE SYSTEM IMPORTS (OFFICIAL PATH RESOLUTION) ---
+// --- LANGCHAIN & CORE SYSTEM IMPORTS (DIRECT PATH RESOLUTION) ---
 import { AIKernel } from '@/lib/ai-core/kernel';
+// import { ChatOllama } from '@/lib/langchain/chat-ollama-shim'; // REMOVED TO PREVENT TIMEOUTS
 import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
 
-// ✅ ALIGNMENT FIX: Points to official packages to resolve 'tool' export errors
+/**
+ * ✅ OMEGA ARCHITECTURAL FIX: SHIM ALIGNMENT
+ * Reverting to local shims to resolve the 'Class extends undefined' build error.
+ * This ensures the constructors for messages and templates are found locally by the build engine.
+ */
 import { 
     AIMessage, 
     HumanMessage, 
-    BaseMessage 
-} from '@langchain/core/messages';
-
-import { 
-    ChatPromptTemplate, 
+    BaseMessage,
+    ChatPromptTemplate,
     MessagesPlaceholder 
-} from '@langchain/core/prompts';
+} from '@/lib/langchain/core-prompts-shim';
 
 import { createClient } from '@/lib/supabase/server';
 import { generateEmbedding } from '@/lib/ai-tools/embedding';
@@ -345,12 +347,6 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             }
 
             // ✅ BIGINT PRECISION FIX: Explicit match using string to prevent precision loss.
-            /**
-             * DEEP SYNTAX FIX: 
-             * Replaced flipped .eq() with an explicit .match({ id: row.id }) object.
-             * This ensures PostgreSQL treats 'row.id' as a value to find, not a column name.
-             * This kills the "column ai_knowledge.146492 does not exist" error.
-             */
             const { error: updateError } = await adminClient
                 .from('ai_knowledge')
                 .update({ 
@@ -367,7 +363,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
                 
             healedCount++;
         } catch (err: any) {
-            lastDiagnosticError = `Voyage Satellite Exception: ${err.message}`;
+            lastDiagnosticError = `Satellite Exception: ${err.message}`;
             console.error(`[ENGINE EXCEPTION] ID: ${row.id} | Reason: ${err.message}`);
         }
     }

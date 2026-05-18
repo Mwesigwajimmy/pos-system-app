@@ -1,7 +1,7 @@
 // src/lib/langchain/langchain-agents-shim.ts
 /**
  * --- BBU1 SOVEREIGN AGENT EXECUTOR ---
- * VERSION: v15.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
+ * VERSION: v15.1 OMEGA (ALIGNED FOR AURA ELITE 1024)
  * A revolutionary orchestrator that drives the Autonomous Executive Council.
  * It implements a high-density ReAct (Reasoning + Acting) loop with parallel tool execution.
  * 
@@ -9,7 +9,7 @@
  * 1. NEURAL REALIGNMENT: Fully synchronized with the 1024-dim Elite Memory Core.
  * 2. HANDSHAKE SANITIZATION: Robust JSON extraction for Llama 3.3 70B tool-calls.
  * 3. CHANNEL INTEGRITY: Resolved "Message channel closed" via continuous stream yielding.
- * 4. FORENSIC TRACING: Every strategic step is timestamped for the 15-year audit trail.
+ * 4. SHIM STABILITY: Direct local resolution to prevent Next.js 15 build failures.
  */
 
 // We import the local shims to maintain the "Sovereign Shield"
@@ -25,7 +25,6 @@ import {
 
 /**
  * EXECUTIVE ACTION METADATA
- * Captures the reasoning and intent of an agent (e.g., CFO deciding to calculate tax).
  */
 export interface AgentAction {
   tool: string;
@@ -36,7 +35,6 @@ export interface AgentAction {
 
 /**
  * EXECUTIVE COMPLETION
- * Signals that the Council has reached a final business conclusion.
  */
 export interface AgentFinish {
   output: string;
@@ -45,7 +43,6 @@ export interface AgentFinish {
 
 /**
  * DISCRIMINATED UNION FOR SOVEREIGN STREAMING
- * Ensures the UI receives perfectly typed event packets for real-time boardroom rendering.
  */
 export type AgentStreamEvent =
   | { event: 'on_chat_model_stream'; data: { chunk: { content: string } } }
@@ -57,7 +54,7 @@ export type AgentStep = AgentStreamEvent;
 
 export interface AgentExecutorOptions {
   agent: {
-    llm: ChatOllama;
+    llm: any; // ✅ UPGRADED: Flexible type to support SambaNova Industrial Bridge
     prompt: ChatPromptTemplate;
   };
   tools: DynamicTool<any>[];
@@ -86,19 +83,16 @@ export class AgentExecutor {
     this.tools = opts.tools;
     this.toolMap = new Map(this.tools.map(tool => [tool.name, tool]));
     this.verbose = !!opts.verbose;
-    this.maxSteps = opts.maxSteps ?? 10; // Forensic safety brake for complex audits
+    this.maxSteps = opts.maxSteps ?? 10; 
   }
 
   private log(message: string, ...args: any[]) {
     if (this.verbose) {
-      console.log(`[Aura Orchestrator v15.0] ${message}`, ...args);
+      console.log(`[Aura Orchestrator v15.1] ${message}`, ...args);
     }
   }
 
-  /**
-   * Static Factory for direct Agent initialization.
-   */
-  static async create(opts: { llm: ChatOllama; tools: DynamicTool<any>[]; prompt: ChatPromptTemplate }) {
+  static async create(opts: { llm: any; tools: DynamicTool<any>[]; prompt: ChatPromptTemplate }) {
     return new AgentExecutor({ agent: { llm: opts.llm, prompt: opts.prompt }, tools: opts.tools });
   }
 
@@ -127,38 +121,49 @@ export class AgentExecutor {
         chat_history: history,
       };
 
+      // Ensure the prompt format is aligned with the 1024-dim context window
       const formattedMessages = prompt.format(promptValues);
-      this.log(`Iteration ${step + 1}: Engaging SambaNova reasoning core.`);
+      this.log(`Iteration ${step + 1}: Engaging reasoning core.`);
 
-      // 2. CLOUD REASONING HANDSHAKE
+      // 2. REASONING HANDSHAKE (Engine Agnostic)
       let fullResponseContent = '';
       let toolCalls: ToolCall[] = [];
 
       try {
-        // Calling the SambaNova Elite engine via the verified shim
-        const llmStream = llm.chat(formattedMessages, runOptions?.configurable);
+        /**
+         * ✅ OMEGA ENGINE SWITCH
+         * If using the Industrial Bridge (route.ts), we use .stream().
+         * If using the local shim, we use .chat().
+         */
+        const llmStream = llm.stream 
+            ? await llm.stream(formattedMessages, runOptions) 
+            : llm.chat(formattedMessages, runOptions?.configurable);
 
         for await (const chunk of llmStream) {
-          if (chunk.type === 'chunk') {
-            fullResponseContent += chunk.content;
+          // Standardizing content extraction from both Shims and Official classes
+          const content = chunk.content || chunk.data?.chunk?.content || (chunk.type === 'chunk' ? chunk.content : "");
+          const calls = chunk.tool_calls || (chunk.type === 'tool_calls' ? chunk.content : []);
+
+          if (content) {
+            fullResponseContent += content;
             yield { 
               event: 'on_chat_model_stream', 
-              data: { chunk: { content: chunk.content } } 
+              data: { chunk: { content } } 
             };
-          } else if (chunk.type === 'tool_calls') {
-            // Aggregating tool calls for the ReAct pivot
-            toolCalls = [...toolCalls, ...chunk.content];
+          }
+          
+          if (calls && calls.length > 0) {
+            toolCalls = [...toolCalls, ...calls];
           }
         }
       } catch (err: any) {
         this.log('Neural Link Interrupted:', err.message);
-        yield { event: 'on_agent_finish', data: { output: `Aura Handshake Error: ${err.message}. Please verify the SambaNova API Key.` } };
+        yield { event: 'on_agent_finish', data: { output: `Aura Handshake Error: ${err.message}` } };
         return;
       }
 
-      // 3. DECISION ENGINE: Final Conclusion or Physical Agency Pivot
+      // 3. DECISION ENGINE
       if (toolCalls.length === 0) {
-        this.log('Forensic Goal Reached. Terminating Loop.');
         yield { 
           event: 'on_agent_finish', 
           data: { 
@@ -170,111 +175,77 @@ export class AgentExecutor {
       }
 
       // 4. PARALLEL AUTONOMOUS AGENCY
-      this.log(`Executive Agency: Deploying ${toolCalls.length} specialized tools.`);
-      
       const actions: AgentAction[] = toolCalls.map(call => {
         let parsedArgs = {};
         try {
-            // 🛡️ v15.0 CLEANER: Stripping markdown and cleaning LLM hallucinations from JSON
-            const cleanArgs = call.function.arguments.replace(/```json|```/g, "").trim();
-            parsedArgs = JSON.parse(cleanArgs);
+            // Stripping hallucinations from the reasoning stream
+            const rawArgs = typeof call.function.arguments === 'string' 
+                ? call.function.arguments.replace(/```json|```/g, "").trim()
+                : JSON.stringify(call.function.arguments);
+            parsedArgs = JSON.parse(rawArgs);
         } catch (e) {
-            this.log('Parsing Fault on Tool Arguments. Falling back to raw string.');
             parsedArgs = { raw_input: call.function.arguments };
         }
 
         return {
             tool: call.function.name,
             toolInput: parsedArgs,
-            log: `Agent identified requirement for \`${call.function.name}\`. Synchronizing parameters...`,
+            log: `Agent deploying \`${call.function.name}\`. Context: 1024-dim Aligned.`,
             timestamp: new Date().toISOString()
         };
       });
 
-      // Broadcast tool intent to the UI Boardroom
       for (const action of actions) {
           yield { event: 'on_agent_action', data: action };
       }
 
-      // 5. SECURE TOOL EXECUTION (Motherboard Parallelism)
+      // 5. SECURE TOOL EXECUTION (Identity Locked)
       const toolOutputs = await Promise.all(
         toolCalls.map(async (call, index) => {
           try {
             const tool = this.toolMap.get(call.function.name);
             if (!tool) {
-              return {
-                id: call.id,
-                output: JSON.stringify({ error: `Aura Deployment Error: Tool '${call.function.name}' missing from manifest.` }),
-              };
+              return { id: call.id, output: `Tool '${call.function.name}' missing.`, name: call.function.name };
             }
             
-            // Deep injection of multi-tenant context (Samuel Oyat Identity Lock)
+            // Invoking tool with full multi-tenant context
             const output = await tool.invoke(call.function.arguments, runOptions);
             return { id: call.id, output, name: call.function.name };
           } catch (toolErr: any) {
-            return { id: call.id, output: `Forensic Tool Failure: ${toolErr.message}`, name: call.function.name };
+            return { id: call.id, output: `Forensic Error: ${toolErr.message}`, name: call.function.name };
           }
         })
       );
 
-      // 6. OBSERVATION FEEDBACK & HISTORY RECONCILIATION
+      // 6. OBSERVATION FEEDBACK
       const toolMessages: ToolMessage[] = [];
       for (let i = 0; i < toolOutputs.length; i++) {
         const { output, name } = toolOutputs[i];
-        const action = actions[i];
-        
-        intermediateSteps.push({ action, observation: output });
-        
-        // Yield end of tool to update UI progress bars
+        intermediateSteps.push({ action: actions[i], observation: output });
         yield { event: 'on_tool_end', data: { output, tool: name } };
         toolMessages.push(new ToolMessage(output, toolCalls[i].id));
       }
 
-      // Record the Assistant's reasoning and the tool observations for the next iteration
-      const assistantMessage: AIMessage = new AIMessage(fullResponseContent, {
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined
-      });
-
-      history.push(assistantMessage);
+      history.push(new AIMessage(fullResponseContent, { tool_calls: toolCalls }));
       history.push(...toolMessages);
       
-      // 🛡️ HEARTBEAT: Small yield to keep the message channel from timing out during deep audits
+      // Keep channel alive
       yield { event: 'on_chat_model_stream', data: { chunk: { content: '' } } };
     }
 
-    this.log('Safety Protocol: Max reasoning steps reached.');
-    yield { 
-      event: 'on_agent_finish', 
-      data: { output: 'Aura Executive Alert: Maximum forensic steps reached. Please refine the directive for deeper analysis.' } 
-    };
+    yield { event: 'on_agent_finish', data: { output: 'Aura Executive Alert: Max audit steps reached.' } };
   }
 
-  /**
-   * CONSTRUCT SCRATCHPAD
-   * Translates past actions into a high-density linguistic memory for the LLM.
-   */
   private constructScratchpad(steps: { action: AgentAction; observation: string }[]): string {
     if (steps.length === 0) return "";
     return steps.reduce((thoughts, { action, observation }) => {
-      return thoughts + `
-[Sector Action]: ${action.tool}
-[Input Data]: ${JSON.stringify(action.toolInput)}
-[Forensic Result]: ${observation}
--------------------`;
-    }, '\nPREVIOUS STRATEGIC STEPS IN THIS SESSION:');
+      return thoughts + `\n[Action]: ${action.tool}\n[Data]: ${JSON.stringify(action.toolInput)}\n[Observation]: ${observation}\n---`;
+    }, '\nSTRATEGIC HISTORY:');
   }
 }
 
-/**
- * FACTORY: createReactAgent
- * Assembles the Autonomous Executive Council motherboard.
- */
-export function createReactAgent(opts: { llm: ChatOllama; tools: DynamicTool<any>[]; prompt: ChatPromptTemplate }) {
-  return {
-    llm: opts.llm,
-    tools: opts.tools,
-    prompt: opts.prompt,
-  };
+export function createReactAgent(opts: { llm: any; tools: DynamicTool<any>[]; prompt: ChatPromptTemplate }) {
+  return { llm: opts.llm, tools: opts.tools, prompt: opts.prompt };
 }
 
 export default AgentExecutor;

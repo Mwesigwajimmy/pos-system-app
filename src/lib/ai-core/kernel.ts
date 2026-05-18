@@ -11,28 +11,29 @@
  * 1. INDUSTRIAL BRAIN SYNC: Fully aligned with the SambaNova Llama 3.3 70B engine.
  * 2. ELITE MEMORY INTEGRATION: Native 1024-dimension retrieval support for the 1,106 nodes.
  * 3. FULL COUNCIL ORCHESTRATION: Integrated AURA-Auditor, PM, and CMO logic.
- * 4. CHANNEL STABILITY: Hardened stream yielding to prevent Next.js serialization errors.
+ * 4. SHIM RESTORATION: Reverted to local shims to resolve build failures.
  */
 
 import { ITool } from './tools';
 import { AI_IDENTITY } from './manifest';
 
 /**
- * ✅ OMEGA ARCHITECTURAL FIX: DIRECT PATH RESOLUTION
- * Bypassing legacy shims to ensure direct compatibility with the 
- * industrial SambaNova-OpenAI bridge.
+ * ✅ OMEGA ARCHITECTURAL FIX: LOCAL SHIM RESOLUTION
+ * Reverting to your local shims to ensure the build engine finds 
+ * the Agent constructors during static analysis.
  */
 import { 
     ChatPromptTemplate, 
     MessagesPlaceholder, 
     BaseMessage 
 } from '@/lib/langchain/core-prompts-shim';
+
 import { 
     AgentExecutor, 
     createReactAgent 
 } from '@/lib/langchain/langchain-agents-shim';
 
-// Types are imported separately for strict build isolation
+// Types are imported from your local agent shim
 import type { 
     AgentStreamEvent, 
     AgentStreamInput 
@@ -69,6 +70,7 @@ export class AIKernel {
     /**
      * REACT AGENT ASSEMBLY
      * Configures the autonomous 'Think-Act' loop using the local shim factory.
+     * This ensures the build passes without missing exports in node_modules.
      */
     const agentConfig = createReactAgent({
         llm: this.llm,
@@ -194,7 +196,7 @@ export class AIKernel {
 }
 
 /**
- * STATUS: Sovereign Kernel Fully Operational.
+ * STATUS: Sovereign Kernel Fully Operational via Local Shims.
  * ENGINE: Industrial SambaNova 70B via Direct Bridge.
  * MEMORY: Voyage Elite 1024-dim Aligned.
  * JURISDICTION: Unified Business Universe (Global).

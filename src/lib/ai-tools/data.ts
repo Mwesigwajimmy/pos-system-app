@@ -8,10 +8,12 @@
  * 2. SHADOW WELD INTEGRITY: Preserved dynamic server-side module resolution.
  * 3. RETRIEVAL CALIBRATION: Optimized p_match_threshold for 1024-dim semantic density.
  * 4. FORENSIC DNA: Realigned all knowledge tools to the new Super-Brain standard.
+ * 5. CORE ALIGNMENT: Decoupled from shims. Points to Official Tool Motherboard.
  */
 
 import { z } from 'zod';
-import { PromptTool as Tool, RunManager } from '../langchain/core-prompts-shim';
+// ✅ OMEGA REALIGNMENT: Using the official Tool base we fixed in ai-core/tools
+import { Tool, RunManager } from '@/lib/ai-core/tools';
 import { generateEmbedding } from './embedding';
 
 /**

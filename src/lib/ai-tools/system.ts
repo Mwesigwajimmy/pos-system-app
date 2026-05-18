@@ -7,10 +7,12 @@
  * 2. SHADOW WELD STABILIZATION: Preserved eval('require') logic for Webpack/Next.js builds.
  * 3. FORENSIC DIAGNOSTICS: Enhanced logging for autonomous schema discovery.
  * 4. ARCHITECTURAL INTEGRITY: 100% of original logic and long-form comments preserved.
+ * 5. CORE WELD: Replaced shims with official Tool Motherboard alignment.
  */
 
 import { z } from 'zod';
-import { PromptTool as Tool, RunManager } from '../langchain/core-prompts-shim';
+// ✅ OMEGA REALIGNMENT: Using the official Tool base we fixed in ai-core/tools
+import { Tool, RunManager } from '@/lib/ai-core/tools';
 
 // --- 1. EXECUTIVE EVENT LOGGING ENGINE ---
 const SystemEventLoggerSchema = z.object({

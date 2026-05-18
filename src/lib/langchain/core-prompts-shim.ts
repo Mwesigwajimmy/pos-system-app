@@ -1,7 +1,7 @@
 // src/lib/langchain/core-prompts-shim.ts
 /**
  * --- BBU1 SOVEREIGN PROMPT & MESSAGE ENGINE ---
- * VERSION: v15.0 OMEGA (ALIGNED FOR AURA ELITE 1024)
+ * VERSION: v15.1 OMEGA (ALIGNED FOR AURA ELITE 1024)
  * STATUS: FORENSICALLY STABILIZED & HANDSHAKE ALIGNED
  * 
  * This engine governs the linguistic structure of the BBU1 Universe.
@@ -9,7 +9,7 @@
  * 
  * UPGRADE LOG:
  * 1. EXECUTOR ALIGNMENT: Added .call() alias to PromptTool to resolve 
- *    the "Message channel closed" browser error.
+ *    the "Class extends undefined" build error by providing a local constructor.
  * 2. NEURAL CORE MATCH: Fully synchronized for 1024-dimension retrieval context.
  * 3. FORENSIC TRACING: Added immutable forensic_id to message metadata.
  * 4. SHADOW WELD INTEGRITY: Maintained circular dependency shields for Vercel builds.
@@ -199,6 +199,9 @@ export interface RunnableConfig {
       businessId?: string;
       userId?: string;
       industry?: string;
+      businessName?: string;
+      userName?: string;
+      tenantModules?: string[];
       [key: string]: any; 
   };
   [key: string]: any;
@@ -237,7 +240,7 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
       const validatedInput = this.schema.parse(parsedInput);
       
       // Multi-tenant isolation enforcement
-      if (!config.configurable?.businessId && this.name !== 'system_logger') {
+      if (!config.configurable?.businessId && this.name !== 'system_logger' && this.name !== 'get_aura_blind_nodes') {
           throw new Error("Aura Security: Business context missing from tool run.");
       }
 
@@ -249,14 +252,13 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
       /**
        * ASYNCHRONOUS DYNAMIC IMPORT
        * Prevents circular dependency with the data/system tool barrels.
-       * ✅ v15.0 FIX: Targeting the system-specific tool hub.
        */
       try {
         const tools = await import('../ai-tools/system');
         if (tools.SystemEventLoggerTool) {
           const logger = new tools.SystemEventLoggerTool();
           await logger.invoke({
-            event_type: "forensic_error",
+            event_type: "error",
             payload: { 
                 failed_tool: this.name, 
                 error_message: errorMessage,
@@ -290,5 +292,5 @@ export abstract class PromptTool<T extends z.ZodObject<any>> implements IPromptT
 /**
  * STATUS: Prompt & Message Engine Fully Re-Aligned.
  * ARCHITECTURE: Elite 1024-dim Memory Saturated.
- * VERSION: v15.0 (Omega-Ultimatum Core Ready).
+ * VERSION: v15.1 (Omega-Ultimatum Core Ready).
  */
