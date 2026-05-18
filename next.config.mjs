@@ -29,7 +29,8 @@ const nextConfig = {
     'langchain',
     '@langchain/core',
     '@langchain/openai',
-    '@langchain/community'
+    '@langchain/community',
+    '@langchain/google-genai'
   ],
 
   webpack: (config, { isServer }) => {
