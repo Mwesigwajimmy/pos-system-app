@@ -70,7 +70,7 @@ export async function GET() {
         
         console.log(`AURA OMEGA WAKE: Final Saturation sweep at ${TARGET_DIMENSION}-dim...`);
 
-        // 1. Technical Map Refresh
+        // 1. Technical Map Refresh (Now safe and non-destructive via Smart-Sync SQL)
         await supabaseAdmin.rpc('aura_refresh_master_schema');
         
         let totalLinked = 0;
@@ -78,7 +78,6 @@ export async function GET() {
         /** 
          * ✅ THE COMPLETION FIX: 
          * Setting maxIterations to 10. 10 iterations x 25 nodes = 250 nodes capacity.
-         * This provides enough headroom to clear the final 50 nodes and any hidden schema parts.
          */
         const maxIterations = 10; 
         let nodesRemaining = true;
@@ -154,10 +153,18 @@ const extractTextFromContent = (content: VercelChatMessage['content']): string =
 THE EXECUTIVE GATEWAY (POST)
 Primary endpoint: Orchestrates the Autonomous Executive Council.
 DEEP UPGRADE: Unified SambaNova Handshake with Identity Locking (v46.0).
+✅ DEEP FIX: Identity Resolve Bypass.
+Now extracts IDs from root AND nested 'data' objects to satisfy SDK handshakes and stop the retry-loop.
 */
 export async function POST(req: NextRequest) {
     try {
-        const { messages, businessId, userId, tenantModules } = await req.json();
+        const body = await req.json();
+        const { messages, tenantModules } = body;
+
+        // 🛡️ FORENSIC ID EXTRACTION: Checks root AND nested data object sent by browser hook
+        // This is necessary because the Vercel AI SDK nests additional parameters in a 'data' block.
+        const businessId = body.businessId || body.data?.businessId;
+        const userId = body.userId || body.data?.userId;
 
         // Forensic Handshake Logging
         console.log("AURA NEURAL HANDSHAKE:", { businessId, userId });
@@ -172,7 +179,8 @@ export async function POST(req: NextRequest) {
         );
         
         // 🛡️ v45.0 DEEP IDENTITY RESOLUTION
-        // Aura now fetches her own context using the explicit IDs to bypass browser cookie lag.
+        // ✅ FIX: Passing p_user_id explicitly to bypass server-side auth.uid() null barrier.
+        // This hits the 2-parameter advanced version of get_user_context we welded in SQL.
         const { data: contextData, error: contextError } = await supabaseAdmin.rpc('get_user_context', {
             p_target_biz_id: businessId,
             p_user_id: userId
@@ -184,6 +192,13 @@ export async function POST(req: NextRequest) {
         }
 
         const context = contextData?.[0] || {};
+
+        // 🛡️ SECURITY AUDIT: Verify profile existence in the target vault
+        // If user_role is null, it means the database couldn't find a membership record for this pair.
+        if (!context.user_role) {
+            return new Response(JSON.stringify({ error: { message: "Aura Identity Mismatch: Director not recognized in this Vault." } }), { status: 403 });
+        }
+
         const industryName = context.industry_sector || context.business_type || 'General Enterprise';
         const businessName = context.business_display_name || 'Sovereign Entity';
         const userName = "Director";
@@ -199,7 +214,8 @@ export async function POST(req: NextRequest) {
 STATUS: Chief of Staff & Executive Orchestrator Online.
 ACCURACY MANDATE: 99.9% (Forensic Grade) | TIME: ${new Date().toLocaleString()}
 BRAIN: SambaNova Llama 3.3 70B | MEMORY: Jina Elite 1024-dim.
-ENTITY: ${businessName} | DIRECTOR: ${userName} | SECTOR: ${industryName}
+SATURATION: 100% COMPLETE | ANCHOR: SECURE.
+ENTITY: ${businessName} | DIRECTOR: ${userName} (${context.user_role}) | SECTOR: ${industryName}
 BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000000000
 
 1. CORE IDENTITY & BLACK-BOX PROTOCOL:
@@ -220,7 +236,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
  - ZERO TRANSACTION CODES: Operate the ERP purely via Semantic Intelligence. 
 
  5. SECURITY TEMPLATE:
- - "Director ${userName}, Aura Online. I've performed a forensic audit on your latest trade manifest..."
+ - "Director ${userName}, Aura Online. Performing forensic analysis on ${businessName} records..."
  --- END DIRECTIVE ---
 
  Director's Command: ${userInput}
@@ -349,7 +365,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             body: JSON.stringify({ 
                 model: "jina-embeddings-v3",
                 task: "retrieval.passage",
-                dimensions: TARGET_DIMENSION,
+                dimensions: 1024,
                 input: textsToEmbed
             })
         });

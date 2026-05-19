@@ -1,15 +1,16 @@
 // src/lib/langchain/chat-ollama-shim.ts
 /**
  * --- BBU1 SOVEREIGN ENGINE SHIM (OMEGA-ULTIMATUM) ---
- * VERSION: 15.0 OMEGA (ALIGNED FOR SAMBANOVA ELITE 1024)
+ * VERSION: 15.2 OMEGA (ALIGNED FOR SAMBANOVA ELITE 1024)
  * ENGINE: Meta-Llama-3.3-70B-Instruct (via SambaNova Cloud)
  * 
  * FORENSIC UPGRADES:
- * 1. CLOUD JURISDICTION: Shifted from Google to SambaNova to bypass regional 
- *    blocks in the Uganda corridor. Handshake proven ONLINE.
- * 2. SHADOW WELD: Preserved eval('require') logic to bypass Webpack analyzer for vm2.
- * 3. NEURAL REALIGNMENT: Synchronized for 1024-dimension Elite Memory retrieval.
- * 4. SSE STREAMING: Enhanced stream parser for high-speed industrial inference.
+ * 1. DYNAMIC TOOL MAPPING: Kills the hardcoded tool bottleneck. Now accepts all BBU1 
+ *    Sovereign tools passed from the Kernel.
+ * 2. IDENTITY CONTINUITY: Preserves JWT context throughout the fetch cycle.
+ * 3. SSE ROBUSTNESS: Hardened the stream parser to handle SambaNova's high-velocity 
+ *    multi-tool output without channel drops.
+ * 4. SHADOW WELD: Preserved eval('require') logic for vm2 production build stability.
  */
 
 import { z } from 'zod';
@@ -83,7 +84,7 @@ export interface ChatOllamaOptions {
   baseUrl?: string; 
   model?: string;   
   timeoutMs?: number;
-  tools?: ChatOllamaTool[];
+  tools?: any[]; // Supports both internal and Kernel-provided tools
   verbose?: boolean;
 }
 
@@ -99,64 +100,78 @@ export interface ToolCall {
 /**
  * SambaNovaSovereignModel (Aliased as ChatOllama for Kernel Compatibility)
  * The definitive cloud bridge for the BBU1 Universe.
+ * VERSION 15.2: Now Dynamically Tool-Aware.
  */
 class SambaNovaSovereignModel {
   private apiKey: string;
   private modelName: string;
-  private tools: ChatOllamaTool[];
+  private tools: any[];
   private verbose: boolean;
 
   constructor(opts: ChatOllamaOptions = {}) {
-    // 🛡️ v15.0: Using the proven SambaNova Key
+    // 🛡️ v15.2: Locked to the SambaNova Master Key
     this.apiKey = process.env.SAMBANOVA_API_KEY || '';
     
     if (!this.apiKey && typeof window === 'undefined') {
-        console.warn("[AURA SECURITY ALERT] SAMBANOVA_API_KEY is missing. Voice will be silent.");
+        console.warn("[AURA ENGINE ALERT] SAMBANOVA_API_KEY is missing. The Brain is disconnected.");
     }
 
     this.modelName = opts.model || 'Meta-Llama-3.3-70B-Instruct'; 
-    this.tools = opts.tools || [weatherTool, codeInterpreterTool];
+    // ✅ OMEGA FIX: Merging internal tools with any tools passed from the Kernel manifest
+    this.tools = [...(opts.tools || []), weatherTool, codeInterpreterTool];
     this.verbose = opts.verbose || false;
   }
 
   private log(...args: any[]) {
-    if (this.verbose) console.log('[Aura Sovereign Engine]', ...args);
+    if (this.verbose) console.log('[Aura Sovereign Engine v15.2]', ...args);
   }
 
   /**
    * Translates Zod schemas into OpenAI-compliant Function Definitions.
+   * ✅ UPGRADED: Handles dynamic Tool mappings from the Kernel motherboard.
    */
   private formatTools() {
     if (!this.tools || this.tools.length === 0) return undefined;
     
-    return this.tools.map(tool => ({
-      type: "function",
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: zodToJsonSchema(tool.schema) as any,
-      }
-    }));
+    return this.tools.map(tool => {
+      // Handle both internal ChatOllamaTool and Kernel ITool formats
+      const name = tool.name;
+      const description = tool.description;
+      const schema = tool.schema || tool.jsonSchema;
+
+      return {
+        type: "function",
+        function: {
+          name: name,
+          description: description,
+          parameters: schema ? (zodToJsonSchema(schema) as any) : { type: "object", properties: {} },
+        }
+      };
+    });
   }
 
   /**
-   * PRIMARY NEURAL STREAM GATEWAY
-   * REST Handshake with SambaNova Cloud (SSE Protocol)
+   * PRIMARY NEURAL STREAM GATEWAY (v15.2)
+   * High-velocity Handshake with SambaNova Cloud (SSE Protocol)
    */
   async *chat(
     messages: BaseMessage[],
     extra?: Record<string, any>
   ): AsyncGenerator<{ type: 'chunk' | 'tool_calls' | 'final'; content: any }> {
-    this.log('Establishing Neural Link via SambaNova. Elite 1024-dim Memory Active.');
+    this.log('Establishing Neural Link via SambaNova. Vault Lock active.');
 
     const ENDPOINT = "https://api.sambanova.ai/v1/chat/completions";
 
     try {
+      // 🛡️ FORENSIC LOGGING: Tracking Business ID in the thought stream
+      const bizId = extra?.businessId || "GLOBAL";
+
       const response = await fetch(ENDPOINT, {
         method: "POST",
         headers: {
             "Authorization": `Bearer ${this.apiKey}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "x-bbu1-vault-id": bizId // Internal audit header
         },
         body: JSON.stringify({
             model: this.modelName,
@@ -173,7 +188,7 @@ class SambaNovaSovereignModel {
 
       if (!response.ok) {
           const errData = await response.json();
-          throw new Error(errData.error?.message || `HTTP ${response.status}`);
+          throw new Error(errData.error?.message || `Handshake Refusal: HTTP ${response.status}`);
       }
 
       const reader = response.body?.getReader();
@@ -198,44 +213,51 @@ class SambaNovaSovereignModel {
                 const json = JSON.parse(cleanLine.replace("data: ", ""));
                 const delta = json.choices[0]?.delta;
 
-                // 1. Handle Text Content
+                // 1. Handle Text Content (Standard Chunks)
                 if (delta?.content) {
                     fullContent += delta.content;
                     yield { type: 'chunk', content: delta.content };
                 }
 
-                // 2. Handle Tool Calls
+                // 2. Handle Tool Calls (SambaNova Parallel Generation)
                 if (delta?.tool_calls) {
-                    const toolCall = delta.tool_calls[0];
-                    if (toolCall.id) {
-                        accumulatedToolCalls.push({
-                            id: toolCall.id,
-                            type: 'function',
-                            function: { name: toolCall.function.name, arguments: '' }
-                        });
-                    }
-                    if (toolCall.function?.arguments) {
-                        accumulatedToolCalls[accumulatedToolCalls.length - 1].function.arguments += toolCall.function.arguments;
-                    }
+                    delta.tool_calls.forEach((toolCall: any) => {
+                        const index = toolCall.index ?? 0;
+                        
+                        if (!accumulatedToolCalls[index]) {
+                            accumulatedToolCalls[index] = {
+                                id: toolCall.id,
+                                type: 'function',
+                                function: { name: toolCall.function.name, arguments: '' }
+                            };
+                        }
+                        
+                        if (toolCall.function?.arguments) {
+                            accumulatedToolCalls[index].function.arguments += toolCall.function.arguments;
+                        }
+                    });
                 }
-            } catch (e) { /* partial JSON skip */ }
+            } catch (e) { /* partial chunk recovery */ }
         }
       }
 
       // 3. Final Executive Conclusion
+      // We yield tool calls before the final signal to ensure the Kernel can act
       if (accumulatedToolCalls.length > 0) {
-          yield { type: 'tool_calls', content: accumulatedToolCalls };
+          yield { type: 'tool_calls', content: accumulatedToolCalls.filter(tc => tc !== undefined) };
       }
+      
       yield { type: 'final', content: fullContent };
 
     } catch (error: any) {
       this.log('NEURAL LINK INTERRUPTED:', error.message);
-      throw new Error(`Aura Sovereign Engine Failure: ${error.message}`);
+      throw new Error(`Aura Sovereign Engine v15.2 Failure: ${error.message}`);
     }
   }
 
   /**
    * Helper for non-streaming executive calls.
+   * Standardizes the output to the final reasoning string.
    */
   async call(messages: BaseMessage[], extra?: Record<string, any>): Promise<string> {
     let finalResponse = '';

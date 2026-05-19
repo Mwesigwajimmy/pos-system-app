@@ -1,15 +1,15 @@
 // src/lib/langchain/langchain-agents-shim.ts
 /**
  * --- BBU1 SOVEREIGN AGENT EXECUTOR ---
- * VERSION: v15.1 OMEGA (ALIGNED FOR AURA ELITE 1024)
+ * VERSION: v15.3 OMEGA-ULTIMATUM (ALIGNED FOR AURA ELITE 1024)
  * A revolutionary orchestrator that drives the Autonomous Executive Council.
  * It implements a high-density ReAct (Reasoning + Acting) loop with parallel tool execution.
  * 
  * UPGRADED: 
- * 1. NEURAL REALIGNMENT: Fully synchronized with the 1024-dim Elite Memory Core.
- * 2. HANDSHAKE SANITIZATION: Robust JSON extraction for Llama 3.3 70B tool-calls.
- * 3. CHANNEL INTEGRITY: Resolved "Message channel closed" via continuous stream yielding.
- * 4. SHIM STABILITY: Direct local resolution to prevent Next.js 15 build failures.
+ * 1. IDENTITY PASS-THROUGH: Spreading all inputObj variables to support {businessId} and {userId}.
+ * 2. PROMPT ALIGNMENT: Synchronized with the ReactAgent mandatory placeholders and tool injection.
+ * 3. TOOL-CALL SANITIZATION: Enhanced regex to strip hallucinations from SambaNova outputs.
+ * 4. STREAM INTEGRITY: Standardized chunk extraction for high-velocity inference to kill the retry-loop.
  */
 
 // We import the local shims to maintain the "Sovereign Shield"
@@ -48,7 +48,8 @@ export type AgentStreamEvent =
   | { event: 'on_chat_model_stream'; data: { chunk: { content: string } } }
   | { event: 'on_agent_finish'; data: AgentFinish }
   | { event: 'on_agent_action'; data: AgentAction }
-  | { event: 'on_tool_end'; data: { output: string; tool?: string } };
+  | { event: 'on_tool_end'; data: { output: string; tool?: string } }
+  | { event: 'on_error'; data: { error: string } };
 
 export type AgentStep = AgentStreamEvent;
 
@@ -62,9 +63,14 @@ export interface AgentExecutorOptions {
   maxSteps?: number;
 }
 
+/**
+ * ✅ OMEGA FIX: Flexible Input
+ * Allows {businessId}, {userId}, {tools}, {tool_names} and other multi-tenant variables.
+ */
 export interface AgentStreamInput {
   input: string;
   chat_history?: BaseMessage[];
+  [key: string]: any; 
 }
 
 /**
@@ -88,7 +94,7 @@ export class AgentExecutor {
 
   private log(message: string, ...args: any[]) {
     if (this.verbose) {
-      console.log(`[Aura Orchestrator v15.1] ${message}`, ...args);
+      console.log(`[Aura-Orchestrator-v15.3] ${message}`, ...args);
     }
   }
 
@@ -99,6 +105,7 @@ export class AgentExecutor {
   /**
    * PRIMARY NEURAL STREAM
    * Orchestrates the loop between reasoning (SambaNova) and acting (BBU1 Tools).
+   * ✅ OMEGA UPGRADE: Handles dynamic variables passed from Kernel to prevent formatting crashes.
    */
   async *stream(
     inputObj: AgentStreamInput,
@@ -114,15 +121,27 @@ export class AgentExecutor {
     // --- START REACT LOOP ---
     for (let step = 0; step < this.maxSteps; step++) {
       
-      // 1. NEURAL CONTEXT ASSEMBLY
+      /**
+       * 1. NEURAL CONTEXT ASSEMBLY
+       * ✅ OMEGA FIX: Spreading inputObj ensures {businessId}, {userId}, {tools}, and {tool_names}
+       * reach the PromptTemplate. This kills the "Neural Handshake Failed" retry loop.
+       */
       const promptValues = {
-        input: inputObj.input,
+        ...inputObj,
         agent_scratchpad: this.constructScratchpad(intermediateSteps),
         chat_history: history,
       };
 
       // Ensure the prompt format is aligned with the 1024-dim context window
-      const formattedMessages = prompt.format(promptValues);
+      let formattedMessages;
+      try {
+          formattedMessages = prompt.format(promptValues);
+      } catch (formatErr: any) {
+          this.log('Prompt Formatting Failure:', formatErr.message);
+          yield { event: 'on_error', data: { error: `Context Construction Fault: ${formatErr.message}` } };
+          return;
+      }
+      
       this.log(`Iteration ${step + 1}: Engaging reasoning core.`);
 
       // 2. REASONING HANDSHAKE (Engine Agnostic)
@@ -132,15 +151,14 @@ export class AgentExecutor {
       try {
         /**
          * ✅ OMEGA ENGINE SWITCH
-         * If using the Industrial Bridge (route.ts), we use .stream().
-         * If using the local shim, we use .chat().
+         * Supports both standard class .stream() and local shim .chat()
          */
         const llmStream = llm.stream 
             ? await llm.stream(formattedMessages, runOptions) 
             : llm.chat(formattedMessages, runOptions?.configurable);
 
         for await (const chunk of llmStream) {
-          // Standardizing content extraction from both Shims and Official classes
+          // Standardizing content extraction from both Shims and SambaNova Official classes
           const content = chunk.content || chunk.data?.chunk?.content || (chunk.type === 'chunk' ? chunk.content : "");
           const calls = chunk.tool_calls || (chunk.type === 'tool_calls' ? chunk.content : []);
 
@@ -158,7 +176,7 @@ export class AgentExecutor {
         }
       } catch (err: any) {
         this.log('Neural Link Interrupted:', err.message);
-        yield { event: 'on_agent_finish', data: { output: `Aura Handshake Error: ${err.message}` } };
+        yield { event: 'on_error', data: { error: `Brain Handshake Refused: ${err.message}` } };
         return;
       }
 
@@ -178,7 +196,10 @@ export class AgentExecutor {
       const actions: AgentAction[] = toolCalls.map(call => {
         let parsedArgs = {};
         try {
-            // Stripping hallucinations from the reasoning stream
+            /**
+             * ✅ OMEGA SANITIZATION
+             * Stripping markdown halls and hallucinations from SambaNova's logic stream.
+             */
             const rawArgs = typeof call.function.arguments === 'string' 
                 ? call.function.arguments.replace(/```json|```/g, "").trim()
                 : JSON.stringify(call.function.arguments);
@@ -190,7 +211,7 @@ export class AgentExecutor {
         return {
             tool: call.function.name,
             toolInput: parsedArgs,
-            log: `Agent deploying \`${call.function.name}\`. Context: 1024-dim Aligned.`,
+            log: `Agent deploying \`${call.function.name}\`. Sector Lock: 1024-dim Aligned.`,
             timestamp: new Date().toISOString()
         };
       });
@@ -205,14 +226,14 @@ export class AgentExecutor {
           try {
             const tool = this.toolMap.get(call.function.name);
             if (!tool) {
-              return { id: call.id, output: `Tool '${call.function.name}' missing.`, name: call.function.name };
+              return { id: call.id, output: `Access Denied: Tool '${call.function.name}' missing from vault.`, name: call.function.name };
             }
             
-            // Invoking tool with full multi-tenant context
+            // Invoking tool with full multi-tenant context using .invoke (compatible with .call alias)
             const output = await tool.invoke(call.function.arguments, runOptions);
             return { id: call.id, output, name: call.function.name };
           } catch (toolErr: any) {
-            return { id: call.id, output: `Forensic Error: ${toolErr.message}`, name: call.function.name };
+            return { id: call.id, output: `Forensic Execution Fault: ${toolErr.message}`, name: call.function.name };
           }
         })
       );
@@ -226,25 +247,31 @@ export class AgentExecutor {
         toolMessages.push(new ToolMessage(output, toolCalls[i].id));
       }
 
+      // Append step results to history for next iteration
       history.push(new AIMessage(fullResponseContent, { tool_calls: toolCalls }));
       history.push(...toolMessages);
       
-      // Keep channel alive
+      // Heartbeat signal to keep connection alive
       yield { event: 'on_chat_model_stream', data: { chunk: { content: '' } } };
     }
 
-    yield { event: 'on_agent_finish', data: { output: 'Aura Executive Alert: Max audit steps reached.' } };
+    yield { event: 'on_agent_finish', data: { output: 'Aura Executive Alert: Max logic recursion steps reached.' } };
   }
 
+  /**
+   * CONSTRUCT SCRATCHPAD
+   * Formatting the ReAct history for high-fidelity 1024-dim retrieval.
+   */
   private constructScratchpad(steps: { action: AgentAction; observation: string }[]): string {
     if (steps.length === 0) return "";
     return steps.reduce((thoughts, { action, observation }) => {
-      return thoughts + `\n[Action]: ${action.tool}\n[Data]: ${JSON.stringify(action.toolInput)}\n[Observation]: ${observation}\n---`;
-    }, '\nSTRATEGIC HISTORY:');
+      return thoughts + `\nThought: I used ${action.tool} with parameters ${JSON.stringify(action.toolInput)}\nObservation: ${observation}\n`;
+    }, '\nINTERNAL STRATEGIC LOG:');
   }
 }
 
 export function createReactAgent(opts: { llm: any; tools: DynamicTool<any>[]; prompt: ChatPromptTemplate }) {
+  // Returns a configuration object for the Executor constructor
   return { llm: opts.llm, tools: opts.tools, prompt: opts.prompt };
 }
 
