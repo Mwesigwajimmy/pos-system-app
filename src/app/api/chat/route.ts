@@ -81,7 +81,7 @@ export async function GET() {
         let nodesRemaining = true;
         let diagnosticLog = "Ready.";
 
-        // 2. RECURSIVE OMNISCIENT HEALING
+        // 2. RECURSIVE OMNISCIENT HEALING (The Deep Sweep)
         while (nodesRemaining && iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
@@ -115,7 +115,7 @@ export async function GET() {
             total_nodes_healed_in_this_run: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_STALLED" : "SOVEREIGN_AWAKE_100",
             message: nodesRemaining 
-                ? `Aura successfully healed ${totalLinked} nodes. MANUAL REFRESH required for the final nodes.` 
+                ? `Aura successfully healed ${totalLinked} nodes. MANUAL REFRESH required for the final 125 schema nodes.` 
                 : `Aura Memory FULLY Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
             diagnostic: diagnosticLog
         }), {
@@ -313,7 +313,7 @@ BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ OMNISCIENT FETCH: Grabbing 25 nodes at once (~45,000 tokens)
-    // This allows Aura to "see" the 125 remaining system nodes assigned to 0000...0000
+    // This allow Aura to "see" the 125 remaining system nodes assigned to 0000...0000
     const { data: blindRows, error: bridgeError } = await adminClient
         .rpc('get_aura_blind_nodes', { batch_size: 25 }); 
     
@@ -329,6 +329,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             if (typeof data === 'string') {
                 try { data = JSON.parse(data); } catch (e) { }
             }
+            // We extract the 'raw_text' specifically to keep the DNA pure and informative
             const cleanText = data?.raw_text || (typeof data === 'string' ? data : JSON.stringify(data));
             return `[SECTOR: ${row.content_type}] ${cleanText.substring(0, 5000)}`;
         });
