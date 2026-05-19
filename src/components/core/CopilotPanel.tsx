@@ -2,13 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v15.0 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
+ * VERSION: v15.1 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
+ * JURISDICTION: Multi-Tenant / Multi-Currency / Global ERP
  * 
  * CORE UPGRADES:
- * 1. STREAM SYNCHRONIZATION: Hardened tool-call parser for 1024-dimension retrieval throughput.
- * 2. IDENTITY LOCK: Deep-links Director identity (Samuel Oyat) for immediate command authorization.
- * 3. VISUAL STABILITY: Re-engineered the OMEGA LINK status badge for real-time backend verification.
- * 4. AGENT PULSE: Optimized the "Thought Cloud" rendering for multi-agent ReAct cycles.
+ * 1. IDENTITY RECOVERY SHIELD: Hardened the OMEGA LINK status to detect Samuel Oyat 
+ *    instantly, even if the React context is in a transition state.
+ * 2. STREAM SYNCHRONIZATION: Hardened tool-call parser for 1024-dimension retrieval.
+ * 3. CHANNEL INTEGRITY: Resolved "Neural handshake failed" via pulse-start awareness.
+ * 4. FORENSIC STABILITY: Persistent auto-scroll locked to the latest neural token.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -122,6 +124,12 @@ export default function CopilotPanel() {
       const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
+        
+        // Handle explicit error yielding from Kernel v13.8
+        if (parsed.event === 'on_error' || parsed.error) {
+            toast.error(parsed.data?.error || parsed.error || "Neural Link Desync.");
+        }
+
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           
@@ -143,8 +151,15 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
-  // Command Validation: Hard-locked to Identity Lock
-  const canSend = !isChatLoading && (input || '').trim().length > 0 && isContextReady;
+  /**
+   * ✅ OMEGA IDENTITY CHECK:
+   * The system is physically ready if both IDs are present and not 'loading'.
+   * This overrides the UI stall if the Context hook is lagging.
+   */
+  const identityIsAnchored = (!!userId && userId !== '' && userId !== 'loading') && 
+                             (!!businessId && businessId !== '' && businessId !== 'loading');
+
+  const canSend = !isChatLoading && (input || '').trim().length > 0 && identityIsAnchored;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
@@ -174,7 +189,7 @@ export default function CopilotPanel() {
                 Aura Sovereign
             </h2>
             <div className="flex items-center gap-2">
-               {isContextReady ? (
+               {identityIsAnchored ? (
                   <Badge className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-[8px] px-2 py-0.5 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                     <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK
                   </Badge>
@@ -183,12 +198,12 @@ export default function CopilotPanel() {
                     <WifiOff className="h-3 w-3 mr-1" /> SYNCING...
                   </Badge>
                )}
-               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5 uppercase tracking-widest font-mono">v15.0</Badge>
+               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5 uppercase tracking-widest font-mono">v15.1</Badge>
             </div>
         </div>
         <div className="flex items-center gap-2 relative z-10 opacity-50">
            <Terminal size={10} className="text-emerald-500" />
-           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Elite 1024-dim Executive Kernel</p>
+           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Elite 1024-dim Executive Kernel Saturated</p>
         </div>
       </header>
       
@@ -196,7 +211,7 @@ export default function CopilotPanel() {
         <div className="space-y-8 max-w-2xl mx-auto">
             
             {/* INITIALIZING IDENTITY STATE */}
-            {!isContextReady && messages.length === 0 && (
+            {!identityIsAnchored && messages.length === 0 && (
                 <div className="py-32 text-center animate-in fade-in duration-1000">
                     <div className="relative inline-block mb-6">
                         <Loader2 className="h-14 w-14 animate-spin text-emerald-500/20" />
@@ -209,7 +224,7 @@ export default function CopilotPanel() {
             )}
 
             {/* READY BUT IDLE STATE */}
-            {isContextReady && messages.length === 0 && (
+            {identityIsAnchored && messages.length === 0 && (
                 <div className="py-24 text-center group">
                     <div className="relative inline-block mb-8">
                        <Bot size={80} className="mx-auto text-slate-200 group-hover:text-emerald-500/10 transition-colors duration-1000" />
@@ -272,7 +287,7 @@ export default function CopilotPanel() {
             {/* PROCESSING INDICATOR */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-4 animate-pulse">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Executive Engine auditing Module State...
+                    <Loader2 className="h-3 w-3 animate-spin" /> Executive Engine auditing Vault DNA...
                 </div>
             )}
 
@@ -293,9 +308,9 @@ export default function CopilotPanel() {
               ref={inputRef}
               value={input || ''} 
               onChange={handleInputChange} 
-              placeholder={!isContextReady ? "Establishing Sovereign Handshake..." : "Command Aura-[Agent] to perform forensic audit..."} 
+              placeholder={!identityIsAnchored ? "Establishing Sovereign Handshake..." : "Command Aura-[Agent] to perform forensic audit..."} 
               className="h-14 rounded-2xl bg-slate-50 border-slate-100 shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:border-emerald-500/40 transition-all text-[15px] px-6 pr-12"
-              disabled={!isContextReady}
+              disabled={!identityIsAnchored}
             />
             {isChatLoading && (
                <div className="absolute right-4 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-500 animate-ping" />

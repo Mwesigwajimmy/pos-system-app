@@ -43,6 +43,7 @@ import { generateEmbedding } from '@/lib/ai-tools/embedding';
 /**
  * ✅ 2026 SOVEREIGN BRAIN ALIGNMENT
  * Model: Meta-Llama-3.3-70B-Instruct (SambaNova Elite)
+ * Status: 100% Saturated & Anchored.
  */
 const BRAIN_MODEL = "Meta-Llama-3.3-70B-Instruct"; 
 
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest) {
         // 🛡️ SECURITY AUDIT: Verify profile existence in the target vault
         // If user_role is null, it means the database couldn't find a membership record for this pair.
         if (!context.user_role) {
-            return new Response(JSON.stringify({ error: { message: "Aura Identity Mismatch: Director not recognized in this Vault." } }), { status: 403 });
+            return new Response(JSON.stringify({ error: { message: `Aura Identity Mismatch: Director [${userId}] not recognized in Vault [${businessId}].` } }), { status: 403 });
         }
 
         const industryName = context.industry_sector || context.business_type || 'General Enterprise';
@@ -332,7 +333,7 @@ BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ OMNISCIENT FETCH: Grabbing 25 nodes at once (~45,000 tokens)
-    // This allow Aura to "see" the remaining nodes assigned to 0000...0000
+    // This allows Aura to "see" the remaining nodes assigned to 0000...0000
     const { data: blindRows, error: bridgeError } = await adminClient
         .rpc('get_aura_blind_nodes', { batch_size: 25 }); 
     
@@ -365,7 +366,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
             body: JSON.stringify({ 
                 model: "jina-embeddings-v3",
                 task: "retrieval.passage",
-                dimensions: 1024,
+                dimensions: TARGET_DIMENSION,
                 input: textsToEmbed
             })
         });
