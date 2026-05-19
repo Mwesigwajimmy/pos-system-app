@@ -2,15 +2,17 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v15.4 OMEGA-ULTIMATUM (Direct Neural Handshake)
- * JURISDICTION: Multi-Tenant / Multi-Currency / Multi-Location
+ * VERSION: v15.5 OMEGA-ULTIMATUM (THE BUSINESS-NODE WELD)
+ * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. OMEGA-IDENTITY WELD: Fixed the SDK v2 nesting conflict. IDs are now passed 
- *    directly in the body AND the message data to ensure the backend Handshake is 100% successful.
- * 2. REACT 19 SHIELD: Optimized the isReady lifecycle to prevent "Handshake Failed" 
- *    during the transition from 'loading' to the actual Director ID.
- * 3. DIRECT HANDSHAKE: Maintains the removal of 'appendRef' for zero-latency activation.
+ * 1. AUTHORITATIVE WELD: Swapped fragmented hooks for 'useBusinessContext'. Aura 
+ *    now uses the "Dynamic Node Detection" (Cookie-Logic) to resolve Samuel Oyat's 
+ *    specific role for the active Vault.
+ * 2. OMEGA-IDENTITY WELD: Hardened ID transmission for SDK v2.0. IDs are passed 
+ *    directly in the body AND message metadata to bypass server-side session blindness.
+ * 3. REACT 19 SHIELD: Refined the 'isReady' lifecycle to prevent handshake misfires 
+ *    during rapid Business/Role switching.
  * 4. REAL-TIME SATURATION: Synchronized with the 1,106 logic nodes and 1024-dim memory.
  */
 
@@ -22,10 +24,8 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 // CORE UI COMPONENT
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 
-// SOVEREIGN HOOKS
-import { useTenantModules } from '@/hooks/useTenantModules';
-import { useTenant } from '@/hooks/useTenant'; 
-import { useUserProfile } from '@/hooks/useUserProfile';
+// ✅ THE MASTER IDENTITY HOOK: Authority for Multi-Tenant Resolution
+import { useBusinessContext } from '@/hooks/useBusinessContext';
 
 interface CopilotContextType {
   messages: any[]; 
@@ -53,20 +53,19 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 /**
  * COPILOT WORKER
  * The engine room where the direct Neural Link is maintained.
- * ✅ OMEGA UPGRADE: Standardized identity transmission for SDK v2.0 / React 19.
  */
-function CopilotWorker({ children, businessId, userId, tenantData, modules, isReady }: any) {
+function CopilotWorker({ children, businessId, userId, tenantData, isReady }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
 
   // 1. Initialize Neural Engine (Vercel AI SDK)
-  // ✅ OMEGA FIX: Passing IDs in the request body to satisfy the API Identity Gate.
+  // ✅ OMEGA FIX: Passing IDs from the authoritative BusinessContext to the API
   const { messages, isLoading, append, setMessages, data } = useChat({
     api: '/api/chat',
     body: { 
       businessId: businessId || '00000000-0000-0000-0000-000000000000', 
       userId: userId, 
-      tenantModules: modules || [] 
+      tenantModules: [] // Resolved dynamically by backend v65.0
     }, 
     experimental_streamData: true,
     onResponse: (response) => {
@@ -76,12 +75,11 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     },
     onError: (err) => {
         console.error("[AURA STREAM COLLAPSE]", err);
-        // Specialized toast for regional or connection drops
         toast.error(`Neural Link Interrupted: ${err.message}`);
     }
   });
 
-  // 2. High-Stability Submit Handler (v15.4 Direct Link)
+  // 2. High-Stability Submit Handler (v15.5 Direct Link)
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
@@ -90,12 +88,12 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
 
     /**
      * ✅ OMEGA IDENTITY LOCK:
-     * We verify the Director Identity is synchronized before firing the synapse.
+     * We verify the Director Identity is anchored before firing the synapse.
      */
     if (isReady && userId && userId !== '' && userId !== 'loading') {
         try {
-            // ✅ OMEGA WELD: Passing IDs in both the root body and 'data' block
-            // to satisfy the stateless database handshake in the route file.
+            // ✅ OMEGA WELD: Passing IDs in the message data object
+            // This satisfies the stateless database handshake in route.ts v65.0
             await append({ 
               role: 'user', 
               content,
@@ -106,11 +104,10 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
             });
             setInputState('');
         } catch (err) {
-            console.warn("Synapse misfire. Attempting neural realignment...");
+            console.warn("Neural handshake failed. Retrying...");
             toast.info("Aura is aligning neural pathways... please try again.");
         }
     } else {
-        // Guard for the short window during page load/role switch
         console.error("[AURA LOCK] Director Identity not yet synchronized.");
         toast.info("Aura is securing your identity. Please wait 2 seconds.");
     }
@@ -122,7 +119,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     setInputState(prompt);
     setIsOpen(true);
     
-    // Direct trigger after panel opening transition
+    // Direct trigger after transition
     setTimeout(async () => {
       if (isReady && userId && userId !== 'loading') {
         await append({ 
@@ -135,7 +132,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     }, 800);
   }, [businessId, userId, isReady, append]);
 
-  // 4. Multi-Tenant Value Memoization
+  // 4. Identity-Aware Memoization
   const contextValue = useMemo(() => ({
     messages: messages || [],
     input: inputState,
@@ -154,8 +151,8 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
     businessId,
     userId,
     tenantData,
-    tenantModules: modules
-  }), [messages, isLoading, data, setMessages, inputState, isOpen, isReady, businessId, userId, tenantData, modules, handleSubmit, startAIAssistance]);
+    tenantModules: [] // Handled by authoritative context
+  }), [messages, isLoading, data, setMessages, inputState, isOpen, isReady, businessId, userId, tenantData, handleSubmit, startAIAssistance]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -174,37 +171,35 @@ function CopilotWorker({ children, businessId, userId, tenantData, modules, isRe
 
 /**
  * GLOBAL COPILOT PROVIDER
- * The high-authority component that resolves Samuel Oyat's identity.
+ * The high-authority component that resolves Samuel Oyat's identity 
+ * through the authoritative business context hook.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // Hydrating context from Sovereign Hooks
-  const { data: userProfile, isLoading: profileLoading } = useUserProfile();
-  const { data: tenantData } = useTenant();
-  const { data: modules } = useTenantModules();
+  // ✅ THE MASTER TRUTH: Using the authoritative hook you provided
+  const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
 
-  // 🛡️ DYNAMIC BUSINESS RESOLUTION (Role-Switching Aware)
+  // 🛡️ DYNAMIC IDENTITY RESOLUTION
+  // Extracting verified IDs from the authoratative context (Cookie-Sync Aware)
   const activeBusinessId = useMemo(() => {
-    // Priority: Profile business_id -> Tenant ID fallback
-    const id = userProfile?.business_id || tenantData?.id || '';
+    const id = businessContext?.businessId || '';
     return id === 'loading' ? '' : id;
-  }, [userProfile, tenantData]);
+  }, [businessContext]);
 
-  // 🛡️ DYNAMIC USER RESOLUTION
   const activeUserId = useMemo(() => {
-    const id = userProfile?.id || '';
+    const id = businessContext?.userId || '';
     return id === 'loading' ? '' : id;
-  }, [userProfile]);
+  }, [businessContext]);
 
   /**
-   * ✅ FORENSIC FIX: Aggressive Identity Check. 
-   * The system is only READY when the User ID is a valid string,
-   * bypassing the "loading" states that cause handshake failures.
+   * ✅ FORENSIC READINESS CHECK: 
+   * The system is only READY when the Authoritative Context has resolved
+   * the Director and Business UUIDs.
    */
   const isReady = mounted && 
-                  !profileLoading && 
+                  !contextLoading && 
                   !!activeUserId && 
                   activeUserId !== 'loading' && 
                   !!activeBusinessId && 
@@ -214,8 +209,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     <CopilotWorker 
       businessId={activeBusinessId} 
       userId={activeUserId}
-      tenantData={tenantData}
-      modules={modules || []}
+      tenantData={businessContext}
       isReady={isReady}
     >
       {children}
