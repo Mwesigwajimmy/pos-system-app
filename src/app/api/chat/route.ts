@@ -57,7 +57,7 @@ const TARGET_DIMENSION = 1024;
 THE ACTIVATOR (GET Handler)
 Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlog.
 DEEP UPGRADE: Now explicitly reports the SambaNova/Jina Unified Handshake.
-✅ OMNISCIENT FIX: Fetches ALL blind nodes globally to saturate the 125 schema nodes.
+✅ OMNISCIENT FIX: Fetches ALL blind nodes globally (including the 0000...0000 Master ID).
 ✅ TOKEN-SAFE SPEED: Heals 100 nodes per refresh (25x4) to stay under 100k TPM limit.
 ✅ VERCEL SURVIVAL: Completes in ~8.5s to prevent 504 Gateway Timeout.
 */
@@ -75,7 +75,7 @@ export async function GET() {
         
         let totalLinked = 0;
         let iteration = 0;
-        // 4 iterations x 25 nodes = 100 nodes (~95,000 tokens).
+        // Setting maxIterations to 4. 4 iterations x 25 nodes = 100 nodes (~95,000 tokens).
         // This is the optimal speed to saturate the 1,112 nodes without a rate limit crash.
         const maxIterations = 4; 
         let nodesRemaining = true;
@@ -115,7 +115,7 @@ export async function GET() {
             total_nodes_healed_in_this_run: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_STALLED" : "SOVEREIGN_AWAKE_100",
             message: nodesRemaining 
-                ? `Aura successfully healed ${totalLinked} nodes. MANUAL REFRESH required for the final 125 schema nodes.` 
+                ? `Aura successfully healed ${totalLinked} nodes. MANUAL REFRESH required for the final nodes.` 
                 : `Aura Memory FULLY Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
             diagnostic: diagnosticLog
         }), {
@@ -308,12 +308,12 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 /**
 --- OMEGA NEURAL BRIDGE ENGINE (v48.0 INDUSTRIAL BATCH) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-✅ SPEED FIX: Increased batch size to 25 nodes per handshake.
-✅ OMNISCIENT FIX: Bypasses businessId filter to ensure universal schema nodes are healed.
+✅ OMNISCIENT SPEED FIX: Increased batch size to 25 nodes per handshake.
+✅ OMNISCIENT SPEED FIX: Bypasses individual ID checks to heal universal schema nodes.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
     // ✅ OMNISCIENT FETCH: Grabbing 25 nodes at once (~45,000 tokens)
-    // This allows Aura to "see" the 125 remaining system nodes without an ID filter.
+    // This allows Aura to "see" the 125 remaining system nodes assigned to 0000...0000
     const { data: blindRows, error: bridgeError } = await adminClient
         .rpc('get_aura_blind_nodes', { batch_size: 25 }); 
     
@@ -323,7 +323,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
     }
 
     try {
-        // 1. COLLECT TEXT FROM BATCH
+        // 1. COLLECT CLEAN TEXT FROM BATCH
         const textsToEmbed = blindRows.map((row: any) => {
             let data = row.content;
             if (typeof data === 'string') {
@@ -355,7 +355,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
         const vectors = resultData.data;
 
         // 3. SOVEREIGN BULK UPDATE
-        // We write each vector back to the database.
+        // We write each vector back to the database, ensuring the node is physically locked.
         let healedInThisBatch = 0;
         for (let i = 0; i < blindRows.length; i++) {
             const vector = vectors[i].embedding;
@@ -375,7 +375,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
         return { success: true, count: healedInThisBatch };
 
     } catch (err: any) {
-        console.error(`[TITAN ERROR] Batch Healing Failed: ${err.message}`);
+        console.error(`[OMNISCIENT ERROR] Batch Healing Failed: ${err.message}`);
         return { success: false, count: 0, diagnostic: err.message };
     }
 }
