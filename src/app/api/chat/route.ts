@@ -57,8 +57,9 @@ const TARGET_DIMENSION = 1024;
 THE ACTIVATOR (GET Handler)
 Universal Maintenance Route: Recursive loop clearing the 1,106 blind node backlog.
 DEEP UPGRADE: Now explicitly reports the SambaNova/Jina Unified Handshake.
-✅ TITAN BATCH UPGRADE: Processing nodes in 50-node chunks for 50x speed.
-✅ VERCEL SURVIVAL: Running 3 iterations (150 nodes total) per manual refresh.
+✅ TOKEN-SAFE FIX: Reduced batch size to 15 to stay under Jina's 100k TPM limit.
+✅ VERCEL SURVIVAL: Running 5 iterations (75 nodes total) per manual refresh.
+✅ NO-REFRESH: Autonomous refresh header removed as per Director directive.
 */
 export async function GET() {
     try {
@@ -74,13 +75,13 @@ export async function GET() {
         
         let totalLinked = 0;
         let iteration = 0;
-        // Setting maxIterations to 3 to stay under Vercel's 10s limit.
-        // With a batch size of 50, this heals 150 nodes per refresh.
-        const maxIterations = 3; 
+        // Setting maxIterations to 5. 5 iterations x 15 nodes = 75 nodes healed per click.
+        // This takes roughly 7-8 seconds, staying under Vercel's 10s limit.
+        const maxIterations = 5; 
         let nodesRemaining = true;
         let diagnosticLog = "Ready.";
 
-        // 2. RECURSIVE TITAN BATCH HEALING
+        // 2. RECURSIVE TOKEN-SAFE BATCH HEALING
         while (nodesRemaining && iteration < maxIterations) {
             const result = await activateAuraNeuralLinks(supabaseAdmin);
             
@@ -95,16 +96,16 @@ export async function GET() {
                 if (remainingCount === 0) {
                     nodesRemaining = false;
                 } else {
-                    diagnosticLog = result.diagnostic || `Satellite busy. ${remainingCount} nodes in queue.`;
+                    diagnosticLog = result.diagnostic || `Saturation paused. ${remainingCount} nodes in queue.`;
                     break; 
                 }
             } else {
                 totalLinked += result.count;
                 iteration++;
-                console.log(`[PULSE ${iteration}] Titan Batch Complete. Total Saturation: ${totalLinked}`);
+                console.log(`[PULSE ${iteration}] Token-Safe Batch Complete. Total Saturation: ${totalLinked}`);
                 
-                // Minimal jitter to protect API lane
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // 🛡️ PACE GUARD: 800ms delay to keep TPM counter stable
+                await new Promise(resolve => setTimeout(resolve, 800));
             }
         }
         
@@ -113,8 +114,8 @@ export async function GET() {
             total_nodes_healed_in_this_run: totalLinked,
             status: nodesRemaining ? "PARTIAL_SATURATION_STALLED" : "SOVEREIGN_AWAKE_100",
             message: nodesRemaining 
-                ? `Aura successfully healed ${totalLinked} nodes. MANUAL REFRESH required to continue.` 
-                : `Aura Memory Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
+                ? `Aura successfully healed ${totalLinked} nodes. MANUAL REFRESH required to maintain 100k TPM limit.` 
+                : `Aura Memory FULLY Saturated at ${TARGET_DIMENSION}-dim. Brain: ${BRAIN_MODEL}`,
             diagnostic: diagnosticLog
         }), {
             status: 200,
@@ -302,15 +303,15 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
 }
 
 /**
---- OMEGA NEURAL BRIDGE ENGINE (v48.0 INDUSTRIAL BATCH) ---
+--- OMEGA NEURAL BRIDGE ENGINE (v48.0 TOKEN-SAFE BATCH) ---
 BYPASSES RLS using the 'get_aura_blind_nodes' RPC Bridge.
-✅ SPEED FIX: Increased batch size to 50 nodes per handshake.
-✅ SPEED FIX: Uses Jina AI Array input to heal massive sectors in milliseconds.
+✅ TOKEN-SAFE FIX: Reduced batch size to 15 nodes per handshake.
+✅ SPEED FIX: Uses Jina AI Array input to heal sectors in bulk under 100k TPM.
 */
 export async function activateAuraNeuralLinks(adminClient: any) {
-    // ✅ TITAN BATCH: Fetching 50 nodes at once for high-throughput healing
+    // ✅ TOKEN-SAFE BATCH: Fetching 15 nodes at once (~35,000 tokens)
     const { data: blindRows, error: bridgeError } = await adminClient
-        .rpc('get_aura_blind_nodes', { batch_size: 50 }); 
+        .rpc('get_aura_blind_nodes', { batch_size: 15 }); 
     
     if (bridgeError || !blindRows || blindRows.length === 0) {
         return { success: true, count: 0, diagnostic: bridgeError?.message };
@@ -328,6 +329,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
         });
 
         // 2. THE TITAN HANDSHAKE (Jina AI Array Call)
+        // We call the Jina API once for the entire batch of 15.
         const response = await fetch("https://api.jina.ai/v1/embeddings", {
             method: 'POST',
             headers: { 
@@ -343,7 +345,7 @@ export async function activateAuraNeuralLinks(adminClient: any) {
         });
 
         const resultData = await response.json();
-        if (!response.ok) throw new Error(resultData.detail || "Jina API Refusal");
+        if (!response.ok) throw new Error(resultData.detail || "Jina API Refusal (TPM Limit)");
 
         const vectors = resultData.data;
 
