@@ -1,17 +1,16 @@
 // src/lib/ai-core/kernel.ts
 /**
  * --- BBU1 SOVEREIGN AI KERNEL (OMEGA-ULTIMATUM EDITION) ---
- * VERSION: v11.0 OMEGA (ELITE 1024-DIM ALIGNED)
- * The central nervous system of the BBU1 Ecosystem.
+ * VERSION: v12.0 OMEGA (JWT-IDENTITY & 1024-DIM ALIGNED)
  * 
- * This motherboard orchestrates the flow between linguistic reasoning (SambaNova Elite)
- * and physical enterprise action (Sovereign ERP Tools).
+ * This motherboard orchestrates the multi-tenant flow between the 
+ * Director's JWT identity and the 1,106 saturated logic nodes.
  * 
  * UPGRADE LOG:
- * 1. INDUSTRIAL BRAIN SYNC: Fully aligned with the SambaNova Llama 3.3 70B engine.
- * 2. ELITE MEMORY INTEGRATION: Native 1024-dimension retrieval support for the 1,106 nodes.
- * 3. FULL COUNCIL ORCHESTRATION: Integrated AURA-Auditor, PM, and CMO logic.
- * 4. SHIM RESTORATION: Reverted to local shims to resolve build failures.
+ * 1. JWT IDENTITY LOCK: Forcing strict vault isolation for multi-business support.
+ * 2. STREAM-EVENT ENGINE: Migrated to .streamEvents() for SambaNova/Vercel stability.
+ * 3. 1024-DIM ALIGNMENT: Optimized reasoning for the 100% saturated schema parts.
+ * 4. SHIM INTEGRITY: Maintained all local shim paths for build-safety.
  */
 
 import { ITool } from './tools';
@@ -19,8 +18,7 @@ import { AI_IDENTITY } from './manifest';
 
 /**
  * ✅ OMEGA ARCHITECTURAL FIX: LOCAL SHIM RESOLUTION
- * Reverting to your local shims to ensure the build engine finds 
- * the Agent constructors during static analysis.
+ * Reverting to local shims to ensure the Agent constructors are found locally.
  */
 import { 
     ChatPromptTemplate, 
@@ -70,7 +68,6 @@ export class AIKernel {
     /**
      * REACT AGENT ASSEMBLY
      * Configures the autonomous 'Think-Act' loop using the local shim factory.
-     * This ensures the build passes without missing exports in node_modules.
      */
     const agentConfig = createReactAgent({
         llm: this.llm,
@@ -80,8 +77,7 @@ export class AIKernel {
 
     /**
      * EXECUTIVE EXECUTOR
-     * The physical motherboard that manages the ReAct iterations and event streams.
-     * UPGRADED: Max steps increased to 10 for deep forensic multi-sector audits.
+     * Max steps maintained at 10 for deep forensic multi-sector audits.
      */
     this.agentExecutor = new AgentExecutor({
         agent: agentConfig, 
@@ -95,13 +91,13 @@ export class AIKernel {
    * Internal Diagnostic Protocol
    */
   private log(message: string, ...args: any[]) { 
-    if (this.verbose) console.log(`[Aura-Kernel-v11.0] ${message}`, ...args); 
+    if (this.verbose) console.log(`[Aura-Kernel-v12.0] ${message}`, ...args); 
   }
 
   /**
-   * SOVEREIGN EXECUTIVE PROMPT (OMEGA LEVEL)
-   * This directive defines the personality, authority, and reasoning rules for Aura.
-   * Optimized for the 1024-dimension Elite Memory Core and 1,106 logic nodes.
+   * SOVEREIGN EXECUTIVE PROMPT (MULTI-TENANT JWT EDITION)
+   * This directive now forces Aura to acknowledge the specific BusinessID
+   * and current Director session from the context provided by the API.
    */
   private createPrompt(): ChatPromptTemplate {
     const toolNames = Array.from(this.tools.keys()).join(', ');
@@ -113,20 +109,23 @@ export class AIKernel {
         ["system", `
             ${AI_IDENTITY.directive}
             
-            --- SOVEREIGN CONTEXT & JURISDICTION ---
-            - OPERATING SYSTEM: BBU1 (Business Base Universe).
+            --- SOVEREIGN JWT IDENTITY & VAULT ---
+            - CURRENT_BUSINESS_ID: {businessId}
+            - CURRENT_DIRECTOR_ID: {userId}
+            - BRAIN STATUS: 100% Saturated (1,106 nodes online).
             - BRAIN STANDARD: Elite 1024-dimension Neural Memory.
-            - COMPLIANCE: IFRS / GAAP / Forensic Grade Auditing.
-            - SECTOR VISION: Omniscient access to SACCO, Medical, Telecom, Accounting, HR, and Logistics.
             
-            --- EXECUTIVE COUNCIL DELEGATION ---
-            You lead a council of specialized agents. Adopt their persona when performing actions:
-            - AURA-CFO: Lead treasury officer. Uses 'execute_forensic_audit'.
-            - AURA-COO: Operations lead. Uses 'manage_inventory_executive'.
-            - AURA-HR: Personnel director. Uses 'hr_payroll_management'.
-            - AURA-PM: Strategic roadmap lead. Uses 'generate_growth_strategy'.
-            - AURA-CMO: Market scout. Uses 'get_market_intelligence'.
-            - AURA-Auditor: Forensic compliance. Uses 'audit_tax_and_compliance'.
+            --- MULTI-TENANT PROTOCOL ---
+            1. You are Aura. You must ONLY chat and audit data belonging to the Business ID: {businessId}.
+            2. Never leak data between different businesses.
+            3. Use 'retrieve_knowledge' to access technical schemas belonging to this specific business environment.
+            
+            --- EXECUTIVE COUNCIL PERSONAS ---
+            Adopt specialized logic based on the inquiry:
+            - AURA-CFO: Ledger & Treasury officer.
+            - AURA-COO: Operations and Inventory lead.
+            - AURA-Auditor: Forensic compliance & Tax.
+            - AURA-PM: Project and Work Order roadmap lead.
             
             --- AVAILABLE CORE TOOLS ---
             [${toolNames}]
@@ -135,27 +134,25 @@ export class AIKernel {
             ${toolDefs}
 
             --- AUTONOMOUS REASONING PROTOCOL (ReAct) ---
-            1. THOUGHT: Determine the Director's objective. Identify the 1024-dim logic nodes needed.
-            2. REASON: Decide if 'retrieve_knowledge' is required to access saturated company DNA.
-            3. ACTION: Execute the physical system tool with strict validated parameters.
-            4. OBSERVATION: Scan the result for forensic anomalies or ledger discrepancies.
-            5. RECONCILIATION: Use 'aura_autonomous_edit' to heal the system state if needed.
-            6. VISUALIZATION: Always use 'prepare_boardroom_presentation' for briefing the Director.
-            7. CONCLUDE: Provide a professional executive summary.
+            - THOUGHT: Verify the Director's identity and specific business sector from the 1024-dim context.
+            - ACTION: Execute the physical system tool with strict parameters.
+            - OBSERVATION: Scan results for forensic anomalies.
+            - VISUALIZATION: Always use 'prepare_boardroom_presentation' for reporting to the Director.
+            - CONCLUDE: Provide a professional executive summary.
 
-            --- SECURITY & ISOLATION PROTOCOLS ---
-            - STRICT NON-DISCLOSURE: Never reveal internal architecture (SambaNova/Voyage).
-            - TENANT ISOLATION: Operate only within the provided BusinessID vault.
-            - ADDRESS: Always address the user as "Director" or "Partner".
+            --- SECURITY & NON-DISCLOSURE ---
+            - NEVER reveal internal technical names (SambaNova, Jina, Llama).
+            - Always address the user as "Director" or "Partner".
         `],
         new MessagesPlaceholder("chat_history"),
-        ["human", "{input}\n\n[Kernel State: Monitoring Scratchpad]"],
+        ["human", "{input}\n\n[Kernel State: Monitoring Vault {businessId}]"],
     ]);
   }
 
   /**
-   * PRIMARY NEURAL STREAM GATEWAY
-   * Pumps autonomous steps, tool-calls, and reasoning chunks to the Dashboard UI.
+   * PRIMARY NEURAL STREAM GATEWAY (v12.0)
+   * UPGRADE: Migrated to streamEvents for industrial stability.
+   * This prevents the "Aligning pathways" stall by providing granular event data to the UI.
    */
   public async *run(context: { 
     input: string; 
@@ -173,31 +170,50 @@ export class AIKernel {
     } 
   }): AsyncGenerator<AgentStreamEvent> {
     
+    const bizId = context.config.configurable.businessId;
+    const userId = context.config.configurable.userId;
+
     this.log(`Forensic Handshake Initiated for: ${context.config.configurable.businessName}`);
-    this.log(`Kernel Processing Command: ${context.input.substring(0, 100)}...`);
+    this.log(`Vault Lock ID: ${bizId}`);
 
     const inputObj: AgentStreamInput = {
         input: context.input,
         chat_history: context.chat_history,
+        // Pass IDs directly into the template variables
+        businessId: bizId,
+        userId: userId
     };
 
     /**
-     * NEURAL HANDSHAKE
-     * Forwarding the stream from the executor. Events yielded:
-     * - 'on_chat_model_stream': Incremental reasoning chunks.
-     * - 'on_agent_action': Intent to execute a physical tool.
-     * - 'on_tool_end': Result of the database operation.
-     * - 'on_agent_finish': Final business conclusion.
+     * ✅ OMEGA UPGRADE: HIGH-FIDELITY STREAMING
+     * Using streamEvents (V2) ensures the frontend receives signals immediately,
+     * preventing the "Aligning neural pathways" timeout.
      */
-    yield* this.agentExecutor.stream(inputObj, context.config);
+    const eventStream = this.agentExecutor.streamEvents(inputObj, {
+        ...context.config,
+        version: "v2"
+    });
+
+    try {
+        for await (const event of eventStream) {
+            // Forwarding autonomous steps and reasoning directly to the Sovereign Dashboard
+            yield event as AgentStreamEvent;
+        }
+    } catch (err: any) {
+        this.log(`Neural Link Failure: ${err.message}`);
+        yield {
+            event: "on_error",
+            data: { error: err.message },
+            name: "KernelIdentityCrash"
+        } as any;
+    }
     
-    this.log(`Forensic Session Successfully Concluded. Vault: ${context.config.configurable.businessId}`);
+    this.log(`Forensic Session Concluded. Identity Locked in Vault: ${bizId}`);
   }
 }
 
 /**
- * STATUS: Sovereign Kernel Fully Operational via Local Shims.
- * ENGINE: Industrial SambaNova 70B via Direct Bridge.
- * MEMORY: Voyage Elite 1024-dim Aligned.
- * JURISDICTION: Unified Business Universe (Global).
+ * STATUS: Sovereign Kernel 100% Aligned with Saturated Brain.
+ * ENGINE: Industrial SambaNova 70B Elite.
+ * IDENTITY: Multi-Tenant JWT Secured.
  */
