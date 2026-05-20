@@ -1,52 +1,32 @@
 // src/middleware.ts
 // V-REVOLUTION: THE DEFINITIVE, LOOP-FREE SECURITY & ROUTING ENGINE
-// FIXED: Identity Paradox & Circular Redirect Loop Resolution
+// VERSION: v17.5 OMEGA (IDENTITY RECOVERY & NEURAL SYNC)
+// FIXED: Forensic Race Condition in New Windows
 
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// --- CONFIGURATION (Your original code, untouched) ---
-
-// 1. Your complete list of supported languages
+// --- CONFIGURATION ---
 const locales = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
 const defaultLocale = 'en';
 
-// 2. Global Public Paths
 const publicPaths = [
-    '/', 
-    '/login', 
-    '/signup', 
-    '/accept-invite', 
-    '/auth/callback', 
-    '/blog', 
-    '/careers',
-    '/contact', 
-    '/pricing', 
-    '/about', 
-    '/aura-ai', 
-    '/industries', 
-    '/courses', 
-    '/donate', 
-    '/newsletter', 
-    '/help-centre',
-    '/download',
-    '/features'
+    '/', '/login', '/signup', '/accept-invite', '/auth/callback', 
+    '/blog', '/careers', '/contact', '/pricing', '/about', 
+    '/aura-ai', '/industries', '/courses', '/donate', 
+    '/newsletter', '/help-centre', '/download', '/features'
 ];
 
-// 3. Your function to detect the user's preferred language
 function getLocale(request: NextRequest): string {
     try {
         const negotiatorHeaders: Record<string, string> = {};
         request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
-
         const languages = new Negotiator({ headers: negotiatorHeaders }).languages();
-        
         if (!languages || languages.length === 0 || (languages.length === 1 && languages[0] === '*')) {
             return defaultLocale;
         }
-
         return match(languages, locales, defaultLocale);
     } catch (e) {
         return defaultLocale;
@@ -54,23 +34,18 @@ function getLocale(request: NextRequest): string {
 }
 
 const rolePermissions: Record<string, string[]> = {
-    // --- SOVEREIGN PATHS (GOD MODE) ---
     '/command-center': ['architect', 'commander'],
     '/sovereign-control': ['architect', 'commander'],
     '/tenants': ['architect', 'commander'],
     '/telemetry': ['architect', 'commander'],
     '/billing': ['architect', 'commander'],
-    
-    // --- CORE & SHARED PATHS ---
     '/dashboard': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'auditor', 'hr_manager', 'procurement_officer', 'fleet_manager', 'sacco_manager'],
     '/copilot': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer'],
     '/time-clock': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'waiter_staff', 'pharmacist', 'nurse', 'technician', 'driver', 'barber_stylist'],
     '/activities': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer'],
     '/reports': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer', 'fleet_manager', 'donor_manager'],
     '/workbooks': ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'practitioner', 'consultant'],
-    '/library': ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect', 'commander', 'legal_counsel', 'teacher_principal'],
-
-    // --- SALES & POS ---
+    '/library': ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect', 'commander', 'legal_ counsel', 'teacher_principal'],
     '/pos': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'bartender', 'waiter_staff', 'barista', 'dsr_rep'],
     '/kds': ['admin', 'manager', 'kitchen_staff', 'chef', 'architect', 'commander'],
     '/sales': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'accountant', 'cashier', 'collections_agent', 'marketing_specialist'],
@@ -78,8 +53,6 @@ const rolePermissions: Record<string, string[]> = {
     '/dsr': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'cashier', 'dsr_rep'],
     '/returns': ['admin', 'manager', 'owner', 'architect', 'commander', 'cashier', 'warehouse_manager'],
     '/loyalty': ['admin', 'owner', 'architect', 'commander', 'marketing_specialist'],
-
-    // --- INVOICING & FINANCE ---
     '/invoicing/fx-audit': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor'],
     '/invoicing/compliance': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor', 'legal_counsel'],
     '/invoicing/recurring': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'property_manager'],
@@ -91,18 +64,12 @@ const rolePermissions: Record<string, string[]> = {
     '/compliance/sales-tax': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
     '/compliance': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander', 'accountant', 'legal_counsel'],
     '/audit': ['admin', 'auditor', 'architect', 'commander', 'owner'],
-
-    // --- INVENTORY & PROCUREMENT ---
     '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'warehouse_manager', 'inventory_manager', 'chef', 'technician', 'warehouse_staff'],
     '/purchases': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'warehouse_manager'],
     '/procurement': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'grant_officer'],
-
-    // --- HUMAN RESOURCES & PAYROLL ---
     '/hr': ['admin', 'manager', 'owner', 'architect', 'commander', 'hr_manager', 'teacher_principal'],
     '/payroll': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'hr_manager'],
     '/employees': ['admin', 'owner', 'architect', 'commander', 'hr_manager', 'site_manager'],
-
-    // --- SPECIALIZED INDUSTRY PATHS ---
     '/sacco': ['admin', 'manager', 'owner', 'architect', 'commander', 'sacco_manager', 'teller', 'loan_officer'],
     '/lending': ['admin', 'manager', 'owner', 'architect', 'commander', 'loan_officer', 'credit_analyst', 'debt_collector', 'collections_agent'],
     '/telecom': ['admin', 'manager', 'owner', 'architect', 'commander', 'agent', 'dsr_rep', 'float_manager', 'cashier', 'network_engineer'],
@@ -119,8 +86,6 @@ const rolePermissions: Record<string, string[]> = {
     '/ecommerce': ['admin', 'manager', 'owner', 'architect', 'commander', 'ecommerce_manager'],
     '/crm': ['admin', 'manager', 'owner', 'architect', 'commander', 'support_agent', 'marketing_specialist'],
     '/booking': ['admin', 'manager', 'owner', 'architect', 'commander', 'receptionist'],
-
-    // --- SYSTEM & SETTINGS ---
     '/management': ['admin', 'manager', 'owner', 'architect', 'commander', 'auditor', 'hr_manager'],
     '/settings': ['admin', 'owner', 'architect', 'commander'],
     '/marketplace': ['admin', 'owner', 'architect', 'commander'],
@@ -160,7 +125,6 @@ const defaultDashboards: Record<string, string> = {
     'donor_manager': '/nonprofit',
     'ecommerce_manager': '/ecommerce/orders',
     'site_manager': '/contractor/jobs',
-
     'SACCO / Co-operative': '/sacco',
     'Lending / Microfinance': '/lending',
     'Rentals / Real Estate': '/rentals/properties',
@@ -171,40 +135,31 @@ const defaultDashboards: Record<string, string> = {
     'Field Service (Trades, Barber, Salon)': '/field-service/work-orders',
     'Professional Services (Accounting, Medical)': '/professional-services',
     'Nonprofit / Education / NGO': '/nonprofit',
-    
     'default': '/dashboard',
 };
 
 export async function middleware(request: NextRequest) {
-    if (request.nextUrl.searchParams.has('_rsc')) {
-        return NextResponse.next();
-    }
-    if (request.headers.get('x-middleware-rewrite')) {
+    if (request.nextUrl.searchParams.has('_rsc') || request.headers.get('x-middleware-rewrite')) {
         return NextResponse.next();
     }
 
     const { pathname } = request.nextUrl;
 
-    // ✅ ADD THESE 3 LINES RIGHT HERE:
     if (pathname.startsWith('/api/') || pathname.includes('.')) {
         return NextResponse.next();
     }
-    // -------------------------------
 
-    // --- START: next-intl Integration ---
     const pathnameIsMissingLocale = locales.every(
         (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
     );
 
     let localeInPath: string;
-    let pathWithoutLocale: string;
     let response: NextResponse;
 
     if (pathnameIsMissingLocale) {
         localeInPath = getLocale(request);
         const newPath = pathname === '/' ? '' : pathname;
-        const redirectUrl = new URL(`/${localeInPath}${newPath}`, request.url);
-        response = NextResponse.redirect(redirectUrl);
+        return NextResponse.redirect(new URL(`/${localeInPath}${newPath}`, request.url));
     } else {
         localeInPath = pathname.split('/')[1];
         const requestHeaders = new Headers(request.headers);
@@ -212,21 +167,14 @@ export async function middleware(request: NextRequest) {
         response = NextResponse.next({ request: { headers: requestHeaders } });
     }
     
-    pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
+    const pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
 
-    // --- START: GOOGLEBOT / SEO BYPASS ---
     const userAgent = request.headers.get('user-agent') || '';
     const isBot = /googlebot|bingbot|yandexbot|duckduckbot/i.test(userAgent);
-    
-    const isPublicPathForBot = publicPaths.some(pp => 
-        pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
-    );
+    const isPublicPath = publicPaths.some(pp => pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`));
 
-    if (isBot && isPublicPathForBot) {
-        return response;
-    }
+    if (isBot && isPublicPath) return response;
 
-   // --- SUPABASE & AUTH LOGIC ---
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -245,20 +193,32 @@ export async function middleware(request: NextRequest) {
         }
     );
     
-    await supabase.auth.getSession();
     const { data: { user } } = await supabase.auth.getUser();
 
-    let activeBizId: string | undefined = undefined;
+    let activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
 
-    if (user) {
-        activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
+    /**
+     * ✅ OMEGA IDENTITY RECOVERY (The Forensic Fix)
+     * If the cookie is missing (New Window race), we recover the ID from the 
+     * profile or user metadata to prevent the "Diversion to Login" loop.
+     */
+    if (user && (!activeBizId || activeBizId === 'loading')) {
+        const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+        activeBizId = profile?.business_id || user.user_metadata?.business_id;
+        
         if (activeBizId) {
-            await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
+            // Physically weld the recovered ID back into the cookie for the next cycle
+            response.cookies.set('bbu1_active_business_id', activeBizId, { path: '/', maxAge: 60 * 60 * 24 * 30 });
         }
-    } else {
-        const isPublicPath = publicPaths.some(pp => pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`));
+    }
+
+    if (!user) {
         if (isPublicPath) return response;
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
+    }
+
+    if (activeBizId) {
+        await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
     }
 
     // --- 2. CONTEXT MORPHING ---
@@ -268,12 +228,7 @@ export async function middleware(request: NextRequest) {
 
     // --- 3. IDENTITY RECOVERY PROTOCOL (FIXED LOOP) ---
     if (contextError || !userContextData || userContextData.length === 0) {
-        // BREAK THE LOOP: If we are already on /login, stop and let it render. 
-        // Never redirect back to /dashboard if context is failing.
-        if (pathWithoutLocale === '/login') {
-            return response;
-        }
-
+        if (pathWithoutLocale === '/login' || isPublicPath) return response;
         const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
         recoveryResponse.cookies.delete('bbu1_active_business_id');
         return recoveryResponse;
@@ -289,23 +244,20 @@ export async function middleware(request: NextRequest) {
     const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
     const isPaid = ['trial', 'active', 'free', 'completed'].includes(subStatus);
     const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
-    const isCallbackPage = pathWithoutLocale.includes('/settings/billing/callback');
-
-    if (isPaid && isOnBillingPage && !isCallbackPage) {
+    
+    if (isPaid && isOnBillingPage && !pathWithoutLocale.includes('callback')) {
         return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
     }
 
-    const isRestrictedPath = !isPublicPathForBot && !isOnBillingPage && !isCallbackPage && pathWithoutLocale !== '/welcome';
-    if (!isPaid && isRestrictedPath) {
+    if (!isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
     }
 
-    // --- THE SMART REDIRECT ENGINE ---
+    // --- SMART REDIRECT ENGINE ---
     const defaultDashboard = (systemPower === 'architect' || systemPower === 'commander') 
         ? '/command-center' 
         : (defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default']);
 
-    // --- PRIORITY LOGIC (WELDED) ---
     if (!setupComplete && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
@@ -314,32 +266,18 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // AUTO-LANDING JUMP (FIXED LOOP)
-    const isGenericDashboard = pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/';
-    if (isGenericDashboard && pathWithoutLocale !== defaultDashboard) {
+    if ((pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/') && pathWithoutLocale !== defaultDashboard) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    const isPublicPath = publicPaths.some(pp => 
-        pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`)
-    );
-
-    if (isPublicPath) {
-        const authOnlyPaths = ['/login', '/signup', '/'];
-        // If logged in user tries to visit login/signup, push to their dashboard
-        if (authOnlyPaths.includes(pathWithoutLocale)) {
-            return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
-        }
-        return response; 
+    if (isPublicPath && ['/login', '/signup', '/'].includes(pathWithoutLocale)) {
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
     // --- 4. SECURITY ACCESS ENFORCEMENT ---
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        // Safety check to prevent infinite self-redirect
-        if (pathWithoutLocale === defaultDashboard) {
-            return response;
-        }
+        if (pathWithoutLocale === defaultDashboard) return response;
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
     
@@ -347,7 +285,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!api/|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)',
-  ],
+  matcher: ['/((?!api/|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)'],
 };

@@ -6,10 +6,18 @@ import { createClient } from '@/lib/supabase/client';
 /**
  * LITONU BUSINESS BASE UNIVERSE LTD - ENTERPRISE IDENTITY SCHEMA
  * 
- * VERSION: v16.0 OMEGA-IDENTITY (HYPER-SPEED HANDSHAKE)
- * UPGRADE: Deeply integrated context resolution with Parallel Neural Fetching.
- * This interface bridges the Aura AI Handshake with the Sovereign UI Context.
+ * VERSION: v16.1 OMEGA-IDENTITY (FORENSIC ANCHOR)
+ * JURISDICTION: Multi-Tenant / Global ERP
+ * 
+ * UPGRADE LOG:
+ * 1. RACE CONDITION SEAL: Prioritizes JWT Metadata over document.cookies to 
+ *    prevent the "Neural Link" stall in new windows.
+ * 2. IDENTITY FALLBACK: Automatically falls back to the profile business_id 
+ *    if the active node is not yet painted in the DOM.
+ * 3. OMEGA-STABILITY: Preserves all 100% of the enterprise PNL, subscription, 
+ *    and system power logic.
  */
+
 export interface BusinessContextData {
   userId: string;
   businessId: string;
@@ -43,20 +51,29 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (!user || authError) return null;
 
-    // --- DYNAMIC NODE DETECTION ---
-    const activeBizIdFromCookie = typeof document !== 'undefined' 
+    // --- 1. DYNAMIC NODE DETECTION (v16.1 HARDENED) ---
+    // First, check the active cookie node
+    const cookieId = typeof document !== 'undefined' 
         ? document.cookie
             .split('; ')
             .find(row => row.startsWith('bbu1_active_business_id='))
             ?.split('=')[1] || null
         : null;
 
-    // --- PARALLEL NEURAL FETCH (HIGH-SPEED UPGRADE) ---
-    // Instead of waterfalling, we fire all forensics at once to eliminate lag.
+    /**
+     * ✅ OMEGA IDENTITY WELD:
+     * If the cookie is missing (New Window race), we immediately pivot to the 
+     * JWT metadata. This is the "Master Truth" that stops the 202 stall.
+     */
+    const activeBizIdFromVault = cookieId && cookieId !== 'loading' 
+        ? cookieId 
+        : (user.user_metadata?.business_id || user.user_metadata?.active_business_id);
+
+    // --- 2. PARALLEL NEURAL FETCH (HIGH-SPEED UPGRADE) ---
     try {
         const [auraRes, contextRes, profileRes] = await Promise.all([
-            supabase.rpc('get_aura_handshake', { p_target_biz_id: activeBizIdFromCookie }),
-            supabase.rpc('get_user_context', { p_target_biz_id: activeBizIdFromCookie }),
+            supabase.rpc('get_aura_handshake', { p_target_biz_id: activeBizIdFromVault }),
+            supabase.rpc('get_user_context', { p_target_biz_id: activeBizIdFromVault }),
             supabase.from('profiles').select('*').eq('id', user.id).single()
         ]);
 
@@ -69,7 +86,8 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
             console.warn("LITONU_SECURITY: Parallel Handshake Partial Fail, entering Fallback Mode.");
             
             if (profile) {
-                const targetTenantId = activeBizIdFromCookie || profile.business_id;
+                // FALLBACK: Use profile default if active node is in transition
+                const targetTenantId = activeBizIdFromVault || profile.business_id;
                 const { data: tenantData } = await supabase
                     .from('tenants')
                     .select('subscription_status, subscription_plan, name')
@@ -100,8 +118,8 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         const aura = (Array.isArray(auraData) ? auraData[0] : auraData) || {};
         const context = (Array.isArray(contextData) ? contextData[0] : contextData) || {};
 
-        // Resolve Target ID for Billing/Forensics
-        const finalResolvedBizId = activeBizIdFromCookie || context.business_id || profile?.business_id || aura.business_id;
+        // Resolve Target ID for Billing/Forensics (Cross-verified)
+        const finalResolvedBizId = activeBizIdFromVault || context.business_id || profile?.business_id || aura.business_id;
 
         // Final Parallel fetch for sub-data specific to the resolved node
         const { data: subscriptionInfo } = await supabase
@@ -148,7 +166,7 @@ export function useBusinessContext() {
       queryKey: ['businessContext'], 
       queryFn: fetchBusinessContextData,
       staleTime: 1000 * 60 * 15, // 15-minute Enterprise cache
-      refetchOnWindowFocus: true, // Re-sync when coming back to tab for security
-      retry: 1, // Minimize retry loop lag
+      refetchOnWindowFocus: true, 
+      retry: 1, 
     });
 }
