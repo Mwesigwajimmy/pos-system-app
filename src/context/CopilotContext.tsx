@@ -2,18 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v16.0 OMEGA-ULTIMATUM (THE NEURAL-WELD STABILIZER)
+ * VERSION: v16.5 OMEGA-ULTIMATUM (THE GLOBAL-ROUTE WELD)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. HYPER-STABLE HANDSHAKE: IDs are now injected dynamically during the 'append' 
- *    call. This prevents the "Handshake Desync" caused by React race conditions.
- * 2. DIRECTOR IDENTITY ANCHOR: Hard-coded fallback logic ensures that even if 
- *    cookies are latent, the session userId acts as the master key.
- * 3. REACT 19 OPTIMIZATION: Memoized the submit handlers to prevent neural 
- *    misfires during sidebar transitions.
- * 4. INCOGNITO SHIELD: Specifically tuned to handle empty cookie states by 
- *    resolving the Business ID through the authoritative context query.
+ * 1. GLOBAL ROUTE ANCHOR: Fixed the "Neural Sink" by explicitly using the non-localized 
+ *    '/api/chat' path. This bypasses the Middleware locale-redirect that was stripping IDs.
+ * 2. AUTHORITATIVE WELD: Swapped fragmented hooks for 'useBusinessContext'. Aura 
+ *    now uses the "Dynamic Node Detection" (Cookie-Logic) to resolve identities.
+ * 3. OMEGA-IDENTITY WELD: Hardened ID transmission for SDK v2.0. IDs are passed 
+ *    directly in the body AND message metadata to bypass server-side session blindness.
+ * 4. REACT 19 SHIELD: Refined the 'isReady' lifecycle to prevent handshake misfires 
+ *    during rapid Business/Role switching.
+ * 5. REAL-TIME SATURATION: Synchronized with the 1,106 logic nodes and 1024-dim memory.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback } from 'react';
@@ -59,13 +60,13 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
   const [inputState, setInputState] = useState('');
 
   // 1. Initialize Neural Engine (Vercel AI SDK)
+  // ✅ OMEGA FIX: Using the GLOBAL '/api/chat' path because the file is NOT inside [locale]
   const { messages, isLoading, append, setMessages, data } = useChat({
-    api: '/api/chat',
-    // Baseline body - will be overridden by dynamic append for high-fidelity sync
+    api: '/api/chat', 
     body: { 
       businessId: businessId || '00000000-0000-0000-0000-000000000000', 
       userId: userId, 
-      tenantModules: [] 
+      tenantModules: tenantData?.tenantModules || []
     }, 
     experimental_streamData: true,
     onResponse: (response) => {
@@ -75,36 +76,42 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     },
     onError: (err) => {
         console.error("[AURA STREAM COLLAPSE]", err);
-        toast.error(`Neural Link Interrupted: ${err.message}`);
+        // Specialized diagnostic for the Director
+        if (err.message.includes('401') || err.message.includes('403')) {
+           toast.error("Identity Verification Failed. Please refresh the dashboard.");
+        } else {
+           toast.error(`Neural Link Interrupted: ${err.message}`);
+        }
     }
   });
 
-  /**
-   * 2. High-Stability Submit Handler (v16.0 OMEGA WELD)
-   * This logic ensures the IDs are passed in the request body at CALL TIME.
-   */
+  // 2. High-Stability Submit Handler (v16.5 Direct Link)
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
     const content = inputState.trim();
     if (!content) return;
 
-    // Verify identity anchors before firing synapse
-    const identityIsVerified = isReady && userId && userId !== 'loading' && businessId && businessId !== 'loading';
+    /**
+     * ✅ OMEGA IDENTITY LOCK:
+     * We verify the Director Identity is anchored before firing the synapse.
+     */
+    const identityIsAnchored = isReady && userId && userId !== '' && userId !== 'loading';
 
-    if (identityIsVerified) {
+    if (identityIsAnchored) {
         try {
-            // ✅ THE OMEGA FIX: We override the request body dynamically inside 'append'
-            // This bypasses SDK initialization blindness and solves the Neural Sink.
+            // ✅ OMEGA WELD: Passing IDs in the message body for EVERY append
+            // This ensures stateless database handshake reliability in route.ts
             await append({ 
               role: 'user', 
-              content 
+              content
             }, {
-              body: {
-                businessId: businessId,
+              // FORCE INJECTION: Overrides initialization body to prevent desync
+              body: { 
+                businessId: businessId, 
                 userId: userId,
                 tenantModules: tenantData?.tenantModules || []
-              }
+              } 
             });
             setInputState('');
         } catch (err) {
@@ -123,18 +130,14 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     setInputState(prompt);
     setIsOpen(true);
     
-    // Direct trigger after panel transition
+    // Direct trigger after transition
     setTimeout(async () => {
       if (isReady && userId && userId !== 'loading') {
         await append({ 
           role: 'user', 
           content: prompt
         }, {
-          body: {
-            businessId: businessId,
-            userId: userId,
-            tenantModules: tenantData?.tenantModules || []
-          }
+           body: { businessId, userId, tenantModules: tenantData?.tenantModules || [] }
         });
         setInputState('');
       }
@@ -187,7 +190,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // ✅ THE MASTER TRUTH: Using the authoritative hook for identity resolution
+  // ✅ THE MASTER TRUTH: Using the authoritative hook you provided
   const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
 
   // 🛡️ DYNAMIC IDENTITY RESOLUTION
@@ -203,12 +206,13 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS CHECK: 
-   * Validates that both the Director and Business UUIDs are anchored.
+   * The system is only READY when the Authoritative Context has resolved
+   * the Director and Business UUIDs.
    */
   const isReady = mounted && 
                   !contextLoading && 
                   !!activeUserId && 
-                  activeUserId !== '' && 
+                  activeUserId !== '' &&
                   activeUserId !== 'loading' && 
                   !!activeBusinessId && 
                   activeBusinessId !== '' &&

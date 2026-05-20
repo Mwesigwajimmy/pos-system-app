@@ -2,15 +2,14 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v16.0 OMEGA-ULTIMATUM (HYPER-STABLE IDENTITY WELD)
+ * VERSION: v16.2 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
  * 
  * CORE UPGRADES:
- * 1. INCOGNITO SHIELD: Hardened identity anchoring to bypass cookie-blindness in 
- *    private windows using direct session fallbacks.
- * 2. HYPER-SPEED HANDSHAKE: Aligned with v16.0 useBusinessContext parallel fetching
- *    to eliminate the "Unauthorized Entity" stall.
- * 3. HEARTBEAT ALIGNMENT: Synchronized with the v17.0 Database Schema Handshake.
- * 4. CHANNEL INTEGRITY: Forced re-weld of neural tokens during domain transitions.
+ * 1. IDENTITY STABILITY: Optimized state checks to hide the "Awaiting" screen 
+ *    instantly once the v17.0 SQL Handshake returns 'READY'.
+ * 2. SDK-VERSION SHIELD: Hardened the input blocker to prevent "Syncing..." stalls.
+ * 3. ERROR SENTRY: Integrated a high-fidelity listener for Kernel-level identity crashes.
+ * 4. CHANNEL INTEGRITY: Persistent auto-scroll locked to the latest neural token.
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -149,7 +148,7 @@ export default function CopilotPanel() {
 
   /**
    * ✅ OMEGA IDENTITY RECOVERY:
-   * Optimized for Incognito. System is READY if IDs are present OR if context is ready.
+   * Optimized logic to hide loading screen as soon as IDs are physically present in the vault.
    */
   const identityIsAnchored = useMemo(() => {
     return (!!userId && userId !== '' && userId !== 'loading') && 
@@ -206,7 +205,7 @@ export default function CopilotPanel() {
       <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
         <div className="space-y-8 max-w-2xl mx-auto">
             
-            {/* INITIAL LOADING STATE - REFINED FOR INCOGNITO SPEED */}
+            {/* INITIAL LOADING STATE - REFINED FOR INCOGNITO */}
             {!identityIsAnchored && messages.length === 0 && (
                 <div className="py-32 text-center animate-in fade-in zoom-in duration-700">
                     <div className="relative inline-block mb-8">
