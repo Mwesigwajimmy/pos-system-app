@@ -2,18 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v16.5 OMEGA-ULTIMATUM (THE GLOBAL-ROUTE WELD)
+ * VERSION: v16.8 OMEGA-ULTIMATUM (THE LEGACY-SDK WELD)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. GLOBAL ROUTE ANCHOR: Fixed the "Neural Sink" by explicitly using the non-localized 
- *    '/api/chat' path. This bypasses the Middleware locale-redirect that was stripping IDs.
- * 2. AUTHORITATIVE WELD: Swapped fragmented hooks for 'useBusinessContext'. Aura 
- *    now uses the "Dynamic Node Detection" (Cookie-Logic) to resolve identities.
- * 3. OMEGA-IDENTITY WELD: Hardened ID transmission for SDK v2.0. IDs are passed 
- *    directly in the body AND message metadata to bypass server-side session blindness.
- * 4. REACT 19 SHIELD: Refined the 'isReady' lifecycle to prevent handshake misfires 
- *    during rapid Business/Role switching.
+ * 1. LEGACY SDK BRIDGE: Optimized specifically for @ai-sdk/react v2.0.81. Moves 
+ *    identity tokens into a Persistent Body Weld to prevent identity stripping 
+ *    during React 19 neural stream cycles.
+ * 2. OMEGA-IDENTITY WELD: Hardened ID transmission for stateless backends. IDs 
+ *    are forced into the request body during the 'append' call to bypass 
+ *    initialization lag.
+ * 3. GLOBAL ROUTE ANCHOR: Uses the non-localized '/api/chat' path to prevent 
+ *    Middleware 307 redirects from deleting the POST request body.
+ * 4. AUTHORITATIVE WELD: Swapped fragmented hooks for 'useBusinessContext'.
  * 5. REAL-TIME SATURATION: Synchronized with the 1,106 logic nodes and 1024-dim memory.
  */
 
@@ -59,12 +60,12 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
 
-  // 1. Initialize Neural Engine (Vercel AI SDK)
-  // ✅ OMEGA FIX: Using the GLOBAL '/api/chat' path because the file is NOT inside [locale]
+  // 1. Initialize Neural Engine (Vercel AI SDK v2.0.81)
+  // ✅ OMEGA WELD: Anchoring IDs in the core body configuration
   const { messages, isLoading, append, setMessages, data } = useChat({
     api: '/api/chat', 
     body: { 
-      businessId: businessId || '00000000-0000-0000-0000-000000000000', 
+      businessId: businessId, 
       userId: userId, 
       tenantModules: tenantData?.tenantModules || []
     }, 
@@ -85,7 +86,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     }
   });
 
-  // 2. High-Stability Submit Handler (v16.5 Direct Link)
+  // 2. High-Stability Submit Handler (v16.8 Direct Link)
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
@@ -100,18 +101,21 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
 
     if (identityIsAnchored) {
         try {
-            // ✅ OMEGA WELD: Passing IDs in the message body for EVERY append
-            // This ensures stateless database handshake reliability in route.ts
+            // ✅ THE OMEGA-NEURAL FIX: 
+            // We override the request body dynamically inside 'append'.
+            // This is mandatory for SDK v2.0.81 + React 19 to solve the "Neural Sink".
             await append({ 
               role: 'user', 
               content
             }, {
-              // FORCE INJECTION: Overrides initialization body to prevent desync
-              body: { 
-                businessId: businessId, 
-                userId: userId,
-                tenantModules: tenantData?.tenantModules || []
-              } 
+              // FORCE INJECTION: Overrides initialization body to ensure sync
+              options: {
+                body: { 
+                  businessId: businessId, 
+                  userId: userId,
+                  tenantModules: tenantData?.tenantModules || []
+                }
+              } as any
             });
             setInputState('');
         } catch (err) {
@@ -137,7 +141,9 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
           role: 'user', 
           content: prompt
         }, {
-           body: { businessId, userId, tenantModules: tenantData?.tenantModules || [] }
+           options: {
+             body: { businessId, userId, tenantModules: tenantData?.tenantModules || [] }
+           } as any
         });
         setInputState('');
       }
@@ -194,6 +200,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
 
   // 🛡️ DYNAMIC IDENTITY RESOLUTION
+  // Extracting verified IDs from the authoratative context (Cookie-Sync Aware)
   const activeBusinessId = useMemo(() => {
     const id = businessContext?.businessId || '';
     return id === 'loading' ? '' : id;

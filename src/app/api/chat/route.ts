@@ -155,9 +155,10 @@ const extractTextFromContent = (content: any): string => {
 /**
 THE EXECUTIVE GATEWAY (POST)
 Primary endpoint: Orchestrates the Autonomous Executive Council.
-DEEP UPGRADE: Vault-Aware Identity Resolution (v67.1).
+DEEP UPGRADE: Vault-Aware Identity Resolution (v67.8).
 ✅ DEEP FIX: Identity Resolve Bypass.
-Extracts IDs from root AND nested 'data' objects. Passes IDs explicitly to bypass server-side auth.uid() null barrier.
+Extracts IDs from root, nested 'data', and legacy 'options' objects. 
+Passes IDs explicitly to bypass server-side auth.uid() null barrier.
 ✅ DEEP FIX: Recovers AI Keys from Database Settings to prevent Vercel-Sync failures.
 */
 export async function POST(req: NextRequest) {
@@ -165,11 +166,10 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { messages, tenantModules } = body;
 
-        // 🛡️ FORENSIC ID EXTRACTION (v67.5 OMEGA NEURAL FIX)
-        // We capture IDs from the body, the data object, OR the deep metadata of the last message.
-        // This ensures the identity is found even during rapid React component transitions.
-        const rawBusinessId = body.businessId || body.data?.businessId || messages?.[messages.length - 1]?.data?.businessId;
-        const rawUserId = body.userId || body.data?.userId || messages?.[messages.length - 1]?.data?.userId;
+        // 🛡️ FORENSIC ID EXTRACTION (v67.8 OMEGA NEURAL FIX)
+        // We capture IDs from the body, the data object, OR the options.body sent by SDK v2.0.81
+        const rawBusinessId = body.businessId || body.data?.businessId || body.options?.body?.businessId;
+        const rawUserId = body.userId || body.data?.userId || body.options?.body?.userId;
 
         // ✅ THE OMEGA IDENTITY WELD: 
         // We explicitly block literal 'loading' strings or empty IDs from hitting the RPC 
@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
         
-        // 🛡️ v67.0 STATELESS MASTER HANDSHAKE
+        // 🛡️ v67.8 STATELESS MASTER HANDSHAKE
         // Passes explicit IDs to bypass server-side auth.uid() null barrier.
         const { data: auraData, error: auraError } = await supabaseAdmin.rpc('get_aura_handshake', {
             p_target_biz_id: businessId,
