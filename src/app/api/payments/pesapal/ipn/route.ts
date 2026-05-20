@@ -40,7 +40,7 @@ export async function GET(req: Request) {
         const paymentData = await res.json();
 
         // 2. ACTIVATION PROTOCOL (Status Code 1 = Completed)
-        if (paymentData.status_code === 1) {
+        if (Number(paymentData.status_code) === 1) {
             
             // Search the registry for the business linked to this payment
             const { data: tenant, error: tenantError } = await supabase

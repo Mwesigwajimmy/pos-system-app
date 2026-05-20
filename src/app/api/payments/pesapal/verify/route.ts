@@ -23,7 +23,7 @@ export async function GET(req: Request) {
         const paymentData = await res.json();
 
         // 2. Success Validation (1 = Completed)
-        if (paymentData.status_code === 1) {
+        if (Number(paymentData.status_code) === 1) {
             
             // Resolve business via Tracking ID
             const { data: tenant } = await supabase
