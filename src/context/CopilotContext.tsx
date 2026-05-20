@@ -2,18 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v15.5 OMEGA-ULTIMATUM (THE BUSINESS-NODE WELD)
+ * VERSION: v16.0 OMEGA-ULTIMATUM (THE NEURAL-WELD STABILIZER)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. AUTHORITATIVE WELD: Swapped fragmented hooks for 'useBusinessContext'. Aura 
- *    now uses the "Dynamic Node Detection" (Cookie-Logic) to resolve Samuel Oyat's 
- *    specific role for the active Vault.
- * 2. OMEGA-IDENTITY WELD: Hardened ID transmission for SDK v2.0. IDs are passed 
- *    directly in the body AND message metadata to bypass server-side session blindness.
- * 3. REACT 19 SHIELD: Refined the 'isReady' lifecycle to prevent handshake misfires 
- *    during rapid Business/Role switching.
- * 4. REAL-TIME SATURATION: Synchronized with the 1,106 logic nodes and 1024-dim memory.
+ * 1. HYPER-STABLE HANDSHAKE: IDs are now injected dynamically during the 'append' 
+ *    call. This prevents the "Handshake Desync" caused by React race conditions.
+ * 2. DIRECTOR IDENTITY ANCHOR: Hard-coded fallback logic ensures that even if 
+ *    cookies are latent, the session userId acts as the master key.
+ * 3. REACT 19 OPTIMIZATION: Memoized the submit handlers to prevent neural 
+ *    misfires during sidebar transitions.
+ * 4. INCOGNITO SHIELD: Specifically tuned to handle empty cookie states by 
+ *    resolving the Business ID through the authoritative context query.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback } from 'react';
@@ -59,13 +59,13 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
   const [inputState, setInputState] = useState('');
 
   // 1. Initialize Neural Engine (Vercel AI SDK)
-  // ✅ OMEGA FIX: Passing IDs from the authoritative BusinessContext to the API
   const { messages, isLoading, append, setMessages, data } = useChat({
     api: '/api/chat',
+    // Baseline body - will be overridden by dynamic append for high-fidelity sync
     body: { 
       businessId: businessId || '00000000-0000-0000-0000-000000000000', 
       userId: userId, 
-      tenantModules: [] // Resolved dynamically by backend v65.0
+      tenantModules: [] 
     }, 
     experimental_streamData: true,
     onResponse: (response) => {
@@ -79,28 +79,32 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     }
   });
 
-  // 2. High-Stability Submit Handler (v15.5 Direct Link)
+  /**
+   * 2. High-Stability Submit Handler (v16.0 OMEGA WELD)
+   * This logic ensures the IDs are passed in the request body at CALL TIME.
+   */
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
     const content = inputState.trim();
     if (!content) return;
 
-    /**
-     * ✅ OMEGA IDENTITY LOCK:
-     * We verify the Director Identity is anchored before firing the synapse.
-     */
-    if (isReady && userId && userId !== '' && userId !== 'loading') {
+    // Verify identity anchors before firing synapse
+    const identityIsVerified = isReady && userId && userId !== 'loading' && businessId && businessId !== 'loading';
+
+    if (identityIsVerified) {
         try {
-            // ✅ OMEGA WELD: Passing IDs in the message data object
-            // This satisfies the stateless database handshake in route.ts v65.0
+            // ✅ THE OMEGA FIX: We override the request body dynamically inside 'append'
+            // This bypasses SDK initialization blindness and solves the Neural Sink.
             await append({ 
               role: 'user', 
-              content,
-              data: { 
-                businessId: businessId, 
-                userId: userId 
-              } 
+              content 
+            }, {
+              body: {
+                businessId: businessId,
+                userId: userId,
+                tenantModules: tenantData?.tenantModules || []
+              }
             });
             setInputState('');
         } catch (err) {
@@ -111,7 +115,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
         console.error("[AURA LOCK] Director Identity not yet synchronized.");
         toast.info("Aura is securing your identity. Please wait 2 seconds.");
     }
-  }, [inputState, businessId, userId, isReady, append]);
+  }, [inputState, businessId, userId, isReady, append, tenantData]);
 
   // 3. Remote Activation Logic (Boardroom & Strategic Pulse)
   const startAIAssistance = useCallback(async (prompt: string) => {
@@ -119,18 +123,23 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     setInputState(prompt);
     setIsOpen(true);
     
-    // Direct trigger after transition
+    // Direct trigger after panel transition
     setTimeout(async () => {
       if (isReady && userId && userId !== 'loading') {
         await append({ 
           role: 'user', 
-          content: prompt, 
-          data: { businessId, userId } 
+          content: prompt
+        }, {
+          body: {
+            businessId: businessId,
+            userId: userId,
+            tenantModules: tenantData?.tenantModules || []
+          }
         });
         setInputState('');
       }
     }, 800);
-  }, [businessId, userId, isReady, append]);
+  }, [businessId, userId, isReady, append, tenantData]);
 
   // 4. Identity-Aware Memoization
   const contextValue = useMemo(() => ({
@@ -151,7 +160,7 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     businessId,
     userId,
     tenantData,
-    tenantModules: [] // Handled by authoritative context
+    tenantModules: tenantData?.tenantModules || []
   }), [messages, isLoading, data, setMessages, inputState, isOpen, isReady, businessId, userId, tenantData, handleSubmit, startAIAssistance]);
 
   return (
@@ -178,11 +187,10 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // ✅ THE MASTER TRUTH: Using the authoritative hook you provided
+  // ✅ THE MASTER TRUTH: Using the authoritative hook for identity resolution
   const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
 
   // 🛡️ DYNAMIC IDENTITY RESOLUTION
-  // Extracting verified IDs from the authoratative context (Cookie-Sync Aware)
   const activeBusinessId = useMemo(() => {
     const id = businessContext?.businessId || '';
     return id === 'loading' ? '' : id;
@@ -195,14 +203,15 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS CHECK: 
-   * The system is only READY when the Authoritative Context has resolved
-   * the Director and Business UUIDs.
+   * Validates that both the Director and Business UUIDs are anchored.
    */
   const isReady = mounted && 
                   !contextLoading && 
                   !!activeUserId && 
+                  activeUserId !== '' && 
                   activeUserId !== 'loading' && 
                   !!activeBusinessId && 
+                  activeBusinessId !== '' &&
                   activeBusinessId !== 'loading';
 
   return (

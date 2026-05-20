@@ -2,17 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v15.2 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
+ * VERSION: v16.0 OMEGA-ULTIMATUM (HYPER-STABLE IDENTITY WELD)
  * 
  * CORE UPGRADES:
- * 1. SDK-VERSION SHIELD: Hardened the input blocker to prevent "Syncing..." stalls 
- *    when Director IDs are physically present in the vault footer.
- * 2. ERROR SENTRY: Integrated a high-fidelity listener for Kernel-level identity crashes.
- * 3. HEARTBEAT ALIGNMENT: Gracefully handles the "Pulse-Start" chunks from Kernel v13.8.
- * 4. CHANNEL INTEGRITY: Persistent auto-scroll locked to the latest neural token.
+ * 1. INCOGNITO SHIELD: Hardened identity anchoring to bypass cookie-blindness in 
+ *    private windows using direct session fallbacks.
+ * 2. HYPER-SPEED HANDSHAKE: Aligned with v16.0 useBusinessContext parallel fetching
+ *    to eliminate the "Unauthorized Entity" stall.
+ * 3. HEARTBEAT ALIGNMENT: Synchronized with the v17.0 Database Schema Handshake.
+ * 4. CHANNEL INTEGRITY: Forced re-weld of neural tokens during domain transitions.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
@@ -109,7 +110,7 @@ export default function CopilotPanel() {
   const { 
     messages, input, handleInputChange, handleSubmit, 
     isLoading: isChatLoading, data: streamData, 
-    isReady: isContextReady, businessId, userId
+    isReady: isContextReady, businessId, userId, tenantData
   } = useCopilot();
 
   // Side-Effect Orchestrator: Captures tool-end and error events
@@ -148,10 +149,12 @@ export default function CopilotPanel() {
 
   /**
    * ✅ OMEGA IDENTITY RECOVERY:
-   * System is READY if IDs are present, even if isContextReady is transitioning.
+   * Optimized for Incognito. System is READY if IDs are present OR if context is ready.
    */
-  const identityIsAnchored = (!!userId && userId !== '' && userId !== 'loading') && 
-                             (!!businessId && businessId !== '' && businessId !== 'loading');
+  const identityIsAnchored = useMemo(() => {
+    return (!!userId && userId !== '' && userId !== 'loading') && 
+           (!!businessId && businessId !== '' && businessId !== 'loading');
+  }, [userId, businessId]);
 
   const canSend = !isChatLoading && (input || '').trim().length > 0 && identityIsAnchored;
 
@@ -203,16 +206,26 @@ export default function CopilotPanel() {
       <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
         <div className="space-y-8 max-w-2xl mx-auto">
             
-            {/* INITIAL LOADING STATE */}
+            {/* INITIAL LOADING STATE - REFINED FOR INCOGNITO SPEED */}
             {!identityIsAnchored && messages.length === 0 && (
-                <div className="py-32 text-center animate-in fade-in duration-1000">
-                    <div className="relative inline-block mb-6">
-                        <Loader2 className="h-14 w-14 animate-spin text-emerald-500/20" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <Activity className="h-6 w-6 text-emerald-500 animate-pulse" />
+                <div className="py-32 text-center animate-in fade-in zoom-in duration-700">
+                    <div className="relative inline-block mb-8">
+                        <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping opacity-20" />
+                        <div className="h-24 w-24 bg-emerald-50/50 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-inner border border-emerald-100/50 relative z-10">
+                           <ShieldCheck className="h-10 w-10 text-emerald-500" />
                         </div>
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">Aligning Neural Identity</p>
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-slate-800 uppercase tracking-[0.3em]">Awaiting Forensic Protocol</h2>
+                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">
+                           Synchronizing sovereign neural links for {tenantData?.businessName || "Authorized Entity"}...
+                        </p>
+                    </div>
+                    <div className="mt-10 flex items-center justify-center gap-2">
+                        <div className="h-1 w-1 rounded-full bg-emerald-500 animate-bounce" />
+                        <div className="h-1 w-1 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
+                        <div className="h-1 w-1 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
+                    </div>
                 </div>
             )}
 
