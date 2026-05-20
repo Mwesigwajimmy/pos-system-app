@@ -1,15 +1,15 @@
 // src/lib/langchain/chat-ollama-shim.ts
 /**
  * --- BBU1 SOVEREIGN ENGINE SHIM (OMEGA-ULTIMATUM) ---
- * VERSION: 15.2 OMEGA (ALIGNED FOR SAMBANOVA ELITE 1024)
+ * VERSION: v15.5 OMEGA (ALIGNED FOR SAMBANOVA ELITE 1024)
  * ENGINE: Meta-Llama-3.3-70B-Instruct (via SambaNova Cloud)
  * 
  * FORENSIC UPGRADES:
- * 1. DYNAMIC TOOL MAPPING: Kills the hardcoded tool bottleneck. Now accepts all BBU1 
- *    Sovereign tools passed from the Kernel.
- * 2. IDENTITY CONTINUITY: Preserves JWT context throughout the fetch cycle.
- * 3. SSE ROBUSTNESS: Hardened the stream parser to handle SambaNova's high-velocity 
- *    multi-tool output without channel drops.
+ * 1. STREAM BUFFER WELD: Implemented a line-buffer to prevent JSON parsing crashes 
+ *    on partial stream chunks. This kills the "Neural Link Interrupted" 500 errors.
+ * 2. PROPERTY ALIGNMENT: Fixed the tool_calls yield property to ensure absolute 
+ *    synchronization with the v15.5 Sovereign Agent Executor.
+ * 3. DYNAMIC TOOL MAPPING: Accept all BBU1 tools passed from the Kernel motherboard.
  * 4. SHADOW WELD: Preserved eval('require') logic for vm2 production build stability.
  */
 
@@ -25,11 +25,10 @@ export interface ChatOllamaTool {
   execute: (args: Record<string, unknown>) => Promise<any>;
 }
 
-// --- CORE TOOL IMPLEMENTATIONS (PRESERVED EXECUTIVE LOGIC) ---
+// --- CORE TOOL IMPLEMENTATIONS ---
 
 /**
  * CODE INTERPRETER: The "Forensic Engine"
- * Executes sandboxed code for high-precision business math.
  */
 const codeInterpreterTool: ChatOllamaTool = {
   name: 'code_interpreter',
@@ -40,7 +39,7 @@ const codeInterpreterTool: ChatOllamaTool = {
   async execute(args): Promise<any> {
     const { code } = args as { code: string };
     try {
-        // ✅ SHADOW WELD: Cloaks vm2 from Webpack static analysis during production builds
+        // ✅ SHADOW WELD: Cloaks vm2 from Webpack
         const { VM } = eval('require')('vm2');
         const vm = new VM({
             timeout: 5000,
@@ -84,7 +83,7 @@ export interface ChatOllamaOptions {
   baseUrl?: string; 
   model?: string;   
   timeoutMs?: number;
-  tools?: any[]; // Supports both internal and Kernel-provided tools
+  tools?: any[]; 
   verbose?: boolean;
 }
 
@@ -99,8 +98,7 @@ export interface ToolCall {
 
 /**
  * SambaNovaSovereignModel (Aliased as ChatOllama for Kernel Compatibility)
- * The definitive cloud bridge for the BBU1 Universe.
- * VERSION 15.2: Now Dynamically Tool-Aware.
+ * VERSION 15.5: Stream-Stabilized & Tool-Synchronized.
  */
 class SambaNovaSovereignModel {
   private apiKey: string;
@@ -109,32 +107,28 @@ class SambaNovaSovereignModel {
   private verbose: boolean;
 
   constructor(opts: ChatOllamaOptions = {}) {
-    // 🛡️ v15.2: Locked to the SambaNova Master Key
     this.apiKey = process.env.SAMBANOVA_API_KEY || '';
     
     if (!this.apiKey && typeof window === 'undefined') {
-        console.warn("[AURA ENGINE ALERT] SAMBANOVA_API_KEY is missing. The Brain is disconnected.");
+        console.warn("[AURA ENGINE ALERT] SAMBANOVA_API_KEY is missing.");
     }
 
     this.modelName = opts.model || 'Meta-Llama-3.3-70B-Instruct'; 
-    // ✅ OMEGA FIX: Merging internal tools with any tools passed from the Kernel manifest
     this.tools = [...(opts.tools || []), weatherTool, codeInterpreterTool];
     this.verbose = opts.verbose || false;
   }
 
   private log(...args: any[]) {
-    if (this.verbose) console.log('[Aura Sovereign Engine v15.2]', ...args);
+    if (this.verbose) console.log('[Aura Sovereign Engine v15.5]', ...args);
   }
 
   /**
    * Translates Zod schemas into OpenAI-compliant Function Definitions.
-   * ✅ UPGRADED: Handles dynamic Tool mappings from the Kernel motherboard.
    */
   private formatTools() {
     if (!this.tools || this.tools.length === 0) return undefined;
     
     return this.tools.map(tool => {
-      // Handle both internal ChatOllamaTool and Kernel ITool formats
       const name = tool.name;
       const description = tool.description;
       const schema = tool.schema || tool.jsonSchema;
@@ -151,19 +145,19 @@ class SambaNovaSovereignModel {
   }
 
   /**
-   * PRIMARY NEURAL STREAM GATEWAY (v15.2)
-   * High-velocity Handshake with SambaNova Cloud (SSE Protocol)
+   * PRIMARY NEURAL STREAM GATEWAY (v15.5)
+   * High-velocity Handshake with SambaNova Cloud.
+   * FIX: Added forensic line-buffering to prevent JSON fragmentation crashes.
    */
   async *chat(
     messages: BaseMessage[],
     extra?: Record<string, any>
-  ): AsyncGenerator<{ type: 'chunk' | 'tool_calls' | 'final'; content: any }> {
-    this.log('Establishing Neural Link via SambaNova. Vault Lock active.');
+  ): AsyncGenerator<{ type: 'chunk' | 'tool_calls' | 'final'; content: any; tool_calls?: any[] }> {
+    this.log('Establishing Neural Link. Forensic Buffer Active.');
 
     const ENDPOINT = "https://api.sambanova.ai/v1/chat/completions";
 
     try {
-      // 🛡️ FORENSIC LOGGING: Tracking Business ID in the thought stream
       const bizId = extra?.businessId || "GLOBAL";
 
       const response = await fetch(ENDPOINT, {
@@ -171,7 +165,7 @@ class SambaNovaSovereignModel {
         headers: {
             "Authorization": `Bearer ${this.apiKey}`,
             "Content-Type": "application/json",
-            "x-bbu1-vault-id": bizId // Internal audit header
+            "x-bbu1-vault-id": bizId 
         },
         body: JSON.stringify({
             model: this.modelName,
@@ -188,7 +182,7 @@ class SambaNovaSovereignModel {
 
       if (!response.ok) {
           const errData = await response.json();
-          throw new Error(errData.error?.message || `Handshake Refusal: HTTP ${response.status}`);
+          throw new Error(errData.error?.message || `Gateway Refusal: HTTP ${response.status}`);
       }
 
       const reader = response.body?.getReader();
@@ -197,13 +191,23 @@ class SambaNovaSovereignModel {
 
       let fullContent = '';
       let accumulatedToolCalls: any[] = [];
+      
+      /**
+       * ✅ THE OMEGA FORENSIC BUFFER
+       * We store partial lines here to ensure we never JSON.parse a fragment.
+       */
+      let lineBuffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        // Concatenate new data with the previous partial line
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split("\n");
+        
+        // Keep the last (potentially incomplete) line in the buffer
+        lineBuffer = lines.pop() || '';
 
         for (const line of lines) {
             const cleanLine = line.trim();
@@ -213,13 +217,13 @@ class SambaNovaSovereignModel {
                 const json = JSON.parse(cleanLine.replace("data: ", ""));
                 const delta = json.choices[0]?.delta;
 
-                // 1. Handle Text Content (Standard Chunks)
+                // 1. Handle Text Content
                 if (delta?.content) {
                     fullContent += delta.content;
                     yield { type: 'chunk', content: delta.content };
                 }
 
-                // 2. Handle Tool Calls (SambaNova Parallel Generation)
+                // 2. Handle Tool Calls
                 if (delta?.tool_calls) {
                     delta.tool_calls.forEach((toolCall: any) => {
                         const index = toolCall.index ?? 0;
@@ -237,28 +241,31 @@ class SambaNovaSovereignModel {
                         }
                     });
                 }
-            } catch (e) { /* partial chunk recovery */ }
+            } catch (e) { 
+                // Silently skip malformed lines to maintain stream integrity
+            }
         }
       }
 
-      // 3. Final Executive Conclusion
-      // We yield tool calls before the final signal to ensure the Kernel can act
-      if (accumulatedToolCalls.length > 0) {
-          yield { type: 'tool_calls', content: accumulatedToolCalls.filter(tc => tc !== undefined) };
+      // 3. Final Handshake
+      // Yield tools under both 'content' and 'tool_calls' for absolute compatibility
+      const finalTools = accumulatedToolCalls.filter(tc => tc !== undefined);
+      if (finalTools.length > 0) {
+          yield { 
+            type: 'tool_calls', 
+            content: finalTools,
+            tool_calls: finalTools // ✅ OMEGA WELD: Matches AgentExecutor v15.5
+          };
       }
       
       yield { type: 'final', content: fullContent };
 
     } catch (error: any) {
       this.log('NEURAL LINK INTERRUPTED:', error.message);
-      throw new Error(`Aura Sovereign Engine v15.2 Failure: ${error.message}`);
+      throw new Error(`SambaNova Bridge Failure: ${error.message}`);
     }
   }
 
-  /**
-   * Helper for non-streaming executive calls.
-   * Standardizes the output to the final reasoning string.
-   */
   async call(messages: BaseMessage[], extra?: Record<string, any>): Promise<string> {
     let finalResponse = '';
     for await (const packet of this.chat(messages, extra)) {
@@ -268,5 +275,5 @@ class SambaNovaSovereignModel {
   }
 }
 
-// ✅ EXPORT ALIGNMENT: Aliasing to ChatOllama to ensure system-wide continuity.
+// ✅ EXPORT ALIGNMENT
 export { SambaNovaSovereignModel as ChatOllama };
