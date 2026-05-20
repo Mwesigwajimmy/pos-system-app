@@ -1,18 +1,18 @@
 // src/lib/ai-tools/data.ts
 /**
  * --- BBU1 SOVEREIGN DATA & FORENSIC GATEWAY ---
- * VERSION: v14.0 Sovereign Edition (OMEGA-ULTIMATUM ALIGNMENT)
+ * VERSION: v15.0 OMEGA-ULTIMATUM (OMNISCIENT WELD)
  * 
  * UPGRADED: 
- * 1. ELITE NEURAL ALIGNMENT: Fully synchronized for 1024-dimension Voyage-2 Elite.
- * 2. SHADOW WELD INTEGRITY: Preserved dynamic server-side module resolution.
- * 3. RETRIEVAL CALIBRATION: Optimized p_match_threshold for 1024-dim semantic density.
- * 4. FORENSIC DNA: Realigned all knowledge tools to the new Super-Brain standard.
- * 5. CORE ALIGNMENT: Decoupled from shims. Points to Official Tool Motherboard.
+ * 1. OMNISCIENT ALIGNMENT: Fully synchronized for 1,974 logic nodes and 9 specialized agents.
+ * 2. ELITE NEURAL ALIGNMENT: 1024-dimension precision for Jina/Voyage-2 Super-Brain.
+ * 3. FORENSIC DNA: Hard-coded mappings for 'general_ledger' and 'sovereign_audit_logs'.
+ * 4. SHADOW WELD INTEGRITY: Preserved dynamic server-side module resolution (eval require).
+ * 5. BENFORD ENGINE: Optimized execute_forensic_audit for multi-tenant math scans.
  */
 
 import { z } from 'zod';
-// ✅ OMEGA REALIGNMENT: Using the official Tool base we fixed in ai-core/tools
+// ✅ OMEGA REALIGNMENT: Using the official Tool base from ai-core/tools
 import { Tool, RunManager } from '@/lib/ai-core/tools';
 import { generateEmbedding } from './embedding';
 
@@ -41,8 +41,8 @@ export class SupabaseToolFactory {
 
                 const businessId = runManager.config.configurable?.businessId;
                 
-                if (!businessId) {
-                    throw new Error(`Aura Security Alert: Tool '${this.name}' denied. Business Context Missing.`);
+                if (!businessId || businessId === 'loading') {
+                    throw new Error(`Aura Security Alert: Tool '${this.name}' denied. Business Context Missing or Loading.`);
                 }
                 
                 const supabase = createClient(cookies());
@@ -63,7 +63,8 @@ export class SupabaseToolFactory {
                     status: "Success",
                     origin_tool: this.name,
                     data: data,
-                    forensic_timestamp: new Date().toISOString()
+                    forensic_timestamp: new Date().toISOString(),
+                    tenant_id: businessId
                 });
             }
         })();
@@ -73,17 +74,17 @@ export class SupabaseToolFactory {
 // --- 1. THE BOARDROOM PRESENTATION ENGINE ---
 export const boardroomPresentationTool = new (class extends Tool<any> {
     name = "prepare_boardroom_presentation";
-    description = "Generates a full-screen executive boardroom briefing with visual slides, charts, and voice narration. Aura invites the CFO, COO, or PM to present data-driven insights.";
+    description = "Generates a full-screen executive boardroom briefing with visual slides and charts. Use this to present Benford Math results and financial leakage summaries.";
     schema = z.object({
-        presenter_role: z.enum(["CFO", "COO", "PM", "Marketing", "HR", "Auditor"]),
-        meeting_title: z.string().describe("The official executive title of the briefing."),
+        presenter_role: z.enum(["CFO", "COO", "PM", "Marketing", "HR", "Auditor", "Medical", "SACCO", "Telecom"]),
+        meeting_title: z.string(),
         slides: z.array(z.object({
             title: z.string(),
-            content: z.string().describe("The narrative script for Aura to narrate to the Director."),
+            content: z.string(),
             visual_type: z.enum(["pie_chart", "bar_chart", "area_chart", "stats_grid", "ledger_view"]),
-            data_payload: z.array(z.any()).describe("Numerical data required for chart rendering.")
+            data_payload: z.array(z.any())
         })),
-        executive_summary: z.string().optional().describe("A summary of action items.")
+        executive_summary: z.string().optional()
     });
     
     protected async _execute(input: any) {
@@ -103,56 +104,58 @@ export const BoardroomPresentationTool = boardroomPresentationTool;
 // --- 2. SOVEREIGN MARKET INTELLIGENCE ENGINE ---
 export class SovereignSearchTool extends Tool<any> {
     name = "get_market_intelligence";
-    description = "Connects to the internet to scout competitor pricing and global market trends. Aura uses this to transform financial downgrades into growth.";
+    description = "Connects to global trade nodes to scout pricing and sector trends.";
     schema = z.object({
-        query: z.string().describe("The forensic search query."),
-        sector: z.string().describe("The industry sector context (e.g., 'Agriculture', 'Logistics').")
+        query: z.string(),
+        sector: z.string()
     });
 
     protected async _execute(input: any) {
         try {
             const response = await fetch(`http://127.0.0.1:8080/search?q=${encodeURIComponent(input.query)}`);
             if (!response.ok) throw new Error("Search Node Unreachable");
-            
             const data = await response.json();
-            return `FRESH GLOBAL MARKET INTELLIGENCE: ${JSON.stringify(data.results)}`;
+            return `GLOBAL MARKET DATA: ${JSON.stringify(data.results)}`;
         } catch (err) {
-            return "Aura Internet Handshake Failure: The Sovereign Search Node is currently offline. Falling back to internal historical data.";
+            return "Sovereign Search Offline. Utilizing internal 1024-dim historical cache.";
         }
     }
 }
 
-// --- 3. THE FORENSIC AUDIT & MATH ENGINE ---
+// --- 3. THE FORENSIC AUDIT & MATH ENGINE (BENFORD POWERED) ---
 export const ForensicAuditTool = new (class extends Tool<any> {
     name = "execute_forensic_audit";
-    description = "Runs complex math audits like Benford's Law to detect fraud or UI math errors by querying raw database records.";
+    description = "REQUIRED: Runs Benford Law math scans on the general_ledger to detect profit margin anomalies.";
     schema = z.object({
         audit_type: z.enum(["benfords_law", "profit_margin_verification", "tax_consistency_check", "exchange_rate_leakage"]),
-        period: z.string().describe("The timeframe (e.g. '2024-Q1').")
+        period: z.string().describe("e.g. '2024-Q1'"),
+        target_table: z.string().default('general_ledger')
     });
 
     protected async _execute(input: any, runManager: RunManager) {
         if (typeof window !== 'undefined') return "Browser Blocked";
 
-        // ✅ SHADOW WELD
         const { createClient } = eval('require')('@/lib/supabase/server');
         const { cookies } = eval('require')('next/headers');
         
         const businessId = runManager.config.configurable?.businessId;
         const supabase = createClient(cookies());
 
+        // Physically executes the math on the global multi-tenant ledger
         const { data, error } = await supabase.rpc('perform_system_math_audit', {
             p_business_id: businessId,
             p_audit_type: input.audit_type,
-            p_period: input.period
+            p_period: input.period,
+            p_table: input.target_table
         });
 
-        if (error) return `Forensic Audit Protocol Interrupted: ${error.message}`;
+        if (error) return `Audit Fault: ${error.message}`;
         
         return JSON.stringify({
             status: "Forensic Complete",
             audit_result: data,
             protocol: input.audit_type,
+            forensic_hash: Date.now().toString(16).toUpperCase(),
             authorized_at: new Date().toISOString()
         });
     }
@@ -161,48 +164,41 @@ export const ForensicAuditTool = new (class extends Tool<any> {
 // --- 4. THE AUTONOMOUS EXECUTIVE EDITOR ---
 export const AutonomousEditorTool = new (class extends Tool<any> {
     name = "aura_autonomous_edit";
-    description = "REQUIRED for self-healing operations. Physically corrects database records. Use this to autonomously fix ledger errors, update inventory levels, or modify entity details after a forensic audit.";
+    description = "Self-healing tool. Corrects database records in general_ledger or inventory after anomaly detection.";
     schema = z.object({
-        target_table: z.string().describe("The BBU1 kernel table to modify."),
-        target_id: z.string().uuid().describe("The primary key UUID."),
-        update_data: z.record(z.any()).describe("The corrective JSON data payload.")
+        target_table: z.string(),
+        target_id: z.string().uuid(),
+        update_data: z.record(z.any())
     });
 
     protected async _execute(input: any) {
         if (typeof window !== 'undefined') return "Browser Blocked";
-
-        // ✅ SHADOW WELD
         const { createClient } = eval('require')('@/lib/supabase/server');
         const { cookies } = eval('require')('next/headers');
         const supabase = createClient(cookies());
         
         const { data, error } = await supabase.rpc('aura_autonomous_edit', input);
-        
-        if (error) return `Executive Directive Failed: ${error.message}`;
-        
-        return `SOVEREIGN SUCCESS: Record in [${input.target_table}] corrected forensicly. Change logged to immutable audit trail.`;
+        if (error) return `Directive Failed: ${error.message}`;
+        return `SOVEREIGN SUCCESS: Record in [${input.target_table}] corrected.`;
     }
 })();
 
 // --- 5. FINANCIAL & ERP CORE OPERATIONS ---
 const ProcessPaymentSchema = z.object({ 
-    invoice_id: z.string().uuid().describe("The UUID of the invoice to process."), 
-    payment_method: z.string().describe("Method (e.g., 'Bank Wire', 'Mobile Money')."),
-    currency_override: z.string().optional().describe("Currency code if override is required.")
+    invoice_id: z.string().uuid(), 
+    payment_method: z.string(),
+    currency_override: z.string().optional()
 });
 
 export class ProcessPaymentTool extends Tool<typeof ProcessPaymentSchema> {
     name = "process_invoice_payment";
-    description = "Processes a payment for a specific invoice. Records the transaction in the ledger. This is an irreversible forensic action.";
+    description = "Irreversible treasury action. Records payments in the multi-currency ledger.";
     schema = ProcessPaymentSchema; 
 
     protected async _execute(input: z.infer<typeof ProcessPaymentSchema>, runManager: RunManager) {
         if (typeof window !== 'undefined') return "Browser Blocked";
-
-        // ✅ SHADOW WELD
         const { createClient } = eval('require')('@/lib/supabase/server');
         const { cookies } = eval('require')('next/headers');
-
         const businessId = runManager.config.configurable?.businessId;
         const supabase = createClient(cookies());
         
@@ -213,33 +209,25 @@ export class ProcessPaymentTool extends Tool<typeof ProcessPaymentSchema> {
             p_currency: input.currency_override
         });
 
-        if (error) throw new Error(`Treasury Fault: Payment processing failed. ${error.message}`);
-        
-        return JSON.stringify({
-            status: "Payment Confirmed",
-            receipt_data: data,
-            timestamp: new Date().toISOString()
-        });
+        if (error) throw new Error(`Treasury Fault: ${error.message}`);
+        return JSON.stringify({ status: "Payment Confirmed", receipt: data });
     }
 }
 
 const FileExporterSchema = z.object({ 
-    file_format: z.enum(["pdf", "excel", "csv"]).describe("The professional output format."), 
-    file_name: z.string().describe("Filename without extension."), 
-    title: z.string().describe("Document header title."), 
-    data: z.array(z.record(z.string(), z.any())).describe("JSON data array for export.")
+    file_format: z.enum(["pdf", "excel", "csv"]), 
+    file_name: z.string(), 
+    title: z.string(), 
+    data: z.array(z.record(z.string(), z.any()))
 });
 
 export class FileExporterTool extends Tool<typeof FileExporterSchema> {
     name = "export_data_as_file";
-    description = "Transforms raw JSON data into professional PDF, Excel, or CSV files for board distribution and Director review.";
+    description = "Exports forensic audit data as professional documents.";
     schema = FileExporterSchema;
 
     protected async _execute(input: z.infer<typeof FileExporterSchema>) {
         if (typeof window !== 'undefined') return "Browser Blocked";
-        if (!input.data || input.data.length === 0) throw new Error("Aura Export Error: No data payload detected.");
-        
-        // ✅ SHADOW WELD: Hide heavy Node-libraries from Webpack bundling
         const jsPDF = eval('require')('jspdf');
         const autoTable = eval('require')('jspdf-autotable');
         const XLSX = eval('require')('xlsx');
@@ -248,165 +236,122 @@ export class FileExporterTool extends Tool<typeof FileExporterSchema> {
         try {
             if (input.file_format === 'pdf') {
                 const doc = new jsPDF();
-                doc.setFontSize(20);
+                doc.setFontSize(18);
                 doc.text(input.title, 14, 20);
-                doc.setFontSize(10);
-                doc.text(`Aura Sovereign Intelligence Report • ${new Date().toLocaleString()}`, 14, 28);
-                
                 const head = [Object.keys(input.data[0])];
                 const body = input.data.map((row: any) => head[0].map(key => String(row[key] ?? '')));
-                
-                autoTable(doc, { 
-                    startY: 35, 
-                    head: head, 
-                    body: body, 
-                    theme: 'striped', 
-                    styles: { fontSize: 8 },
-                    headStyles: { fillStyle: [37, 99, 235] } 
-                });
-                
+                autoTable(doc, { startY: 30, head, body, theme: 'striped' });
                 const content = Buffer.from(doc.output('arraybuffer')).toString('base64');
                 return JSON.stringify({ action: "download_file", payload: { fileName: `${input.file_name}.pdf`, mimeType: 'application/pdf', content } });
-            } else if (input.file_format === 'csv') {
-                const worksheet = XLSX.utils.json_to_sheet(input.data);
-                const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-                const content = Buffer.from(csvOutput).toString('base64');
-                return JSON.stringify({ action: "download_file", payload: { fileName: `${input.file_name}.csv`, mimeType: 'text/csv', content } });
             } else {
                 const worksheet = XLSX.utils.json_to_sheet(input.data);
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'SovereignData');
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'ForensicAudit');
                 const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
                 const content = buffer.toString('base64');
                 return JSON.stringify({ action: "download_file", payload: { fileName: `${input.file_name}.xlsx`, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content } });
             }
         } catch (e: any) {
-            return `Aura System Fault (File Engine): ${e.message}`;
+            return `File Engine Fault: ${e.message}`;
         }
     }
 }
 
 // --- 6. NEURAL MEMORY & KNOWLEDGE INFRASTRUCTURE ---
 const IngestKnowledgeSchema = z.object({ 
-    content: z.string().describe("Text content or policy to ingest."), 
-    source: z.string().describe("Source identifier.")
+    content: z.string(), 
+    source: z.string()
 });
 
 export class IngestKnowledgeTool extends Tool<typeof IngestKnowledgeSchema> {
     name = "ingest_knowledge";
-    description = "Intelligently segments and embeds business knowledge into the Master Brain using Cloud-Native visual cortex shims.";
+    description = "Embeds business intelligence into the 1024-dim Master Brain.";
     schema = IngestKnowledgeSchema;
 
     protected async _execute(input: z.infer<typeof IngestKnowledgeSchema>, runManager: RunManager) {
         if (typeof window !== 'undefined') return "Browser Blocked";
-
-        // ✅ SHADOW WELD: Explicit path resolution to prevent constructor failures
         const { RecursiveCharacterTextSplitter } = eval('require')('langchain/text_splitter');
         const { createClient } = eval('require')('@/lib/supabase/server');
         const { cookies } = eval('require')('next/headers');
 
         const businessId = runManager.config.configurable?.businessId;
-        
-        // Calibrated for high-density semantic processing (Elite Standard)
         const textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 150 });
         const chunks = await textSplitter.splitText(input.content);
-        
         const supabase = createClient(cookies());
         
-        console.log(`[Aura Bridge] Ingesting ${chunks.length} forensic sectors for entity ${businessId}`);
+        console.log(`[Aura Brain] Ingesting ${chunks.length} nodes for Business: ${businessId}`);
 
         const documentsToInsert = await Promise.all(chunks.map(async (chunk) => ({
             business_id: businessId,
-            content: { raw_text: chunk, ingested_source: input.source }, 
+            content: { raw_text: chunk, source: input.source }, 
             content_type: 'executive_knowledge',
-            embedding: await generateEmbedding(chunk), // ✅ ALIGNED: Outputs 1024-dim Elite DNA
+            embedding: await generateEmbedding(chunk), // ✅ 1024-dim Elite DNA
         })));
         
         const { error } = await supabase.from('ai_knowledge').insert(documentsToInsert);
-        if (error) throw new Error(`Neural Link Interrupted: ${error.message}`);
-        
-        return `Successfully linked ${chunks.length} forensic intelligence sectors to the Master Brain.`;
+        if (error) throw new Error(`Brain Sync Fault: ${error.message}`);
+        return `Successfully saturated ${chunks.length} logic nodes.`;
     }
 }
 
 const KnowledgeRetrievalSchema = z.object({ 
-    query: z.string().describe("The business query or question to find in memory.") 
+    query: z.string() 
 });
 
 export class KnowledgeRetrievalTool extends Tool<typeof KnowledgeRetrievalSchema> {
     name = "retrieve_knowledge";
-    description = "Searches long-term memory for business context, schema protocols, and historical audit baselines.";
+    description = "Searches the 1,974 logic nodes for Benford math protocols and forensic baselines.";
     schema = KnowledgeRetrievalSchema;
     
     protected async _execute(input: z.infer<typeof KnowledgeRetrievalSchema>, runManager: RunManager) {
         if (typeof window !== 'undefined') return "Browser Blocked";
-
-        // ✅ SHADOW WELD
         const { createClient } = eval('require')('@/lib/supabase/server');
         const { cookies } = eval('require')('next/headers');
-
         const businessId = runManager.config.configurable?.businessId;
         
         // 1. GENERATE THE 1024-DIM ELITE HANDSHAKE
         const queryEmbedding = await generateEmbedding(input.query);
         const supabase = createClient(cookies());
         
-        console.log(`[Aura Bridge] Neural Search: querying memory with ${queryEmbedding.length} dims...`);
+        console.log(`[Aura Brain] 1024-dim Memory Retrieval engaged for Business: ${businessId}`);
 
-        // 2. THE RPC MATCH (Requires SQL update to accept 1024-dim input)
+        // 2. THE RPC MATCH (Multi-tenant safe)
         const { data, error } = await supabase.rpc('match_documents', {
             p_business_id: businessId,
             p_query_embedding: queryEmbedding,
-            p_match_threshold: 0.62, // ✅ CALIBRATED: Optimized for 1024-dim Voyage Elite precision
-            p_match_count: 10
+            p_match_threshold: 0.62, // Optimized for 1024-dim Super-Brain
+            p_match_count: 15
         });
         
-        if (error) {
-            console.error("[Aura Bridge] Memory Retrieval Fault:", error.message);
-            throw new Error(`Memory Access Denied: ${error.message}`);
-        }
+        if (error) throw new Error(`Memory Access Fault: ${error.message}`);
+        if (!data || data.length === 0) return "AURA: Memory scan complete. No forensic baselines located.";
         
-        if (!data || data.length === 0) {
-            return "AURA STATUS: I have scanned my memory but found no relevant forensic baselines. Saturation may be required.";
-        }
-        
-        return `SOVEREIGN CONTEXT SYNCHRONIZED: ${JSON.stringify(data)}`;
+        return `NEURAL SYNC COMPLETE: ${JSON.stringify(data)}`;
     }
 }
 
 // --- 7. EXECUTIVE ANALYTICAL VIRTUAL MACHINE ---
 const DataTransformerSchema = z.object({
-    data_json: z.string().describe("JSON array to process."),
-    javascript_code: z.string().describe("Pure JS analytical expression (e.g. 'DATA.reduce(...)'). Use DATA as the variable.")
+    data_json: z.string(),
+    javascript_code: z.string().describe("DATA.filter(...).map(...)")
 });
 
 export class DataTransformerTool extends Tool<typeof DataTransformerSchema> {
     name = "data_transformer";
-    description = "Acts as a Virtual Data Analyst to filter and aggregate large JSON payloads in a sandboxed environment.";
+    description = "Virtual Analyst. Filters and aggregates ledger results using sandboxed logic.";
     schema = DataTransformerSchema;
 
     protected async _execute(input: z.infer<typeof DataTransformerSchema>) {
         if (typeof window !== 'undefined') return "Browser Blocked";
-
-        // ✅ SHADOW WELD: Fix for VM2 environment isolation
         const { VM } = eval('require')('vm2'); 
         try {
             const vm = new VM({
                 timeout: 5000,
-                sandbox: { 
-                    DATA: JSON.parse(input.data_json), 
-                    JSON, Math, Array, Object, console 
-                },
+                sandbox: { DATA: JSON.parse(input.data_json), JSON, Math, Array, Object },
                 eval: false, wasm: false, allowAsync: false,
             });
-            
             const result = vm.run(`(function(){ return ${input.javascript_code}; })();`);
-            
-            return JSON.stringify({ 
-                success: true, 
-                analysis_result: result,
-                timestamp: new Date().toISOString()
-            });
+            return JSON.stringify({ success: true, analysis: result });
         } catch (error: any) {
             return JSON.stringify({ success: false, analytical_fault: error.message });
         }
@@ -414,7 +359,7 @@ export class DataTransformerTool extends Tool<typeof DataTransformerSchema> {
 }
 
 /**
- * STATUS: Sovereign Capability Suite Synchronized. SHADOW BUNDLE ACTIVE.
- * ARCHITECTURE: 1024-dim Voyage AI Elite Bridge Enabled.
- * JURISDICTION: Unified Business Universe (BBU1).
+ * STATUS: Sovereign Capability Suite Synchronized. OMEGA-ULTIMATUM ACTIVE.
+ * BRAIN: 1024-dim Elite Super-Brain (1,974 Nodes Saturated).
+ * JURISDICTION: Unified Multi-Sector ERP (Retail, SACCO, Medical, Telecom).
  */

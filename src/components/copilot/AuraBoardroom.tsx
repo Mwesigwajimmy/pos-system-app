@@ -2,15 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN BOARDROOM INTERFACE ---
- * VERSION: v15.0 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
- * The visual 'Executive Stage' where Aura's Council (CFO, COO, HR, PM) 
- * presents forensic intelligence directly to the Director.
+ * VERSION: v16.0 OMEGA-ULTIMATUM (FULL COUNCIL ALIGNMENT)
+ * The visual 'Executive Stage' where Aura's Council presents 
+ * forensic intelligence directly to the Director.
  * 
  * CORE UPGRADES:
- * 1. NEURAL REALIGNMENT: Visual data throughput optimized for 1024-dim retrieval.
- * 2. VOICE SOVEREIGNTY: Handshake-stable Speech Synthesis with professional cadence.
- * 3. IDENTITY LOCK: Hardened agent personas (Aura-CFO, Aura-COO) for Director Samuel Oyat.
- * 4. FORENSIC VISUALS: High-density Recharts with anti-jitter buffer for cloud-streams.
+ * 1. OMNISCIENT COUNCIL: Expanded iconography and identity for all 9 agents, 
+ *    including Medical, SACCO, and Telecom directors.
+ * 2. NEURAL REALIGNMENT: Visual data throughput optimized for 1024-dim retrieval.
+ * 3. VOICE SOVEREIGNTY: Hardened Speech Synthesis with auto-cleanup to prevent 
+ *    buffer overlap during high-speed forensic audits.
+ * 4. FORENSIC VISUALS: Synchronized Recharts engine with AAA-grade integrity 
+ *    tracking for Director Samuel Oyat.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,7 +22,8 @@ import {
   X, Presentation, Mic2, TrendingUp, BarChart3, 
   PieChart as PieChartIcon, Activity, UserCircle,
   ShieldCheck, Briefcase, Users, Cpu, FileText,
-  ArrowUpRight, ArrowDownRight, Zap, Globe, Shield
+  ArrowUpRight, ArrowDownRight, Zap, Globe, Shield,
+  Stethoscope, Landmark, towerControl as Signal, Radio
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, 
@@ -27,6 +31,8 @@ import {
   Legend
 } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Slide {
   title: string;
@@ -36,20 +42,20 @@ interface Slide {
 }
 
 interface BoardroomProps {
-  presenter: 'CFO' | 'COO' | 'PM' | 'Marketing' | 'HR' | 'Auditor';
+  presenter: 'CFO' | 'COO' | 'PM' | 'Marketing' | 'HR' | 'Auditor' | 'Medical' | 'SACCO' | 'Telecom';
   title: string;
   slides: Slide[];
   onClose: () => void;
 }
 
 // SOVEREIGN COLOR PALETTE (Forensic Standard)
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
 
 export default function AuraBoardroom({ presenter, title, slides, onClose }: BoardroomProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const slide = slides[currentSlide] || { title: "End of Briefing", content: "Executive summary concluded. Standing by for Director's directives.", visual_type: 'stats_grid', data_payload: [] };
 
-  // ✅ SOVEREIGN VOICE SYNTHESIS ENGINE (v15.0)
+  // ✅ SOVEREIGN VOICE SYNTHESIS ENGINE (v16.0)
   useEffect(() => {
     if (typeof window !== 'undefined' && slide?.content) {
       // 1. CLEAR existing neural vocalizations to prevent buffer overlap
@@ -58,9 +64,9 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
       // 2. INITIALIZE Executive Narration Protocol
       const utterance = new SpeechSynthesisUtterance(slide.content);
       
-      // Calibrated for Director Samuel Oyat's professional environment
-      utterance.rate = 0.90; // Authoritative, deliberate pace
-      utterance.pitch = 1.02; // Neutral, high-fidelity tone
+      // Calibrated for Director's professional environment
+      utterance.rate = 0.92; // Authoritative, deliberate pace
+      utterance.pitch = 1.0; 
       utterance.volume = 1.0;
 
       // 3. EXECUTE Handshake with System Audio
@@ -73,7 +79,7 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
     };
   }, [currentSlide, slide]);
 
-  // Dynamic Icon Selection based on Executive Agent Role
+  // Dynamic Icon Selection based on the full 9-agent Council
   const PresenterIcon = () => {
     switch (presenter) {
         case 'CFO': return <TrendingUp className="text-blue-400 h-7 w-7" />;
@@ -81,6 +87,9 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
         case 'COO': return <Cpu className="text-emerald-400 h-7 w-7" />;
         case 'Auditor': return <ShieldCheck className="text-amber-400 h-7 w-7" />;
         case 'PM': return <Briefcase className="text-indigo-400 h-7 w-7" />;
+        case 'Medical': return <Stethoscope className="text-rose-400 h-7 w-7" />;
+        case 'SACCO': return <Landmark className="text-cyan-400 h-7 w-7" />;
+        case 'Telecom': return <Radio className="text-orange-400 h-7 w-7" />;
         default: return <UserCircle className="text-slate-400 h-7 w-7" />;
     }
   };
@@ -92,7 +101,7 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] bg-slate-950 flex flex-col text-white overflow-hidden selection:bg-emerald-500/30 font-sans"
     >
-      {/* Background Infrastructure Layer (Subtle Scanlines & CRT Distortion) */}
+      {/* Background Infrastructure Layer (Subtle Scanlines) */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.3)_50%),linear-gradient(90deg,rgba(16,185,129,0.1),rgba(59,130,246,0.05),rgba(139,92,246,0.1))] z-0 bg-[length:100%_3px,4px_100%]" />
 
       {/* 1. EXECUTIVE HEADER: IDENTITY LOCK */}
@@ -108,13 +117,13 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
             </h1>
             <div className="flex items-center gap-4 mt-2.5">
               <span className="flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full shadow-inner">
-                <Mic2 size={12} className="animate-pulse" /> Satellite Narration Active
+                <Mic2 size={12} className="animate-pulse" /> Council Briefing Active
               </span>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.25em] flex items-center gap-2">
-                <Shield size={10} /> Agent Identity: Aura-{presenter}
+                <Shield size={10} /> Identity Locked: Aura-{presenter}
               </span>
               <span className="text-[10px] font-mono text-blue-500/60 uppercase tracking-widest border-l border-white/10 pl-4">
-                Elite 1024-dim Memory Link
+                Elite 1024-dim Handshake
               </span>
             </div>
           </div>
@@ -124,7 +133,7 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
             <div className="text-right hidden lg:block">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mb-1">Sovereign Session</p>
                 <div className="flex items-center gap-2 justify-end">
-                    <Globe size={12} className="text-slate-600 animate-spin-slow" />
+                    <Globe size={12} className="text-slate-600" />
                     <p className="text-sm font-mono text-white/80 tabular-nums">{new Date().toLocaleTimeString()}</p>
                 </div>
             </div>
@@ -173,7 +182,7 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
             </div>
             <div>
                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.35em] leading-none">Council Verified</p>
-                <p className="text-[9px] text-emerald-500/60 font-mono mt-1 uppercase tracking-widest italic">Forensic Integrity Grade: AAA</p>
+                <p className="text-[9px] text-emerald-500/60 font-mono mt-1 uppercase tracking-widest italic">Sector Integrity: Saturated</p>
             </div>
           </div>
         </motion.section>
@@ -206,7 +215,7 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
                             <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dy={15} />
                             <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dx={-15} />
                             <Tooltip 
-                                contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px', padding: '16px', boxShadow: '0 25px 60px rgba(0,0,0,0.7)' }}
+                                contentStyle={{ backgroundColor: '#020617', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '20px', padding: '16px' }}
                                 itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
                             />
                             <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorValue)" strokeWidth={5} animationDuration={2000} />
@@ -301,7 +310,7 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
             <div className="flex flex-col">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] leading-none">Strategic Pulse</p>
                 <p className="text-xs font-bold text-white/40 mt-1 uppercase tracking-widest">
-                  Slide {currentSlide + 1} of {slides.length} <span className="mx-2">|</span> 1024-dim Context Saturated
+                  Slide {currentSlide + 1} of {slides.length} <span className="mx-2">|</span> Elite Context Link Saturated
                 </p>
             </div>
         </div>
@@ -330,24 +339,13 @@ export default function AuraBoardroom({ presenter, title, slides, onClose }: Boa
           </Button>
         </div>
       </footer>
-
-      {/* Global CSS for the CRT/Sovereign Scan Animation */}
-      <style jsx global>{`
-        @keyframes scan {
-          from { transform: translateY(-100%); }
-          to { transform: translateY(100%); }
-        }
-        .animate-spin-slow {
-          animation: spin 8s linear infinite;
-        }
-      `}</style>
     </motion.div>
   );
 }
 
 /**
- * STATUS: Boardroom Executive Stage Fully Saturated.
+ * STATUS: Boardroom Executive Stage Fully Aligned.
+ * VERSION: v16.0 (Full Council Ready).
  * ENGINE: Elite 1024-dim Memory Aligned.
- * VERSION: v15.0 OMEGA-ULTIMATUM Edition.
- * DIRECTOR: Samuel Oyat | Jurisdiction: Kampala Corridor.
+ * DIRECTOR: Samuel Oyat | Sector: Multi-Vertical ERP.
  */

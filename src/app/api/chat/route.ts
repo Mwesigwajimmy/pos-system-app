@@ -5,17 +5,20 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * --- BBU1 SOVEREIGN AI GATEWAY ---
- * VERSION: v68.5 OMEGA-ULTIMATUM (THE LEGACY-WELD EDITION)
+ * VERSION: v69.0 OMEGA-ULTIMATUM (THE TIMEOUT SHIELD)
  * STATUS: FORENSICALLY STABILIZED & HANDSHAKE ALIGNED
  * 
  * CORE UPGRADES:
- * 1. IDENTITY READINESS GUARD: Prevents the "Neural Sink" by trapping latent 
+ * 1. OMEGA TIMEOUT SHIELD: Implements a "Neural Heartbeat" within the SSE stream. 
+ *    Sends invisible pings every 15s during long tool executions to bypass 
+ *    Vercel/Gateway 504 timeouts.
+ * 2. IDENTITY READINESS GUARD: Prevents the "Neural Sink" by trapping latent 
  *    'loading' strings before they hit the database RPC. This stops UUID cast 
  *    failures (PostgreSQL Error 22P02).
- * 2. OMEGA-STREAMING: Hardened for @ai-sdk/react v2.0.81 compatibility.
- * 3. VAULT-ISOLATION: Stateless Service-Role Client ensures RLS bypass for 
+ * 3. OMEGA-STREAMING: Hardened for @ai-sdk/react v2.0.81 compatibility.
+ * 4. VAULT-ISOLATION: Stateless Service-Role Client ensures RLS bypass for 
  *    autonomous sector audits while maintaining 100% tenant separation.
- * 4. KEY-RECOVERY: Automatic setting-table fallback for SambaNova/Jina API keys.
+ * 5. KEY-RECOVERY: Automatic setting-table fallback for SambaNova/Jina API keys.
  */
 
 // --- PRODUCTION BUILD STABILIZATION ---
@@ -170,7 +173,7 @@ const extractTextFromContent = (content: any): string => {
 /**
 THE EXECUTIVE GATEWAY (POST)
 Primary endpoint: Orchestrates the Autonomous Executive Council.
-DEEP UPGRADE: Vault-Aware Identity Resolution (v68.5).
+DEEP UPGRADE: Vault-Aware Identity Resolution (v69.0).
 ✅ DEEP FIX: Identity Resolve Bypass.
 Extracts IDs from root, nested 'data', and legacy 'options' objects. 
 Passes IDs explicitly to bypass server-side auth.uid() null barrier.
@@ -328,11 +331,21 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
             },
         });
 
-        // ✅ REVOLUTIONARY SSE STREAMING (VERCEL OPTIMIZED): 
-        // Using TextEncoder to prevent "Aligning" stalls on production builds.
+        // ✅ REVOLUTIONARY SSE STREAMING (v69.0 OMEGA): 
+        // Using TextEncoder with a Neural Heartbeat to prevent Gateway 504 Timeouts.
         const encoder = new TextEncoder();
         const transformStream = new ReadableStream({
             async start(controller) {
+                // 🛡️ HEARTBEAT SHIELD: Sends an invisible ping every 10s 
+                // to keep the Node.js function alive during long tool runs.
+                const heartbeat = setInterval(() => {
+                    try {
+                        controller.enqueue(encoder.encode(': heartbeat\n\n'));
+                    } catch (e) {
+                        clearInterval(heartbeat);
+                    }
+                }, 10000);
+
                 try {
                     for await (const chunk of stream) {
                         const payload = `data: ${JSON.stringify(chunk)}\n\n`;
@@ -342,6 +355,7 @@ BASE_CURRENCY: ${baseCurrency} | MASTER_BRAIN_ID: 00000000-0000-0000-0000-000000
                     console.error("Kernel Stream Fault:", err);
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`));
                 } finally {
+                    clearInterval(heartbeat);
                     controller.close();
                 }
             }

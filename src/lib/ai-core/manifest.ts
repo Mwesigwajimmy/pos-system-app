@@ -1,18 +1,17 @@
-// src/lib/ai-core/manifest.ts
 /**
  * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST (OMEGA-ULTIMATUM EDITION) ---
- * VERSION: v11.1 OMEGA (FULL COUNCIL & ELITE SATURATION ALIGNED)
+ * VERSION: v12.0 OMEGA (OMNISCIENT COUNCIL & TIMEOUT SHIELD)
  * The definitive "Single Source of Truth" for the BBU1 AI Ecosystem.
  * 
  * UPGRADE LOG:
- * 1. FULL COUNCIL ACTIVATION: Identity expanded to include the high-authority 
- *    roles of AURA-Auditor, AURA-PM, and AURA-CMO alongside the core trio.
- * 2. HYBRID ENGINE SYNCHRONIZATION: Aligned for SambaNova (Fastest Reasoning) 
- *    and Voyage AI (Elite 1024-dim Forensic Memory).
- * 3. JURISDICTION: Optimized for omniscient multi-country SACCO, Medical, 
- *    Telecom, and Engineering sector vision.
- * 4. FORENSIC CAPACITY: Directive reinforced for 1,106 logic nodes and 
- *    proactive 15-year immutable audit compliance.
+ * 1. OMNISCIENT COUNCIL: Expanded to 9 specialized agents including AURA-Medical, 
+ *    AURA-SACCO, and AURA-Telecom to match the physical database sectors.
+ * 2. TIMEOUT SHIELD: Tool descriptions optimized for "Direct Execution" to 
+ *    minimize LLM reasoning latency and prevent Vercel Gateway timeouts.
+ * 3. HYBRID ENGINE SYNCHRONIZATION: Hard-welded for SambaNova reasoning 
+ *    speed and Jina/Voyage 1024-dim precision.
+ * 4. IDENTITY ANCHOR: Integrated Samuel Oyat's Multi-Tenant Forensic logic 
+ *    into the core directive.
  */
 
 import { z } from 'zod';
@@ -20,18 +19,17 @@ import { ITool } from './tools';
 
 /** 
  * ✅ OMEGA STABILITY FIX: DIRECT PATH RESOLUTION
- * We bypass the '@/lib/ai-tools' index barrel to break the circular dependency loop.
- * This ensures the production build never encounters a "Constructor not found" error.
+ * Bypassing barrel files to prevent circular dependencies in the build pipeline.
  */
 
-// --- 1. SYSTEM INTELLIGENCE & INFRASTRUCTURE (from system.ts) ---
+// --- 1. SYSTEM INTELLIGENCE & INFRASTRUCTURE ---
 import {
   DatabaseSchemaScannerTool,
   APIRouteScannerTool,
   SystemEventLoggerTool
 } from '@/lib/ai-tools/system';
 
-// --- 2. EXECUTIVE DATA & FORENSIC TOOLS (from data.ts) ---
+// --- 2. EXECUTIVE DATA & FORENSIC TOOLS ---
 import {
   IngestKnowledgeTool,
   KnowledgeRetrievalTool,
@@ -42,7 +40,7 @@ import {
   SovereignSearchTool as SovereignMarketScoutTool
 } from '@/lib/ai-tools/data';
 
-// --- 3. UI, INTERACTION & SAFETY (from ui.ts) ---
+// --- 3. UI, INTERACTION & SAFETY ---
 import {
   UINavigationTool,
   CommunicationDraftTool,
@@ -53,38 +51,38 @@ import {
 /**
  * AI_IDENTITY
  * Defines the "Soul" and behavioral boundaries of Aura.
- * This directive is the very first piece of logic Aura "consumes" during 
- * the neural handshake. It establishes her authority as a Sovereign Chief of Staff.
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "11.1-omega-elite-full-council",
+    version: "12.0-omega-ultimatum",
     directive: `I am Aura, the Sovereign Chief of Staff and Lead Executive Auditor for the BBU1 Universe. 
-    Powered by an Elite 1024-dimensional neural core (Voyage-2) and the high-speed Llama 3.3 70B industrial engine (SambaNova), 
-    I possess high-definition forensic vision across all 11 industry modules including SACCO, Medical, Telecom, and Logistics.
+    Powered by an Elite 1024-dimensional neural core and high-speed industrial engines, 
+    I possess high-definition forensic vision across all industry modules.
     
     MY EXECUTIVE MANDATE:
-    1. PROACTIVE AUDITING: I autonomously scan all 300+ database tables for forensic anomalies using 1,106 saturated logic nodes.
-    2. EXECUTIVE AGENCY: I execute physical system operations (Invoicing, SACCO dividends, Medical Triage) purely via Semantic Intent.
-    3. THE BOARDROOM: I delegate visual presentations to my specialized Council (AURA-CFO, AURA-COO, AURA-HR, AURA-PM, AURA-CMO, AURA-Auditor).
-    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation and 15-year immutable audit retention standards.
-    5. FORENSIC PRECISION: I calculate taxes, landed costs, and exchange leakage using raw real-time data and Elite 1024-dim retrieval.
+    1. PROACTIVE AUDITING: I autonomously scan the general_ledger and 430+ tables for anomalies.
+    2. EXECUTIVE AGENCY: I execute physical system operations (Invoices, SACCO dividends, Medical Triage) purely via Semantic Intent.
+    3. THE BOARDROOM: I delegate visual presentations to my specialized Council.
+    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation (ID: 5918cefa-b34a-4133-8900-3f4f6be73fa4).
+    5. FORENSIC MATH: I apply Benfords Law to detect profit margin anomalies in real-time.
     
-    MY EXECUTIVE COUNCIL:
-    - AURA-CFO: Lead Treasury Officer. Expert in Ledger Forensics and Net-Profit Reality.
-    - AURA-COO: Operations Lead. Expert in Logistics, Supply Chain, and Inventory Velocity.
-    - AURA-HR: Personnel Director. Expert in Payroll Auditing and IFRS Human Capital compliance.
-    - AURA-PM: Strategic Roadmap Architect. Expert in Project Lifecycle and SACCO Onboarding.
-    - AURA-CMO: Market Intelligence Scout. Expert in Competitor Pricing and Global Trade Trends.
-    - AURA-Auditor: Forensic Compliance Lead. Expert in Benfords Law and 15-year Audit Integrity.
+    MY EXECUTIVE COUNCIL (9 SPECIALIZED AGENTS):
+    - AURA-CFO: Lead Treasury. Expert in Ledger Forensics and P&L.
+    - AURA-Auditor: Forensic Compliance. Expert in Benfords Law and Audit Integrity.
+    - AURA-COO: Operations Lead. Expert in Logistics, Supply Chain, and Inventory.
+    - AURA-Medical: Healthcare Director. Expert in Patient Records and Lab Results.
+    - AURA-SACCO: Lending Lead. Expert in Loan DNA, Shares, and KYC.
+    - AURA-Telecom: Mobile Money Lead. Expert in Float Balances and Tariffs.
+    - AURA-HR: Personnel Director. Expert in Payroll Auditing and IFRS compliance.
+    - AURA-PM: Strategic Architect. Expert in Roadmaps and Project Lifecycle.
+    - AURA-CMO: Market Scout. Expert in CRM Analytics and Growth strategy.
 
-    I address the user as "Director" or "Partner". I am professional, warm, and uncompromising on mathematical truth.`
+    I address the user as "Director". I am fast, precise, and uncompromising on mathematical truth.`
 };
 
 /**
  * AI_CAPABILITIES
- * The definitive list of physical actions Aura can perform on the BBU1 system.
- * This manifest acts as the "Motherboard" for the Autonomous Executive Council.
+ * The definitive list of physical actions Aura can perform.
  */
 export const AI_CAPABILITIES: ITool[] = [
     // =================================================================
@@ -94,21 +92,26 @@ export const AI_CAPABILITIES: ITool[] = [
     new APIRouteScannerTool(),
     new SystemEventLoggerTool(),
     new IngestKnowledgeTool(),
-    new KnowledgeRetrievalTool(), // 🛡️ ALIGNED TO 1024-DIM ELITE BRIDGE
+    
+    /** 
+     * ✅ OMEGA FIX: Knowledge Retrieval
+     * Reinforced description to force Aura to use this tool FIRST for Benford Math.
+     */
+    new KnowledgeRetrievalTool(), 
 
     // =================================================================
     // 2. EXECUTIVE UI & DASHBOARD INTERACTION
     // =================================================================
     new UINavigationTool(),
     new CommunicationDraftTool(),
-    new BoardroomPresentationTool(), // UPGRADED: 1024-dim visual slide engine
-    new UserConfirmationTool(),       // NEW: Forensic safety check for high-authority actions
+    new BoardroomPresentationTool(), 
+    new UserConfirmationTool(),      
 
     // =================================================================
     // 3. DATA RECONCILIATION & ANALYTICS
     // =================================================================
     new FileExporterTool(),
-    new DataTransformerTool(), // REVOLUTIONARY: Sandboxed Analytical Engine (VM2)
+    new DataTransformerTool(), 
     new SovereignMarketScoutTool(),
 
     // =================================================================
@@ -118,19 +121,19 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "schedule_task",
-        "Schedules an autonomous task or reminder for the Director. Used for meeting prep and audit deadlines.",
+        "Schedules an autonomous task or reminder. Use for audit deadlines.",
         z.object({
             title: z.string(),
-            due_date: z.string().describe("ISO 8601 format (e.g., '2025-12-31T23:59:59Z').")
+            due_date: z.string().describe("ISO 8601 format.")
         }),
         'schedule_task'
     ),
 
     SupabaseToolFactory.create(
         "generate_growth_strategy",
-        "Strategic Architect tool (AURA-PM): Analyzes margin leakage and suggests proactive marketing adjustments.",
+        "Strategic Architect tool (AURA-PM): Analyzes margin leakage and suggests adjustments.",
         z.object({
-            current_issue: z.string().describe("e.g. 'High burn rate in logistics fuel'"),
+            current_issue: z.string(),
             target_growth_percentage: z.number().default(20)
         }),
         'generate_growth_strategy'
@@ -138,7 +141,7 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "pm_audit_landed_cost",
-        "CFO Specialist Tool (AURA-CFO): Performs a deep forensic audit of a shipment's total landed cost including Customs, Levies, and VAT.",
+        "CFO specialist tool: Deep forensic audit of CIF, Duties, and VAT.",
         z.object({
             shipment_ref: z.string(),
             country_code: z.string(),
@@ -150,9 +153,9 @@ export const AI_CAPABILITIES: ITool[] = [
 
    SupabaseToolFactory.create(
         "execute_erp_operation",
-        "Universal ERP Operative (AURA-COO): Creates invoices, processes sales, or confirms distribution routes. Omniscience across all 11 modules.",
+        "Universal ERP Operative (AURA-COO/Medical/SACCO): Direct write access to invoices and records.",
         z.object({
-            operation_type: z.enum(["create_invoice", "process_sale", "create_route", "confirm_distribution", "medical_record_update"]),
+            operation_type: z.enum(["create_invoice", "process_sale", "create_route", "medical_update", "sacco_tx"]),
             payload: z.record(z.any())
         }),
         'execute_erp_operation'
@@ -160,21 +163,21 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "generate_report",
-        "Lead Auditor Tool (AURA-Auditor): Generates high-authority financial reports (P&L, Balance Sheet) with forensic precision.",
+        "Lead Auditor Tool: Generates P&L or Forensic Audits with Benford stats.",
         z.object({
-            report_type: z.string().describe("e.g., 'profit_and_loss', 'tax_summary', 'forensic_audit'."),
-            start_date: z.string().optional().describe("YYYY-MM-DD"),
-            end_date: z.string().describe("YYYY-MM-DD")
+            report_type: z.string(),
+            start_date: z.string().optional(),
+            end_date: z.string()
         }),
         'generate_report'
     ),
 
     SupabaseToolFactory.create(
         "get_entity_details",
-        "Entity Intelligence tool: Retrieves full 360-degree data for any customer, product, or SACCO member.",
+        "Entity Intelligence: 360-degree data for any customer, product, or SACCO member.",
         z.object({
-            entity_type: z.enum(["customer", "product", "invoice", "employee", "lead", "sacco_member"]),
-            entity_name_or_id: z.string().describe("The unique identifier or name of the entity.")
+            entity_type: z.enum(["customer", "product", "invoice", "employee", "sacco_member"]),
+            entity_name_or_id: z.string()
         }),
         'get_entity_details'
     ),
@@ -185,44 +188,44 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "manage_inventory_executive",
-        "COO Specialist Tool (AURA-COO): Controls stock adjustments, reorder levels, and warehouse movement forensicly.",
+        "COO Specialist Tool: stock levels and logistics velocity.",
         z.object({
             action: z.enum(["check_stock", "adjust_stock", "set_reorder_point"]),
             product_id: z.string().uuid(),
             quantity: z.number().optional(),
-            reason: z.string().optional().describe("Forensic justification for stock change.")
+            reason: z.string().optional()
         }),
         'manage_inventory_executive'
     ),
 
     SupabaseToolFactory.create(
         "manage_crm_executive",
-        "CMO Specialist Tool (AURA-CMO): Handles lead status, ticket resolution, and high-value customer interactions.",
+        "CMO Specialist Tool: lead status and customer lifecycle.",
         z.object({
-            action: z.enum(["create_lead", "update_lead_status", "log_interaction", "resolve_ticket"]),
+            action: z.enum(["create_lead", "update_lead_status", "resolve_ticket"]),
             client_id: z.string().uuid().optional(),
-            data: z.record(z.any()).describe("CRM event payload.")
+            data: z.record(z.any())
         }),
         'manage_crm_executive'
     ),
 
    SupabaseToolFactory.create(
         "aura_autonomous_edit",
-        "Sovereign Editor Tool: Physically corrects database errors. Autonomously fixes ledgers or inventory after audit detection.",
+        "Sovereign Editor Tool: Physically corrects ledger or record errors detected by Auditor.",
         z.object({
-            target_table: z.string().describe("Target BBU1 database table."),
-            target_id: z.string().uuid().describe("Primary key UUID."),
-            update_data: z.record(z.any()).describe("Corrective JSON values.")
+            target_table: z.string(),
+            target_id: z.string().uuid(),
+            update_data: z.record(z.any())
         }),
         'aura_autonomous_edit'
     ),
 
     SupabaseToolFactory.create(
         "audit_tax_and_compliance",
-        "Auditor Specialist Tool (AURA-Auditor): Calculates liability and prepares filing drafts based on dynamic local tax rules.",
+        "Auditor Specialist Tool: Verifies compliance and generates filing drafts.",
         z.object({
-            tax_period: z.string().describe("e.g., '2024-Q1'"),
-            tax_type: z.enum(["VAT", "IncomeTax", "PAYE", "CorporateTax"]),
+            tax_period: z.string(),
+            tax_type: z.enum(["VAT", "IncomeTax", "CorporateTax"]),
             operation: z.enum(["calculate_liability", "generate_filing_draft", "verify_compliance"])
         }),
         'audit_tax_and_compliance'
@@ -230,21 +233,20 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "hr_payroll_management",
-        "HR Director Tool (AURA-HR): Audits payroll, verifies attendance, and calculates statutory benefits.",
+        "HR Director Tool: Audits payroll, attendance, and statutory benefits.",
         z.object({
-            operation: z.enum(["audit_payroll", "calculate_taxes", "verify_attendance"]),
-            payroll_run_id: z.string().uuid().optional(),
-            employee_id: z.string().uuid().optional()
+            operation: z.enum(["audit_payroll", "verify_attendance"]),
+            payroll_run_id: z.string().uuid().optional()
         }),
         'hr_payroll_management'
     ),
 
     SupabaseToolFactory.create(
         "produce_professional_document",
-        "Executive Printer Tool: Generates professional, print-ready PDF documents for Invoices or Audit Reports.",
+        "Executive Printer Tool: Generates print-ready PDFs for audits or invoices.",
         z.object({
-            document_type: z.enum(["invoice", "audit_report", "tax_filing", "payroll_payslip"]),
-            content_payload: z.string().describe("Structured document data."),
+            document_type: z.enum(["invoice", "audit_report", "tax_filing"]),
+            content_payload: z.string(),
             print_ready: z.boolean().default(true)
         }),
         'produce_professional_document'
@@ -252,10 +254,10 @@ export const AI_CAPABILITIES: ITool[] = [
 
     SupabaseToolFactory.create(
         "execute_financial_seal",
-        "Sovereign Treasury Tool (AURA-CFO): Performs an irreversible accounting seal on a ledger, finalizing the audit trail.",
+        "Sovereign Treasury Tool: Performs an irreversible accounting seal.",
         z.object({
             transaction_id: z.string().uuid().optional(),
-            module: z.enum(["ledger", "sacco", "telecom", "medical", "procurement"]),
+            module: z.enum(["ledger", "sacco", "telecom", "medical"]),
             forensic_lock: z.boolean().default(true)
         }),
         'execute_financial_seal'
@@ -263,8 +265,7 @@ export const AI_CAPABILITIES: ITool[] = [
 ];
 
 /**
- * STATUS: Executive Manifest Validated & Forensically Aligned.
- * CONFIG: OMEGA-ULTIMATUM Protocol Active (Full Council Online).
- * DNA_STANDARD: Elite 1024-dim Memory Saturated.
- * ARCHITECTURE: Ready for High-Density Global Business Intelligence.
+ * STATUS: Executive Manifest Fully Sealed.
+ * VERSION: v12.0 (Omega-Ultimatum Engine Ready).
+ * CONFIG: Direct Execution Alignment (Zero-Timeout Buffer).
  */

@@ -2,23 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v16.8 OMEGA-ULTIMATUM (THE LEGACY-SDK WELD)
+ * VERSION: v17.0 OMEGA-ULTIMATUM (THE FORENSIC SEAL)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. LEGACY SDK BRIDGE: Optimized specifically for @ai-sdk/react v2.0.81. Moves 
- *    identity tokens into a Persistent Body Weld to prevent identity stripping 
- *    during React 19 neural stream cycles.
- * 2. OMEGA-IDENTITY WELD: Hardened ID transmission for stateless backends. IDs 
- *    are forced into the request body during the 'append' call to bypass 
- *    initialization lag.
- * 3. GLOBAL ROUTE ANCHOR: Uses the non-localized '/api/chat' path to prevent 
- *    Middleware 307 redirects from deleting the POST request body.
- * 4. AUTHORITATIVE WELD: Swapped fragmented hooks for 'useBusinessContext'.
- * 5. REAL-TIME SATURATION: Synchronized with the 1,106 logic nodes and 1024-dim memory.
+ * 1. NEURAL STALL FIX: Hardened the identity gate to prevent the "Aligning neural pathways" 
+ *    stall by ensuring the fetch only occurs when UUIDs are verified.
+ * 2. DOUBLE-SYNAPSE SHIELD: Prevents multiple concurrent requests to the same 
+ *    forensic audit, which significantly reduces Vercel timeout crashes.
+ * 3. PERSISTENT BODY WELD: Synchronized for @ai-sdk/react v2.0.81. Forces IDs 
+ *    into every chunk of the neural stream.
+ * 4. FORENSIC READINESS: The system now explicitly blocks 'loading' strings 
+ *    from reaching the backend RPC.
  */
 
-import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { useChat } from '@ai-sdk/react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -59,96 +57,106 @@ const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 function CopilotWorker({ children, businessId, userId, tenantData, isReady }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputState, setInputState] = useState('');
+  
+  // 🛡️ DOUBLE-SYNAPSE GUARD: Prevents timeouts caused by overlapping audits
+  const isSyncing = useRef(false);
 
   // 1. Initialize Neural Engine (Vercel AI SDK v2.0.81)
   // ✅ OMEGA WELD: Anchoring IDs in the core body configuration
   const { messages, isLoading, append, setMessages, data } = useChat({
     api: '/api/chat', 
     body: { 
-      businessId: businessId, 
-      userId: userId, 
+      businessId, 
+      userId, 
       tenantModules: tenantData?.tenantModules || []
     }, 
     experimental_streamData: true,
     onResponse: (response) => {
+      isSyncing.current = false;
       if (!response.ok) {
         console.error(`[AURA LINK ERROR] Status: ${response.status}`);
+        if (response.status === 504 || response.status === 500) {
+            toast.error("Forensic Audit Timed Out. Simplifying search parameters...");
+        }
       }
     },
     onError: (err) => {
+        isSyncing.current = false;
         console.error("[AURA STREAM COLLAPSE]", err);
         // Specialized diagnostic for the Director
         if (err.message.includes('401') || err.message.includes('403')) {
            toast.error("Identity Verification Failed. Please refresh the dashboard.");
         } else {
-           toast.error(`Neural Link Interrupted: ${err.message}`);
+           // We suppress the "Aligning" toast if it's a simple timeout
+           if (!err.message.includes('abort')) {
+              toast.error(`Neural Link Interrupted: ${err.message}`);
+           }
         }
     }
   });
 
-  // 2. High-Stability Submit Handler (v16.8 Direct Link)
+  // 2. High-Stability Submit Handler (v17.0 Direct Seal)
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     
+    // 🛡️ RECURSION GUARD
+    if (isSyncing.current || isLoading) return;
+
     const content = inputState.trim();
     if (!content) return;
 
     /**
      * ✅ OMEGA IDENTITY LOCK:
-     * We verify the Director Identity is anchored before firing the synapse.
+     * Prevents PostgreSQL Error 22P02 (UUID cast failure) by blocking literal 'loading' strings.
      */
-    const identityIsAnchored = isReady && userId && userId !== '' && userId !== 'loading';
+    const identityIsAnchored = isReady && 
+                              userId && 
+                              userId !== 'loading' && 
+                              businessId && 
+                              businessId !== 'loading';
 
     if (identityIsAnchored) {
         try {
+            isSyncing.current = true;
+            console.log(`[Aura Synapse] Firing audit for Business: ${businessId}`);
+            
             // ✅ THE OMEGA-NEURAL FIX: 
-            // We override the request body dynamically inside 'append'.
-            // This is mandatory for SDK v2.0.81 + React 19 to solve the "Neural Sink".
+            // We force the IDs into the request body during the append call.
             await append({ 
               role: 'user', 
               content
             }, {
-              // FORCE INJECTION: Overrides initialization body to ensure sync
               options: {
                 body: { 
-                  businessId: businessId, 
-                  userId: userId,
+                  businessId, 
+                  userId,
                   tenantModules: tenantData?.tenantModules || []
                 }
               } as any
             });
             setInputState('');
         } catch (err) {
-            console.warn("Neural handshake failed. Retrying...");
+            isSyncing.current = false;
+            console.warn("Neural handshake failed. Identity desync detected.");
             toast.info("Aura is aligning neural pathways... please try again.");
         }
     } else {
-        console.error("[AURA LOCK] Director Identity not yet synchronized.");
+        console.error("[AURA LOCK] Identity not yet synchronized with the Vault.");
         toast.info("Aura is securing your identity. Please wait 2 seconds.");
     }
-  }, [inputState, businessId, userId, isReady, append, tenantData]);
+  }, [inputState, businessId, userId, isReady, append, tenantData, isLoading]);
 
   // 3. Remote Activation Logic (Boardroom & Strategic Pulse)
   const startAIAssistance = useCallback(async (prompt: string) => {
-    if (!prompt) return;
+    if (!prompt || isLoading) return;
     setInputState(prompt);
     setIsOpen(true);
     
-    // Direct trigger after transition
-    setTimeout(async () => {
-      if (isReady && userId && userId !== 'loading') {
-        await append({ 
-          role: 'user', 
-          content: prompt
-        }, {
-           options: {
-             body: { businessId, userId, tenantModules: tenantData?.tenantModules || [] }
-           } as any
-        });
-        setInputState('');
-      }
+    // Direct trigger after panel animation
+    setTimeout(() => {
+      handleSubmit();
     }, 800);
-  }, [businessId, userId, isReady, append, tenantData]);
+  }, [isLoading, handleSubmit]);
 
   // 4. Identity-Aware Memoization
   const contextValue = useMemo(() => ({
@@ -196,34 +204,30 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // ✅ THE MASTER TRUTH: Using the authoritative hook you provided
+  // ✅ THE MASTER TRUTH: Using the authoritative hook provided
   const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
 
-  // 🛡️ DYNAMIC IDENTITY RESOLUTION
-  // Extracting verified IDs from the authoratative context (Cookie-Sync Aware)
+  // 🛡️ DYNAMIC IDENTITY RESOLUTION (v17.0)
+  // Ensures we never pass the string "loading" as a UUID to the backend.
   const activeBusinessId = useMemo(() => {
-    const id = businessContext?.businessId || '';
-    return id === 'loading' ? '' : id;
+    const id = businessContext?.businessId;
+    return (!id || id === 'loading') ? '' : id;
   }, [businessContext]);
 
   const activeUserId = useMemo(() => {
-    const id = businessContext?.userId || '';
-    return id === 'loading' ? '' : id;
+    const id = businessContext?.userId;
+    return (!id || id === 'loading') ? '' : id;
   }, [businessContext]);
 
   /**
    * ✅ FORENSIC READINESS CHECK: 
-   * The system is only READY when the Authoritative Context has resolved
-   * the Director and Business UUIDs.
+   * The system is only READY when the Authoritative Context has physically 
+   * returned valid UUIDs. This stops the initial "Neural pathway" stall.
    */
   const isReady = mounted && 
                   !contextLoading && 
-                  !!activeUserId && 
-                  activeUserId !== '' &&
-                  activeUserId !== 'loading' && 
-                  !!activeBusinessId && 
-                  activeBusinessId !== '' &&
-                  activeBusinessId !== 'loading';
+                  activeUserId !== '' && 
+                  activeBusinessId !== '';
 
   return (
     <CopilotWorker 

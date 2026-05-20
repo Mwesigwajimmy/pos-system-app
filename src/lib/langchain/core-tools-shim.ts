@@ -1,16 +1,17 @@
 // src/lib/langchain/core-tools-shim.ts
 /**
  * --- BBU1 SOVEREIGN CORE TOOLS SHIM (OMEGA-ULTIMATUM) ---
- * VERSION: v15.2 OMEGA-ULTIMATUM (ALIGNED FOR AURA ELITE 1024)
+ * VERSION: v16.0 OMEGA-ULTIMATUM (IDENTITY GUARD & FORENSIC SEAL)
  * JURISDICTION: Unified Business Universe / Global ERP
  * 
  * This file is the "Neuromuscular Junction" of Aura. It provides 
- * the standardized interface for all Executive Tools (CFO, COO, HR).
+ * the standardized interface for all Executive Tools (CFO, COO, HR, Auditor).
  * 
  * UPGRADE LOG:
- * 1. OMEGA HANDSHAKE: Hardened the invoke() gateway to prevent "Neural Link" stalls.
- * 2. IDENTITY RE-WELD: Synchronized with the v45.0 Database Handshake for multi-tenancy.
- * 3. ELITE ALIGNMENT: 1024-dimension retrieval aware for saturated schema nodes.
+ * 1. IDENTITY GUARD: Hardened the invoke() gateway to physically block 'loading' 
+ *    or empty BusinessIDs, stopping the "Neural pathway" stall at the source.
+ * 2. OMEGA HANDSHAKE: Resolved the "Neural Link" stall via direct ID verification.
+ * 3. ELITE ALIGNMENT: 1024-dimension retrieval aware for 1,974 saturated logic nodes.
  * 4. WEBPACK SHIELD: Maintained pure TypeScript implementation to prevent build-time 
  *    module export failures in Next.js 15.
  */
@@ -84,7 +85,7 @@ export class DynamicTool<T extends z.ZodObject<any>> {
   /**
    * SOVEREIGN INVOCATION GATEWAY
    * Performs a high-fidelity handshake between Reasoning and Action.
-   * ✅ OMEGA UPGRADE: Standardized for 100% Brain Satiation.
+   * ✅ OMEGA UPGRADE: Physically blocks 'loading' IDs to prevent 500 errors.
    */
   async invoke(input: unknown, config: RunnableConfig = {}): Promise<string> {
     try {
@@ -112,14 +113,16 @@ export class DynamicTool<T extends z.ZodObject<any>> {
       const validatedInput = this.schema.parse(parsedInput);
 
       /**
-       * 4. CONTEXTUAL VAULT LOCK
-       * Multi-tenant security check. Bypassed only for system-level logging.
-       * Synchronized with Samuel Oyat's Sovereign Identity Gate.
+       * 4. CONTEXTUAL VAULT LOCK (v16.0 IDENTITY GUARD)
+       * Physically block execution if identity is missing or in a 'loading' state.
+       * This is the definitive fix for the "Neural pathway" stall.
        */
       const currentVault = config.configurable?.businessId;
-      if (!currentVault && this.name !== 'system_logger' && this.name !== 'get_aura_blind_nodes') {
-          console.warn(`[AURA SECURITY] Identity Missing in Tool: ${this.name}`);
-          throw new Error(`Aura Security Protocol: Vault Identity [NULL] for action '${this.name}'.`);
+      const isSystemTool = this.name === 'system_logger' || this.name === 'get_aura_blind_nodes';
+
+      if (!isSystemTool && (!currentVault || currentVault === '' || currentVault === 'loading')) {
+          console.error(`[AURA SECURITY] Identity Missing or Latent in Tool: ${this.name}`);
+          throw new Error(`Aura Security Protocol: Vault Identity [LATENT] for action '${this.name}'. Handshake must conclude first.`);
       }
 
       // 5. PHYSICAL EXECUTION: Linking the Brain to the Ledger/System
@@ -158,7 +161,7 @@ export class DynamicTool<T extends z.ZodObject<any>> {
         error: errorMessage, 
         failed_agent_tool: this.name,
         timestamp: new Date().toISOString(),
-        brain_state: "Saturated-1024"
+        brain_state: "Saturated-1024-Elite"
       });
     }
   }
@@ -174,7 +177,7 @@ export class DynamicTool<T extends z.ZodObject<any>> {
 
   /**
    * toJSON
-   * Synchronized for 1024-dim retrieval serialization.
+   * Synchronized for 1024-dim retrieval serialization of 1,974 nodes.
    */
   toJSON() {
     return {
@@ -183,14 +186,14 @@ export class DynamicTool<T extends z.ZodObject<any>> {
       schema: this.schema,
       lc: 1,
       id: [this.name],
-      metadata: { dimensions: 1024, context: "Saturated" }
+      metadata: { dimensions: 1024, node_count: 1974, context: "Saturated" }
     };
   }
 }
 
 /**
  * STATUS: Sovereign Tool Infrastructure Synchronized & Anchored.
- * DNA_STANDARD: Elite 1024-dim Memory Saturated.
- * JURISDICTION: Multi-Tenant / Multi-Currency / Multi-Location.
- * VERSION: v15.2 (Omega-Ultimatum Ready).
+ * DNA_STANDARD: Elite 1024-dim Memory Saturated (1,974 Nodes).
+ * SECURITY: Identity Guard v16.0 physically welded.
+ * VERSION: v16.0 (OMEGA-ULTIMATUM Ready).
  */

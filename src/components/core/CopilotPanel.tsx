@@ -2,18 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v15.1 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
- * JURISDICTION: Multi-Tenant / Multi-Currency / Global ERP
+ * VERSION: v17.0 OMEGA-ULTIMATUM (THE FINAL SEAL)
+ * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. IDENTITY RECOVERY SHIELD: Hardened the OMEGA LINK status to detect Samuel Oyat 
- *    instantly, even if the React context is in a transition state.
- * 2. STREAM SYNCHRONIZATION: Hardened tool-call parser for 1024-dimension retrieval.
- * 3. CHANNEL INTEGRITY: Resolved "Neural handshake failed" via pulse-start awareness.
- * 4. FORENSIC STABILITY: Persistent auto-scroll locked to the latest neural token.
+ * 1. IDENTITY AUTO-LOCK: Physically welds the input state to the 
+ *    authoritative 'isReady' signal. Prevents "loading" UUIDs from hitting the DB.
+ * 2. NEURAL LATENCY SHIELD: High-fidelity transition from "Alignment" to "Active" 
+ *    the millisecond UUIDs are verified in the context.
+ * 3. OMNISCIENT AGENT PARSER: Hardened for the 9-agent Executive Council 
+ *    (Medical, SACCO, Telecom, etc.).
+ * 4. INTERACTION WELD: Fixed the 'Enter' key and 'Send' button to fire 
+ *    the append() call through the v17.0 forced request body.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
@@ -51,7 +54,7 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * AGENT STEP COMPONENT
- * Renders high-fidelity 'Forensic Thoughts' during the audit stream.
+ * Renders high-fidelity 'Forensic Thoughts' for all 9 agents.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
@@ -93,10 +96,11 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     return (
       <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-xl bg-slate-50/50 border-dashed border-slate-200 relative">
         <div className="flex items-center gap-2">
-          <Cpu className="h-3 w-3 text-slate-400" />
+          <Cpu className="h-3 w-3 text-emerald-500" />
           <div>
-            <p className="font-bold uppercase tracking-widest text-slate-500 text-[8px]">Agent Authority: {toolName || "Handshake Process"}</p>
-            {data.toolInput && <p className="opacity-50 truncate max-w-[240px] font-mono text-[7px]">{JSON.stringify(data.toolInput)}</p>}
+            <p className="font-bold uppercase tracking-widest text-slate-500 text-[8px]">
+               Agent Authority: {toolName?.replace(/_/g, ' ') || "Neural Sync"}
+            </p>
           </div>
         </div>
       </div>
@@ -113,19 +117,18 @@ export default function CopilotPanel() {
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
 
   const { 
-    messages, input, handleInputChange, handleSubmit, 
+    messages, input, setInput, handleInputChange, handleSubmit, 
     isLoading: isChatLoading, data: streamData, 
-    isReady: isContextReady, businessId, userId
+    isReady, businessId, userId, tenantData
   } = useCopilot();
 
-  // Side-Effect Orchestrator: Handles Navigation, Downloads, and Boardroom trigger
+  // Side-Effect Orchestrator: Captures tool completion and errors
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
         
-        // Handle explicit error yielding from Kernel v13.8
         if (parsed.event === 'on_error' || parsed.error) {
             toast.error(parsed.data?.error || parsed.error || "Neural Link Desync.");
         }
@@ -141,7 +144,7 @@ export default function CopilotPanel() {
     }
   }, [streamData, router]);
 
-  // Smoother Auto-Scroll for High-Density Audits
+  // Persistent Neural Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
         const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
@@ -151,20 +154,23 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
-  /**
-   * ✅ OMEGA IDENTITY CHECK:
-   * The system is physically ready if both IDs are present and not 'loading'.
-   * This overrides the UI stall if the Context hook is lagging.
-   */
-  const identityIsAnchored = (!!userId && userId !== '' && userId !== 'loading') && 
-                             (!!businessId && businessId !== '' && businessId !== 'loading');
+  // Focus input when ready
+  useEffect(() => {
+    if (isReady && inputRef.current) {
+        inputRef.current.focus();
+    }
+  }, [isReady]);
 
-  const canSend = !isChatLoading && (input || '').trim().length > 0 && identityIsAnchored;
+  /**
+   * ✅ OMEGA READINESS CHECK:
+   * Physically prevents input if the Director Identity is not anchored.
+   */
+  const canSend = isReady && !isChatLoading && (input || '').trim().length > 0;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
       
-      {/* 🚀 OMEGA BOARDROOM MODAL */}
+      {/* 🚀 SOVEREIGN BOARDROOM MODAL */}
       <AnimatePresence>
         {boardroomData && (
           <AuraBoardroom 
@@ -189,29 +195,29 @@ export default function CopilotPanel() {
                 Aura Sovereign
             </h2>
             <div className="flex items-center gap-2">
-               {identityIsAnchored ? (
+               {isReady ? (
                   <Badge className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-[8px] px-2 py-0.5 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                     <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK
                   </Badge>
                ) : (
                   <Badge className="bg-slate-800 text-slate-500 text-[8px] border-none px-2 py-0.5">
-                    <WifiOff className="h-3 w-3 mr-1" /> SYNCING...
+                    <WifiOff className="h-3 w-3 mr-1" /> ALIGNING...
                   </Badge>
                )}
-               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5 uppercase tracking-widest font-mono">v15.1</Badge>
+               <Badge className="bg-slate-800 text-slate-400 text-[8px] border-none px-2 py-0.5 uppercase tracking-widest font-mono">v17.0</Badge>
             </div>
         </div>
         <div className="flex items-center gap-2 relative z-10 opacity-50">
            <Terminal size={10} className="text-emerald-500" />
-           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Elite 1024-dim Executive Kernel Saturated</p>
+           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Elite 1024-dim • 1,974 Nodes Saturated</p>
         </div>
       </header>
       
       <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
         <div className="space-y-8 max-w-2xl mx-auto">
             
-            {/* INITIALIZING IDENTITY STATE */}
-            {!identityIsAnchored && messages.length === 0 && (
+            {/* INITIALIZING IDENTITY STATE (Refined v17.0) */}
+            {!isReady && messages.length === 0 && (
                 <div className="py-32 text-center animate-in fade-in duration-1000">
                     <div className="relative inline-block mb-6">
                         <Loader2 className="h-14 w-14 animate-spin text-emerald-500/20" />
@@ -219,12 +225,15 @@ export default function CopilotPanel() {
                             <Activity className="h-6 w-6 text-emerald-500 animate-pulse" />
                         </div>
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400">Aligning Neural Identity</p>
+                    <div className="space-y-2">
+                        <p className="text-[11px] font-black uppercase tracking-[0.6em] text-slate-400">Aligning Neural Identity</p>
+                        <p className="text-[8px] text-slate-300 uppercase tracking-widest">Vault: {tenantData?.businessName || "Requesting Handshake..."}</p>
+                    </div>
                 </div>
             )}
 
             {/* READY BUT IDLE STATE */}
-            {identityIsAnchored && messages.length === 0 && (
+            {isReady && messages.length === 0 && (
                 <div className="py-24 text-center group">
                     <div className="relative inline-block mb-8">
                        <Bot size={80} className="mx-auto text-slate-200 group-hover:text-emerald-500/10 transition-colors duration-1000" />
@@ -234,10 +243,10 @@ export default function CopilotPanel() {
                        <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <h3 className="text-xs font-black uppercase tracking-[0.8em] text-slate-300 group-hover:text-slate-400 transition-colors">Awaiting Executive Directive</h3>
-                    <div className="flex items-center justify-center gap-4 mt-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-center gap-4 mt-8">
                        <div className="h-px w-8 bg-slate-200" />
                        <span className="text-[8px] font-mono text-slate-400 uppercase tracking-widest">
-                          Vault: {businessId ? businessId.toString().substring(0, 18) : 'LINKING...'}
+                          Vault: {businessId?.substring(0, 18) || 'CONNECTING...'}
                        </span>
                        <div className="h-px w-8 bg-slate-200" />
                     </div>
@@ -263,7 +272,7 @@ export default function CopilotPanel() {
                     remarkPlugins={[remarkGfm]} 
                     className="prose prose-sm max-w-none prose-p:leading-relaxed prose-table:border prose-table:rounded-xl prose-th:bg-slate-50 prose-th:p-3 prose-td:p-3 prose-td:border-t"
                   >
-                    {typeof m.content === 'string' ? m.content : JSON.stringify(m.content)}
+                    {m.content}
                   </ReactMarkdown>
                 </div>
 
@@ -287,7 +296,7 @@ export default function CopilotPanel() {
             {/* PROCESSING INDICATOR */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-4 animate-pulse">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Executive Engine auditing Vault DNA...
+                    <Loader2 className="h-3 w-3 animate-spin" /> Aura is auditing enterprise sectors...
                 </div>
             )}
 
@@ -299,18 +308,18 @@ export default function CopilotPanel() {
         <form 
           onSubmit={(e) => {
             e.preventDefault();
-            handleSubmit(e);
+            if (canSend) handleSubmit(e);
           }} 
           className="flex items-center gap-3"
         >
           <div className="relative flex-grow">
             <Input 
               ref={inputRef}
-              value={input || ''} 
+              value={input} 
               onChange={handleInputChange} 
-              placeholder={!identityIsAnchored ? "Establishing Sovereign Handshake..." : "Command Aura-[Agent] to perform forensic audit..."} 
+              placeholder={!isReady ? "Verifying Forensic Identity..." : "Authorize Auditor scan or CFO ledger audit..."} 
               className="h-14 rounded-2xl bg-slate-50 border-slate-100 shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:border-emerald-500/40 transition-all text-[15px] px-6 pr-12"
-              disabled={!identityIsAnchored}
+              disabled={!isReady || isChatLoading}
             />
             {isChatLoading && (
                <div className="absolute right-4 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
@@ -336,7 +345,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Globe size={10} className="text-emerald-500" />
                       <span className="font-mono text-[9px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 shadow-sm">
-                        {businessId ? businessId.toString().substring(0, 18) : '0xNULL'}
+                        {isReady ? businessId?.substring(0, 18) : '0xLOADING'}
                       </span>
                    </div>
                 </div>
@@ -345,7 +354,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Fingerprint size={10} className="text-sky-500" />
                       <span className="font-mono text-[9px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 shadow-sm">
-                        {userId ? userId.toString().substring(0, 18) : '0xANON'}
+                        {isReady ? userId?.substring(0, 18) : '0xSYNCING'}
                       </span>
                    </div>
                 </div>
@@ -356,7 +365,6 @@ export default function CopilotPanel() {
         </div>
       </footer>
 
-      {/* Global CSS for the Scan Line Animation */}
       <style jsx global>{`
         @keyframes scan {
           from { transform: translateY(-100%); }
