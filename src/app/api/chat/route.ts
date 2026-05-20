@@ -165,16 +165,27 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { messages, tenantModules } = body;
 
-        // 🛡️ FORENSIC ID EXTRACTION: Checks root AND nested data object sent by SDK v2.0
-        const businessId = body.businessId || body.data?.businessId;
-        const userId = body.userId || body.data?.userId;
+        // 🛡️ FORENSIC ID EXTRACTION (v67.5 OMEGA NEURAL FIX)
+        // We capture IDs from the body, the data object, OR the deep metadata of the last message.
+        // This ensures the identity is found even during rapid React component transitions.
+        const rawBusinessId = body.businessId || body.data?.businessId || messages?.[messages.length - 1]?.data?.businessId;
+        const rawUserId = body.userId || body.data?.userId || messages?.[messages.length - 1]?.data?.userId;
+
+        // ✅ THE OMEGA IDENTITY WELD: 
+        // We explicitly block literal 'loading' strings or empty IDs from hitting the RPC 
+        // to prevent PostgreSQL UUID cast failures (Error 22P02).
+        if (!rawUserId || !rawBusinessId || rawUserId === 'loading' || rawBusinessId === 'loading' || rawUserId === '' || rawBusinessId === '') {
+            console.warn("[Aura Neural Link] Latent Identity detected. Synapse on hold.");
+            return new Response(JSON.stringify({ 
+                error: { message: "Aura is aligning neural pathways... please try again in 1 second." } 
+            }), { status: 202 }); // 202 Accepted tells the UI to wait without a hard crash
+        }
+
+        const businessId = rawBusinessId;
+        const userId = rawUserId;
 
         // Forensic Handshake Logging
         console.log("AURA NEURAL HANDSHAKE:", { businessId, userId });
-
-        if (!userId || !businessId || userId === 'loading' || businessId === 'loading') {
-            return new Response(JSON.stringify({ error: { message: "Sovereign Context Incomplete. Identity not synchronized." } }), { status: 400 });
-        }
 
         const supabaseAdmin = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -182,7 +193,7 @@ export async function POST(req: NextRequest) {
         );
         
         // 🛡️ v67.0 STATELESS MASTER HANDSHAKE
-        // Passes explicit IDs to bypass server-side auth.uid() null state.
+        // Passes explicit IDs to bypass server-side auth.uid() null barrier.
         const { data: auraData, error: auraError } = await supabaseAdmin.rpc('get_aura_handshake', {
             p_target_biz_id: businessId,
             p_user_id: userId
