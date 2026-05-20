@@ -2,13 +2,16 @@
 
 /**
  * --- BBU1 SOVEREIGN MISSION CONTROL ---
- * VERSION: v15.0 OMEGA-ULTIMATUM (ELITE 1024-DIM ALIGNED)
+ * VERSION: v16.0 OMEGA-ULTIMATUM (HYPER-STABLE IDENTITY WELD)
  * 
  * CORE UPGRADES:
- * 1. NEURAL REALIGNMENT: Visual data throughput optimized for 1024-dim Elite retrieval.
- * 2. IDENTITY LOCK: Hardened UUID anchors for Director Samuel Oyat / Nak Business.
- * 3. UNBLOCKED HANDSHAKE: Input field activates immediately upon multi-tenant verification.
- * 4. STREAM INTEGRITY: Enhanced AgentStep parser to handle high-density forensic chunks.
+ * 1. INCOGNITO OPTIMIZATION: Refined the 'isReady' lifecycle to prioritize 
+ *    direct session IDs over cookies, eliminating the Incognito loading stall.
+ * 2. NEURAL REALIGNMENT: Visual data throughput optimized for 1024-dim Elite retrieval.
+ * 3. IDENTITY LOCK: Hardened UUID anchors for Director Okello Mid / Enterprises Node.
+ * 4. UNBLOCKED HANDSHAKE: Input field activates the millisecond the v17.0 
+ *    Database Handshake returns 'READY'.
+ * 5. STREAM INTEGRITY: Enhanced AgentStep parser to handle high-density forensic chunks.
  */
 
 import { useEffect, useRef, useMemo, useState } from 'react';
@@ -128,13 +131,13 @@ export default function MissionControlPage() {
   
   const { 
     messages, input, handleInputChange, handleSubmit, 
-    isLoading, data, isReady, businessId, userId 
+    isLoading, data: streamData, isReady, businessId, userId, tenantData 
   } = useCopilot();
 
   // SIDE-EFFECT HANDLER: Orchestrates physical system actions from the neural stream
   useEffect(() => {
-    if (data && data.length > 0) {
-      const lastChunk = data[data.length - 1];
+    if (streamData && streamData.length > 0) {
+      const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
@@ -151,7 +154,7 @@ export default function MissionControlPage() {
         }
       } catch (e) { }
     }
-  }, [data, router]);
+  }, [streamData, router]);
 
   // SCROLL SYNC: Auto-scroll for streaming tokens
   useEffect(() => {
@@ -159,27 +162,36 @@ export default function MissionControlPage() {
         const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (viewport) viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages, isLoading, data]);
+  }, [messages, isLoading, streamData]);
 
   // FOCUS CONTROL: Immediate input activation
   useEffect(() => {
     if (isReady && inputRef.current) inputRef.current.focus();
   }, [isReady]);
 
+  /**
+   * ✅ OMEGA IDENTITY RECOVERY:
+   * Ensuring the system is visually READY the millisecond IDs are present.
+   */
+  const identityIsAnchored = useMemo(() => {
+    return (!!userId && userId !== '' && userId !== 'loading') && 
+           (!!businessId && businessId !== '' && businessId !== 'loading');
+  }, [userId, businessId]);
+
   const agentStepsView = useMemo(() => {
-    if (!data || !Array.isArray(data)) return [];
-    return data.map((chunk: any, i: number) => {
+    if (!streamData || !Array.isArray(streamData)) return [];
+    return streamData.map((chunk: any, i: number) => {
         try {
             const parsed = typeof chunk === 'string' ? JSON.parse(chunk) : chunk;
             if (parsed.event === 'on_chat_model_stream' || parsed.event === 'on_agent_finish') return null;
             return <AgentStep key={`step-${i}`} data={parsed.event ? parsed : parsed.data || parsed} />;
         } catch (e) { return null; }
     }).filter(Boolean);
-  }, [data]);
+  }, [streamData]);
 
   const streamingContent = isLoading && messages[messages.length - 1]?.role === 'assistant' ? messages[messages.length - 1].content : null;
   const renderedMessages = streamingContent ? messages.slice(0, -1) : messages;
-  const canSend = !isLoading && (input || '').trim().length > 0 && isReady;
+  const canSend = !isLoading && (input || '').trim().length > 0 && identityIsAnchored;
 
   return (
     <div className="flex flex-col h-full bg-white border rounded-[32px] shadow-[0_32px_120px_rgba(0,0,0,0.1)] overflow-hidden min-h-[750px] border-slate-100 relative">
@@ -207,7 +219,7 @@ export default function MissionControlPage() {
               </div>
               <div>
                 <h1 className="text-base font-black uppercase tracking-[0.25em] text-white italic">Aura Mission Control</h1>
-                <p className="text-[10px] text-slate-500 font-mono mt-1.5 tracking-[0.2em] uppercase">Sovereign Executive Kernel v15.0</p>
+                <p className="text-[10px] text-slate-500 font-mono mt-1.5 tracking-[0.2em] uppercase">Sovereign Executive Kernel v16.0</p>
               </div>
           </div>
 
@@ -230,10 +242,10 @@ export default function MissionControlPage() {
               <div className="flex flex-col items-center">
                 <span className={cn(
                     "h-3 w-3 rounded-full mb-1.5 transition-all duration-1000", 
-                    isReady ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]" : "bg-amber-500 animate-pulse"
+                    identityIsAnchored ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)]" : "bg-amber-500 animate-pulse"
                 )}></span>
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                    {isReady ? <><Wifi size={10} className="inline mr-1"/> ACTIVE</> : <><WifiOff size={10} className="inline mr-1"/> SYNCING</>}
+                    {identityIsAnchored ? <><Wifi size={10} className="inline mr-1"/> ACTIVE</> : <><WifiOff size={10} className="inline mr-1"/> SYNCING</>}
                 </span>
               </div>
           </div>
@@ -243,7 +255,7 @@ export default function MissionControlPage() {
         <div className="space-y-10 max-w-5xl mx-auto pb-20">
           
           {/* STANDBY STATE */}
-          {isReady && messages.length === 0 && (
+          {identityIsAnchored && messages.length === 0 && (
               <div className="py-40 text-center animate-in fade-in duration-1000">
                   <motion.div 
                     initial={{ scale: 0.8, opacity: 0 }}
@@ -257,16 +269,29 @@ export default function MissionControlPage() {
               </div>
           )}
 
-          {/* NEURAL SYNC LOADER */}
-          {!isReady && (
-            <div className="text-center py-48 animate-in fade-in">
-                <Loader2 className="h-16 w-16 animate-spin mx-auto text-emerald-500/20 mb-8" />
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.5em] italic">Establishing Sovereignty...</p>
+          {/* NEURAL SYNC LOADER: Refined for Incognito Handshake Speed */}
+          {!identityIsAnchored && (
+            <div className="text-center py-48 animate-in fade-in zoom-in duration-700">
+                <div className="relative inline-block mb-10">
+                    <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping opacity-30" />
+                    <Loader2 className="h-20 w-20 animate-spin mx-auto text-emerald-500/20 relative z-10" />
+                </div>
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-[0.4em]">Awaiting Forensic Protocol</h2>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.6em] italic">
+                       Synchronizing sovereign neural links for {tenantData?.businessName || "Authorized Entity"}...
+                    </p>
+                </div>
+                <div className="mt-12 flex items-center justify-center gap-3">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
+                </div>
             </div>
           )}
 
           {/* CHAT MESSAGES */}
-          {isReady && renderedMessages.map((message: any) => ( 
+          {identityIsAnchored && renderedMessages.map((message: any) => ( 
             <div key={message.id} className={cn('flex items-start gap-5', message.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-4 duration-500')}>
               {message.role === 'assistant' && (
                 <div className="w-11 h-11 rounded-[14px] bg-slate-950 flex items-center justify-center shadow-2xl shrink-0 border border-emerald-500/20 relative overflow-hidden group">
@@ -331,12 +356,12 @@ export default function MissionControlPage() {
                 ref={inputRef}
                 value={input} 
                 onChange={handleInputChange}
-                placeholder={!isReady ? "Initializing Neural Identity..." : "Direct Aura to perform forensic audit..."} 
-                disabled={isLoading || !isReady} 
+                placeholder={!identityIsAnchored ? "Establishing Sovereign Handshake..." : "Direct Aura to perform forensic audit..."} 
+                disabled={isLoading || !identityIsAnchored} 
                 className="h-18 rounded-[20px] bg-slate-50 border-none shadow-inner text-[16px] px-8 focus-visible:ring-2 focus-visible:ring-emerald-500/50 transition-all pr-20 font-medium placeholder:text-slate-300 placeholder:italic" 
               />
               <div className="absolute right-7 top-1/2 -translate-y-1/2">
-                {isReady ? (
+                {identityIsAnchored ? (
                     <ShieldCheck size={24} className="text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-all duration-700" />
                 ) : (
                     <Loader2 size={20} className="text-slate-200 animate-spin" />

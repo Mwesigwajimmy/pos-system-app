@@ -1,15 +1,14 @@
 /**
  * --- BBU1 SOVEREIGN AGENT EXECUTOR ---
- * VERSION: v15.5 OMEGA-ULTIMATUM (THE CRASH-SHIELD WELD)
+ * VERSION: v16.0 OMEGA (THE HALLUCINATION FIREWALL)
  * A revolutionary orchestrator that drives the Autonomous Executive Council.
- * It implements a high-density ReAct (Reasoning + Acting) loop with parallel tool execution.
  * 
  * UPGRADED: 
- * 1. CRASH SHIELD: Fixed the 'toolCalls.map' type-error by enforcing array-guards 
- *    on LLM stream chunks. This kills the 500-error retry loop.
- * 2. IDENTITY PASS-THROUGH: Spreading all inputObj variables to support {businessId} and {userId}.
- * 3. PROMPT ALIGNMENT: Synchronized with the ReactAgent mandatory placeholders.
- * 4. STREAM INTEGRITY: Hardened chunk extraction for Llama 3.3 (SambaNova) consistency.
+ * 1. HALLUCINATION FIREWALL: Real-time ReAct interceptor. If the LLM tries to 
+ *    predict 'Observation:', the executor kills the stream and forces physical execution.
+ * 2. RE-ACT PARSER: Hardened logic to detect text-based tool calls for Llama 3.3.
+ * 3. IDENTITY PASS-THROUGH: Hard-welded {businessId} and {userId} in every loop.
+ * 4. CRASH SHIELD: Enforced Array-Guards on toolCall mapping to prevent 500 errors.
  */
 
 // We import the local shims to maintain the "Sovereign Shield"
@@ -74,6 +73,7 @@ export interface AgentStreamInput {
 
 /**
  * THE SOVEREIGN AGENT EXECUTOR ENGINE
+ * The core motherboard of Aura's autonomous capabilities.
  */
 export class AgentExecutor {
   private agent: AgentExecutorOptions['agent'];
@@ -92,7 +92,7 @@ export class AgentExecutor {
 
   private log(message: string, ...args: any[]) {
     if (this.verbose) {
-      console.log(`[Aura-Orchestrator-v15.5] ${message}`, ...args);
+      console.log(`[Aura-Orchestrator-v16.0] ${message}`, ...args);
     }
   }
 
@@ -126,7 +126,6 @@ export class AgentExecutor {
 
       let formattedMessages;
       try {
-          // Forensic check for Chat vs String prompts
           formattedMessages = prompt.formatMessages ? await prompt.formatMessages(promptValues) : await prompt.format(promptValues);
       } catch (formatErr: any) {
           this.log('Prompt Formatting Failure:', formatErr.message);
@@ -138,6 +137,7 @@ export class AgentExecutor {
 
       let fullResponseContent = '';
       let toolCalls: any[] = [];
+      let stopLoop = false;
 
       try {
         const llmStream = llm.stream 
@@ -145,22 +145,29 @@ export class AgentExecutor {
             : llm.chat(formattedMessages, runOptions?.configurable);
 
         for await (const chunk of llmStream) {
-          /**
-           * ✅ OMEGA CHUNK RECONCILIATION
-           * Handles content extraction from both raw shims and official LangChain classes.
-           */
           const content = chunk.content || chunk.text || (chunk.data?.chunk?.content) || "";
           
           /**
-           * ✅ THE NEURAL SINK FIX (Line 125 Correction)
-           * We strictly enforce that 'toolCalls' only accepts Array data.
-           * This prevents the string-to-array mapping crash.
+           * ✅ THE NEURAL SINK FIX 
+           * Enforce Array integrity to prevent .map crashes.
            */
           const rawCalls = chunk.tool_calls || chunk.additional_kwargs?.tool_calls;
           const calls = Array.isArray(rawCalls) ? rawCalls : [];
 
           if (content && typeof content === 'string') {
             fullResponseContent += content;
+
+            /**
+             * ✅ OMEGA HALLUCINATION INTERCEPTOR (v16.0)
+             * If the model attempts to write 'Observation:' itself, it means it's hallucinating.
+             * we physically break the stream to prevent fake data from reaching the UI.
+             */
+            if (fullResponseContent.includes('Observation:') || fullResponseContent.includes('Final Answer:')) {
+                this.log('Hallucination detected. Intercepting...');
+                stopLoop = true;
+                break;
+            }
+
             yield { 
               event: 'on_chat_model_stream', 
               data: { chunk: { content } } 
@@ -175,6 +182,26 @@ export class AgentExecutor {
         this.log('Neural Link Interrupted:', err.message);
         yield { event: 'on_error', data: { error: `Brain Handshake Refused: ${err.message}` } };
         return;
+      }
+
+      /**
+       * ✅ TEXT-BASED TOOL RECOVERY
+       * If SambaNova used the ReAct format instead of formal tool_calls, we parse it.
+       */
+      if (toolCalls.length === 0 && fullResponseContent.includes('Action:')) {
+          const actionMatch = fullResponseContent.match(/Action:\s*(\w+)/);
+          const inputMatch = fullResponseContent.match(/Action Input:\s*({.*})/s);
+          
+          if (actionMatch && actionMatch[1]) {
+              toolCalls.push({
+                  id: `call_${Date.now()}`,
+                  type: 'function',
+                  function: { 
+                      name: actionMatch[1].trim(), 
+                      arguments: inputMatch ? inputMatch[1].trim() : '{}' 
+                  }
+              });
+          }
       }
 
       // 3. DECISION ENGINE
@@ -193,7 +220,6 @@ export class AgentExecutor {
       const actions: AgentAction[] = toolCalls.map(call => {
         let parsedArgs = {};
         try {
-            // Strip markdown hallucinations from the arguments string
             const rawArgs = typeof call.function.arguments === 'string' 
                 ? call.function.arguments.replace(/```json|```/g, "").trim()
                 : JSON.stringify(call.function.arguments);
@@ -214,7 +240,7 @@ export class AgentExecutor {
           yield { event: 'on_agent_action', data: action };
       }
 
-      // 5. SECURE TOOL EXECUTION
+      // 5. SECURE TOOL EXECUTION (Physical Handshake)
       const toolOutputs = await Promise.all(
         toolCalls.map(async (call, index) => {
           try {
@@ -222,6 +248,7 @@ export class AgentExecutor {
             if (!tool) {
               return { id: call.id, output: `Access Denied: Tool '${call.function.name}' missing.`, name: call.function.name };
             }
+            // Multi-tenant safe invocation
             const output = await tool.invoke(call.function.arguments, runOptions);
             return { id: call.id, output, name: call.function.name };
           } catch (toolErr: any) {
@@ -235,27 +262,33 @@ export class AgentExecutor {
       for (let i = 0; i < toolOutputs.length; i++) {
         const { output, name } = toolOutputs[i];
         intermediateSteps.push({ action: actions[i], observation: output });
+        
+        // PHYSICAL TRUTH: Yield the tool result to trigger the Sidebar UI
         yield { event: 'on_tool_end', data: { output, tool: name } };
         
-        // Ensure the ID is present for the history weld
         const callId = toolCalls[i].id || `call_${Date.now()}_${i}`;
         toolMessages.push(new ToolMessage(output, callId));
       }
 
-      // Weld results into context for the next reasoning step
+      // Sync history for the next thought cycle
       history.push(new AIMessage(fullResponseContent, { tool_calls: toolCalls }));
       history.push(...toolMessages);
       
+      // Heartbeat signal
       yield { event: 'on_chat_model_stream', data: { chunk: { content: '' } } };
     }
 
     yield { event: 'on_agent_finish', data: { output: 'Aura Executive Alert: Max logic recursion steps reached.' } };
   }
 
+  /**
+   * CONSTRUCT SCRATCHPAD
+   * Formatting history for high-fidelity 1024-dim precision.
+   */
   private constructScratchpad(steps: { action: AgentAction; observation: string }[]): string {
     if (steps.length === 0) return "";
     return steps.reduce((thoughts, { action, observation }) => {
-      return thoughts + `\nThought: I used ${action.tool} with parameters ${JSON.stringify(action.toolInput)}\nObservation: ${observation}\n`;
+      return thoughts + `\nThought: I used ${action.tool}\nAction: ${action.tool}\nAction Input: ${JSON.stringify(action.toolInput)}\nObservation: ${observation}\n`;
     }, '\nINTERNAL STRATEGIC LOG:');
   }
 }
