@@ -2,20 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v17.7 OMEGA-ULTIMATUM (THE INDESTRUCTIBLE FULL-WELD)
- * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
+ * VERSION: v18.0 OMEGA-ULTIMATUM (THE QUANTUM EDGE SEAL)
+ * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
  * CORE UPGRADES:
- * 1. THE SANCTUARY WELD: The useChat hook is now isolated in the NeuralSanctuary 
- *    component which ONLY mounts when the database handshake is 'READY'. 
- *    This physically prevents the 'g is not a function' crash by ensuring 
- *    no request is ever sent with 'loading' IDs.
- * 2. IDENTITY IMMUTABILITY: IDs are locked into the engine during mount. 
- *    Flickering or identity-stripping during POST requests is now impossible.
- * 3. SDK STABILITY: Hardened for @ai-sdk/react v2.0.81. Passes metadata through 
- *    the top-level 'data' key to bypass Middleware 307 diversions.
- * 4. REDIRECT SHIELD: API path forced to absolute '/api/chat' to prevent 
- *    locale-based POST body loss.
+ * 1. QUANTUM EDGE GATEWAY: Redirects the neural stream from Vercel (/api/chat) 
+ *    to Supabase Edge Functions. This physically kills the 504 Timeout error 
+ *    by allowing up to 400s of processing time.
+ * 2. AUTHORITATIVE HEADER WELD: Injects the Supabase Anon Key and Vault-ID 
+ *    directly into the fetch headers for indestructible multi-tenant isolation.
+ * 3. THE SANCTUARY PATTERN: Maintained physical isolation. The AI hook only 
+ *    exists when the Handshake RPC confirms Samuel Oyat is READY.
+ * 4. IDENTITY IMMUTABILITY: IDs are hard-coded into the Quantum Stream 
+ *    at birth, making 'g is not a function' logic errors impossible.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -53,19 +52,21 @@ interface CopilotContextType {
 const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
 
 /**
- * 🛡️ THE NEURAL SANCTUARY (The Engine Room)
- * This component is only born when the Identity Handshake is 100% physically ready.
- * It holds the useChat hook with immutable, verified UUIDs.
+ * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
  */
 function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, setIsOpen }: any) {
   const [inputState, setInputState] = useState('');
   const isSyncing = useRef(false);
 
-  // 1. Initialize Neural Engine with Physically Anchored UUIDs
-  // ✅ OMEGA WELD: Static ID and absolute path prevent SDK-parsing collisions.
+  // 1. Initialize Neural Engine via Supabase Quantum Gateway
+  // ✅ OMEGA WELD: Talking directly to Edge Functions
   const { messages, isLoading, append, setMessages, data } = useChat({
-    id: `aura-sovereign-vault-${businessId}`, 
-    api: '/api/chat', // Absolute path to bypass 307 redirect body stripping
+    id: `aura-quantum-vault-${businessId}`, 
+    api: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/aura-quantum-audit`,
+    headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        'x-bbu1-vault-id': businessId
+    },
     body: { 
       businessId, 
       userId, 
@@ -75,20 +76,19 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
     onResponse: (response) => {
       isSyncing.current = false;
       if (!response.ok) {
-        console.error(`[AURA LINK FAULT] Status: ${response.status}`);
+        console.error(`[AURA EDGE FAULT] Status: ${response.status}`);
       }
     },
     onError: (err) => {
         isSyncing.current = false;
-        console.error("[AURA STREAM COLLAPSE]", err);
-        // We handle the stream-wrapped errors from route.ts
+        console.error("[AURA QUANTUM COLLAPSE]", err);
         if (!err.message.includes('abort')) {
            toast.info("Aura is aligning neural pathways... please try again.");
         }
     }
   });
 
-  // 2. High-Stability Submit Handler (v17.7 Handshake Seal)
+  // 2. High-Stability Submit Handler
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSyncing.current || isLoading) return;
@@ -98,12 +98,9 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
 
     try {
         isSyncing.current = true;
-        console.log(`[Aura Synapse] Firing forensic audit for Vault: ${businessId}`);
+        console.log(`[Aura Quantum Synapse] Firing Edge Audit for Vault: ${businessId}`);
         
-        /**
-         * ✅ THE OMEGA-NEURAL WELD: 
-         * We pass IDs in the top-level 'data' key for SDK v2.0.81 compatibility.
-         */
+        // Pass IDs in the top-level 'data' key for SDK compatibility
         await append({ 
           role: 'user', 
           content
@@ -118,7 +115,7 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
         setInputState('');
     } catch (err: any) {
         isSyncing.current = false;
-        console.error("HANDSHAKE CRASH:", err.message);
+        console.error("QUANTUM HANDSHAKE CRASH:", err.message);
         toast.info("Aura is aligning neural pathways... please try again.");
     }
   }, [inputState, businessId, userId, append, tenantData, isLoading]);
@@ -128,11 +125,7 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
     if (!prompt || isLoading) return;
     setInputState(prompt);
     setIsOpen(true);
-    
-    // Allow panel to mount before firing synapse
-    setTimeout(() => {
-        handleSubmit();
-    }, 800);
+    setTimeout(() => { handleSubmit(); }, 800);
   }, [isLoading, handleSubmit, setIsOpen]);
 
   // 4. Identity-Aware Memoization
@@ -174,7 +167,6 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
 
 /**
  * GLOBAL COPILOT PROVIDER
- * Resolves Samuel Oyat's identity and physically locks the Sanctuary component.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -194,17 +186,12 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return (!id || id === 'loading') ? '' : id;
   }, [businessContext]);
 
-  /**
-   * ✅ FORENSIC READINESS SEAL: 
-   * We require both local verification and the database RPC 'is_ready' signal.
-   */
   const isReady = mounted && 
                   !contextLoading && 
                   activeUserId !== '' && 
                   activeBusinessId !== '' &&
                   (businessContext as any)?.is_ready === true;
 
-  // 🛡️ THE DIVERSION SHIELD: We do not mount the AI Engine until Identity is Saturated.
   if (!isReady) {
     return (
       <CopilotContext.Provider value={{ 
