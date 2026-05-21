@@ -1,7 +1,7 @@
 // src/middleware.ts
 // V-REVOLUTION: THE DEFINITIVE, LOOP-FREE SECURITY & ROUTING ENGINE
-// VERSION: v17.6 OMEGA-ULTIMATUM (THE REDIRECT SHIELD)
-// FIXED: Identity Stripping on 307 Redirects
+// VERSION: v17.7 OMEGA-ULTIMATUM (THE IDENTITY SHIELD)
+// FIXED: Redirect Loop on Latent Database Triggers
 
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
@@ -142,8 +142,6 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // --- 🛡️ AURA SOVEREIGN BYPASS (v17.6) ---
-    // Physically forbid the middleware from redirecting AI or system calls.
-    // This stops the 307 Redirect from stripping POST headers/body.
     if (
         pathname.startsWith('/api/') || 
         pathname.includes('/functions/v1/') ||
@@ -230,11 +228,14 @@ export async function middleware(request: NextRequest) {
         p_target_biz_id: activeBizId
     });
 
-    // --- 3. IDENTITY RECOVERY PROTOCOL (FIXED LOOP) ---
+    // --- 3. IDENTITY RECOVERY PROTOCOL (DEEP WELD FIX) ---
+    // Instead of redirecting to /login (which causes the loop), we redirect to /welcome.
+    // The /welcome page's BusinessContext will handle the polling until the database is ready.
     if (contextError || !userContextData || userContextData.length === 0) {
-        if (pathWithoutLocale === '/login' || isPublicPath) return response;
-        const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
-        recoveryResponse.cookies.delete('bbu1_active_business_id');
+        if (pathWithoutLocale === '/login' || isPublicPath || pathWithoutLocale === '/welcome') return response;
+        
+        const recoveryResponse = NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
+        // We do NOT delete the active business ID here, as we need it for the handshake retry.
         return recoveryResponse;
     }
     

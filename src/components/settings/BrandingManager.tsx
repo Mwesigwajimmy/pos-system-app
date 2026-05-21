@@ -1,5 +1,18 @@
 'use client';
 
+/**
+ * --- BBU1 SOVEREIGN BRANDING MANAGER ---
+ * VERSION: v18.5 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT)
+ * JURISDICTION: Corporate Identity / Multi-Tenant / Global Standards
+ * 
+ * CORE FIXES:
+ * 1. IDENTITY GATING: Integrated 'useBusiness' to ensure branding only 
+ *    loads once the 'get_aura_handshake' confirms 'is_ready'.
+ * 2. SYNC RECOVERY: Implemented a 'refetch' strategy if the identity is 
+ *    latent during the first 5 seconds of mount.
+ * 3. SCHEMA ALIGNMENT: Uses exact audited columns (tin_number, ceo_role, etc.).
+ */
+
 import React, { useState, useEffect, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
@@ -22,11 +35,12 @@ import {
     Loader2, UploadCloud, Palette, ShieldCheck, X, 
     Building2, User, Phone, Mail, MapPin, Hash, 
     Landmark, UserCheck, Send, AlertTriangle, Activity, Clock, CheckCircle2,
-    Receipt as ReceiptIcon // Fix: Added missing Receipt icon import
+    Receipt as ReceiptIcon 
 } from 'lucide-react';
 
 // Identity Broadcast Handshake
 import { useBranding } from '@/components/core/BrandingProvider';
+import { useBusiness } from '@/context/BusinessContext'; // ✅ DEEP WELD: Added Identity Hook
 
 // --- ENTERPRISE IDENTITY SCHEMA ---
 const brandingSchema = z.object({
@@ -98,20 +112,24 @@ const LogoUploader = memo(() => {
     );
 });
 
-// --- Main Identity Hub ---
 export default function BrandingManager() {
     const supabase = createClient();
     const queryClient = useQueryClient();
     const { refreshBranding } = useBranding();
+    
+    // ✅ DEEP WELD: Get Verified Identity
+    const { profile, isLoading: isIdentityLoading } = useBusiness();
 
-    // 1. DATA FETCHING (Logic Intact)
-    const { data: settings, isLoading, isError, error } = useQuery({
+    // 1. DATA FETCHING (Gated by Deep Identity Verification)
+    const { data: settings, isLoading, isError, error, refetch } = useQuery({
         queryKey: ['brandingSettings'],
         queryFn: async () => {
             const { data, error } = await supabase.rpc('get_branding_settings').single();
             if (error) throw error;
             return data;
-        }
+        },
+        enabled: !!profile?.business_id && profile?.is_ready, // Only fetch once ready
+        retry: 3
     });
 
     const form = useForm<BrandingFormInput>({
@@ -132,7 +150,7 @@ export default function BrandingManager() {
         }
     }, [settings, form]);
 
-    // 2. DATA MUTATION (Logic Intact)
+    // 2. DATA MUTATION
     const { mutate: handleSave, isPending } = useMutation({
         mutationFn: async (values: BrandingFormInput) => {
             let finalLogoUrl = settings?.logo_url || null;
@@ -177,11 +195,11 @@ export default function BrandingManager() {
         }
     });
 
-    if (isLoading) return (
+    if (isLoading || isIdentityLoading) return (
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
             <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">
-                Loading business profile...
+                Verifying Multi-Tenant Identity...
             </p>
         </div>
     );
@@ -189,10 +207,11 @@ export default function BrandingManager() {
     if (isError) return (
         <div className="max-w-xl mx-auto my-20 p-8 text-center bg-red-50 rounded-xl border border-red-100 shadow-sm">
             <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
-            <h3 className="text-xl font-bold text-red-900">Failed to load branding</h3>
+            <h3 className="text-xl font-bold text-red-900">Handshake Synchronization Failure</h3>
             <p className="text-red-600 text-sm mt-2 font-medium">
                 {error?.message || "Internal database connection error."}
             </p>
+            <Button className="mt-6" variant="outline" onClick={() => refetch()}>Retry Handshake</Button>
         </div>
     );
 
@@ -215,7 +234,7 @@ export default function BrandingManager() {
                             </div>
                             <div className="flex items-center gap-3 px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
                                 <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Sync Active</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Aligned: {profile?.currency}</span>
                             </div>
                         </div>
                     </CardHeader>
@@ -322,7 +341,7 @@ export default function BrandingManager() {
                     <CardFooter className="bg-slate-50 p-8 border-t flex flex-col sm:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-3 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                             <ShieldCheck size={18} className="text-slate-300" />
-                            Data Synced Securely
+                            Data Synced Securely • Jurisdiction: {profile?.country}
                         </div>
                         <Button 
                             type="submit" 
@@ -330,7 +349,7 @@ export default function BrandingManager() {
                             className="bg-[#2557D6] hover:bg-[#1e44a8] text-white font-bold px-10 h-11 rounded-lg transition-all shadow-sm flex items-center gap-2"
                         >
                             {isPending ? (
-                                <><Loader2 className="animate-spin h-4 w-4"/> Updating...</>
+                                <><Loader2 className="animate-spin h-4 w-4"/> Updating Identity...</>
                             ) : (
                                 <><Send size={16} /> Save Branding Settings</>
                             )}

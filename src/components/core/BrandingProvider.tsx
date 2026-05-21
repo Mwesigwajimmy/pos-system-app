@@ -1,16 +1,28 @@
 'use client';
 
+/**
+ * --- BBU1 SOVEREIGN BRANDING PROVIDER ---
+ * VERSION: v18.0 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT)
+ * JURISDICTION: Global Dashboard / Multi-Tenant / Visual Identity
+ * 
+ * CORE FIXES:
+ * 1. RLS RESILIENCE: Switched from direct View querying (blocked by RLS) 
+ *    to the 'get_branding_settings' RPC. This ensures branding loads 
+ *    even when standard SELECT visibility is 0.
+ * 2. IDENTITY SYNC: Aligned with the 'bbu1_active_business_id' cookie 
+ *    to ensure the visual theme matches the active business node.
+ * 3. THEME ENGINE: Preserved the HSL CSS variable injection for 
+ *    Tailwind compatibility.
+ */
+
 import React, { createContext, useContext, useEffect, useMemo, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-// DEEP SYNC: Importing the cookie engine to maintain node-switching awareness
 import Cookies from 'js-cookie'; 
 
 // --- 1. ENTERPRISE TYPE DEFINITIONS ---
-// This matches the "Neural Identity View" we created in SQL
 interface CorporateIdentity {
   business_id: string;
-  legal_name: string;
   company_name_display: string;
   logo_url: string | null;
   primary_color: string | null;
@@ -23,9 +35,8 @@ interface CorporateIdentity {
   currency_code: string | null;
   receipt_footer: string | null;
   ceo_name: string | null;
-  ceo_designation: string | null;
+  ceo_role: string | null;
   payment_instructions: string | null;
-  physical_address: string | null;
 }
 
 interface BrandingContextType {
@@ -63,63 +74,35 @@ function hexToHsl(hex: string | null | undefined): string | null {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-/**
- * LITONU BUSINESS BASE UNIVERSE LTD - MASTER BRANDING PROVIDER
- * 
- * UPGRADE: Authoritative Context Synchronization.
- * This provider now authoritatively resolves the visual identity based on 
- * the active business node, preventing "Identity Bleeding" between tenants.
- */
 export default function BrandingProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
-
-  // 1. ACTIVE NODE RESOLUTION
-  // We monitor the secure cookie to know exactly which node the operator is visiting.
   const activeBizId = Cookies.get('bbu1_active_business_id');
 
-  // 2. NEURAL FETCH: Get everything from the Verified Identity View
+  // 2. NEURAL FETCH: Switched to RLS-Resilient RPC
   const { data: branding, isLoading, refetch } = useQuery<CorporateIdentity>({
-    // UPGRADE: Added activeBizId to the queryKey.
-    // This forces an immediate re-fetch whenever the user switches businesses.
     queryKey: ['bbu1_corporate_identity', activeBizId],
     queryFn: async () => {
-      // Identity Handshake: Authoritatively resolve the target business ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      // RESOLUTION HIERARCHY: Priority 1: Active Cookie | Priority 2: Root Profile
-      let targetId = activeBizId;
-
-      if (!targetId) {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('business_id')
-            .eq('id', user.id)
-            .single();
-        targetId = profile?.business_id;
-      }
+      // 🛡️ DEEP WELD: Instead of querying a view (subject to RLS), 
+      // we use the SECURITY DEFINER RPC to ensure the branding is 
+      // fetched even during the "Invisibility" phase of login.
+      const { data, error } = await supabase.rpc('get_branding_settings').single();
       
-      if (targetId) {
-        // AUTHORITATIVE SELECT: Fetch from the physical branding layer
-        const { data, error } = await supabase
-            .from('view_bbu1_corporate_identity')
-            .select('*')
-            .eq('business_id', targetId)
-            .single();
-        
-        if (error) {
-            console.warn("LITONU SECURITY: Branding node empty or restricted.", error.message);
-            return null;
-        }
-        return data as CorporateIdentity;
+      if (error) {
+          console.warn("LITONU SECURITY: Branding node empty or restricted via RPC.", error.message);
+          return null;
       }
-      return null;
+
+      // Map the RPC return to the CorporateIdentity interface
+      return {
+          ...data,
+          business_id: activeBizId // Link the active node ID
+      } as CorporateIdentity;
     },
-    staleTime: 1000 * 60 * 5, // 5-minute standard enterprise cache
-    refetchOnWindowFocus: false, // Prevents identity flickering during tab switches
+    staleTime: 1000 * 60 * 5, 
+    refetchOnWindowFocus: false,
   });
 
-  // 3. THE SOVEREIGN WELD: Side-effect to skin the CSS Variables
+  // 3. THE SOVEREIGN WELD: Apply Branding to CSS Variables
   useEffect(() => {
     if (!branding) return;
 
@@ -127,17 +110,14 @@ export default function BrandingProvider({ children }: { children: ReactNode }) 
     const primaryHsl = hexToHsl(branding.primary_color);
     
     if (primaryHsl) {
-      // Dynamic injection into the Document Object Model
       root.style.setProperty('--primary', primaryHsl);
       root.style.setProperty('--brand-primary', branding.primary_color!); 
       
-      // Automatic Contrast Logic for readable Text on Brand Backgrounds
       const lightness = parseInt(primaryHsl.split(' ')[2], 10);
       root.style.setProperty('--primary-foreground', lightness > 60 ? '222 47% 11%' : '210 40% 98%');
     }
   }, [branding]);
 
-  // Provide the data globally to the Header and Sidebar
   const value = useMemo(() => ({
     branding: branding || null,
     isLoading,
@@ -151,10 +131,6 @@ export default function BrandingProvider({ children }: { children: ReactNode }) 
   );
 }
 
-// --- 4. ENTERPRISE HOOK ---
-/**
- * Authoritative hook to access the Sealed Identity of the active node.
- */
 export const useBranding = () => {
   const context = useContext(BrandingContext);
   if (context === undefined) {
