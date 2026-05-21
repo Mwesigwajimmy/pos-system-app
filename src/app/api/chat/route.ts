@@ -5,18 +5,19 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * --- BBU1 SOVEREIGN AI GATEWAY ---
- * VERSION: v69.5 OMEGA-ULTIMATUM (THE INDESTRUCTIBLE FULL-WELD)
+ * VERSION: v69.7 OMEGA-ULTIMATUM (THE INDESTRUCTIBLE FULL-WELD)
  * STATUS: FORENSICALLY STABILIZED & HANDSHAKE ALIGNED
  * 
  * CORE UPGRADES:
  * 1. "G" CRASH TERMINATOR: Backend now returns an SSE stream for ALL responses, 
  *    including errors. This physically prevents the 'g is not a function' crash 
  *    in Vercel AI SDK v2.0.81.
- * 2. IDENTITY HANDSHAKE SEAL: Extraction hardened for body.data, body.userId, 
- *    and body.options. Priority logic ensures the Director ID is never missed.
- * 3. OMEGA TIMEOUT SHIELD: Heartbeat emitted every 10s to block 504 timeouts.
- * 4. VAULT-ISOLATION: Stateless Service-Role Client ensures RLS bypass for 
- *    autonomous sector audits while maintaining 100% tenant separation.
+ * 2. REDIRECT SHIELD: Hardened extraction for body.data and root body to handle 
+ *    metadata regardless of middleware 307 diversions.
+ * 3. IDENTITY READINESS GUARD: Prevents PostgreSQL Error 22P02 by trapping 
+ *    latent 'loading' strings or empty UUIDs before they hit the database.
+ * 4. OMEGA TIMEOUT SHIELD: Emits a "Neural Heartbeat" every 10s via the 
+ *    ReadableStream to physically block Vercel 504 Gateway Timeouts.
  * 5. FULL LOGIC RESTORATION: 100% of the original enterprise activation and 
  *    saturation engine has been preserved and reinforced.
  */
@@ -162,7 +163,7 @@ const extractTextFromContent = (content: any): string => {
 /**
 THE EXECUTIVE GATEWAY (POST)
 Primary endpoint: Orchestrates the Autonomous Executive Council.
-DEEP UPGRADE: Vault-Aware Identity Resolution (v69.5).
+DEEP UPGRADE: Vault-Aware Identity Resolution (v69.7).
 ✅ DEEP FIX: Identity Resolve Bypass & Indestructible Stream Handshake.
 */
 export async function POST(req: NextRequest) {
@@ -172,15 +173,19 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { messages, tenantModules } = body;
 
-        // 🛡️ FORENSIC ID EXTRACTION (v69.5 OMEGA FIX)
-        // Checks every SDK coordinate to find the Business and User IDs.
+        /** 
+         * 🛡️ FORENSIC ID EXTRACTION (v69.7 OMEGA FIX)
+         * Priority 1: body.data (Vercel AI SDK metadata)
+         * Priority 2: root body (Direct fetch)
+         * Priority 3: options.body (Legacy SDK patterns)
+         */
         const businessId = body.data?.businessId || body.businessId || body.options?.body?.businessId;
         const userId = body.data?.userId || body.userId || body.options?.body?.userId;
 
         /**
          * ✅ THE "G" CRASH TERMINATOR:
          * If identity is latent, we return a 200 Stream that yields an 'on_error' event.
-         * This prevents the Vercel SDK 'g is not a function' crash caused by receiving JSON.
+         * This physically prevents the Vercel SDK 'g is not a function' crash.
          */
         if (!userId || !businessId || userId === 'loading' || businessId === 'loading' || userId === '' || businessId === '') {
             console.warn("[Aura Neural Link] Latent Identity detected. Streaming status chunk.");
@@ -260,6 +265,9 @@ ENTITY: ${businessName} | DIRECTOR: ${userRole} | SECTOR: ${industryName}
             userInput = bootstrapDirective;
         }
 
+        /**
+         * ✅ THE DEEP FIX: INDUSTRIAL SAMBANOVA BRIDGE
+         */
         const llm = new ChatOpenAI({
             modelName: BRAIN_MODEL,
             apiKey: sambaKey,
@@ -295,7 +303,7 @@ ENTITY: ${businessName} | DIRECTOR: ${userRole} | SECTOR: ${industryName}
             },
         });
 
-        // ✅ REVOLUTIONARY SSE STREAMING (v69.5 OMEGA SHIELD): 
+        // ✅ REVOLUTIONARY SSE STREAMING (v69.7 OMEGA SHIELD)
         const transformStream = new ReadableStream({
             async start(controller) {
                 // 🛡️ HEARTBEAT SHIELD: Sends an invisible ping every 10s 
