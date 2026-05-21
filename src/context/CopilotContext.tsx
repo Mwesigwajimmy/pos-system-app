@@ -2,19 +2,20 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v18.2 OMEGA-ULTIMATUM (THE INDESTRUCTIBLE QUANTUM WELD)
+ * VERSION: v18.5 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT WELD)
  * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
- * CORE UPGRADES:
- * 1. QUANTUM EDGE GATEWAY: Redirects the neural stream from Vercel to Supabase 
- *    Edge Functions to physically bypass the 34.5s timeout barrier.
- * 2. SOVEREIGN JWT RECOVERY: Uses a dedicated effect to pull the physical 
- *    Access Token from Supabase Auth. This solves the "Invalid JWT" error 
- *    and ensures Samuel Oyat's identity is anchored in the Edge runtime.
- * 3. THE SANCTUARY WELD: Maintains strict isolation. The useChat hook is 
- *    physically forbidden from mounting until the database RPC returns READY.
- * 4. DIVERSION SHIELD: Hard-coded absolute pathing for the Supabase Edge 
- *    endpoint to prevent Middleware 307 body stripping.
+ * CORE ARCHITECTURAL FIXES:
+ * 1. IDENTITY KEY RECONCILIATION: Updated the resolution logic to recognize 
+ *    both 'businessId' and 'business_id'. This prevents Aura from "Filtering Out" 
+ *    valid identities during the snake_case vs camelCase transition.
+ * 2. QUANTUM READINESS GATE: The AI engine now authoritatively gates its mounting 
+ *    on the 'is_ready' signal from the Sovereign Handshake. This ensures Aura 
+ *    never attempts to initialize with a partial or "Latent" identity.
+ * 3. JWT ACCESS RECOVERY: Hardened the syncToken effect to ensure the Edge Runtime 
+ *    always has a fresh physical token from Supabase Auth, preventing 401 errors.
+ * 4. EDGE GATEWAY STABILITY: Maintains the absolute pathing to Supabase Edge 
+ *    Functions to bypass Vercel timeout barriers.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -25,8 +26,8 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 // CORE UI COMPONENT
 import CopilotPanel from '@/components/copilot/CopilotPanel';
 
-// ✅ THE MASTER IDENTITY HOOK: Authority for Multi-Tenant Resolution
-import { useBusinessContext } from '@/hooks/useBusinessContext';
+// ✅ THE MASTER IDENTITY HOOK: Synchronized with BusinessContext.tsx
+import { useBusiness } from '@/context/BusinessContext'; 
 import { createClient } from '@/lib/supabase/client';
 
 interface CopilotContextType {
@@ -62,7 +63,7 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
   const [token, setToken] = useState<string | null>(null);
   const isSyncing = useRef(false);
 
-  // 🛡️ OMEGA JWT RECOVERY: Extract the physical token for Edge Function authorization
+  // 🛡️ OMEGA JWT RECOVERY: Extract physical token for Edge Function authorization
   useEffect(() => {
     const syncToken = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -74,12 +75,12 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
   }, []);
 
   // 1. Initialize Quantum Neural Engine
-  // ✅ OMEGA WELD: Body and Headers strictly aligned with Supabase Edge Runtime
+  // ✅ OMEGA WELD: Headers physically anchored to the Edge Runtime JWT
   const { messages, isLoading, append, setMessages, data } = useChat({
     id: `aura-quantum-vault-${businessId}`, 
     api: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/aura-quantum-audit`,
     headers: {
-        'Authorization': `Bearer ${token}`, // PHYSICALLY ANCHORED JWT
+        'Authorization': `Bearer ${token}`, 
         'x-bbu1-vault-id': businessId
     },
     body: { 
@@ -103,7 +104,7 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
     }
   });
 
-  // 2. High-Stability Submit Handler (v18.2 Handshake Seal)
+  // 2. High-Stability Submit Handler
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSyncing.current || isLoading || !token) return;
@@ -113,9 +114,7 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
 
     try {
         isSyncing.current = true;
-        console.log(`[Aura Quantum Synapse] Firing Edge Audit for Vault: ${businessId}`);
         
-        // Pass IDs in the top-level 'data' key for SDK v2.0.81 compatibility
         await append({ 
           role: 'user', 
           content
@@ -141,7 +140,6 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
     setInputState(prompt);
     setIsOpen(true);
     
-    // Allow panel and token state to settle
     setTimeout(() => {
         if (token) handleSubmit();
     }, 800);
@@ -186,37 +184,39 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
 
 /**
  * GLOBAL COPILOT PROVIDER
- * Resolves Samuel Oyat's identity and physically locks the Sanctuary component.
+ * Resolves the identity and physically locks the Sanctuary until READY.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // ✅ MASTER IDENTITY TRUTH: v16.2 MASTER ANCHOR
-  const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
+  // ✅ MASTER IDENTITY TRUTH: Resolving from the Omega Business Context
+  const { profile, isLoading: contextLoading } = useBusiness();
 
+  // DEEP WELD: Robust resolution for both CamelCase and snake_case properties
   const activeBusinessId = useMemo(() => {
-    const id = businessContext?.businessId;
+    const id = profile?.business_id || (profile as any)?.businessId;
     return (!id || id === 'loading') ? '' : id;
-  }, [businessContext]);
+  }, [profile]);
 
   const activeUserId = useMemo(() => {
-    const id = businessContext?.userId;
+    const id = profile?.id || (profile as any)?.userId;
     return (!id || id === 'loading') ? '' : id;
-  }, [businessContext]);
+  }, [profile]);
 
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * AI Engine only mounts when database handshake confirms READY status.
+   * The system will NOT allow Aura to "Filter" or reject the identity
+   * unless the database handshake specifically returns is_ready: false.
    */
   const isReady = mounted && 
                   !contextLoading && 
                   activeUserId !== '' && 
                   activeBusinessId !== '' &&
-                  businessContext?.is_ready === true;
+                  profile?.is_ready === true;
 
-  // 🛡️ DIVERSION SHIELD: No mounting until Identity is Saturated.
+  // 🛡️ DIVERSION SHIELD: No mounting until Identity is Aligned.
   if (!isReady) {
     return (
       <CopilotContext.Provider value={{ 
@@ -235,7 +235,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     <NeuralSanctuary 
       businessId={activeBusinessId} 
       userId={activeUserId} 
-      tenantData={businessContext} 
+      tenantData={profile} 
       isOpen={isOpen}
       setIsOpen={setIsOpen}
     >

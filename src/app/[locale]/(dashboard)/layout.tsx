@@ -2,19 +2,20 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v18.0 OMEGA-ULTIMATUM (THE DEEP INTEGRITY WELD)
+ * VERSION: v18.8 OMEGA-ULTIMATUM (THE DEEP ALIGNMENT WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
- * CORE UPGRADES:
- * 1. DEEP INTEGRITY GUARD: The UI now remains in the "Synchronizing" state 
- *    until the BusinessContext confirms 'is_ready'. This verifies the 
- *    Profile, Tenant, Membership, and AI Handshake are linked before entry.
- * 2. REDIRECT LOOP SHIELD: Redirects for Billing/Welcome are now gated by 
- *    the completion of the Identity Handshake to prevent 307 routing loops.
- * 3. MOBILE SIDEBAR WELD: Force-visible wrapper implemented for small screens 
- *    to physically eliminate the "White Screen" bug. Overrides hidden classes.
- * 4. REAL-TIME GUARD: Maintained 100% of the Forensic Anomaly detection 
- *    logic for specific Business Nodes.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. DEEP IDENTITY GATEKEEPER: The UI now authoritatively waits for both the 
+ *    Physical Business ID AND the 'is_ready' signal from the Handshake. 
+ *    This prevents "Identity Desync" errors caused by database trigger latency.
+ * 2. PATIENT REDIRECTION: Redirect logic for Billing, Welcome, and Dashboards 
+ *    is strictly gated by the completion of the Quantum Handshake to prevent 
+ *    infinite 307 routing loops.
+ * 3. MOBILE SIDEBAR WELD: Implemented a force-visible wrapper for small screens 
+ *    to physically eliminate "White Screen" bugs by overriding hidden classes.
+ * 4. FORENSIC LIVE GUARD: Maintains real-time anomaly detection for the 
+ *    active business node using Supabase Realtime isolation.
  */
 
 import React, { memo, ReactNode, useState, useEffect } from 'react';
@@ -39,9 +40,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * --- UPGRADE: SOVEREIGN LIVE GUARD ---
+ * --- SOVEREIGN LIVE GUARD ---
  * Dynamically listens for forensic anomalies based on the active node.
- * This ensures the Director only sees alerts for the business he is currently visiting.
+ * This ensures the Operator only sees alerts for the specific vault they are visiting.
  */
 const SovereignLiveGuard = () => {
     const supabase = createClient();
@@ -81,8 +82,8 @@ const SovereignLiveGuard = () => {
 }
 
 /**
- * --- UPGRADE: DYNAMIC COPILOT BUTTON ---
- * Aligned with background handshake status.
+ * --- DYNAMIC COPILOT BUTTON ---
+ * Aligned with the background AI handshake status.
  */
 const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
     const { toggleCopilot, isOpen, isReady, isLoading } = useCopilot();
@@ -107,6 +108,10 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
     );
 }
 
+/**
+ * --- APPLAYOUT ---
+ * Standard structural wrapper for the dashboard interface.
+ */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
@@ -119,7 +124,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }, [pathname]);
 
   /**
-   * ✅ MOBILE SIDEBAR WELD (PHYSICAL FIX)
+   * ✅ MOBILE SIDEBAR WELD
    * Prevents the "White Screen" on small screens by forcing child visibility.
    */
   const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
@@ -193,7 +198,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: v18.0 (THE DEEP INTEGRITY HANDSHAKE)
+ * UPGRADE: v18.8 (DEEP INTEGRITY ALIGNMENT)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -203,7 +208,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
     // --- DEEP VERIFICATION REDIRECT ENGINE ---
     useEffect(() => {
-        // We only trigger redirects AFTER the profile has been deeply verified (is_ready)
+        // We only trigger redirects AFTER the profile has been authoritatively verified (is_ready)
         if (profile?.is_ready && !isBusinessLoading && !isBrandingLoading) {
             
             const rawStatus = (profile as any).subscription_status || '';
@@ -217,6 +222,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             const isOnWelcomePage = pathname.includes('/welcome');
             const isSetupComplete = profile.setup_complete ?? true;
             
+            // REDIRECTION ENGINE (STABLE WELD)
             if (!isAuthorized && !isOnBillingPath && !isCallbackPage) {
                 router.push(`/${locale}/settings/billing`);
             } 
@@ -234,12 +240,13 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
     /** 
-     * ✅ DEEP INTEGRITY CHECK:
-     * We block the dashboard and error screen while the handshake is verifying links.
-     * Entry is only permitted when 'is_ready' is true (AI keys + Tenant + Profile verified).
+     * ✅ THE PATIENT LOADER:
+     * We block the dashboard and the error screen while the handshake is verifying links.
+     * Access is granted only when 'business_id' exists AND 'is_ready' (Aura Alignment) is true.
      */
-    const identityIsVerified = !!profile?.business_id && !!profile?.is_ready;
+    const identityIsVerified = !!profile?.business_id && profile?.is_ready === true;
 
+    // We stay in this state while BusinessContext is performing its retries/polling
     if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
@@ -252,7 +259,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                         Synchronizing Sovereign Node...
                     </p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                       Verifying Deep Integrity & AI Handshake
+                       Aligning Aura Neural Pathways
                     </p>
                 </div>
             </div>
@@ -260,7 +267,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     }
 
     // --- ERROR RECOVERY UI ---
-    // Only shows if the Polling engine in BusinessContext has exhausted all retries.
+    // This only shows if the Polling engine in BusinessContext has exhausted all retries (approx 12-15 seconds).
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
@@ -270,13 +277,20 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                     </div>
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
                     <p className="text-slate-500 mt-6 font-medium leading-relaxed text-sm">
-                        The Sovereign Gate was unable to deeply verify your access to this vault. This usually happens during high-speed identity swaps or database latency.
+                        The Sovereign Gate was unable to deeply align your vault data. This usually happens during high-speed sector transitions or database synchronization latency.
                     </p>
                     <div className="flex flex-col gap-3 mt-12">
-                        <Button onClick={() => window.location.reload()} variant="outline" className="h-14 rounded-3xl font-black uppercase tracking-widest text-[10px] border-slate-200">
+                        <Button 
+                            onClick={() => window.location.reload()} 
+                            variant="outline" 
+                            className="h-14 rounded-3xl font-black uppercase tracking-widest text-[10px] border-slate-200"
+                        >
                             Retry Deep Synchronization
                         </Button>
-                        <Button onClick={() => window.location.href = '/login'} className="h-14 bg-slate-950 text-white rounded-3xl font-black uppercase tracking-widest text-[10px]">
+                        <Button 
+                            onClick={() => window.location.href = '/login'} 
+                            className="h-14 bg-slate-950 text-white rounded-3xl font-black uppercase tracking-widest text-[10px]"
+                        >
                             Secure Re-Login
                         </Button>
                     </div>
@@ -306,6 +320,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 /**
  * STATUS: Sovereign Layout Fully Sealed.
- * VERSION: v18.0 (Deep Integrity Alignment).
+ * VERSION: v18.8 (Deep Integrity Alignment).
  * JURISDICTION: BBU1 Global Cloud.
  */
