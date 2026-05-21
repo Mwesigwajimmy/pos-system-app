@@ -2,28 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN BUSINESS CONTEXT ---
- * VERSION: v19.7 OMEGA-ULTIMATUM (THE FINAL IDENTITY WELD)
- * JURISDICTION: Global Dashboard / Multi-Tenant / Multi-Country
+ * VERSION: v19.8 OMEGA-ULTIMATUM (THE STABILIZED WELD)
  * 
- * CORE ARCHITECTURAL FIXES:
- * 1. ANTI-LOOP SHIELD (429 FIX): Implemented an 'isRefreshing' lock and 
- *    strict retry limits. This physically stops the rapid-fire session 
- *    refreshes that cause Supabase Rate Limiting.
- * 2. COOKIE ALIGNMENT: As soon as the 'get_aura_handshake' returns the 
- *    correct Business ID, we force-update the 'bbu1_active_business_id' 
- *    cookie. This ensures the Middleware and Frontend are perfectly synced.
- * 3. LATENCY RECOVERY: Maintains the recursive polling logic but with 
- *    increased delays (2.5s) to allow database triggers (Tenant/Org/Profile) 
- *    to finalize in the background.
- * 4. OMNISCIENT MAPPING: Direct JSONB alignment for userId, businessId, 
- *    businessName, country, and currency.
+ * CORE FIXES:
+ * 1. DECOUPLED AUTH LISTENER: Removed TOKEN_REFRESHED from the fetch trigger.
+ *    Token refreshes are background tasks and shouldn't restart the identity handshake.
+ * 2. ELIMINATED RECURSIVE REFRESH: Removed auth.refreshSession() from the polling loop.
+ *    This physically stops the 429 Rate Limit errors.
+ * 3. SINGLETON FETCH GUARD: Added 'isFetching' ref to ensure only ONE handshake 
+ *    process is active at any time, preventing race conditions.
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Cookies from 'js-cookie';
 
-// --- DATA STRUCTURES ---
 export interface BusinessProfile {
     id: string;
     business_id: string;
@@ -34,8 +27,8 @@ export interface BusinessProfile {
     business_type: string;
     industry: string;
     currency: string;
-    country: string;         // ✅ JURISDICTIONAL ANCHOR
-    is_ready: boolean;       // ✅ READINESS SIGNAL
+    country: string;
+    is_ready: boolean;
     setup_complete: boolean;
 }
 
@@ -52,47 +45,37 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    // --- CONTROL REFS (Anti-Recursion) ---
     const retryCount = useRef(0);
-    const isRefreshing = useRef(false);
-    const MAX_RETRIES = 5; 
+    const isFetching = useRef(false); // Singleton Guard
+    const MAX_RETRIES = 8; // Increased to give DB more time without hammering
 
-    /**
-     * MASTER FETCH: The Sovereign Handshake
-     * Physically verifies the link between Auth and the Business Vault.
-     */
-    const fetchBusinessProfile = async () => {
+    const fetchBusinessProfile = useCallback(async () => {
+        // Prevent multiple concurrent handshake attempts
+        if (isFetching.current) return;
+        isFetching.current = true;
+
         const supabase = createClient();
         const activeBizId = Cookies.get('bbu1_active_business_id');
 
         try {
-            // 🛡️ CALL SECURE HANDSHAKE
             const { data, error: rpcError } = await supabase.rpc('get_aura_handshake', {
-                p_target_biz_id: activeBizId && activeBizId !== 'loading' ? activeBizId : null
+                p_target_biz_id: (activeBizId && activeBizId !== 'loading') ? activeBizId : null
             });
 
             if (rpcError) {
-                // Check for Supabase Rate Limiting
-                if ((rpcError as any).status === 429) {
-                    throw new Error("RATE_LIMIT");
-                }
+                if ((rpcError as any).status === 429) throw new Error("RATE_LIMIT");
                 console.error("[LITONU] Handshake RPC Fault:", rpcError);
                 setError('Identity Vault Connection Failed.');
                 setIsLoading(false);
+                isFetching.current = false;
                 return;
             }
 
             const aura = Array.isArray(data) ? data[0] : data;
 
             if (aura && aura.is_ready) {
-                // ✅ SYNC SUCCESS: The database has finalized the Identity Birth
-                
-                // PHYSICALLY ALIGN COOKIE: Critical for Middleware stability
-                Cookies.set('bbu1_active_business_id', aura.businessId, { 
-                    expires: 30, 
-                    path: '/',
-                    sameSite: 'lax'
-                });
+                // ✅ SUCCESS: ALIGNMENT ACHIEVED
+                Cookies.set('bbu1_active_business_id', aura.businessId, { expires: 30, path: '/', sameSite: 'lax' });
 
                 setProfile({
                     id: aura.userId,
@@ -111,54 +94,45 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
 
                 setError(null);
                 setIsLoading(false);
-                retryCount.current = 0; // Reset for future session changes
+                retryCount.current = 0;
+                isFetching.current = false;
             } else {
-                // 🔄 IDENTITY LATENCY RECOVERY
-                // The user is authenticated but the Profile/Tenant link is still processing.
+                // 🔄 LATENCY RECOVERY (No Auth Refresh here to avoid 429 loop)
                 if (retryCount.current < MAX_RETRIES) {
                     retryCount.current++;
                     console.warn(`[LITONU] Identity Latent. Polling Attempt ${retryCount.current}/${MAX_RETRIES}...`);
                     
-                    // REFRESH JWT: Pull any new metadata from the database trigger
-                    // Locked by isRefreshing to prevent 429 errors.
-                    if (retryCount.current === 1 && !isRefreshing.current) {
-                        isRefreshing.current = true;
-                        console.log("[LITONU] Aligning Quantum Session Metadata...");
-                        await supabase.auth.refreshSession();
-                        isRefreshing.current = false;
-                    }
-
-                    // Use a slightly longer delay (2.5s) to ensure the DB has time to commit.
-                    setTimeout(fetchBusinessProfile, 2500);
+                    isFetching.current = false; // Release guard for the next timeout
+                    setTimeout(fetchBusinessProfile, 3000); // 3s delay for DB stability
                 } else {
-                    // ❌ EXHAUSTED: System failed to align data after 12.5 seconds
-                    console.error("[LITONU] Critical: Identity data exists but is not aligned.");
+                    console.error("[LITONU] Critical: Identity alignment timeout.");
                     setError('Business identity not aligned. Please secure re-login.');
                     setIsLoading(false);
+                    isFetching.current = false;
                 }
             }
         } catch (err: any) {
+            isFetching.current = false;
             if (err.message === "RATE_LIMIT") {
-                setError('System is busy. Retrying in 30 seconds...');
-                setTimeout(fetchBusinessProfile, 30000); // Back off heavily on 429
+                setError('System heavily throttled. Waiting 30s...');
+                setTimeout(fetchBusinessProfile, 30000);
             } else {
-                console.error("[LITONU] Unexpected Identity Fault:", err);
                 setError('Neural Link Interrupted.');
+                setIsLoading(false);
             }
-            setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         const supabase = createClient();
 
-        // Listen for Real-time Auth changes (Login/Logout/Refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+            // ONLY trigger handshake on explicit sign-ins. 
+            // Ignore TOKEN_REFRESHED to prevent recursive loops.
+            if (event === 'SIGNED_IN' && session) {
                 retryCount.current = 0;
                 fetchBusinessProfile();
             } else if (event === 'SIGNED_OUT') {
-                // CLEAR ALL TRACES: Wipe local identity
                 setProfile(null);
                 setIsLoading(false);
                 setError(null);
@@ -166,13 +140,11 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
             }
         });
 
-        // Trigger identity alignment on mount
+        // Initial check on mount
         fetchBusinessProfile();
 
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, []);
+        return () => subscription.unsubscribe();
+    }, [fetchBusinessProfile]);
 
     return (
         <BusinessContext.Provider value={{ profile, isLoading, error }}>
@@ -181,14 +153,8 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
-/**
- * SOVEREIGN ACCESS HOOK
- * Ensures children have access to the verified business node.
- */
 export const useBusiness = () => {
     const context = useContext(BusinessContext);
-    if (context === undefined) {
-        throw new Error('Sovereignty Fault: useBusiness must be used within a BusinessProvider');
-    }
+    if (context === undefined) throw new Error('useBusiness fault.');
     return context;
 };

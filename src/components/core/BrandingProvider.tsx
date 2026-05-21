@@ -2,25 +2,22 @@
 
 /**
  * --- BBU1 SOVEREIGN BRANDING PROVIDER ---
- * VERSION: v18.0 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT)
- * JURISDICTION: Global Dashboard / Multi-Tenant / Visual Identity
+ * VERSION: v18.1 OMEGA-ULTIMATUM (THE HANDSHAKE WELD)
  * 
  * CORE FIXES:
- * 1. RLS RESILIENCE: Switched from direct View querying (blocked by RLS) 
- *    to the 'get_branding_settings' RPC. This ensures branding loads 
- *    even when standard SELECT visibility is 0.
- * 2. IDENTITY SYNC: Aligned with the 'bbu1_active_business_id' cookie 
- *    to ensure the visual theme matches the active business node.
- * 3. THEME ENGINE: Preserved the HSL CSS variable injection for 
- *    Tailwind compatibility.
+ * 1. HANDSHAKE AWARENESS: Now consumes 'useBusiness'. It will NOT fetch 
+ *    branding until the Aura Handshake is 100% 'is_ready'.
+ * 2. 429 REDUCTION: By disabling the query until the identity is verified, 
+ *    we eliminate the "Double Hammer" effect on Supabase Auth/RPCs.
+ * 3. IDENTITY LOCK: Uses the verified business_id from context rather than 
+ *    relying solely on the raw (and sometimes latent) cookie.
  */
 
 import React, { createContext, useContext, useEffect, useMemo, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import Cookies from 'js-cookie'; 
+import { useBusiness } from '@/context/BusinessContext'; // ✅ THE IDENTITY ANCHOR
 
-// --- 1. ENTERPRISE TYPE DEFINITIONS ---
 interface CorporateIdentity {
   business_id: string;
   company_name_display: string;
@@ -47,19 +44,16 @@ interface BrandingContextType {
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
 
-// --- 2. THE SOVEREIGN THEME ENGINE (Tailwind Compatibility) ---
+// (hexToHsl function remains the same as your original)
 function hexToHsl(hex: string | null | undefined): string | null {
   if (!hex || !/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) return null;
   let hexVal = hex.substring(1);
   if (hexVal.length === 3) hexVal = hexVal.split('').map(char => char + char).join('');
-  
   const r = parseInt(hexVal.substring(0, 2), 16) / 255;
   const g = parseInt(hexVal.substring(2, 4), 16) / 255;
   const b = parseInt(hexVal.substring(4, 6), 16) / 255;
-
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   let h = 0, s = 0, l = (max + min) / 2;
-
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
@@ -70,49 +64,49 @@ function hexToHsl(hex: string | null | undefined): string | null {
     }
     h /= 6;
   }
-
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
 export default function BrandingProvider({ children }: { children: ReactNode }) {
   const supabase = createClient();
-  const activeBizId = Cookies.get('bbu1_active_business_id');
+  
+  // ✅ CONSUME THE MASTER IDENTITY
+  const { profile } = useBusiness();
+  const activeBizId = profile?.business_id;
+  const isHandshakeComplete = profile?.is_ready === true;
 
-  // 2. NEURAL FETCH: Switched to RLS-Resilient RPC
   const { data: branding, isLoading, refetch } = useQuery<CorporateIdentity>({
     queryKey: ['bbu1_corporate_identity', activeBizId],
     queryFn: async () => {
-      // 🛡️ DEEP WELD: Instead of querying a view (subject to RLS), 
-      // we use the SECURITY DEFINER RPC to ensure the branding is 
-      // fetched even during the "Invisibility" phase of login.
-      const { data, error } = await supabase.rpc('get_branding_settings').single();
+      // Pass the verified business_id to the RPC to ensure perfect RLS alignment
+      const { data, error } = await supabase.rpc('get_branding_settings', {
+          p_biz_id: activeBizId 
+      }).single();
       
       if (error) {
-          console.warn("LITONU SECURITY: Branding node empty or restricted via RPC.", error.message);
+          console.warn("[LITONU] Branding restricted:", error.message);
           return null;
       }
 
-      // Map the RPC return to the CorporateIdentity interface
       return {
           ...data,
-          business_id: activeBizId // Link the active node ID
+          business_id: activeBizId
       } as CorporateIdentity;
     },
-    staleTime: 1000 * 60 * 5, 
+    // 🛡️ THE CRITICAL GUARD: Disable this query until the Handshake says "GO"
+    enabled: !!activeBizId && isHandshakeComplete,
+    staleTime: 1000 * 60 * 15, // Increase cache to 15 mins to save requests
     refetchOnWindowFocus: false,
   });
 
-  // 3. THE SOVEREIGN WELD: Apply Branding to CSS Variables
+  // Apply Branding to CSS Variables
   useEffect(() => {
     if (!branding) return;
-
     const root = document.documentElement;
     const primaryHsl = hexToHsl(branding.primary_color);
-    
     if (primaryHsl) {
       root.style.setProperty('--primary', primaryHsl);
       root.style.setProperty('--brand-primary', branding.primary_color!); 
-      
       const lightness = parseInt(primaryHsl.split(' ')[2], 10);
       root.style.setProperty('--primary-foreground', lightness > 60 ? '222 47% 11%' : '210 40% 98%');
     }
@@ -120,9 +114,9 @@ export default function BrandingProvider({ children }: { children: ReactNode }) 
 
   const value = useMemo(() => ({
     branding: branding || null,
-    isLoading,
+    isLoading: isLoading && isHandshakeComplete, // Only report loading if we're actually fetching
     refreshBranding: refetch
-  }), [branding, isLoading, refetch]);
+  }), [branding, isLoading, isHandshakeComplete, refetch]);
 
   return (
     <BrandingContext.Provider value={value}>
@@ -133,8 +127,6 @@ export default function BrandingProvider({ children }: { children: ReactNode }) 
 
 export const useBranding = () => {
   const context = useContext(BrandingContext);
-  if (context === undefined) {
-    throw new Error('Sovereignty Fault: useBranding must be used within a BrandingProvider');
-  }
+  if (context === undefined) throw new Error('Sovereignty Fault.');
   return context;
 };
