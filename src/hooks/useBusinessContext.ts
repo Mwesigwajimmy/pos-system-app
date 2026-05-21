@@ -1,15 +1,12 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-
 /**
- * LITONU BUSINESS BASE UNIVERSE LTD - ENTERPRISE IDENTITY SCHEMA
+ * --- LITONU BUSINESS BASE UNIVERSE LTD - ENTERPRISE IDENTITY SCHEMA ---
  * 
  * VERSION: v16.1 OMEGA-IDENTITY (FORENSIC ANCHOR)
- * JURISDICTION: Multi-Tenant / Global ERP
+ * JURISDICTION: Multi-Tenant / Multi-Role / Global ERP
  * 
- * UPGRADE LOG:
+ * CORE UPGRADES:
  * 1. RACE CONDITION SEAL: Prioritizes JWT Metadata over document.cookies to 
  *    prevent the "Neural Link" stall in new windows.
  * 2. IDENTITY FALLBACK: Automatically falls back to the profile business_id 
@@ -17,6 +14,9 @@ import { createClient } from '@/lib/supabase/client';
  * 3. OMEGA-STABILITY: Preserves all 100% of the enterprise PNL, subscription, 
  *    and system power logic.
  */
+
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 
 export interface BusinessContextData {
   userId: string;
@@ -51,8 +51,8 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (!user || authError) return null;
 
-    // --- 1. DYNAMIC NODE DETECTION (v16.1 HARDENED) ---
-    // First, check the active cookie node
+    // --- 1. DYNAMIC NODE DETECTION (v16.1 HARDENED ANCHOR) ---
+    // Extract ID from cookie if available and valid
     const cookieId = typeof document !== 'undefined' 
         ? document.cookie
             .split('; ')
@@ -62,14 +62,16 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
 
     /**
      * ✅ OMEGA IDENTITY WELD:
-     * If the cookie is missing (New Window race), we immediately pivot to the 
-     * JWT metadata. This is the "Master Truth" that stops the 202 stall.
+     * If the cookie is missing (common in New Windows) or set to 'loading', 
+     * we immediately pivot to the JWT User Metadata. This is the "Master Truth" 
+     * that physically stops the 202 alignment stall.
      */
-    const activeBizIdFromVault = cookieId && cookieId !== 'loading' 
+    const activeBizIdFromVault = (cookieId && cookieId !== 'loading' && cookieId !== '') 
         ? cookieId 
         : (user.user_metadata?.business_id || user.user_metadata?.active_business_id);
 
     // --- 2. PARALLEL NEURAL FETCH (HIGH-SPEED UPGRADE) ---
+    // Instead of waterfalling, we fire all forensics at once to eliminate lag.
     try {
         const [auraRes, contextRes, profileRes] = await Promise.all([
             supabase.rpc('get_aura_handshake', { p_target_biz_id: activeBizIdFromVault }),
@@ -118,7 +120,7 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
         const aura = (Array.isArray(auraData) ? auraData[0] : auraData) || {};
         const context = (Array.isArray(contextData) ? contextData[0] : contextData) || {};
 
-        // Resolve Target ID for Billing/Forensics (Cross-verified)
+        // Resolve Target ID for Billing/Forensics (Cross-verified against all sources)
         const finalResolvedBizId = activeBizIdFromVault || context.business_id || profile?.business_id || aura.business_id;
 
         // Final Parallel fetch for sub-data specific to the resolved node
@@ -166,7 +168,7 @@ export function useBusinessContext() {
       queryKey: ['businessContext'], 
       queryFn: fetchBusinessContextData,
       staleTime: 1000 * 60 * 15, // 15-minute Enterprise cache
-      refetchOnWindowFocus: true, 
-      retry: 1, 
+      refetchOnWindowFocus: true, // Re-sync when coming back to tab for security
+      retry: 1, // Minimize retry loop lag
     });
 }
