@@ -1,7 +1,7 @@
 // src/middleware.ts
 // V-REVOLUTION: THE DEFINITIVE, LOOP-FREE SECURITY & ROUTING ENGINE
-// VERSION: v17.5 OMEGA (IDENTITY RECOVERY & NEURAL SYNC)
-// FIXED: Forensic Race Condition in New Windows
+// VERSION: v17.6 OMEGA-ULTIMATUM (THE REDIRECT SHIELD)
+// FIXED: Identity Stripping on 307 Redirects
 
 import { match } from '@formatjs/intl-localematcher';
 import Negotiator from 'negotiator';
@@ -139,13 +139,20 @@ const defaultDashboards: Record<string, string> = {
 };
 
 export async function middleware(request: NextRequest) {
-    if (request.nextUrl.searchParams.has('_rsc') || request.headers.get('x-middleware-rewrite')) {
+    const { pathname } = request.nextUrl;
+
+    // --- 🛡️ AURA SOVEREIGN BYPASS (v17.6) ---
+    // Physically forbid the middleware from redirecting AI or system calls.
+    // This stops the 307 Redirect from stripping POST headers/body.
+    if (
+        pathname.startsWith('/api/') || 
+        pathname.includes('/functions/v1/') ||
+        pathname.includes('.') // Static files
+    ) {
         return NextResponse.next();
     }
 
-    const { pathname } = request.nextUrl;
-
-    if (pathname.startsWith('/api/') || pathname.includes('.')) {
+    if (request.nextUrl.searchParams.has('_rsc') || request.headers.get('x-middleware-rewrite')) {
         return NextResponse.next();
     }
 
@@ -198,16 +205,13 @@ export async function middleware(request: NextRequest) {
     let activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
 
     /**
-     * ✅ OMEGA IDENTITY RECOVERY (The Forensic Fix)
-     * If the cookie is missing (New Window race), we recover the ID from the 
-     * profile or user metadata to prevent the "Diversion to Login" loop.
+     * ✅ OMEGA IDENTITY RECOVERY
      */
     if (user && (!activeBizId || activeBizId === 'loading')) {
         const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
         activeBizId = profile?.business_id || user.user_metadata?.business_id;
         
         if (activeBizId) {
-            // Physically weld the recovered ID back into the cookie for the next cycle
             response.cookies.set('bbu1_active_business_id', activeBizId, { path: '/', maxAge: 60 * 60 * 24 * 30 });
         }
     }
@@ -285,5 +289,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api/|_next/static|_next/image|robots.txt|sitemap.xml|.*\\..*).*)'],
+  matcher: ['/((?!api/|functions/v1/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)'],
 };

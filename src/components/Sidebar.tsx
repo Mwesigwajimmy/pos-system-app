@@ -763,130 +763,145 @@ export default function Sidebar() {
         </Accordion>
     );
 
-    return (
-        <>
-            {/* --- SMART BACKDROP (MOBILE ONLY) --- */}
-            {isSidebarOpen && (
-                <div 
-                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-40 lg:hidden transition-opacity duration-300 animate-in fade-in"
-                    onClick={toggleSidebar}
-                />
+return (
+    <>
+        {/* --- 🛡️ SMART BACKDROP (MOBILE ONLY) --- 
+            Ensures the UI remains interactive and dismissible on small screens.
+        */}
+        {isSidebarOpen && (
+            <div 
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] lg:hidden transition-opacity duration-500 animate-in fade-in"
+                onClick={toggleSidebar}
+            />
+        )}
+
+        <aside 
+            onClick={() => {
+                // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
+                if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                    toggleSidebar();
+                }
+            }}
+            className={cn(
+                "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                
+                /** 
+                 * ✅ THE MOBILE VISIBILITY WELD:
+                 * On Mobile: We use 'relative' so it stays inside the Layout's Mobile Drawer.
+                 * On Desktop: We use 'sticky' to stay fixed while scrolling.
+                 */
+                "relative lg:sticky top-0 left-0",
+
+                /**
+                 * ✅ THE TRANSLATION FIX:
+                 * Prevents the sidebar from disappearing (showing white) on mobile.
+                 */
+                isSidebarOpen 
+                    ? "w-full lg:w-72 translate-x-0 cursor-default" 
+                    : "w-0 lg:w-20 -translate-x-full lg:translate-x-0 lg:opacity-100 opacity-0 pointer-events-none lg:pointer-events-auto"
             )}
-
-            <aside 
-                onClick={() => {
-                    // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
-                    if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                        toggleSidebar();
-                    }
-                }}
-                className={cn(
-                    "h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-300 ease-in-out z-50 overflow-hidden shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                    "fixed lg:sticky top-0 left-0",
-                    isSidebarOpen ? "w-72 translate-x-0 cursor-default" : "w-20 lg:translate-x-0 -translate-x-full lg:w-20 cursor-pointer hover:bg-slate-50/50"
-                )}
-            >
-                {/* --- IDENTITY SECTION --- */}
-                <div className={cn(
-                    "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white",
-                    isSidebarOpen ? "h-24" : "h-20"
-                )}>
-                    {isSidebarOpen ? (
-                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
-                            <BusinessSwitcher />
-                            <div className="flex flex-col mt-2 px-1">
-                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">
-                                    {businessName}
-                                </span>
-                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">
-                                    {operatorName} • {activeRole}
-                                </span>
+        >
+            {/* --- IDENTITY SECTION --- */}
+            <div className={cn(
+                "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white",
+                isSidebarOpen ? "h-24" : "h-20"
+            )}>
+                {isSidebarOpen ? (
+                    <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
+                        <BusinessSwitcher />
+                        <div className="flex flex-col mt-2 px-1">
+                            <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">
+                                {businessName}
+                            </span>
+                            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">
+                                {operatorName} • {activeRole}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
+                        {branding?.logo_url ? (
+                            <img src={branding.logo_url} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1" alt="Logo" />
+                        ) : (
+                            <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
+                                {businessName.charAt(0).toUpperCase()}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                            {branding?.logo_url ? (
-                                <img src={branding.logo_url} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1" alt="Logo" />
-                            ) : (
-                                <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
-                                    {businessName.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
+                )}
 
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation(); // Prevents double toggle from the parent aside onClick
-                            toggleSidebar();
-                        }}
-                        variant="ghost"
-                        size="icon"
+                <Button
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevents double toggle from the parent aside onClick
+                        toggleSidebar();
+                    }}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0",
+                        !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm"
+                    )}
+                >
+                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+            </div>
+
+            {/* --- SCROLLABLE NAVIGATION --- */}
+            <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
+                {isLoading ? (
+                    <div className="py-20 flex flex-col items-center gap-4 opacity-40">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    </div>
+                ) : (
+                    <div className="animate-in fade-in duration-700">
+                        {renderAccordionNav(finalNavItems)}
+                    </div>
+                )}
+            </nav>
+
+            {/* --- AUTHORITATIVE FOOTER --- */}
+            <div className={cn(
+                "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
+                !isSidebarOpen && "flex flex-col items-center"
+            )}>
+                {/* NEW: QUICK ACTION DAILY REGISTER BUTTON */}
+                {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
+                    <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm" asChild>
+                        <Link href="/accounting/daily-ledger">
+                            <Unlock size={14} className="mr-3" /> <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
+                        </Link>
+                    </Button>
+                )}
+
+                <Button 
+                    variant="default" 
+                    className={cn(
+                        "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", 
+                        !isSidebarOpen && "justify-center px-0 w-12"
+                    )} 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        openCopilot();
+                    }}
+                >
+                    <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                    {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
+                </Button>
+                
+                <Link href="/settings" className="w-full">
+                    <Button 
+                        variant="ghost" 
                         className={cn(
-                            "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0",
-                            !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm"
+                            "w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", 
+                            !isSidebarOpen && "justify-center px-0 w-11 mx-auto"
                         )}
                     >
-                        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
                     </Button>
-                </div>
-
-                {/* --- SCROLLABLE NAVIGATION --- */}
-                <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
-                    {isLoading ? (
-                        <div className="py-20 flex flex-col items-center gap-4 opacity-40">
-                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                        </div>
-                    ) : (
-                        <div className="animate-in fade-in duration-700">
-                            {renderAccordionNav(finalNavItems)}
-                        </div>
-                    )}
-                </nav>
-
-                {/* --- AUTHORITATIVE FOOTER --- */}
-                <div className={cn(
-                    "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
-                    !isSidebarOpen && "flex flex-col items-center"
-                )}>
-                    {/* NEW: QUICK ACTION DAILY REGISTER BUTTON */}
-                    {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
-                        <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm" asChild>
-                            <Link href="/accounting/daily-ledger">
-                                <Unlock size={14} className="mr-3" /> <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
-                            </Link>
-                        </Button>
-                    )}
-
-                    <Button 
-                        variant="default" 
-                        className={cn(
-                            "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", 
-                            !isSidebarOpen && "justify-center px-0 w-12"
-                        )} 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openCopilot();
-                        }}
-                    >
-                        <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
-                    </Button>
-                    
-                    <Link href="/settings" className="w-full">
-                        <Button 
-                            variant="ghost" 
-                            className={cn(
-                                "w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", 
-                                !isSidebarOpen && "justify-center px-0 w-11 mx-auto"
-                            )}
-                        >
-                            <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
-                            {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
-                        </Button>
-                    </Link>
-                </div>
-            </aside>
-        </>
-    );
+                </Link>
+            </div>
+        </aside>
+    </>
+);
 }

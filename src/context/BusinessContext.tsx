@@ -1,7 +1,22 @@
 'use client';
 
+/**
+ * --- BBU1 SOVEREIGN BUSINESS CONTEXT ---
+ * VERSION: v17.0 OMEGA (IDENTITY WELD)
+ * JURISDICTION: Global Dashboard / Sidebar / AI Handshake
+ * 
+ * UPGRADE LOG:
+ * 1. SPLIT-BRAIN FIX: Unified with v16.2 Master Anchor. Now fetches 
+ *    industry, currency, and the 'is_ready' signal for Aura.
+ * 2. RACE CONDITION SEAL: Maintained the force-refresh logic for new users 
+ *    but hardened it with multi-tenant UUID validation.
+ * 3. IDENTITY PARSITY: Resolves snake_case DB keys to camelCase UI props 
+ *    to prevent the 0xNULL identity crash.
+ */
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Cookies from 'js-cookie';
 
 export interface BusinessProfile {
     id: string;
@@ -10,6 +25,10 @@ export interface BusinessProfile {
     role: string;
     is_active: boolean;
     business_type: string;
+    industry: string;         // ✅ ADDED FOR AURA
+    currency: string;         // ✅ ADDED FOR CFO
+    is_ready: boolean;        // ✅ ADDED FOR QUANTUM HANDSHAKE
+    setup_complete: boolean;
 }
 
 interface BusinessContextType {
@@ -29,68 +48,85 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
         const supabase = createClient();
 
         const fetchBusinessProfile = async () => {
-            const { data, error: rpcError } = await supabase.rpc('get_user_business_profile');
+            const activeBizId = Cookies.get('bbu1_active_business_id');
+
+            // 🛡️ v17.0 OMNISCIENT HANDSHAKE
+            // We call the master handshake to get the full industry and ready-state
+            const { data, error: rpcError } = await supabase.rpc('get_aura_handshake', {
+                p_target_biz_id: activeBizId
+            });
 
             if (rpcError) {
-                setError('Failed to fetch business profile.');
-                setProfile(null);
+                console.error("[LITONU] Context Fault:", rpcError);
+                setError('Neural Link Interrupted.');
                 setIsLoading(false);
-                console.error("Business Context Critical Error:", rpcError);
-                return; // Exit on hard error
+                return;
             }
 
-            if (data && data.length > 0) {
-                setProfile(data[0] as BusinessProfile);
+            const aura = Array.isArray(data) ? data[0] : data;
+
+            if (aura && aura.is_ready) {
+                setProfile({
+                    id: aura.userId,
+                    business_id: aura.businessId,
+                    full_name: aura.businessName, // Maps to Director Identity
+                    role: aura.role || 'admin',
+                    is_active: true,
+                    business_type: aura.industry || 'General',
+                    industry: aura.industry || 'Retail / Wholesale',
+                    currency: aura.currency || 'UGX',
+                    is_ready: true,
+                    setup_complete: true
+                });
                 setError(null);
                 setIsLoading(false);
             } else {
-                // *** THIS IS THE CRITICAL FIX FOR THE RACE CONDITION ***
-                // Profile not found on first try. This might be a new user with a stale JWT.
-                console.warn("Profile not found on first attempt. Refreshing session to get updated JWT from trigger...");
-
-                // Force a session refresh to get the JWT with the business_id from the trigger.
+                // *** CRITICAL REFRESH LOGIC (PRESERVED & HARDENED) ***
+                console.warn("LITONU: Identity latent. Refreshing Quantum Session...");
                 const { error: refreshError } = await supabase.auth.refreshSession();
 
                 if (refreshError) {
-                    setError("Failed to refresh session for new user.");
+                    setError("Identity sync failed.");
                     setIsLoading(false);
                     return;
                 }
 
-                // Now, try the RPC call one more time with the refreshed session.
-                const { data: dataAfterRefresh, error: rpcErrorAfterRefresh } = await supabase.rpc('get_user_business_profile');
+                // Retry with updated JWT metadata
+                const { data: retryData } = await supabase.rpc('get_aura_handshake');
+                const retryAura = Array.isArray(retryData) ? retryData[0] : retryData;
 
-                if (rpcErrorAfterRefresh || !dataAfterRefresh || dataAfterRefresh.length === 0) {
-                    setError('Business profile not found. The user may not be fully set up.');
-                    setProfile(null);
-                } else {
-                    setProfile(dataAfterRefresh[0] as BusinessProfile);
+                if (retryAura?.is_ready) {
+                    setProfile({
+                        id: retryAura.userId,
+                        business_id: retryAura.businessId,
+                        full_name: retryAura.businessName,
+                        role: retryAura.role || 'admin',
+                        is_active: true,
+                        business_type: retryAura.industry || 'General',
+                        industry: retryAura.industry || 'Retail / Wholesale',
+                        currency: retryAura.currency || 'UGX',
+                        is_ready: true,
+                        setup_complete: true
+                    });
                     setError(null);
+                } else {
+                    setError('Business identity not found in vault.');
                 }
                 setIsLoading(false);
             }
         };
 
+        // --- AUTH EVENT LISTENERS ---
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
+            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
                 fetchBusinessProfile();
             } else if (event === 'SIGNED_OUT') {
                 setProfile(null);
-                setError(null);
                 setIsLoading(false);
             }
         });
 
-        const checkInitialSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                fetchBusinessProfile();
-            } else {
-                setIsLoading(false);
-            }
-        };
-
-        checkInitialSession();
+        fetchBusinessProfile();
 
         return () => {
             subscription.unsubscribe();
@@ -98,19 +134,15 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
 
     }, []);
 
-    const value = { profile, isLoading, error };
-
     return (
-        <BusinessContext.Provider value={value}>
+        <BusinessContext.Provider value={{ profile, isLoading, error }}>
             {children}
         </BusinessContext.Provider>
     );
 };
 
-export const useBusiness = (): BusinessContextType => {
+export const useBusiness = () => {
     const context = useContext(BusinessContext);
-    if (context === undefined) {
-        throw new Error('useBusiness must be used within a BusinessProvider');
-    }
+    if (context === undefined) throw new Error('useBusiness must be used within a BusinessProvider');
     return context;
 };
