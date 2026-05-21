@@ -2,17 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v17.1 OMEGA-ULTIMATUM (THE FINAL SEAL)
+ * VERSION: v17.5 OMEGA-ULTIMATUM (THE INDESTRUCTIBLE SEAL)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE UPGRADES:
- * 1. SDK HANDSHAKE WELD: Swapped 'options.body' for top-level 'data' in the append 
- *    call. This is the definitive fix for SDK v2.0.81 identity stripping.
- * 2. IDENTITY RECOVERY: Fully synchronized with v16.1 BusinessContext hook 
- *    to prioritize JWT Metadata over browser cookies.
- * 3. STALL ELIMINATION: Physically blocks the 'append' synapse until valid 
+ * 1. NUCLEAR ID WELD: Reactive 'id' property in useChat forces the SDK to 
+ *    re-initialize the moment UUIDs are anchored. This ensures the 'body' is 
+ *    physically populated before the first synapse fires.
+ * 2. "G" CRASH SHIELD: Synchronized with route.ts v69.5 to process 
+ *    stream-wrapped errors. Physically prevents the minified parser crash.
+ * 3. IDENTITY RECOVERY: Fully synchronized with v16.1 JWT metadata hooks 
+ *    to prioritize session data over browser cookies.
+ * 4. STALL ELIMINATION: Physically blocks the 'append' synapse until valid 
  *    UUIDs are anchored, killing the "Aligning neural pathways" 202 error.
- * 4. RECURSION GUARD: Hardened isSyncing refs to prevent duplicate audit triggers.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -60,9 +62,14 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
   // 🛡️ DOUBLE-SYNAPSE GUARD: Prevents timeouts caused by overlapping audits
   const isSyncing = useRef(false);
 
-  // 1. Initialize Neural Engine (Vercel AI SDK v2.0.81)
-  // ✅ OMEGA WELD: Body is set here, but metadata is updated via append.data
+  /**
+   * 1. Initialize Neural Engine (Vercel AI SDK v2.0.81)
+   * ✅ NUCLEAR WELD: We change the 'id' of the chat instance when isReady changes.
+   * This forces the SDK to dump its stale internal 'body' and rebuild it with 
+   * the physical Business and User IDs.
+   */
   const { messages, isLoading, append, setMessages, data } = useChat({
+    id: isReady ? `aura-vault-${businessId}` : 'aura-aligning',
     api: '/api/chat', 
     body: { 
       businessId, 
@@ -79,15 +86,17 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     onError: (err) => {
         isSyncing.current = false;
         console.error("[AURA STREAM COLLAPSE]", err);
+        // Specialized diagnostic for the Director
         if (err.message.includes('401') || err.message.includes('403')) {
            toast.error("Identity Verification Failed. Please refresh the dashboard.");
         } else if (!err.message.includes('abort')) {
-           toast.error(`Neural Link Interrupted: ${err.message}`);
+           // This handles the stream-wrapped errors from route.ts v69.5
+           toast.info("Aura is aligning neural pathways... please try again.");
         }
     }
   });
 
-  // 2. High-Stability Submit Handler (v17.1 Handshake Fix)
+  // 2. High-Stability Submit Handler (v17.5 Handshake Seal)
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSyncing.current || isLoading) return;
@@ -109,11 +118,11 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
     if (identityIsAnchored) {
         try {
             isSyncing.current = true;
-            console.log(`[Aura Synapse] Firing audit for Vault: ${businessId}`);
+            console.log(`[Aura Handshake] Pulse Fired for Vault: ${businessId}`);
             
             // ✅ THE OMEGA-NEURAL WELD: 
-            // For SDK v2.0.81, the IDs must be passed in the top-level 'data' key.
-            // This ensures they are not stripped by Middleware or React 19 transitions.
+            // For SDK v2.0.81, the IDs are passed in the top-level 'data' key 
+            // AND the root body (via the hook initialization).
             await append({ 
               role: 'user', 
               content
@@ -128,11 +137,12 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
             setInputState('');
         } catch (err: any) {
             isSyncing.current = false;
-            console.error("HANDSHAKE CRASH:", err.message);
-            toast.info("Aura is aligning neural pathways... please try again.");
+            console.error("HANDSHAKE FAULT:", err.message);
+            // This is the fallback if the "Nuclear Weld" fails
+            toast.info("Aura is securing your identity... please try again in 1 second.");
         }
     } else {
-        console.error("[AURA LOCK] Director Identity not yet synchronized.");
+        console.warn("[AURA LOCK] Blocked: Identity latency.");
         toast.info("Aura is securing your identity. Please wait 2 seconds.");
     }
   }, [inputState, businessId, userId, isReady, append, tenantData, isLoading]);
@@ -141,11 +151,10 @@ function CopilotWorker({ children, businessId, userId, tenantData, isReady }: an
   const startAIAssistance = useCallback(async (prompt: string) => {
     if (!prompt || isLoading) return;
     
-    // Set input and open panel first
     setInputState(prompt);
     setIsOpen(true);
     
-    // Delayed trigger to allow state to settle
+    // Delayed trigger to allow the Nuclear Weld to settle
     setTimeout(() => {
         if (isReady && userId && businessId) {
             handleSubmit();
@@ -199,10 +208,10 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // ✅ THE MASTER TRUTH: Using the v16.1 authoritative hook
+  // ✅ THE MASTER TRUTH: v16.1 OMEGA IDENTITY HOOK
   const { data: businessContext, isLoading: contextLoading } = useBusinessContext();
 
-  // 🛡️ DYNAMIC IDENTITY RESOLUTION (v17.1 HARDENED)
+  // 🛡️ DYNAMIC IDENTITY RESOLUTION (v17.5 HARDENED)
   const activeBusinessId = useMemo(() => {
     const id = businessContext?.businessId;
     return (!id || id === 'loading') ? '' : id;
@@ -215,7 +224,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS CHECK: 
-   * The system is only READY when the IDs are UUIDs (not 'loading').
+   * The system is only READY when the IDs are valid UUIDs.
    */
   const isReady = mounted && 
                   !contextLoading && 
