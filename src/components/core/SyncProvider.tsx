@@ -11,6 +11,8 @@
  *    the Auth Handshake during the critical 2-second login window.
  * 3. IDENTITY-DRIVEN FETCH: Ensure sync only pulls data for the verified 
  *    active business node.
+ * 4. VAULT ANCHOR: Integrated 'view_bbu1_corporate_identity' fetch to 
+ *    physically secure the AI Identity locally in IndexedDB.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -97,7 +99,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const promise = async () => {
         const supabase = createClient();
         
-        // Use the verified business ID to ensure RLS compliance
+        // 1. Fetch products and customers via verified business ID
         const { data: productsData, error: pError } = await supabase.rpc('get_sellable_products');
         if (pError) throw new Error(`Products sync failed: ${pError.message}`);
         
@@ -106,6 +108,15 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const { data: printersData, error: prError } = await supabase.from('printers').select('*');
         if (prError) throw new Error(`Printers sync failed: ${prError.message}`);
+
+        // ✅ 2. SOVEREIGN IDENTITY FETCH: Anchor Aura's branding and identity
+        const { data: identityData, error: idError } = await supabase
+            .from('view_bbu1_corporate_identity')
+            .select('*')
+            .eq('business_id', profile.business_id)
+            .maybeSingle();
+        
+        if (idError) console.warn("[SYNC] Identity anchor deferred:", idError.message);
         
         const offlineSales = await db.offlineSales.toArray();
         let wasSyncSuccessful = false;
@@ -116,13 +127,18 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             wasSyncSuccessful = true;
         }
 
-        await db.transaction('rw', db.products, db.customers, db.printers, db.offlineSales, async () => {
+        // ✅ 3. THE WELD: Perform atomic transaction to write all data to the Local Node
+        await db.transaction('rw', db.products, db.customers, db.printers, db.offlineSales, db.identity, async () => {
             await db.products.clear();
             await db.customers.clear();
             await db.printers.clear();
+            await db.identity.clear(); // Clear previous identity anchor
+
             if (productsData) await db.products.bulkAdd(productsData as SellableProduct[]);
             if (customersData) await db.customers.bulkAdd(customersData as Customer[]);
             if (printersData) await db.printers.bulkAdd(printersData as Printer[]);
+            if (identityData) await db.identity.add(identityData); // Secure local anchor for Aura
+            
             if (wasSyncSuccessful) await db.offlineSales.clear();
         });
 
@@ -141,7 +157,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: (err: any) => `Sync Interrupted: ${err.message}`,
         finally: () => setIsSyncing(false),
     });
-  }, [isSyncing, isHandshakeReady, queryClient]);
+  }, [isSyncing, isHandshakeReady, queryClient, profile?.business_id]);
   
   useEffect(() => {
     setIsOnline(navigator.onLine);

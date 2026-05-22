@@ -16,6 +16,8 @@
  *    always has a fresh physical token from Supabase Auth, preventing 401 errors.
  * 4. EDGE GATEWAY STABILITY: Maintains the absolute pathing to Supabase Edge 
  *    Functions to bypass Vercel timeout barriers.
+ * 5. SOVEREIGN LINK: Linked to the local 'db' and 'useSync' to ensure the AI 
+ *    engine is physically anchored to the browser's persistent storage.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -29,6 +31,10 @@ import CopilotPanel from '@/components/copilot/CopilotPanel';
 // ✅ THE MASTER IDENTITY HOOK: Synchronized with BusinessContext.tsx
 import { useBusiness } from '@/context/BusinessContext'; 
 import { createClient } from '@/lib/supabase/client';
+
+// 🛡️ THE SOVEREIGN LINKS: Anchoring the context to the Local Node
+import { db } from '@/lib/db'; 
+import { useSync } from '@/components/core/SyncProvider';
 
 interface CopilotContextType {
   messages: any[]; 
@@ -193,6 +199,9 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   // ✅ MASTER IDENTITY TRUTH: Resolving from the Omega Business Context
   const { profile, isLoading: contextLoading } = useBusiness();
+  
+  // 🔗 THE SYNC LINK: Ensure the AI waits for the local node to synchronize
+  const { lastSyncTime } = useSync();
 
   // DEEP WELD: Robust resolution for both CamelCase and snake_case properties
   const activeBusinessId = useMemo(() => {
@@ -207,14 +216,15 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * The system will NOT allow Aura to "Filter" or reject the identity
-   * unless the database handshake specifically returns is_ready: false.
+   * The system now requires BOTH the server handshake and the physical
+   * local database sync (lastSyncTime) before Aura becomes active.
    */
   const isReady = mounted && 
                   !contextLoading && 
                   activeUserId !== '' && 
                   activeBusinessId !== '' &&
-                  profile?.is_ready === true;
+                  profile?.is_ready === true &&
+                  !!lastSyncTime; // Force Aura to wait for the local DB write
 
   // 🛡️ DIVERSION SHIELD: No mounting until Identity is Aligned.
   if (!isReady) {
