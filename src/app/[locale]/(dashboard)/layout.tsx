@@ -2,16 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v19.4 OMEGA-ULTIMATUM (THE ULTIMATE RESPONSE WELD)
+ * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX ARCHITECTURAL WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. AUTO-OPEN INITIATIVE: On mobile/small screens, the sidebar is forced open 
- *    on initial mount to provide immediate navigational access.
- * 2. SMART-CLOSE LOGIC: Automatically closes the sidebar drawer upon navigation
- *    to maximize screen real estate for data-heavy modules.
- * 3. Z-INDEX SUPREMACY: Forced the drawer to z-[200] to bypass all AI 
- *    overlays and forensic guards.
+ * 1. PROVIDER RE-SEQUENCE: Physically moved 'SyncProvider' ABOVE the 
+ *    'GlobalCopilotProvider'. This allows Aura to consume the local 
+ *    database 'lastSyncTime' signal, fixing the "AI Blindness."
+ * 2. GATEKEEPER ALIGNMENT: Switched from 'is_ready' to 'setup_complete' 
+ *    to match the physical backend record detected in the forensic audit.
+ * 3. AUTO-OPEN INITIATIVE: Maintains mobile sidebar accessibility.
+ * 4. Z-INDEX SUPREMACY: Ensures forensic guards and AI overlays respect 
+ *    the hierarchical layering of the Sovereign Node.
  */
 
 import React, { memo, ReactNode, useEffect } from 'react';
@@ -38,7 +40,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * --- MOBILE SIDEBAR DRAWER ---
- * DEFINED OUTSIDE TO PRESERVE STATE & FOCUS
  */
 const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
     return (
@@ -73,7 +74,6 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 </Button>
               </div>
               
-              {/* 🟢 SIDEBAR CONTENT INJECTION */}
               <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
                 <Sidebar />
               </div>
@@ -157,22 +157,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
-  // ✅ 1. ENTERPRISE AUTO-OPEN ON LOAD (MOBILE)
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    if (isMobile) {
-        // Force the sidebar to be open when the application first loads on small screens
-        setIsSidebarOpen(true);
-    }
+    if (isMobile) setIsSidebarOpen(true);
   }, [setIsSidebarOpen]);
 
-  // ✅ 2. SMART-CLOSE ON NAVIGATION (MOBILE)
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    if (isSidebarOpen && isMobile) {
-        // Automatically close the sidebar when a user clicks a link to show the content
-        setIsSidebarOpen(false);
-    }
+    if (isSidebarOpen && isMobile) setIsSidebarOpen(false);
   }, [pathname, setIsSidebarOpen]);
 
   return (
@@ -181,18 +173,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         style={{ '--brand-primary': primaryColor } as React.CSSProperties}
     >
       <SovereignLiveGuard />
-      
-      {/* Desktop Sidebar Anchor */}
       <div className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm">
         <Sidebar />
       </div>
-
-      {/* 🟢 MOBILE DRAWER WELD */}
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          {/* ✅ THE ACTIVATION WELD: Aggressive touch area and Z-Index isolation */}
           <button 
             type="button" 
             className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-100 transition-all cursor-pointer" 
@@ -206,14 +192,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </button>
           <Header />
         </header>
-
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-slate-50/40">
           <div className="p-4 sm:p-8 lg:p-10 animate-in fade-in slide-in-from-bottom-3 duration-1000">
             {children}
           </div>
         </main>
       </div>
-      
       <CopilotToggleButton brandColor={primaryColor} />
     </div>
   );
@@ -229,7 +213,8 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        if (profile?.is_ready && !isBusinessLoading && !isBrandingLoading) {
+        // ✅ ALIGNMENT: Backend uses setup_complete
+        if (profile?.setup_complete && !isBusinessLoading && !isBrandingLoading) {
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             const isAuthorized = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(status);
@@ -255,14 +240,15 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
-    const identityIsVerified = !!profile?.business_id && profile?.is_ready === true;
+    // ✅ ALIGNMENT: Verification is based on profile existence and setup_complete
+    const identityIsVerified = !!profile?.business_id && profile?.setup_complete === true;
 
     if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
                 <Loader2 className="h-16 w-16 animate-spin text-blue-600 mb-8" />
                 <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
-                    Synchronizing Sovereign Node...
+                    Anchoring Sovereign Node...
                 </p>
             </div>
         );
@@ -285,20 +271,25 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     return <AppLayout>{children}</AppLayout>;
 }
 
+/**
+ * MASTER DASHBOARD LAYOUT
+ * SEQUENCE: Business -> Sync -> Copilot
+ * This hierarchy allows Aura to consume the Sync signal physically.
+ */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BusinessProvider>
-      <GlobalCopilotProvider>
-        <SidebarProvider>
-            <BrandingProvider>
-                <SyncProvider>
-                    <DashboardGatekeeper>
-                    {children}
-                    </DashboardGatekeeper>
-                </SyncProvider>
-            </BrandingProvider>
-        </SidebarProvider>
-      </GlobalCopilotProvider>
+      <SyncProvider> {/* ✅ MOVED ABOVE COPILOT */}
+        <GlobalCopilotProvider>
+          <SidebarProvider>
+              <BrandingProvider>
+                  <DashboardGatekeeper>
+                  {children}
+                  </DashboardGatekeeper>
+              </BrandingProvider>
+          </SidebarProvider>
+        </GlobalCopilotProvider>
+      </SyncProvider>
     </BusinessProvider>
   );
 }
