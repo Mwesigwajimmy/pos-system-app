@@ -739,22 +739,16 @@ export default function Sidebar() {
 
     return (
         <aside 
-            onClick={() => {
-                // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
-                if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                    toggleSidebar();
-                }
-            }}
             className={cn(
                 "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
                 "relative lg:sticky top-0 left-0",
                 /**
-                 * ✅ MOBILE VISIBILITY WELD:
-                 * Cleaned up to ensure links are clickable on small screens.
+                 * ✅ FINAL MOBILE VISIBILITY WELD:
+                 * Removed translate and opacity logic which is now handled by the 
+                 * Layout's AnimatePresence drawer. This Sidebar component now 
+                 * simply renders its content Authoritatively.
                  */
-                isSidebarOpen 
-                    ? "w-full lg:w-72 translate-x-0 opacity-100 pointer-events-auto cursor-default" 
-                    : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-0 pointer-events-none lg:pointer-events-auto"
+                isSidebarOpen ? "w-full lg:w-72" : "w-full lg:w-20"
             )}
         >
             {/* --- IDENTITY SECTION --- */}
