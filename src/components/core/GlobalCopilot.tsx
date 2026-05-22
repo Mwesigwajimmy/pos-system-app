@@ -2,19 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN AI GATEWAY ---
- * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
+ * VERSION: v22.6 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
  * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
  * CORE ARCHITECTURAL UPDATES:
- * 1. IDENTITY PHYSICAL LOCK: Button status logic is now hard-welded to the 
- *    authoritative 'isReady' signal which requires setup_complete: true 
- *    and a physical IndexedDB write.
- * 2. SYNC STATE PRECISION: Amber status (Syncing) now accurately reflects 
- *    the forensic protocol handshake detected in the v20.5 audit.
- * 3. DUAL-STORAGE AWARENESS: Status config now accounts for the 5918cefa... 
- *    UUIDs being physically anchored to the browser memory.
- * 4. HYDRATION SHIELD: Implemented hardened null-safe checks for the 
- *    Sovereign Node UUID display to prevent 0xNULL during latency.
+ * 1. VERSION SYNCHRONIZATION: Physically aligned with the v22.5 Backend 
+ *    and v22.6 Context to ensure unified status reporting.
+ * 2. IDENTITY PHYSICAL LOCK: Button status logic is hard-welded to the 
+ *    authoritative 'isReady' signal from the Neural Sanctuary.
+ * 3. HYDRATION SHIELD: Hardened null-safe checks for the Sovereign Node 
+ *    UUID display ensure the 5918cefa... IDs show up without latency.
+ * 4. SYNC STATE PRECISION: The Amber (Syncing) status is now physically 
+ *    gated on the Version 8 Database sync status.
  */
 
 import React from 'react';
@@ -42,18 +41,17 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function GlobalCopilot() {
-  // Destructuring verified Apex Identity from Context
+  // Destructuring verified Apex Identity from the Neural Sanctuary
   const { toggleCopilot, isOpen, isReady, isLoading, businessId, userId } = useCopilot();
 
   /**
-   * NEURAL STATUS RESOLVER (v21.0 APEX)
-   * Emerald: Sovereign Link Active (1,974 nodes saturated).
-   * Amber: Handshake Pending (Anchoring Forensic Identity).
+   * NEURAL STATUS RESOLVER (v22.6 APEX)
+   * Emerald: Sovereign Link Active (Identity Anchored).
+   * Amber: Handshake Pending (Aligning Neural Matrix).
    * Red: Desync (Identity Circuit Broken).
    */
   const getStatusConfig = () => {
-    // 🛡️ APEX IDENTITY WELD: isReady is only true if backend is 'setup_complete' 
-    // and browser DB has finished the handshake write.
+    // 🛡️ APEX IDENTITY WELD: Check if the handshake is complete
     const isAnchored = isReady && 
                        userId && userId !== '' && 
                        businessId && businessId !== '';
@@ -67,7 +65,7 @@ export default function GlobalCopilot() {
       };
     }
     
-    // 🛡️ HANDSHAKE SYNC: Node is currently aligning with the Global Ledger
+    // 🛡️ HANDSHAKE SYNC: Node is currently aligning with the backend v22.5
     if (isLoading || !isReady) {
       return { 
         color: "bg-amber-500 animate-pulse", 
@@ -96,7 +94,7 @@ export default function GlobalCopilot() {
           <TooltipTrigger asChild>
             <div className="relative">
               
-              {/* 1. NEURAL LINK STATUS PING (Forensic Indicator) */}
+              {/* 1. NEURAL LINK STATUS PING */}
               <div className="absolute -top-1 -right-1 z-30">
                 <span className="relative flex h-4 w-4">
                   <span className={cn(
@@ -163,7 +161,7 @@ export default function GlobalCopilot() {
             </div>
           </TooltipTrigger>
           
-          {/* 3. FORENSIC IDENTITY TOOLTIP (Deep Alignment Info) */}
+          {/* 3. FORENSIC IDENTITY TOOLTIP */}
           <TooltipContent 
             side="left" 
             sideOffset={24}
@@ -192,14 +190,14 @@ export default function GlobalCopilot() {
                 <div className="flex items-center gap-2.5 mt-2 overflow-hidden">
                     <Fingerprint size={12} className="text-slate-500 shrink-0" />
                     <span className="text-[10px] text-slate-400 font-mono uppercase tracking-[0.2em] truncate">
-                      {isReady ? `Node: ${businessId?.substring(0, 18)}...` : "Handshaking..."}
+                      {isReady ? `Node: ${businessId?.substring(0, 18)}...` : "Aligning Neural Node..."}
                     </span>
                 </div>
 
                 <div className="flex items-center gap-2.5 mt-3 opacity-80">
                     <Database size={12} className="text-emerald-600 shrink-0" />
                     <span className="text-[9px] text-slate-500 font-black uppercase tracking-[0.2em]">
-                      {isReady ? "1,974 Logic Nodes Saturated" : "Aligning Neural Matrix"}
+                      {isReady ? "Registered Identity Saturated" : "Executing Forensic Protocol"}
                     </span>
                 </div>
               </div>
@@ -221,10 +219,3 @@ export default function GlobalCopilot() {
     </div>
   );
 }
-
-/**
- * STATUS: Sovereign AI Gateway Fully Sealed.
- * ARCHETYPE: Elite 1024-dim Multi-Sector Memory.
- * HANDSHAKE: Verified for time@bbu1.com (setup_complete check).
- * VERSION: v21.0 APEX.
- */

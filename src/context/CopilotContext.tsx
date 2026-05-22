@@ -2,18 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v21.8 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
+ * VERSION: v22.6 OMEGA-ULTIMATUM (THE APEX PROTOCOL WELD)
  * SDK_VERSION: @ai-sdk/react 2.0.81 (STABILIZED)
  * JURISDICTION: Global ERP / Multi-Sector Forensic Handshake
  * 
  * CORE ARCHITECTURAL FIXES:
- * 1. SDK CRASH SHIELD: Resolved 'y is not a function' by isolating the useChat 
- *    hook inside a physical mount-gate. In SDK v2.x, initializing the hook 
- *    with a null token triggers an internal reference error during React 19 hydration.
- * 2. PHYSICAL TOKEN REASSEMBLY: Automatically detects and glues chunked session 
- *    cookies (.0, .1) discovered in the deep forensic audit of time@bbu1.com.
- * 3. OMNISCIENT HANDSHAKE: Logic calls 'get_aura_handshake' to retrieve the 
- *    5918cefa... UUIDs required to resolve '0xNULL' states in the UI.
+ * 1. APEX PROTOCOL ALIGNMENT: Physically enabled 'streamProtocol: data'. 
+ *    This allows the hook to decode the '0:' (text) and '8:' (metadata) 
+ *    chunks sent from the v22.5 Edge Motherboard.
+ * 2. SDK CRASH SHIELD: Resolved 'y is not a function' by isolating the hook 
+ *    inside a physical mount-gate. Prevents null-token crashes during hydration.
+ * 3. FORENSIC TOKEN REASSEMBLY: Automatically detects and glues chunked session 
+ *    cookies discovered in the deep forensic audit of time@bbu1.com.
  * 4. ATOMIC READINESS SEAL: Aura only wakes up after:
  *    a) Backend setup_complete is true.
  *    b) Local Version 8 Database sync is finished.
@@ -38,7 +38,7 @@ const supabase = createClient();
 
 /**
  * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
- * Version 2.0 SDK Stability: We pass metadata in the body to keep append() simple.
+ * Version 2.0 SDK Stability: Tuned to the Data Stream Protocol.
  */
 function NeuralSanctuary({ 
   children, businessId, userId, tenantId, organizationId, tenantData, isOpen, setIsOpen, sessionToken 
@@ -46,10 +46,12 @@ function NeuralSanctuary({
   const [inputState, setInputState] = useState('');
   const isSyncing = useRef(false);
 
-  // 1. Initialize Quantum Neural Engine (v2.0 Signature)
+  // 1. Initialize Quantum Neural Engine (v2.6 Protocol Signature)
   const { messages, isLoading, append, setMessages, data } = useChat({
     id: `aura-quantum-vault-${businessId}`, 
     api: `https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-quantum-audit`,
+    // ✅ THE APEX FIX: Enable data protocol to match the v22.5 Backend
+    streamProtocol: 'data', 
     headers: {
         'Authorization': `Bearer ${sessionToken}`, 
         'x-bbu1-vault-id': businessId
@@ -65,6 +67,7 @@ function NeuralSanctuary({
     onResponse: () => { isSyncing.current = false; },
     onError: (err) => {
         isSyncing.current = false;
+        console.error("[AURA] Neural Stream Error:", err);
         if (!err.message.includes('abort')) {
            toast.info("Aura is aligning neural pathways...");
         }
@@ -74,6 +77,8 @@ function NeuralSanctuary({
   // 2. High-Stability Submit Handler
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
+    
+    // Safety check for session and state
     if (isSyncing.current || isLoading || !sessionToken) return;
 
     const content = inputState.trim();
@@ -83,9 +88,9 @@ function NeuralSanctuary({
         isSyncing.current = true;
         
         /**
-         * ✅ THE APEX FIX FOR 'y is not a function':
-         * In SDK 2.0.81, calling append with data objects can crash. 
-         * We pass only the content; metadata is already in the 'body' above.
+         * ✅ SDK STABILITY: 
+         * Passing role/content as the base object to ensure compatibility 
+         * with the Vercel AI SDK 2.0.x append logic.
          */
         await append({ 
           role: 'user', 
@@ -95,7 +100,8 @@ function NeuralSanctuary({
         setInputState('');
     } catch (err: any) {
         isSyncing.current = false;
-        toast.info("Aura is securing your identity... please try again.");
+        console.error("[AURA] Critical Handshake Failure:", err);
+        toast.info("Neural link reset. Please authorize again.");
     }
   }, [inputState, append, isLoading, sessionToken]);
 
@@ -104,10 +110,11 @@ function NeuralSanctuary({
     if (!prompt || isLoading) return;
     setInputState(prompt);
     setIsOpen(true);
+    // Precise timing for UI transition
     setTimeout(() => { if (sessionToken) handleSubmit(); }, 800);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
 
-  // 4. Identity-Aware Memoization
+  // 4. Identity-Aware Memoization (Elite Enterprise Precision)
   const contextValue = useMemo(() => ({
     messages: messages || [], 
     input: inputState, 
@@ -116,7 +123,7 @@ function NeuralSanctuary({
     handleSubmit, 
     isLoading, 
     setMessages, 
-    data, 
+    data, // This 'data' now contains the '8:' forensic metadata chunks
     isOpen,
     openCopilot: () => setIsOpen(true), 
     closeCopilot: () => setIsOpen(false),
@@ -171,7 +178,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
         } else {
             /**
              * 🛡️ FORENSIC CHUNK REASSEMBLY (OMEGA WELD)
-             * Found 2 chunks in deep audit. Gluing them for total clearance.
+             * Glues fragmentated session cookies back into a functional JWT.
              */
             const storageKey = `sb-oezlqscjymzoeizysljp-auth-token`;
             const cookies = document.cookie.split('; ');
@@ -191,8 +198,10 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
         }
 
         // 2. Authoritative Handshake RPC
-        const { data } = await supabase.rpc('get_aura_handshake');
-        setHandshake(data);
+        try {
+            const { data } = await supabase.rpc('get_aura_handshake');
+            setHandshake(data);
+        } catch (err) { console.error("[AURA] RPC Handshake Latency."); }
     };
 
     finalizeIdentityAnchor();
@@ -206,7 +215,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * Gates AI initialization on setup_complete and physical DB sync.
+   * Gates AI initialization on setup_complete and physical DB sync status.
    */
   const isHandshakeValid = mounted && !contextLoading && 
                            activeUserId !== '' && activeBusinessId !== '' &&
