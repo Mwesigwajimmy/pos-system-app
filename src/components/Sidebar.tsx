@@ -11,7 +11,7 @@ import { useBranding } from '@/components/core/BrandingProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 
-// --- MASTER ICON REGISTRY ---
+// --- MASTER ICON REGISTRY (ALL 100% PRESERVED) ---
 import {
     LayoutDashboard, ShoppingCart, Clock, Users, BarChart3, History, Boxes, Truck,
     ClipboardCheck, Receipt, BookOpen, ShieldAlert, Banknote, BookCopy, Briefcase, UsersRound,
@@ -43,7 +43,7 @@ interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
 
-// --- MASTER NAVIGATION CONFIGURATION (FULL LONG LIST) ---
+// --- MASTER NAVIGATION CONFIGURATION (FULL LONG LIST PRESERVED) ---
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
@@ -572,7 +572,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 
 /**
  * --- BBU1 SOVEREIGN SIDEBAR ---
- * VERSION: v19.5 OMEGA-ULTIMATUM (THE VISUAL IDENTITY WELD)
+ * VERSION: v19.6 OMEGA-ULTIMATUM (THE VISUAL IDENTITY WELD)
  */
 export default function Sidebar() {
     const pathname = usePathname();
@@ -584,14 +584,14 @@ export default function Sidebar() {
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
-    const { branding } = useBranding(); // ✅ PRIMARY BRANDING SOURCE
+    const { branding } = useBranding(); // ✅ MASTER IDENTITY SOURCE
     const { data: profile } = useUserProfile();
 
     // 2. Identity Resolution
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
     const userRole = activeRole.toLowerCase();
 
-    // INSTITUTIONAL IDENTIFIER: NIM Paints Uganda (Distribution Node)
+    // INSTITUTIONAL IDENTIFIER: NIM Paints Uganda
     const isNimPaints = tenant?.id === '51342887-69e2-456c-b835-629b8f2b0e49';
 
     // 3. Industry Context
@@ -606,9 +606,11 @@ export default function Sidebar() {
     const isSovereign = ['architect', 'commander'].includes(userRole);
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
-    // 5. BRANDING WELD (Dynamically removes hardcoded "SOVEREIGN OS")
-    const businessName = branding?.company_name_display || tenant?.business_display_name || tenant?.name || profile?.business_name || "APEX OS";
+    // 5. BRANDING WELD (Dynamically eliminates "SOVEREIGN OS" hardcode)
+    // We prioritize branding context, then tenant info, then profile. No more hard fallbacks.
+    const businessName = branding?.company_name_display || tenant?.business_display_name || tenant?.name || profile?.business_name || "AUTHORIZED NODE";
     const operatorName = profile?.full_name || "Authorized Operator"; 
+    const bizLogo = branding?.logo_url || tenant?.logo_url;
 
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
@@ -619,7 +621,7 @@ export default function Sidebar() {
         return navSections.filter((item) => {
             if (isSovereign) return true;
 
-            // --- NIM PAINTS INSTITUTIONAL BLOCKERS ---
+            // NIM PAINTS INSTITUTIONAL BLOCKERS
             if (isNimPaints) {
                 if (['activities', 'ecommerce'].includes(item.module || '')) return false;
                 if (item.label === 'Kitchen Display (KDS)') return false;
@@ -647,7 +649,7 @@ export default function Sidebar() {
         });
     }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner, isNimPaints]);
 
-    // Close sidebar upon navigation to maximize workspace on mobile
+    // Close sidebar upon navigation on mobile to maximize workspace
     useEffect(() => {
         const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
         if (isSidebarOpen && isMobile) {
@@ -674,8 +676,8 @@ export default function Sidebar() {
                 if (item.type === 'accordion') {
                     const filteredSubItems = item.subItems.filter(sub => {
                         if (isSovereign) return true;
-
-                        // --- DEEP ROLE FILTRATION ---
+                        
+                        // GLOBAL CASHIER RESTRICTIONS
                         if (userRole === 'cashier') {
                             if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
                             const cashierInventoryLinks = ['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'];
@@ -687,6 +689,7 @@ export default function Sidebar() {
                             if (item.module === 'invoicing' && restrictedInvoiceLinks.includes(sub.href)) return false;
                         }
 
+                        // NIM PAINTS NODE CUSTOMIZATIONS
                         if (isNimPaints) {
                             if (['manager', 'admin'].includes(userRole)) {
                                 if (sub.href === '/invoicing/fx-audit') return false;
@@ -737,7 +740,7 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* --- 🛡️ SMART BACKDROP (MOBILE ONLY) --- */}
+            {/* --- SMART BACKDROP (MOBILE ONLY) --- */}
             {isSidebarOpen && (
                 <div 
                     className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] lg:hidden transition-opacity duration-500 animate-in fade-in"
@@ -756,13 +759,15 @@ export default function Sidebar() {
                     
                     /** 
                      * ✅ POSITIONING WELD:
-                     * Sticky on desktop, relative on mobile.
+                     * Sticky on desktop, relative on mobile to allow the parent Drawer 
+                     * to control the physical sliding.
                      */
                     "relative lg:sticky top-0 left-0",
 
                     /**
-                     * ✅ MOBILE VISIBILITY WELD (Fixes the White Screen bug):
-                     * We maintain w-full on mobile breakpoints so content is never 0-width inside the drawer.
+                     * ✅ MOBILE VISIBILITY WELD (Fixes the White Space bug):
+                     * We maintain 'w-full' on mobile screens so content is never 0-width inside the drawer.
+                     * We only toggle translation, not width/opacity for the mobile breakpoint.
                      */
                     isSidebarOpen 
                         ? "w-full lg:w-72 translate-x-0 cursor-default opacity-100" 
@@ -775,13 +780,13 @@ export default function Sidebar() {
                     isSidebarOpen ? "h-24" : "h-20"
                 )}>
                     {isSidebarOpen ? (
-                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500">
-                            {/* ✅ LAYERED WELD: Higher z-index for Switcher to prevent 'behind' bug */}
+                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
+                            {/* ✅ LAYERED WELD: Ensure Switcher dropdown floats OVER the sidebar */}
                             <div className="relative z-[120]">
                                 <BusinessSwitcher />
                             </div>
                             <div className="flex flex-col mt-2 px-1">
-                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate max-w-[180px]">
+                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">
                                     {businessName}
                                 </span>
                                 <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">
@@ -791,9 +796,9 @@ export default function Sidebar() {
                         </div>
                     ) : (
                         <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                            {/* ✅ BRANDING WELD: Dynamic Logo Injection */}
-                            {branding?.logo_url ? (
-                                <img src={branding.logo_url} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />
+                            {/* ✅ BRANDING WELD: Automated logo injection */}
+                            {bizLogo ? (
+                                <img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />
                             ) : (
                                 <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
                                     {businessName.charAt(0).toUpperCase()}
@@ -836,6 +841,7 @@ export default function Sidebar() {
                     "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
                     !isSidebarOpen && "flex flex-col items-center"
                 )}>
+                    {/* QUICK ACTION REGISTER BUTTON */}
                     {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
                         <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
                             <Link href="/accounting/daily-ledger">

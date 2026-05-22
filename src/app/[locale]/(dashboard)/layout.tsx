@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v18.8 OMEGA-ULTIMATUM (THE DEEP ALIGNMENT WELD)
+ * VERSION: v18.9 OMEGA-ULTIMATUM (THE MOBILE VISIBILITY WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
@@ -12,8 +12,9 @@
  * 2. PATIENT REDIRECTION: Redirect logic for Billing, Welcome, and Dashboards 
  *    is strictly gated by the completion of the Quantum Handshake to prevent 
  *    infinite 307 routing loops.
- * 3. MOBILE SIDEBAR WELD: Implemented a force-visible wrapper for small screens 
- *    to physically eliminate "White Screen" bugs by overriding hidden classes.
+ * 3. MOBILE VISIBILITY FIX: Physically eliminated the "White Screen" bug by 
+ *    ensuring the MobileSidebar wrapper forces content width and opacity 
+ *    on small screens.
  * 4. FORENSIC LIVE GUARD: Maintains real-time anomaly detection for the 
  *    active business node using Supabase Realtime isolation.
  */
@@ -125,31 +126,36 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   /**
    * ✅ MOBILE SIDEBAR WELD
-   * Prevents the "White Screen" on small screens by forcing child visibility.
+   * DEEP FIX: Explicitly handles visibility constraints to stop the "White Screen" bug.
    */
   const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
     if (!isOpen) return null;
     return (
-      <div className="fixed inset-0 z-[100] flex md:hidden" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 z-[150] flex md:hidden" role="dialog" aria-modal="true">
         <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
-            className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm" 
+            className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[140]" 
             onClick={onClose} 
         />
         <motion.div 
             initial={{ x: '-100%' }} 
             animate={{ x: 0 }} 
-            className="relative flex-1 flex flex-col max-w-[280px] w-full bg-white shadow-2xl overflow-hidden"
+            className="relative flex-1 flex flex-col max-w-[280px] w-full bg-white shadow-2xl overflow-hidden z-[150]"
         >
-          <div className="absolute top-2 right-2 z-50">
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={onClose}>
+          <div className="absolute top-4 right-4 z-[160]">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100" onClick={onClose}>
               <X className="h-6 w-6 text-slate-400" />
             </Button>
           </div>
           
-          {/* ✅ FORCE VISIBILITY CSS WELD: Overrides internal hidden classes */}
-          <div className="flex-1 overflow-y-auto [&>div]:!flex">
+          {/* 
+            ✅ THE DEEP VISIBILITY WELD:
+            Overrides internal classes to ensure Sidebar content is forced visible 
+            on small screens. This prevents the Sidebar component's 'isSidebarOpen' 
+            logic from making the mobile view empty.
+          */}
+          <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!pointer-events-auto">
             <Sidebar />
           </div>
         </motion.div>
@@ -198,7 +204,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: v18.8 (DEEP INTEGRITY ALIGNMENT)
+ * UPGRADE: v18.9 (IDENTITY ALIGNMENT LOCK)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -214,7 +220,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             
-            // Allow entry if subscription status is missing initially (handled by setup flow)
+            // Allow entry if subscription status is missing initially
             const isAuthorized = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(status);
             const locale = pathname.split('/')[1] || 'en';
             const isOnBillingPath = pathname.includes('/settings/billing');
@@ -222,7 +228,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             const isOnWelcomePage = pathname.includes('/welcome');
             const isSetupComplete = profile.setup_complete ?? true;
             
-            // REDIRECTION ENGINE (STABLE WELD)
+            // REDIRECTION ENGINE
             if (!isAuthorized && !isOnBillingPath && !isCallbackPage) {
                 router.push(`/${locale}/settings/billing`);
             } 
@@ -241,12 +247,10 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
     /** 
      * ✅ THE PATIENT LOADER:
-     * We block the dashboard and the error screen while the handshake is verifying links.
-     * Access is granted only when 'business_id' exists AND 'is_ready' (Aura Alignment) is true.
+     * Access is granted only when 'business_id' exists AND 'is_ready' is true.
      */
     const identityIsVerified = !!profile?.business_id && profile?.is_ready === true;
 
-    // We stay in this state while BusinessContext is performing its retries/polling
     if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
@@ -267,7 +271,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     }
 
     // --- ERROR RECOVERY UI ---
-    // This only shows if the Polling engine in BusinessContext has exhausted all retries (approx 12-15 seconds).
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
@@ -319,7 +322,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 }
 
 /**
- * STATUS: Sovereign Layout Fully Sealed.
- * VERSION: v18.8 (Deep Integrity Alignment).
+ * STATUS: Sovereign Layout Fully Fixed.
+ * VERSION: v18.9 (Mobile Content Forced Visible).
  * JURISDICTION: BBU1 Global Cloud.
  */
