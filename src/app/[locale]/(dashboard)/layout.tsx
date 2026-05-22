@@ -2,24 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v19.1 OMEGA-ULTIMATUM (THE MOBILE RESPONSE WELD)
+ * VERSION: v19.2 OMEGA-ULTIMATUM (THE ANIMATION & RESPONSE WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. MOBILE RESPONSE WELD: Hardened the hamburger menu button with z-index 
- *    isolation and propagation blocks to ensure 100% responsiveness on touch.
- * 2. GLOBAL STATE SYNC: Fully synchronized with SidebarContext to eliminate 
- *    the desync between the drawer opening and content rendering.
- * 3. MOBILE VISIBILITY WELD: Aggressively forces visibility for small screens 
- *    to physically eliminate the "White Screen" void.
- * 4. DEEP IDENTITY GATEKEEPER: Authoritatively waits for the 'is_ready' 
- *    signal from the Handshake before mounting the OS interface.
+ * 1. ANIMATION SYNC: Integrated AnimatePresence to solve the "clunky" mobile opening.
+ * 2. Z-INDEX ISOLATION: Explicitly layered the mobile drawer to prevent "White Screen" or click-blocking.
+ * 3. GLOBAL CONTEXT BRIDGE: Unified Sidebar toggle with the master Layout state.
  */
 
-import React, { memo, ReactNode, useState, useEffect } from 'react';
+import React, { memo, ReactNode, useEffect } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
-  ShieldAlert, ShieldCheck, Fingerprint, Building2, Zap
+  ShieldAlert
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
@@ -108,7 +103,6 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
  * Standard structural wrapper for the dashboard interface.
  */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  // ✅ SYNC: Consuming global Sidebar state
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
   const pathname = usePathname();
   const { branding } = useBranding(); 
@@ -124,39 +118,43 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   /**
    * ✅ MOBILE SIDEBAR WELD
-   * DEEP FIX: Explicitly handles visibility constraints to stop the "White Screen" bug.
+   * Uses AnimatePresence to ensure the drawer physically slides in/out correctly.
    */
   const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
-    if (!isOpen) return null;
     return (
-      <div className="fixed inset-0 z-[150] flex lg:hidden" role="dialog" aria-modal="true">
-        <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[140]" 
-            onClick={onClose} 
-        />
-        <motion.div 
-            initial={{ x: '-100%' }} 
-            animate={{ x: 0 }} 
-            className="relative flex-1 flex flex-col max-w-[280px] w-full bg-white shadow-2xl overflow-hidden z-[150]"
-        >
-          <div className="absolute top-4 right-4 z-[160]">
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100" onClick={onClose}>
-              <X className="h-6 w-6 text-slate-400" />
-            </Button>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-[150] flex lg:hidden" role="dialog" aria-modal="true">
+            {/* Backdrop */}
+            <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[140]" 
+                onClick={onClose} 
+            />
+            {/* Drawer Sliding Panel */}
+            <motion.div 
+                initial={{ x: '-100%' }} 
+                animate={{ x: 0 }} 
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="relative flex-1 flex flex-col max-w-[300px] w-full bg-white shadow-2xl overflow-hidden z-[150]"
+            >
+              <div className="absolute top-4 right-4 z-[160]">
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100" onClick={onClose}>
+                  <X className="h-6 w-6 text-slate-400" />
+                </Button>
+              </div>
+              
+              {/* Force Sidebar visibility when inside the drawer */}
+              <div className="flex-1 overflow-hidden [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
+                <Sidebar />
+              </div>
+            </motion.div>
           </div>
-          
-          {/* 
-            ✅ THE DEEP VISIBILITY WELD:
-            Forces Sidebar content visible on small screens when the drawer is open. 
-            Overriding translation and pointer events to ensure links are clickable.
-          */}
-          <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
-            <Sidebar />
-          </div>
-        </motion.div>
-      </div>
+        )}
+      </AnimatePresence>
     );
   });
   MobileSidebar.displayName = 'MobileSidebar';
@@ -178,18 +176,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-30 flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          {/* 
-            ✅ THE ACTIVATION WELD:
-            Added relative z-50 and stopPropagation to ensure the button is 
-            physically reachable and triggers the context swap correctly.
-          */}
+          {/* ✅ THE ACTIVATION WELD: Z-50 ensured touch reachability */}
           <button 
             type="button" 
             className="relative z-50 px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-100 transition-colors" 
             onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                toggleSidebar(); // Global Context Dispatch
+                toggleSidebar();
             }}
           >
             <Menu className="h-7 w-7" />
@@ -210,7 +204,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 }
 
 /**
- * SOVEREIGN GATEKEEPER
+ * --- SOVEREIGN GATEKEEPER ---
+ * Handles global redirection and authentication state.
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -310,5 +305,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 /**
  * STATUS: Sovereign Layout Fully Fixed.
- * VERSION: v19.1 (The Mobile Response Weld).
+ * VERSION: v19.2 (The Animation & Response Weld).
  */

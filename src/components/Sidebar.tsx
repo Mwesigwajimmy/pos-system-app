@@ -43,7 +43,7 @@ interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
 
-// --- MASTER NAVIGATION CONFIGURATION (FULL LONG LIST PRESERVED) ---
+// --- MASTER NAVIGATION CONFIGURATION ---
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
@@ -572,7 +572,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 
 /**
  * --- BBU1 SOVEREIGN SIDEBAR ---
- * VERSION: v19.7 OMEGA-ULTIMATUM (THE VISUAL IDENTITY WELD)
+ * VERSION: v19.8 OMEGA-ULTIMATUM (FIXED & WELDED)
  */
 export default function Sidebar() {
     const pathname = usePathname();
@@ -584,7 +584,7 @@ export default function Sidebar() {
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
-    const { branding } = useBranding(); // ✅ MASTER IDENTITY SOURCE
+    const { branding } = useBranding(); 
     const { data: profile } = useUserProfile();
 
     // 2. Identity Resolution
@@ -606,8 +606,7 @@ export default function Sidebar() {
     const isSovereign = ['architect', 'commander'].includes(userRole);
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
-    // 5. BRANDING WELD (Dynamically eliminates "SOVEREIGN OS" hardcode)
-    // Physically synchronized with the database branding settings.
+    // 5. BRANDING WELD 
     const businessName = branding?.company_name_display || tenant?.business_display_name || tenant?.name || profile?.business_name || "AUTHORIZED NODE";
     const operatorName = profile?.full_name || "Authorized Operator"; 
     const bizLogo = branding?.logo_url || tenant?.logo_url;
@@ -739,44 +738,25 @@ export default function Sidebar() {
     );
 
     return (
-        <>
-            {/* --- 🛡️ SMART BACKDROP (MOBILE ONLY) --- 
-                Ensures the UI remains interactive and dismissible on small screens.
-            */}
-            {isSidebarOpen && (
-                <div 
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] lg:hidden transition-opacity duration-500 animate-in fade-in"
-                    onClick={toggleSidebar}
-                />
+        <aside 
+            onClick={() => {
+                // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
+                if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                    toggleSidebar();
+                }
+            }}
+            className={cn(
+                "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                "relative lg:sticky top-0 left-0",
+                /**
+                 * ✅ MOBILE VISIBILITY WELD:
+                 * Cleaned up to ensure links are clickable on small screens.
+                 */
+                isSidebarOpen 
+                    ? "w-full lg:w-72 translate-x-0 opacity-100 pointer-events-auto cursor-default" 
+                    : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-0 pointer-events-none lg:pointer-events-auto"
             )}
-
-            <aside 
-                onClick={() => {
-                    // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
-                    if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                        toggleSidebar();
-                    }
-                }}
-                className={cn(
-                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                    
-                    /** 
-                     * ✅ POSITIONING WELD:
-                     * Sticky on desktop, relative on mobile to allow the parent Layout's Drawer 
-                     * to control the physical translation without fighting inner visibility.
-                     */
-                    "relative lg:sticky top-0 left-0",
-
-                    /**
-                     * ✅ MOBILE VISIBILITY WELD (Fixes the White Screen & Click bug):
-                     * On mobile, we FORCE content to be full width and visible.
-                     * We add 'pointer-events-auto' when open so the links are clickable.
-                     */
-                    isSidebarOpen 
-                        ? "w-full lg:w-72 translate-x-0 opacity-100 pointer-events-auto cursor-default" 
-                        : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-0 pointer-events-none lg:pointer-events-auto"
-                )}
-            >
+        >
             {/* --- IDENTITY SECTION --- */}
             <div className={cn(
                 "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]",
@@ -784,7 +764,6 @@ export default function Sidebar() {
             )}>
                 {isSidebarOpen ? (
                     <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
-                        {/* ✅ LAYERED WELD: Higher z-index for Switcher to prevent 'behind' bug */}
                         <div className="relative z-[120]">
                             <BusinessSwitcher />
                         </div>
@@ -799,7 +778,6 @@ export default function Sidebar() {
                     </div>
                 ) : (
                     <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                        {/* ✅ BRANDING WELD: Dynamic Logo Injection */}
                         {bizLogo ? (
                             <img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />
                         ) : (
@@ -844,7 +822,6 @@ export default function Sidebar() {
                 "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
                 !isSidebarOpen && "flex flex-col items-center"
             )}>
-                {/* QUICK ACTION REGISTER BUTTON */}
                 {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
                     <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
                         <Link href="/accounting/daily-ledger">
@@ -883,6 +860,5 @@ export default function Sidebar() {
                 </Link>
             </div>
         </aside>
-    </> // <--- Add this closing tag here
     );
 }
