@@ -2,21 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v19.5 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT WELD)
+ * VERSION: v19.8 OMEGA-ULTIMATUM (THE UNIFIED IDENTITY WELD)
  * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
  * CORE ARCHITECTURAL FIXES:
- * 1. IDENTITY KEY RECONCILIATION: Updated the resolution logic to recognize 
- *    both 'businessId' and 'business_id'. This prevents Aura from "Filtering Out" 
- *    valid identities during the snake_case vs camelCase transition.
- * 2. FORENSIC READINESS GATE: Switched the neural mount logic from 'is_ready' 
- *    to 'setup_complete' to match the actual physical backend schema. 
- * 3. JWT ACCESS RECOVERY: Hardened the syncToken effect to ensure the Edge Runtime 
- *    always has a fresh physical token from Supabase Auth, preventing 401 errors.
- * 4. SYNC INTEGRITY LOCK: Added a physical dependency on 'lastSyncTime' from 
- *    the SyncProvider to ensure Aura never starts without a local vault write.
- * 5. EDGE GATEWAY STABILITY: Maintains the absolute pathing to Supabase Edge 
- *    Functions to bypass Vercel timeout barriers.
+ * 1. UNIFIED IDENTITY RESOLUTION: Updated context to explicitly handle User, 
+ *    Business, Tenant, and Organization UUIDs. This resolves the '0xNULL' 
+ *    placeholder states in the Mission Control UI.
+ * 2. FORENSIC READINESS GATE: Strictly gates Aura initialization on the 
+ *    'setup_complete' signal and the physical 'lastSyncTime' timestamp.
+ * 3. JWT ACCESS RECOVERY: Hardened the syncToken effect to ensure the Edge 
+ *    Runtime always has a fresh physical token from Supabase Auth.
+ * 4. SYNC INTEGRITY LOCK: Physically anchored to 'useSync' to ensure the AI 
+ *    never attempts to operate before the local Version 8 Vault is written.
+ * 5. EDGE GATEWAY STABILITY: Maintains absolute pathing to Supabase Edge 
+ *    Functions for forensic audit persistence.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -52,6 +52,8 @@ interface CopilotContextType {
   isReady: boolean;
   businessId: string;
   userId: string;
+  tenantId: string;       // Added for Deep UI Alignment
+  organizationId: string; // Added for Deep UI Alignment
   tenantData: any; 
   tenantModules: string[];
 }
@@ -63,7 +65,16 @@ const supabase = createClient();
  * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
  * Born only when the Identity Handshake is 100% physically ready.
  */
-function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, setIsOpen }: any) {
+function NeuralSanctuary({ 
+  children, 
+  businessId, 
+  userId, 
+  tenantId, 
+  organizationId, 
+  tenantData, 
+  isOpen, 
+  setIsOpen 
+}: any) {
   const [inputState, setInputState] = useState('');
   const [token, setToken] = useState<string | null>(null);
   const isSyncing = useRef(false);
@@ -91,6 +102,8 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
     body: { 
       businessId, 
       userId, 
+      tenantId,
+      organizationId,
       tenantModules: tenantData?.tenantModules || []
     }, 
     experimental_streamData: true,
@@ -127,6 +140,8 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
           data: { 
             businessId, 
             userId,
+            tenantId,
+            organizationId,
             tenantModules: tenantData?.tenantModules || []
           }
         } as any);
@@ -137,7 +152,7 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
         console.error("QUANTUM HANDSHAKE CRASH:", err.message);
         toast.info("Aura is securing your identity... please try again in 1 second.");
     }
-  }, [inputState, businessId, userId, append, tenantData, isLoading, token]);
+  }, [inputState, businessId, userId, tenantId, organizationId, append, tenantData, isLoading, token]);
 
   // 3. Remote Activation Logic
   const startAIAssistance = useCallback(async (prompt: string) => {
@@ -168,9 +183,11 @@ function NeuralSanctuary({ children, businessId, userId, tenantData, isOpen, set
     isReady: true,
     businessId,
     userId,
+    tenantId,       // Provided for Mission Control UI
+    organizationId, // Provided for Mission Control UI
     tenantData,
     tenantModules: tenantData?.tenantModules || []
-  }), [messages, isLoading, data, setMessages, inputState, isOpen, businessId, userId, tenantData, handleSubmit, startAIAssistance, setIsOpen]);
+  }), [messages, isLoading, data, setMessages, inputState, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, startAIAssistance, setIsOpen]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -202,11 +219,21 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   // 🔗 THE SYNC LINK: Ensure the AI waits for the local node to synchronize
   const { lastSyncTime } = useSync();
 
-  // DEEP WELD: Robust resolution for both CamelCase and snake_case properties
+  // DEEP WELD: Robust resolution for all Unified Identity UUIDs
   const activeBusinessId = useMemo(() => {
     const id = profile?.business_id || (profile as any)?.businessId;
     return (!id || id === 'loading') ? '' : id;
   }, [profile]);
+
+  const activeTenantId = useMemo(() => {
+    const id = profile?.tenant_id || (profile as any)?.tenantId || activeBusinessId;
+    return (!id || id === 'loading') ? '' : id;
+  }, [profile, activeBusinessId]);
+
+  const activeOrgId = useMemo(() => {
+    const id = profile?.organization_id || (profile as any)?.organizationId || activeBusinessId;
+    return (!id || id === 'loading') ? '' : id;
+  }, [profile, activeBusinessId]);
 
   const activeUserId = useMemo(() => {
     const id = profile?.id || (profile as any)?.userId;
@@ -215,27 +242,27 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * FIXED: Replaced 'is_ready' with 'setup_complete' to match backend forensic audit.
+   * FIXED: Aligned with backend forensic audit results for 'time@bbu1.com'.
    * Aura will now physically wait for:
    * 1. React Mount
    * 2. Business Context Load
-   * 3. Identity Alignment
-   * 4. Setup Completion Signal from Backend
+   * 3. Identity Alignment (All UUIDs Resolved)
+   * 4. Setup Completion Signal (setup_complete)
    * 5. Successful Local Database Sync (lastSyncTime)
    */
   const isReady = mounted && 
                   !contextLoading && 
                   activeUserId !== '' && 
                   activeBusinessId !== '' &&
-                  profile?.setup_complete === true && // THE CRITICAL WELD FIX
-                  !!lastSyncTime; // Force Aura to wait for the local DB write
+                  profile?.setup_complete === true && 
+                  !!lastSyncTime; // Force Aura to wait for local Version 8 Vault
 
   // 🛡️ DIVERSION SHIELD: No mounting until Identity is Aligned.
   if (!isReady) {
     return (
       <CopilotContext.Provider value={{ 
           isReady: false, isLoading: true, messages: [], input: '', 
-          businessId: '', userId: '', tenantData: null, tenantModules: [],
+          businessId: '', userId: '', tenantId: '', organizationId: '', tenantData: null, tenantModules: [],
           isOpen: false, openCopilot: () => {}, closeCopilot: () => {}, toggleCopilot: () => {},
           startAIAssistance: () => {}, setInput: () => {}, handleInputChange: () => {}, 
           handleSubmit: () => {}, setMessages: () => {}, data: undefined 
@@ -249,6 +276,8 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     <NeuralSanctuary 
       businessId={activeBusinessId} 
       userId={activeUserId} 
+      tenantId={activeTenantId}
+      organizationId={activeOrgId}
       tenantData={profile} 
       isOpen={isOpen}
       setIsOpen={setIsOpen}

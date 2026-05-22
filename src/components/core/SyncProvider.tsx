@@ -2,15 +2,17 @@
 
 /**
  * --- BBU1 SOVEREIGN SYNC PROVIDER ---
- * VERSION: v19.8 OMEGA-ULTIMATUM (THE CRASH SHIELD)
+ * VERSION: v19.8 OMEGA-ULTIMATUM (THE UNIFIED IDENTITY WELD)
  * 
  * CORE FIXES:
  * 1. CRASH SHIELD: Updated 'useSync' hook to handle out-of-bounds calls. 
  *    This prevents the "useSync must be used within SyncProvider" console error.
- * 2. FORENSIC ALIGNMENT: Switched from 'is_ready' to 'setup_complete' to 
+ * 2. UNIFIED HANDSHAKE: Logic now fetches and welds User, Tenant, and 
+ *    Organization UUIDs discovered in forensic audit (time@bbu1.com).
+ * 3. FORENSIC ALIGNMENT: Switched from 'is_ready' to 'setup_complete' to 
  *    match the physical backend record detected in the System Audit.
- * 3. VAULT WELD: Atomic transaction logic now includes 'db.identity' to 
- *    anchor Aura's local persona.
+ * 4. ATOMIC VAULT WELD: Transaction logic now enforces the Version 8 
+ *    'db.identity' write to anchor Aura's local persona.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -56,7 +58,7 @@ const OfflineIndicator: React.FC = () => {
   const { isOnline, isSyncing, lastSyncTime, triggerSync } = useSync();
   const { profile } = useBusiness(); 
   
-  // ✅ ALIGNMENT: Backend uses 'setup_complete'
+  // ✅ ALIGNMENT: Backend forensic audit uses 'setup_complete'
   if (!profile?.setup_complete) return null;
 
   const getStatus = () => {
@@ -113,7 +115,20 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const promise = async () => {
         const supabase = createClient();
         
-        // 1. Fetch products and customers
+        // 1. UNIFIED IDENTITY FETCH (Cross-link UUIDs for Aura Mission Control)
+        const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, business_id, tenant_id, organization_id, business_name')
+            .eq('id', profile.id)
+            .single();
+
+        const { data: brandingData } = await supabase
+            .from('view_bbu1_corporate_identity')
+            .select('*')
+            .eq('business_id', profile.business_id)
+            .maybeSingle();
+
+        // 2. CORE DATA FETCH
         const { data: productsData, error: pError } = await supabase.rpc('get_sellable_products');
         if (pError) throw new Error(`Products sync failed: ${pError.message}`);
         
@@ -122,15 +137,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const { data: printersData, error: prError } = await supabase.from('printers').select('*');
         if (prError) throw new Error(`Printers sync failed: ${prError.message}`);
-
-        // ✅ 2. SOVEREIGN IDENTITY FETCH: Anchor Aura's branding and identity
-        const { data: identityData, error: idError } = await supabase
-            .from('view_bbu1_corporate_identity')
-            .select('*')
-            .eq('business_id', profile.business_id)
-            .maybeSingle();
-        
-        if (idError) console.warn("[SYNC] Identity anchor deferred:", idError.message);
         
         const offlineSales = await db.offlineSales.toArray();
         let wasSyncSuccessful = false;
@@ -141,41 +147,59 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             wasSyncSuccessful = true;
         }
 
-        // ✅ 3. THE WELD: Complete local database write including Aura's Identity
+        // ✅ 3. THE WELD: Complete Version 8 Transaction
         await db.transaction('rw', db.products, db.customers, db.printers, db.offlineSales, db.identity, async () => {
             await db.products.clear();
             await db.customers.clear();
             await db.printers.clear();
-            await db.identity.clear(); // Clear previous identity anchor
+            await db.identity.clear(); 
+
+            // Anchoring the Director Identity discovered in forensic audit
+            if (profileData) {
+                await db.identity.add({
+                    business_id: profileData.business_id,
+                    tenant_id: profileData.tenant_id,
+                    organization_id: profileData.organization_id,
+                    user_id: profileData.id,
+                    legal_name: brandingData?.legal_name || profileData.business_name || 'Sovereign Node',
+                    primary_color: brandingData?.primary_color || '#1D4ED8',
+                    logo_url: brandingData?.logo_url || '/logo.png',
+                    currency_code: brandingData?.currency_code || 'UGX'
+                } as any);
+            }
 
             if (productsData) await db.products.bulkAdd(productsData as SellableProduct[]);
             if (customersData) await db.customers.bulkAdd(customersData as Customer[]);
             if (printersData) await db.printers.bulkAdd(printersData as Printer[]);
-            if (identityData) await db.identity.add(identityData as any); // PHYSICAL VAULT WRITE
             
             if (wasSyncSuccessful) await db.offlineSales.clear();
         });
 
         await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
-        return 'Sovereign Node is synchronized with global ledger.';
+        return 'Sovereign Node identity anchored.';
     };
 
     toast.promise(promise(), {
-        loading: 'Syncing Ledger...',
+        loading: 'Anchoring Sovereign Node...',
         success: (message) => {
             const time = format(new Date(), 'dd MMM, hh:mm a');
             localStorage.setItem('lastSyncTime', time);
             setLastSyncTime(time);
             return message;
         },
-        error: (err: any) => `Sync Interrupted: ${err.message}`,
+        error: (err: any) => `Handshake Interrupted: ${err.message}`,
         finally: () => setIsSyncing(false),
     });
-  }, [isSyncing, isHandshakeReady, queryClient, profile?.business_id]);
+  }, [isSyncing, isHandshakeReady, queryClient, profile?.id, profile?.business_id]);
   
   useEffect(() => {
     setIsOnline(navigator.onLine);
     setLastSyncTime(localStorage.getItem('lastSyncTime'));
+
+    // Immediate sync on mount if handshake is ready but local vault is empty
+    if (isHandshakeReady && !localStorage.getItem('lastSyncTime')) {
+        triggerSync();
+    }
 
     const handleOnline = () => {
       setIsOnline(true);

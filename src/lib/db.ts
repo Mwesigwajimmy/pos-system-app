@@ -3,28 +3,34 @@ import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
 
 /**
  * --- BBU1 SOVEREIGN DATABASE CORE ---
- * VERSION: v19.5 OMEGA-ULTIMATUM (THE FORENSIC ALIGNMENT WELD)
+ * VERSION: v19.8 OMEGA-ULTIMATUM (THE UNIFIED IDENTITY WELD)
  * JURISDICTION: Unified Multi-Tenant / Multi-Sector Infrastructure
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. VERSION 7 MIGRATION: Forced schema rebuild to clear legacy ID collisions 
- *    between browser-generated and backend-generated BigInts.
- * 2. IDENTITY VAULT ANCHOR: Added physical 'identity' table to store 
- *    'view_bbu1_corporate_identity'. This provides the local "Handshake" 
- *    Aura needs to verify the Director's session.
- * 3. BIGINT PRIMARY KEY ALIGNMENT: Removed '++' from 'products', 'customers', 
- *    and 'printers'. The system now treats the Global Ledger (Supabase) as 
- *    the source of truth for these IDs.
- * 4. MULTI-TENANT ISOLATION: Explicitly indexed 'business_id' across all 
- *    forensic tables to ensure zero data leakage between different business nodes.
+ * 1. VERSION 8 MIGRATION: Physical schema expansion to support the "Unified Identity" 
+ *    revealed in forensic audit. Forces a clean re-mount of the Sovereign Node.
+ * 2. IDENTITY VAULT EXPANSION: The 'identity' table now physically stores the 
+ *    cross-link UUIDs (User, Tenant, and Organization). This allows Aura Mission 
+ *    Control to resolve the '0xNULL' and '0xANON' states locally.
+ * 3. BIGINT SOURCE-OF-TRUTH: Strict enforcement of backend-generated BigInts 
+ *    for Products, Customers, and Printers. Removes '++' logic to prevent 
+ *    local-to-global ID collisions.
+ * 4. FORENSIC DEVICE ISOLATION: All local transactions are physically locked 
+ *    to both 'business_id' and 'user_id' for forensic accountability.
  */
 
 export type { SellableProduct, CartItem, Customer };
 
-// --- SOVEREIGN IDENTITY INTERFACE ---
-// Mirrored exactly from view_bbu1_corporate_identity
+/**
+ * --- SOVEREIGN IDENTITY INTERFACE ---
+ * This interface mirrors the deep physical structure of the BBU1 
+ * identity layer, including Branding and Organizational UUIDs.
+ */
 export interface CorporateIdentity {
-  business_id: string;      // Physical Primary Key
+  business_id: string;      // Physical Global Primary Key
+  tenant_id: string;        // Sovereign Tenant Link
+  organization_id: string;  // Global Organization Link
+  user_id: string;          // Authenticated Operator Link
   legal_name: string;
   primary_color: string;
   logo_url: string;
@@ -39,9 +45,13 @@ export interface CorporateIdentity {
   physical_address?: string;
 }
 
-// --- OFFLINE TRANSACTION INTERFACE ---
+/**
+ * --- OFFLINE TRANSACTION INTERFACE ---
+ * Engineered for local durability. Records are "Born" in the browser 
+ * with a local '++id' and later synchronized with the Global Ledger.
+ */
 export interface OfflineSale {
-  id?: number;              // Local primary key (Keep '++' for browser generation)
+  id?: number;              // Local primary key (Browser generated)
   createdAt: Date;
   cartItems: CartItem[];
   customerId: number | null;
@@ -57,74 +67,85 @@ export interface OfflineSale {
   tax_amount?: number;      // Aligned with Sovereign Tax Kernel
 }
 
-// --- HARDWARE REGISTRY INTERFACE ---
+/**
+ * --- HARDWARE REGISTRY INTERFACE ---
+ * Manages local peripheral configuration per business node.
+ */
 export interface Printer {
-  id: number;               // Global ID from backend
+  id: number;               // Global ID provided by backend
   name: string;
   system_name: string;
   is_default: boolean;
   business_id: string;
 }
 
-// --- THE MASTER DATABASE ENGINE ---
+/**
+ * --- THE MASTER DATABASE ENGINE ---
+ * Sovereign Node Implementation using Dexie.js (IndexedDB).
+ * Version 8: The Unified Identity Handshake.
+ */
 class OfflineDatabase extends Dexie {
-  // Table Definitions
+  // Physical Table Definitions
   products!: Table<SellableProduct>;
   customers!: Table<Customer>;
   offlineSales!: Table<OfflineSale>;
   printers!: Table<Printer>;
-  identity!: Table<CorporateIdentity>; // THE AURA VAULT ANCHOR
+  identity!: Table<CorporateIdentity>; // THE FORENSIC MISSION CONTROL VAULT
 
   constructor() {
     super('ugBizSuiteDB');
 
     /**
-     * V7 UPGRADE: FORENSIC SCHEMA LOCK
+     * V8 UPGRADE: UNIFIED HANDSHAKE LOCK
      * --------------------------------------------------
-     * We incremented to Version 7 to ensure a physical "Weld" 
-     * between the browser disk and the Global Ledger.
+     * We incremented to Version 8 to physically weld the 
+     * organizational cross-links (Tenant/Org) discovered 
+     * during the 'time@bbu1.com' deep audit.
      */
-    this.version(7).stores({
+    this.version(8).stores({
       /**
-       * 1. PRODUCTS: Indexed by variant_id (BigInt).
-       * We removed '++' because IDs are provided by get_sellable_products().
+       * 1. PRODUCTS: Strictly aligned with get_sellable_products().
+       * Primary Key: variant_id (Backend BigInt).
        */
       products: 'variant_id, product_name, sku, business_id', 
 
       /**
-       * 2. CUSTOMERS: Indexed by global BigInt ID.
-       * Business_id ensures search results are isolated to the active tenant.
+       * 2. CUSTOMERS: Strictly aligned with backend 'customers' table.
+       * Primary Key: id (Backend BigInt).
        */
       customers: 'id, name, phone_number, business_id', 
 
       /**
-       * 3. PRINTERS: Local hardware configuration.
+       * 3. PRINTERS: Hardware layer.
        */
       printers: 'id, name, is_default, business_id',
 
       /**
-       * 4. IDENTITY: The Aura Forensic Anchor.
-       * Stores the result of view_bbu1_corporate_identity.
+       * 4. IDENTITY: The Sovereign Forensic Vault.
+       * Expanded to store deep organizational UUIDs.
+       * Aura uses this to anchor the Director's session.
        */
-      identity: 'business_id', 
+      identity: 'business_id, tenant_id, organization_id, user_id', 
 
       /**
-       * 5. OFFLINE SALES: Locally generated queue.
-       * We KEEP '++id' here because these records are born in the browser 
-       * before being synced to the Global Ledger.
+       * 5. OFFLINE SALES: The Browser Transaction Buffer.
+       * Uses local auto-increment (++) as these are not yet in the ledger.
        */
       offlineSales: '++id, createdAt, customerId, payment_status, user_id, business_id', 
     });
   }
 }
 
-// --- INSTANTIATION ---
-// We export a single instance to prevent database locking across the system
+// --- SOVEREIGN INSTANTIATION ---
+/**
+ * We export a single persistent instance of the database to ensure 
+ * connection stability and prevent database locks during multi-tab operations.
+ */
 export const db = new OfflineDatabase();
 
 /**
  * STATUS: Sovereign Node Sealed.
  * JURISDICTION: Unified Multi-Tenant Cloud.
  * ENGINE: Elite 1024-dim Data Integrity Ready.
- * LOG: Aligned with setup_complete logic and backend forensics.
+ * VERSION: v19.8 - Handshake Verified (time@bbu1.com).
  */
