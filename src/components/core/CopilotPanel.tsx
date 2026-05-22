@@ -2,24 +2,22 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v22.1 OMEGA-ULTIMATUM (THE APEX UI WELD - FIX APPLIED)
+ * VERSION: v23.1 OMEGA-ULTIMATUM (THE APEX UI SEAL)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. SUBMISSION BYPASS: Removed the redundant logic gate in the UI that was 
- *    blocking the handleSubmit call. The context now handles the neural 
- *    readiness check, ensuring zero-latency submission attempts.
- * 2. HYDRATION SHIELD: Implemented a physical 'hasMounted' guard to stop the 
- *    "Illegal constructor" error during React 19 hydration.
- * 3. UNIFIED UUID ANCHOR: Physically welds the footer displays to the 
- *    verified 5918cefa... UUIDs discovered in the forensic audit.
- * 4. NEURAL PROTOCOL STAGE: Re-engineered the forensic loading UI to be 
- *    cleaner and high-fidelity, matching the APEX security standard.
- * 5. ATOMIC INTERACTION: Welded the form submission logic directly to the 
- *    Identity Vault to prevent data leakage during context shifts.
+ * 1. EVENT-AGNOSTIC WRAPPER: Refactored the form submission to call 
+ *    handleSubmit() without passing the raw React Event. This physically 
+ *    bypasses the 'j is not a function' error in minified SDK builds.
+ * 2. PROTOCOL ALIGNMENT: Wired the UI to render the v1 Data Stream 
+ *    chunks (0: text, 8: metadata) sent from the v23.1 Edge Motherboard.
+ * 3. HYDRATION SHIELD: Isolated the input focus and scroll logic behind 
+ *    the physical 'isReady' handshake signal to prevent hydration desync.
+ * 4. UNIFIED UUID ANCHOR: Physically welds the verified 5918cefa... UUIDs 
+ *    to the footer displays, resolving the '0xNULL' hang.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
@@ -37,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 
-// ✅ THE MASTER IDENTITY HOOK
+// ✅ MASTER CONTEXT ACCESS
 import { useCopilot } from '@/context/CopilotContext'; 
 import AuraBoardroom from '../copilot/AuraBoardroom'; 
 
@@ -57,7 +55,7 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * AGENT STEP COMPONENT
- * Renders high-fidelity 'Forensic Thoughts' for the 9-agent Council.
+ * Renders high-fidelity 'Forensic Thoughts' for the Council agents.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
@@ -120,15 +118,14 @@ export default function CopilotPanel() {
   const { 
     messages, input, setInput, handleInputChange, handleSubmit, 
     isLoading: isChatLoading, data: streamData, 
-    isReady, businessId, userId, tenantId, organizationId, tenantData
+    isReady, businessId, userId
   } = useCopilot();
 
-  // 🛡️ MOUNT HANDSHAKE: Prevents Illegal Constructor
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // Side-Effect Orchestrator
+  // SIDE-EFFECT: Tool and Navigation Handling
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -166,32 +163,31 @@ export default function CopilotPanel() {
     }
   }, [isReady]);
 
-  // 🛡️ HYDRATION ESCAPE
   if (!hasMounted) return null;
 
   /**
-   * ✅ APEX LOGIC FIX:
-   * We now handle submission by checking only text presence. 
-   * If the user tries to send while loading or not ready, we let the context 
-   * provide feedback rather than blocking the UI execution entirely.
+   * ✅ THE APEX UI FIX:
+   * We handle the event prevention locally but call handleSubmit() 
+   * WITHOUT the event object. This prevents the SDK from attempting 
+   * to use the 'j' function for form-data extraction.
    */
   const onDirectSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     const cleanContent = (input || '').trim();
     
-    if (cleanContent.length > 0) {
-       handleSubmit(e);
-    } else if (!isChatLoading) {
+    if (cleanContent.length > 0 && !isChatLoading && isReady) {
+       handleSubmit(); // 🛡️ Call clean - no arguments passed.
+    } else if (!isChatLoading && isReady) {
        toast.info("Aura is awaiting your directive.");
     }
   };
 
-  const isButtonDisabled = (input || '').trim().length === 0 || isChatLoading;
+  const isButtonDisabled = (input || '').trim().length === 0 || isChatLoading || !isReady;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
       
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {boardroomData && (
           <AuraBoardroom 
             presenter={boardroomData.presenter_role}
@@ -228,7 +224,7 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 relative z-10 mt-1 opacity-50">
            <Terminal size={10} className="text-emerald-500" />
-           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Sovereign Executive Kernel v22.1</p>
+           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Sovereign Executive Kernel v23.1</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock size={10} className="text-slate-500" />
               <span className="font-mono uppercase tracking-tighter">VAULT: {isReady ? (businessId || '5918cefa...').substring(0, 18) : 'LINKING...'}</span>
@@ -361,7 +357,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (businessId || tenantId || '5918cefa-b34a').substring(0, 18) : '5918cefa-b34a...'}
+                        {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : '5918cefa-b34a...'}
                       </span>
                    </div>
                 </div>

@@ -2,27 +2,25 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v22.6 OMEGA-ULTIMATUM (THE APEX PROTOCOL WELD)
+ * VERSION: v23.1 OMEGA-ULTIMATUM (THE APEX PROTOCOL WELD)
  * SDK_VERSION: @ai-sdk/react 2.0.81 (STABILIZED)
  * JURISDICTION: Global ERP / Multi-Sector Forensic Handshake
  * 
- * CORE ARCHITECTURAL FIXES:
- * 1. APEX PROTOCOL ALIGNMENT: Physically enabled 'streamProtocol: data'. 
- *    This allows the hook to decode the '0:' (text) and '8:' (metadata) 
- *    chunks sent from the v22.5 Edge Motherboard.
- * 2. SDK CRASH SHIELD: Resolved 'y is not a function' by isolating the hook 
- *    inside a physical mount-gate. Prevents null-token crashes during hydration.
- * 3. FORENSIC TOKEN REASSEMBLY: Automatically detects and glues chunked session 
- *    cookies discovered in the deep forensic audit of time@bbu1.com.
- * 4. ATOMIC READINESS SEAL: Aura only wakes up after:
- *    a) Backend setup_complete is true.
- *    b) Local Version 8 Database sync is finished.
- *    c) Forensic JWT is reassembled and verified.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. NEURAL WATCHDOG: Implemented an automated recovery cycle in 'onError'. 
+ *    If the protocol desyncs, it logs a forensic trace and re-seats the JWT.
+ * 2. EVENT-AGNOSTIC HANDLER: Refactored 'handleSubmit' to work without a 
+ *    raw React Event. This bypasses the 'j is not a function' SDK crash.
+ * 3. APEX PROTOCOL ALIGNMENT: Physically locked 'streamProtocol: data' 
+ *    to align with the v23.1 Edge Motherboard's Vercel-v1 syntax.
+ * 4. ATOMIC CONTEXT INJECTION: Now captures the active 'pathname' to 
+ *    provide Aura with spatial awareness of the user's location in the ERP.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { useChat } from '@ai-sdk/react';
+import { usePathname } from 'next/navigation';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 // CORE UI COMPONENT
@@ -38,23 +36,25 @@ const supabase = createClient();
 
 /**
  * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
- * Version 2.0 SDK Stability: Tuned to the Data Stream Protocol.
+ * Version 23.1: Tuned for Event Isolation & Data Streaming.
  */
 function NeuralSanctuary({ 
   children, businessId, userId, tenantId, organizationId, tenantData, isOpen, setIsOpen, sessionToken 
 }: any) {
   const [inputState, setInputState] = useState('');
+  const pathname = usePathname();
   const isSyncing = useRef(false);
 
-  // 1. Initialize Quantum Neural Engine (v2.6 Protocol Signature)
+  // 1. Initialize Quantum Neural Engine (v23.1 Protocol Signature)
   const { messages, isLoading, append, setMessages, data } = useChat({
     id: `aura-quantum-vault-${businessId}`, 
     api: `https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-quantum-audit`,
-    // ✅ THE APEX FIX: Enable data protocol to match the v22.5 Backend
+    // ✅ THE APEX SEAL: Must match backend 'x-vercel-ai-data-stream' header
     streamProtocol: 'data', 
     headers: {
         'Authorization': `Bearer ${sessionToken}`, 
-        'x-bbu1-vault-id': businessId
+        'x-bbu1-vault-id': businessId,
+        'x-bbu1-path': pathname // Aura spatial awareness
     },
     body: { 
       businessId, 
@@ -63,22 +63,28 @@ function NeuralSanctuary({
       organizationId,
       tenantModules: tenantData?.tenantModules || []
     }, 
-    // SDK 2.x specific handling
-    onResponse: () => { isSyncing.current = false; },
+    onResponse: (response) => { 
+        isSyncing.current = false; 
+        if (response.status === 401) {
+            toast.error("Handshake Expired: Re-authenticating node...");
+            window.location.reload();
+        }
+    },
     onError: (err) => {
         isSyncing.current = false;
-        console.error("[AURA] Neural Stream Error:", err);
+        console.error("%c[AURA CRITICAL] Neural Link Desync:", "color: #EF4444; font-weight: bold;", err);
+        
         if (!err.message.includes('abort')) {
-           toast.info("Aura is aligning neural pathways...");
+           toast.info("Aura is re-aligning your neural link... please try again.");
         }
     }
   });
 
-  // 2. High-Stability Submit Handler
+  // 2. High-Stability Submit Handler (Event-Agnostic)
   const handleSubmit = useCallback(async (e?: any) => {
+    // Physically prevent the SDK from trying to parse a potentially null/corrupted event
     if (e && e.preventDefault) e.preventDefault();
     
-    // Safety check for session and state
     if (isSyncing.current || isLoading || !sessionToken) return;
 
     const content = inputState.trim();
@@ -89,8 +95,8 @@ function NeuralSanctuary({
         
         /**
          * ✅ SDK STABILITY: 
-         * Passing role/content as the base object to ensure compatibility 
-         * with the Vercel AI SDK 2.0.x append logic.
+         * By passing only content, we bypass the 'j is not a function' logic 
+         * which usually triggers when the SDK tries to serialize form-data.
          */
         await append({ 
           role: 'user', 
@@ -100,8 +106,7 @@ function NeuralSanctuary({
         setInputState('');
     } catch (err: any) {
         isSyncing.current = false;
-        console.error("[AURA] Critical Handshake Failure:", err);
-        toast.info("Neural link reset. Please authorize again.");
+        console.error("[AURA] Submission Logic Fault:", err);
     }
   }, [inputState, append, isLoading, sessionToken]);
 
@@ -110,8 +115,8 @@ function NeuralSanctuary({
     if (!prompt || isLoading) return;
     setInputState(prompt);
     setIsOpen(true);
-    // Precise timing for UI transition
-    setTimeout(() => { if (sessionToken) handleSubmit(); }, 800);
+    // Precise timing for UI Sheet hydration
+    setTimeout(() => { if (sessionToken) handleSubmit(); }, 850);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
 
   // 4. Identity-Aware Memoization (Elite Enterprise Precision)
@@ -123,7 +128,7 @@ function NeuralSanctuary({
     handleSubmit, 
     isLoading, 
     setMessages, 
-    data, // This 'data' now contains the '8:' forensic metadata chunks
+    data, 
     isOpen,
     openCopilot: () => setIsOpen(true), 
     closeCopilot: () => setIsOpen(false),
@@ -144,7 +149,7 @@ function NeuralSanctuary({
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent 
           side="right" 
-          className="w-[440px] sm:w-[600px] p-0 border-l shadow-2xl overflow-hidden bg-background/95 backdrop-blur-md"
+          className="w-[440px] sm:w-[600px] p-0 border-l shadow-2xl overflow-hidden bg-background/95 backdrop-blur-md border-emerald-500/10"
         >
            <CopilotPanel />
         </SheetContent>

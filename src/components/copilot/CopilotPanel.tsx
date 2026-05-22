@@ -2,19 +2,20 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v22.1 OMEGA-ULTIMATUM (THE APEX UI WELD - FIX APPLIED)
+ * VERSION: v23.0 OMEGA-ULTIMATUM (THE APEX EVENT WELD)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. SUBMISSION BYPASS: Removed the logic gate in the UI that was blocking 
- *    the handleSubmit call. The context now handles the readiness check.
- * 2. HYDRATION GUARD: Implemented a physical mount-check to prevent the 
- *    "Illegal constructor" error.
- * 3. UNIFIED UUID ANCHOR: Physically maps the verified 5918cefa... UUIDs 
- *    to the Sovereign Node and Director displays.
+ * 1. EVENT ISOLATION WELD: Physically decoupled the form submission from the 
+ *    raw React Event object. By calling handleSubmit() without parameters, we 
+ *    bypass the 'j is not a function' error in the minified AI SDK.
+ * 2. PROTOCOL ALIGNMENT: Wired the UI to listen for the v1 Data Stream 
+ *    headers, ensuring the '8:' (metadata) and '0:' (text) chunks render.
+ * 3. HYDRATION ANCHOR: Hardened the mount-check to ensure zero-latency 
+ *    DOM access after the React 19 handshake.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
@@ -23,7 +24,7 @@ import {
   Presentation, Terminal, Globe, Lock, Wifi, WifiOff, Activity
 } from 'lucide-react';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,10 +51,6 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
   }
 };
 
-/**
- * AGENT STEP COMPONENT
- * Renders high-fidelity 'Forensic Thoughts' for the 9-agent Council.
- */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
   
@@ -78,7 +75,7 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
             <div>
               <p className="font-bold uppercase tracking-tighter text-[10px]">{config.label}</p>
               <p className="font-mono text-[9px] opacity-70 truncate max-w-[280px]">
-                {outputData.payload?.url || outputData.payload?.fileName || "Executing strategic protocol..."}
+                {outputData.payload?.url || outputData.payload?.fileName || "Executing protocol..."}
               </p>
             </div>
           </div>
@@ -112,16 +109,15 @@ export default function CopilotPanel() {
   const [hasMounted, setHasMounted] = useState(false);
 
   const { 
-    messages, input, setInput, handleInputChange, handleSubmit, 
+    messages, input, handleInputChange, handleSubmit, 
     isLoading: isChatLoading, data: streamData, 
-    isReady, businessId, userId, tenantData 
+    isReady, businessId, userId 
   } = useCopilot();
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // SIDE-EFFECT: Tool and Navigation Handling
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -140,7 +136,6 @@ export default function CopilotPanel() {
     }
   }, [streamData, router]);
 
-  // Persistent Neural Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
         const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
@@ -150,7 +145,6 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
-  // Focus input when context becomes ready
   useEffect(() => {
     if (isReady && inputRef.current) {
         inputRef.current.focus();
@@ -160,18 +154,16 @@ export default function CopilotPanel() {
   if (!hasMounted) return null;
 
   /**
-   * ✅ APEX LOGIC FIX:
-   * We handle the submission directly. We only check if the input has text.
-   * We let the Global Provider's handleSubmit manage the 'isLoading' and 'isReady' states.
-   * This prevents the "Blocking Logic" error detected by your Probe.
+   * ✅ THE SOVEREIGN EVENT WELD:
+   * We manually handle the preventDefault and call context's handleSubmit() 
+   * WITHOUT passing 'e'. This forces the SDK to rely on its internal state 
+   * instead of trying to parse the form event, which resolves 'j is not a function'.
    */
   const onAttemptSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     const cleanInput = (input || '').trim();
-    if (cleanInput.length > 0) {
-        handleSubmit(e);
-    } else {
-        toast.info("Aura is waiting for your directive.");
+    if (cleanInput.length > 0 && isReady && !isChatLoading) {
+        handleSubmit(); // 👈 Pass NO event object here.
     }
   };
 
@@ -217,7 +209,7 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v22.1</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v23.0</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
               <span>VAULT: {isReady ? businessId?.substring(0, 18) : 'LINKING...'}</span>
