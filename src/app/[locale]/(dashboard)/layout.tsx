@@ -2,14 +2,14 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v19.3 OMEGA-ULTIMATUM (THE ULTIMATE RESPONSE WELD)
+ * VERSION: v19.4 OMEGA-ULTIMATUM (THE ULTIMATE RESPONSE WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. COMPONENT ISOLATION: Moved MobileSidebar to the module scope to prevent 
- *    React from unmounting it during state transitions.
- * 2. ANIMATION STABILITY: Hardened AnimatePresence to ensure the drawer 
- *    physically slides into the viewport on touch.
+ * 1. AUTO-OPEN INITIATIVE: On mobile/small screens, the sidebar is forced open 
+ *    on initial mount to provide immediate navigational access.
+ * 2. SMART-CLOSE LOGIC: Automatically closes the sidebar drawer upon navigation
+ *    to maximize screen real estate for data-heavy modules.
  * 3. Z-INDEX SUPREMACY: Forced the drawer to z-[200] to bypass all AI 
  *    overlays and forensic guards.
  */
@@ -157,8 +157,20 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
+  // ✅ 1. ENTERPRISE AUTO-OPEN ON LOAD (MOBILE)
   useEffect(() => {
-    if (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    if (isMobile) {
+        // Force the sidebar to be open when the application first loads on small screens
+        setIsSidebarOpen(true);
+    }
+  }, [setIsSidebarOpen]);
+
+  // ✅ 2. SMART-CLOSE ON NAVIGATION (MOBILE)
+  useEffect(() => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    if (isSidebarOpen && isMobile) {
+        // Automatically close the sidebar when a user clicks a link to show the content
         setIsSidebarOpen(false);
     }
   }, [pathname, setIsSidebarOpen]);
@@ -175,7 +187,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <Sidebar />
       </div>
 
-      {/* 🟢 MOBILE DRAWER WELD: Now using isolated component for state stability */}
+      {/* 🟢 MOBILE DRAWER WELD */}
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -183,11 +195,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           {/* ✅ THE ACTIVATION WELD: Aggressive touch area and Z-Index isolation */}
           <button 
             type="button" 
-            className="relative z-[110] px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-200 transition-all cursor-pointer" 
+            className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-100 transition-all cursor-pointer" 
             onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                toggleSidebar(); // Dispatch to Global Sidebar State
+                toggleSidebar(); 
             }}
           >
             <Menu className="h-8 w-8" />
