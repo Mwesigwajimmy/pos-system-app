@@ -2,22 +2,26 @@
 
 /**
  * --- BBU1 SOVEREIGN SUPABASE PROVIDER ---
- * VERSION: v18.0 OMEGA (THE LOOP-FREE SEAL)
+ * VERSION: v21.0 OMEGA (THE DUAL-STORAGE WELD)
  * JURISDICTION: Root Identity Hydration
  * 
- * CORE UPGRADES:
- * 1. 429 RATE-LIMIT SHIELD: Removed 'TOKEN_REFRESHED' from the router.refresh() 
- *    trigger. This stops the app from hammering the Auth server and physically 
- *    eliminates the "Request rate limit reached" error.
- * 2. IDENTITY PERSISTENCE: Ensures the session is only refreshed when the 
- *    Director physically enters or exits the vault.
- * 3. NEXT.JS 15 SYNC: Optimized for React 19 concurrent rendering.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. PHYSICAL MIRROR WELD: Logic now automatically synchronizes the cookie-based 
+ *    session into LocalStorage. This allows the Aura Assistant and forensic 
+ *    hooks to access the identity without Base64 overhead.
+ * 2. 429 RATE-LIMIT SHIELD: Maintains the loop-guard that prevents redundant 
+ *    router refreshes during token rotation, protecting against Supabase 429s.
+ * 3. BUSINESS ID PERSISTENCE: Ensures 'bbu1_active_business_id' is physically 
+ *    written to the cookie layer on every auth event to keep the Global Ledger aligned.
+ * 4. CLEAN DISCONNECT: Physically wipes the LocalStorage on 'SIGNED_OUT' to 
+ *    ensure zero-leakage security.
  */
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
+import Cookies from 'js-cookie';
 
 type SupabaseContext = {
   supabase: SupabaseClient;
@@ -45,6 +49,24 @@ export default function SupabaseProvider({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      
+      /**
+       * ✅ THE DUAL-STORAGE WELD
+       * Triggered on every auth event to ensure the browser has a 
+       * physical copy of the identity for the Aura AI brain.
+       */
+      if (currentSession) {
+        // 1. Mirror to LocalStorage for AI Handshake access
+        const storageKey = `sb-oezlqscjymzoeizysljp-auth-token`;
+        localStorage.setItem(storageKey, JSON.stringify(currentSession));
+
+        // 2. Align Business Identity Cookie
+        const bizId = currentSession.user.user_metadata?.business_id || currentSession.user.id;
+        if (bizId) {
+          Cookies.set('bbu1_active_business_id', bizId, { expires: 30, path: '/' });
+        }
+      }
+
       /**
        * ✅ OMEGA LOOP GUARD:
        * We physically block router.refresh() for TOKEN_REFRESHED events.
@@ -53,6 +75,12 @@ export default function SupabaseProvider({
        */
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           console.log(`[Aura Identity] State Change: ${event}. Synchronizing Vault...`);
+          
+          if (event === 'SIGNED_OUT') {
+            localStorage.clear();
+            Cookies.remove('bbu1_active_business_id');
+          }
+
           router.refresh();
       }
     });

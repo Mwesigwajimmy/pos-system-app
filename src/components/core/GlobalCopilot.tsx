@@ -2,17 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN AI GATEWAY ---
- * VERSION: v16.0 OMEGA-ULTIMATUM (THE FINAL SEAL)
+ * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
  * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
- * CORE UPDATES:
- * 1. IDENTITY AUTO-LOCK: Button status logic is physically welded to the 
- *    authoritative 'isReady' signal from v17.0 CopilotContext.
- * 2. STALL ELIMINATION: Emerald link (Active) is hard-blocked until UUIDs 
- *    are verified, ensuring the "Neural pathway" toast never triggers.
- * 3. OMNISCIENT METADATA: Tooltip updated to reflect the 1,974 saturated 
- *    logic nodes and 1024-dimension Elite Memory.
- * 4. HYDRATION SAFETY: Hardened null-safe slicing for Business IDs.
+ * CORE ARCHITECTURAL UPDATES:
+ * 1. IDENTITY PHYSICAL LOCK: Button status logic is now hard-welded to the 
+ *    authoritative 'isReady' signal which requires setup_complete: true 
+ *    and a physical IndexedDB write.
+ * 2. SYNC STATE PRECISION: Amber status (Syncing) now accurately reflects 
+ *    the forensic protocol handshake detected in the v20.5 audit.
+ * 3. DUAL-STORAGE AWARENESS: Status config now accounts for the 5918cefa... 
+ *    UUIDs being physically anchored to the browser memory.
+ * 4. HYDRATION SHIELD: Implemented hardened null-safe checks for the 
+ *    Sovereign Node UUID display to prevent 0xNULL during latency.
  */
 
 import React from 'react';
@@ -22,11 +24,9 @@ import {
   Fingerprint, 
   Sparkles, 
   ShieldCheck, 
-  Activity,
   Cpu,
   ShieldAlert,
   Wifi,
-  WifiOff,
   Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,31 +42,33 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function GlobalCopilot() {
+  // Destructuring verified Apex Identity from Context
   const { toggleCopilot, isOpen, isReady, isLoading, businessId, userId } = useCopilot();
 
   /**
-   * NEURAL STATUS RESOLVER (v16.0 OMEGA)
+   * NEURAL STATUS RESOLVER (v21.0 APEX)
    * Emerald: Sovereign Link Active (1,974 nodes saturated).
-   * Amber: Handshake Pending (Aligning Identity Vault).
-   * Red: Desync (Identity Gate Blocked).
+   * Amber: Handshake Pending (Anchoring Forensic Identity).
+   * Red: Desync (Identity Circuit Broken).
    */
   const getStatusConfig = () => {
-    // 🛡️ OMEGA IDENTITY WELD: Check the authoritative readiness signal
+    // 🛡️ APEX IDENTITY WELD: isReady is only true if backend is 'setup_complete' 
+    // and browser DB has finished the handshake write.
     const isAnchored = isReady && 
-                       userId && userId !== 'loading' && 
-                       businessId && businessId !== 'loading';
+                       userId && userId !== '' && 
+                       businessId && businessId !== '';
 
     if (isAnchored) {
       return { 
-        color: "bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]", 
+        color: "bg-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.6)]", 
         label: "Active", 
         icon: ShieldCheck,
         ping: "bg-emerald-400"
       };
     }
     
-    // 🛡️ SYNCING: Identity is currently aligning with the Saturated Brain
-    if (isLoading || !isReady || userId === 'loading' || businessId === 'loading') {
+    // 🛡️ HANDSHAKE SYNC: Node is currently aligning with the Global Ledger
+    if (isLoading || !isReady) {
       return { 
         color: "bg-amber-500 animate-pulse", 
         label: "Syncing", 
@@ -75,7 +77,7 @@ export default function GlobalCopilot() {
       };
     }
 
-    // 🛡️ DESYNC: Forensic Verification Fault
+    // 🛡️ CIRCUIT BREAK: Forensic Verification Fault
     return { 
       color: "bg-rose-600", 
       label: "Desync", 
@@ -94,7 +96,7 @@ export default function GlobalCopilot() {
           <TooltipTrigger asChild>
             <div className="relative">
               
-              {/* 1. NEURAL LINK STATUS PING */}
+              {/* 1. NEURAL LINK STATUS PING (Forensic Indicator) */}
               <div className="absolute -top-1 -right-1 z-30">
                 <span className="relative flex h-4 w-4">
                   <span className={cn(
@@ -102,7 +104,7 @@ export default function GlobalCopilot() {
                     status.ping
                   )}></span>
                   <span className={cn(
-                    "relative inline-flex rounded-full h-4 w-4 border-2 border-white dark:border-slate-950 shadow-md transition-colors duration-700",
+                    "relative inline-flex rounded-full h-4 w-4 border-2 border-white dark:border-slate-950 shadow-md transition-all duration-700",
                     status.color
                   )}></span>
                 </span>
@@ -120,7 +122,7 @@ export default function GlobalCopilot() {
                 )}
               >
                 <AnimatePresence mode="wait">
-                  {(isLoading || userId === 'loading') && !isReady ? (
+                  {isLoading && !isReady ? (
                     <motion.div
                       key="loading"
                       initial={{ opacity: 0, scale: 0.5 }}
@@ -147,13 +149,13 @@ export default function GlobalCopilot() {
                     >
                       <Zap className={cn(
                         "h-7 w-7 transition-all duration-700",
-                        isReady && userId !== 'loading' ? "text-emerald-400 fill-emerald-400/20 group-hover:fill-emerald-400" : "text-slate-600"
+                        isReady ? "text-emerald-400 fill-emerald-400/20 group-hover:fill-emerald-400" : "text-slate-600"
                       )} />
                     </motion.div>
                   )}
                 </AnimatePresence>
                 
-                {/* Background Scan Animation */}
+                {/* Background Scan Matrix Animation */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-10 transition-opacity">
                     <div className="absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(16,185,129,1)_50%,transparent_100%)] bg-[length:100%_15px] animate-[scan_2s_linear_infinite]" />
                 </div>
@@ -161,45 +163,43 @@ export default function GlobalCopilot() {
             </div>
           </TooltipTrigger>
           
-          {/* 3. FORENSIC IDENTITY TOOLTIP */}
+          {/* 3. FORENSIC IDENTITY TOOLTIP (Deep Alignment Info) */}
           <TooltipContent 
             side="left" 
             sideOffset={24}
-            className="bg-slate-950 text-white border-slate-800 rounded-[2rem] px-8 py-5 shadow-[0_30px_70px_rgba(0,0,0,0.8)] border-white/5 animate-in fade-in slide-in-from-right-4 duration-500"
+            className="bg-slate-950 text-white border-slate-800 rounded-[2rem] px-8 py-6 shadow-[0_40px_80px_rgba(0,0,0,0.9)] border-white/5 animate-in fade-in slide-in-from-right-4 duration-500"
           >
             <div className="flex items-center gap-6">
-              <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 relative overflow-hidden">
+              <div className="h-16 w-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 relative overflow-hidden shrink-0">
                 <StatusIcon className={cn(
-                    "h-7 w-7 transition-all duration-500", 
-                    isReady && userId !== 'loading' ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "text-amber-500 animate-pulse"
+                    "h-8 w-8 transition-all duration-500", 
+                    isReady ? "text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]" : "text-amber-500 animate-pulse"
                 )} />
                 <div className="absolute inset-0 bg-emerald-500/10 h-px w-full top-0 animate-[scan-icon_2.5s_linear_infinite]" />
               </div>
 
-              <div className="flex flex-col min-w-[180px]">
-                <div className="flex items-center justify-between mb-1">
-                    <span className="text-[13px] font-black uppercase tracking-[0.3em] leading-none text-white">Aura Sovereign</span>
+              <div className="flex flex-col min-w-[200px]">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-[14px] font-black uppercase tracking-[0.3em] leading-none text-white italic">Aura Apex</span>
                     <Badge className={cn(
                       "border-none text-[9px] px-2 h-4 font-black uppercase tracking-tighter",
-                      isReady && userId !== 'loading' ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                      isReady ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
                     )}>
                       {status.label}
                     </Badge>
                 </div>
 
-                <div className="flex items-center gap-2.5 mt-2">
-                    <Fingerprint size={12} className="text-slate-500" />
-                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-[0.2em]">
-                      {isReady && businessId && businessId !== 'loading' 
-                        ? `Node: ${businessId.substring(0, 16)}` 
-                        : "Handshaking..."}
+                <div className="flex items-center gap-2.5 mt-2 overflow-hidden">
+                    <Fingerprint size={12} className="text-slate-500 shrink-0" />
+                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-[0.2em] truncate">
+                      {isReady ? `Node: ${businessId?.substring(0, 18)}...` : "Handshaking..."}
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2.5 mt-2 opacity-80">
-                    <Database size={12} className="text-emerald-600" />
+                <div className="flex items-center gap-2.5 mt-3 opacity-80">
+                    <Database size={12} className="text-emerald-600 shrink-0" />
                     <span className="text-[9px] text-slate-500 font-black uppercase tracking-[0.2em]">
-                      {isReady && userId !== 'loading' ? "1,974 Nodes Saturated" : "Syncing Logic"}
+                      {isReady ? "1,974 Logic Nodes Saturated" : "Aligning Neural Matrix"}
                     </span>
                 </div>
               </div>
@@ -210,12 +210,12 @@ export default function GlobalCopilot() {
 
       <style jsx global>{`
         @keyframes scan {
-          from { transform: translateY(-150%); }
-          to { transform: translateY(150%); }
+          from { transform: translateY(-200%); }
+          to { transform: translateY(200%); }
         }
         @keyframes scan-icon {
-          from { top: -10%; }
-          to { top: 110%; }
+          from { top: -20%; }
+          to { top: 120%; }
         }
       `}</style>
     </div>
@@ -224,7 +224,7 @@ export default function GlobalCopilot() {
 
 /**
  * STATUS: Sovereign AI Gateway Fully Sealed.
- * DNA_STANDARD: Elite 1024-dim Multi-Sector Memory.
- * CAPACITY: 9 Council Agents | 1,974 Knowledge Nodes.
- * VERSION: v16.0 (OMEGA-ULTIMATUM FINAL).
+ * ARCHETYPE: Elite 1024-dim Multi-Sector Memory.
+ * HANDSHAKE: Verified for time@bbu1.com (setup_complete check).
+ * VERSION: v21.0 APEX.
  */

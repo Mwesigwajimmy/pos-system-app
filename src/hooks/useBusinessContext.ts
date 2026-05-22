@@ -2,18 +2,19 @@
 
 /**
  * --- LITONU BUSINESS BASE UNIVERSE LTD - ENTERPRISE IDENTITY SCHEMA ---
- * VERSION: v18.5 OMEGA-ULTIMATUM (THE DEFINITIVE IDENTITY WELD)
+ * VERSION: v20.5 OMEGA-ULTIMATUM (THE FORENSIC HANDSHAKE WELD)
  * JURISDICTION: Global Dashboard / AI Handshake / Multi-Tenant Alignment
  * 
- * CORE UPGRADES:
- * 1. SESSION MATERIALIZATION: Switched to getSession() to physically force the 
- *    Access Token (JWT) into browser memory, solving the "No Access Token" error.
- * 2. NAMING RECONCILIATION: Explicitly maps both CamelCase and snake_case IDs 
- *    to ensure CopilotContext and the Sidebar never lose the anchor.
- * 3. 429 RATE LIMIT SHIELD: Optimized parallel RPC probing with strict stale-time 
- *    controls to prevent Supabase request flooding during latency.
- * 4. PATIENT HANDSHAKE: The is_ready signal is now strictly boolean-validated 
- *    against the database return to prevent "Ghost Identity" crashes.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. PHYSICAL ID RECONCILIATION: Prioritizes the 'userId' and 'businessId' 
+ *    returned by the get_aura_handshake RPC. This ensures the 5918cefa... 
+ *    UUIDs are physically anchored even if cookies are missing (Incognito).
+ * 2. NEURAL READINESS GATE: The 'is_ready' signal is now a multi-factor boolean
+ *    that verifies the profile, the branding, and the AI engine status.
+ * 3. SESSION MATERIALIZATION: Forces a physical getSession call to ensure the 
+ *    JWT is available for the parallel RPC probes, preventing 401 desyncs.
+ * 4. GHOST IDENTITY PROTECTION: Implements strict null-checks on the Aura payload
+ *    to prevent the "VAULT: LINKING" hang in fresh browser environments.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -49,23 +50,22 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
     const supabase = createClient();
 
     // 1. 🛡️ PHYSICAL SESSION RECOVERY
-    // We use getSession first to ensure the JWT is actually available for the RPCs.
+    // We use getSession to force the JWT into memory for the subsequent RPCs.
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session?.user) {
-        console.warn("LITONU_SECURITY: Identity Latent. Session not found.");
+        console.warn("[LITONU_SECURITY] Identity Latent. Session not found.");
         return null;
     }
 
     const user = session.user;
 
-    // 2. Identify the active node from the authoritative cookie
-    // Switched to js-cookie for more reliable cross-browser parsing
+    // 2. Identify the active node
     const activeBizId = Cookies.get('bbu1_active_business_id');
 
     try {
         // 🛡️ THE STABILIZED PARALLEL PROBE
-        // Probing both the Aura Brain and the General User Context simultaneously.
+        // We fetch the general context and the Aura Handshake simultaneously.
         const [auraRes, contextRes] = await Promise.all([
             supabase.rpc('get_aura_handshake', { 
                 p_target_biz_id: (activeBizId && activeBizId !== 'loading') ? activeBizId : null 
@@ -75,54 +75,58 @@ async function fetchBusinessContextData(): Promise<BusinessContextData | null> {
             })
         ]);
 
-        // Error Logging for Forensic Audits
+        // Forensic Log Check
         if (auraRes.error) console.error("AURA_PROBE_FAULT:", auraRes.error.message);
         if (contextRes.error) console.error("CONTEXT_PROBE_FAULT:", contextRes.error.message);
 
         const aura = auraRes.data; 
         const ctx = Array.isArray(contextRes.data) ? contextRes.data[0] : contextRes.data;
 
-        // If the vault is completely unreachable, signal unready state
-        if (!aura || !ctx) {
-            console.warn("LITONU_SECURITY: Vault identity not aligned. Handshake pending.");
+        // If the vault is unreachable or backend returns nulls, keep handshake pending
+        if (!aura || !ctx || !aura.userId) {
+            console.warn("[LITONU_SECURITY] Handshake incomplete. IDs missing from payload.");
             return null;
         }
 
-        // 3. THE DEEP IDENTITY WELD (Precision Mapping)
-        // Resolving naming discordance between the AI engine and the UI components.
+        /**
+         * 3. THE DEEP IDENTITY WELD (APEX ALIGNMENT)
+         * Resolving the 5918cefa... identity revealed in the forensic audit.
+         * We prioritize 'aura.userId' and 'aura.businessId' as the 
+         * physical proof of identity.
+         */
         return {
-            // ANCHORS
-            userId: user.id,
+            // ANCHORS (Physically Welded)
+            userId: aura.userId || user.id,
             businessId: aura.businessId || activeBizId || ctx.business_id,
-            businessName: aura.businessName || ctx.business_display_name || 'Sovereign Node',
-            industry: aura.industry || ctx.industry_sector || 'General Enterprise',
+            businessName: aura.businessName || ctx.business_display_name || 'APEX',
+            industry: ctx.industry_sector || aura.industry || 'General Enterprise',
             email: user.email || '',
-            country: aura.country || ctx.country || 'UG',
+            country: ctx.country || aura.country || 'UG',
             
             // GOVERNANCE
-            user_role: ctx.user_role || aura.role || 'admin',
-            system_power: ctx.system_power || aura.power || null,
+            user_role: ctx.user_role || 'admin',
+            system_power: ctx.system_power || null,
             
             // CONTEXT
-            business_display_name: ctx.business_display_name || aura.businessName,
-            industry_sector: ctx.industry_sector || aura.industry,
+            business_display_name: aura.businessName || ctx.business_display_name,
+            industry_sector: aura.industry || ctx.industry_sector,
             business_type: ctx.business_type || 'Retail / Wholesale',
-            reporting_currency: ctx.reporting_currency || aura.currency || 'UGX',
+            reporting_currency: ctx.reporting_currency || 'UGX',
             setup_complete: !!ctx.setup_complete,
-            branding_logo: ctx.branding_logo || aura.logo,
+            branding_logo: aura.logo || ctx.branding_logo,
 
             // STATUS
             subscription_status: ctx.subscription_status || 'active',
-            subscription_plan: ctx.subscription_plan || 'Sovereign',
+            subscription_plan: ctx.subscription_plan || 'ENTERPRISE',
 
             // 🛡️ THE READINESS SEAL
-            // Physically locked to the boolean return of the database handshake
-            is_ready: aura.is_ready === true,
+            // Aura only unlocks if the backend explicitly returns is_ready: true
+            is_ready: aura.is_ready === true && ctx.setup_complete === true,
             brain_status: aura.status || 'FULLY_ALIGNED'
         };
 
     } catch (err) {
-        console.error("LITONU_CRITICAL: Neural Bridge Collapse", err);
+        console.error("[LITONU_CRITICAL] Neural Bridge Collapse:", err);
         return null;
     }
 }
@@ -136,12 +140,11 @@ export function useBusinessContext() {
       queryKey: ['businessContext'], 
       queryFn: fetchBusinessContextData,
       
-      // UPGRADE: Stabilization Settings
-      staleTime: 1000 * 60 * 2,     // 2-minute cache to prevent 429 Rate Limits
-      gcTime: 1000 * 60 * 10,        // Keep in memory for 10 minutes
-      refetchOnWindowFocus: true,    // Refresh if user returns to tab to catch session updates
+      // Stabilization Settings for Multi-Tenant Scaling
+      staleTime: 1000 * 60 * 5,     // 5-minute cache
+      gcTime: 1000 * 60 * 15,        // 15-minute memory retention
+      refetchOnWindowFocus: true,    
       retry: (failureCount, error: any) => {
-          // Do not retry if we hit a 429, wait for the next scheduled fetch
           if (error?.status === 429) return false;
           return failureCount < 2;
       },

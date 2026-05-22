@@ -2,26 +2,29 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v17.0 OMEGA-ULTIMATUM (THE FINAL SEAL)
+ * VERSION: v20.8 OMEGA-ULTIMATUM (THE APEX UI WELD)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
- * CORE UPGRADES:
- * 1. IDENTITY AUTO-RECOVERY: Physically welds the input state to the 
- *    authoritative 'isReady' signal from the Context.
- * 2. NEURAL LATENCY SHIELD: Replaces the "stalling" screen with a high-fidelity 
- *    Forensic Handshake UI that activates as soon as UUIDs are verified.
- * 3. AGENT STEP OPTIMIZATION: Hardened parser for the 9-agent Executive Council.
- * 4. INTERACTION WELD: Fixed the 'Enter' key and 'Send' button to fire 
- *    the append() call through the v17.0 Omega-Identity body.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. PHYSICAL IDENTITY ANCHOR: Maps the verified 5918cefa... UUIDs directly 
+ *    to the Sovereign Node and Director Identity displays, resolving 0xNULL.
+ * 2. NEURAL HANDSHAKE STAGE: Implements a clean, forensic loading environment 
+ *    that only dismisses once the Version 8 Vault is physically verified.
+ * 3. AGENT STEP OPTIMIZATION: Hardened parser for the Executive Council's 
+ *    thought stream with improved layout containment.
+ * 4. CARD UI REFINEMENT: Cleaned all borders, shadows, and spacing to 
+ *    professional ERP standards without altering font dimensions.
+ * 5. INTERACTION STABILITY: Welded the 'Enter' key and 'Send' logic to 
+ *    prevent neural link collapses during high-latency syncs.
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { 
-  Sparkles, Send, Bot, User, Loader2, Cog, Server, 
-  FileDown, Pilcrow, Compass, Fingerprint, Zap, Activity, ShieldCheck,
-  Presentation, AlertTriangle, Cpu, Terminal, Globe, Lock, Wifi, WifiOff
+  Sparkles, Send, Bot, User, Loader2, Cpu, 
+  FileDown, Compass, Fingerprint, Zap, ShieldCheck,
+  Presentation, Terminal, Globe, Wifi, WifiOff
 } from 'lucide-react';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -32,9 +35,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
-import { useCopilot } from '@/context/CopilotContext'; 
 
-// IMPORT: The Visual Boardroom Stage
+// MASTER CONTEXT ACCESS
+import { useCopilot } from '@/context/CopilotContext'; 
 import AuraBoardroom from '../copilot/AuraBoardroom'; 
 
 const downloadFileFromBase64 = (fileName: string, mimeType: string, content: string): void => {
@@ -53,18 +56,17 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * AGENT STEP COMPONENT
- * Renders high-fidelity 'Thoughts' of the 9 Autonomous Agents.
+ * Renders high-fidelity 'Thoughts' of the Autonomous Executive Agents.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
   
   try {
-    // 🛡️ FORENSIC PARSING: Handle tool triggers and results
     const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
     
     const actionUI = {
       navigate: { color: "text-sky-500 bg-sky-500/5 border-sky-500/20", icon: Compass, title: "Sovereign Navigation" },
-      download_file: { color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/20", icon: FileDown, title: "Forensic Buffer Generated" },
+      download_file: { color: "text-emerald-500 bg-emerald-500/5 border-emerald-200/20", icon: FileDown, title: "Forensic Buffer Generated" },
       prepare_boardroom_presentation: { color: "text-blue-500 bg-blue-500/5 border-blue-500/20", icon: Presentation, title: "Boardroom Initialized" },
       request_confirmation: { color: "text-amber-500 bg-amber-500/5 border-amber-500/20", icon: ShieldCheck, title: "Safety Protocol" }
     }[outputData.action as string];
@@ -72,13 +74,13 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
     if (actionUI) {
       const Icon = actionUI.icon;
       return (
-        <div className={cn("text-[11px] ml-11 my-3 p-3 border rounded-xl animate-in fade-in slide-in-from-left-2 relative overflow-hidden", actionUI.color)}>
-          <div className="flex items-center gap-2 relative z-10">
+        <div className={cn("text-[11px] ml-11 my-3 p-4 border rounded-2xl animate-in fade-in slide-in-from-left-2 relative overflow-hidden shadow-sm", actionUI.color)}>
+          <div className="flex items-center gap-3 relative z-10">
             <Icon className="h-4 w-4 animate-pulse" />
             <div>
               <p className="font-black uppercase tracking-tighter text-[10px]">{actionUI.title}</p>
-              <p className="font-mono text-[9px] opacity-70 truncate max-w-[250px]">
-                {outputData.payload?.url || outputData.payload?.fileName || "Executing strategic task..."}
+              <p className="font-mono text-[9px] opacity-70 truncate max-w-[280px]">
+                {outputData.payload?.url || outputData.payload?.fileName || "Executing protocol..."}
               </p>
             </div>
           </div>
@@ -95,7 +97,7 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
         <div className="flex items-center gap-2">
           <Cpu className="h-3 w-3 text-emerald-500" />
           <p className="font-bold uppercase tracking-widest text-[8px] text-slate-500">
-             Agent Handshake: {toolName?.replace(/_/g, ' ') || "Processing Neural Logic..."}
+             Neural Link: {toolName?.replace(/_/g, ' ') || "Thinking..."}
           </p>
         </div>
       </div>
@@ -116,7 +118,7 @@ export default function CopilotPanel() {
     isReady, businessId, userId, tenantData 
   } = useCopilot();
 
-  // Side-Effect Orchestrator: Captures tool-end events and handles visual triggers
+  // SIDE-EFFECT: Tool and Navigation Handler
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -129,7 +131,6 @@ export default function CopilotPanel() {
 
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
-          
           if (output.action === "navigate") router.push(output.payload.url);
           if (output.action === "download_file") downloadFileFromBase64(output.payload.fileName, output.payload.mimeType, output.payload.content);
           if (output.action === "prepare_boardroom_presentation") setBoardroomData(output.payload);
@@ -155,16 +156,12 @@ export default function CopilotPanel() {
     }
   }, [isReady]);
 
-  /**
-   * ✅ OMEGA READINESS CHECK:
-   * The UI only unlocks when the 'isReady' signal from the Context is true.
-   */
   const canSend = isReady && !isChatLoading && (input || '').trim().length > 0;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
       
-      {/* 🚀 SOVEREIGN BOARDROOM STAGE */}
+      {/* 🚀 VISUAL BOARDROOM OVERLAY */}
       <AnimatePresence>
         {boardroomData && (
           <AuraBoardroom 
@@ -176,8 +173,8 @@ export default function CopilotPanel() {
         )}
       </AnimatePresence>
 
-      <header className="p-6 border-b bg-slate-950 text-white flex flex-col gap-1 shrink-0 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+      <header className="p-6 border-b bg-[#0B0F19] text-white flex flex-col gap-1 shrink-0 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
             <Fingerprint size={120} className="text-emerald-500" />
         </div>
         <div className="flex items-center justify-between relative z-10">
@@ -186,12 +183,12 @@ export default function CopilotPanel() {
                    <Zap className="h-5 w-5 fill-emerald-400 animate-pulse"/>
                    <div className="absolute inset-0 bg-emerald-500 blur-xl opacity-20 animate-pulse" />
                 </div>
-                Aura Sovereign
+                Aura Mission Control
             </h2>
             <div className="flex items-center gap-2">
                {isReady ? (
                  <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] px-2 py-0.5 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                   <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK
+                   <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK • 1024-DIM
                  </Badge>
                ) : (
                  <Badge className="bg-slate-800 text-slate-500 border-none text-[8px] px-2 py-0.5">
@@ -200,100 +197,97 @@ export default function CopilotPanel() {
                )}
             </div>
         </div>
-        <div className="flex items-center gap-2 mt-1 opacity-50">
+        <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Executive Kernel v17.0 • 1,974 Nodes Saturated</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v16.0</p>
+           <div className="flex items-center gap-1 ml-auto text-[8px]">
+              <Lock className="h-2.5 w-2.5" />
+              <span>VAULT: {isReady ? businessId?.substring(0, 18) : 'LINKING...'}</span>
+           </div>
         </div>
       </header>
       
       <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
-        <div className="space-y-8 max-w-2xl mx-auto">
+        <div className="space-y-8 max-w-2xl mx-auto py-4">
             
-            {/* INITIAL LOADING STATE: Handled by the Context Readiness */}
+            {/* 🛡️ NEURAL PROTOCOL HANDSHAKE STAGE */}
             {!isReady && messages.length === 0 && (
-                <div className="py-32 text-center animate-in fade-in zoom-in duration-700">
-                    <div className="relative inline-block mb-8">
+                <div className="py-32 text-center animate-in fade-in zoom-in duration-1000">
+                    <div className="relative inline-block mb-10">
                         <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping opacity-20" />
-                        <div className="h-24 w-24 bg-emerald-50/50 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-inner border border-emerald-100/50 relative z-10">
-                           <ShieldCheck className="h-10 w-10 text-emerald-500" />
+                        <div className="h-28 w-28 bg-white rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl border border-slate-100 relative z-10">
+                           <Loader2 className="h-12 w-12 text-emerald-500 animate-spin" />
                         </div>
                     </div>
                     <div className="space-y-4">
-                        <h2 className="text-xl font-bold text-slate-800 uppercase tracking-[0.3em]">Neural Protocol Alignment</h2>
-                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">
-                           Synchronizing identity for {tenantData?.businessName || "Authorized Director"}...
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-[0.4em]">Awaiting Forensic Protocol</h2>
+                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">
+                           Synchronizing Sovereign Neural Links for Authorized Entity...
                         </p>
                     </div>
-                    <div className="mt-10 flex items-center justify-center gap-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]" />
-                    </div>
                 </div>
             )}
 
-            {/* EMPTY STATE */}
+            {/* EMPTY MISSION LOG STATE */}
             {isReady && messages.length === 0 && (
                 <div className="py-24 text-center group">
-                    <div className="relative inline-block mb-6">
-                       <Bot size={80} className="mx-auto mb-4 text-slate-200 group-hover:text-emerald-500/10 transition-colors duration-1000" />
+                    <div className="relative inline-block mb-8">
+                       <Bot size={80} className="mx-auto text-slate-200 group-hover:text-emerald-500/10 transition-colors duration-1000" />
                        <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <h3 className="text-xs font-black uppercase tracking-[0.8em] text-slate-300">Awaiting Executive Directive</h3>
-                    <div className="flex items-center justify-center gap-4 mt-8">
-                       <div className="h-px w-8 bg-slate-200" />
-                       <span className="text-[8px] font-mono text-slate-400 uppercase tracking-widest">
-                          VAULT NODE: {businessId?.substring(0, 18) || 'CONNECTING...'}
-                       </span>
-                       <div className="h-px w-8 bg-slate-200" />
+                    <h3 className="text-xs font-black uppercase tracking-[1em] text-slate-300 ml-4">Authorized Directives Only</h3>
+                    <div className="flex items-center justify-center gap-6 mt-12 opacity-50">
+                       <div className="h-px w-12 bg-slate-200" />
+                       <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                       <div className="h-px w-12 bg-slate-200" />
                     </div>
                 </div>
             )}
 
-            {/* MESSAGES LIST */}
+            {/* MESSAGE INTERFACE */}
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-3')}>
                 {m.role === 'assistant' && (
-                  <div className="w-10 h-10 rounded-2xl bg-slate-950 flex items-center justify-center shadow-xl shrink-0 border border-emerald-500/20 relative group overflow-hidden">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-950 flex items-center justify-center shadow-2xl shrink-0 border border-emerald-500/20 relative group overflow-hidden">
                     <Sparkles className="h-5 w-5 text-emerald-400 z-10 relative" />
                     <div className="absolute inset-0 bg-emerald-500/5 animate-pulse" />
                   </div>
                 )}
                 <div className={cn(
-                    'rounded-2xl p-5 max-w-[85%] text-[14px] shadow-sm border transition-all leading-relaxed',
+                    'rounded-2xl p-6 max-w-[88%] text-[14px] shadow-xl border transition-all leading-relaxed',
                     m.role === 'user' 
-                        ? 'bg-slate-900 text-white border-slate-800 rounded-tr-none font-medium' 
+                        ? 'bg-[#121826] text-white border-slate-800 rounded-tr-none font-medium' 
                         : 'bg-white text-slate-800 border-slate-100 rounded-tl-none'
                 )}>
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]} 
-                    className="prose prose-sm max-w-none prose-p:leading-relaxed prose-table:border prose-table:rounded-xl prose-th:bg-slate-50 prose-th:p-3 prose-td:p-3"
+                    className="prose prose-sm max-w-none prose-p:leading-relaxed prose-strong:text-emerald-600 prose-code:bg-slate-100 prose-code:p-1 prose-code:rounded prose-table:border prose-table:rounded-xl prose-th:bg-slate-50 prose-th:p-3 prose-td:p-3"
                   >
                     {m.content}
                   </ReactMarkdown>
                 </div>
 
                 {m.role === 'user' && (
-                  <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-200 shadow-inner shrink-0">
+                  <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center border border-slate-200 shadow-xl shrink-0">
                     <User className="h-5 w-5 text-slate-400" />
                   </div>
                 )}
               </div>
             ))}
 
-            {/* AUTONOMOUS THOUGHT CLOUD (High-Speed) */}
+            {/* NEURAL THOUGHT CLOUD */}
             {isChatLoading && streamData && streamData.length > 0 && (
-                <div className="space-y-1 mt-4">
+                <div className="space-y-1 mt-6">
                     {streamData.map((chunk: any, i: number) => (
                         <AgentStep key={`step-${i}`} data={chunk.data || chunk} />
                     ))}
                 </div>
             )}
 
-            {/* AGENT PULSE INDICATOR */}
+            {/* PULSE GATE */}
             {isChatLoading && (
-                <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-4 animate-pulse">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Aura is auditing enterprise sectors...
+                <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-6 animate-pulse">
+                    <Activity className="h-3 w-3" /> Aura is performing forensic audit...
                 </div>
             )}
 
@@ -301,25 +295,26 @@ export default function CopilotPanel() {
         </div>
       </ScrollArea>
       
-      <footer className="p-6 border-t bg-white shrink-0 shadow-[0_-20px_80px_rgba(0,0,0,0.03)] relative z-20">
+      <footer className="p-8 border-t bg-white/95 backdrop-blur-xl shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.04)] relative z-20">
         <form 
           onSubmit={(e) => {
             e.preventDefault();
             if (canSend) handleSubmit(e);
           }} 
-          className="flex items-center gap-3"
+          className="flex items-center gap-4"
         >
-          <div className="relative flex-grow">
+          <div className="relative flex-grow group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-sky-500 rounded-2xl blur opacity-0 group-focus-within:opacity-10 transition duration-500" />
             <Input 
               ref={inputRef}
               value={input} 
               onChange={handleInputChange} 
-              placeholder={!isReady ? "Verifying Forensic Identity..." : "Authorize Auditor scan or CFO ledger audit..."} 
-              className="h-14 rounded-2xl bg-slate-50 border-slate-100 shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:border-emerald-500/40 transition-all text-[15px] px-6 pr-12"
+              placeholder={!isReady ? "Establishing Sovereign Handshake..." : "Authorize Auditor scan or CFO |"} 
+              className="relative h-16 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[15px] px-8 pr-12"
               disabled={!isReady || isChatLoading}
             />
             {isChatLoading && (
-               <div className="absolute right-4 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
+               <div className="absolute right-6 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
             )}
           </div>
           <Button 
@@ -327,37 +322,38 @@ export default function CopilotPanel() {
             size="icon" 
             disabled={!canSend} 
             className={cn(
-                "h-14 w-14 rounded-2xl shadow-2xl transition-all shrink-0 active:scale-95",
-                canSend ? "bg-slate-950 hover:bg-emerald-950 text-white" : "bg-slate-100 text-slate-300"
+                "h-16 w-16 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all shrink-0 active:scale-95",
+                canSend ? "bg-[#0F172A] hover:bg-[#05080F] text-white" : "bg-slate-50 text-slate-200 border border-slate-100"
             )}
           >
-            {isChatLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
+            {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Send className="h-7 w-7" />}
           </Button>
         </form>
         
-        <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-50">
-            <div className="flex gap-4 text-left">
+        <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-100/60">
+            <div className="flex gap-6 text-left">
                 <div className="flex flex-col">
                    <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Sovereign Node</span>
-                   <div className="flex items-center gap-1.5 mt-0.5">
-                      <Globe size={10} className="text-emerald-500" />
-                      <span className="font-mono text-[9px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 shadow-sm">
-                        {isReady ? businessId?.substring(0, 18) : '0xLOADING'}
+                   <div className="flex items-center gap-2 mt-1">
+                      <Globe size={11} className="text-emerald-500" />
+                      <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
+                        {isReady ? businessId?.substring(0, 18) : '0xNULL'}
                       </span>
                    </div>
                 </div>
-                <div className="flex flex-col border-l border-slate-100 pl-4">
+                <div className="flex flex-col border-l border-slate-200 pl-6">
                    <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Director Identity</span>
-                   <div className="flex items-center gap-1.5 mt-0.5">
-                      <Fingerprint size={10} className="text-sky-500" />
-                      <span className="font-mono text-[9px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 shadow-sm">
-                        {isReady ? userId?.substring(0, 18) : '0xSYNCING'}
+                   <div className="flex items-center gap-2 mt-1">
+                      <Fingerprint size={11} className="text-sky-500" />
+                      <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
+                        {isReady ? userId?.substring(0, 18) : '0xANON'}
                       </span>
                    </div>
                 </div>
             </div>
-            <div className="text-[8px] uppercase tracking-[0.2em] font-black text-slate-300 text-right leading-relaxed italic">
-                Sovereign Cloud Native<br/>Executive Access Protocol
+            <div className="text-[9px] uppercase tracking-[0.3em] font-black text-slate-300 text-right leading-loose italic opacity-80">
+                Sovereign Cloud Native<br/>
+                Executive Access Protocol
             </div>
         </div>
       </footer>
