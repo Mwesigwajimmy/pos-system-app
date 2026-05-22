@@ -2,20 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v20.8 OMEGA-ULTIMATUM (THE APEX UI WELD)
+ * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX UI WELD)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. PHYSICAL IDENTITY ANCHOR: Maps the verified 5918cefa... UUIDs directly 
- *    to the Sovereign Node and Director Identity displays, resolving 0xNULL.
- * 2. NEURAL HANDSHAKE STAGE: Implements a clean, forensic loading environment 
- *    that only dismisses once the Version 8 Vault is physically verified.
- * 3. AGENT STEP OPTIMIZATION: Hardened parser for the Executive Council's 
- *    thought stream with improved layout containment.
- * 4. CARD UI REFINEMENT: Cleaned all borders, shadows, and spacing to 
- *    professional ERP standards without altering font dimensions.
- * 5. INTERACTION STABILITY: Welded the 'Enter' key and 'Send' logic to 
- *    prevent neural link collapses during high-latency syncs.
+ * 1. HYDRATION GUARD: Implemented a physical mount-check to prevent the 
+ *    "Illegal constructor" error. This ensures browser-only forensics 
+ *    only initialize after the React Handshake is safe.
+ * 2. UNIFIED UUID ANCHOR: Physically maps the verified 5918cefa... UUIDs 
+ *    to the Sovereign Node and Director displays, eliminating the 0xNULL hang.
+ * 3. NEURAL PROTOCOL STAGE: Re-engineered the "Awaiting Forensic Protocol" 
+ *    UI to be cleaner and more professional, matching the APEX brand.
+ * 4. CARD UI REFINEMENT: Enhanced all message bubbles, shadows, and 
+ *    border-radii for an elite enterprise finish without altering font sizes.
+ * 5. ATOMIC INTERACTION: Welded the 'Send' interaction to the Version 8 
+ *    Identity Vault to ensure zero data leakage during multi-business sessions.
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -24,7 +25,7 @@ import { toast } from 'sonner';
 import { 
   Sparkles, Send, Bot, User, Loader2, Cpu, 
   FileDown, Compass, Fingerprint, Zap, ShieldCheck,
-  Presentation, Terminal, Globe, Wifi, WifiOff
+  Presentation, Terminal, Globe, Lock, Wifi, WifiOff, Activity
 } from 'lucide-react';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -36,7 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import remarkGfm from 'remark-gfm';
 
-// MASTER CONTEXT ACCESS
+// ✅ MASTER CONTEXT ACCESS
 import { useCopilot } from '@/context/CopilotContext'; 
 import AuraBoardroom from '../copilot/AuraBoardroom'; 
 
@@ -56,7 +57,7 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * AGENT STEP COMPONENT
- * Renders high-fidelity 'Thoughts' of the Autonomous Executive Agents.
+ * Renders high-fidelity 'Forensic Thoughts' for the 9-agent Council.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
@@ -64,27 +65,29 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   try {
     const outputData = data.output ? (typeof data.output === 'string' ? JSON.parse(data.output) : data.output) : {};
     
-    const actionUI = {
-      navigate: { color: "text-sky-500 bg-sky-500/5 border-sky-500/20", icon: Compass, title: "Sovereign Navigation" },
-      download_file: { color: "text-emerald-500 bg-emerald-500/5 border-emerald-200/20", icon: FileDown, title: "Forensic Buffer Generated" },
-      prepare_boardroom_presentation: { color: "text-blue-500 bg-blue-500/5 border-blue-500/20", icon: Presentation, title: "Boardroom Initialized" },
-      request_confirmation: { color: "text-amber-500 bg-amber-500/5 border-amber-500/20", icon: ShieldCheck, title: "Safety Protocol" }
-    }[outputData.action as string];
+    const actionConfigs: Record<string, { icon: any, color: string, label: string }> = {
+      navigate: { icon: Compass, color: "text-sky-500 bg-sky-500/5 border-sky-500/20", label: "Sovereign Navigation" },
+      download_file: { icon: FileDown, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/20", label: "Forensic Buffer Generated" },
+      prepare_boardroom_presentation: { icon: Presentation, color: "text-blue-500 bg-blue-500/5 border-blue-500/20", label: "Boardroom Initialized" },
+      request_confirmation: { icon: ShieldCheck, color: "text-amber-500 bg-amber-500/5 border-amber-500/20", label: "Aura Safety Protocol" }
+    };
 
-    if (actionUI) {
-      const Icon = actionUI.icon;
+    const config = actionConfigs[outputData.action];
+
+    if (config) {
+      const Icon = config.icon;
       return (
-        <div className={cn("text-[11px] ml-11 my-3 p-4 border rounded-2xl animate-in fade-in slide-in-from-left-2 relative overflow-hidden shadow-sm", actionUI.color)}>
+        <div className={cn("text-xs ml-11 my-3 p-4 border rounded-2xl animate-in fade-in slide-in-from-left-2 overflow-hidden relative shadow-sm", config.color)}>
           <div className="flex items-center gap-3 relative z-10">
-            <Icon className="h-4 w-4 animate-pulse" />
+            <Icon className="h-4 w-4 flex-shrink-0 animate-pulse" />
             <div>
-              <p className="font-black uppercase tracking-tighter text-[10px]">{actionUI.title}</p>
+              <p className="font-bold uppercase tracking-tighter text-[10px]">{config.label}</p>
               <p className="font-mono text-[9px] opacity-70 truncate max-w-[280px]">
-                {outputData.payload?.url || outputData.payload?.fileName || "Executing protocol..."}
+                {outputData.payload?.url || outputData.payload?.fileName || "Executing strategic protocol..."}
               </p>
             </div>
           </div>
-          <div className="absolute inset-0 bg-white/30 h-px w-full top-0 animate-[scan_2.5s_linear_infinite]" />
+          <div className="absolute inset-0 bg-white/40 h-px w-full top-0 animate-[scan_2s_linear_infinite]" />
         </div>
       );
     }
@@ -93,11 +96,11 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (data.tool || data.event === 'on_agent_action') {
     const toolName = data.tool || data.data?.tool;
     return (
-      <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-xl bg-slate-50/50 border-dashed border-slate-200">
+      <div className="text-[10px] text-muted-foreground ml-11 my-2 p-3 border rounded-xl bg-slate-50/50 border-dashed border-slate-200 relative">
         <div className="flex items-center gap-2">
           <Cpu className="h-3 w-3 text-emerald-500" />
-          <p className="font-bold uppercase tracking-widest text-[8px] text-slate-500">
-             Neural Link: {toolName?.replace(/_/g, ' ') || "Thinking..."}
+          <p className="font-bold uppercase tracking-widest text-slate-500 text-[8px]">
+             Agent Authority: {toolName?.replace(/_/g, ' ') || "Neural Handshake"}
           </p>
         </div>
       </div>
@@ -111,6 +114,7 @@ export default function CopilotPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
+  const [hasMounted, setHasMounted] = useState(false); // ✅ THE CRASH SHIELD
 
   const { 
     messages, input, setInput, handleInputChange, handleSubmit, 
@@ -118,17 +122,20 @@ export default function CopilotPanel() {
     isReady, businessId, userId, tenantData 
   } = useCopilot();
 
-  // SIDE-EFFECT: Tool and Navigation Handler
+  // 🛡️ PREVENT ILLEGAL CONSTRUCTOR
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // SIDE-EFFECT: Tool and Navigation Handling
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
-        
         if (parsed.event === 'on_error' || parsed.error) {
-           toast.error(parsed.data?.error || parsed.error || "Neural Link Desync.");
+            toast.error(parsed.data?.error || parsed.error || "Neural Link Desync.");
         }
-
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           if (output.action === "navigate") router.push(output.payload.url);
@@ -155,6 +162,8 @@ export default function CopilotPanel() {
         inputRef.current.focus();
     }
   }, [isReady]);
+
+  if (!hasMounted) return null; // Safe exit to prevent Illegal Constructor
 
   const canSend = isReady && !isChatLoading && (input || '').trim().length > 0;
 
@@ -228,11 +237,14 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* EMPTY MISSION LOG STATE */}
+            {/* EMPTY STATE */}
             {isReady && messages.length === 0 && (
                 <div className="py-24 text-center group">
                     <div className="relative inline-block mb-8">
                        <Bot size={80} className="mx-auto text-slate-200 group-hover:text-emerald-500/10 transition-colors duration-1000" />
+                       <div className="absolute inset-0 flex items-center justify-center">
+                          <Activity className="text-emerald-500/10 animate-pulse h-10 w-10" />
+                       </div>
                        <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <h3 className="text-xs font-black uppercase tracking-[1em] text-slate-300 ml-4">Authorized Directives Only</h3>
@@ -244,7 +256,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* MESSAGE INTERFACE */}
+            {/* MESSAGES */}
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-3')}>
                 {m.role === 'assistant' && (
@@ -275,7 +287,7 @@ export default function CopilotPanel() {
               </div>
             ))}
 
-            {/* NEURAL THOUGHT CLOUD */}
+            {/* THOUGHT CLOUD */}
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-1 mt-6">
                     {streamData.map((chunk: any, i: number) => (
@@ -284,7 +296,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* PULSE GATE */}
+            {/* PULSE indicator */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-6 animate-pulse">
                     <Activity className="h-3 w-3" /> Aura is performing forensic audit...

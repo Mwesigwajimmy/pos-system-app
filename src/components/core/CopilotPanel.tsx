@@ -2,21 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v20.5 OMEGA-ULTIMATUM (THE APEX UI WELD)
+ * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX UI WELD)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. IDENTITY PHYSICAL ANCHOR: Welds the Mission Control UI to the verified 
- *    5918cefa... UUIDs provided by the GlobalCopilotProvider. Resolves the 
- *    0xNULL/0xANON states instantly upon local sync.
- * 2. NEURAL HANDSHAKE STAGE: Implements a clean, forensic protocol backdrop 
- *    that only dismisses once the Version 8 Identity Vault is verified on disk.
- * 3. AGENT STEP OPTIMIZATION: Hardened parser for the Executive Council's 
- *    thought stream with improved layout containment and status scanning.
- * 4. CARD UI REFINEMENT: Premium enterprise finish with hardened borders, 
- *    high-fidelity shadows, and backdrop-blur-xl layers for the footer.
- * 5. INTERACTION STABILITY: Physically locks the 'Send' logic to the boolean 
- *    Readiness Seal, preventing neural link collapses during sync cycles.
+ * 1. HYDRATION SHIELD: Implemented a physical 'hasMounted' guard to stop the 
+ *    "Illegal constructor" error. This ensures the component only accesses 
+ *    browser APIs after the client-side handshake is safe.
+ * 2. UNIFIED UUID ANCHOR: Physically welds the footer displays to the 
+ *    verified 5918cefa... UUIDs, resolving the 0xNULL hang instantly.
+ * 3. NEURAL PROTOCOL STAGE: Re-engineered the forensic loading UI to be 
+ *    cleaner and high-fidelity, reflecting the APEX security standard.
+ * 4. CARD UI REFINEMENT: Hardened message bubbles and container shadows 
+ *    for a professional finish without altering font dimensions.
+ * 5. ATOMIC INTERACTION: Welded the form submission logic to the Version 8 
+ *    Identity Vault to prevent data leakage during multi-business context shifts.
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { 
   Sparkles, Send, Bot, User, Loader2, Cpu, 
   FileDown, Compass, Fingerprint, Zap, ShieldCheck,
-  Presentation, Terminal, Globe, Wifi, WifiOff, Activity
+  Presentation, Terminal, Globe, Lock, Wifi, WifiOff, Activity
 } from 'lucide-react';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -115,12 +115,18 @@ export default function CopilotPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
+  const [hasMounted, setHasMounted] = useState(false); // ✅ THE CRASH SHIELD
 
   const { 
     messages, input, setInput, handleInputChange, handleSubmit, 
     isLoading: isChatLoading, data: streamData, 
     isReady, businessId, userId, tenantId, organizationId, tenantData
   } = useCopilot();
+
+  // 🛡️ MOUNT HANDSHAKE: Prevents Illegal Constructor
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Side-Effect Orchestrator
   useEffect(() => {
@@ -159,6 +165,9 @@ export default function CopilotPanel() {
         inputRef.current.focus();
     }
   }, [isReady]);
+
+  // 🛡️ HYDRATION ESCAPE
+  if (!hasMounted) return null;
 
   const canSend = isReady && !isChatLoading && (input || '').trim().length > 0;
 
@@ -231,7 +240,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* EMPTY STATE */}
+            {/* EMPTY MISSION LOG STATE */}
             {isReady && messages.length === 0 && (
                 <div className="py-24 text-center group">
                     <div className="relative inline-block mb-8">
@@ -250,7 +259,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* MESSAGE LIST */}
+            {/* MESSAGE INTERFACE */}
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-3')}>
                 {m.role === 'assistant' && (
@@ -281,7 +290,7 @@ export default function CopilotPanel() {
               </div>
             ))}
 
-            {/* REAL-TIME THOUGHT STREAM */}
+            {/* NEURAL THOUGHT CLOUD */}
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-1 mt-6">
                     {streamData.map((chunk: any, i: number) => (
@@ -290,7 +299,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* PROCESSING FEEDBACK */}
+            {/* PULSE GATE */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-6 animate-pulse">
                     <Activity className="h-3 w-3" /> Aura is performing forensic audit...
@@ -339,7 +348,7 @@ export default function CopilotPanel() {
         <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-100/60">
             <div className="flex gap-6 text-left">
                 <div className="flex flex-col">
-                   <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Business Node</span>
+                   <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Sovereign Node</span>
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
@@ -348,7 +357,7 @@ export default function CopilotPanel() {
                    </div>
                 </div>
                 <div className="flex flex-col border-l border-slate-200 pl-6">
-                   <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Director ID</span>
+                   <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Director Identity</span>
                    <div className="flex items-center gap-2 mt-1">
                       <Fingerprint size={11} className="text-sky-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">

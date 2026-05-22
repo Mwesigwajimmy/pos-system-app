@@ -2,19 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN SUPABASE PROVIDER ---
- * VERSION: v21.0 OMEGA (THE DUAL-STORAGE WELD)
- * JURISDICTION: Root Identity Hydration
+ * VERSION: v21.0 OMEGA (THE PHYSICAL STORAGE WELD)
+ * JURISDICTION: Root Identity Hydration / Hardware Anchoring
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. PHYSICAL MIRROR WELD: Logic now automatically synchronizes the cookie-based 
- *    session into LocalStorage. This allows the Aura Assistant and forensic 
- *    hooks to access the identity without Base64 overhead.
- * 2. 429 RATE-LIMIT SHIELD: Maintains the loop-guard that prevents redundant 
- *    router refreshes during token rotation, protecting against Supabase 429s.
- * 3. BUSINESS ID PERSISTENCE: Ensures 'bbu1_active_business_id' is physically 
- *    written to the cookie layer on every auth event to keep the Global Ledger aligned.
- * 4. CLEAN DISCONNECT: Physically wipes the LocalStorage on 'SIGNED_OUT' to 
- *    ensure zero-leakage security.
+ * 1. PHYSICAL STORAGE VERIFICATION: Logic now verifies the existence of the 
+ *    browser's LocalStorage engine before attempting the identity write.
+ * 2. INITIAL HYDRATION WELD: Performs a forensic check on mount to move 
+ *    latent cookie sessions into the physical disk immediately. This 
+ *    eliminates the "AI Blindness" during the first 2 seconds of load.
+ * 3. DUAL-STORAGE SYNCHRONIZATION: Maps the chunked SSR session into a 
+ *    unified JSON string for the Aura assistant's neural links.
+ * 4. LOOP-SHIELD v2: Blocks redundant refreshes during token rotation 
+ *    to preserve the 429 Rate Limit quota.
  */
 
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -38,6 +38,11 @@ export default function SupabaseProvider({
   session: Session | null;
 }) {
   const router = useRouter();
+  
+  // Project Reference detected from Forensic Audit
+  const projectRef = "oezlqscjymzoeizysljp"; 
+  const storageKey = `sb-${projectRef}-auth-token`;
+
   const [supabase] = useState(() =>
     createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,21 +51,34 @@ export default function SupabaseProvider({
   );
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+    /**
+     * 🛡️ FORENSIC INITIALIZATION
+     * We check if the session exists in the browser's physical storage.
+     * If cookies are present but LocalStorage is empty (Incognito/New Tab),
+     * we force a physical write to wake up the Aura AI.
+     */
+    const materializeSession = async () => {
+        const { data: { session: activeSession } } = await supabase.auth.getSession();
+        
+        if (activeSession && typeof window !== 'undefined') {
+            console.log("%c[AURA] Physical Storage Weld: Active.", "color: #10B981; font-weight: bold;");
+            localStorage.setItem(storageKey, JSON.stringify(activeSession));
+        }
+    };
+
+    materializeSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
       
       /**
-       * ✅ THE DUAL-STORAGE WELD
-       * Triggered on every auth event to ensure the browser has a 
-       * physical copy of the identity for the Aura AI brain.
+       * ✅ THE ATOMIC DISK WRITE
+       * Every time the identity state changes, we etch the new 
+       * session into the hardware's local storage.
        */
       if (currentSession) {
-        // 1. Mirror to LocalStorage for AI Handshake access
-        const storageKey = `sb-oezlqscjymzoeizysljp-auth-token`;
         localStorage.setItem(storageKey, JSON.stringify(currentSession));
 
-        // 2. Align Business Identity Cookie
+        // Align the Business ID Cookie for Server-Side Forensic Views
         const bizId = currentSession.user.user_metadata?.business_id || currentSession.user.id;
         if (bizId) {
           Cookies.set('bbu1_active_business_id', bizId, { expires: 30, path: '/' });
@@ -68,16 +86,13 @@ export default function SupabaseProvider({
       }
 
       /**
-       * ✅ OMEGA LOOP GUARD:
-       * We physically block router.refresh() for TOKEN_REFRESHED events.
-       * This prevents the infinite middleware redirect cycle that hits 
-       * the 429 rate limit.
+       * ✅ OMEGA LOOP GUARD
        */
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-          console.log(`[Aura Identity] State Change: ${event}. Synchronizing Vault...`);
+          console.log(`%c[AURA] Identity Event: ${event}. Synchronizing Vault...`, "color: #1D4ED8;");
           
           if (event === 'SIGNED_OUT') {
-            localStorage.clear();
+            localStorage.removeItem(storageKey); // Physical wipe
             Cookies.remove('bbu1_active_business_id');
           }
 
@@ -88,7 +103,7 @@ export default function SupabaseProvider({
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [router, supabase, storageKey]);
 
   return (
     <Context.Provider value={{ supabase, session }}>
