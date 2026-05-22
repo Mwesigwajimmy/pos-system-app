@@ -2,13 +2,16 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v19.2 OMEGA-ULTIMATUM (THE ANIMATION & RESPONSE WELD)
+ * VERSION: v19.3 OMEGA-ULTIMATUM (THE ULTIMATE RESPONSE WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. ANIMATION SYNC: Integrated AnimatePresence to solve the "clunky" mobile opening.
- * 2. Z-INDEX ISOLATION: Explicitly layered the mobile drawer to prevent "White Screen" or click-blocking.
- * 3. GLOBAL CONTEXT BRIDGE: Unified Sidebar toggle with the master Layout state.
+ * 1. COMPONENT ISOLATION: Moved MobileSidebar to the module scope to prevent 
+ *    React from unmounting it during state transitions.
+ * 2. ANIMATION STABILITY: Hardened AnimatePresence to ensure the drawer 
+ *    physically slides into the viewport on touch.
+ * 3. Z-INDEX SUPREMACY: Forced the drawer to z-[200] to bypass all AI 
+ *    overlays and forensic guards.
  */
 
 import React, { memo, ReactNode, useEffect } from 'react';
@@ -34,8 +37,56 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
+ * --- MOBILE SIDEBAR DRAWER ---
+ * DEFINED OUTSIDE TO PRESERVE STATE & FOCUS
+ */
+const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
+    return (
+      <AnimatePresence mode="wait">
+        {isOpen && (
+          <div className="fixed inset-0 z-[200] flex lg:hidden" role="dialog" aria-modal="true">
+            {/* 🛡️ BACKDROP WELD */}
+            <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[190]" 
+                onClick={onClose} 
+            />
+            {/* 🏗️ SLIDING PANEL WELD */}
+            <motion.div 
+                initial={{ x: '-100%' }} 
+                animate={{ x: 0 }} 
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="relative flex-1 flex flex-col max-w-[300px] w-full bg-white shadow-[20px_0_60px_rgba(0,0,0,0.2)] overflow-hidden z-[200]"
+            >
+              <div className="absolute top-5 right-5 z-[210]">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 shadow-sm text-slate-400 hover:text-red-500 transition-colors" 
+                    onClick={onClose}
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+              
+              {/* 🟢 SIDEBAR CONTENT INJECTION */}
+              <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
+                <Sidebar />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    );
+});
+MobileSidebar.displayName = 'MobileSidebar';
+
+/**
  * --- SOVEREIGN LIVE GUARD ---
- * Dynamically listens for forensic anomalies based on the active node.
  */
 const SovereignLiveGuard = () => {
     const supabase = createClient();
@@ -64,9 +115,7 @@ const SovereignLiveGuard = () => {
             })
             .subscribe();
 
-        return () => { 
-            supabase.removeChannel(channel); 
-        };
+        return () => { supabase.removeChannel(channel); };
     }, [supabase, activeBizId]);
 
     return null;
@@ -100,7 +149,6 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
 
 /**
  * --- APPLAYOUT ---
- * Standard structural wrapper for the dashboard interface.
  */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
@@ -110,54 +158,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
   useEffect(() => {
-    // Automatically collapse drawer on navigation
     if (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
         setIsSidebarOpen(false);
     }
   }, [pathname, setIsSidebarOpen]);
-
-  /**
-   * ✅ MOBILE SIDEBAR WELD
-   * Uses AnimatePresence to ensure the drawer physically slides in/out correctly.
-   */
-  const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-[150] flex lg:hidden" role="dialog" aria-modal="true">
-            {/* Backdrop */}
-            <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[140]" 
-                onClick={onClose} 
-            />
-            {/* Drawer Sliding Panel */}
-            <motion.div 
-                initial={{ x: '-100%' }} 
-                animate={{ x: 0 }} 
-                exit={{ x: '-100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="relative flex-1 flex flex-col max-w-[300px] w-full bg-white shadow-2xl overflow-hidden z-[150]"
-            >
-              <div className="absolute top-4 right-4 z-[160]">
-                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100" onClick={onClose}>
-                  <X className="h-6 w-6 text-slate-400" />
-                </Button>
-              </div>
-              
-              {/* Force Sidebar visibility when inside the drawer */}
-              <div className="flex-1 overflow-hidden [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
-                <Sidebar />
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    );
-  });
-  MobileSidebar.displayName = 'MobileSidebar';
 
   return (
     <div 
@@ -171,22 +175,22 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <Sidebar />
       </div>
 
-      {/* Mobile Drawer Overlay */}
+      {/* 🟢 MOBILE DRAWER WELD: Now using isolated component for state stability */}
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <header className="relative z-30 flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          {/* ✅ THE ACTIVATION WELD: Z-50 ensured touch reachability */}
+        <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+          {/* ✅ THE ACTIVATION WELD: Aggressive touch area and Z-Index isolation */}
           <button 
             type="button" 
-            className="relative z-50 px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-100 transition-colors" 
+            className="relative z-[110] px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-200 transition-all cursor-pointer" 
             onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                toggleSidebar();
+                toggleSidebar(); // Dispatch to Global Sidebar State
             }}
           >
-            <Menu className="h-7 w-7" />
+            <Menu className="h-8 w-8" />
           </button>
           <Header />
         </header>
@@ -205,7 +209,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * Handles global redirection and authentication state.
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -215,10 +218,8 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         if (profile?.is_ready && !isBusinessLoading && !isBrandingLoading) {
-            
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
-            
             const isAuthorized = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(status);
             const locale = pathname.split('/')[1] || 'en';
             const isOnBillingPath = pathname.includes('/settings/billing');
@@ -247,15 +248,10 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
-                <div className="relative">
-                    <div className="absolute inset-0 rounded-full bg-blue-500/10 blur-2xl animate-pulse" />
-                    <Loader2 className="h-16 w-16 animate-spin text-blue-600 relative z-10" />
-                </div>
-                <div className="text-center mt-8 space-y-2">
-                    <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
-                        Synchronizing Sovereign Node...
-                    </p>
-                </div>
+                <Loader2 className="h-16 w-16 animate-spin text-blue-600 mb-8" />
+                <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
+                    Synchronizing Sovereign Node...
+                </p>
             </div>
         );
     }
@@ -264,19 +260,11 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
                 <div className="text-center p-12 bg-white border border-slate-100 rounded-[4rem] shadow-2xl max-w-lg">
-                    <div className="w-24 h-24 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-inner">
-                        <ShieldAlert className="text-rose-500 h-12 w-12" />
-                    </div>
+                    <ShieldAlert className="text-rose-500 h-16 w-16 mx-auto mb-10" />
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
-                    <div className="flex flex-col gap-3 mt-12">
-                        <Button 
-                            onClick={() => window.location.reload()} 
-                            variant="outline" 
-                            className="h-14 rounded-3xl font-black uppercase tracking-widest text-[10px] border-slate-200"
-                        >
-                            Retry Sync
-                        </Button>
-                    </div>
+                    <Button onClick={() => window.location.reload()} variant="outline" className="h-14 mt-12 rounded-3xl font-black uppercase tracking-widest text-[10px]">
+                        Retry Sync
+                    </Button>
                 </div>
             </div>
         );
@@ -302,8 +290,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </BusinessProvider>
   );
 }
-
-/**
- * STATUS: Sovereign Layout Fully Fixed.
- * VERSION: v19.2 (The Animation & Response Weld).
- */
