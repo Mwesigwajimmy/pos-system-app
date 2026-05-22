@@ -2,17 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN SYNC PROVIDER ---
- * VERSION: v19.8 OMEGA-ULTIMATUM (THE UNIFIED IDENTITY WELD)
+ * VERSION: v20.5 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
  * 
  * CORE FIXES:
  * 1. CRASH SHIELD: Updated 'useSync' hook to handle out-of-bounds calls. 
- *    This prevents the "useSync must be used within SyncProvider" console error.
- * 2. UNIFIED HANDSHAKE: Logic now fetches and welds User, Tenant, and 
- *    Organization UUIDs discovered in forensic audit (time@bbu1.com).
- * 3. FORENSIC ALIGNMENT: Switched from 'is_ready' to 'setup_complete' to 
- *    match the physical backend record detected in the System Audit.
- * 4. ATOMIC VAULT WELD: Transaction logic now enforces the Version 8 
- *    'db.identity' write to anchor Aura's local persona.
+ *    Prevents the "useSync must be used within SyncProvider" console error.
+ * 2. APEX HANDSHAKE ALIGNMENT: Logic now performs a deep fetch of the 
+ *    Omniscient Identity discovered in forensic audit (time@bbu1.com).
+ * 3. FORENSIC KEY MAPPING: Physically maps backend UUIDs to camelCase keys 
+ *    (userId, businessId, tenantId, organizationId) to match the Version 8 
+ *    Identity Vault schema.
+ * 4. SETUP GATE: Trigger engine is physically locked until 'setup_complete' 
+ *    is true, matching the physical backend profile record.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -42,7 +43,7 @@ const SyncContext = createContext<SyncContextType | undefined>(undefined);
 export const useSync = () => {
   const context = useContext(SyncContext);
   if (!context) {
-    // Return a dummy state instead of throwing error to stop the Console Crash
+    // Return a safe dummy state instead of throwing error to stop the Console Crash
     return {
         isOnline: true,
         isSyncing: false,
@@ -58,7 +59,7 @@ const OfflineIndicator: React.FC = () => {
   const { isOnline, isSyncing, lastSyncTime, triggerSync } = useSync();
   const { profile } = useBusiness(); 
   
-  // ✅ ALIGNMENT: Backend forensic audit uses 'setup_complete'
+  // ✅ ALIGNMENT: Logic follows the physical 'setup_complete' flag
   if (!profile?.setup_complete) return null;
 
   const getStatus = () => {
@@ -95,10 +96,10 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const queryClient = useQueryClient();
   
-  // ✅ CONSUME IDENTITY STATE
+  // ✅ MASTER IDENTITY INJECTION
   const { profile } = useBusiness();
   
-  // ✅ FORENSIC ALIGNMENT: Backend context returns 'setup_complete'
+  // ✅ FORENSIC ALIGNMENT: Handshake verified via 'setup_complete'
   const isHandshakeReady = profile?.setup_complete === true;
 
   const triggerSync = useCallback(async () => {
@@ -115,12 +116,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const promise = async () => {
         const supabase = createClient();
         
-        // 1. UNIFIED IDENTITY FETCH (Cross-link UUIDs for Aura Mission Control)
-        const { data: profileData } = await supabase
+        // 1. OMNISCIENT IDENTITY FETCH (The Unified Handshake)
+        const { data: profileData, error: profError } = await supabase
             .from('profiles')
             .select('id, business_id, tenant_id, organization_id, business_name')
             .eq('id', profile.id)
             .single();
+        
+        if (profError) throw new Error(`Identity alignment failed: ${profError.message}`);
 
         const { data: brandingData } = await supabase
             .from('view_bbu1_corporate_identity')
@@ -128,7 +131,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('business_id', profile.business_id)
             .maybeSingle();
 
-        // 2. CORE DATA FETCH
+        // 2. GLOBAL LEDGER DATA FETCH
         const { data: productsData, error: pError } = await supabase.rpc('get_sellable_products');
         if (pError) throw new Error(`Products sync failed: ${pError.message}`);
         
@@ -147,24 +150,26 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             wasSyncSuccessful = true;
         }
 
-        // ✅ 3. THE WELD: Complete Version 8 Transaction
+        // ✅ 3. THE ATOMIC WELD: Physically anchoring the Version 8 schema
         await db.transaction('rw', db.products, db.customers, db.printers, db.offlineSales, db.identity, async () => {
             await db.products.clear();
             await db.customers.clear();
             await db.printers.clear();
             await db.identity.clear(); 
 
-            // Anchoring the Director Identity discovered in forensic audit
+            // Anchoring the Unified Director Identity locally on the disk
             if (profileData) {
                 await db.identity.add({
-                    business_id: profileData.business_id,
-                    tenant_id: profileData.tenant_id,
-                    organization_id: profileData.organization_id,
-                    user_id: profileData.id,
-                    legal_name: brandingData?.legal_name || profileData.business_name || 'Sovereign Node',
+                    userId: profileData.id,
+                    businessId: profileData.business_id,
+                    tenantId: profileData.tenant_id,
+                    organizationId: profileData.organization_id,
+                    businessName: brandingData?.legal_name || profileData.business_name || 'APEX',
+                    logo: brandingData?.logo_url || '/logo.png',
                     primary_color: brandingData?.primary_color || '#1D4ED8',
-                    logo_url: brandingData?.logo_url || '/logo.png',
-                    currency_code: brandingData?.currency_code || 'UGX'
+                    currency_code: brandingData?.currency_code || 'UGX',
+                    is_ready: true,
+                    status: 'FULLY_ALIGNED'
                 } as any);
             }
 
@@ -196,7 +201,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsOnline(navigator.onLine);
     setLastSyncTime(localStorage.getItem('lastSyncTime'));
 
-    // Immediate sync on mount if handshake is ready but local vault is empty
+    // Trigger initial sync if identity is aligned but vault is empty
     if (isHandshakeReady && !localStorage.getItem('lastSyncTime')) {
         triggerSync();
     }

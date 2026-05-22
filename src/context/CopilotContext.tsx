@@ -2,21 +2,22 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v19.8 OMEGA-ULTIMATUM (THE UNIFIED IDENTITY WELD)
+ * VERSION: v20.5 OMEGA-ULTIMATUM (THE APEX IDENTITY WELD)
  * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
  * CORE ARCHITECTURAL FIXES:
- * 1. UNIFIED IDENTITY RESOLUTION: Updated context to explicitly handle User, 
- *    Business, Tenant, and Organization UUIDs. This resolves the '0xNULL' 
- *    placeholder states in the Mission Control UI.
- * 2. FORENSIC READINESS GATE: Strictly gates Aura initialization on the 
- *    'setup_complete' signal and the physical 'lastSyncTime' timestamp.
- * 3. JWT ACCESS RECOVERY: Hardened the syncToken effect to ensure the Edge 
- *    Runtime always has a fresh physical token from Supabase Auth.
- * 4. SYNC INTEGRITY LOCK: Physically anchored to 'useSync' to ensure the AI 
- *    never attempts to operate before the local Version 8 Vault is written.
- * 5. EDGE GATEWAY STABILITY: Maintains absolute pathing to Supabase Edge 
- *    Functions for forensic audit persistence.
+ * 1. OMNISCIENT HANDSHAKE: Logic now fetches 'get_aura_handshake' directly 
+ *    on mount. This retrieves the physical 5918cefa... UUIDs required to 
+ *    resolve UI placeholders (0xNULL) and authorize neural links.
+ * 2. UNIFIED IDENTITY RESOLUTION: Explicitly handles User, Business, Tenant, 
+ *    and Organization UUIDs. Aligns the frontend with the forensic audit 
+ *    results for 'time@bbu1.com'.
+ * 3. FORENSIC READINESS GATE: Aura only initializes once the backend returns 
+ *    'is_ready: true' AND the local Version 8 database sync is complete.
+ * 4. JWT ACCESS RECOVERY: Ensures the Edge Runtime always has a fresh 
+ *    physical token from Supabase Auth to prevent 401 neural collapses.
+ * 5. SYNC INTEGRITY LOCK: Physically anchored to 'useSync' and 'db' to 
+ *    ensure persistent storage is ready before AI interactions.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -52,8 +53,8 @@ interface CopilotContextType {
   isReady: boolean;
   businessId: string;
   userId: string;
-  tenantId: string;       // Added for Deep UI Alignment
-  organizationId: string; // Added for Deep UI Alignment
+  tenantId: string;       // Resolved for Deep UI Alignment
+  organizationId: string; // Resolved for Deep UI Alignment
   tenantData: any; 
   tenantModules: string[];
 }
@@ -183,8 +184,8 @@ function NeuralSanctuary({
     isReady: true,
     businessId,
     userId,
-    tenantId,       // Provided for Mission Control UI
-    organizationId, // Provided for Mission Control UI
+    tenantId,       
+    organizationId, 
     tenantData,
     tenantModules: tenantData?.tenantModules || []
   }), [messages, isLoading, data, setMessages, inputState, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, startAIAssistance, setIsOpen]);
@@ -211,7 +212,17 @@ function NeuralSanctuary({
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const [handshake, setHandshake] = useState<any>(null);
+
+  // 🛡️ OMNISCIENT HANDSHAKE FETCH
+  useEffect(() => { 
+    setMounted(true); 
+    const fetchHandshake = async () => {
+        const { data } = await supabase.rpc('get_aura_handshake');
+        setHandshake(data);
+    };
+    fetchHandshake();
+  }, []);
 
   // ✅ MASTER IDENTITY TRUTH: Resolving from the Omega Business Context
   const { profile, isLoading: contextLoading } = useBusiness();
@@ -219,11 +230,17 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   // 🔗 THE SYNC LINK: Ensure the AI waits for the local node to synchronize
   const { lastSyncTime } = useSync();
 
-  // DEEP WELD: Robust resolution for all Unified Identity UUIDs
+  // DEEP WELD: Robust resolution mapping for all Unified Identity UUIDs
   const activeBusinessId = useMemo(() => {
-    const id = profile?.business_id || (profile as any)?.businessId;
+    // Priority 1: Backend Handshake, Priority 2: Profile context
+    const id = handshake?.businessId || profile?.business_id || (profile as any)?.businessId;
     return (!id || id === 'loading') ? '' : id;
-  }, [profile]);
+  }, [handshake, profile]);
+
+  const activeUserId = useMemo(() => {
+    const id = handshake?.userId || profile?.id || (profile as any)?.userId;
+    return (!id || id === 'loading') ? '' : id;
+  }, [handshake, profile]);
 
   const activeTenantId = useMemo(() => {
     const id = profile?.tenant_id || (profile as any)?.tenantId || activeBusinessId;
@@ -235,29 +252,22 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     return (!id || id === 'loading') ? '' : id;
   }, [profile, activeBusinessId]);
 
-  const activeUserId = useMemo(() => {
-    const id = profile?.id || (profile as any)?.userId;
-    return (!id || id === 'loading') ? '' : id;
-  }, [profile]);
-
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * FIXED: Aligned with backend forensic audit results for 'time@bbu1.com'.
    * Aura will now physically wait for:
-   * 1. React Mount
-   * 2. Business Context Load
-   * 3. Identity Alignment (All UUIDs Resolved)
-   * 4. Setup Completion Signal (setup_complete)
-   * 5. Successful Local Database Sync (lastSyncTime)
+   * 1. React Mount completion
+   * 2. Business Context resolution
+   * 3. Successful backend 'is_ready' signal from handshake
+   * 4. Successful Local Database Version 8 sync (lastSyncTime)
    */
   const isReady = mounted && 
                   !contextLoading && 
                   activeUserId !== '' && 
                   activeBusinessId !== '' &&
-                  profile?.setup_complete === true && 
-                  !!lastSyncTime; // Force Aura to wait for local Version 8 Vault
+                  handshake?.is_ready === true && 
+                  !!lastSyncTime; 
 
-  // 🛡️ DIVERSION SHIELD: No mounting until Identity is Aligned.
+  // 🛡️ DIVERSION SHIELD: No mounting until Identity is Fully Aligned.
   if (!isReady) {
     return (
       <CopilotContext.Provider value={{ 

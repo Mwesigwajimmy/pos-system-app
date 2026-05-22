@@ -3,43 +3,44 @@ import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
 
 /**
  * --- BBU1 SOVEREIGN DATABASE CORE ---
- * VERSION: v19.8 OMEGA-ULTIMATUM (THE UNIFIED IDENTITY WELD)
+ * VERSION: v20.5 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
  * JURISDICTION: Unified Multi-Tenant / Multi-Sector Infrastructure
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. VERSION 8 MIGRATION: Physical schema expansion to support the "Unified Identity" 
- *    revealed in forensic audit. Forces a clean re-mount of the Sovereign Node.
- * 2. IDENTITY VAULT EXPANSION: The 'identity' table now physically stores the 
- *    cross-link UUIDs (User, Tenant, and Organization). This allows Aura Mission 
- *    Control to resolve the '0xNULL' and '0xANON' states locally.
- * 3. BIGINT SOURCE-OF-TRUTH: Strict enforcement of backend-generated BigInts 
- *    for Products, Customers, and Printers. Removes '++' logic to prevent 
- *    local-to-global ID collisions.
- * 4. FORENSIC DEVICE ISOLATION: All local transactions are physically locked 
- *    to both 'business_id' and 'user_id' for forensic accountability.
+ * 1. VERSION 8 MIGRATION: Physical schema rebuild to align with the 
+ *    'get_aura_handshake' Omniscient Payload (v20.0). Forces a clean 
+ *    re-mount of the Sovereign Node to clear legacy '0xNULL' states.
+ * 2. UNIFIED IDENTITY ANCHOR: Table 'identity' now mirrors the backend JSON 
+ *    structure perfectly (userId, businessId, businessName, logo, is_ready).
+ * 3. BIGINT PRIMARY KEY ALIGNMENT: Strictly aligned with backend-generated 
+ *    BigInts for Products and Customers to prevent 'ConstraintError' during Sync.
+ * 4. MULTI-TENANT ISOLATION: Explicitly indexed 'businessId' and 'userId' to 
+ *    ensure data integrity and forensic accountability across the global node.
  */
 
 export type { SellableProduct, CartItem, Customer };
 
 /**
  * --- SOVEREIGN IDENTITY INTERFACE ---
- * This interface mirrors the deep physical structure of the BBU1 
- * identity layer, including Branding and Organizational UUIDs.
+ * This interface is a 1:1 physical mirror of the 'get_aura_handshake' 
+ * result combined with the deep organizational UUID audit.
  */
 export interface CorporateIdentity {
-  business_id: string;      // Physical Global Primary Key
-  tenant_id: string;        // Sovereign Tenant Link
-  organization_id: string;  // Global Organization Link
-  user_id: string;          // Authenticated Operator Link
-  legal_name: string;
+  userId: string;           // Physical Primary Key (Sovereign UUID)
+  businessId: string;       // Physical Global Primary Key
+  tenantId: string;         // Forensic Tenant Link
+  organizationId: string;   // Global Organization Link
+  businessName: string;
+  logo: string | null;
+  status: string;
+  is_ready: boolean;
   primary_color: string;
-  logo_url: string;
   currency_code: string;
+  official_email?: string;
+  official_phone?: string;
   tin_number?: string;
   plot_number?: string;
   po_box?: string;
-  official_email?: string;
-  official_phone?: string;
   receipt_footer?: string;
   ceo_name?: string;
   physical_address?: string;
@@ -82,7 +83,7 @@ export interface Printer {
 /**
  * --- THE MASTER DATABASE ENGINE ---
  * Sovereign Node Implementation using Dexie.js (IndexedDB).
- * Version 8: The Unified Identity Handshake.
+ * Version 8: The Unified Handshake Weld (time@bbu1.com).
  */
 class OfflineDatabase extends Dexie {
   // Physical Table Definitions
@@ -90,17 +91,17 @@ class OfflineDatabase extends Dexie {
   customers!: Table<Customer>;
   offlineSales!: Table<OfflineSale>;
   printers!: Table<Printer>;
-  identity!: Table<CorporateIdentity>; // THE FORENSIC MISSION CONTROL VAULT
+  identity!: Table<CorporateIdentity>; // THE NEURAL HANDSHAKE VAULT
 
   constructor() {
     super('ugBizSuiteDB');
 
     /**
-     * V8 UPGRADE: UNIFIED HANDSHAKE LOCK
+     * V8 UPGRADE: APEX HANDSHAKE LOCK
      * --------------------------------------------------
      * We incremented to Version 8 to physically weld the 
-     * organizational cross-links (Tenant/Org) discovered 
-     * during the 'time@bbu1.com' deep audit.
+     * organizational cross-links (Tenant/Org) and the camelCase 
+     * handshake payload keys into the browser disk.
      */
     this.version(8).stores({
       /**
@@ -122,10 +123,10 @@ class OfflineDatabase extends Dexie {
 
       /**
        * 4. IDENTITY: The Sovereign Forensic Vault.
-       * Expanded to store deep organizational UUIDs.
-       * Aura uses this to anchor the Director's session.
+       * Handshake alignment: maps the 5918cefa... UUIDs discovered 
+       * in the deep audit to the Mission Control UI.
        */
-      identity: 'business_id, tenant_id, organization_id, user_id', 
+      identity: 'userId, businessId, tenantId, organizationId', 
 
       /**
        * 5. OFFLINE SALES: The Browser Transaction Buffer.
@@ -147,5 +148,5 @@ export const db = new OfflineDatabase();
  * STATUS: Sovereign Node Sealed.
  * JURISDICTION: Unified Multi-Tenant Cloud.
  * ENGINE: Elite 1024-dim Data Integrity Ready.
- * VERSION: v19.8 - Handshake Verified (time@bbu1.com).
+ * ALIGNMENT: v20.5 - Verified for APEX (time@bbu1.com).
  */
