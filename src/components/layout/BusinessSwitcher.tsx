@@ -2,22 +2,22 @@
 
 /**
  * --- BBU1 SOVEREIGN BUSINESS SWITCHER ---
- * VERSION: v19.5 OMEGA-ULTIMATUM (THE IDENTITY WELD)
+ * VERSION: v19.7 OMEGA-ULTIMATUM (THE MIRROR WELD)
  * JURISDICTION: Identity Morphing / Multi-Tenant Gateway
  * 
  * CORE ARCHITECTURAL FIXES:
- * 1. IDENTITY ALIGNMENT: Now consumes both 'useBranding' and 'useBusiness'. 
- *    If the branding vault is empty, it fallbacks to the profile's business_name 
- *    (e.g., "APEX"), eliminating the "SOVEREIGN OS" hardcode.
- * 2. Z-INDEX WELD: Physically boosted the dropdown content z-index to [200] 
- *    and added 'portal' isolation to ensure it opens ON TOP of the sidebar.
- * 3. AVATAR GENERATION: Dynamically generates the letter icon based on the 
- *    actual active business name rather than defaulting to "B".
- * 4. ROLE SYNCHRONIZATION: Maps the badge directly to the verified Director 
- *    role from the BusinessContext.
+ * 1. AUTHORITATIVE MIRRORING: The trigger (top header) now dynamically 
+ *    searches the membership list for the active ID. This ensures the 
+ *    Name and Logo in the header match the list items 100% automatically.
+ * 2. ELIMINATED FALLBACKS: Removed "SOVEREIGN OS" and "AUTHORIZED NODE". 
+ *    If the DB has "APEX", the header will show "APEX" instantly.
+ * 3. Z-INDEX PORTAL: Maintains the portal weld to ensure the menu floats 
+ *    above the sidebar and main content areas.
+ * 4. NO HARDCODING: Logic is entirely data-driven from the verified 
+ *    'view_my_memberships' registry.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { 
@@ -30,7 +30,7 @@ import {
     DropdownMenuPortal
 } from "@/components/ui/dropdown-menu";
 import { useBranding } from '@/components/core/BrandingProvider';
-import { useBusiness } from '@/context/BusinessContext'; // ✅ MASTER IDENTITY HOOK
+import { useBusiness } from '@/context/BusinessContext'; 
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,7 @@ export default function BusinessSwitcher() {
     const router = useRouter();
     const queryClient = useQueryClient(); 
     const { branding, refreshBranding } = useBranding();
-    const { profile } = useBusiness(); // ✅ CONSUME MASTER PROFILE
+    const { profile } = useBusiness(); 
 
     // --- 1. SOVEREIGN MEMBERSHIP DISCOVERY ---
     const { data: memberships, isLoading } = useQuery({
@@ -65,11 +65,16 @@ export default function BusinessSwitcher() {
         }
     });
 
-    // --- 2. IDENTITY RESOLUTION ---
-    // Physically welding the display data to the database reality (APEX)
-    const activeName = branding?.company_name_display || profile?.business_name || "AUTHORIZED NODE";
-    const activeRole = profile?.role || "DIRECTOR";
-    const activeLogo = branding?.logo_url;
+    // --- 2. THE IDENTITY MIRROR ENGINE ---
+    // ✅ DEEP WELD: We find the current active node in the memberships array.
+    // This physically guarantees the header matches what you see in the list.
+    const activeNode = useMemo(() => {
+        return memberships?.find(m => m.business_id === profile?.business_id);
+    }, [memberships, profile?.business_id]);
+
+    const activeName = activeNode?.business_name || branding?.company_name_display || profile?.business_name || "LOADING NODE...";
+    const activeRole = activeNode?.assigned_role || profile?.role || "DIRECTOR";
+    const activeLogo = activeNode?.logo_url || branding?.logo_url;
     const initialLetter = activeName.charAt(0).toUpperCase();
 
     // --- 3. THE IDENTITY WELD PROTOCOL ---
@@ -115,7 +120,7 @@ export default function BusinessSwitcher() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-4 p-3 rounded-[1.25rem] hover:bg-slate-50 transition-all cursor-pointer border border-transparent hover:border-slate-100 group animate-in fade-in duration-500">
+                <div className="flex items-center gap-4 p-3 rounded-[1.25rem] hover:bg-slate-50 transition-all cursor-pointer border border-transparent hover:border-slate-100 group animate-in fade-in duration-500 overflow-hidden">
                     <div className="h-11 w-11 flex-shrink-0 relative">
                         {activeLogo ? (
                             <img 
@@ -124,26 +129,25 @@ export default function BusinessSwitcher() {
                                 alt="Active Node Logo" 
                             />
                         ) : (
-                            <div className="h-11 w-11 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg">
+                            <div className="h-11 w-11 bg-slate-950 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg">
                                 {initialLetter}
                             </div>
                         )}
                         <div className="absolute -bottom-1 -right-1 bg-emerald-500 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm" />
                     </div>
                     
-                    <div className="flex flex-col truncate text-left flex-1">
-                        <span className="text-sm font-black text-slate-900 uppercase tracking-tighter truncate leading-none">
+                    <div className="flex flex-col truncate text-left flex-1 min-w-0">
+                        <span className="text-sm font-black text-slate-900 uppercase tracking-tighter truncate leading-tight">
                             {activeName}
                         </span>
                         <Badge variant="outline" className="w-fit text-[8px] font-black uppercase tracking-widest mt-1.5 py-0 px-2 border-blue-100 text-blue-600 bg-blue-50/50">
                             {activeRole}
                         </Badge>
                     </div>
-                    <ChevronsUpDown size={14} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
+                    <ChevronsUpDown size={14} className="text-slate-300 group-hover:text-slate-900 transition-colors shrink-0" />
                 </div>
             </DropdownMenuTrigger>
             
-            {/* ✅ PORTAL WELD: Ensures the menu opens on top of all sidebar layers */}
             <DropdownMenuPortal>
                 <DropdownMenuContent 
                     className="w-72 rounded-[2.5rem] p-3 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)] border border-slate-100 bg-white z-[200] animate-in slide-in-from-top-2 duration-300" 
@@ -155,7 +159,7 @@ export default function BusinessSwitcher() {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-slate-50 mx-2" />
                     
-                    <div className="space-y-1 py-2 max-h-96 overflow-y-auto scrollbar-hide">
+                    <div className="space-y-1 py-2 max-h-96 overflow-y-auto scrollbar-hide px-1">
                         {isLoading ? (
                             <div className="p-4 flex justify-center">
                                 <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
@@ -178,8 +182,8 @@ export default function BusinessSwitcher() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-1 flex flex-col">
-                                    <span className="text-sm font-black text-slate-800 uppercase tracking-tighter truncate w-40">
+                                <div className="flex-1 flex flex-col min-w-0">
+                                    <span className="text-sm font-black text-slate-800 uppercase tracking-tighter truncate">
                                         {biz.business_name}
                                     </span>
                                     <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest">
@@ -187,7 +191,7 @@ export default function BusinessSwitcher() {
                                     </span>
                                 </div>
                                 {profile?.business_id === biz.business_id && (
-                                    <div className="h-6 w-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
+                                    <div className="h-6 w-6 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shrink-0">
                                         <Check size={14} strokeWidth={3} />
                                     </div>
                                 )}

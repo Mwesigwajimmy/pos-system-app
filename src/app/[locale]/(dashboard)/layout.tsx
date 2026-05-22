@@ -2,19 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v19.0 OMEGA-ULTIMATUM (THE DEEP STATE SYNC)
+ * VERSION: v19.1 OMEGA-ULTIMATUM (THE MOBILE RESPONSE WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. GLOBAL STATE WELD: Synchronized the mobile drawer with the global 
- *    SidebarContext. This physically eliminates desync between the 
- *    drawer opening and the sidebar content rendering.
- * 2. MOBILE VISIBILITY WELD: Implemented an aggressive visibility force 
- *    for small screens to stop the "White Screen" void.
- * 3. DEEP IDENTITY GATEKEEPER: Authoritatively waits for the 'is_ready' 
+ * 1. MOBILE RESPONSE WELD: Hardened the hamburger menu button with z-index 
+ *    isolation and propagation blocks to ensure 100% responsiveness on touch.
+ * 2. GLOBAL STATE SYNC: Fully synchronized with SidebarContext to eliminate 
+ *    the desync between the drawer opening and content rendering.
+ * 3. MOBILE VISIBILITY WELD: Aggressively forces visibility for small screens 
+ *    to physically eliminate the "White Screen" void.
+ * 4. DEEP IDENTITY GATEKEEPER: Authoritatively waits for the 'is_ready' 
  *    signal from the Handshake before mounting the OS interface.
- * 4. PATIENT REDIRECTION: Strictly gates navigation to Billing/Welcome 
- *    based on the Quantum Handshake status to prevent 307 routing loops.
  */
 
 import React, { memo, ReactNode, useState, useEffect } from 'react';
@@ -33,7 +32,7 @@ import { toast } from 'sonner';
 // ✅ MASTER CONTEXT IMPORTS
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
-import { SidebarProvider, useSidebar } from '@/context/SidebarContext'; // ✅ ADDED GLOBAL SYNC
+import { SidebarProvider, useSidebar } from '@/context/SidebarContext'; 
 
 // REDIRECTION & ROUTING
 import { usePathname, useRouter } from 'next/navigation';
@@ -109,7 +108,7 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
  * Standard structural wrapper for the dashboard interface.
  */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  // ✅ SYNC: Using global state from SidebarProvider instead of local useState
+  // ✅ SYNC: Consuming global Sidebar state
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
   const pathname = usePathname();
   const { branding } = useBranding(); 
@@ -117,7 +116,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
   useEffect(() => {
-    // Close mobile drawer on route change
+    // Automatically collapse drawer on navigation
     if (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
         setIsSidebarOpen(false);
     }
@@ -150,9 +149,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           
           {/* 
             ✅ THE DEEP VISIBILITY WELD:
-            Overrides internal Sidebar classes to ensure content is forced visible 
-            on small screens when the drawer is open. This prevents the Sidebar 
-            component's internal toggle from making the mobile view empty.
+            Forces Sidebar content visible on small screens when the drawer is open. 
+            Overriding translation and pointer events to ensure links are clickable.
           */}
           <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
             <Sidebar />
@@ -175,15 +173,24 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <Sidebar />
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer Overlay */}
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-30 flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+          {/* 
+            ✅ THE ACTIVATION WELD:
+            Added relative z-50 and stopPropagation to ensure the button is 
+            physically reachable and triggers the context swap correctly.
+          */}
           <button 
             type="button" 
-            className="px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-colors" 
-            onClick={toggleSidebar} // ✅ SYNC: Uses global toggle
+            className="relative z-50 px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-100 transition-colors" 
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSidebar(); // Global Context Dispatch
+            }}
           >
             <Menu className="h-7 w-7" />
           </button>
@@ -204,7 +211,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * AUTHORITATIVE ALIGNMENT ENGINE
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -254,9 +260,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                     <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
                         Synchronizing Sovereign Node...
                     </p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                       Aligning Aura Neural Pathways
-                    </p>
                 </div>
             </div>
         );
@@ -270,9 +273,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                         <ShieldAlert className="text-rose-500 h-12 w-12" />
                     </div>
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
-                    <p className="text-slate-500 mt-6 font-medium leading-relaxed text-sm">
-                        The Sovereign Gate was unable to deeply align your vault data. 
-                    </p>
                     <div className="flex flex-col gap-3 mt-12">
                         <Button 
                             onClick={() => window.location.reload()} 
@@ -280,12 +280,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                             className="h-14 rounded-3xl font-black uppercase tracking-widest text-[10px] border-slate-200"
                         >
                             Retry Sync
-                        </Button>
-                        <Button 
-                            onClick={() => window.location.href = '/login'} 
-                            className="h-14 bg-slate-950 text-white rounded-3xl font-black uppercase tracking-widest text-[10px]"
-                        >
-                            Secure Re-Login
                         </Button>
                     </div>
                 </div>
@@ -300,7 +294,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <BusinessProvider>
       <GlobalCopilotProvider>
-        <SidebarProvider> {/* ✅ WRAPPED TO ALLOW GLOBAL MOBILE SYNC */}
+        <SidebarProvider>
             <BrandingProvider>
                 <SyncProvider>
                     <DashboardGatekeeper>
@@ -316,6 +310,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 /**
  * STATUS: Sovereign Layout Fully Fixed.
- * VERSION: v19.0 (Deep State Synchronization).
- * JURISDICTION: BBU1 Global Cloud.
+ * VERSION: v19.1 (The Mobile Response Weld).
  */

@@ -739,33 +739,44 @@ export default function Sidebar() {
     );
 
     return (
-        <aside 
-            onClick={() => {
-                if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                    toggleSidebar();
-                }
-            }}
-            className={cn(
-                "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                
-                /** 
-                 * ✅ POSITIONING WELD:
-                 * Sticky on desktop, relative on mobile to allow the parent Layout's Drawer 
-                 * to control the physical translation without fighting inner visibility.
-                 */
-                "relative lg:sticky top-0 left-0",
-
-                /**
-                 * ✅ MOBILE VISIBILITY WELD:
-                 * On mobile, we FORCE content to be full width and visible (100% opacity, 0 translation).
-                 * This ensures that when the Drawer slides open, the content is already there 
-                 * instead of showing a white empty void.
-                 */
-                isSidebarOpen 
-                    ? "w-full lg:w-72 translate-x-0 cursor-default opacity-100" 
-                    : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-100 lg:opacity-0 pointer-events-none lg:pointer-events-auto"
+        <>
+            {/* --- 🛡️ SMART BACKDROP (MOBILE ONLY) --- 
+                Ensures the UI remains interactive and dismissible on small screens.
+            */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] lg:hidden transition-opacity duration-500 animate-in fade-in"
+                    onClick={toggleSidebar}
+                />
             )}
-        >
+
+            <aside 
+                onClick={() => {
+                    // UX UPDATE: On large screens, clicking anywhere in the sidebar space opens it
+                    if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                        toggleSidebar();
+                    }
+                }}
+                className={cn(
+                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                    
+                    /** 
+                     * ✅ POSITIONING WELD:
+                     * Sticky on desktop, relative on mobile to allow the parent Layout's Drawer 
+                     * to control the physical translation without fighting inner visibility.
+                     */
+                    "relative lg:sticky top-0 left-0",
+
+                    /**
+                     * ✅ MOBILE VISIBILITY WELD (Fixes the White Screen & Click bug):
+                     * On mobile, we FORCE content to be full width and visible.
+                     * We add 'pointer-events-auto' when open so the links are clickable.
+                     */
+                    isSidebarOpen 
+                        ? "w-full lg:w-72 translate-x-0 opacity-100 pointer-events-auto cursor-default" 
+                        : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-0 pointer-events-none lg:pointer-events-auto"
+                )}
+            >
             {/* --- IDENTITY SECTION --- */}
             <div className={cn(
                 "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]",
@@ -872,5 +883,6 @@ export default function Sidebar() {
                 </Link>
             </div>
         </aside>
+    </> // <--- Add this closing tag here
     );
 }
