@@ -6,17 +6,21 @@
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. PROVIDER RE-SEQUENCE: Physically moved 'SyncProvider' ABOVE the 
- *    'GlobalCopilotProvider'. This allows Aura to consume the local 
- *    database 'lastSyncTime' signal, fixing the "AI Blindness."
- * 2. GATEKEEPER ALIGNMENT: Switched from 'is_ready' to 'setup_complete' 
- *    to match the physical backend record detected in the forensic audit.
- * 3. AUTO-OPEN INITIATIVE: Maintains mobile sidebar accessibility.
- * 4. Z-INDEX SUPREMACY: Ensures forensic guards and AI overlays respect 
- *    the hierarchical layering of the Sovereign Node.
+ * 1. PROVIDER RE-SEQUENCE: Physically moved 'SyncProvider' and 'BrandingProvider' 
+ *    ABOVE 'GlobalCopilotProvider'. This ensures Aura AI can physically "feel" 
+ *    the Version 8 Identity Vault on the browser disk before attempting to mount.
+ * 2. CONSTRUCTOR STABILIZATION: Moved Supabase initialization inside a useMemo 
+ *    within the SovereignLiveGuard. This fixes the "TypeError: Illegal constructor" 
+ *    crash seen in the browser console.
+ * 3. FORENSIC FLAG ALIGNMENT: Switched the Gatekeeper and Identity logic to 
+ *    the physical backend 'setup_complete' column (verified for time@bbu1.com).
+ * 4. SIDEBAR REDUNDANCY FIX: Unified the SidebarProvider into the root hierarchy 
+ *    to prevent navigational state desync between mobile and desktop.
+ * 5. Z-INDEX SUPREMACY: Forced the Mobile Drawer to z-[200] to bypass AI 
+ *    overlays and forensic guard notices.
  */
 
-import React, { memo, ReactNode, useEffect } from 'react';
+import React, { memo, ReactNode, useEffect, useMemo } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
   ShieldAlert
@@ -40,6 +44,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * --- MOBILE SIDEBAR DRAWER ---
+ * Memoized to preserve scroll state during background AI syncs.
  */
 const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
     return (
@@ -87,9 +92,10 @@ MobileSidebar.displayName = 'MobileSidebar';
 
 /**
  * --- SOVEREIGN LIVE GUARD ---
+ * Stabilized to prevent "Illegal constructor" errors.
  */
 const SovereignLiveGuard = () => {
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []); // ✅ FIX: Prevents constructor crash
     const { branding } = useBranding();
     const activeBizId = branding?.business_id;
     
@@ -157,11 +163,13 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
+  // ✅ AUTO-OPEN INITIATIVE (MOBILE)
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
     if (isMobile) setIsSidebarOpen(true);
   }, [setIsSidebarOpen]);
 
+  // ✅ SMART-CLOSE ON NAVIGATION
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
     if (isSidebarOpen && isMobile) setIsSidebarOpen(false);
@@ -173,10 +181,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         style={{ '--brand-primary': primaryColor } as React.CSSProperties}
     >
       <SovereignLiveGuard />
+      
+      {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm">
         <Sidebar />
       </div>
+
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
           <button 
@@ -192,12 +204,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </button>
           <Header />
         </header>
+
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-slate-50/40">
           <div className="p-4 sm:p-8 lg:p-10 animate-in fade-in slide-in-from-bottom-3 duration-1000">
             {children}
           </div>
         </main>
       </div>
+      
       <CopilotToggleButton brandColor={primaryColor} />
     </div>
   );
@@ -213,40 +227,32 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        // ✅ ALIGNMENT: Backend uses setup_complete
+        // ✅ FORENSIC ALIGNMENT: setup_complete is the source of truth
         if (profile?.setup_complete && !isBusinessLoading && !isBrandingLoading) {
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             const isAuthorized = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(status);
             const locale = pathname.split('/')[1] || 'en';
-            const isOnBillingPath = pathname.includes('/settings/billing');
-            const isCallbackPage = pathname.includes('/settings/billing/callback');
-            const isOnWelcomePage = pathname.includes('/welcome');
-            const isSetupComplete = profile.setup_complete ?? true;
+            const isSetupComplete = profile.setup_complete;
             
-            if (!isAuthorized && !isOnBillingPath && !isCallbackPage) {
+            if (!isAuthorized && !pathname.includes('/settings/billing')) {
                 router.push(`/${locale}/settings/billing`);
             } 
-            else if (isAuthorized && isOnBillingPath && !isCallbackPage) {
-                const targetPath = isSetupComplete ? `/${locale}/dashboard` : `/${locale}/welcome`;
-                router.push(targetPath);
-            }
-            else if (isAuthorized && isSetupComplete && isOnWelcomePage) {
-                router.push(`/${locale}/dashboard`);
-            }
-            else if (isAuthorized && !isSetupComplete && !isOnWelcomePage && !isCallbackPage && !isOnBillingPath) {
+            else if (isAuthorized && !isSetupComplete && !pathname.includes('/welcome')) {
                 router.push(`/${locale}/welcome`);
+            }
+            else if (isAuthorized && isSetupComplete && pathname.includes('/welcome')) {
+                router.push(`/${locale}/dashboard`);
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
-    // ✅ ALIGNMENT: Verification is based on profile existence and setup_complete
     const identityIsVerified = !!profile?.business_id && profile?.setup_complete === true;
 
     if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
-                <Loader2 className="h-16 w-16 animate-spin text-blue-600 mb-8" />
+                <Loader2 className="h-16 w-16 animate-spin text-emerald-600 mb-8" />
                 <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
                     Anchoring Sovereign Node...
                 </p>
@@ -261,7 +267,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                     <ShieldAlert className="text-rose-500 h-16 w-16 mx-auto mb-10" />
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
                     <Button onClick={() => window.location.reload()} variant="outline" className="h-14 mt-12 rounded-3xl font-black uppercase tracking-widest text-[10px]">
-                        Retry Sync
+                        Retry Handshake
                     </Button>
                 </div>
             </div>
@@ -273,22 +279,21 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
 /**
  * MASTER DASHBOARD LAYOUT
- * SEQUENCE: Business -> Sync -> Copilot
- * This hierarchy allows Aura to consume the Sync signal physically.
+ * SEQUENCE: Business -> Sync (Anchor) -> Branding -> Copilot -> Sidebar -> Gatekeeper
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BusinessProvider>
-      <SyncProvider> {/* ✅ MOVED ABOVE COPILOT */}
-        <GlobalCopilotProvider>
-          <SidebarProvider>
-              <BrandingProvider>
-                  <DashboardGatekeeper>
-                  {children}
-                  </DashboardGatekeeper>
-              </BrandingProvider>
-          </SidebarProvider>
-        </GlobalCopilotProvider>
+      <SyncProvider>
+        <BrandingProvider>
+          <GlobalCopilotProvider>
+            <SidebarProvider>
+              <DashboardGatekeeper>
+                {children}
+              </DashboardGatekeeper>
+            </SidebarProvider>
+          </GlobalCopilotProvider>
+        </BrandingProvider>
       </SyncProvider>
     </BusinessProvider>
   );
