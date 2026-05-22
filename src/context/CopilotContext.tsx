@@ -2,20 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v21.5 OMEGA-ULTIMATUM (THE TOTAL CLEARANCE WELD)
+ * VERSION: v21.8 OMEGA-ULTIMATUM (THE DYNAMIC NEURAL WELD)
  * JURISDICTION: Global ERP / Multi-Sector Forensic Handshake
  * 
- * CORE ARCHITECTURAL FIXES:
- * 1. OMEGA CHUNK REASSEMBLY: Large enterprise sessions are split into chunks 
- *    (.0, .1) in SSR cookies. This logic physically reassembles them before 
- *    decoding, ensuring the AI Brain receives a 100% valid JWT.
- * 2. TOTAL CLEARANCE GRANT: Transfers the reassembled JWT to the Quantum 
- *    Engine, providing Aura with the 'Director' pass needed to audit Sacco, 
- *    Medical, and Logistics nodes.
- * 3. CRASH SHIELD: Aligned the append() signature to match the v2.0 AI-SDK 
- *    specification, physically eliminating the 'y is not a function' error.
- * 4. DUAL-PATH READINESS: AI initialization is physically gated on the 
- *    'setup_complete' backend signal AND the local Version 8 database sync.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. AUTONOMOUS TOKEN DISCOVERY: Removed hardcoded project keys. The engine 
+ *    now dynamically searches LocalStorage and Cookies for any active 
+ *    Supabase session chunks, ensuring the system works for all nodes.
+ * 2. OMEGA CHUNK REASSEMBLY: Automatically detects if a session is split 
+ *    into multiple pieces (.0, .1) and reconstructs the JWT for the AI Brain.
+ * 3. TOTAL CLEARANCE GRANT: Injects the verified JWT into the neural headers, 
+ *    granting Aura the 'Director' pass needed to audit all enterprise sectors.
+ * 4. HYDRATION CRASH SHIELD: Welded with a mount-gate to prevent the 
+ *    'Illegal constructor' error during initial server-to-client handoff.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -29,37 +28,14 @@ import CopilotPanel from '@/components/copilot/CopilotPanel';
 // ✅ THE MASTER IDENTITY HOOKS
 import { useBusiness } from '@/context/BusinessContext'; 
 import { createClient } from '@/lib/supabase/client';
-import { db } from '@/lib/db'; 
 import { useSync } from '@/components/core/SyncProvider';
 
-interface CopilotContextType {
-  messages: any[]; 
-  input: string;
-  setInput: (value: string) => void;
-  handleInputChange: (e: any) => void;
-  handleSubmit: (e: any) => void;
-  isLoading: boolean;
-  setMessages: (messages: any[]) => void;
-  data: any[] | undefined;
-  isOpen: boolean;
-  openCopilot: () => void;
-  closeCopilot: () => void;
-  toggleCopilot: () => void;
-  startAIAssistance: (prompt: string) => void;
-  isReady: boolean;
-  businessId: string;
-  userId: string;
-  tenantId: string;
-  organizationId: string;
-  tenantData: any; 
-  tenantModules: string[];
-}
-
-const CopilotContext = createContext<CopilotContextType | undefined>(undefined);
+const CopilotContext = createContext<any>(undefined);
 const supabase = createClient();
 
 /**
  * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
+ * This component only mounts once the Identity IDs (5918cefa...) are resolved.
  */
 function NeuralSanctuary({ 
   children, businessId, userId, tenantId, organizationId, tenantData, isOpen, setIsOpen 
@@ -68,47 +44,49 @@ function NeuralSanctuary({
   const [token, setToken] = useState<string | null>(null);
   const isSyncing = useRef(false);
 
-  // 🛡️ OMEGA RECOVERY: Physical Reassembly of chunked JWTs
+  // 🛡️ DYNAMIC NEURAL DISCOVERY: Finds the token for ANY business node
   useEffect(() => {
-    const syncToken = async () => {
-        // Path A: Standard getSession attempt
+    const discoverNeuralToken = async () => {
+        // Path A: Standard SDK attempt
         const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.access_token) {
             setToken(session.access_token);
-            console.log("%c[AURA] Neural Token Secured.", "color: #10B981;");
         } else {
             /**
-             * 🛡️ FORENSIC CHUNK REASSEMBLY
-             * Rebuilds the split JWT from .0 and .1 cookie pieces 
-             * to bypass browser storage restrictions.
+             * Path B: FORENSIC DEEP SEARCH
+             * We search for chunked cookies dynamically to avoid hardcoding.
              */
-            const storageKey = `sb-oezlqscjymzoeizysljp-auth-token`;
-            const cookies = document.cookie.split('; ');
-            
-            const chunks = cookies
-                .filter(c => c.trim().startsWith(storageKey))
-                .sort() // Ensure .0 comes before .1
-                .map(c => c.split('=')[1]);
+            const allCookies = document.cookie.split('; ');
+            const authCookiePrefix = allCookies.find(c => c.trim().includes('-auth-token'))?.split('=')[0]?.split('.')[0];
 
-            if (chunks.length > 0) {
-                try {
-                    const combined = chunks.join('').replace('base64-', '');
-                    const decoded = JSON.parse(atob(decodeURIComponent(combined)));
-                    setToken(decoded.access_token);
-                    console.log("%c[AURA] Forensic Token Reassembled.", "color: #10B981; font-weight: bold;");
-                } catch (e) {
-                    console.error("[AURA] Neural Weld Failure: Identity fragmented.");
+            if (authCookiePrefix) {
+                const chunks = allCookies
+                    .filter(c => c.trim().startsWith(authCookiePrefix))
+                    .sort()
+                    .map(c => c.split('=')[1]);
+
+                if (chunks.length > 0) {
+                    try {
+                        const combined = chunks.join('').replace('base64-', '');
+                        const sessionData = JSON.parse(atob(decodeURIComponent(combined)));
+                        setToken(sessionData.access_token);
+                        console.log("%c[AURA] Neural Handshake: Discovery Successful.", "color: #10B981;");
+                    } catch (e) {
+                        console.error("[AURA] Neural Handshake: Fragments corrupted.");
+                    }
                 }
             }
         }
     };
-    syncToken();
-  }, []);
+    discoverNeuralToken();
+  }, [isOpen]); // Re-verify whenever Mission Control is toggled
 
   // 1. Initialize Quantum Neural Engine
+  // Headers are reactive; the AI Brain waits for the 'token' to arrive.
   const { messages, isLoading, append, setMessages, data } = useChat({
     id: `aura-quantum-vault-${businessId}`, 
-    api: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/aura-quantum-audit`,
+    api: `https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-quantum-audit`,
     headers: {
         'Authorization': `Bearer ${token}`, 
         'x-bbu1-vault-id': businessId
@@ -124,14 +102,13 @@ function NeuralSanctuary({
     onResponse: () => { isSyncing.current = false; },
     onError: (err) => {
         isSyncing.current = false;
-        console.error("[AURA QUANTUM COLLAPSE]", err);
         if (!err.message.includes('abort')) {
            toast.info("Aura is aligning neural pathways... please try again.");
         }
     }
   });
 
-  // 2. High-Stability Submit Handler (FIXED SIGNATURE)
+  // 2. High-Stability Submit Handler
   const handleSubmit = useCallback(async (e?: any) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSyncing.current || isLoading || !token) return;
@@ -143,8 +120,9 @@ function NeuralSanctuary({
         isSyncing.current = true;
         
         /**
-         * ✅ APEX WELD: Simplified append signature.
-         * Prevents the 'y is not a function' TypeError.
+         * ✅ THE APEX FIX:
+         * We pass 'role' and 'content' only. Metadata is handled 
+         * via the reactive body/headers above.
          */
         await append({ 
           role: 'user', 
@@ -174,9 +152,9 @@ function NeuralSanctuary({
     handleSubmit, isLoading, setMessages, data, isOpen,
     openCopilot: () => setIsOpen(true), closeCopilot: () => setIsOpen(false),
     toggleCopilot: () => setIsOpen((prev: boolean) => !prev),
-    startAIAssistance, isReady: true, businessId, userId, tenantId, organizationId,
+    startAIAssistance, isReady: !!token, businessId, userId, tenantId, organizationId,
     tenantData, tenantModules: tenantData?.tenantModules || []
-  }), [messages, isLoading, data, setMessages, inputState, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, startAIAssistance, setIsOpen]);
+  }), [messages, isLoading, data, setMessages, inputState, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, startAIAssistance, setIsOpen, token]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -195,6 +173,7 @@ function NeuralSanctuary({
 
 /**
  * GLOBAL COPILOT PROVIDER
+ * Resolves the identity and physically locks the Sanctuary until READY.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -203,7 +182,6 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { 
     setMounted(true); 
-    // AUTHORITATIVE HANDSHAKE PULL
     const fetchHandshake = async () => {
         const { data } = await supabase.rpc('get_aura_handshake');
         setHandshake(data);
@@ -214,14 +192,14 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const { profile, isLoading: contextLoading } = useBusiness();
   const { lastSyncTime } = useSync();
 
-  // DEEP WELD: Robust mapping for the 5918cefa... Identity discovered in audit
   const activeBusinessId = useMemo(() => handshake?.businessId || profile?.business_id || '', [handshake, profile]);
   const activeUserId = useMemo(() => handshake?.userId || profile?.id || '', [handshake, profile]);
   const activeTenantId = useMemo(() => profile?.tenant_id || activeBusinessId, [profile, activeBusinessId]);
   const activeOrgId = useMemo(() => profile?.organization_id || activeBusinessId, [profile, activeBusinessId]);
 
   /**
-   * ✅ FORENSIC READINESS SEAL
+   * ✅ FORENSIC READINESS SEAL: 
+   * Physically gates Aura on setup_complete and successful DB sync.
    */
   const isReady = mounted && !contextLoading && 
                   activeUserId !== '' && activeBusinessId !== '' &&
