@@ -2,21 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v18.9 OMEGA-ULTIMATUM (THE MOBILE VISIBILITY WELD)
+ * VERSION: v19.0 OMEGA-ULTIMATUM (THE DEEP STATE SYNC)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. DEEP IDENTITY GATEKEEPER: The UI now authoritatively waits for both the 
- *    Physical Business ID AND the 'is_ready' signal from the Handshake. 
- *    This prevents "Identity Desync" errors caused by database trigger latency.
- * 2. PATIENT REDIRECTION: Redirect logic for Billing, Welcome, and Dashboards 
- *    is strictly gated by the completion of the Quantum Handshake to prevent 
- *    infinite 307 routing loops.
- * 3. MOBILE VISIBILITY FIX: Physically eliminated the "White Screen" bug by 
- *    ensuring the MobileSidebar wrapper forces content width and opacity 
- *    on small screens.
- * 4. FORENSIC LIVE GUARD: Maintains real-time anomaly detection for the 
- *    active business node using Supabase Realtime isolation.
+ * 1. GLOBAL STATE WELD: Synchronized the mobile drawer with the global 
+ *    SidebarContext. This physically eliminates desync between the 
+ *    drawer opening and the sidebar content rendering.
+ * 2. MOBILE VISIBILITY WELD: Implemented an aggressive visibility force 
+ *    for small screens to stop the "White Screen" void.
+ * 3. DEEP IDENTITY GATEKEEPER: Authoritatively waits for the 'is_ready' 
+ *    signal from the Handshake before mounting the OS interface.
+ * 4. PATIENT REDIRECTION: Strictly gates navigation to Billing/Welcome 
+ *    based on the Quantum Handshake status to prevent 307 routing loops.
  */
 
 import React, { memo, ReactNode, useState, useEffect } from 'react';
@@ -32,9 +30,10 @@ import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client'; 
 import { toast } from 'sonner'; 
 
-// ✅ MASTER CONTEXT IMPORTS (Identity Anchors)
+// ✅ MASTER CONTEXT IMPORTS
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
+import { SidebarProvider, useSidebar } from '@/context/SidebarContext'; // ✅ ADDED GLOBAL SYNC
 
 // REDIRECTION & ROUTING
 import { usePathname, useRouter } from 'next/navigation';
@@ -43,7 +42,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 /**
  * --- SOVEREIGN LIVE GUARD ---
  * Dynamically listens for forensic anomalies based on the active node.
- * This ensures the Operator only sees alerts for the specific vault they are visiting.
  */
 const SovereignLiveGuard = () => {
     const supabase = createClient();
@@ -53,7 +51,6 @@ const SovereignLiveGuard = () => {
     useEffect(() => {
         if (!activeBizId) return;
 
-        // Anchor the channel to the specific business ID for Realtime isolation
         const channel = supabase
             .channel(`sovereign_forensics_${activeBizId}`)
             .on('postgres_changes', { 
@@ -74,7 +71,6 @@ const SovereignLiveGuard = () => {
             .subscribe();
 
         return () => { 
-            // Graceful cleanup during node swap
             supabase.removeChannel(channel); 
         };
     }, [supabase, activeBizId]);
@@ -84,7 +80,6 @@ const SovereignLiveGuard = () => {
 
 /**
  * --- DYNAMIC COPILOT BUTTON ---
- * Aligned with the background AI handshake status.
  */
 const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
     const { toggleCopilot, isOpen, isReady, isLoading } = useCopilot();
@@ -114,15 +109,19 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
  * Standard structural wrapper for the dashboard interface.
  */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // ✅ SYNC: Using global state from SidebarProvider instead of local useState
+  const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
   const pathname = usePathname();
   const { branding } = useBranding(); 
   
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
   useEffect(() => {
-    if (isSidebarOpen) setIsSidebarOpen(false);
-  }, [pathname]);
+    // Close mobile drawer on route change
+    if (isSidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+    }
+  }, [pathname, setIsSidebarOpen]);
 
   /**
    * ✅ MOBILE SIDEBAR WELD
@@ -131,7 +130,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
     if (!isOpen) return null;
     return (
-      <div className="fixed inset-0 z-[150] flex md:hidden" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 z-[150] flex lg:hidden" role="dialog" aria-modal="true">
         <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
@@ -151,11 +150,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           
           {/* 
             ✅ THE DEEP VISIBILITY WELD:
-            Overrides internal classes to ensure Sidebar content is forced visible 
-            on small screens. This prevents the Sidebar component's 'isSidebarOpen' 
-            logic from making the mobile view empty.
+            Overrides internal Sidebar classes to ensure content is forced visible 
+            on small screens when the drawer is open. This prevents the Sidebar 
+            component's internal toggle from making the mobile view empty.
           */}
-          <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!pointer-events-auto">
+          <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
             <Sidebar />
           </div>
         </motion.div>
@@ -172,18 +171,19 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <SovereignLiveGuard />
       
       {/* Desktop Sidebar Anchor */}
-      <div className="hidden md:flex md:flex-shrink-0 border-r border-slate-100 shadow-sm">
+      <div className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm">
         <Sidebar />
       </div>
 
+      {/* Mobile Drawer */}
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-30 flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
           <button 
             type="button" 
-            className="px-6 border-r border-slate-100 text-slate-500 md:hidden hover:bg-slate-50 transition-colors" 
-            onClick={() => setIsSidebarOpen(true)}
+            className="px-6 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-colors" 
+            onClick={toggleSidebar} // ✅ SYNC: Uses global toggle
           >
             <Menu className="h-7 w-7" />
           </button>
@@ -204,7 +204,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * SOVEREIGN GATEKEEPER
- * UPGRADE: v18.9 (IDENTITY ALIGNMENT LOCK)
+ * AUTHORITATIVE ALIGNMENT ENGINE
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -212,15 +212,12 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const pathname = usePathname();
     const router = useRouter();
 
-    // --- DEEP VERIFICATION REDIRECT ENGINE ---
     useEffect(() => {
-        // We only trigger redirects AFTER the profile has been authoritatively verified (is_ready)
         if (profile?.is_ready && !isBusinessLoading && !isBrandingLoading) {
             
             const rawStatus = (profile as any).subscription_status || '';
             const status = rawStatus.toLowerCase().trim();
             
-            // Allow entry if subscription status is missing initially
             const isAuthorized = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(status);
             const locale = pathname.split('/')[1] || 'en';
             const isOnBillingPath = pathname.includes('/settings/billing');
@@ -228,7 +225,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
             const isOnWelcomePage = pathname.includes('/welcome');
             const isSetupComplete = profile.setup_complete ?? true;
             
-            // REDIRECTION ENGINE
             if (!isAuthorized && !isOnBillingPath && !isCallbackPage) {
                 router.push(`/${locale}/settings/billing`);
             } 
@@ -245,10 +241,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
-    /** 
-     * ✅ THE PATIENT LOADER:
-     * Access is granted only when 'business_id' exists AND 'is_ready' is true.
-     */
     const identityIsVerified = !!profile?.business_id && profile?.is_ready === true;
 
     if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
@@ -270,7 +262,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // --- ERROR RECOVERY UI ---
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
@@ -280,7 +271,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                     </div>
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
                     <p className="text-slate-500 mt-6 font-medium leading-relaxed text-sm">
-                        The Sovereign Gate was unable to deeply align your vault data. This usually happens during high-speed sector transitions or database synchronization latency.
+                        The Sovereign Gate was unable to deeply align your vault data. 
                     </p>
                     <div className="flex flex-col gap-3 mt-12">
                         <Button 
@@ -288,7 +279,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                             variant="outline" 
                             className="h-14 rounded-3xl font-black uppercase tracking-widest text-[10px] border-slate-200"
                         >
-                            Retry Deep Synchronization
+                            Retry Sync
                         </Button>
                         <Button 
                             onClick={() => window.location.href = '/login'} 
@@ -309,13 +300,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <BusinessProvider>
       <GlobalCopilotProvider>
-        <BrandingProvider>
-          <SyncProvider>
-            <DashboardGatekeeper>
-              {children}
-            </DashboardGatekeeper>
-          </SyncProvider>
-        </BrandingProvider>
+        <SidebarProvider> {/* ✅ WRAPPED TO ALLOW GLOBAL MOBILE SYNC */}
+            <BrandingProvider>
+                <SyncProvider>
+                    <DashboardGatekeeper>
+                    {children}
+                    </DashboardGatekeeper>
+                </SyncProvider>
+            </BrandingProvider>
+        </SidebarProvider>
       </GlobalCopilotProvider>
     </BusinessProvider>
   );
@@ -323,6 +316,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 /**
  * STATUS: Sovereign Layout Fully Fixed.
- * VERSION: v18.9 (Mobile Content Forced Visible).
+ * VERSION: v19.0 (Deep State Synchronization).
  * JURISDICTION: BBU1 Global Cloud.
  */

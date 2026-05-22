@@ -11,7 +11,7 @@ import { useBranding } from '@/components/core/BrandingProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 
-// --- MASTER ICON REGISTRY (ALL 100% PRESERVED) ---
+// --- MASTER ICON REGISTRY (100% PRESERVED) ---
 import {
     LayoutDashboard, ShoppingCart, Clock, Users, BarChart3, History, Boxes, Truck,
     ClipboardCheck, Receipt, BookOpen, ShieldAlert, Banknote, BookCopy, Briefcase, UsersRound,
@@ -572,7 +572,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
 
 /**
  * --- BBU1 SOVEREIGN SIDEBAR ---
- * VERSION: v19.6 OMEGA-ULTIMATUM (THE VISUAL IDENTITY WELD)
+ * VERSION: v19.7 OMEGA-ULTIMATUM (THE VISUAL IDENTITY WELD)
  */
 export default function Sidebar() {
     const pathname = usePathname();
@@ -607,7 +607,7 @@ export default function Sidebar() {
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
 
     // 5. BRANDING WELD (Dynamically eliminates "SOVEREIGN OS" hardcode)
-    // We prioritize branding context, then tenant info, then profile. No more hard fallbacks.
+    // Physically synchronized with the database branding settings.
     const businessName = branding?.company_name_display || tenant?.business_display_name || tenant?.name || profile?.business_name || "AUTHORIZED NODE";
     const operatorName = profile?.full_name || "Authorized Operator"; 
     const bizLogo = branding?.logo_url || tenant?.logo_url;
@@ -649,7 +649,7 @@ export default function Sidebar() {
         });
     }, [isLoading, userRole, enabledModules, tenant, bizType, rawBizType, isSovereign, isAdminOrOwner, isNimPaints]);
 
-    // Close sidebar upon navigation on mobile to maximize workspace
+    // Close sidebar upon navigation to maximize workspace on mobile
     useEffect(() => {
         const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
         if (isSidebarOpen && isMobile) {
@@ -739,147 +739,138 @@ export default function Sidebar() {
     );
 
     return (
-        <>
-            {/* --- SMART BACKDROP (MOBILE ONLY) --- */}
-            {isSidebarOpen && (
-                <div 
-                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[90] lg:hidden transition-opacity duration-500 animate-in fade-in"
-                    onClick={toggleSidebar}
-                />
+        <aside 
+            onClick={() => {
+                if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                    toggleSidebar();
+                }
+            }}
+            className={cn(
+                "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                
+                /** 
+                 * ✅ POSITIONING WELD:
+                 * Sticky on desktop, relative on mobile to allow the parent Layout's Drawer 
+                 * to control the physical translation without fighting inner visibility.
+                 */
+                "relative lg:sticky top-0 left-0",
+
+                /**
+                 * ✅ MOBILE VISIBILITY WELD:
+                 * On mobile, we FORCE content to be full width and visible (100% opacity, 0 translation).
+                 * This ensures that when the Drawer slides open, the content is already there 
+                 * instead of showing a white empty void.
+                 */
+                isSidebarOpen 
+                    ? "w-full lg:w-72 translate-x-0 cursor-default opacity-100" 
+                    : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-100 lg:opacity-0 pointer-events-none lg:pointer-events-auto"
             )}
-
-            <aside 
-                onClick={() => {
-                    if (!isSidebarOpen && typeof window !== 'undefined' && window.innerWidth >= 1024) {
-                        toggleSidebar();
-                    }
-                }}
-                className={cn(
-                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                    
-                    /** 
-                     * ✅ POSITIONING WELD:
-                     * Sticky on desktop, relative on mobile to allow the parent Drawer 
-                     * to control the physical sliding.
-                     */
-                    "relative lg:sticky top-0 left-0",
-
-                    /**
-                     * ✅ MOBILE VISIBILITY WELD (Fixes the White Space bug):
-                     * We maintain 'w-full' on mobile screens so content is never 0-width inside the drawer.
-                     * We only toggle translation, not width/opacity for the mobile breakpoint.
-                     */
-                    isSidebarOpen 
-                        ? "w-full lg:w-72 translate-x-0 cursor-default opacity-100" 
-                        : "w-full lg:w-20 lg:translate-x-0 -translate-x-full lg:opacity-100 opacity-0 pointer-events-none lg:pointer-events-auto"
+        >
+            {/* --- IDENTITY SECTION --- */}
+            <div className={cn(
+                "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]",
+                isSidebarOpen ? "h-24" : "h-20"
+            )}>
+                {isSidebarOpen ? (
+                    <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
+                        {/* ✅ LAYERED WELD: Higher z-index for Switcher to prevent 'behind' bug */}
+                        <div className="relative z-[120]">
+                            <BusinessSwitcher />
+                        </div>
+                        <div className="flex flex-col mt-2 px-1">
+                            <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">
+                                {businessName}
+                            </span>
+                            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">
+                                {operatorName} • {activeRole}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
+                        {/* ✅ BRANDING WELD: Dynamic Logo Injection */}
+                        {bizLogo ? (
+                            <img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />
+                        ) : (
+                            <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
+                                {businessName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                    </div>
                 )}
-            >
-                {/* --- IDENTITY SECTION --- */}
-                <div className={cn(
-                    "flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]",
-                    isSidebarOpen ? "h-24" : "h-20"
-                )}>
-                    {isSidebarOpen ? (
-                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
-                            {/* ✅ LAYERED WELD: Ensure Switcher dropdown floats OVER the sidebar */}
-                            <div className="relative z-[120]">
-                                <BusinessSwitcher />
-                            </div>
-                            <div className="flex flex-col mt-2 px-1">
-                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">
-                                    {businessName}
-                                </span>
-                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">
-                                    {operatorName} • {activeRole}
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                            {/* ✅ BRANDING WELD: Automated logo injection */}
-                            {bizLogo ? (
-                                <img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />
-                            ) : (
-                                <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">
-                                    {businessName.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-                    )}
 
-                    <Button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSidebar();
-                        }}
-                        variant="ghost"
-                        size="icon"
+                <Button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSidebar();
+                    }}
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0",
+                        !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm"
+                    )}
+                >
+                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+            </div>
+
+            {/* --- SCROLLABLE NAVIGATION --- */}
+            <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
+                {isLoading ? (
+                    <div className="py-20 flex flex-col items-center gap-4 opacity-40">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    </div>
+                ) : (
+                    <div className="animate-in fade-in duration-700">
+                        {renderAccordionNav(finalNavItems)}
+                    </div>
+                )}
+            </nav>
+
+            {/* --- AUTHORITATIVE FOOTER --- */}
+            <div className={cn(
+                "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
+                !isSidebarOpen && "flex flex-col items-center"
+            )}>
+                {/* QUICK ACTION REGISTER BUTTON */}
+                {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
+                    <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
+                        <Link href="/accounting/daily-ledger">
+                            <Unlock size={14} className="mr-3 text-blue-400 group-hover:text-blue-600" /> 
+                            <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
+                        </Link>
+                    </Button>
+                )}
+
+                <Button 
+                    variant="default" 
+                    className={cn(
+                        "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", 
+                        !isSidebarOpen && "justify-center px-0 w-12"
+                    )} 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        openCopilot();
+                    }}
+                >
+                    <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                    {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
+                </Button>
+                
+                <Link href="/settings" className="w-full">
+                    <Button 
+                        variant="ghost" 
                         className={cn(
-                            "h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0",
-                            !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm"
+                            "w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", 
+                            !isSidebarOpen && "justify-center px-0 w-11 mx-auto"
                         )}
                     >
-                        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
                     </Button>
-                </div>
-
-                {/* --- SCROLLABLE NAVIGATION --- */}
-                <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
-                    {isLoading ? (
-                        <div className="py-20 flex flex-col items-center gap-4 opacity-40">
-                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                        </div>
-                    ) : (
-                        <div className="animate-in fade-in duration-700">
-                            {renderAccordionNav(finalNavItems)}
-                        </div>
-                    )}
-                </nav>
-
-                {/* --- AUTHORITATIVE FOOTER --- */}
-                <div className={cn(
-                    "p-4 mt-auto border-t border-slate-100 space-y-3 bg-white",
-                    !isSidebarOpen && "flex flex-col items-center"
-                )}>
-                    {/* QUICK ACTION REGISTER BUTTON */}
-                    {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
-                        <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
-                            <Link href="/accounting/daily-ledger">
-                                <Unlock size={14} className="mr-3 text-blue-400 group-hover:text-blue-600" /> 
-                                <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
-                            </Link>
-                        </Button>
-                    )}
-
-                    <Button 
-                        variant="default" 
-                        className={cn(
-                            "w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", 
-                            !isSidebarOpen && "justify-center px-0 w-12"
-                        )} 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openCopilot();
-                        }}
-                    >
-                        <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
-                    </Button>
-                    
-                    <Link href="/settings" className="w-full">
-                        <Button 
-                            variant="ghost" 
-                            className={cn(
-                                "w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", 
-                                !isSidebarOpen && "justify-center px-0 w-11 mx-auto"
-                            )}
-                        >
-                            <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
-                            {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
-                        </Button>
-                    </Link>
-                </div>
-            </aside>
-        </>
+                </Link>
+            </div>
+        </aside>
     );
 }
