@@ -2,22 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v18.5 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT WELD)
+ * VERSION: v19.5 OMEGA-ULTIMATUM (THE IDENTITY ALIGNMENT WELD)
  * JURISDICTION: Multi-Tenant / Global ERP Infrastructure
  * 
  * CORE ARCHITECTURAL FIXES:
  * 1. IDENTITY KEY RECONCILIATION: Updated the resolution logic to recognize 
  *    both 'businessId' and 'business_id'. This prevents Aura from "Filtering Out" 
  *    valid identities during the snake_case vs camelCase transition.
- * 2. QUANTUM READINESS GATE: The AI engine now authoritatively gates its mounting 
- *    on the 'is_ready' signal from the Sovereign Handshake. This ensures Aura 
- *    never attempts to initialize with a partial or "Latent" identity.
+ * 2. FORENSIC READINESS GATE: Switched the neural mount logic from 'is_ready' 
+ *    to 'setup_complete' to match the actual physical backend schema. 
  * 3. JWT ACCESS RECOVERY: Hardened the syncToken effect to ensure the Edge Runtime 
  *    always has a fresh physical token from Supabase Auth, preventing 401 errors.
- * 4. EDGE GATEWAY STABILITY: Maintains the absolute pathing to Supabase Edge 
+ * 4. SYNC INTEGRITY LOCK: Added a physical dependency on 'lastSyncTime' from 
+ *    the SyncProvider to ensure Aura never starts without a local vault write.
+ * 5. EDGE GATEWAY STABILITY: Maintains the absolute pathing to Supabase Edge 
  *    Functions to bypass Vercel timeout barriers.
- * 5. SOVEREIGN LINK: Linked to the local 'db' and 'useSync' to ensure the AI 
- *    engine is physically anchored to the browser's persistent storage.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -216,14 +215,19 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * The system now requires BOTH the server handshake and the physical
-   * local database sync (lastSyncTime) before Aura becomes active.
+   * FIXED: Replaced 'is_ready' with 'setup_complete' to match backend forensic audit.
+   * Aura will now physically wait for:
+   * 1. React Mount
+   * 2. Business Context Load
+   * 3. Identity Alignment
+   * 4. Setup Completion Signal from Backend
+   * 5. Successful Local Database Sync (lastSyncTime)
    */
   const isReady = mounted && 
                   !contextLoading && 
                   activeUserId !== '' && 
                   activeBusinessId !== '' &&
-                  profile?.is_ready === true &&
+                  profile?.setup_complete === true && // THE CRITICAL WELD FIX
                   !!lastSyncTime; // Force Aura to wait for the local DB write
 
   // 🛡️ DIVERSION SHIELD: No mounting until Identity is Aligned.

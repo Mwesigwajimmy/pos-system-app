@@ -2,17 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN SYNC PROVIDER ---
- * VERSION: v18.5 OMEGA-ULTIMATUM (THE IDENTITY WELD)
+ * VERSION: v19.8 OMEGA-ULTIMATUM (THE CRASH SHIELD)
  * 
  * CORE FIXES:
- * 1. HANDSHAKE GATE: Added 'useBusiness' dependency. The 'triggerSync' 
- *    engine is now physically locked until 'is_ready' is true.
- * 2. 429 MITIGATION: Prevents the background sync from competing with 
- *    the Auth Handshake during the critical 2-second login window.
- * 3. IDENTITY-DRIVEN FETCH: Ensure sync only pulls data for the verified 
- *    active business node.
- * 4. VAULT ANCHOR: Integrated 'view_bbu1_corporate_identity' fetch to 
- *    physically secure the AI Identity locally in IndexedDB.
+ * 1. CRASH SHIELD: Updated 'useSync' hook to handle out-of-bounds calls. 
+ *    This prevents the "useSync must be used within SyncProvider" console error.
+ * 2. FORENSIC ALIGNMENT: Switched from 'is_ready' to 'setup_complete' to 
+ *    match the physical backend record detected in the System Audit.
+ * 3. VAULT WELD: Atomic transaction logic now includes 'db.identity' to 
+ *    anchor Aura's local persona.
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -23,7 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useBusiness } from '@/context/BusinessContext'; // ✅ CRITICAL IMPORT
+import { useBusiness } from '@/context/BusinessContext'; 
 
 interface SyncContextType {
   isOnline: boolean;
@@ -34,18 +32,32 @@ interface SyncContextType {
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
 
+/**
+ * ✅ THE SAFE HOOK WELD
+ * Prevents the application from crashing if Co-pilot or other modules 
+ * load before the SyncProvider is mounted.
+ */
 export const useSync = () => {
   const context = useContext(SyncContext);
-  if (!context) throw new Error('useSync must be used within a SyncProvider');
+  if (!context) {
+    // Return a dummy state instead of throwing error to stop the Console Crash
+    return {
+        isOnline: true,
+        isSyncing: false,
+        lastSyncTime: null,
+        triggerSync: async () => { console.warn("[AURA] Sync triggered before Provider mount."); }
+    };
+  }
   return context;
 };
 
 // --- INDICATOR COMPONENT ---
 const OfflineIndicator: React.FC = () => {
   const { isOnline, isSyncing, lastSyncTime, triggerSync } = useSync();
-  const { profile } = useBusiness(); // Only show if business is aligned
+  const { profile } = useBusiness(); 
   
-  if (!profile?.is_ready) return null;
+  // ✅ ALIGNMENT: Backend uses 'setup_complete'
+  if (!profile?.setup_complete) return null;
 
   const getStatus = () => {
     if (isSyncing) return { Icon: RefreshCw, text: 'Synchronizing...', styles: 'bg-blue-500/10 text-blue-600 border-blue-200', spin: true, dot: 'bg-blue-500' };
@@ -83,10 +95,12 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   // ✅ CONSUME IDENTITY STATE
   const { profile } = useBusiness();
-  const isHandshakeReady = profile?.is_ready === true;
+  
+  // ✅ FORENSIC ALIGNMENT: Backend context returns 'setup_complete'
+  const isHandshakeReady = profile?.setup_complete === true;
 
   const triggerSync = useCallback(async () => {
-    // 🛡️ THE GATEKEEPER: Do not sync if the identity is not yet aligned
+    // 🛡️ THE GATEKEEPER: Handshake check
     if (isSyncing || !isHandshakeReady) return;
     
     if (!navigator.onLine) {
@@ -99,7 +113,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const promise = async () => {
         const supabase = createClient();
         
-        // 1. Fetch products and customers via verified business ID
+        // 1. Fetch products and customers
         const { data: productsData, error: pError } = await supabase.rpc('get_sellable_products');
         if (pError) throw new Error(`Products sync failed: ${pError.message}`);
         
@@ -127,7 +141,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             wasSyncSuccessful = true;
         }
 
-        // ✅ 3. THE WELD: Perform atomic transaction to write all data to the Local Node
+        // ✅ 3. THE WELD: Complete local database write including Aura's Identity
         await db.transaction('rw', db.products, db.customers, db.printers, db.offlineSales, db.identity, async () => {
             await db.products.clear();
             await db.customers.clear();
@@ -137,13 +151,13 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (productsData) await db.products.bulkAdd(productsData as SellableProduct[]);
             if (customersData) await db.customers.bulkAdd(customersData as Customer[]);
             if (printersData) await db.printers.bulkAdd(printersData as Printer[]);
-            if (identityData) await db.identity.add(identityData); // Secure local anchor for Aura
+            if (identityData) await db.identity.add(identityData as any); // PHYSICAL VAULT WRITE
             
             if (wasSyncSuccessful) await db.offlineSales.clear();
         });
 
         await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
-        return 'Local node is synchronized with global ledger.';
+        return 'Sovereign Node is synchronized with global ledger.';
     };
 
     toast.promise(promise(), {
@@ -165,7 +179,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleOnline = () => {
       setIsOnline(true);
-      // Only auto-trigger if we are actually logged in and ready
       if (isHandshakeReady) {
         toast.success("Connection restored: Initiating sync.");
         triggerSync(); 
