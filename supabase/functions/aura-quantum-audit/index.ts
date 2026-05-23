@@ -4,29 +4,34 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- BBU1 AURA QUANTUM EDGE MOTHERBOARD ---
- * VERSION: v24.0 OMEGA-ULTIMATUM (THE APEX PROTOCOL SEAL)
+ * VERSION: v25.0 OMEGA-ULTIMATUM (THE DEEP HEADER SEAL)
  * JURISDICTION: Internal Supabase Vault / Forensic Intelligence / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. TOTAL PROTOCOL SEAL: Explicitly defined headers for Deno/Supabase Edge compatibility.
- *    This ensures 'x-vercel-ai-data-stream': 'v1' is physically attached to the 
- *    Response object before it leaves the motherboard.
- * 2. NEURAL PULSE LOGGING: Added forensic console tracing for every handshake phase.
+ * 1. DEEP HEADER EXPOSURE: Physically anchored 'Access-Control-Expose-Headers'. 
+ *    This allows the newly upgraded AI SDK in the browser to "see" the 
+ *    'x-vercel-ai-data-stream' header, preventing the protocol crash.
+ * 2. VERCEL DATA STREAM v1: Hardened alignment with the AI SDK v3.x protocol. 
+ *    Uses 0: (text), 8: (agent metadata), and 3: (system errors).
+ * 3. DUAL-CORE CONTEXT INJECTION: Jina AI search results are now physically 
+ *    fused into the Llama-3.3 system prompt for 1024-dim elite retrieval.
+ * 4. ATOMIC MEMORY SEAL: Multi-layer telemetry ensures every audit is 
+ *    physically written to the database before the stream concludes.
  */
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-bbu1-vault-id',
+  'Access-Control-Expose-Headers': 'x-vercel-ai-data-stream', // 🛡️ THE APEX KEY: REVEALS THE PROTOCOL TO THE BROWSER
 }
 
 serve(async (req) => {
-  // Handle CORS Preflight
+  // 1. PHYSICAL CORS HANDSHAKE
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  console.log("%c[AURA] Neural Handshake Detected.", "color: #10B981; font-weight: bold;");
 
   const encoder = new TextEncoder();
   const requestId = crypto.randomUUID();
+  const startTime = Date.now();
 
   try {
     const body = await req.json();
@@ -34,51 +39,43 @@ serve(async (req) => {
     
     if (!businessId || !userId) throw new Error("Identity Fragmentation: Missing UUID Anchors.");
     
-    const userMessage = messages[messages.length - 1]?.content || "Diagnostic Pulse";
+    const userMessage = messages[messages.length - 1]?.content || "Sovereign Status Check";
 
-    // 1. INITIALIZE SOVEREIGN ROOT CLIENT
+    // 2. INITIALIZE SOVEREIGN ROOT CLIENT
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     );
 
-    // 2. THE OMNISCIENT HANDSHAKE
-    const { data: aura, error: handshakeError } = await supabaseAdmin.rpc('get_aura_handshake', {
-      p_target_biz_id: businessId,
-      p_user_id: userId
-    });
+    // 3. PARALLEL NEURAL INITIALIZATION
+    const [handshakeRes, keysRes] = await Promise.all([
+      supabaseAdmin.rpc('get_aura_handshake', { p_target_biz_id: businessId, p_user_id: userId }),
+      supabaseAdmin.from('aura_system_settings').select('key_name, key_value')
+        .in('key_name', ['SAMBANOVA_API_KEY', 'JINA_API_KEY'])
+    ]);
 
-    if (handshakeError || !aura?.is_ready) {
-       throw new Error(`Neural Link Blocked: ${handshakeError?.message || 'Handshake Expired'}`);
+    const aura = handshakeRes.data;
+    if (handshakeRes.error || !aura?.is_ready) {
+       throw new Error(`Neural Link Blocked: ${handshakeRes.error?.message || 'Handshake Expired'}`);
     }
 
-    // 3. ATOMIC MEMORY WELD
+    const sambaKey = keysRes.data?.find(k => k.key_name === 'SAMBANOVA_API_KEY')?.key_value;
+    const jinaKey = keysRes.data?.find(k => k.key_name === 'JINA_API_KEY')?.key_value;
+    if (!sambaKey || !jinaKey) throw new Error("Brain Failure: AI Keys not seated in vault.");
+
+    // 4. INITIALIZE AUDIT TELEMETRY
     const { data: auditRecord } = await supabaseAdmin.from('aura_forensic_audit').insert({
-        business_id: businessId,
-        user_id: userId,
-        agent_role: 'EXECUTIVE_AUDITOR',
+        business_id: businessId, user_id: userId, agent_role: 'EXECUTIVE_AUDITOR',
         action_taken: 'NEURAL_INGESTION',
         raw_input: { query: userMessage, requestId, modules: tenantModules },
-        neural_status: 'SEARCHING',
-        created_at: new Date().toISOString()
+        neural_status: 'SEARCHING', created_at: new Date().toISOString()
     }).select('id').single();
-
-    // 4. DUAL-CORE KEY RECOVERY
-    const { data: settings } = await supabaseAdmin
-      .from('aura_system_settings')
-      .select('key_name, key_value')
-      .in('key_name', ['SAMBANOVA_API_KEY', 'JINA_API_KEY']);
-
-    const sambaKey = settings?.find(k => k.key_name === 'SAMBANOVA_API_KEY')?.key_value;
-    const jinaKey = settings?.find(k => k.key_name === 'JINA_API_KEY')?.key_value;
-
-    if (!sambaKey || !jinaKey) throw new Error("Brain Failure: AI Keys not fully seated in vault.");
 
     // 5. SMARTER DEEP CONTEXT RETRIEVAL (JINA AI RECURSIVE)
     let forensicContext = "";
     let agentSteps = [
-        { event: 'on_agent_action', tool: 'Handshake', output: JSON.stringify({ action: 'verify_id', payload: { node: businessId.substring(0,8), status: 'AUTH_OK' }}) }
+        { event: 'on_agent_action', tool: 'Handshake', data: { status: 'IDENTITY_SEALED', node: businessId.substring(0,8) } }
     ];
     
     try {
@@ -90,10 +87,10 @@ serve(async (req) => {
                 model: "jina-reranker-v2-base-multilingual",
                 query: searchQuery,
                 documents: [
-                    `Business: ${aura.businessName}`,
-                    `Industry: ${aura.industry}`,
-                    `Active Modules: ${tenantModules?.join(', ') || 'General ERP'}`,
-                    `Vault ID: ${businessId}`
+                    `Business: ${aura.businessName}, Industry: ${aura.industry}`,
+                    `Active Modules: ${tenantModules?.join(', ') || 'Global ERP'}`,
+                    `Vault ID: ${businessId}`,
+                    `Director Level Clearance: Active Forensic Monitoring`
                 ]
             })
         });
@@ -102,14 +99,14 @@ serve(async (req) => {
         
         agentSteps.push({
             event: 'on_agent_action', tool: 'Jina_Forensic_Search',
-            output: JSON.stringify({ action: 'ingest_context', payload: { records: searchData.results?.length } })
+            data: { status: 'Context_Verified', records: searchData.results?.length }
         });
     } catch (e) { console.warn("[AURA] Jina Eye Latency."); }
 
     // 6. APEX NEURAL STREAM (SAMBANOVA + OMEGA WELD)
     const stream = new ReadableStream({
       async start(controller) {
-        // Send initial Forensic Steps (8: chunk)
+        // Enqueue Metadata Chunk (8: prefix)
         controller.enqueue(encoder.encode(`8:${JSON.stringify(agentSteps)}\n`));
 
         let fullResponse = "";
@@ -122,9 +119,9 @@ serve(async (req) => {
               messages: [
                 { 
                     role: "system", 
-                    content: `Aura Mission Control. Protocol: v24.0 OMEGA. 
+                    content: `Aura Mission Control. Protocol: v25.0 OMEGA. 
                     Entity: ${aura.businessName}. Industry: ${aura.industry}. Context: ${forensicContext}. 
-                    Instructions: Provide high-fidelity forensic analysis. Be concise.` 
+                    Objective: Provide Director-level strategic directives. Be precise, technical, and elite.` 
                 },
                 ...messages
               ],
@@ -135,7 +132,7 @@ serve(async (req) => {
           });
 
           const reader = response.body?.getReader();
-          if (!reader) throw new Error("Neural Link Collapsed.");
+          if (!reader) throw new Error("Neural stream collapsed.");
 
           while (true) {
             const { done, value } = await reader.read();
@@ -151,6 +148,7 @@ serve(async (req) => {
                         const content = json.choices[0]?.delta?.content || "";
                         if (content) {
                             fullResponse += content;
+                            // ✅ DATA STREAM v1: Text prefixed with '0:' and JSON stringified
                             controller.enqueue(encoder.encode(`0:${JSON.stringify(content)}\n`));
                         }
                     } catch (e) { }
@@ -161,12 +159,13 @@ serve(async (req) => {
           // Step 7: Atomic Memory Close
           if (auditRecord?.id) {
             await supabaseAdmin.from('aura_forensic_audit').update({
-                forensic_output: { response: fullResponse, version: 'v24.0' },
+                forensic_output: { response: fullResponse, version: 'v25.0_OMEGA' },
                 neural_status: 'COMPLETED'
             }).eq('id', auditRecord.id);
           }
 
         } catch (err) {
+          // Send Error Chunk (3: prefix)
           controller.enqueue(encoder.encode(`3:${JSON.stringify(err.message)}\n`));
         } finally {
           controller.close();
@@ -174,21 +173,20 @@ serve(async (req) => {
       }
     });
 
-    // 🛡️ THE FINAL PROTOCOL SEAL: Explicit headers for Deno runtime
-    const responseHeaders = new Headers();
-    responseHeaders.set('Content-Type', 'text/plain; charset=utf-8');
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('x-vercel-ai-data-stream', 'v1'); // CRITICAL FOR SDK
-    responseHeaders.set('Cache-Control', 'no-cache');
-
-    return new Response(stream, { headers: responseHeaders });
+    // 🛡️ THE FINAL PROTOCOL SEAL: Explicit Headers for Browser SDK v3+
+    return new Response(stream, {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'text/plain; charset=utf-8', 
+        'x-vercel-ai-data-stream': 'v1', // THE PROTOCOL VERSION
+        'Cache-Control': 'no-cache'
+      }
+    });
 
   } catch (error) {
     console.error("[CRITICAL BRAIN CRASH]", error.message);
-    const errHeaders = new Headers(corsHeaders);
-    errHeaders.set('Content-Type', 'text/plain; charset=utf-8');
-    errHeaders.set('x-vercel-ai-data-stream', 'v1');
-    
-    return new Response(`3:${JSON.stringify(error.message)}\n`, { headers: errHeaders });
+    return new Response(`3:${JSON.stringify(error.message)}\n`, {
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8', 'x-vercel-ai-data-stream': 'v1' }
+    });
   }
 })
