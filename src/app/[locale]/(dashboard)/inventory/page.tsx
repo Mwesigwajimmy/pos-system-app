@@ -144,15 +144,13 @@ export default async function InventoryPage() {
 
             {/* --- STOCK LEDGER --- */}
             <TabsContent value="products" className="m-0 outline-none">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                  <InventoryDataTable
-                    columns={columns}
-                    initialData={initialData}
-                    totalCount={totalCount}
-                    categories={categories}
-                    businessEntityId={profile.business_id}
-                  />
-              </div>
+                <InventoryDataTable
+                  columns={columns}
+                  initialData={initialData}
+                  totalCount={totalCount}
+                  categories={categories}
+                  businessEntityId={profile.business_id}
+                />
             </TabsContent>
 
             <TabsContent value="categories" className="m-0 outline-none">
