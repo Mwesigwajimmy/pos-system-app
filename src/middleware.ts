@@ -1,19 +1,17 @@
 /**
  * --- BBU1 SOVEREIGN MIDDLEWARE ---
- * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX FORENSIC SHIELD)
+ * VERSION: v22.0 OMEGA-ULTIMATUM (THE APEX FORENSIC SHIELD)
  * JURISDICTION: Global Routing & Identity Enforcement
  * 
- * CORE ARCHITECTURAL UPDATES:
+ * CORE ARCHITECTURAL UPGRADES:
  * 1. UNIFIED IDENTITY ANCHOR: Physically synchronizes the 'bbu1_active_business_id' 
  *    cookie with the Supabase RPC session. This ensures that server-side components 
- *    (Layouts/Metadata) see the same identity as the Version 8 browser vault.
+ *    (Layouts/Metadata) see the same identity as the browser vault.
  * 2. ANTI-LOOP RECOVERY: Refined the "Latency Grace Period." If the DB triggers 
- *    are still firing during signup, the middleware allows the request to proceed 
- *    to /welcome, preventing the 429 Rate Limit cycle.
- * 3. SECURITY GATE ALIGNMENT: Aligned with the 'setup_complete' forensic flag 
- *    detected in the v20.5 system audit.
- * 4. ROUTING INTELLIGENCE: Prevents 307 loops by performing path-matching 
- *    before issuing redirect instructions.
+ *    are still materializing the node, it allows request to proceed to /welcome.
+ * 3. SECURITY GATE ALIGNMENT: Hard-aligned with the 'setup_complete' forensic flag 
+ *    to prevent users from accessing the dashboard before the vault is ready.
+ * 4. ROLE PRESERVATION: 100% preservation of all multi-sector role permissions.
  */
 
 import { match } from '@formatjs/intl-localematcher';
@@ -31,7 +29,10 @@ const publicPaths = [
     '/newsletter', '/help-centre', '/download', '/features'
 ];
 
-// ... (Role permissions and Default Dashboards remain unchanged as they are logically correct)
+/**
+ * 🛡️ MASTER ROLE PERMISSIONS
+ * Full preservation of all functional sectors.
+ */
 const rolePermissions: Record<string, string[]> = {
     '/command-center': ['architect', 'commander'],
     '/sovereign-control': ['architect', 'commander'],
@@ -91,6 +92,9 @@ const rolePermissions: Record<string, string[]> = {
     '/shifts': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'waiter_staff', 'bartender'],
 };
 
+/**
+ * 🏗️ DEFAULT DASHBOARD MAPPING
+ */
 const defaultDashboards: Record<string, string> = {
     'architect': '/command-center',
     'commander': '/command-center',
@@ -151,6 +155,7 @@ function getLocale(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    // 1. ASSET & API BYPASS
     if (
         pathname.startsWith('/api/') || 
         pathname.includes('/functions/v1/') ||
@@ -160,7 +165,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // 1. LOCALE RESOLUTION
+    // 2. LOCALE RESOLUTION
     const pathnameIsMissingLocale = locales.every(
         (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
     );
@@ -182,7 +187,7 @@ export async function middleware(request: NextRequest) {
     const pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
     const isPublicPath = publicPaths.some(pp => pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`));
 
-    // 2. AUTHENTICATION WELD
+    // 3. AUTHENTICATION WELD (SUPABASE SSR)
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -208,43 +213,56 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // 3. IDENTITY CONTEXT ALIGNMENT (APEX RECOVERY)
+    // 4. IDENTITY CONTEXT ALIGNMENT (THE OMEGA ANCHOR)
+    // Synchronizing the cookie with the database session
     let activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
 
     if (!activeBizId || activeBizId === 'loading') {
-        const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user.id).single();
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('business_id') // Physically checking the audited column
+            .eq('id', user.id)
+            .single();
+            
         activeBizId = profile?.business_id || user.user_metadata?.business_id;
         
         if (activeBizId) {
-            response.cookies.set('bbu1_active_business_id', activeBizId, { path: '/', maxAge: 2592000 });
+            response.cookies.set('bbu1_active_business_id', activeBizId, { 
+                path: '/', 
+                maxAge: 2592000,
+                sameSite: 'lax'
+            });
         }
     }
 
+    // Hard-set session state in DB for RLS stability
     if (activeBizId) {
         await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
     }
 
+    // 5. FORENSIC CONTEXT RETRIEVAL
     const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context', {
         p_target_biz_id: activeBizId
     });
 
     /**
      * ✅ LATENCY RECOVERY PROTOCOL
-     * If the Global Ledger is still materializing the node, we allow entry to /welcome
-     * to prevent the 429 rate limit redirect loop.
+     * If the node is still materializing (common during signup), allow entry to /welcome
+     * This prevents 429 Rate Limit Loops while the DB anchors.
      */
     if (contextError || !userContextData || userContextData.length === 0) {
         if (pathWithoutLocale === '/login' || isPublicPath || pathWithoutLocale === '/welcome') return response;
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
     
-    // 4. SECURE NAVIGATION ENGINE
+    // 6. SECURE NAVIGATION ENGINE
     const userContext = userContextData[0];
     const userRole = userContext.user_role || 'guest';
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
     const systemPower = userContext.system_power || null;
 
+    // Subscription enforcement
     const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
     const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(subStatus);
     const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
@@ -261,7 +279,7 @@ export async function middleware(request: NextRequest) {
         ? '/command-center' 
         : (defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default']);
 
-    // Setup Flow Enforcement using the physical setup_complete column
+    // Setup Flow Enforcement (Source of truth: audited setup_complete column)
     if (!setupComplete && pathWithoutLocale !== '/welcome' && !isOnBillingPage) {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
@@ -270,6 +288,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
+    // Role-based Access Control
     if ((pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/') && pathWithoutLocale !== defaultDashboard) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
@@ -278,7 +297,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // 5. SECURITY ROLE ENFORCEMENT
+    // Security check for role permissions (Master scan of rolePermissions object)
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));

@@ -2,28 +2,26 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v21.0 OMEGA-ULTIMATUM (THE APEX ARCHITECTURAL WELD)
+ * VERSION: v22.0 OMEGA-ULTIMATUM (THE IDENTITY ANCHOR WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. PROVIDER RE-SEQUENCE: Physically moved 'SyncProvider' and 'BrandingProvider' 
- *    ABOVE 'GlobalCopilotProvider'. This ensures Aura AI can physically "feel" 
- *    the Version 8 Identity Vault on the browser disk before attempting to mount.
- * 2. CONSTRUCTOR STABILIZATION: Moved Supabase initialization inside a useMemo 
- *    within the SovereignLiveGuard. This fixes the "TypeError: Illegal constructor" 
- *    crash seen in the browser console.
- * 3. FORENSIC FLAG ALIGNMENT: Switched the Gatekeeper and Identity logic to 
- *    the physical backend 'setup_complete' column (verified for time@bbu1.com).
- * 4. SIDEBAR REDUNDANCY FIX: Unified the SidebarProvider into the root hierarchy 
- *    to prevent navigational state desync between mobile and desktop.
- * 5. Z-INDEX SUPREMACY: Forced the Mobile Drawer to z-[200] to bypass AI 
- *    overlays and forensic guard notices.
+ * 1. IDENTITY UNBLINDING: The DashboardGatekeeper now physically waits for 
+ *    'profile.is_ready' to be true. This matches the successful SQL handshake 
+ *    result {"is_ready": true} and physically unlocks the typing interface.
+ * 2. PROVIDER RE-SEQUENCE: Maintains SyncProvider and BrandingProvider ABOVE 
+ *    the Copilot to ensure the AI "feels" the business node on mount.
+ * 3. CONSTRUCTOR STABILIZATION: Supabase initialization is seated inside 
+ *    useMemo to kill "Illegal constructor" errors permanently.
+ * 4. REDIRECTION LOGIC: Forensic alignment with the 'setup_complete' column 
+ *    to ensure users are routed to /welcome or /dashboard based on their 
+ *    physical database status.
  */
 
 import React, { memo, ReactNode, useEffect, useMemo } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
-  ShieldAlert
+  ShieldAlert, Activity
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
@@ -95,7 +93,7 @@ MobileSidebar.displayName = 'MobileSidebar';
  * Stabilized to prevent "Illegal constructor" errors.
  */
 const SovereignLiveGuard = () => {
-    const supabase = useMemo(() => createClient(), []); // ✅ FIX: Prevents constructor crash
+    const supabase = useMemo(() => createClient(), []); 
     const { branding } = useBranding();
     const activeBizId = branding?.business_id;
     
@@ -219,6 +217,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
+ * 🛡️ The Identity Sentinel
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -227,59 +226,75 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        // ✅ FORENSIC ALIGNMENT: setup_complete is the source of truth
-        if (profile?.setup_complete && !isBusinessLoading && !isBrandingLoading) {
-            const rawStatus = (profile as any).subscription_status || '';
-            const status = rawStatus.toLowerCase().trim();
-            const isAuthorized = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(status);
+        // ✅ REDIRECTION LOGIC: Based on physical setup_complete column
+        if (profile && !isBusinessLoading && !isBrandingLoading) {
             const locale = pathname.split('/')[1] || 'en';
-            const isSetupComplete = profile.setup_complete;
             
-            if (!isAuthorized && !pathname.includes('/settings/billing')) {
-                router.push(`/${locale}/settings/billing`);
-            } 
-            else if (isAuthorized && !isSetupComplete && !pathname.includes('/welcome')) {
+            // Redirect to welcome if setup is not finalized
+            if (profile.setup_complete === false && !pathname.includes('/welcome')) {
                 router.push(`/${locale}/welcome`);
-            }
-            else if (isAuthorized && isSetupComplete && pathname.includes('/welcome')) {
+            } 
+            // Redirect away from welcome if setup is already done
+            else if (profile.setup_complete === true && pathname.includes('/welcome')) {
                 router.push(`/${locale}/dashboard`);
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
-    const identityIsVerified = !!profile?.business_id && profile?.setup_complete === true;
+    /**
+     * ✅ THE OMNISCIENT HANDSHAKE VERIFICATION
+     * We wait until profile.is_ready is TRUE.
+     * This is the signal that get_aura_handshake succeeded in the DB.
+     * UNTIL THIS IS TRUE, TYPING IS PHYSICALLY BLOCKED.
+     */
+    const identityIsVerified = !!profile?.business_id && profile?.is_ready === true;
 
-    if (isBusinessLoading || isBrandingLoading || (!identityIsVerified && !error)) {
+    // Show high-fidelity loading state while the neural node is anchoring
+    if (isBusinessLoading || isBrandingLoading || !identityIsVerified) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
-                <Loader2 className="h-16 w-16 animate-spin text-emerald-600 mb-8" />
-                <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
-                    Anchoring Sovereign Node...
-                </p>
+                <div className="relative mb-12">
+                   <Loader2 className="h-16 w-16 animate-spin text-emerald-600" />
+                   <Activity className="absolute inset-0 m-auto h-6 w-6 text-emerald-500 animate-pulse" />
+                </div>
+                <div className="text-center space-y-2">
+                   <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
+                       Anchoring Sovereign Node...
+                   </p>
+                   <p className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">
+                       VAULT: {profile?.business_id?.substring(0, 18) || 'CONNECTING...'}
+                   </p>
+                </div>
             </div>
         );
     }
 
+    // Handle handshake failure/desync
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
                 <div className="text-center p-12 bg-white border border-slate-100 rounded-[4rem] shadow-2xl max-w-lg">
                     <ShieldAlert className="text-rose-500 h-16 w-16 mx-auto mb-10" />
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
-                    <Button onClick={() => window.location.reload()} variant="outline" className="h-14 mt-12 rounded-3xl font-black uppercase tracking-widest text-[10px]">
-                        Retry Handshake
+                    <p className="text-slate-500 text-xs mt-4">The neural link to your vault could not be established.</p>
+                    <Button 
+                        onClick={() => window.location.reload()} 
+                        className="h-14 mt-12 w-full rounded-3xl bg-slate-950 text-white font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all"
+                    >
+                        Retry Neural Handshake
                     </Button>
                 </div>
             </div>
         );
     }
     
+    // Identity secure. UI unlocked.
     return <AppLayout>{children}</AppLayout>;
 }
 
 /**
  * MASTER DASHBOARD LAYOUT
- * SEQUENCE: Business -> Sync (Anchor) -> Branding -> Copilot -> Sidebar -> Gatekeeper
+ * ORCHESTRATION: Business -> Sync -> Branding -> Copilot -> Sidebar -> Gatekeeper
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
