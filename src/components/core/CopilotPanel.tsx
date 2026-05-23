@@ -2,20 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v25.1 OMEGA-ULTIMATUM (THE APEX UI SEAL)
+ * VERSION: v25.4 OMEGA-ULTIMATUM (THE APEX BUTTON ACTIVATION)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. NATIVE SDK v3 WELD: Physically aligned with the upgraded SDK's React 19 
- *    event handling. This natively kills the 'w/j is not a function' crash 
- *    by utilizing the stable Vercel AI submission pipeline.
- * 2. PROTOCOL ALIGNMENT: Fully wired to the v25.0 Backend to render the 
- *    forensic metadata chunks (8: prefix) and AI text (0: prefix) simultaneously.
- * 3. HYDRATION SHIELD: Refs, auto-scroll, and focus logic are gated on the 
- *    physical 'isReady' signal to ensure zero-latency UI activation.
- * 4. ENTERPRISE FORENSICS: Preserved all high-fidelity boardroom overlays, 
- *    Council Agent reasoning steps, and technical Sovereign Node displays.
+ * 1. TOTAL VARIABLE HARDENING: Implemented physical fallback values for 
+ *    destructured context. This kills the "Cannot read properties of 
+ *    undefined (reading 'trim')" error permanently.
+ * 2. BUTTON ACTIVATION WELD: Refactored isButtonDisabled to use a 
+ *    hardened safe-string check. The button now activates the millisecond 
+ *    the handshake is valid and text is present.
+ * 3. NATIVE SDK v3 COMPATIBILITY: Fully aligned with React 19 event 
+ *    delegation, utilizing the upgraded library's native handleSubmit.
+ * 4. ENTERPRISE FORENSICS: Preserved every boardroom overlay, agent 
+ *    reasoning step, and technical node indicator.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -118,12 +119,19 @@ export default function CopilotPanel() {
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // ✅ MASTER CONTEXT ACCESS (Utilizing native SDK hooks)
-  const { 
-    messages, input, handleInputChange, handleSubmit, 
-    isLoading: isChatLoading, data: streamData, 
-    isReady, businessId, userId
-  } = useCopilot();
+  // ✅ MASTER CONTEXT ACCESS (Utilizing native SDK hooks with Total variable Hardening)
+  const context = useCopilot();
+  
+  // Physically seat default values to prevent undefined access crashes
+  const messages = context?.messages || [];
+  const input = context?.input || '';
+  const handleInputChange = context?.handleInputChange;
+  const handleSubmit = context?.handleSubmit;
+  const isChatLoading = context?.isLoading || false;
+  const streamData = context?.data || [];
+  const isReady = context?.isReady || false;
+  const businessId = context?.businessId || '';
+  const userId = context?.userId || '';
 
   // 🛡️ PREVENT ILLEGAL CONSTRUCTOR
   useEffect(() => {
@@ -170,7 +178,14 @@ export default function CopilotPanel() {
 
   if (!hasMounted) return null;
 
-  const isButtonDisabled = !isReady || isChatLoading || !input.trim();
+  /**
+   * ✅ ATOMIC BUTTON WELD:
+   * We ensure input is never undefined before calling trim().
+   * The button remains active as long as the handshake is valid and text is present.
+   */
+  const safeInput = (input || '').toString();
+  const hasContent = safeInput.trim().length > 0;
+  const isButtonDisabled = !isReady || isChatLoading || !hasContent;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
@@ -213,7 +228,7 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v25.1</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v25.4</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
               <span>VAULT: {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : 'LINKING...'}</span>
@@ -295,7 +310,7 @@ export default function CopilotPanel() {
       </ScrollArea>
       
       <footer className="p-8 border-t bg-white/95 backdrop-blur-xl shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.04)] relative z-20">
-        {/* ✅ THE UPGRADED SUBMISSION WELD: Native handleSubmit handles React 19 events perfectly */}
+        {/* ✅ THE NATIVE SUBMISSION WELD: Now physically compatible with React 19 events */}
         <form 
           onSubmit={handleSubmit} 
           className="flex items-center gap-4"
@@ -304,7 +319,7 @@ export default function CopilotPanel() {
             <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-sky-500 rounded-2xl blur opacity-0 group-focus-within:opacity-10 transition duration-500" />
             <Input 
               ref={inputRef}
-              value={input} 
+              value={safeInput} 
               onChange={handleInputChange} 
               placeholder={!isReady ? "Establishing Sovereign Handshake..." : "Authorize Auditor scan or CFO |"} 
               className="relative h-16 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[15px] px-8 pr-12"

@@ -2,20 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v25.1 OMEGA-ULTIMATUM (THE NATIVE SDK WELD)
- * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED FOR REACT 19)
+ * VERSION: v25.5 OMEGA-ULTIMATUM (THE APEX ARCHITECTURAL SEAL)
+ * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Global ERP / Multi-Sector Forensic Handshake
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. NATIVE REACT 19 COMPATIBILITY: Switched to the upgraded SDK's native 
- *    handleSubmit and input state. The "w/j is not a function" error is 
- *    physically eliminated at the library level.
- * 2. AUTOMATIC DATA STREAMING: The context now natively parses the '0:' (text) 
- *    and '8:' (agent metadata) chunks from the v25.0 Motherboard.
- * 3. ATOMIC IDENTITY ANCHOR: Hard-welded the session tokens and UUIDs 
- *    into the headers to ensure zero-latency multi-tenant isolation.
- * 4. HYDRATION SEAL: Mount-gate logic remains seated to ensure browser-only 
- *    identities are reassembled before the AI Engine wakes up.
+ * 1. ATOMIC STATE HARDENING: Physically welded 'input ?? ""' to the context 
+ *    value. This kills the "Cannot read properties of undefined (reading 'trim')" 
+ *    crash during the React 19 / SDK v3 initial handshake.
+ * 2. NATIVE EVENT BRIDGE: Refactored handleSubmit to act as a dual-mode 
+ *    bridge. It natively handles React 19 form events while supporting 
+ *    programmatic string injections for 'startAIAssistance'.
+ * 3. PROTOCOL SEAL: Locked 'streamProtocol: data' to align with the 
+ *    v25.0 Edge Motherboard EXPOSE-HEADERS configuration.
+ * 4. OMNISCIENT HANDSHAKE: Preserved the deep forensic reassembly of 
+ *    chunked cookies and Version 8 vault anchors.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -37,7 +38,7 @@ const supabase = createClient();
 
 /**
  * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
- * Version 25.1: Native SDK Integration.
+ * Version 25.5: Hardened for SDK v3 and React 19.
  */
 function NeuralSanctuary({ 
   children, businessId, userId, tenantId, organizationId, tenantData, isOpen, setIsOpen, sessionToken 
@@ -45,20 +46,20 @@ function NeuralSanctuary({
   const pathname = usePathname();
   const isSyncing = useRef(false);
 
-  // 1. Initialize Quantum Neural Engine (v25.1 Native Signature)
+  // 1. Initialize Quantum Neural Engine (v25.5 Native Signature)
   const { 
     messages, 
     isLoading, 
     append, 
     setMessages, 
     data, 
-    input, 
+    input: sdkInput, // Destructured from SDK
     handleInputChange, 
     handleSubmit: sdkSubmit 
   } = useChat({
     id: `aura-quantum-vault-${businessId}`, 
     api: `https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-quantum-audit`,
-    streamProtocol: 'data', // Aligned with the v25.0 index.ts EXPOSE-HEADERS
+    streamProtocol: 'data', // Physically aligned with the Motherboard
     headers: {
         'Authorization': `Bearer ${sessionToken}`, 
         'x-bbu1-vault-id': businessId,
@@ -74,7 +75,7 @@ function NeuralSanctuary({
     onResponse: () => { isSyncing.current = false; },
     onError: (err) => {
         isSyncing.current = false;
-        console.error("[AURA] Protocol Desync:", err);
+        console.error("%c[AURA CRITICAL] Neural Link Desync:", "color: #EF4444; font-weight: bold;", err);
         if (!err.message.includes('abort')) {
            toast.info("Aura is aligning neural pathways...");
         }
@@ -82,42 +83,44 @@ function NeuralSanctuary({
   });
 
   /**
-   * 2. ✅ HIGH-FIDELITY SUBMIT BRIDGE
-   * We wrap the SDK's native handleSubmit to provide support for 
-   * programmatic prompts (startAIAssistance).
+   * 2. ✅ ATOMIC SUBMISSION BRIDGE
+   * This handler detects if it's being called by a Form Event (UI) 
+   * or a raw string (programmatic assist) and routes it safely.
    */
   const handleSubmit = useCallback(async (e?: any, options?: any) => {
-    if (isSyncing.current || isLoading || !sessionToken) return;
-    
-    // If it's a standard form event, use the native SDK handler
+    // Physically prevent the SDK from trying to parse a potentially null/corrupted event
     if (e && e.preventDefault) {
         return sdkSubmit(e, options);
     }
     
-    // If it's a raw string (from startAIAssistance), use append
-    if (typeof e === 'string') {
+    // Programmatic string support for startAIAssistance
+    if (typeof e === 'string' && e.trim().length > 0) {
+        if (isLoading) return;
         isSyncing.current = true;
         await append({ role: 'user', content: e });
     }
-  }, [sdkSubmit, append, isLoading, sessionToken]);
+  }, [sdkSubmit, append, isLoading]);
 
-  // 3. Remote Activation Logic
+  // 3. Remote Activation Logic (startAIAssistance)
   const startAIAssistance = useCallback(async (prompt: string) => {
     if (!prompt || isLoading) return;
     setIsOpen(true);
-    // Precise timing for UI Sheet hydration before programmatic submission
+    // Optimized delay for Sheet animation before programmatic submission
     setTimeout(() => { if (sessionToken) handleSubmit(prompt); }, 850);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
 
-  // 4. Identity-Aware Memoization (Apex Precision)
+  /**
+   * 4. ✅ SMARTER DEEP MEMOIZATION
+   * Hardened 'input' with fallback to ensure trim() never fails.
+   */
   const contextValue = useMemo(() => ({
     messages: messages || [], 
-    input, 
+    input: sdkInput ?? '', // 🛡️ ATOMIC FIX: Ensures 'input' is NEVER undefined
     handleInputChange,
     handleSubmit, 
-    isLoading, 
+    isLoading: isLoading || false, 
     setMessages, 
-    data, 
+    data: data || [], 
     isOpen,
     openCopilot: () => setIsOpen(true), 
     closeCopilot: () => setIsOpen(false),
@@ -130,7 +133,7 @@ function NeuralSanctuary({
     organizationId,
     tenantData, 
     tenantModules: tenantData?.tenantModules || []
-  }), [messages, isLoading, data, input, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, handleInputChange, startAIAssistance, setIsOpen]);
+  }), [messages, isLoading, data, sdkInput, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, handleInputChange, startAIAssistance, setIsOpen]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -186,7 +189,8 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
                     const combined = chunks.join('').replace('base64-', '');
                     const decoded = JSON.parse(atob(decodeURIComponent(combined)));
                     setToken(decoded.access_token);
-                } catch (e) { console.error("[AURA] Identity fragmentation."); }
+                    console.log("%c[AURA] Neural Handshake: Identity Reassembled.", "color: #10B981; font-weight: bold;");
+                } catch (e) { console.error("[AURA] Identity fragmentation detected."); }
             }
         }
 
@@ -194,7 +198,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
         try {
             const { data } = await supabase.rpc('get_aura_handshake');
             setHandshake(data);
-        } catch (err) { console.error("[AURA] Handshake Latency."); }
+        } catch (err) { console.error("[AURA] RPC Handshake Latency."); }
     };
 
     finalizeIdentityAnchor();
