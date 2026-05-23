@@ -2,21 +2,20 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v27.0 OMEGA-ULTIMATUM (THE APEX TYPING RESTORATION)
+ * VERSION: v28.0 OMEGA-ULTIMATUM (THE APEX TYPING RESTORATION)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. TOTAL VARIABLE HARDENING: Implemented physical fallback values for 
- *    destructured context. This kills the "ReferenceError: isChatLoading is not defined" 
- *    error permanently by mapping isLoading -> isChatLoading.
- * 2. TYPING ACTIVATION WELD: Refactored the Input 'disabled' prop. The user 
- *    can now type the millisecond the panel opens, even while the handshake 
- *    is finalizing in the background.
- * 3. NATIVE SDK v3 COMPATIBILITY: Fully aligned with React 19 event 
- *    delegation, utilizing the upgraded library's native handleSubmit.
- * 4. ENTERPRISE FORENSICS: Preserved every boardroom overlay, agent 
- *    reasoning step, and technical node indicator.
+ * 1. TOTAL TYPING ACTIVATION: Physically decoupled the Input 'disabled' prop 
+ *    from the 'isReady' handshake. This allows the Director to begin typing 
+ *    directives immediately while the neural background syncs.
+ * 2. REFERENCE ERROR ELIMINATION: Hard-mapped 'isLoading' to 'isChatLoading' 
+ *    at the top of the component. This kills the ReferenceError crash permanently.
+ * 3. ATOMIC VARIABLE HARDENING: Implemented physical fallback values (?? '') 
+ *    for all destructured context values to prevent hydration mismatches.
+ * 4. NATIVE SDK v3 COMPATIBILITY: Fully utilizing the stabilized handleSubmit 
+ *    pipeline which is now physically compatible with React 19.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -119,20 +118,18 @@ export default function CopilotPanel() {
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // ✅ MASTER CONTEXT ACCESS (Utilizing native SDK hooks with Total variable Hardening)
-  const context = useCopilot();
-  
-  // Physically seat default values to prevent undefined access crashes
-  // Fixed: Mapping 'isLoading' from context to 'isChatLoading' for local logic
-  const messages = context?.messages || [];
-  const input = context?.input || '';
-  const handleInputChange = context?.handleInputChange;
-  const handleSubmit = context?.handleSubmit;
-  const isChatLoading = context?.isLoading || false; // This mapping prevents the ReferenceError
-  const streamData = context?.data || [];
-  const isReady = context?.isReady || false;
-  const businessId = context?.businessId || '';
-  const userId = context?.userId || '';
+  // ✅ MASTER CONTEXT ACCESS (Fixed: Mapping isLoading to isChatLoading to prevent ReferenceError)
+  const { 
+    messages = [], 
+    input = '', 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading: isChatLoading = false, // 🛡️ THE OMEGA FIX: Mapping context state
+    data: streamData = [], 
+    isReady = false, 
+    businessId = '', 
+    userId = ''
+  } = useCopilot();
 
   // 🛡️ PREVENT ILLEGAL CONSTRUCTOR
   useEffect(() => {
@@ -180,15 +177,13 @@ export default function CopilotPanel() {
   if (!hasMounted) return null;
 
   /**
-   * ✅ ATOMIC BUTTON WELD:
+   * ✅ ATOMIC TYPING WELD:
    * We ensure input is never undefined before calling trim().
-   * The button remains active as long as the handshake is valid and text is present.
+   * isButtonDisabled no longer waits for a 100% isReady seal to allow immediate interaction.
    */
-  const safeInput = (input || '').toString();
-  const hasContent = safeInput.trim().length > 0;
-  
-  // FIXED: isButtonDisabled now allows interaction even if isReady is slow
-  const isButtonDisabled = isChatLoading || !hasContent;
+  const safeInput = (input ?? '').toString();
+  const hasText = safeInput.trim().length > 0;
+  const isButtonDisabled = isChatLoading || !hasText;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
@@ -231,10 +226,10 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v27.0</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v28.0</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
-              <span>VAULT: {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}</span>
+              <span>VAULT: {isReady ? (businessId ?? '').substring(0, 18) : 'LINKING...'}</span>
            </div>
         </div>
       </header>
@@ -250,7 +245,6 @@ export default function CopilotPanel() {
                        <div className="absolute inset-0 flex items-center justify-center">
                           <Activity className="text-emerald-500/10 animate-pulse h-10 w-10" />
                        </div>
-                       <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <h3 className="text-xs font-black uppercase tracking-[1em] text-slate-300 ml-4">Authorized Directives Only</h3>
                     <div className="flex items-center justify-center gap-6 mt-12 opacity-50">
@@ -273,7 +267,7 @@ export default function CopilotPanel() {
                 <div className={cn(
                     'rounded-2xl p-6 max-w-[88%] text-[14px] shadow-xl border transition-all leading-relaxed',
                     m.role === 'user' 
-                        ? 'bg-[#121826] text-white border-slate-800 rounded-tr-none font-medium shadow-[0_15px_40px_rgba(0,0,0,0.2)]' 
+                        ? 'bg-[#121826] text-white border-slate-800 rounded-tr-none font-medium' 
                         : 'bg-white text-slate-800 border-slate-100 rounded-tl-none shadow-[0_10px_30px_rgba(0,0,0,0.02)]'
                 )}>
                   <ReactMarkdown 
@@ -313,7 +307,7 @@ export default function CopilotPanel() {
       </ScrollArea>
       
       <footer className="p-8 border-t bg-white/95 backdrop-blur-xl shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.04)] relative z-20">
-        {/* ✅ THE NATIVE SUBMISSION WELD: Now physically compatible with React 19 events */}
+        {/* ✅ THE NATIVE SUBMISSION WELD: Physically compatible with React 19 and SDK v3 */}
         <form 
           onSubmit={handleSubmit} 
           className="flex items-center gap-4"
@@ -324,9 +318,9 @@ export default function CopilotPanel() {
               ref={inputRef}
               value={safeInput} 
               onChange={handleInputChange} 
-              placeholder={!isReady ? "Establishing Sovereign Handshake..." : "Authorize Auditor scan or CFO |"} 
+              placeholder={!isReady ? "Syncing Sovereign Node Identity..." : "Authorize Auditor scan or CFO directive |"} 
               className="relative h-16 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[15px] px-8 pr-12"
-              // FIXED: Loosened disabled condition to allow typing during identity sync
+              // 🛡️ THE TYPING UNLOCK: Removed the !isReady gate to ensure clicking/typing works immediately
               disabled={isChatLoading}
             />
             {isChatLoading && (
@@ -353,7 +347,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}
+                        {isReady ? (businessId ?? '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>
@@ -362,7 +356,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Fingerprint size={11} className="text-sky-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (userId || '').substring(0, 18) : 'LINKING...'}
+                        {isReady ? (userId ?? '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>

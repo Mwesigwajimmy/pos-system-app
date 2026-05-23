@@ -2,15 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN BUSINESS CONTEXT ---
- * VERSION: v19.8 OMEGA-ULTIMATUM (THE STABILIZED WELD)
+ * VERSION: v21.0 OMEGA-ULTIMATUM (THE KEYBOARD ACTIVATION WELD)
+ * JURISDICTION: Multi-Tenant / Multi-Sector Forensic Identity
  * 
- * CORE FIXES:
- * 1. DECOUPLED AUTH LISTENER: Removed TOKEN_REFRESHED from the fetch trigger.
- *    Token refreshes are background tasks and shouldn't restart the identity handshake.
- * 2. ELIMINATED RECURSIVE REFRESH: Removed auth.refreshSession() from the polling loop.
- *    This physically stops the 429 Rate Limit errors.
- * 3. SINGLETON FETCH GUARD: Added 'isFetching' ref to ensure only ONE handshake 
- *    process is active at any time, preventing race conditions.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. EXPLICIT USER ANCHOR: Now physically retrieves the Auth Session ID 
+ *    before calling the RPC. This prevents 'null' userId results and 
+ *    correctly triggers the 'is_ready' boolean.
+ * 2. MULTI-COLUMN MAPPING: Maps the RPC 'businessId' to both 'business_id' 
+ *    and 'profile_linked_biz_id' to satisfy the Copilot's internal search.
+ * 3. TYPING ACTIVATION: Hard-welds 'is_ready' and 'setup_complete' based on 
+ *    the successful Omniscient Handshake verified in the SQL audit.
+ * 4. SINGLETON FETCH GUARD: Prevents recursive handshake loops that lead to 
+ *    429 Rate Limit errors.
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
@@ -19,7 +23,9 @@ import Cookies from 'js-cookie';
 
 export interface BusinessProfile {
     id: string;
+    auth_user_id: string;        
     business_id: string;
+    profile_linked_biz_id: string; 
     full_name: string;
     role: string;
     system_power: string | null;
@@ -46,25 +52,40 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [error, setError] = useState<string | null>(null);
     
     const retryCount = useRef(0);
-    const isFetching = useRef(false); // Singleton Guard
-    const MAX_RETRIES = 8; // Increased to give DB more time without hammering
+    const isFetching = useRef(false); 
+    const MAX_RETRIES = 5; 
 
     const fetchBusinessProfile = useCallback(async () => {
-        // Prevent multiple concurrent handshake attempts
+        // 🛡️ Prevent multiple concurrent attempts
         if (isFetching.current) return;
         isFetching.current = true;
 
         const supabase = createClient();
-        const activeBizId = Cookies.get('bbu1_active_business_id');
-
+        
         try {
+            // 1. PHYSICALLY IDENTIFY THE SESSION USER
+            // This is the fix for the 'null' userId seen in your console.
+            const { data: { session } } = await supabase.auth.getSession();
+            const activeUserId = session?.user?.id;
+
+            if (!activeUserId) {
+                console.warn("[AURA] No active session found. Waiting for Auth.");
+                setIsLoading(false);
+                isFetching.current = false;
+                return;
+            }
+
+            const activeBizIdFromCookie = Cookies.get('bbu1_active_business_id');
+
+            // 2. EXECUTE THE OMNISCIENT HANDSHAKE
+            // Passing p_user_id explicitly to match our SQL repair.
             const { data, error: rpcError } = await supabase.rpc('get_aura_handshake', {
-                p_target_biz_id: (activeBizId && activeBizId !== 'loading') ? activeBizId : null
+                p_target_biz_id: (activeBizIdFromCookie && activeBizIdFromCookie !== 'loading') ? activeBizIdFromCookie : null,
+                p_user_id: activeUserId
             });
 
             if (rpcError) {
-                if ((rpcError as any).status === 429) throw new Error("RATE_LIMIT");
-                console.error("[LITONU] Handshake RPC Fault:", rpcError);
+                console.error("[AURA] Handshake RPC Fault:", rpcError);
                 setError('Identity Vault Connection Failed.');
                 setIsLoading(false);
                 isFetching.current = false;
@@ -73,62 +94,65 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
 
             const aura = Array.isArray(data) ? data[0] : data;
 
-            if (aura && aura.is_ready) {
-                // ✅ SUCCESS: ALIGNMENT ACHIEVED
-                Cookies.set('bbu1_active_business_id', aura.businessId, { expires: 30, path: '/', sameSite: 'lax' });
+            // 3. VALIDATE AND WELD THE IDENTITY
+            // We check if the database says 'is_ready' is true.
+            if (aura && aura.is_ready === true) {
+                
+                const finalBizId = aura.businessId;
 
+                // Sync the cookie for server-side operations
+                Cookies.set('bbu1_active_business_id', finalBizId, { expires: 30, path: '/', sameSite: 'lax' });
+
+                // Set the Profile - This object is consumed by useCopilot()
                 setProfile({
                     id: aura.userId,
-                    business_id: aura.businessId,
-                    full_name: aura.businessName, 
+                    auth_user_id: aura.userId,
+                    business_id: finalBizId,
+                    profile_linked_biz_id: finalBizId, // PHYSICALLY SEALED FOR COPILOT
+                    full_name: aura.businessName || 'Sovereign Node', 
                     role: aura.role || 'admin',
                     system_power: aura.power || null,
                     is_active: true,
-                    business_type: aura.industry || 'General',
+                    business_type: aura.industry || 'Retail / Wholesale',
                     industry: aura.industry || 'Retail / Wholesale',
                     currency: aura.currency || 'UGX',
                     country: aura.country || 'UG',
-                    is_ready: true,
-                    setup_complete: aura.setup_complete ?? true
+                    is_ready: true, // ✅ THIS UNLOCKS THE TYPING FIELD
+                    setup_complete: true
                 });
 
                 setError(null);
                 setIsLoading(false);
                 retryCount.current = 0;
                 isFetching.current = false;
+                console.log("%c[AURA] Identity Handshake: SECURE & READY.", "color: #10B981; font-weight: bold;");
             } else {
-                // 🔄 LATENCY RECOVERY (No Auth Refresh here to avoid 429 loop)
+                // 🔄 Latency Recovery logic
                 if (retryCount.current < MAX_RETRIES) {
                     retryCount.current++;
-                    console.warn(`[LITONU] Identity Latent. Polling Attempt ${retryCount.current}/${MAX_RETRIES}...`);
-                    
-                    isFetching.current = false; // Release guard for the next timeout
-                    setTimeout(fetchBusinessProfile, 3000); // 3s delay for DB stability
+                    console.warn(`[AURA] Identity Latent. Re-attempting handshake ${retryCount.current}/${MAX_RETRIES}`);
+                    isFetching.current = false; 
+                    setTimeout(fetchBusinessProfile, 2000); 
                 } else {
-                    console.error("[LITONU] Critical: Identity alignment timeout.");
-                    setError('Business identity not aligned. Please secure re-login.');
+                    console.error("[AURA] Critical: Identity alignment timeout.");
+                    setError('Business identity not aligned.');
                     setIsLoading(false);
                     isFetching.current = false;
                 }
             }
         } catch (err: any) {
             isFetching.current = false;
-            if (err.message === "RATE_LIMIT") {
-                setError('System heavily throttled. Waiting 30s...');
-                setTimeout(fetchBusinessProfile, 30000);
-            } else {
-                setError('Neural Link Interrupted.');
-                setIsLoading(false);
-            }
+            console.error("[AURA] Unexpected Handshake Error:", err);
+            setError('Neural Link Interrupted.');
+            setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
         const supabase = createClient();
 
+        // 🛡️ RE-ANCHOR ON AUTH CHANGE
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            // ONLY trigger handshake on explicit sign-ins. 
-            // Ignore TOKEN_REFRESHED to prevent recursive loops.
             if (event === 'SIGNED_IN' && session) {
                 retryCount.current = 0;
                 fetchBusinessProfile();
@@ -140,7 +164,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
             }
         });
 
-        // Initial check on mount
+        // Trigger handshake on mount
         fetchBusinessProfile();
 
         return () => subscription.unsubscribe();
@@ -155,6 +179,6 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
 
 export const useBusiness = () => {
     const context = useContext(BusinessContext);
-    if (context === undefined) throw new Error('useBusiness fault.');
+    if (context === undefined) throw new Error('useBusiness must be used within a BusinessProvider');
     return context;
 };
