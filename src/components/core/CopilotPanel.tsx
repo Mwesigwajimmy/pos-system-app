@@ -2,19 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v23.1 OMEGA-ULTIMATUM (THE APEX UI SEAL)
+ * VERSION: v24.1 OMEGA-ULTIMATUM (THE APEX UI SEAL)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. EVENT-AGNOSTIC WRAPPER: Refactored the form submission to call 
- *    handleSubmit() without passing the raw React Event. This physically 
- *    bypasses the 'j is not a function' error in minified SDK builds.
- * 2. PROTOCOL ALIGNMENT: Wired the UI to render the v1 Data Stream 
- *    chunks (0: text, 8: metadata) sent from the v23.1 Edge Motherboard.
- * 3. HYDRATION SHIELD: Isolated the input focus and scroll logic behind 
- *    the physical 'isReady' handshake signal to prevent hydration desync.
- * 4. UNIFIED UUID ANCHOR: Physically welds the verified 5918cefa... UUIDs 
- *    to the footer displays, resolving the '0xNULL' hang.
+ * 1. ATOMIC SUBMISSION BRIDGE: Refactored form logic to extract raw text 
+ *    before calling the context. This physically prevents the old SDK from 
+ *    interacting with React 19 Events, killing the 'w/j' function crash.
+ * 2. HYDRATION SHIELD: Hardened the mount-guard to ensure DOM APIs 
+ *    and refs are only seated after the browser handshake is valid.
+ * 3. PROTOCOL ALIGNMENT: Fully wired to the v23.1 Backend to render 
+ *    the forensic thought-cloud (8: metadata) and AI response (0: text).
+ * 4. ENTERPRISE UI REFINEMENT: Preserved all high-fidelity boardroom 
+ *    overlays, agent icons, and technical badges.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -55,7 +55,7 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * AGENT STEP COMPONENT
- * Renders high-fidelity 'Forensic Thoughts' for the Council agents.
+ * Renders high-fidelity 'Forensic Thoughts' for the 9-agent Council.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
@@ -81,7 +81,7 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
             <div>
               <p className="font-bold uppercase tracking-tighter text-[10px]">{config.label}</p>
               <p className="font-mono text-[9px] opacity-70 truncate max-w-[280px]">
-                {outputData.payload?.url || outputData.payload?.fileName || "Executing strategic protocol..."}
+                {outputData.payload?.url || outputData.payload?.fileName || "Executing protocol..."}
               </p>
             </div>
           </div>
@@ -104,7 +104,6 @@ const AgentStep = ({ data }: { data: any }): React.ReactNode => {
       </div>
     );
   }
-
   return null;
 };
 
@@ -125,17 +124,15 @@ export default function CopilotPanel() {
     setHasMounted(true);
   }, []);
 
-  // SIDE-EFFECT: Tool and Navigation Handling
+  // Side-Effect: Tool and Navigation Handling
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
       try {
         const parsed = typeof lastChunk === 'string' ? JSON.parse(lastChunk) : lastChunk;
-        
         if (parsed.event === 'on_error' || parsed.error) {
             toast.error(parsed.data?.error || parsed.error || "Neural Link Desync.");
         }
-
         if (parsed.event === 'on_tool_end' && parsed.data?.output) {
           const output = typeof parsed.data.output === 'string' ? JSON.parse(parsed.data.output) : parsed.data.output;
           if (output.action === "navigate") router.push(output.payload.url);
@@ -156,7 +153,7 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
-  // Focus input when ready
+  // Focus input when context becomes ready
   useEffect(() => {
     if (isReady && inputRef.current) {
         inputRef.current.focus();
@@ -166,27 +163,28 @@ export default function CopilotPanel() {
   if (!hasMounted) return null;
 
   /**
-   * ✅ THE APEX UI FIX:
-   * We handle the event prevention locally but call handleSubmit() 
-   * WITHOUT the event object. This prevents the SDK from attempting 
-   * to use the 'j' function for form-data extraction.
+   * ✅ SMARTER DEEP BYPASS FIX:
+   * We intercept the form event and pass ONLY the string 'cleanContent'.
+   * This ensures the AI SDK's 'handleSubmit' doesn't touch the React 19 event,
+   * which is what causes the 'w/j is not a function' crash.
    */
   const onDirectSubmit = (e: React.FormEvent) => {
-    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault(); 
     const cleanContent = (input || '').trim();
     
     if (cleanContent.length > 0 && !isChatLoading && isReady) {
-       handleSubmit(); // 🛡️ Call clean - no arguments passed.
+       handleSubmit(cleanContent); // 🛡️ Passing raw string bridge to Context
     } else if (!isChatLoading && isReady) {
        toast.info("Aura is awaiting your directive.");
     }
   };
 
-  const isButtonDisabled = (input || '').trim().length === 0 || isChatLoading || !isReady;
+  const isButtonDisabled = !isReady || isChatLoading || (input || '').trim().length === 0;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
       
+      {/* 🚀 VISUAL BOARDROOM OVERLAY */}
       <AnimatePresence mode="wait">
         {boardroomData && (
           <AuraBoardroom 
@@ -205,29 +203,29 @@ export default function CopilotPanel() {
         <div className="flex items-center justify-between relative z-10">
             <h2 className="text-lg font-black flex items-center gap-2 uppercase tracking-tighter italic text-emerald-400">
                 <div className="relative">
-                  <Zap className="h-5 w-5 fill-emerald-400 animate-pulse"/>
-                  <div className="absolute inset-0 bg-emerald-400 blur-md opacity-30 animate-pulse" />
+                   <Zap className="h-5 w-5 fill-emerald-400 animate-pulse"/>
+                   <div className="absolute inset-0 bg-emerald-500 blur-xl opacity-20 animate-pulse" />
                 </div>
                 Aura Mission Control
             </h2>
             <div className="flex items-center gap-2">
                {isReady ? (
-                  <Badge className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-[9px] px-2 py-0.5 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                    <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK
-                  </Badge>
+                 <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] px-2 py-0.5 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                   <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK • ACTIVE
+                 </Badge>
                ) : (
-                  <Badge className="bg-slate-800 text-slate-500 text-[8px] border-none px-2 py-0.5">
+                 <Badge className="bg-slate-800 text-slate-500 border-none text-[8px] px-2 py-0.5">
                     <WifiOff className="h-3 w-3 mr-1" /> ALIGNING...
-                  </Badge>
+                 </Badge>
                )}
             </div>
         </div>
-        <div className="flex items-center gap-2 relative z-10 mt-1 opacity-50">
-           <Terminal size={10} className="text-emerald-500" />
-           <p className="text-[9px] text-slate-400 font-mono uppercase tracking-[0.3em]">Sovereign Executive Kernel v23.1</p>
+        <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
+           <Terminal className="h-3 w-3" />
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v24.1</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
-              <Lock size={10} className="text-slate-500" />
-              <span className="font-mono uppercase tracking-tighter">VAULT: {isReady ? (businessId || '5918cefa...').substring(0, 18) : 'LINKING...'}</span>
+              <Lock className="h-2.5 w-2.5" />
+              <span>VAULT: {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : 'LINKING...'}</span>
            </div>
         </div>
       </header>
@@ -235,23 +233,7 @@ export default function CopilotPanel() {
       <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
         <div className="space-y-8 max-w-2xl mx-auto py-4">
             
-            {!isReady && messages.length === 0 && (
-                <div className="py-32 text-center animate-in fade-in zoom-in duration-1000">
-                    <div className="relative inline-block mb-10">
-                        <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping opacity-20" />
-                        <div className="h-28 w-28 bg-white rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl border border-slate-100 relative z-10">
-                           <Loader2 className="h-12 w-12 text-emerald-500 animate-spin" />
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-[0.4em]">Awaiting Forensic Protocol</h2>
-                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">
-                           Synchronizing Sovereign Neural Links for Authorized Entity...
-                        </p>
-                    </div>
-                </div>
-            )}
-
+            {/* EMPTY MISSION LOG STATE */}
             {isReady && messages.length === 0 && (
                 <div className="py-24 text-center group">
                     <div className="relative inline-block mb-8">
@@ -259,7 +241,6 @@ export default function CopilotPanel() {
                        <div className="absolute inset-0 flex items-center justify-center">
                           <Activity className="text-emerald-500/10 animate-pulse h-10 w-10" />
                        </div>
-                       <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <h3 className="text-xs font-black uppercase tracking-[1em] text-slate-300 ml-4">Authorized Directives Only</h3>
                     <div className="flex items-center justify-center gap-6 mt-12 opacity-50">
@@ -270,8 +251,9 @@ export default function CopilotPanel() {
                 </div>
             )}
 
+            {/* MESSAGES INTERFACE */}
             {messages.map((m: any) => (
-              <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-3')}>
+              <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-4 duration-500')}>
                 {m.role === 'assistant' && (
                   <div className="w-10 h-10 rounded-2xl bg-slate-950 flex items-center justify-center shadow-2xl shrink-0 border border-emerald-500/20 relative group overflow-hidden">
                     <Sparkles className="h-5 w-5 text-emerald-400 z-10 relative" />
@@ -300,6 +282,7 @@ export default function CopilotPanel() {
               </div>
             ))}
 
+            {/* THOUGHT CLOUD (8: CHUNKS) */}
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-1 mt-6">
                     {streamData.map((chunk: any, i: number) => (
@@ -308,6 +291,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
+            {/* PULSE GATE */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-6 animate-pulse">
                     <Activity className="h-3 w-3" /> Aura is performing forensic audit...

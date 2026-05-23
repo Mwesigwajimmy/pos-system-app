@@ -2,17 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v23.0 OMEGA-ULTIMATUM (THE APEX EVENT WELD)
+ * VERSION: v24.1 OMEGA-ULTIMATUM (THE APEX PROTOCOL SEAL)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. EVENT ISOLATION WELD: Physically decoupled the form submission from the 
- *    raw React Event object. By calling handleSubmit() without parameters, we 
- *    bypass the 'j is not a function' error in the minified AI SDK.
- * 2. PROTOCOL ALIGNMENT: Wired the UI to listen for the v1 Data Stream 
- *    headers, ensuring the '8:' (metadata) and '0:' (text) chunks render.
- * 3. HYDRATION ANCHOR: Hardened the mount-check to ensure zero-latency 
- *    DOM access after the React 19 handshake.
+ * 1. ATOMIC SUBMISSION BRIDGE: Refactored form logic to extract raw text 
+ *    before calling the context. This physically prevents the old SDK from 
+ *    interacting with React 19 Events, killing the 'w/j' function crash.
+ * 2. HYDRATION SHIELD: Hardened the mount-guard to ensure DOM APIs 
+ *    and refs are only seated after the browser handshake is valid.
+ * 3. PROTOCOL ALIGNMENT: Fully wired to the v23.1 Backend to render 
+ *    the forensic thought-cloud (8: metadata) and AI response (0: text).
+ * 4. ENTERPRISE UI REFINEMENT: Preserved all high-fidelity boardroom 
+ *    overlays, agent icons, and technical badges.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -24,7 +26,7 @@ import {
   Presentation, Terminal, Globe, Lock, Wifi, WifiOff, Activity
 } from 'lucide-react';
 
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +53,10 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
   }
 };
 
+/**
+ * AGENT STEP COMPONENT
+ * Renders high-fidelity 'Forensic Thoughts' for the 9-agent Council.
+ */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
   
@@ -118,6 +124,7 @@ export default function CopilotPanel() {
     setHasMounted(true);
   }, []);
 
+  // Side-Effect: Tool and Navigation Handling
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -136,6 +143,7 @@ export default function CopilotPanel() {
     }
   }, [streamData, router]);
 
+  // Persistent Neural Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
         const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
@@ -145,6 +153,7 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
+  // Focus input when context becomes ready
   useEffect(() => {
     if (isReady && inputRef.current) {
         inputRef.current.focus();
@@ -154,16 +163,19 @@ export default function CopilotPanel() {
   if (!hasMounted) return null;
 
   /**
-   * ✅ THE SOVEREIGN EVENT WELD:
-   * We manually handle the preventDefault and call context's handleSubmit() 
-   * WITHOUT passing 'e'. This forces the SDK to rely on its internal state 
-   * instead of trying to parse the form event, which resolves 'j is not a function'.
+   * ✅ SMARTER DEEP BYPASS FIX:
+   * We intercept the form event and pass ONLY the string 'cleanContent'.
+   * This ensures the AI SDK's 'handleSubmit' doesn't touch the React 19 event,
+   * which is what causes the 'w/j is not a function' crash.
    */
-  const onAttemptSubmit = (e: React.FormEvent) => {
-    if (e && e.preventDefault) e.preventDefault();
-    const cleanInput = (input || '').trim();
-    if (cleanInput.length > 0 && isReady && !isChatLoading) {
-        handleSubmit(); // 👈 Pass NO event object here.
+  const onDirectSubmit = (e: React.FormEvent) => {
+    if (e && e.preventDefault) e.preventDefault(); 
+    const cleanContent = (input || '').trim();
+    
+    if (cleanContent.length > 0 && !isChatLoading && isReady) {
+       handleSubmit(cleanContent); // 🛡️ Passing raw string bridge
+    } else if (!isChatLoading && isReady) {
+       toast.info("Aura is awaiting your directive.");
     }
   };
 
@@ -172,6 +184,7 @@ export default function CopilotPanel() {
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
       
+      {/* 🚀 VISUAL BOARDROOM OVERLAY */}
       <AnimatePresence>
         {boardroomData && (
           <AuraBoardroom 
@@ -209,7 +222,7 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v23.0</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v24.1</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
               <span>VAULT: {isReady ? businessId?.substring(0, 18) : 'LINKING...'}</span>
@@ -220,23 +233,7 @@ export default function CopilotPanel() {
       <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
         <div className="space-y-8 max-w-2xl mx-auto py-4">
             
-            {!isReady && messages.length === 0 && (
-                <div className="py-32 text-center animate-in fade-in zoom-in duration-1000">
-                    <div className="relative inline-block mb-10">
-                        <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping opacity-20" />
-                        <div className="h-28 w-28 bg-white rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl border border-slate-100 relative z-10">
-                           <Loader2 className="h-12 w-12 text-emerald-500 animate-spin" />
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-[0.4em]">Awaiting Forensic Protocol</h2>
-                        <p className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 animate-pulse">
-                           Synchronizing Sovereign Neural Links...
-                        </p>
-                    </div>
-                </div>
-            )}
-
+            {/* EMPTY MISSION LOG STATE */}
             {isReady && messages.length === 0 && (
                 <div className="py-24 text-center group">
                     <div className="relative inline-block mb-8">
@@ -244,7 +241,6 @@ export default function CopilotPanel() {
                        <div className="absolute inset-0 flex items-center justify-center">
                           <Activity className="text-emerald-500/10 animate-pulse h-10 w-10" />
                        </div>
-                       <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <h3 className="text-xs font-black uppercase tracking-[1em] text-slate-300 ml-4">Authorized Directives Only</h3>
                     <div className="flex items-center justify-center gap-6 mt-12 opacity-50">
@@ -255,6 +251,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
+            {/* MESSAGES INTERFACE */}
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-3')}>
                 {m.role === 'assistant' && (
@@ -285,6 +282,7 @@ export default function CopilotPanel() {
               </div>
             ))}
 
+            {/* THOUGHT CLOUD (8: CHUNKS) */}
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-1 mt-6">
                     {streamData.map((chunk: any, i: number) => (
@@ -293,6 +291,7 @@ export default function CopilotPanel() {
                 </div>
             )}
 
+            {/* PULSE GATE */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-6 animate-pulse">
                     <Activity className="h-3 w-3" /> Aura is performing forensic audit...
@@ -305,7 +304,7 @@ export default function CopilotPanel() {
       
       <footer className="p-8 border-t bg-white/95 backdrop-blur-xl shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.04)] relative z-20">
         <form 
-          onSubmit={onAttemptSubmit} 
+          onSubmit={onDirectSubmit} 
           className="flex items-center gap-4"
         >
           <div className="relative flex-grow group">
@@ -342,7 +341,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? businessId : '5918cefa...'}
+                        {isReady ? businessId?.substring(0, 18) : '5918cefa...'}
                       </span>
                    </div>
                 </div>
@@ -351,7 +350,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Fingerprint size={11} className="text-sky-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? userId : '5918cefa...'}
+                        {isReady ? userId?.substring(0, 18) : '5918cefa...'}
                       </span>
                    </div>
                 </div>
