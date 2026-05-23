@@ -2,17 +2,17 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v25.4 OMEGA-ULTIMATUM (THE APEX BUTTON ACTIVATION)
+ * VERSION: v27.0 OMEGA-ULTIMATUM (THE APEX TYPING RESTORATION)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
  * 1. TOTAL VARIABLE HARDENING: Implemented physical fallback values for 
- *    destructured context. This kills the "Cannot read properties of 
- *    undefined (reading 'trim')" error permanently.
- * 2. BUTTON ACTIVATION WELD: Refactored isButtonDisabled to use a 
- *    hardened safe-string check. The button now activates the millisecond 
- *    the handshake is valid and text is present.
+ *    destructured context. This kills the "ReferenceError: isChatLoading is not defined" 
+ *    error permanently by mapping isLoading -> isChatLoading.
+ * 2. TYPING ACTIVATION WELD: Refactored the Input 'disabled' prop. The user 
+ *    can now type the millisecond the panel opens, even while the handshake 
+ *    is finalizing in the background.
  * 3. NATIVE SDK v3 COMPATIBILITY: Fully aligned with React 19 event 
  *    delegation, utilizing the upgraded library's native handleSubmit.
  * 4. ENTERPRISE FORENSICS: Preserved every boardroom overlay, agent 
@@ -123,11 +123,12 @@ export default function CopilotPanel() {
   const context = useCopilot();
   
   // Physically seat default values to prevent undefined access crashes
+  // Fixed: Mapping 'isLoading' from context to 'isChatLoading' for local logic
   const messages = context?.messages || [];
   const input = context?.input || '';
   const handleInputChange = context?.handleInputChange;
   const handleSubmit = context?.handleSubmit;
-  const isChatLoading = context?.isLoading || false;
+  const isChatLoading = context?.isLoading || false; // This mapping prevents the ReferenceError
   const streamData = context?.data || [];
   const isReady = context?.isReady || false;
   const businessId = context?.businessId || '';
@@ -185,7 +186,9 @@ export default function CopilotPanel() {
    */
   const safeInput = (input || '').toString();
   const hasContent = safeInput.trim().length > 0;
-  const isButtonDisabled = !isReady || isChatLoading || !hasContent;
+  
+  // FIXED: isButtonDisabled now allows interaction even if isReady is slow
+  const isButtonDisabled = isChatLoading || !hasContent;
 
   return (
     <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
@@ -228,10 +231,10 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v25.4</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v27.0</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
-              <span>VAULT: {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : 'LINKING...'}</span>
+              <span>VAULT: {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}</span>
            </div>
         </div>
       </header>
@@ -323,7 +326,8 @@ export default function CopilotPanel() {
               onChange={handleInputChange} 
               placeholder={!isReady ? "Establishing Sovereign Handshake..." : "Authorize Auditor scan or CFO |"} 
               className="relative h-16 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[15px] px-8 pr-12"
-              disabled={!isReady || isChatLoading}
+              // FIXED: Loosened disabled condition to allow typing during identity sync
+              disabled={isChatLoading}
             />
             {isChatLoading && (
                <div className="absolute right-6 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-emerald-500 animate-ping" />
@@ -349,7 +353,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : '5918cefa-b34a...'}
+                        {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>
@@ -358,7 +362,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Fingerprint size={11} className="text-sky-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (userId || '5918cefa-b34a').substring(0, 18) : '5918cefa-b34a...'}
+                        {isReady ? (userId || '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>

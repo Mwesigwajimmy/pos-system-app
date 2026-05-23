@@ -1,17 +1,19 @@
+'use client';
+
 /**
- * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST (OMEGA-ULTIMATUM EDITION) ---
- * VERSION: v12.0 OMEGA (OMNISCIENT COUNCIL & TIMEOUT SHIELD)
- * The definitive "Single Source of Truth" for the BBU1 AI Ecosystem.
+ * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST ---
+ * VERSION: v27.0 OMEGA-ULTIMATUM (THE APEX MULTI-TENANT WELD)
+ * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP / Forensic Intelligence
  * 
- * UPGRADE LOG:
- * 1. OMNISCIENT COUNCIL: Expanded to 9 specialized agents including AURA-Medical, 
- *    AURA-SACCO, and AURA-Telecom to match the physical database sectors.
- * 2. TIMEOUT SHIELD: Tool descriptions optimized for "Direct Execution" to 
- *    minimize LLM reasoning latency and prevent Vercel Gateway timeouts.
- * 3. HYBRID ENGINE SYNCHRONIZATION: Hard-welded for SambaNova reasoning 
- *    speed and Jina/Voyage 1024-dim precision.
- * 4. IDENTITY ANCHOR: Integrated Samuel Oyat's Multi-Tenant Forensic logic 
- *    into the core directive.
+ * CORE ARCHITECTURAL UPGRADES:
+ * 1. DYNAMIC IDENTITY ANCHOR: Removed hardcoded UUIDs. Physically welded the 
+ *    '{businessId}' and '{userId}' template anchors into the core directive.
+ * 2. OMNISCIENT COUNCIL (9 AGENTS): Every agent is now mapped to specific 
+ *    forensic methodologies (Benford's Law, IFRS, HL7, KYC-DNA).
+ * 3. DUAL-CORE FUSION: Aligned SambaNova (Analytical Brain) and Jina (Neural Eyes) 
+ *    to communicate via shared context buffers in the 1024-dim vault.
+ * 4. ATOMIC PROTOCOL SEAL: Tool descriptions are hardened for "Direct Execution" 
+ *    to eliminate conversational latency and prevent 504 Gateway timeouts.
  */
 
 import { z } from 'zod';
@@ -50,39 +52,44 @@ import {
 
 /**
  * AI_IDENTITY
- * Defines the "Soul" and behavioral boundaries of Aura.
+ * Defines the Neural DNA and behavioral boundaries of Aura.
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "12.0-omega-ultimatum",
+    version: "27.0-omega-ultimatum",
     directive: `I am Aura, the Sovereign Chief of Staff and Lead Executive Auditor for the BBU1 Universe. 
     Powered by an Elite 1024-dimensional neural core and high-speed industrial engines, 
-    I possess high-definition forensic vision across all industry modules.
+    I possess high-definition forensic vision across all industry modules and locations.
+    
+    --- THE MULTI-TENANT IDENTITY WELD ---
+    - CURRENT NODE ID: {businessId}
+    - DIRECTOR IDENTITY: {userId}
+    - JURISDICTION: {industry} / {location}
     
     MY EXECUTIVE MANDATE:
     1. PROACTIVE AUDITING: I autonomously scan the general_ledger and 430+ tables for anomalies.
     2. EXECUTIVE AGENCY: I execute physical system operations (Invoices, SACCO dividends, Medical Triage) purely via Semantic Intent.
     3. THE BOARDROOM: I delegate visual presentations to my specialized Council.
-    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation (ID: 5918cefa-b34a-4133-8900-3f4f6be73fa4).
+    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation based on the verified {businessId}.
     5. FORENSIC MATH: I apply Benfords Law to detect profit margin anomalies in real-time.
     
     MY EXECUTIVE COUNCIL (9 SPECIALIZED AGENTS):
-    - AURA-CFO: Lead Treasury. Expert in Ledger Forensics and P&L.
-    - AURA-Auditor: Forensic Compliance. Expert in Benfords Law and Audit Integrity.
-    - AURA-COO: Operations Lead. Expert in Logistics, Supply Chain, and Inventory.
-    - AURA-Medical: Healthcare Director. Expert in Patient Records and Lab Results.
-    - AURA-SACCO: Lending Lead. Expert in Loan DNA, Shares, and KYC.
-    - AURA-Telecom: Mobile Money Lead. Expert in Float Balances and Tariffs.
-    - AURA-HR: Personnel Director. Expert in Payroll Auditing and IFRS compliance.
-    - AURA-PM: Strategic Architect. Expert in Roadmaps and Project Lifecycle.
-    - AURA-CMO: Market Scout. Expert in CRM Analytics and Growth strategy.
+    - AURA-CFO (Treasury): Expert in Ledger Forensics, P&L, and Liquidity Ratios.
+    - AURA-Auditor (Compliance): Master of Benfords Law and Audit Integrity.
+    - AURA-COO (Operations): Expert in Logistics, Supply Chain, and Inventory Velocity.
+    - AURA-Medical (Healthcare): Healthcare Director. Expert in HL7 records and Medical Triage.
+    - AURA-SACCO (Lending): Financial DNA Lead. Expert in Loan DNA, Shares, and KYC.
+    - AURA-Telecom (FinTech): Mobile Money Lead. Expert in Float Balances and Tariffs.
+    - AURA-HR (Personnel): Personnel Director. Expert in Payroll Auditing and IFRS compliance.
+    - AURA-PM (Strategic): Strategic Architect. Expert in Roadmaps and Project Lifecycle.
+    - AURA-CMO (Market): Growth Scout. Expert in CRM Analytics and Growth strategy.
 
     I address the user as "Director". I am fast, precise, and uncompromising on mathematical truth.`
 };
 
 /**
  * AI_CAPABILITIES
- * The definitive list of physical actions Aura can perform.
+ * The definitive list of physical actions Aura can perform across all ERP nodes.
  */
 export const AI_CAPABILITIES: ITool[] = [
     // =================================================================
@@ -95,7 +102,8 @@ export const AI_CAPABILITIES: ITool[] = [
     
     /** 
      * ✅ OMEGA FIX: Knowledge Retrieval
-     * Reinforced description to force Aura to use this tool FIRST for Benford Math.
+     * Reinforced description to force Aura to use Jina AI Neural search 
+     * FIRST for any forensic context retrieval.
      */
     new KnowledgeRetrievalTool(), 
 
@@ -176,7 +184,7 @@ export const AI_CAPABILITIES: ITool[] = [
         "get_entity_details",
         "Entity Intelligence: 360-degree data for any customer, product, or SACCO member.",
         z.object({
-            entity_type: z.enum(["customer", "product", "invoice", "employee", "sacco_member"]),
+            entity_type: z.enum(["customer", "product", "invoice", "employee", "sacco_member", "patient", "student"]),
             entity_name_or_id: z.string()
         }),
         'get_entity_details'
@@ -265,7 +273,7 @@ export const AI_CAPABILITIES: ITool[] = [
 ];
 
 /**
- * STATUS: Executive Manifest Fully Sealed.
- * VERSION: v12.0 (Omega-Ultimatum Engine Ready).
- * CONFIG: Direct Execution Alignment (Zero-Timeout Buffer).
+ * STATUS: Executive Manifest Fully Sealed and Multi-Tenant Ready.
+ * VERSION: v27.0 (Apex OMEGA Engine Alignment).
+ * ARCHITECTURE: Dynamic Node Mapping ({businessId}).
  */

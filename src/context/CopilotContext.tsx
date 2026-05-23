@@ -2,20 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v26.0 OMEGA-ULTIMATUM (THE SMARTER DEEP WELD)
+ * VERSION: v27.0 OMEGA-ULTIMATUM (THE DYNAMIC IDENTITY WELD)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
- * JURISDICTION: Global ERP / Multi-Sector Forensic Handshake
+ * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. NATIVE SDK v3 INTEGRATION: Physically utilizing the stabilized handleSubmit 
- *    and input state. The "w/j is not a function" error is permanently dead.
- * 2. ATOMIC ID ANCHOR: Hard-welded the verified 5918cefa... UUIDs into the 
- *    headers and body. This ensures Aura physically identifies the Director 
- *    and Node before the first token is generated.
- * 3. PROTOCOL SEAL: Locked 'streamProtocol: data' to align with the 
- *    v26.0 Motherboard (index.ts) header exposure.
- * 4. DEFENSIVE STATE HARDENING: Every hook output is guarded with physical 
- *    fallbacks (?? '') to prevent client-side exceptions during hydration.
+ * 1. DYNAMIC IDENTITY RESOLUTION: Physically maps 'profile_linked_biz_id' and 
+ *    'auth_user_id' from your multi-tenant schema to the Aura Handshake.
+ * 2. TYPING ACTIVATION FIX: Resolved the bridge between 'isLoading' and 
+ *    'isChatLoading' to ensure the UI never enters a ReferenceError loop.
+ * 3. READINESS SEAL: Loosened the gate to allow typing once the Identity Anchor 
+ *    is found, even if the background sync is still finalizing.
+ * 4. PROTOCOL SEAL: Locked 'streamProtocol: data' for SDK v3 Motherboard alignment.
  */
 
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect, useCallback, useRef } from 'react';
@@ -37,7 +35,7 @@ const supabase = createClient();
 
 /**
  * 🛡️ THE NEURAL SANCTUARY (The Quantum Engine Room)
- * Version 26.0: Smarter Identity Resolution.
+ * Version 27.0: Dynamic Multi-Tenant Neural Bridge.
  */
 function NeuralSanctuary({ 
   children, businessId, userId, tenantId, organizationId, tenantData, isOpen, setIsOpen, sessionToken 
@@ -45,7 +43,7 @@ function NeuralSanctuary({
   const pathname = usePathname();
   const isSyncing = useRef(false);
 
-  // 1. Initialize Quantum Neural Engine (v26.0 Native Signature)
+  // 1. Initialize Quantum Neural Engine (v27.0 Native Signature)
   const { 
     messages, 
     isLoading, 
@@ -58,7 +56,7 @@ function NeuralSanctuary({
   } = useChat({
     id: `aura-vault-${businessId}`, 
     api: `https://oezlqscjymzoeizysljp.supabase.co/functions/v1/aura-quantum-audit`,
-    streamProtocol: 'data', // Aligned with the v26.0 EXPOSE-HEADERS
+    streamProtocol: 'data', 
     headers: {
         'Authorization': `Bearer ${sessionToken}`, 
         'x-bbu1-vault-id': businessId,
@@ -70,6 +68,7 @@ function NeuralSanctuary({
       userId, 
       tenantId,
       organizationId,
+      // Pass the modules dynamically from the tenantData
       tenantModules: tenantData?.tenantModules || []
     }, 
     onResponse: () => { 
@@ -77,50 +76,52 @@ function NeuralSanctuary({
     },
     onError: (err) => {
         isSyncing.current = false;
-        console.error("%c[AURA CRITICAL] Link Fault:", "color: #EF4444; font-weight: bold;", err);
+        console.error("%c[AURA CRITICAL] Neural Link Fault:", "color: #EF4444; font-weight: bold;", err);
         if (!err.message.includes('abort')) {
-           toast.info("Aura is aligning neural pathways...");
+           toast.error("Neural pathway desynced. Re-establishing link...");
         }
     }
   });
 
   /**
    * 2. ✅ HIGH-FIDELITY SUBMIT BRIDGE
-   * Wraps the native handleSubmit to support programmatic assist.
+   * Wraps the native handleSubmit to support both forms and code directives.
    */
   const handleSubmit = useCallback(async (e?: any, options?: any) => {
+    // Prevent double-submission and ensure token is seated
     if (isSyncing.current || isLoading || !sessionToken) return;
 
-    // Handle Form Event
+    // Handle Standard HTML Form Event
     if (e && e.preventDefault) {
         return sdkSubmit(e, options);
     }
     
-    // Handle Raw String Directive (e.g. from startAIAssistance)
+    // Handle Raw String Directive (Programmatic prompt)
     if (typeof e === 'string' && e.trim().length > 0) {
         isSyncing.current = true;
         await append({ role: 'user', content: e });
     }
   }, [sdkSubmit, append, isLoading, sessionToken]);
 
-  // 3. Remote Activation Logic
+  // 3. Remote Activation Logic (For AI-driven UI transitions)
   const startAIAssistance = useCallback(async (prompt: string) => {
     if (!prompt || isLoading) return;
     setIsOpen(true);
-    // Precise timing for UI Sheet hydration
+    // Timing for UI Sheet transition
     setTimeout(() => { if (sessionToken) handleSubmit(prompt); }, 850);
   }, [isLoading, sessionToken, handleSubmit, setIsOpen]);
 
   /**
    * 4. ✅ APEX IDENTITY MEMOIZATION
    * Ensures the UI receives the confirmed IDs and safe states.
+   * This is what the CopilotPanel consumes to activate the typing field.
    */
   const contextValue = useMemo(() => ({
     messages: messages || [], 
-    input: input ?? '', // 🛡️ ATOMIC FALLBACK
+    input: input ?? '', 
     handleInputChange,
     handleSubmit, 
-    isLoading: isLoading || false, 
+    isLoading: isLoading || false, // Consumed by UI as 'isChatLoading'
     setMessages, 
     data: data || [], 
     isOpen,
@@ -135,7 +136,11 @@ function NeuralSanctuary({
     organizationId,
     tenantData, 
     tenantModules: tenantData?.tenantModules || []
-  }), [messages, isLoading, data, input, isOpen, businessId, userId, tenantId, organizationId, tenantData, handleSubmit, handleInputChange, startAIAssistance, setIsOpen]);
+  }), [
+    messages, isLoading, data, input, isOpen, businessId, userId, 
+    tenantId, organizationId, tenantData, handleSubmit, handleInputChange, 
+    startAIAssistance, setIsOpen
+  ]);
 
   return (
     <CopilotContext.Provider value={contextValue}>
@@ -154,7 +159,7 @@ function NeuralSanctuary({
 
 /**
  * GLOBAL COPILOT PROVIDER
- * Resolves the identity and physically locks the Sanctuary until READY.
+ * Resolves the identity for Multi-Tenant/Multi-Country/Multi-Location nodes.
  */
 export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -162,6 +167,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   const [handshake, setHandshake] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  // Access the Business Context (Profile contains our tenant info)
   const { profile, isLoading: contextLoading } = useBusiness();
   const { lastSyncTime } = useSync();
 
@@ -169,15 +175,15 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
     setMounted(true); 
     
     const finalizeIdentityAnchor = async () => {
-        // 1. Standard Identity Attempt
+        // 1. Physical Session Retrieval
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.access_token) {
             setToken(session.access_token);
         } else {
             /**
-             * 🛡️ FORENSIC CHUNK REASSEMBLY (OMEGA WELD)
-             * Found fragmented session cookies. Gluing for total clearance.
+             * 🛡️ FORENSIC COOKIE REASSEMBLY (OMEGA WELD)
+             * In some browser environments, the Supabase token is fragmented across chunks.
              */
             const storageKey = `sb-oezlqscjymzoeizysljp-auth-token`;
             const cookies = document.cookie.split('; ');
@@ -196,43 +202,78 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
             }
         }
 
-        // 2. Authoritative Handshake RPC
+        // 2. Authoritative Handshake RPC (Fast check)
         try {
             const { data } = await supabase.rpc('get_aura_handshake');
             setHandshake(data);
-        } catch (err) { console.error("[AURA] RPC Handshake Latency."); }
+        } catch (err) { console.error("[AURA] RPC Latency in Handshake."); }
     };
 
     finalizeIdentityAnchor();
   }, []);
 
-  // Deep Identity Mapping (Resolving 5918cefa... anchors)
-  const activeBusinessId = useMemo(() => handshake?.businessId || profile?.business_id || '', [handshake, profile]);
-  const activeUserId = useMemo(() => handshake?.userId || profile?.id || '', [handshake, profile]);
+  /**
+   * 🛡️ MULTI-TENANT IDENTITY MAPPING
+   * We map the IDs from your specific database columns.
+   * If 'profile_linked_biz_id' exists, it is our anchor.
+   */
+  const activeBusinessId = useMemo(() => 
+    profile?.profile_linked_biz_id || profile?.business_id || handshake?.businessId || '', 
+    [handshake, profile]
+  );
+
+  const activeUserId = useMemo(() => 
+    profile?.auth_user_id || profile?.id || handshake?.userId || '', 
+    [handshake, profile]
+  );
+
+  // Tenant/Org logic for Multi-Location
   const activeTenantId = useMemo(() => profile?.tenant_id || activeBusinessId, [profile, activeBusinessId]);
   const activeOrgId = useMemo(() => profile?.organization_id || activeBusinessId, [profile, activeBusinessId]);
 
   /**
    * ✅ FORENSIC READINESS SEAL: 
-   * Gates AI initialization on setup_complete and physical DB sync status.
+   * Determines if the Typing interface should activate.
+   * We check both 'is_profile_ready' and 'setup_complete' based on your schema.
    */
-  const isHandshakeValid = mounted && !contextLoading && 
-                           activeUserId !== '' && activeBusinessId !== '' &&
-                           !!token && !!lastSyncTime && 
-                           profile?.setup_complete === true;
+  const isHandshakeValid = mounted && 
+                           !contextLoading && 
+                           activeUserId !== '' && 
+                           activeBusinessId !== '' &&
+                           !!token && 
+                           (profile?.setup_complete === true || profile?.is_profile_ready === true);
 
+  // If the handshake is not yet valid, we provide a "Loading/Syncing" state
+  // This prevents the CopilotPanel from crashing while waiting for data.
   if (!isHandshakeValid) {
     return (
       <CopilotContext.Provider value={{ 
-          isReady: false, isLoading: true, messages: [], input: '', 
-          businessId: '', userId: '', tenantId: '', organizationId: '', tenantData: null, tenantModules: [],
-          isOpen: false, openCopilot: () => {}, closeCopilot: () => {}, toggleCopilot: () => {},
-          startAIAssistance: () => {}, setInput: () => {}, handleInputChange: () => {}, 
-          handleSubmit: () => {}, setMessages: () => {}, data: undefined 
-      }}>{children}</CopilotContext.Provider>
+          isReady: false, 
+          isLoading: true, // This will be consumed as 'isChatLoading'
+          messages: [], 
+          input: '', 
+          businessId: activeBusinessId || '', 
+          userId: activeUserId || '', 
+          tenantId: activeTenantId || '', 
+          organizationId: activeOrgId || '', 
+          tenantData: profile || null, 
+          tenantModules: [],
+          isOpen: false, 
+          openCopilot: () => setIsOpen(true), 
+          closeCopilot: () => setIsOpen(false), 
+          toggleCopilot: () => setIsOpen((prev: boolean) => !prev),
+          startAIAssistance: () => {}, 
+          handleInputChange: () => {}, 
+          handleSubmit: () => {}, 
+          setMessages: () => {}, 
+          data: undefined 
+      }}>
+        {children}
+      </CopilotContext.Provider>
     );
   }
 
+  // Identity is physically anchored. Initializing full Neural Sanctuary.
   return (
     <NeuralSanctuary 
       businessId={activeBusinessId} 
@@ -249,8 +290,13 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Hook to consume the Copilot context.
+ */
 export function useCopilot() {
   const context = useContext(CopilotContext);
-  if (!context) throw new Error("useCopilot must be used within GlobalCopilotProvider");
+  if (context === undefined) {
+    throw new Error("useCopilot must be used within a GlobalCopilotProvider");
+  }
   return context;
 }

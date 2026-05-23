@@ -2,20 +2,20 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT PANEL ---
- * VERSION: v25.3 OMEGA-ULTIMATUM (THE APEX BUTTON WELD)
+ * VERSION: v27.0 OMEGA-ULTIMATUM (THE APEX TYPING WELD)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. ATOMIC DEFENSIVE GUARDING: Hardened destructuring from useCopilot with 
- *    physical fallback values (input = '', messages = []). This kills the 
- *    "Cannot read properties of undefined (reading 'trim')" error.
- * 2. BUTTON ACTIVATION WELD: Refactored isButtonDisabled to be extremely 
- *    permissive. The button now activates the millisecond text is present.
- * 3. NATIVE SDK v3 COMPATIBILITY: Fully utilizing the stable handleSubmit 
- *    pipeline which is now physically compatible with React 19.
- * 4. ENTERPRISE UI PRESERVATION: Maintained all high-fidelity boardroom 
- *    overlays, agent reasoning steps, and technical node displays.
+ * 1. ATOMIC REFERENCE FIX: Physically mapped isLoading to isChatLoading. 
+ *    This kills the "ReferenceError: isChatLoading is not defined" that was 
+ *    freezing the input field and preventing typing.
+ * 2. BUTTON ACTIVATION WELD: The submit button and input are now perfectly 
+ *    synchronized with the Sovereign Handshake.
+ * 3. NATIVE SDK v3 COMPATIBILITY: Utilizing the stable handleSubmit pipeline 
+ *    for multi-tenant data streaming.
+ * 4. ENTERPRISE UI PRESERVATION: All boardroom overlays and forensic thought 
+ *    steps are maintained at high-fidelity.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -118,13 +118,13 @@ export default function CopilotPanel() {
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // ✅ MASTER CONTEXT ACCESS (Hardened with physical fallbacks for SDK v3)
+  // ✅ MASTER CONTEXT ACCESS (Fixed: Renamed isLoading to isChatLoading for deep integration)
   const { 
     messages = [], 
     input = '', 
     handleInputChange, 
     handleSubmit, 
-    isLoading = false, 
+    isLoading: isChatLoading = false, // 🛡️ DEEP WELD: FIXED ReferenceError
     data: streamData = [], 
     isReady = false, 
     businessId = '', 
@@ -226,10 +226,10 @@ export default function CopilotPanel() {
         </div>
         <div className="flex items-center gap-2 mt-1 opacity-50 relative z-10">
            <Terminal className="h-3 w-3" />
-           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v25.3</p>
+           <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v27.0</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
-              <span>VAULT: {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : 'LINKING...'}</span>
+              <span>VAULT: {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}</span>
            </div>
         </div>
       </header>
@@ -318,7 +318,7 @@ export default function CopilotPanel() {
               ref={inputRef}
               value={safeInput} 
               onChange={handleInputChange} 
-              placeholder={!isReady ? "Establishing Sovereign Handshake..." : "Authorize Auditor scan or CFO |"} 
+              placeholder={!isReady ? "Syncing Sovereign Identity..." : "Authorize Auditor scan or CFO directive |"} 
               className="relative h-16 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[15px] px-8 pr-12"
               disabled={!isReady || isChatLoading}
             />
@@ -346,7 +346,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (businessId || '5918cefa-b34a').substring(0, 18) : '5918cefa-b34a...'}
+                        {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>
@@ -355,7 +355,7 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Fingerprint size={11} className="text-sky-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (userId || '5918cefa-b34a').substring(0, 18) : '5918cefa-b34a...'}
+                        {isReady ? (userId || '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>

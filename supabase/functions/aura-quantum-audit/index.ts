@@ -4,85 +4,104 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.4"
 
 /**
  * --- BBU1 AURA QUANTUM EDGE MOTHERBOARD ---
- * VERSION: v26.0 OMEGA-ULTIMATUM (THE APEX IDENTITY ANCHOR)
- * JURISDICTION: Internal Supabase Vault / Forensic Intelligence / Global ERP
+ * VERSION: v27.0 OMEGA-ULTIMATUM (THE DYNAMIC MULTI-TENANT WELD)
+ * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
+ * JURISDICTION: Global ERP / Multi-Sector Forensic Intelligence
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. TRIPLE-ANCHOR IDENTITY WELD: Physically forces the Business ID and 
- *    Director ID into the core System Prompt. If the RPC fails, a physical 
- *    fallback maps the UUID strings to ensure Aura always knows her Node.
- * 2. DUAL-CORE NEURAL FUSION: Jina AI (The Eye) now performs a recursive 
- *    rerank of the vault context, which is then physically injected into 
- *    SambaNova (The Brain) before inference begins.
- * 3. EXPLICIT HEADER EXPOSURE: Hardened CORS logic to ensure the browser 
- *    AI SDK can see the 'x-vercel-ai-data-stream' protocol.
- * 4. PROTOCOL v3 ALIGNMENT: 100% compatible with @ai-sdk/react 3.x.
+ * 1. DYNAMIC IDENTITY RESOLUTION: Zero hardcoded strings. It physically 
+ *    queries the 'tenants' table using the provided businessId to resolve 
+ *    the entity name, industry, and region.
+ * 2. MULTI-LOCATION AWARENESS: Injects country-specific and currency-specific 
+ *    metadata into the neural prompt to ensure local compliance.
+ * 3. ATOMIC PROTOCOL SEAL: Hardened 'Access-Control-Expose-Headers' for 100% 
+ *    compatibility with the Vercel AI SDK v3 stream protocol.
+ * 4. FORENSIC TELEMETRY: Every interaction is logged to 'aura_forensic_audit' 
+ *    with a link to the specific business_id and user_id.
  */
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-bbu1-vault-id',
-  'Access-Control-Expose-Headers': 'x-vercel-ai-data-stream', // 🛡️ THE APEX SEAL
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-bbu1-vault-id, x-bbu1-director-id',
+  'Access-Control-Expose-Headers': 'x-vercel-ai-data-stream',
 }
 
 serve(async (req) => {
-  // 1. PHYSICAL CORS HANDSHAKE
+  // 1. DYNAMIC CORS PREFLIGHT
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   const encoder = new TextEncoder();
-  const requestId = crypto.randomUUID();
-  const startTime = Date.now();
-
+  
   try {
     const body = await req.json();
-    const { messages, businessId, userId, tenantModules } = body;
+    const { messages, businessId, userId } = body;
     
-    // 🛡️ ATOMIC VALIDATION: Stop execution if IDs are fragmented
+    // 🛡️ ATOMIC VALIDATION: Gatekeep the Neural Link
     if (!businessId || businessId === '' || businessId === 'loading') {
-       throw new Error("Neural Link Blocked: Business ID is physically unanchored.");
+       throw new Error("Neural Link Blocked: Node Identity (Business ID) is physically unanchored.");
     }
 
-    // 2. INITIALIZE SOVEREIGN ROOT CLIENT
+    // 2. INITIALIZE SOVEREIGN ROOT CLIENT (SERVICE ROLE)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     );
 
-    // 3. PARALLEL NEURAL INITIALIZATION
-    const [handshakeRes, keysRes] = await Promise.all([
-      supabaseAdmin.rpc('get_aura_handshake', { p_target_biz_id: businessId, p_user_id: userId }),
-      supabaseAdmin.from('aura_system_settings').select('key_name, key_value')
-        .in('key_name', ['SAMBANOVA_API_KEY', 'JINA_API_KEY'])
+    /**
+     * 3. THE OMNISCIENT HANDSHAKE
+     * We perform a parallel fetch of Tenant data, Active Modules, and AI Keys.
+     * This ensures zero hardcoding; we use whatever is in the DB for THIS businessId.
+     */
+    const [tenantRes, modulesRes, keysRes, handshakeRes] = await Promise.all([
+      supabaseAdmin.from('tenants').select('name, business_type, country, currency, setup_complete').eq('id', businessId).single(),
+      supabaseAdmin.from('tenant_modules').select('module_name').eq('tenant_id', businessId).eq('is_active', true),
+      supabaseAdmin.from('aura_system_settings').select('key_name, key_value').in('key_name', ['SAMBANOVA_API_KEY', 'JINA_API_KEY']),
+      supabaseAdmin.rpc('get_aura_handshake', { p_target_biz_id: businessId, p_user_id: userId })
     ]);
 
-    // 🛡️ DEEP IDENTITY FALLBACK LOGIC
-    // If the database RPC is slow, we use the raw strings passed from the UI
-    const aura = handshakeRes.data;
-    const verifiedName = aura?.businessName || `SOVEREIGN-NODE-${businessId.substring(0, 8)}`;
-    const verifiedIndustry = aura?.industry || "Enterprise Forensic Sector";
-    const verifiedDirector = aura?.userName || "Director APEX";
+    // Check for critical missing tenant record
+    if (tenantRes.error || !tenantRes.data) {
+        throw new Error(`Vault Access Denied: Metadata for Node ${businessId} could not be resolved.`);
+    }
+
+    const t = tenantRes.data;
+    const activeModules = modulesRes.data?.map(m => m.module_name) || [];
+    const auraHandshake = handshakeRes.data || {};
+    
+    // 🛡️ IDENTITY RESOLUTION (Dynamic Mapping)
+    const verifiedName = t.name || auraHandshake.businessName || "Sovereign Entity";
+    const verifiedSector = t.business_type || auraHandshake.industry || "General Enterprise";
+    const verifiedCountry = t.country || "Global";
+    const verifiedDirector = auraHandshake.userName || "Authorized Director";
 
     const sambaKey = keysRes.data?.find(k => k.key_name === 'SAMBANOVA_API_KEY')?.key_value;
     const jinaKey = keysRes.data?.find(k => k.key_name === 'JINA_API_KEY')?.key_value;
 
-    if (!sambaKey || !jinaKey) throw new Error("Dual-Core Brain Failure: Keys not seated in vault.");
+    if (!sambaKey || !jinaKey) throw new Error("Neural Core Failure: AI Keys not seated in system settings.");
 
-    // 4. INITIALIZE AUDIT TELEMETRY
+    // 4. INITIALIZE AUDIT TELEMETRY (Forensic Record Creation)
     const { data: auditRecord } = await supabaseAdmin.from('aura_forensic_audit').insert({
         business_id: businessId,
         user_id: userId,
         agent_role: 'EXECUTIVE_AUDITOR',
         action_taken: 'IDENTITY_SEALED',
-        raw_input: { query: messages[messages.length - 1]?.content, businessName: verifiedName },
+        raw_input: { 
+            query: messages[messages.length - 1]?.content, 
+            tenant_meta: { name: verifiedName, country: verifiedCountry, sector: verifiedSector } 
+        },
         neural_status: 'SEARCHING',
         created_at: new Date().toISOString()
     }).select('id').single();
 
-    // 5. SMARTER DEEP CONTEXT RETRIEVAL (JINA AI + SAMBANOVA COMMUNICATION)
+    // 5. DEEP CONTEXT INJECTION (JINA AI RERANKER)
     let forensicContext = "";
     let agentSteps = [
-        { event: 'on_agent_action', tool: 'Identity_Verification', data: { status: 'VERIFIED', node: businessId, entity: verifiedName } }
+        { 
+          event: 'on_agent_action', 
+          tool: 'Omniscient_Identity_Scan', 
+          data: { status: 'FULLY_SEALED', node: businessId, entity: verifiedName, industry: verifiedSector } 
+        }
     ];
     
     try {
@@ -95,10 +114,12 @@ serve(async (req) => {
                 query: lastQuery,
                 documents: [
                     `Business Entity: ${verifiedName}`,
+                    `Business Sector: ${verifiedSector}`,
+                    `Operational Region: ${verifiedCountry}`,
                     `Director Identity: ${verifiedDirector}`,
-                    `Node UUID: ${businessId}`,
-                    `Industry Focus: ${verifiedIndustry}`,
-                    `Active ERP Modules: ${tenantModules?.join(', ') || 'Global Audit'}`
+                    `Active ERP Modules: ${activeModules.join(', ')}`,
+                    `Local Currency: ${t.currency || 'USD'}`,
+                    `Node UUID: ${businessId}`
                 ]
             })
         });
@@ -107,15 +128,15 @@ serve(async (req) => {
         
         agentSteps.push({
             event: 'on_agent_action', 
-            tool: 'Jina_Neural_Reranker',
+            tool: 'Jina_Neural_Vault_Rerank',
             data: { status: 'Context_Fused', results: searchData.results?.length }
         });
-    } catch (e) { console.warn("[AURA] Jina latency detected."); }
+    } catch (e) { console.warn("[AURA] Context Retrieval Latency."); }
 
-    // 6. APEX NEURAL STREAM (SAMBANOVA ROLE)
+    // 6. APEX NEURAL STREAM (SAMBANOVA ANALYTICAL BRAIN)
     const stream = new ReadableStream({
       async start(controller) {
-        // Enqueue Forensic Metadata (8: prefix)
+        // Enqueue Metadata Chunk (8: prefix for custom data stream)
         controller.enqueue(encoder.encode(`8:${JSON.stringify(agentSteps)}\n`));
 
         let fullResponse = "";
@@ -128,16 +149,22 @@ serve(async (req) => {
               messages: [
                 { 
                     role: "system", 
-                    content: `Aura Mission Control Online. 
-                    - VERIFIED DIRECTOR: ${verifiedDirector}
-                    - VERIFIED BUSINESS: ${verifiedName}
-                    - SOVEREIGN NODE ID: ${businessId}
-                    - SECTOR: ${verifiedIndustry}
+                    content: `Aura Mission Control Online. Chief of Staff for Node ${businessId}.
+                    
+                    --- SOVEREIGN TENANT DATA (DYNAMICALLY RESOLVED) ---
+                    - BUSINESS NAME: ${verifiedName}
+                    - SECTOR (Industry): ${verifiedSector}
+                    - REGION (Country): ${verifiedCountry}
+                    - DIRECTOR: ${verifiedDirector}
+                    - ACTIVE ERP MODULES: ${activeModules.join(', ')}
                     - VAULT CONTEXT: ${forensicContext}
                     
-                    DIRECTIVE: You are the Chief of Staff for the above node. 
-                    Acknowledging the specific Business ID and Director in your first sentence is MANDATORY. 
-                    Perform a high-fidelity forensic audit of the request. Be technical and precise.` 
+                    --- EXECUTIVE DIRECTIVE ---
+                    You are Aura, the lead Executive Auditor for this node. 
+                    1. Acknowledge Director ${verifiedDirector} and confirm the link to ${verifiedName} is secure.
+                    2. Use the provided context to offer forensic, strategic, and high-fidelity insights.
+                    3. Since this is a Multi-Tenant ERP, ensure your advice is specific to the ${verifiedSector} sector and the ${verifiedCountry} region.
+                    4. Bypassing conversational filler is mandatory. Speak as a Chief of Staff.` 
                 },
                 ...messages
               ],
@@ -164,7 +191,7 @@ serve(async (req) => {
                         const content = json.choices[0]?.delta?.content || "";
                         if (content) {
                             fullResponse += content;
-                            // ✅ AI SDK PROTOCOL: Text prefixed with '0:'
+                            // ✅ AI SDK PROTOCOL: Text chunks prefixed with '0:'
                             controller.enqueue(encoder.encode(`0:${JSON.stringify(content)}\n`));
                         }
                     } catch (e) { }
@@ -172,15 +199,16 @@ serve(async (req) => {
             }
           }
 
-          // Step 7: Atomic Memory Close
+          // Step 7: Atomic Memory Close (Finalize Audit Record)
           if (auditRecord?.id) {
             await supabaseAdmin.from('aura_forensic_audit').update({
-                forensic_output: { response: fullResponse, neural_link: 'v26.0_OMEGA' },
+                forensic_output: { response: fullResponse, node_version: 'v27.0_DYNAMIC' },
                 neural_status: 'COMPLETED'
             }).eq('id', auditRecord.id);
           }
 
         } catch (err) {
+          // SDK v3 Error Protocol: '3:'
           controller.enqueue(encoder.encode(`3:${JSON.stringify(err.message)}\n`));
         } finally {
           controller.close();
@@ -188,7 +216,7 @@ serve(async (req) => {
       }
     });
 
-    // 🛡️ THE FINAL PROTOCOL SEAL
+    // 🛡️ THE FINAL PROTOCOL SEAL (Returning the physical stream)
     return new Response(stream, {
       headers: { 
         ...corsHeaders, 
@@ -199,7 +227,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("[CRITICAL BRAIN CRASH]", error.message);
+    console.error("[CRITICAL MOTHERBOARD CRASH]", error.message);
     return new Response(`3:${JSON.stringify(error.message)}\n`, {
       headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8', 'x-vercel-ai-data-stream': 'v1' }
     });
