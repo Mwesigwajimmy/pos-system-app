@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { 
     Boxes, Tags, BookOpen, CheckCircle2, 
     Activity, Fingerprint, Plus, LayoutDashboard,
-    AlertCircle
+    AlertCircle,
+    Building2
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,11 +23,11 @@ export default async function InventoryPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // 1. Authentication Guard
+  // 1. Authentication Guard - Ensures secure access
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) redirect('/login');
 
-  // 2. Identity Resolution
+  // 2. Profile Resolution - Identifying the business and account details
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_id, business_name, tenant_id")
@@ -38,16 +39,16 @@ export default async function InventoryPage() {
         <div className="min-h-screen bg-white flex items-center justify-center p-6">
             <Alert variant="destructive" className="max-w-md border-none shadow-lg rounded-2xl bg-white p-8">
                 <AlertCircle className="h-6 w-6 text-red-500" />
-                <AlertTitle className="text-lg font-bold text-slate-900 mt-2">Account Error</AlertTitle>
+                <AlertTitle className="text-lg font-bold text-slate-900 mt-2">Account Configuration Error</AlertTitle>
                 <AlertDescription className="text-slate-500 mt-1">
-                    Could not resolve a valid business ID for your account. Please contact support.
+                    Could not resolve a valid business ID for your account. Please contact system administration.
                 </AlertDescription>
             </Alert>
         </div>
     );
   }
 
-  // 3. Data Fetching
+  // 3. Parallel Data Fetching - Efficiently loading products and categories
   const [productsResult, categoriesResult] = await Promise.all([
     supabase.rpc('get_paginated_products', {
       p_page: 1,
@@ -69,10 +70,15 @@ export default async function InventoryPage() {
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="max-w-[1600px] mx-auto py-8 px-6 md:px-10 lg:px-12 space-y-10 animate-in fade-in duration-500">
+      {/* 
+          TIGHTENED LAYOUT: 
+          'max-w-7xl' centers the content.
+          'space-y-4' and 'py-4' remove the excessive vertical gaps.
+      */}
+      <div className="max-w-7xl mx-auto py-4 px-6 md:px-10 lg:px-12 space-y-4 animate-in fade-in duration-500">
         
-        {/* --- PROFESSIONAL HEADER --- */}
-        <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-50 pb-8">
+        {/* --- CLEAN BUSINESS HEADER --- */}
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-50 pb-4">
             <div className="flex items-center gap-5">
                 <div className="p-3 bg-slate-900 rounded-xl text-white shadow-md">
                     <Boxes className="w-7 h-7" />
@@ -83,21 +89,17 @@ export default async function InventoryPage() {
                     </h1>
                     <div className="flex items-center gap-3">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <LayoutDashboard size={12} className="text-blue-500" /> Facility: {profile.business_name}
+                            <Building2 size={12} className="text-blue-500" /> Branch: {profile.business_name}
                         </span>
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-600 font-bold px-3 py-0.5 rounded-full text-[9px] uppercase tracking-wider border-none">
-                            Network Active
+                        <Badge className="bg-emerald-50 text-emerald-600 font-bold px-3 py-0.5 rounded-full text-[9px] uppercase tracking-wider border-none">
+                            System Active
                         </Badge>
                     </div>
                 </div>
             </div>
             
             <div className="flex items-center gap-4">
-                 <div className="hidden sm:block text-right pr-4 border-r border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Environment</p>
-                    <p className="text-xs font-bold text-slate-700 uppercase tracking-tight">System v10.2.4</p>
-                 </div>
-                 <Button variant="default" className="bg-blue-600 hover:bg-blue-700 h-10 px-6 font-bold shadow-md rounded-lg transition-all active:scale-95" asChild>
+                 <Button variant="default" className="bg-blue-600 hover:bg-blue-700 h-10 px-8 font-bold shadow-md rounded-lg transition-all active:scale-95" asChild>
                     <Link href="/inventory/adjustments">
                         <Plus size={18} className="mr-2" /> New Adjustment
                     </Link>
@@ -105,13 +107,13 @@ export default async function InventoryPage() {
             </div>
         </header>
 
-        <p className="text-sm text-slate-500 font-medium -mt-4 ml-1">
+        <p className="text-sm text-slate-500 font-medium -mt-2 ml-1">
             Viewing stock for: <span className="font-bold text-slate-900">{profile.business_name}</span>
         </p>
 
         {/* --- NAVIGATION TABS --- */}
-        <Tabs defaultValue="products" className="space-y-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+        <Tabs defaultValue="products" className="space-y-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
                 <TabsList className="bg-slate-200/50 p-1 rounded-lg h-10 w-full md:w-auto">
                     <TabsTrigger 
                         value="products" 
@@ -142,8 +144,8 @@ export default async function InventoryPage() {
                 </div>
             </div>
 
-            {/* --- STOCK LEDGER --- */}
-            <TabsContent value="products" className="m-0 outline-none">
+            {/* --- TAB CONTENT AREA --- */}
+            <TabsContent value="products" className="m-0 outline-none w-full">
                 <InventoryDataTable
                   columns={columns}
                   initialData={initialData}
@@ -153,23 +155,23 @@ export default async function InventoryPage() {
                 />
             </TabsContent>
 
-            <TabsContent value="categories" className="m-0 outline-none">
+            <TabsContent value="categories" className="m-0 outline-none w-full">
                 <CategoriesView />
             </TabsContent>
 
-            <TabsContent value="composites" className="m-0 outline-none">
+            <TabsContent value="composites" className="m-0 outline-none w-full">
                 <CompositesView />
             </TabsContent>
         </Tabs>
 
-        {/* --- FOOTER / METADATA --- */}
-        <footer className="pt-20 pb-12">
-            <div className="flex justify-center items-center gap-4 mb-6 opacity-30">
+        {/* --- SMART BUSINESS FOOTER --- */}
+        <footer className="pt-10 pb-8">
+            <div className="flex justify-center items-center gap-4 mb-6 opacity-20">
                 <div className="h-px w-16 bg-slate-200" />
                 <div className="flex items-center gap-2">
                     <Activity size={14} className="text-slate-400" />
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.4em]">
-                        Cloud Infrastructure v10.2
+                        Cloud Sync Ready
                     </p>
                 </div>
                 <div className="h-px w-16 bg-slate-200" />
@@ -179,13 +181,13 @@ export default async function InventoryPage() {
                 <div className="flex items-center gap-2">
                     <Fingerprint size={12} className="text-slate-500" />
                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                        Node ID: {profile.business_id.substring(0,12).toUpperCase()}
+                        System ID: {profile.business_id.substring(0,12).toUpperCase()}
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
                     <Activity size={12} className="text-slate-500" />
                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                        Tenant: {profile.tenant_id.substring(0,8).toUpperCase()}
+                        Business Link: {profile.tenant_id?.substring(0,8).toUpperCase() || "ACTIVE"}
                     </span>
                 </div>
             </div>
@@ -195,7 +197,8 @@ export default async function InventoryPage() {
   );
 }
 
-const Badge = ({ children, className, variant }: any) => (
+// Simple Helper Component for Status Badges
+const Badge = ({ children, className }: any) => (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${className}`}>
         {children}
     </span>
