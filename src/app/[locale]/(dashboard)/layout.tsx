@@ -2,20 +2,19 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v22.0 OMEGA-ULTIMATUM (THE IDENTITY ANCHOR WELD)
+ * VERSION: v28.0 OMEGA-ULTIMATUM (THE IDENTITY ANCHOR WELD)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL UPGRADES:
  * 1. IDENTITY UNBLINDING: The DashboardGatekeeper now physically waits for 
- *    'profile.is_ready' to be true. This matches the successful SQL handshake 
- *    result {"is_ready": true} and physically unlocks the typing interface.
+ *    'profile.is_active' to be true. This matches your wide-system forensic 
+ *    audit and physically unlocks the neural handshake.
  * 2. PROVIDER RE-SEQUENCE: Maintains SyncProvider and BrandingProvider ABOVE 
  *    the Copilot to ensure the AI "feels" the business node on mount.
  * 3. CONSTRUCTOR STABILIZATION: Supabase initialization is seated inside 
  *    useMemo to kill "Illegal constructor" errors permanently.
  * 4. REDIRECTION LOGIC: Forensic alignment with the 'setup_complete' column 
- *    to ensure users are routed to /welcome or /dashboard based on their 
- *    physical database status.
+ *    to ensure users are routed to /welcome or /dashboard correctly.
  */
 
 import React, { memo, ReactNode, useEffect, useMemo } from 'react';
@@ -42,14 +41,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 /**
  * --- MOBILE SIDEBAR DRAWER ---
- * Memoized to preserve scroll state during background AI syncs.
  */
 const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
     return (
       <AnimatePresence mode="wait">
         {isOpen && (
           <div className="fixed inset-0 z-[200] flex lg:hidden" role="dialog" aria-modal="true">
-            {/* 🛡️ BACKDROP WELD */}
             <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
@@ -58,7 +55,6 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[190]" 
                 onClick={onClose} 
             />
-            {/* 🏗️ SLIDING PANEL WELD */}
             <motion.div 
                 initial={{ x: '-100%' }} 
                 animate={{ x: 0 }} 
@@ -76,7 +72,6 @@ const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <X className="h-6 w-6" />
                 </Button>
               </div>
-              
               <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
                 <Sidebar />
               </div>
@@ -90,7 +85,6 @@ MobileSidebar.displayName = 'MobileSidebar';
 
 /**
  * --- SOVEREIGN LIVE GUARD ---
- * Stabilized to prevent "Illegal constructor" errors.
  */
 const SovereignLiveGuard = () => {
     const supabase = useMemo(() => createClient(), []); 
@@ -99,7 +93,6 @@ const SovereignLiveGuard = () => {
     
     useEffect(() => {
         if (!activeBizId) return;
-
         const channel = supabase
             .channel(`sovereign_forensics_${activeBizId}`)
             .on('postgres_changes', { 
@@ -118,10 +111,8 @@ const SovereignLiveGuard = () => {
                 }
             })
             .subscribe();
-
         return () => { supabase.removeChannel(channel); };
     }, [supabase, activeBizId]);
-
     return null;
 }
 
@@ -130,7 +121,6 @@ const SovereignLiveGuard = () => {
  */
 const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
     const { toggleCopilot, isOpen, isReady, isLoading } = useCopilot();
-
     return (
         <Button
             onClick={toggleCopilot}
@@ -158,58 +148,38 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
   const pathname = usePathname();
   const { branding } = useBranding(); 
-  
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
-  // ✅ AUTO-OPEN INITIATIVE (MOBILE)
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
     if (isMobile) setIsSidebarOpen(true);
   }, [setIsSidebarOpen]);
 
-  // ✅ SMART-CLOSE ON NAVIGATION
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
     if (isSidebarOpen && isMobile) setIsSidebarOpen(false);
   }, [pathname, setIsSidebarOpen]);
 
   return (
-    <div 
-        className="flex h-screen bg-[#F8FAFC] overflow-hidden" 
-        style={{ '--brand-primary': primaryColor } as React.CSSProperties}
-    >
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden" style={{ '--brand-primary': primaryColor } as React.CSSProperties}>
       <SovereignLiveGuard />
-      
-      {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm">
         <Sidebar />
       </div>
-
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          <button 
-            type="button" 
-            className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 active:bg-slate-100 transition-all cursor-pointer" 
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleSidebar(); 
-            }}
-          >
+          <button type="button" className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-all cursor-pointer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSidebar(); }}>
             <Menu className="h-8 w-8" />
           </button>
           <Header />
         </header>
-
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-slate-50/40">
           <div className="p-4 sm:p-8 lg:p-10 animate-in fade-in slide-in-from-bottom-3 duration-1000">
             {children}
           </div>
         </main>
       </div>
-      
       <CopilotToggleButton brandColor={primaryColor} />
     </div>
   );
@@ -217,7 +187,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * 🛡️ The Identity Sentinel
+ * 🛡️ The Identity Sentinel (FIXED FOR WIDE SYSTEM)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -226,30 +196,23 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
-        // ✅ REDIRECTION LOGIC: Based on physical setup_complete column
         if (profile && !isBusinessLoading && !isBrandingLoading) {
             const locale = pathname.split('/')[1] || 'en';
-            
-            // Redirect to welcome if setup is not finalized
             if (profile.setup_complete === false && !pathname.includes('/welcome')) {
                 router.push(`/${locale}/welcome`);
-            } 
-            // Redirect away from welcome if setup is already done
-            else if (profile.setup_complete === true && pathname.includes('/welcome')) {
+            } else if (profile.setup_complete === true && pathname.includes('/welcome')) {
                 router.push(`/${locale}/dashboard`);
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
     /**
-     * ✅ THE OMNISCIENT HANDSHAKE VERIFICATION
-     * We wait until profile.is_ready is TRUE.
-     * This is the signal that get_aura_handshake succeeded in the DB.
-     * UNTIL THIS IS TRUE, TYPING IS PHYSICALLY BLOCKED.
+     * ✅ DEEP HANDSHAKE VERIFICATION:
+     * Switched from 'is_ready' to 'is_active' to match your forensic audit.
+     * This UNLOCKS the providers underneath, allowing typing to work.
      */
-    const identityIsVerified = !!profile?.business_id && profile?.is_ready === true;
+    const identityIsVerified = !!profile?.business_id && profile?.is_active === true;
 
-    // Show high-fidelity loading state while the neural node is anchoring
     if (isBusinessLoading || isBrandingLoading || !identityIsVerified) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
@@ -269,7 +232,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // Handle handshake failure/desync
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
@@ -277,25 +239,15 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                     <ShieldAlert className="text-rose-500 h-16 w-16 mx-auto mb-10" />
                     <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 leading-none">Identity Desync</h1>
                     <p className="text-slate-500 text-xs mt-4">The neural link to your vault could not be established.</p>
-                    <Button 
-                        onClick={() => window.location.reload()} 
-                        className="h-14 mt-12 w-full rounded-3xl bg-slate-950 text-white font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all"
-                    >
-                        Retry Neural Handshake
-                    </Button>
+                    <Button onClick={() => window.location.reload()} className="h-14 mt-12 w-full rounded-3xl bg-slate-950 text-white font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all">Retry Neural Handshake</Button>
                 </div>
             </div>
         );
     }
     
-    // Identity secure. UI unlocked.
     return <AppLayout>{children}</AppLayout>;
 }
 
-/**
- * MASTER DASHBOARD LAYOUT
- * ORCHESTRATION: Business -> Sync -> Branding -> Copilot -> Sidebar -> Gatekeeper
- */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <BusinessProvider>
