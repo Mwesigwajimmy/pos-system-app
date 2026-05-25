@@ -7,11 +7,11 @@
  * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. PHYSICAL IDENTITY ANCHOR: Now maps 'business_id' and 'auth_user_id' 
+ * 1. PHYSICAL IDENTITY ANCHOR: Now maps 'business_id' and 'id' 
  *    directly from the verified Sovereign Profile. This ensures the 
  *    Edge Motherboard identifies the 'APEX' node instantly.
  * 2. TYPING ACTIVATION: The 'isHandshakeValid' seal is now perfectly 
- *    synchronized with the database's 'is_ready' status.
+ *    synchronized with the database's actual 'is_active' status.
  * 3. REFERENCE ERROR PREVENTION: Hard-welds the 'isLoading' state from 
  *    the AI SDK into the context, providing the physical link for 
  *    the 'isChatLoading' variable in the UI.
@@ -202,7 +202,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * 🛡️ MULTI-TENANT IDENTITY MAPPING
-   * Mapping based on the verified database schema (business_id column).
+   * Mapping based on the verified wide-system database schema.
    */
   const activeBusinessId = useMemo(() => 
     profile?.business_id || profile?.profile_linked_biz_id || '', 
@@ -210,7 +210,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
   );
 
   const activeUserId = useMemo(() => 
-    profile?.auth_user_id || profile?.id || '', 
+    profile?.id || '', // ✅ UPDATED: audit shows ID is used for the director identity
     [profile]
   );
 
@@ -220,14 +220,14 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ FORENSIC READINESS SEAL
-   * UNLOCKS TYPING: If is_ready is true in the DB, the keyboard activates.
+   * UNLOCKS TYPING: Now uses 'is_active' from your wide system audit.
    */
   const isHandshakeValid = mounted && 
                            !contextLoading && 
                            activeUserId !== '' && 
                            activeBusinessId !== '' &&
                            !!token && 
-                           profile?.is_ready === true;
+                           profile?.is_active === true; // ✅ UPDATED: is_ready does not exist; using is_active
 
   // Fallback state while identity is latent
   if (!isHandshakeValid) {

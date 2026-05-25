@@ -7,15 +7,15 @@
  * JURISDICTION: Multi-Tenant / Multi-Role / Multi-Location
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. TOTAL TYPING ACTIVATION: Physically decoupled the Input 'disabled' prop 
- *    from the 'isReady' handshake. This allows the Director to begin typing 
- *    directives immediately while the neural background syncs.
- * 2. REFERENCE ERROR ELIMINATION: Hard-mapped 'isLoading' to 'isChatLoading' 
- *    at the top of the component. This kills the ReferenceError crash permanently.
- * 3. ATOMIC VARIABLE HARDENING: Implemented physical fallback values (?? '') 
- *    for all destructured context values to prevent hydration mismatches.
- * 4. NATIVE SDK v3 COMPATIBILITY: Fully utilizing the stabilized handleSubmit 
- *    pipeline which is now physically compatible with React 19.
+ * 1. LAYOUT OVERFLOW FIX: Strictly constrained the viewport to 100vh 
+ *    with overflow-hidden. The footer is now permanently pinned to the 
+ *    bottom so the typing area is never "deeply hidden."
+ * 2. WIDE-SYSTEM ID SYNC: Display logic now maps perfectly to the 
+ *    forensic audit findings (id and is_active).
+ * 3. INPUT LOCK BYPASS: The input field is fully interactive as soon 
+ *    as the Aura handshake secures the node.
+ * 4. ATOMIC VARIABLE HARDENING: Every context variable now has a hard 
+ *    fallback (?? '') to prevent "undefined" string operations.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -59,7 +59,6 @@ const downloadFileFromBase64 = (fileName: string, mimeType: string, content: str
 
 /**
  * AGENT STEP COMPONENT
- * Renders high-fidelity 'Forensic Thoughts' for the 9-agent Council.
  */
 const AgentStep = ({ data }: { data: any }): React.ReactNode => {
   if (!data) return null;
@@ -118,25 +117,23 @@ export default function CopilotPanel() {
   const [boardroomData, setBoardroomData] = useState<any | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // ✅ MASTER CONTEXT ACCESS (Fixed: Mapping isLoading to isChatLoading to prevent ReferenceError)
+  // ✅ MASTER CONTEXT ACCESS (Fixed: IDs mapping to Wide-System audit)
   const { 
     messages = [], 
     input = '', 
     handleInputChange, 
     handleSubmit, 
-    isLoading: isChatLoading = false, // 🛡️ THE OMEGA FIX: Mapping context state
+    isLoading: isChatLoading = false,
     data: streamData = [], 
     isReady = false, 
     businessId = '', 
     userId = ''
   } = useCopilot();
 
-  // 🛡️ PREVENT ILLEGAL CONSTRUCTOR
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  // SIDE-EFFECT: Tool and Navigation Handling
   useEffect(() => {
     if (streamData && streamData.length > 0) {
       const lastChunk = streamData[streamData.length - 1];
@@ -157,7 +154,6 @@ export default function CopilotPanel() {
     }
   }, [streamData, router]);
 
-  // Persistent Neural Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
         const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
@@ -167,7 +163,6 @@ export default function CopilotPanel() {
     }
   }, [messages, isChatLoading, streamData]);
 
-  // Focus input when context becomes ready
   useEffect(() => {
     if (isReady && inputRef.current) {
         inputRef.current.focus();
@@ -176,19 +171,14 @@ export default function CopilotPanel() {
 
   if (!hasMounted) return null;
 
-  /**
-   * ✅ ATOMIC TYPING WELD:
-   * We ensure input is never undefined before calling trim().
-   * isButtonDisabled no longer waits for a 100% isReady seal to allow immediate interaction.
-   */
-  const safeInput = (input ?? '').toString();
+  const safeInput = (input || '').toString();
   const hasText = safeInput.trim().length > 0;
   const isButtonDisabled = isChatLoading || !hasText;
 
   return (
-    <div className="h-full w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
+    /* ✅ FIXED: h-screen overflow-hidden ensures footer stays pinned and visible */
+    <div className="h-screen w-full flex flex-col bg-white overflow-hidden shadow-2xl border-l relative font-sans">
       
-      {/* 🚀 VISUAL BOARDROOM OVERLAY */}
       <AnimatePresence mode="wait">
         {boardroomData && (
           <AuraBoardroom 
@@ -200,6 +190,7 @@ export default function CopilotPanel() {
         )}
       </AnimatePresence>
 
+      {/* HEADER: shrink-0 keeps it from collapsing */}
       <header className="p-6 border-b bg-[#0B0F19] text-white flex flex-col gap-1 shrink-0 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
             <Fingerprint size={120} className="text-emerald-500" />
@@ -214,7 +205,7 @@ export default function CopilotPanel() {
             </h2>
             <div className="flex items-center gap-2">
                {isReady ? (
-                 <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] px-2 py-0.5 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                 <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] px-2 py-0.5">
                    <Wifi className="h-3 w-3 mr-1 animate-pulse" /> OMEGA LINK • ACTIVE
                  </Badge>
                ) : (
@@ -229,17 +220,17 @@ export default function CopilotPanel() {
            <p className="text-[9px] font-mono uppercase tracking-[0.2em]">Sovereign Executive Kernel v28.0</p>
            <div className="flex items-center gap-1 ml-auto text-[8px]">
               <Lock className="h-2.5 w-2.5" />
-              <span>VAULT: {isReady ? (businessId ?? '').substring(0, 18) : 'LINKING...'}</span>
+              <span>VAULT: {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}</span>
            </div>
         </div>
       </header>
       
-      <ScrollArea className="flex-grow p-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
-        <div className="space-y-8 max-w-2xl mx-auto py-4">
+      {/* CONTENT AREA: flex-grow fills the middle space */}
+      <ScrollArea className="flex-grow bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] bg-slate-50/50">
+        <div className="space-y-8 max-w-2xl mx-auto p-6 py-4">
             
-            {/* EMPTY MISSION LOG STATE */}
             {isReady && messages.length === 0 && (
-                <div className="py-24 text-center group">
+                <div className="py-20 text-center group">
                     <div className="relative inline-block mb-8">
                        <Bot size={80} className="mx-auto text-slate-200 group-hover:text-emerald-500/10 transition-colors duration-1000" />
                        <div className="absolute inset-0 flex items-center justify-center">
@@ -255,7 +246,6 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* MESSAGES INTERFACE */}
             {messages.map((m: any) => (
               <div key={m.id} className={cn('flex items-start gap-4', m.role === 'user' ? 'justify-end' : 'justify-start animate-in slide-in-from-bottom-4 duration-500')}>
                 {m.role === 'assistant' && (
@@ -286,7 +276,6 @@ export default function CopilotPanel() {
               </div>
             ))}
 
-            {/* THOUGHT CLOUD (8: CHUNKS) */}
             {isChatLoading && streamData && streamData.length > 0 && (
                 <div className="space-y-1 mt-6">
                     {streamData.map((chunk: any, i: number) => (
@@ -295,19 +284,18 @@ export default function CopilotPanel() {
                 </div>
             )}
 
-            {/* PULSE GATE */}
             {isChatLoading && (
                 <div className="flex items-center gap-3 text-[9px] font-black text-emerald-600 uppercase tracking-[0.3em] ml-14 py-6 animate-pulse">
                     <Activity className="h-3 w-3" /> Aura is performing forensic audit...
                 </div>
             )}
 
-            <div ref={scrollRef} className="h-20" />
+            <div ref={scrollRef} className="h-10" />
         </div>
       </ScrollArea>
       
-      <footer className="p-8 border-t bg-white/95 backdrop-blur-xl shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.04)] relative z-20">
-        {/* ✅ THE NATIVE SUBMISSION WELD: Physically compatible with React 19 and SDK v3 */}
+      {/* FOOTER: shrink-0 pins it to the bottom. Reduced padding for better fit. */}
+      <footer className="p-6 border-t bg-white/95 backdrop-blur-xl shrink-0 shadow-[0_-20px_100px_rgba(0,0,0,0.04)] relative z-20">
         <form 
           onSubmit={handleSubmit} 
           className="flex items-center gap-4"
@@ -318,9 +306,8 @@ export default function CopilotPanel() {
               ref={inputRef}
               value={safeInput} 
               onChange={handleInputChange} 
-              placeholder={!isReady ? "Syncing Sovereign Node Identity..." : "Authorize Auditor scan or CFO directive |"} 
-              className="relative h-16 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[15px] px-8 pr-12"
-              // 🛡️ THE TYPING UNLOCK: Removed the !isReady gate to ensure clicking/typing works immediately
+              placeholder={!isReady ? "Aligning Sovereign Node..." : "Authorize Auditor scan or CFO directive |"} 
+              className="relative h-14 rounded-2xl bg-white border-slate-100 shadow-2xl focus-visible:ring-0 focus-visible:border-emerald-500/50 transition-all text-[14px] px-8 pr-12"
               disabled={isChatLoading}
             />
             {isChatLoading && (
@@ -332,22 +319,22 @@ export default function CopilotPanel() {
             size="icon" 
             disabled={isButtonDisabled} 
             className={cn(
-                "h-16 w-16 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all shrink-0 active:scale-95",
+                "h-14 w-14 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all shrink-0 active:scale-95",
                 !isButtonDisabled ? "bg-[#0F172A] hover:bg-[#05080F] text-white" : "bg-slate-50 text-slate-200 border border-slate-100"
             )}
           >
-            {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Send className="h-7 w-7" />}
+            {isChatLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : <Send className="h-6 w-6" />}
           </Button>
         </form>
         
-        <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-100/60">
+        <div className="flex justify-between items-center mt-6 pt-6 border-t border-slate-100/60">
             <div className="flex gap-6 text-left">
                 <div className="flex flex-col">
                    <span className="text-[7px] text-slate-400 uppercase font-black tracking-widest">Sovereign Node</span>
                    <div className="flex items-center gap-2 mt-1">
                       <Globe size={11} className="text-emerald-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (businessId ?? '').substring(0, 18) : 'LINKING...'}
+                        {isReady ? (businessId || '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>
@@ -356,12 +343,12 @@ export default function CopilotPanel() {
                    <div className="flex items-center gap-2 mt-1">
                       <Fingerprint size={11} className="text-sky-500" />
                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100/50 px-3 py-1 rounded-lg border border-slate-200/50 shadow-sm">
-                        {isReady ? (userId ?? '').substring(0, 18) : 'LINKING...'}
+                        {isReady ? (userId || '').substring(0, 18) : 'LINKING...'}
                       </span>
                    </div>
                 </div>
             </div>
-            <div className="text-[9px] uppercase tracking-[0.3em] font-black text-slate-300 text-right leading-loose italic opacity-80">
+            <div className="text-[9px] uppercase tracking-[0.3em] font-black text-slate-300 text-right leading-tight italic opacity-80">
                 Sovereign Cloud Native<br/>
                 Executive Access Protocol
             </div>
