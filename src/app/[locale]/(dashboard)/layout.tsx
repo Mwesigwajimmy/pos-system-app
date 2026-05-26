@@ -2,19 +2,20 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v28.0 OMEGA-ULTIMATUM (THE IDENTITY ANCHOR WELD)
+ * VERSION: v28.1 OMEGA-ULTIMATUM (THE STABILIZED ANCHOR)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
- * CORE ARCHITECTURAL UPGRADES:
- * 1. IDENTITY UNBLINDING: The DashboardGatekeeper now physically waits for 
- *    'profile.is_active' to be true. This matches your wide-system forensic 
- *    audit and physically unlocks the neural handshake.
- * 2. PROVIDER RE-SEQUENCE: Maintains SyncProvider and BrandingProvider ABOVE 
- *    the Copilot to ensure the AI "feels" the business node on mount.
- * 3. CONSTRUCTOR STABILIZATION: Supabase initialization is seated inside 
- *    useMemo to kill "Illegal constructor" errors permanently.
- * 4. REDIRECTION LOGIC: Forensic alignment with the 'setup_complete' column 
- *    to ensure users are routed to /welcome or /dashboard correctly.
+ * CORE ARCHITECTURAL FIXES:
+ * 1. REDIRECT LOOP PREVENTION: Added strict path-equivalence checks to ensure 
+ *    router.push() never fires if the browser is already at the destination.
+ * 2. LOCALE SEGMENT PROTECTION: Hardened locale extraction logic to prevent 
+ *    pathnames like "/dashboard" from being treated as locales, which creates 
+ *    recursive "URL stacking" loops.
+ * 3. IDENTITY SYNCHRONIZATION: The redirection logic now strictly waits for 
+ *    'profile.is_active' to be true, preventing premature redirects during 
+ *    the neural handshake loading state.
+ * 4. ROUTE NORMALIZATION: Uses .startsWith() and segment splitting for more 
+ *    reliable path detection than fuzzy .includes() checks.
  */
 
 import React, { memo, ReactNode, useEffect, useMemo } from 'react';
@@ -187,7 +188,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * 🛡️ The Identity Sentinel (FIXED FOR WIDE SYSTEM)
+ * 🛡️ The Identity Sentinel (FIXED DEEPLY TO KILL REDIRECT LOOPS)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -195,24 +196,45 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const pathname = usePathname();
     const router = useRouter();
 
+    /**
+     * ✅ DEEP HANDSHAKE VERIFICATION
+     */
+    const identityIsVerified = !!profile?.business_id && profile?.is_active === true;
+
     useEffect(() => {
-        if (profile && !isBusinessLoading && !isBrandingLoading) {
-            const locale = pathname.split('/')[1] || 'en';
-            if (profile.setup_complete === false && !pathname.includes('/welcome')) {
-                router.push(`/${locale}/welcome`);
-            } else if (profile.setup_complete === true && pathname.includes('/welcome')) {
-                router.push(`/${locale}/dashboard`);
+        // Only run redirection logic if we have a verified, active profile and loading has finished
+        if (profile && !isBusinessLoading && !isBrandingLoading && profile.is_active === true) {
+            
+            // 1. SAFELY IDENTIFY LOCALE
+            // We split segments and ensure the first segment isn't a known system route to avoid /dashboard/dashboard loops
+            const segments = pathname.split('/').filter(Boolean);
+            const firstSegment = segments[0] || 'en';
+            const locale = ['dashboard', 'welcome', 'auth', 'api'].includes(firstSegment) ? 'en' : firstSegment;
+
+            // 2. DEFINE TARGETS
+            const welcomeTarget = `/${locale}/welcome`;
+            const dashboardTarget = `/${locale}/dashboard`;
+
+            // 3. STABILIZED CHECK (Segment-aware instead of fuzzy .includes)
+            const isOnWelcome = segments.some(s => s === 'welcome');
+            const isOnDashboard = segments.some(s => s === 'dashboard');
+
+            // 4. DEEP REDIRECT LOGIC WITH "SAME-PATH" GUARDS
+            if (profile.setup_complete === false && !isOnWelcome) {
+                // Only push if we aren't already at the target to prevent "Too Many Redirects"
+                if (pathname !== welcomeTarget) {
+                    router.replace(welcomeTarget);
+                }
+            } else if (profile.setup_complete === true && isOnWelcome) {
+                // If setup is done but user is still on welcome, push to dashboard
+                if (pathname !== dashboardTarget) {
+                    router.replace(dashboardTarget);
+                }
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
-    /**
-     * ✅ DEEP HANDSHAKE VERIFICATION:
-     * Switched from 'is_ready' to 'is_active' to match your forensic audit.
-     * This UNLOCKS the providers underneath, allowing typing to work.
-     */
-    const identityIsVerified = !!profile?.business_id && profile?.is_active === true;
-
+    // Handle Loading States
     if (isBusinessLoading || isBrandingLoading || !identityIsVerified) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
@@ -232,6 +254,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
+    // Handle Error States
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
