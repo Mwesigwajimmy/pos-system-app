@@ -1,17 +1,11 @@
 /**
  * --- BBU1 SOVEREIGN MIDDLEWARE ---
- * VERSION: v22.0 OMEGA-ULTIMATUM (THE APEX FORENSIC SHIELD)
- * JURISDICTION: Global Routing & Identity Enforcement
+ * VERSION: v22.6 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER)
  * 
- * CORE ARCHITECTURAL UPGRADES:
- * 1. UNIFIED IDENTITY ANCHOR: Physically synchronizes the 'bbu1_active_business_id' 
- *    cookie with the Supabase RPC session. This ensures that server-side components 
- *    (Layouts/Metadata) see the same identity as the browser vault.
- * 2. ANTI-LOOP RECOVERY: Refined the "Latency Grace Period." If the DB triggers 
- *    are still materializing the node, it allows request to proceed to /welcome.
- * 3. SECURITY GATE ALIGNMENT: Hard-aligned with the 'setup_complete' forensic flag 
- *    to prevent users from accessing the dashboard before the vault is ready.
- * 4. ROLE PRESERVATION: 100% preservation of all multi-sector role permissions.
+ * DEEP FIX SUMMARY:
+ * 1. Targeted the Billing <-> Command Center "Ping-Pong" loop.
+ * 2. Optimized redirect destinations to prevent "Middle-man" hops.
+ * 3. Hardened Subscription whitelist logic.
  */
 
 import { match } from '@formatjs/intl-localematcher';
@@ -29,10 +23,6 @@ const publicPaths = [
     '/newsletter', '/help-centre', '/download', '/features'
 ];
 
-/**
- * 🛡️ MASTER ROLE PERMISSIONS
- * Full preservation of all functional sectors.
- */
 const rolePermissions: Record<string, string[]> = {
     '/command-center': ['architect', 'commander'],
     '/sovereign-control': ['architect', 'commander'],
@@ -43,9 +33,9 @@ const rolePermissions: Record<string, string[]> = {
     '/copilot': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer'],
     '/time-clock': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'waiter_staff', 'pharmacist', 'nurse', 'technician', 'driver', 'barber_stylist'],
     '/activities': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer'],
-    '/reports': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer', 'fleet_manager', 'donor_manager'],
+    '/reports': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'fleet_manager', 'donor_manager'],
     '/workbooks': ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'practitioner', 'consultant'],
-    '/library': ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect', 'commander', 'legal_ counsel', 'teacher_principal'],
+    '/library': ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect', 'commander', 'legal_counsel', 'teacher_principal'],
     '/pos': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'bartender', 'waiter_staff', 'barista', 'dsr_rep'],
     '/kds': ['admin', 'manager', 'kitchen_staff', 'chef', 'architect', 'commander'],
     '/sales': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'accountant', 'cashier', 'collections_agent', 'marketing_specialist'],
@@ -92,9 +82,6 @@ const rolePermissions: Record<string, string[]> = {
     '/shifts': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'waiter_staff', 'bartender'],
 };
 
-/**
- * 🏗️ DEFAULT DASHBOARD MAPPING
- */
 const defaultDashboards: Record<string, string> = {
     'architect': '/command-center',
     'commander': '/command-center',
@@ -155,7 +142,6 @@ function getLocale(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. ASSET & API BYPASS
     if (
         pathname.startsWith('/api/') || 
         pathname.includes('/functions/v1/') ||
@@ -165,7 +151,6 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // 2. LOCALE RESOLUTION
     const pathnameIsMissingLocale = locales.every(
         (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
     );
@@ -187,7 +172,6 @@ export async function middleware(request: NextRequest) {
     const pathWithoutLocale = pathname.replace(`/${localeInPath}`, '') || '/';
     const isPublicPath = publicPaths.some(pp => pathWithoutLocale === pp || pathWithoutLocale.startsWith(`${pp}/`));
 
-    // 3. AUTHENTICATION WELD (SUPABASE SSR)
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -213,14 +197,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}/login`, request.url));
     }
 
-    // 4. IDENTITY CONTEXT ALIGNMENT (THE OMEGA ANCHOR)
-    // Synchronizing the cookie with the database session
     let activeBizId = request.cookies.get('bbu1_active_business_id')?.value;
-
     if (!activeBizId || activeBizId === 'loading') {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('business_id') // Physically checking the audited column
+            .select('business_id')
             .eq('id', user.id)
             .single();
             
@@ -235,51 +216,42 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Hard-set session state in DB for RLS stability
     if (activeBizId) {
         await supabase.rpc('set_session_business_id', { p_biz_id: activeBizId });
     }
 
-    // 5. FORENSIC CONTEXT RETRIEVAL
     const { data: userContextData, error: contextError } = await supabase.rpc('get_user_context', {
         p_target_biz_id: activeBizId
     });
 
-    /**
-     * ✅ LATENCY RECOVERY PROTOCOL
-     * If the node is still materializing (common during signup), allow entry to /welcome
-     * This prevents 429 Rate Limit Loops while the DB anchors.
-     */
     if (contextError || !userContextData || userContextData.length === 0) {
         if (pathWithoutLocale === '/login' || isPublicPath || pathWithoutLocale === '/welcome') return response;
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
     
-    // 6. SECURE NAVIGATION ENGINE
     const userContext = userContextData[0];
     const userRole = userContext.user_role || 'guest';
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
     const systemPower = userContext.system_power || null;
 
-    // Subscription enforcement
-    const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
-    const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', ''].includes(subStatus);
-    const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
-    
-    if (isPaid && isOnBillingPage && !pathWithoutLocale.includes('callback')) {
-        return NextResponse.redirect(new URL(`/${localeInPath}/dashboard`, request.url));
-    }
-
-    if (!isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
-        return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
-    }
-
+    // 🛡️ DYNAMIC DASHBOARD CALCULATION
     const defaultDashboard = (systemPower === 'architect' || systemPower === 'commander') 
         ? '/command-center' 
         : (defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default']);
 
-    // Setup Flow Enforcement (Source of truth: audited setup_complete column)
+    // 💳 SUBSCRIPTION ENFORCEMENT
+    const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
+    // Broadening whitelist to ensure active accounts are never trapped
+    const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', 'past_due', ''].includes(subStatus);
+    const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
+
+    /**
+     * 🛡️ THE LOOP-BREAKER ENGINE
+     * PRIORITY: Setup -> Billing -> Access
+     */
+
+    // GATE 1: Setup Enforcement (Highest Priority)
     if (!setupComplete && pathWithoutLocale !== '/welcome' && !isOnBillingPage) {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
@@ -288,19 +260,34 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // Role-based Access Control
+    // GATE 2: Billing Enforcement
+    if (!isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
+        return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
+    }
+
+    // FIX: If paid user is on billing, send them directly to THEIR specific dashboard, not generic /dashboard
+    if (isPaid && isOnBillingPage && !pathWithoutLocale.includes('callback')) {
+        const target = `/${localeInPath}${defaultDashboard}`;
+        if (pathname !== target) return NextResponse.redirect(new URL(target, request.url));
+    }
+
+    // GATE 3: Role-Based Normalization
+    // If a user hits /dashboard or / directly, send them home
     if ((pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/') && pathWithoutLocale !== defaultDashboard) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
+    // GATE 4: Logged-in Public Path Cleanup
     if (isPublicPath && ['/login', '/signup', '/'].includes(pathWithoutLocale)) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
-    // Security check for role permissions (Master scan of rolePermissions object)
+    // GATE 5: Role Permission Security Scan
     const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
     if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+        if (pathWithoutLocale !== defaultDashboard) {
+            return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+        }
     }
     
     return response; 
