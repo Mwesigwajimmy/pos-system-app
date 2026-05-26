@@ -2,21 +2,21 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v28.8 OMEGA-ULTIMATUM (THE ARCHITECT STABILIZER)
+ * VERSION: v28.9 OMEGA-ULTIMATUM (THE COMMAND CENTER SHIELD)
+ * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
- * DEEP ARCHITECTURAL FIXES:
- * 1. DYNAMIC HOME DETECTION: Layout now recognizes that Architects/Commanders 
- *    belong in /command-center. This stops the "Ping-Pong" with Middleware.
- * 2. BILLING SAFE-ZONE: Added explicit exclusion for '/settings/billing'. 
- *    The Layout will no longer attempt to redirect users while they are on 
- *    the payment page.
- * 3. SEGMENT-SPECIFIC VALIDATION: Uses advanced segment matching to ensure 
- *    logic only fires for the exact 'welcome' and 'dashboard' routes.
- * 4. PUSH ELIMINATION: Switched all gatekeeping to router.replace() to avoid 
- *    browser history "loop warnings."
+ * CORE ARCHITECTURAL FIXES:
+ * 1. COMMAND CENTER PROTECTION: Explicitly added 'command-center' and 'billing' 
+ *    to the system segment whitelist to prevent locale misidentification.
+ * 2. ARCHITECT-AWARE ROUTING: The gatekeeper now recognizes that Architects 
+ *    belong in /command-center, preventing the layout from fighting Middleware.
+ * 3. BILLING NEUTRALITY: Total "Redirect Silence" while a user is on the 
+ *    billing or command-center routes to allow Middleware to handle payment gates.
+ * 4. SEGMENT-STRICT VALIDATION: Uses high-integrity segment splitting to ensure 
+ *    redirects never fire on the wrong URL depth.
  */
 
-import React, { memo, ReactNode, useEffect, useMemo } from 'react';
+import React, { memo, ReactNode, useEffect, useMemo, useState } from 'react';
 import { 
   Menu, X, Sparkles, Loader2, 
   ShieldAlert, Activity
@@ -186,13 +186,16 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * 🛡️ The Identity Sentinel (FIXED DEEPLY FOR JIMMY / COMMAND CENTER)
+ * 🛡️ The Identity Sentinel (FIXED DEEPLY FOR COMMAND CENTER & BILLING LOOPS)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
     const { isLoading: isBrandingLoading } = useBranding();
     const pathname = usePathname();
     const router = useRouter();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => { setIsClient(true); }, []);
 
     /**
      * ✅ DEEP HANDSHAKE VERIFICATION
@@ -200,46 +203,51 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const identityIsVerified = !!profile?.business_id && profile?.is_active === true;
 
     useEffect(() => {
-        // Run check once loading is done and identity is verified
-        if (profile && !isBusinessLoading && !isBrandingLoading && profile.is_active === true) {
+        if (!isClient || !profile || isBusinessLoading || isBrandingLoading || !profile.is_active) return;
             
-            // 1. EXTRACT SEGMENTS & PATH STATUS
-            const segments = pathname.split('/').filter(Boolean);
-            const firstSegment = segments[0] || 'en';
-            const locale = ['dashboard', 'welcome', 'auth', 'billing', 'command-center'].includes(firstSegment) ? 'en' : firstSegment;
+        // 1. HARDENED LOCALE DETECTION
+        const segments = pathname.split('/').filter(Boolean);
+        const firstSegment = segments[0] || 'en';
+        
+        // Critical: Added command-center and billing to system segments to prevent locale-stacking loops
+        const systemSegments = ['dashboard', 'welcome', 'auth', 'api', 'command-center', 'settings', 'billing'];
+        const locale = systemSegments.includes(firstSegment) ? 'en' : firstSegment;
 
-            const isOnWelcome = segments.includes('welcome');
-            const isOnBilling = segments.includes('billing');
+        // 2. PATH STATUS MAP
+        const isOnWelcome = segments.includes('welcome');
+        const isOnBilling = segments.includes('billing');
+        const isOnCommandCenter = segments.includes('command-center');
+        
+        // 3. ARCHITECT DETECTION
+        const isArchitect = profile.user_role === 'architect' || profile.user_role === 'commander';
+        const homeTarget = isArchitect ? `/${locale}/command-center` : `/${locale}/dashboard`;
+        const welcomeTarget = `/${locale}/welcome`;
 
-            // 2. DYNAMIC HOME DETECTION (The "Jimmy Fix")
-            // Determine if this user belongs in Command Center vs Dashboard
-            const isArchitect = profile.user_role === 'architect' || profile.user_role === 'commander';
-            const homeTarget = isArchitect ? `/${locale}/command-center` : `/${locale}/dashboard`;
-            const welcomeTarget = `/${locale}/welcome`;
+        /**
+         * 🛡️ THE DEEP REDIRECT LOCK
+         * If the user is an Architect or on the Billing page, we DISABLE layout-level redirects.
+         * This allows the Middleware to be the "Source of Truth" for these sensitive paths.
+         */
+        if (isOnBilling || (isArchitect && isOnCommandCenter)) {
+            return; 
+        }
 
-            /**
-             * 🛡️ REDIRECT LOOP BREAKER
-             * We do NOT redirect if the user is on the billing page.
-             */
-            if (isOnBilling) return; 
-
-            // Case A: Setup incomplete -> Go to welcome
-            if (profile.setup_complete === false) {
-                if (!isOnWelcome && pathname !== welcomeTarget) {
-                    router.replace(welcomeTarget);
-                }
-            } 
-            // Case B: Setup complete -> Get out of welcome
-            else if (profile.setup_complete === true && isOnWelcome) {
-                if (pathname !== homeTarget) {
-                    router.replace(homeTarget);
-                }
+        // 4. SETUP ENFORCEMENT
+        if (profile.setup_complete === false && !isOnWelcome) {
+            if (pathname !== welcomeTarget) {
+                router.replace(welcomeTarget);
+            }
+        } else if (profile.setup_complete === true && isOnWelcome) {
+            // Setup is done, move them to their correct home node
+            if (pathname !== homeTarget) {
+                router.replace(homeTarget);
             }
         }
-    }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
+        
+    }, [profile, isBusinessLoading, isBrandingLoading, pathname, router, isClient]);
 
-    // --- LOADING OVERLAY ---
-    if (isBusinessLoading || isBrandingLoading || !identityIsVerified) {
+    // Handle Loading
+    if (!isClient || isBusinessLoading || isBrandingLoading || !identityIsVerified) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
                 <div className="relative mb-12">
@@ -258,7 +266,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // --- ERROR STATE ---
+    // Handle Errors
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
