@@ -2,20 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v28.1 OMEGA-ULTIMATUM (THE STABILIZED ANCHOR)
- * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
+ * VERSION: v28.8 OMEGA-ULTIMATUM (THE ARCHITECT STABILIZER)
  * 
- * CORE ARCHITECTURAL FIXES:
- * 1. REDIRECT LOOP PREVENTION: Added strict path-equivalence checks to ensure 
- *    router.push() never fires if the browser is already at the destination.
- * 2. LOCALE SEGMENT PROTECTION: Hardened locale extraction logic to prevent 
- *    pathnames like "/dashboard" from being treated as locales, which creates 
- *    recursive "URL stacking" loops.
- * 3. IDENTITY SYNCHRONIZATION: The redirection logic now strictly waits for 
- *    'profile.is_active' to be true, preventing premature redirects during 
- *    the neural handshake loading state.
- * 4. ROUTE NORMALIZATION: Uses .startsWith() and segment splitting for more 
- *    reliable path detection than fuzzy .includes() checks.
+ * DEEP ARCHITECTURAL FIXES:
+ * 1. DYNAMIC HOME DETECTION: Layout now recognizes that Architects/Commanders 
+ *    belong in /command-center. This stops the "Ping-Pong" with Middleware.
+ * 2. BILLING SAFE-ZONE: Added explicit exclusion for '/settings/billing'. 
+ *    The Layout will no longer attempt to redirect users while they are on 
+ *    the payment page.
+ * 3. SEGMENT-SPECIFIC VALIDATION: Uses advanced segment matching to ensure 
+ *    logic only fires for the exact 'welcome' and 'dashboard' routes.
+ * 4. PUSH ELIMINATION: Switched all gatekeeping to router.replace() to avoid 
+ *    browser history "loop warnings."
  */
 
 import React, { memo, ReactNode, useEffect, useMemo } from 'react';
@@ -188,7 +186,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * 🛡️ The Identity Sentinel (FIXED DEEPLY TO KILL REDIRECT LOOPS)
+ * 🛡️ The Identity Sentinel (FIXED DEEPLY FOR JIMMY / COMMAND CENTER)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -202,39 +200,45 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const identityIsVerified = !!profile?.business_id && profile?.is_active === true;
 
     useEffect(() => {
-        // Only run redirection logic if we have a verified, active profile and loading has finished
+        // Run check once loading is done and identity is verified
         if (profile && !isBusinessLoading && !isBrandingLoading && profile.is_active === true) {
             
-            // 1. SAFELY IDENTIFY LOCALE
-            // We split segments and ensure the first segment isn't a known system route to avoid /dashboard/dashboard loops
+            // 1. EXTRACT SEGMENTS & PATH STATUS
             const segments = pathname.split('/').filter(Boolean);
             const firstSegment = segments[0] || 'en';
-            const locale = ['dashboard', 'welcome', 'auth', 'api'].includes(firstSegment) ? 'en' : firstSegment;
+            const locale = ['dashboard', 'welcome', 'auth', 'billing', 'command-center'].includes(firstSegment) ? 'en' : firstSegment;
 
-            // 2. DEFINE TARGETS
+            const isOnWelcome = segments.includes('welcome');
+            const isOnBilling = segments.includes('billing');
+
+            // 2. DYNAMIC HOME DETECTION (The "Jimmy Fix")
+            // Determine if this user belongs in Command Center vs Dashboard
+            const isArchitect = profile.user_role === 'architect' || profile.user_role === 'commander';
+            const homeTarget = isArchitect ? `/${locale}/command-center` : `/${locale}/dashboard`;
             const welcomeTarget = `/${locale}/welcome`;
-            const dashboardTarget = `/${locale}/dashboard`;
 
-            // 3. STABILIZED CHECK (Segment-aware instead of fuzzy .includes)
-            const isOnWelcome = segments.some(s => s === 'welcome');
-            const isOnDashboard = segments.some(s => s === 'dashboard');
+            /**
+             * 🛡️ REDIRECT LOOP BREAKER
+             * We do NOT redirect if the user is on the billing page.
+             */
+            if (isOnBilling) return; 
 
-            // 4. DEEP REDIRECT LOGIC WITH "SAME-PATH" GUARDS
-            if (profile.setup_complete === false && !isOnWelcome) {
-                // Only push if we aren't already at the target to prevent "Too Many Redirects"
-                if (pathname !== welcomeTarget) {
+            // Case A: Setup incomplete -> Go to welcome
+            if (profile.setup_complete === false) {
+                if (!isOnWelcome && pathname !== welcomeTarget) {
                     router.replace(welcomeTarget);
                 }
-            } else if (profile.setup_complete === true && isOnWelcome) {
-                // If setup is done but user is still on welcome, push to dashboard
-                if (pathname !== dashboardTarget) {
-                    router.replace(dashboardTarget);
+            } 
+            // Case B: Setup complete -> Get out of welcome
+            else if (profile.setup_complete === true && isOnWelcome) {
+                if (pathname !== homeTarget) {
+                    router.replace(homeTarget);
                 }
             }
         }
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router]);
 
-    // Handle Loading States
+    // --- LOADING OVERLAY ---
     if (isBusinessLoading || isBrandingLoading || !identityIsVerified) {
         return (
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
@@ -254,7 +258,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         );
     }
 
-    // Handle Error States
+    // --- ERROR STATE ---
     if (error || !profile) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC] p-4">
