@@ -116,8 +116,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <Sidebar />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* FIX: Added items-center and standardized height to h-16 for better mobile alignment */}
-        <header className="relative z-[100] flex-shrink-0 flex items-center h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+        {/* 
+            FIX: Added overflow-hidden to prevent header items from spilling into the dashboard.
+            FIX: Adjusted z-index to [50] so Sidebar (z-100) overlays it correctly on mobile.
+        */}
+        <header className="relative z-[50] flex-shrink-0 flex items-center h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm overflow-hidden">
           {/* MOBILE TRIGGER FIX: Reduced padding and locked to h-full for vertical alignment */}
           <button 
             type="button" 
@@ -176,7 +179,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
         // 2. PATH STATUS MAP
         const isOnWelcome = segments.includes('welcome');
-        const isOnBilling = segments.includes('billing'); // FIXED: Removed space between isOn and Billing
+        const isOnBilling = segments.includes('billing'); 
         const isOnCommandCenter = segments.includes('command-center');
         
         // 3. ARCHITECT DETECTION

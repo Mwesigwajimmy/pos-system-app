@@ -612,8 +612,7 @@ export default function Sidebar() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // ✅ DEEP UPGRADE: UNIVERSAL AUTO-CLOSE ON SELECTION
-    // Now closes the sidebar automatically on BOTH Mobile and Wide screens after click.
+    // ✅ UNIVERSAL AUTO-CLOSE ON SELECTION
     useEffect(() => {
         if (isSidebarOpen) {
             setIsSidebarOpen(false); 
@@ -725,8 +724,7 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* ✅ DEEP UPGRADE: MOBILE OVERLAY BACKDROP */}
-            {/* Creates a blurred dim background on mobile so user can click 'away' to close */}
+            {/* MOBILE OVERLAY BACKDROP */}
             {isMobileView && isSidebarOpen && (
                 <div 
                     className="fixed inset-0 bg-slate-900/40 z-[90] backdrop-blur-sm animate-in fade-in duration-300"
@@ -737,12 +735,8 @@ export default function Sidebar() {
             <aside 
                 onClick={handleRailExpandClick}
                 className={cn(
-                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                    // ✅ DEEP UPGRADE: FIXED POSITION ON MOBILE TO PREVENT LAYOUT OVERLAP
+                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[150] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
                     "fixed lg:sticky top-0 left-0",
-                    
-                    // ✅ DEEP UPGRADE: TRANSLATION LOGIC
-                    // Moves the sidebar physically off-screen on mobile when closed (-translate-x-full)
                     !isSidebarOpen 
                         ? "-translate-x-full lg:translate-x-0 lg:w-20" 
                         : "translate-x-0 w-full lg:w-72",
@@ -751,6 +745,11 @@ export default function Sidebar() {
                 )}
             >
                 <div className={cn("flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]", isSidebarOpen ? "h-24" : "h-20")}>
+                    {/* 
+                        ✅ IDENTITY LOCK: 
+                        The BusinessSwitcher and Operator Identity are now explicitly tied to the Sidebar's Open state.
+                        When Sidebar closes, these details are removed, ensuring zero overlap with the header/dashboard.
+                    */}
                     {isSidebarOpen ? (
                         <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
                             <div className="relative z-[120]"><BusinessSwitcher /></div>

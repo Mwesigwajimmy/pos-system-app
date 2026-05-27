@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN HEADER ---
- * VERSION: v19.9 OMEGA-ULTIMATUM (THE GLOBAL LAYOUT FUSION)
+ * VERSION: v20.0 OMEGA-ULTIMATUM (MOBILE OVERLAP FIX)
  * 
  * CORE ARCHITECTURAL UPGRADES:
  * 1. FLAT-WELD INTEGRITY: Removed the extra <header> and h-16 to merge directly 
@@ -11,6 +11,8 @@
  *    never "fall" into the dashboard content.
  * 3. NO-WRAP COMPRESSION: Forces identity and actions to stay on one single line 
  *    regardless of screen size.
+ * 4. MOBILE CLARITY FIX: Hides operator text on small screens to prevent the 
+ *    "Dashboard Overlap" issue you reported.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -111,12 +113,12 @@ export default function Header() {
       
       {/* --- LEFT: OPERATOR IDENTITY (MOBILE ANCHORED) --- */}
       <div className="flex items-center gap-1.5 md:gap-8 min-w-0">
-        <div className="flex flex-col justify-center min-w-0">
+        {/* 
+            FIX: Added 'hidden md:flex' to the identity container. 
+            This hides the Name/Role on mobile so the header doesn't choke and overlap. 
+        */}
+        <div className="hidden md:flex flex-col justify-center min-w-0">
             <div className="flex items-center gap-1 flex-nowrap">
-                {/* 
-                    COMPRESSION FIX: Reduced text size on smallest mobile and 
-                    enforced strict truncation to prevent layout overflow.
-                */}
                 <h1 className="text-[9px] xs:text-[10px] sm:text-xs md:text-lg font-black tracking-tighter text-slate-900 truncate max-w-[70px] xs:max-w-[100px] sm:max-w-[180px] md:max-w-none leading-none">
                     {profile?.full_name || "Authorized Operator"}
                 </h1>
@@ -229,7 +231,11 @@ export default function Header() {
                 className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-[0.1em] px-1.5 xs:px-2.5 md:px-5 h-7 sm:h-9 md:h-10 rounded-lg sm:rounded-xl flex items-center gap-1 md:gap-2.5 text-[7px] xs:text-[8px] md:text-[10px] shadow-lg transition-all active:scale-95 group shrink-0 border-none"
             >
                 <Zap size={10} className="fill-white group-hover:scale-125 transition-transform shrink-0 md:size-[12px]" />
-                <span className="inline-block whitespace-nowrap">Logout</span>
+                {/* 
+                    FIX: Added 'hidden sm:inline-block'.
+                    On mobile, "Logout" text is hidden to keep the header icons perfectly inside the bar.
+                */}
+                <span className="hidden sm:inline-block whitespace-nowrap">Logout</span>
             </Button>
         </div>
       </div>
