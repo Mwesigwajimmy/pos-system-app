@@ -2,18 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v28.9 OMEGA-ULTIMATUM (THE COMMAND CENTER SHIELD)
+ * VERSION: v29.1 OMEGA-ULTIMATUM (CLEAN ARCHITECTURE)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL FIXES:
- * 1. COMMAND CENTER PROTECTION: Explicitly added 'command-center' and 'billing' 
- *    to the system segment whitelist to prevent locale misidentification.
- * 2. ARCHITECT-AWARE ROUTING: The gatekeeper now recognizes that Architects 
- *    belong in /command-center, preventing the layout from fighting Middleware.
- * 3. BILLING NEUTRALITY: Total "Redirect Silence" while a user is on the 
- *    billing or command-center routes to allow Middleware to handle payment gates.
- * 4. SEGMENT-STRICT VALIDATION: Uses high-integrity segment splitting to ensure 
- *    redirects never fire on the wrong URL depth.
+ * 1. CLEAN-STATE WELD: Removed redundant mobile effects. The Sidebar component 
+ *    is now "Self-Aware" and manages its own viewport logic.
+ * 2. COMMAND CENTER PROTECTION: Explicitly preserved segments for Architects
+ *    to prevent locale-stacking loops.
+ * 3. BILLING NEUTRALITY: Maintained total "Redirect Silence" for active billing 
+ *    sessions to allow Middleware priority.
+ * 4. HYDRATION GUARD: Unified state management within the SidebarProvider to 
+ *    prevent the "White Space" flash.
  */
 
 import React, { memo, ReactNode, useEffect, useMemo, useState } from 'react';
@@ -37,50 +37,6 @@ import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
 // REDIRECTION & ROUTING
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-
-/**
- * --- MOBILE SIDEBAR DRAWER ---
- */
-const MobileSidebar = memo(({ isOpen, onClose }: { isOpen: boolean; onClose: () => void; }) => {
-    return (
-      <AnimatePresence mode="wait">
-        {isOpen && (
-          <div className="fixed inset-0 z-[200] flex lg:hidden" role="dialog" aria-modal="true">
-            <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[190]" 
-                onClick={onClose} 
-            />
-            <motion.div 
-                initial={{ x: '-100%' }} 
-                animate={{ x: 0 }} 
-                exit={{ x: '-100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                className="relative flex-1 flex flex-col max-w-[300px] w-full bg-white shadow-[20px_0_60px_rgba(0,0,0,0.2)] overflow-hidden z-[200]"
-            >
-              <div className="absolute top-5 right-5 z-[210]">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 shadow-sm text-slate-400 hover:text-red-500 transition-colors" 
-                    onClick={onClose}
-                >
-                  <X className="h-6 w-6" />
-                </Button>
-              </div>
-              <div className="flex-1 overflow-y-auto [&>aside]:!w-full [&>aside]:!opacity-100 [&>aside]:!translate-x-0 [&>aside]:!pointer-events-auto">
-                <Sidebar />
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    );
-});
-MobileSidebar.displayName = 'MobileSidebar';
 
 /**
  * --- SOVEREIGN LIVE GUARD ---
@@ -142,71 +98,33 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
 
 /**
  * --- APPLAYOUT ---
+ * 🛡️ The Structural Frame (Clean Version)
  */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
-  const pathname = usePathname();
+  const { toggleSidebar } = useSidebar();
   const { branding } = useBranding(); 
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
-
-  /**
-   * ✅ PROFESSIONAL FIX: SMART INITIALIZATION
-   * Prevents the "White Space" flash by correctly setting the state based on viewport on mount.
-   */
-  useEffect(() => {
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    if (isMobile) {
-        setIsSidebarOpen(false); // Start closed on mobile for better UX
-    } else {
-        setIsSidebarOpen(true); // Default open on desktop
-    }
-  }, [setIsSidebarOpen]);
-
-  /**
-   * ✅ PROFESSIONAL FIX: AUTO-CLOSE ON SELECTION
-   * When the user navigates (mobile only), the sidebar closes automatically.
-   */
-  useEffect(() => {
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    if (isSidebarOpen && isMobile) {
-      setIsSidebarOpen(false);
-    }
-  }, [pathname, setIsSidebarOpen]);
-
-  /**
-   * ✅ CLICK-ANYWHERE-TO-OPEN LOGIC
-   * Specifically for the desktop 'rail' state.
-   */
-  const handleDesktopRailClick = () => {
-    if (!isSidebarOpen) {
-        setIsSidebarOpen(true);
-    }
-  };
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden" style={{ '--brand-primary': primaryColor } as React.CSSProperties}>
       <SovereignLiveGuard />
       
-      {/* DESKTOP SIDEBAR CONTAINER: Click to Open logic applied */}
-      <div 
-        onClick={handleDesktopRailClick}
-        className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm cursor-pointer"
-      >
-        <Sidebar />
-      </div>
-
-      <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      {/* 
+          CLEAN WELD: Only one Sidebar is rendered. 
+          The Sidebar component internally handles its 'fixed' vs 'sticky' positioning.
+      */}
+      <Sidebar />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          {/* MOBILE TRIGGER: Deeply anchored to handle all screen interactions */}
+          {/* MOBILE TRIGGER: Solely responsible for firing the context toggle */}
           <button 
             type="button" 
             className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center" 
             onClick={(e) => { 
                 e.preventDefault(); 
                 e.stopPropagation(); 
-                setIsSidebarOpen(true); // Explicitly open for mobile
+                toggleSidebar();
             }}
           >
             <Menu className="h-8 w-8" />
@@ -227,7 +145,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * 🛡️ The Identity Sentinel (FIXED DEEPLY FOR COMMAND CENTER & BILLING LOOPS)
+ * 🛡️ The Identity Sentinel (STRICT JURISDICTION)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -250,7 +168,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         const segments = pathname.split('/').filter(Boolean);
         const firstSegment = segments[0] || 'en';
         
-        // Critical: Added command-center and billing to system segments to prevent locale-stacking loops
         const systemSegments = ['dashboard', 'welcome', 'auth', 'api', 'command-center', 'settings', 'billing'];
         const locale = systemSegments.includes(firstSegment) ? 'en' : firstSegment;
 
@@ -266,8 +183,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
         /**
          * 🛡️ THE DEEP REDIRECT LOCK
-         * If the user is an Architect or on the Billing page, we DISABLE layout-level redirects.
-         * This allows the Middleware to be the "Source of Truth" for these sensitive paths.
          */
         if (isOnBilling || (isArchitect && isOnCommandCenter)) {
             return; 
@@ -279,7 +194,6 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
                 router.replace(welcomeTarget);
             }
         } else if (profile.setup_complete === true && isOnWelcome) {
-            // Setup is done, move them to their correct home node
             if (pathname !== homeTarget) {
                 router.replace(homeTarget);
             }

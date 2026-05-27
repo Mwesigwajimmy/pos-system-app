@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
@@ -36,6 +36,7 @@ import { useTenant } from '@/hooks/useTenant';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Type Definitions ---
 interface NavLink { type: 'link'; href: string; label: string; icon: LucideIcon; roles: string[]; module?: string; businessTypes?: string[]; }
@@ -599,15 +600,25 @@ export default function Sidebar() {
     const bizLogo = branding?.logo_url || tenant?.logo_url;
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
-    // ✅ 1. NAVIGATION LOGIC: Explicitly close on selection (Mobile Only)
+    // ✅ 1. AUTO-OPEN ON SMALL SCREENS LOGIC
     useEffect(() => {
         const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+        if (isMobile) {
+            setIsSidebarOpen(true); // Automatically open when system loads on phone
+        }
+    }, [setIsSidebarOpen]);
+
+    // ✅ 2. AUTO-CLOSE ON NAVIGATION LOGIC
+    useEffect(() => {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+        // On mobile, always close when a link is clicked
         if (isSidebarOpen && isMobile) {
-            setIsSidebarOpen(false); // Clean explicit close
+            toggleSidebar();
         }
     }, [pathname]);
 
-    // ✅ 2. EXPANSION LOGIC: "Click anywhere to open" when rail is collapsed
+    // ✅ 3. "CLICK ANYWHERE TO OPEN" LOGIC
+    // When the sidebar is collapsed (desktop), clicking the container expands it.
     const handleSidebarContainerClick = (e: React.MouseEvent) => {
         if (!isSidebarOpen) {
             toggleSidebar();
