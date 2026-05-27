@@ -47,14 +47,9 @@ import {
   Loader2, 
   Package, 
   Search,
-  LayoutGrid,
-  DollarSign,
-  Building2,
-  MapPin,
   RotateCcw,
   X,
   PlusCircle,
-  Info,
   CheckCircle2
 } from 'lucide-react';
 
@@ -122,6 +117,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     { name: 'Color', inputValue: '', values: [] }
   ]);
 
+  // Profile and Currency Queries
   const { data: profile } = useQuery({
     queryKey: ['active_profile_currency'],
     queryFn: async () => {
@@ -252,7 +248,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      if (!locationId) throw new Error("Please select a storage branch");
       if (!productName.trim()) throw new Error("Please enter a product name");
 
       const { data: product, error: prodError } = await supabase.from('products').insert({
@@ -308,62 +303,45 @@ export default function ProductManagementConsole({ categories }: ProductManageme
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) resetForm(); setOpen(val); }}>
       <DialogTrigger asChild>
-        <Button className="h-10 px-6 bg-slate-900 hover:bg-black text-white font-semibold text-xs uppercase tracking-wider rounded-lg transition-all">
-            <Plus size={16} className="mr-2" /> Register Product
+        <Button className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all">
+            <Plus size={16} className="mr-2" /> Add New Product
         </Button>
       </DialogTrigger>
       
       {/* 
          PROFESSIONAL DIALOG ARCHITECTURE:
-         Matches your Invoice form behavior. Fixed height, Flex column layout.
-         Uses 'overflow-hidden' on the container to ensure middle area handles the scroll.
+         Correctly sized sm:max-w-4xl to ensure it doesn't hit sidebars.
       */}
-      <DialogContent className="sm:max-w-6xl w-full h-[95dvh] sm:h-[90vh] flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
+      <DialogContent className="sm:max-w-4xl w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
         
-        {/* FIXED HEADER: Header section stays at top */}
-        <div className="px-8 py-10 border-b shrink-0 bg-white">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-            <div className="space-y-1">
-              <h2 className="text-3xl font-black text-slate-900">Register Product</h2>
-              <p className="text-sm font-medium text-slate-500">Create and authorize official commercial inventory records.</p>
-            </div>
-            <Button variant="outline" onClick={() => setOpen(false)} className="h-10 px-5 border-slate-200 text-slate-600 font-bold text-xs uppercase gap-2 hover:bg-slate-50 rounded-lg">
-               <RotateCcw size={16} /> Cancel Registration
-            </Button>
+        {/* CLEAN HEADER: Just like the first image */}
+        <div className="px-8 py-8 border-b shrink-0 bg-white">
+          <div className="flex items-center gap-4">
+             <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+                <Package size={28} />
+             </div>
+             <div className="space-y-0.5">
+                <h2 className="text-2xl font-bold text-slate-900">New Product</h2>
+                <p className="text-sm font-medium text-slate-400">Setup product information, pricing, and stock levels.</p>
+             </div>
           </div>
         </div>
 
-        {/* SCROLLABLE FORM BODY: Everything below is inside the scroll area */}
-        <ScrollArea className="flex-1 w-full bg-[#fcfdfe]">
-          <div className="p-8 sm:p-12 space-y-12">
+        {/* FORM BODY */}
+        <ScrollArea className="max-h-[75vh]">
+          <div className="p-8 space-y-8">
             
-            {/* Row 1: Product Basics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Row 1: Product Basics (3 Column Grid) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Product Name</Label>
-                    <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Full formal title" className="h-12 border-slate-100 bg-white rounded-xl font-semibold px-4 focus:ring-1 focus:ring-blue-100 transition-all" />
-                </div>
-
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Branch</Label>
-                    <Select value={locationId || ''} onValueChange={setLocationId}>
-                        <SelectTrigger className="h-12 border-slate-100 bg-white rounded-xl font-semibold px-4 focus:ring-1 focus:ring-blue-100 transition-all">
-                          <SelectValue placeholder="Select Location" />
-                        </SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                            {locations?.map(loc => (
-                              <SelectItem key={loc.id} value={loc.id} className="font-semibold">
-                                  {loc.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Wireless Headphones" className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4" />
                 </div>
 
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Category</Label>
                     <Select value={categoryId || ''} onValueChange={setCategoryId}>
-                        <SelectTrigger className="h-12 border-slate-100 bg-white rounded-xl font-semibold px-4 focus:ring-1 focus:ring-blue-100 transition-all">
+                        <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
                           <SelectValue placeholder="Select Category" />
                         </SelectTrigger>
                         <SelectContent className="z-[10000]">
@@ -373,163 +351,150 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tax Status</Label>
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tax Rate</Label>
                     <Select value={taxCategoryCode} onValueChange={setTaxCategoryCode}>
-                      <SelectTrigger className="h-12 border-slate-100 bg-white rounded-xl font-semibold px-4 focus:ring-1 focus:ring-blue-100 transition-all">
+                      <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="z-[10000]">
-                          <SelectItem value="STANDARD" className="font-semibold">Standard Business Tax</SelectItem>
-                          <SelectItem value="EXEMPT" className="font-semibold">Tax Exempt (Zero Rated)</SelectItem>
-                          <SelectItem value="REDUCED" className="font-semibold">Reduced Tax Rate</SelectItem>
+                          <SelectItem value="STANDARD" className="font-semibold">Standard Rate</SelectItem>
+                          <SelectItem value="EXEMPT" className="font-semibold">Tax Exempt</SelectItem>
+                          <SelectItem value="REDUCED" className="font-semibold">Reduced Rate</SelectItem>
                       </SelectContent>
                     </Select>
                 </div>
             </div>
 
-            {/* Row 2: Structural Details */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 text-slate-900 border-b border-slate-100 pb-4">
-                    <LayoutGrid size={18} className="text-blue-600" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Structural Details</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Unit of Measure (UOM)</Label>
-                        <div className="flex gap-2">
-                          <Select value={uomId || ''} onValueChange={setUomId}>
-                              <SelectTrigger className="flex-1 h-12 border-slate-100 bg-white rounded-xl font-semibold px-4">
-                                <SelectValue placeholder="Select Units" />
-                              </SelectTrigger>
-                              <SelectContent className="p-0 z-[10000]">
-                                  <div className="p-3 bg-slate-50 border-b flex items-center gap-2 sticky top-0 z-10">
-                                    <Search size={14} className="text-slate-400" />
-                                    <input 
-                                      type="text"
-                                      placeholder="Search metrics..."
-                                      value={uomSearchQuery}
-                                      onChange={(e) => setUomSearchQuery(e.target.value)}
-                                      className="w-full bg-transparent border-none outline-none font-bold text-[11px]"
-                                      onKeyDown={(e) => e.stopPropagation()}
-                                    />
-                                  </div>
-                                  <ScrollArea className="h-64">
+            {/* Row 2: Structural Details (2 Column Grid) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Base Unit</Label>
+                    <div className="flex gap-2">
+                      <Select value={uomId || ''} onValueChange={setUomId}>
+                          <SelectTrigger className="flex-1 h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
+                            <SelectValue placeholder="Pcs, Kg, Box..." />
+                          </SelectTrigger>
+                          <SelectContent className="p-0 z-[10000]">
+                              <div className="p-3 bg-slate-50 border-b flex items-center gap-2 sticky top-0 z-10">
+                                <Search size={14} className="text-slate-400" />
+                                <input 
+                                  type="text"
+                                  placeholder="Search metrics..."
+                                  value={uomSearchQuery}
+                                  onChange={(e) => setUomSearchQuery(e.target.value)}
+                                  className="w-full bg-transparent border-none outline-none font-bold text-[11px]"
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <ScrollArea className="h-48">
+                                <SelectGroup>
+                                    <SelectItem value="pcs" className="font-semibold">Pieces (pcs)</SelectItem>
+                                    <SelectItem value="box" className="font-semibold">Box (bx)</SelectItem>
+                                    <SelectItem value="kg" className="font-semibold">Kilogram (kg)</SelectItem>
+                                </SelectGroup>
+                                {filteredUnits.length > 0 && (
                                     <SelectGroup>
-                                        <SelectLabel className="px-4 py-2 text-[8px] font-black text-slate-300 uppercase tracking-wider">System Standards</SelectLabel>
-                                        <SelectItem value="pcs" className="font-semibold">Pieces (pcs)</SelectItem>
-                                        <SelectItem value="box" className="font-semibold">Box (bx)</SelectItem>
-                                        <SelectItem value="kg" className="font-semibold">Kilogram (kg)</SelectItem>
-                                        <SelectItem value="ltr" className="font-semibold">Liter (ltr)</SelectItem>
+                                        <SelectLabel className="px-4 py-2 text-[8px] font-black text-slate-300 uppercase tracking-wider border-t">Custom Units</SelectLabel>
+                                        {filteredUnits.map(u => (
+                                        <SelectItem key={u.id} value={String(u.id)} className="font-semibold">
+                                            {u.name} ({u.abbreviation})
+                                        </SelectItem>
+                                        ))}
                                     </SelectGroup>
-                                    {filteredUnits.length > 0 && (
-                                        <SelectGroup>
-                                            <SelectLabel className="px-4 py-2 text-[8px] font-black text-slate-300 uppercase tracking-wider border-t mt-2">Custom Node Registry</SelectLabel>
-                                            {filteredUnits.map(u => (
-                                            <SelectItem key={u.id} value={String(u.id)} className="font-semibold">
-                                                {u.name} ({u.abbreviation})
-                                            </SelectItem>
-                                            ))}
-                                        </SelectGroup>
-                                    )}
-                                  </ScrollArea>
-                              </SelectContent>
-                          </Select>
-                          <Button variant="outline" onClick={() => setIsUnitModalOpen(true)} className="h-12 w-12 rounded-xl border-slate-100 bg-white text-blue-600 hover:bg-blue-50 transition-all">
-                            <Plus size={20} />
-                          </Button>
-                        </div>
+                                )}
+                              </ScrollArea>
+                          </SelectContent>
+                      </Select>
+                      <Button variant="outline" type="button" onClick={() => setIsUnitModalOpen(true)} className="h-11 w-11 rounded-lg border-slate-200 bg-white text-blue-600 hover:bg-blue-50">
+                        <Plus size={20} />
+                      </Button>
                     </div>
-                    <div className="flex items-center space-x-3 p-3 px-5 rounded-xl bg-white border border-slate-100 h-12 shadow-sm">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex-1 cursor-pointer">Product has variations (Size, Color, etc.)</Label>
-                        <Switch checked={isMultiVariant} onCheckedChange={(checked) => { setIsMultiVariant(checked); if (!checked) setVariants([{ ...DEFAULT_VARIANT }]); }} />
-                    </div>
+                </div>
+                <div className="flex items-center space-x-3 p-3 px-4 rounded-lg bg-slate-50/50 border border-slate-100 h-11">
+                    <Label className="text-[11px] font-bold text-slate-500 flex-1 cursor-pointer">This product has variants (e.g. Size, Color)</Label>
+                    <Switch checked={isMultiVariant} onCheckedChange={(checked) => { setIsMultiVariant(checked); if (!checked) setVariants([{ ...DEFAULT_VARIANT }]); }} />
                 </div>
             </div>
 
             {/* Row 3: Inventory & Pricing */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 text-slate-900 border-b border-slate-100 pb-4">
-                    <DollarSign size={18} className="text-blue-600" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Inventory & Pricing</span>
-                </div>
-
+            <div className="space-y-4">
                 {!isMultiVariant ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50/50 p-6 rounded-xl border border-slate-100">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Retail Price</Label>
-                            <Input type="number" step="0.01" className="h-12 border-slate-100 bg-white rounded-xl font-bold text-slate-900 px-4" value={variants[0].price} onChange={(e) => updateVariant(0, 'price', Number(e.target.value))} />
+                            <Label className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Selling Price</Label>
+                            <Input type="number" step="0.01" className="h-10 border-slate-200 bg-white rounded-md font-bold text-slate-900" value={variants[0].price} onChange={(e) => updateVariant(0, 'price', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Cost Price</Label>
-                            <Input type="number" step="0.01" className="h-12 border-slate-100 bg-white rounded-xl font-bold text-slate-900 px-4" value={variants[0].cost_price} onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))} />
+                            <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cost Price</Label>
+                            <Input type="number" step="0.01" className="h-10 border-slate-200 bg-white rounded-md font-medium" value={variants[0].cost_price} onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Available Stock</Label>
-                            <Input type="number" className="h-12 border-slate-100 bg-white rounded-xl font-bold text-blue-600 px-4" value={variants[0].stock_quantity} onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))} />
+                            <Label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Stock</Label>
+                            <Input type="number" className="h-10 border-slate-200 bg-white rounded-md font-bold text-emerald-700" value={variants[0].stock_quantity} onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">SKU / Code</Label>
-                            <Input placeholder="Auto-generated" className="h-12 border-slate-100 bg-white rounded-xl font-bold uppercase text-[11px] tracking-wider px-4" value={variants[0].sku} onChange={(e) => updateVariant(0, 'sku', e.target.value)} />
+                            <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units/Pack</Label>
+                            <Input type="number" className="h-10 border-slate-200 bg-white rounded-md font-medium" value={variants[0].units_per_pack} onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">SKU</Label>
+                            <Input placeholder="Auto" className="h-10 border-slate-200 bg-white rounded-md font-bold uppercase text-[10px]" value={variants[0].sku} onChange={(e) => updateVariant(0, 'sku', e.target.value)} />
                         </div>
                     </div>
                 ) : (
-                    /* MULTI-VARIANT TABBED BUILDER: Correctly contained within the scroll area */
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                        <TabsList className="bg-slate-100 p-1 rounded-lg h-11 w-full max-w-sm">
-                            <TabsTrigger value="configuration" className="flex-1 rounded-md font-bold text-[10px] uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-sm">1. Set Options</TabsTrigger>
-                            <TabsTrigger value="preview" className="flex-1 rounded-md font-bold text-[10px] uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-sm" disabled={variants.length <= 0}>2. Edit Matrix</TabsTrigger>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                        <TabsList className="bg-slate-100 p-1 rounded-lg h-11 w-full max-w-md">
+                            <TabsTrigger value="configuration" className="flex-1 rounded-md font-bold text-[10px] uppercase tracking-wider">1. Set Options</TabsTrigger>
+                            <TabsTrigger value="preview" className="flex-1 rounded-md font-bold text-[10px] uppercase tracking-wider" disabled={variants.length <= 0}>2. Edit Matrix</TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="configuration" className="space-y-6">
-                            <div className="grid gap-4">
+                        <TabsContent value="configuration" className="space-y-4">
+                            <div className="grid gap-3">
                               {attributes.map((attr, idx) => (
-                                  <div key={idx} className="flex flex-col sm:flex-row gap-4 items-end bg-[#F8FAFC] p-6 rounded-xl border border-slate-100">
-                                      <div className="w-full sm:w-1/3 space-y-2">
-                                          <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Property Node (e.g. Size)</Label>
-                                          <Input value={attr.name} onChange={e => { const updated = [...attributes]; updated[idx].name = e.target.value; setAttributes(updated); }} placeholder="Label" className="h-10 border-slate-100 bg-white rounded-lg font-semibold" />
+                                  <div key={idx} className="flex gap-3 items-end bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                      <div className="w-1/3 space-y-1.5">
+                                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Property Name</Label>
+                                          <Input value={attr.name} onChange={e => { const updated = [...attributes]; updated[idx].name = e.target.value; setAttributes(updated); }} placeholder="e.g. Size" className="h-9 border-slate-200" />
                                       </div>
-                                      <div className="w-full flex-1 space-y-2">
-                                          <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Variations (Comma separated)</Label>
-                                          <Input value={attr.inputValue} onChange={e => { const updated = [...attributes]; updated[idx].inputValue = e.target.value; setAttributes(updated); }} placeholder="Small, Large, XL" className="h-10 border-slate-100 bg-white rounded-lg font-semibold" />
+                                      <div className="flex-1 space-y-1.5">
+                                          <Label className="text-[9px] font-bold text-slate-400 uppercase">Values (Comma separated)</Label>
+                                          <Input value={attr.inputValue} onChange={e => { const updated = [...attributes]; updated[idx].inputValue = e.target.value; setAttributes(updated); }} placeholder="Small, Large, XL" className="h-9 border-slate-200" />
                                       </div>
-                                      <Button variant="ghost" size="icon" onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 h-10 w-10">
-                                          <Trash size={18} />
+                                      <Button variant="ghost" size="icon" onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 h-9 w-9">
+                                          <Trash size={16} />
                                       </Button>
                                   </div>
                               ))}
                             </div>
-                            <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-5 rounded-xl border border-dashed border-slate-200 gap-4">
-                                <Button variant="ghost" onClick={() => setAttributes([...attributes, { name: '', inputValue: '', values: [] }])} className="h-10 px-4 text-blue-600 font-bold text-[10px] uppercase gap-2 hover:bg-blue-50">
-                                  <PlusCircle size={18} /> New Variation Group
+                            <div className="flex justify-between items-center py-2">
+                                <Button variant="outline" onClick={() => setAttributes([...attributes, { name: '', inputValue: '', values: [] }])} className="h-9 px-4 text-blue-600 font-bold text-[10px] uppercase gap-2 hover:bg-blue-50 border-blue-100">
+                                  <PlusCircle size={16} /> New Group
                                 </Button>
-                                <Button type="button" onClick={generateVariants} className="h-10 px-8 bg-slate-900 text-white font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all active:scale-95 shadow-lg">
-                                  <Wand2 size={18} className="mr-2" /> Compute Inventory Matrix
+                                <Button type="button" onClick={generateVariants} className="h-9 px-6 bg-slate-900 text-white font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all active:scale-95">
+                                  <Wand2 size={16} className="mr-2" /> Compute Matrix
                                 </Button>
                             </div>
                         </TabsContent>
 
                         <TabsContent value="preview">
-                            <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm bg-white">
+                            <div className="rounded-lg border border-slate-100 overflow-hidden shadow-sm bg-white">
                               <ScrollArea className="w-full">
                                 <Table>
                                     <TableHeader className="bg-slate-50">
-                                        <TableRow className="h-14">
-                                            <TableHead className="px-8 font-bold uppercase text-slate-400 text-[9px] tracking-widest">Variation Label</TableHead>
+                                        <TableRow className="h-12">
+                                            <TableHead className="px-6 font-bold uppercase text-slate-400 text-[9px] tracking-widest">Variant</TableHead>
                                             <TableHead className="text-center font-bold uppercase text-slate-400 text-[9px] tracking-widest">Price</TableHead>
-                                            <TableHead className="text-center font-bold uppercase text-slate-400 text-[9px] tracking-widest">Cost</TableHead>
                                             <TableHead className="text-center font-bold uppercase text-slate-400 text-[9px] tracking-widest">Stock</TableHead>
-                                            <TableHead className="px-8 text-right font-bold uppercase text-slate-400 text-[9px] tracking-widest">Unique SKU</TableHead>
+                                            <TableHead className="px-6 text-right font-bold uppercase text-slate-400 text-[9px] tracking-widest">SKU</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {variants.map((v, idx) => (
-                                            <TableRow key={idx} className="h-16 border-b border-slate-50 last:border-none">
-                                                <TableCell className="px-8 text-xs font-bold text-slate-900">{v.name}</TableCell>
-                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-9 w-28 border-slate-100 bg-[#F8FAFC] text-slate-900 font-bold text-center mx-auto rounded-md" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-9 w-28 border-slate-100 bg-[#F8FAFC] text-slate-400 font-medium text-center mx-auto rounded-md" value={v.cost_price} onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="text-center"><Input type="number" className="h-9 w-28 border-slate-100 bg-[#F8FAFC] text-blue-700 font-bold text-center mx-auto rounded-md" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="px-8"><Input className="h-9 w-full border-slate-100 rounded-md uppercase text-[10px] font-bold text-right px-4 bg-[#F8FAFC]" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO" /></TableCell>
+                                            <TableRow key={idx} className="h-14">
+                                                <TableCell className="px-6 text-xs font-bold text-slate-900">{v.name}</TableCell>
+                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-8 w-24 border-slate-100 bg-slate-50 text-slate-900 font-bold text-center mx-auto rounded-md" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="text-center"><Input type="number" className="h-8 w-24 border-slate-100 bg-slate-50 text-blue-700 font-bold text-center mx-auto rounded-md" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="px-6"><Input className="h-8 w-32 border-slate-100 rounded-md uppercase text-[10px] font-bold text-right ml-auto bg-slate-50" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO" /></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -541,48 +506,39 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                     </Tabs>
                 )}
             </div>
-            
-            {/* Bottom Buffer */}
-            <div className="h-10" /> 
           </div>
         </ScrollArea>
 
         {/* FIXED FOOTER: Action bar always visible at the bottom */}
-        <div className="px-8 py-8 bg-[#F8FAFC] border-t flex flex-col sm:flex-row items-center justify-between gap-6 shrink-0">
-          <div className="flex items-center gap-3 text-emerald-600 bg-white px-5 py-2.5 rounded-full border border-emerald-100 font-bold text-[9px] uppercase tracking-widest shadow-sm">
-            <CheckCircle2 size={14} />
-            Global Synchronization Nodes Active
-          </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-              <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-6 font-bold text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-xl">Discard Draft</Button>
-              <Button onClick={() => mutate()} disabled={isPending} className="h-12 flex-1 sm:flex-none px-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-xl transition-all active:scale-95 border-none">
-                {isPending ? <Loader2 size={18} className="animate-spin" /> : "Authorize & Commit Record"}
-              </Button>
-          </div>
+        <div className="px-8 py-6 bg-slate-50 border-t flex items-center justify-between shrink-0">
+          <Button variant="ghost" onClick={() => setOpen(false)} className="h-10 px-6 font-bold text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-lg">Cancel</Button>
+          <Button onClick={() => mutate()} disabled={isPending} className="h-10 px-10 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95 border-none">
+            {isPending ? <Loader2 size={18} className="animate-spin" /> : "Save Product"}
+          </Button>
         </div>
       </DialogContent>
 
-      {/* CUSTOM UNIT BUILDER: Separate context for focus */}
+      {/* CUSTOM UNIT BUILDER: Same professional modal styling */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white z-[12000]">
-          <DialogHeader className="px-8 py-8 bg-slate-900 text-white">
-            <DialogTitle className="text-xl font-bold">Register Metric Unit</DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs mt-1">Register a unique unit of measure node for global inventory tracking.</DialogDescription>
+          <DialogHeader className="px-8 py-6 bg-slate-900 text-white">
+            <DialogTitle className="text-lg font-bold">Add New Unit</DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs">Create a measurement unit for your inventory.</DialogDescription>
           </DialogHeader>
-          <div className="p-8 space-y-6 bg-white">
+          <div className="p-8 space-y-5 bg-white">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metric Full Name (e.g. Metric Tonne)</Label>
-              <Input placeholder="Name" value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)} className="h-12 border-slate-100 bg-[#F8FAFC] font-semibold rounded-xl px-4" />
+              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Unit Name</Label>
+              <Input placeholder="e.g. Kilograms" value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)} className="h-11 border-slate-100 font-semibold rounded-lg px-4" />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID Code / Abbr (e.g. MT)</Label>
-              <Input placeholder="Short Code" value={newUnitAbbr} onChange={(e) => setNewUnitAbbr(e.target.value)} className="h-12 border-slate-100 bg-[#F8FAFC] font-black rounded-xl px-4 uppercase text-center text-xl" />
+              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Abbreviation</Label>
+              <Input placeholder="e.g. KG" value={newUnitAbbr} onChange={(e) => setNewUnitAbbr(e.target.value)} className="h-11 border-slate-100 font-bold rounded-lg px-4 uppercase" />
             </div>
           </div>
           <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex gap-3">
             <Button variant="ghost" onClick={() => setIsUnitModalOpen(false)} className="h-10 px-6 font-bold text-[10px] uppercase text-slate-400">Cancel</Button>
             <Button onClick={handleAddUnit} disabled={isSavingUnit} className="h-10 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase rounded-lg flex-1">
-               {isSavingUnit ? <Loader2 className="animate-spin w-4 h-4" /> : "Commit Unit"}
+               {isSavingUnit ? <Loader2 className="animate-spin w-4 h-4" /> : "Save Unit"}
             </Button>
           </DialogFooter>
         </DialogContent>
