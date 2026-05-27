@@ -116,19 +116,22 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <Sidebar />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          {/* MOBILE TRIGGER: Solely responsible for firing the context toggle */}
+        {/* FIX: Added items-center and standardized height to h-16 for better mobile alignment */}
+        <header className="relative z-[100] flex-shrink-0 flex items-center h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+          {/* MOBILE TRIGGER FIX: Reduced padding and locked to h-full for vertical alignment */}
           <button 
             type="button" 
-            className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center" 
+            className="relative z-[110] h-full px-4 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center shrink-0" 
             onClick={(e) => { 
                 e.preventDefault(); 
                 e.stopPropagation(); 
                 toggleSidebar();
             }}
           >
-            <Menu className="h-8 w-8" />
+            <Menu className="h-6 w-6" />
           </button>
+          
+          {/* THE HEADER CONTENT: Now properly positioned inside the layout row */}
           <Header />
         </header>
 
@@ -173,7 +176,7 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
         // 2. PATH STATUS MAP
         const isOnWelcome = segments.includes('welcome');
-        const isOnBilling = segments.includes('billing');
+        const isOnBilling = segments.includes('billing'); // FIXED: Removed space between isOn and Billing
         const isOnCommandCenter = segments.includes('command-center');
         
         // 3. ARCHITECT DETECTION

@@ -104,31 +104,33 @@ export default function Header() {
 
   return (
     /* 
-       FIX: Changed to a transparent div with h-full. 
-       This allows the content to sit INSIDE your layout's top bar next to the 
-       hamburger menu without creating a new white space or "falling" icons.
+       FIX: Locked to h-full with tight mobile padding (px-1) and md:px-6.
+       This ensures the content stays INSIDE the layout bar vertically.
     */
-    <div className="flex-1 flex justify-between items-center px-2 md:px-6 h-full bg-transparent min-w-0">
+    <div className="flex-1 flex justify-between items-center px-1 sm:px-4 md:px-6 h-full bg-transparent min-w-0">
       
       {/* --- LEFT: OPERATOR IDENTITY (MOBILE ANCHORED) --- */}
-      <div className="flex items-center gap-2 md:gap-8 min-w-0">
+      <div className="flex items-center gap-1.5 md:gap-8 min-w-0">
         <div className="flex flex-col justify-center min-w-0">
-            <div className="flex items-center gap-1.5 flex-nowrap">
-                {/* Scaled fonts to ensure it fits next to hamburger menu on mobile */}
-                <h1 className="text-[10px] sm:text-xs md:text-lg font-black tracking-tighter text-slate-900 truncate max-w-[80px] sm:max-w-[180px] md:max-w-none leading-none">
+            <div className="flex items-center gap-1 flex-nowrap">
+                {/* 
+                    COMPRESSION FIX: Reduced text size on smallest mobile and 
+                    enforced strict truncation to prevent layout overflow.
+                */}
+                <h1 className="text-[9px] xs:text-[10px] sm:text-xs md:text-lg font-black tracking-tighter text-slate-900 truncate max-w-[70px] xs:max-w-[100px] sm:max-w-[180px] md:max-w-none leading-none">
                     {profile?.full_name || "Authorized Operator"}
                 </h1>
                 <div className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Link Active" />
             </div>
             
-            <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1 overflow-hidden leading-none">
-                <span className="text-[7px] md:text-[10px] font-black uppercase tracking-widest text-blue-600 whitespace-nowrap opacity-90">
-                    {profile?.role || "System Admin"}
+            <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 overflow-hidden leading-none">
+                <span className="text-[6px] xs:text-[7px] md:text-[10px] font-black uppercase tracking-widest text-blue-600 whitespace-nowrap opacity-90">
+                    {profile?.role || "Admin"}
                 </span>
-                <span className="h-2 w-[1px] bg-slate-200 shrink-0" />
-                <span className="text-[7px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1 truncate opacity-70">
+                <span className="h-2 w-[1px] bg-slate-200 shrink-0 hidden xs:block" />
+                <span className="hidden xs:flex items-center gap-1 text-[7px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate opacity-70">
                     <Building2 size={8} className="shrink-0 md:size-[10px]" /> 
-                    <span className="truncate max-w-[60px] sm:max-w-[150px]">{businessName}</span>
+                    <span className="truncate max-w-[50px] sm:max-w-[150px]">{businessName}</span>
                 </span>
             </div>
         </div>
@@ -145,7 +147,7 @@ export default function Header() {
       </div>
 
       {/* --- RIGHT: ACTIONS & METRICS --- */}
-      <div className="flex items-center gap-1.5 md:gap-6 shrink-0 h-full">
+      <div className="flex items-center gap-1 md:gap-6 shrink-0 h-full">
         
         {/* Currency Node Display (Hidden on smaller screens to blend better) */}
         <div className="hidden lg:flex items-center gap-3 pr-4 md:pr-6 border-r border-slate-100 h-1/2">
@@ -161,13 +163,13 @@ export default function Header() {
         </div>
 
         {/* --- ACTION ROW --- */}
-        <div className="flex items-center gap-1.5 md:gap-3">
+        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-3">
             <Sheet>
                 <SheetTrigger asChild>
-                    <button className="relative p-2 rounded-xl bg-white border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/30 transition-all group active:scale-95 shadow-sm">
-                        <Bell className={cn("w-4 h-4 md:w-5 md:h-5 transition-transform group-hover:rotate-12", urgentCount > 0 ? "text-blue-600" : "text-slate-400")} />
+                    <button className="relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/30 transition-all group active:scale-95 shadow-sm">
+                        <Bell className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 transition-transform group-hover:rotate-12", urgentCount > 0 ? "text-blue-600" : "text-slate-400")} />
                         {urgentCount > 0 && (
-                            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white shadow-sm animate-bounce" />
+                            <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white shadow-sm animate-bounce" />
                         )}
                     </button>
                 </SheetTrigger>
@@ -221,12 +223,12 @@ export default function Header() {
                 </SheetContent>
             </Sheet>
 
-            {/* --- ACTION: LOGOUT --- */}
+            {/* --- ACTION: LOGOUT (NO-WRAP LOCK) --- */}
             <Button 
                 onClick={handleLogout} 
-                className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-[0.1em] px-2 md:px-5 h-9 md:h-10 rounded-xl flex items-center gap-1.5 md:gap-2.5 text-[8px] md:text-[10px] shadow-xl transition-all active:scale-95 group shrink-0 border-none"
+                className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-[0.1em] px-1.5 xs:px-2.5 md:px-5 h-7 sm:h-9 md:h-10 rounded-lg sm:rounded-xl flex items-center gap-1 md:gap-2.5 text-[7px] xs:text-[8px] md:text-[10px] shadow-lg transition-all active:scale-95 group shrink-0 border-none"
             >
-                <Zap size={12} className="fill-white group-hover:scale-125 transition-transform shrink-0" />
+                <Zap size={10} className="fill-white group-hover:scale-125 transition-transform shrink-0 md:size-[12px]" />
                 <span className="inline-block whitespace-nowrap">Logout</span>
             </Button>
         </div>
