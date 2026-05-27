@@ -36,7 +36,6 @@ import { useTenant } from '@/hooks/useTenant';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Type Definitions ---
 interface NavLink { type: 'link'; href: string; label: string; icon: LucideIcon; roles: string[]; module?: string; businessTypes?: string[]; }
@@ -44,7 +43,7 @@ interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
 
-// --- MASTER NAVIGATION CONFIGURATION (PRESERVED) ---
+// --- MASTER NAVIGATION CONFIGURATION (FULL DEEP RESTORATION) ---
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
@@ -541,7 +540,7 @@ const navSections: NavItem[] = [
     },
 ];
 
-const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; }) => {
+const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href: string; label: string; Icon: React.ElementType; isSidebarOpen: boolean; onClick?: () => void; }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
 
@@ -550,7 +549,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href={href}>
+            <Link href={href} onClick={onClick}>
               <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-50 text-blue-600 shadow-sm")} aria-label={label}>
                 <Icon className="h-5 w-5" />
               </Button>
@@ -563,7 +562,7 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen }: { href: string; 
   }
 
   return (
-    <Link href={href}>
+    <Link href={href} onClick={onClick}>
       <Button variant={isActive ? "secondary" : "ghost"} className={cn("w-full justify-start font-bold text-xs uppercase tracking-tight transition-all h-11 px-4 rounded-xl", isActive ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600 rounded-l-none" : "text-slate-500 hover:text-slate-900")}>
         <Icon className="mr-3 h-5 w-5 shrink-0" />{label}
       </Button>
@@ -600,27 +599,30 @@ export default function Sidebar() {
     const bizLogo = branding?.logo_url || tenant?.logo_url;
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
-    // ✅ 1. AUTO-OPEN ON SMALL SCREENS LOGIC
-    useEffect(() => {
-        const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-        if (isMobile) {
-            setIsSidebarOpen(true); // Automatically open when system loads on phone
-        }
-    }, [setIsSidebarOpen]);
+    const [isMobileView, setIsMobileView] = useState(false);
 
-    // ✅ 2. AUTO-CLOSE ON NAVIGATION LOGIC
+    // 🛡️ MOBILE STATE INITIALIZATION
     useEffect(() => {
-        const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-        // On mobile, always close when a link is clicked
-        if (isSidebarOpen && isMobile) {
-            toggleSidebar();
-        }
-    }, [pathname]);
+        const checkMobile = () => {
+            const isMobile = window.innerWidth < 1024;
+            setIsMobileView(isMobile);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
-    // ✅ 3. "CLICK ANYWHERE TO OPEN" LOGIC
-    // When the sidebar is collapsed (desktop), clicking the container expands it.
-    const handleSidebarContainerClick = (e: React.MouseEvent) => {
-        if (!isSidebarOpen) {
+    // ✅ AUTO-CLOSE ON SELECTION LOGIC (For Mobile Viewports)
+    useEffect(() => {
+        if (isMobileView && isSidebarOpen) {
+            setIsSidebarOpen(false); // Shutdown sidebar when path changes on mobile
+        }
+    }, [pathname, isMobileView]);
+
+    // ✅ SMART EXPANSION LOGIC (For Large Screens/Desktop Rail)
+    const handleRailExpandClick = (e: React.MouseEvent) => {
+        // If sidebar is collapsed and we are on desktop, clicking the container expands it.
+        if (!isSidebarOpen && !isMobileView) {
             toggleSidebar();
         }
     };
@@ -665,7 +667,16 @@ export default function Sidebar() {
         <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full space-y-1">
             {items.map((item) => {
                 if (item.type === 'link') {
-                    return <NavLinkComponent key={item.href} href={item.href} label={item.label} Icon={item.icon} isSidebarOpen={isSidebarOpen} />;
+                    return (
+                        <NavLinkComponent 
+                            key={item.href} 
+                            href={item.href} 
+                            label={item.label} 
+                            Icon={item.icon} 
+                            isSidebarOpen={isSidebarOpen} 
+                            onClick={() => isMobileView && setIsSidebarOpen(false)} 
+                        />
+                    );
                 }
                 if (item.type === 'accordion') {
                     const filteredSubItems = item.subItems.filter(sub => {
@@ -683,8 +694,7 @@ export default function Sidebar() {
                         return roleOk && bizOk;
                     });
 
-                    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-                    if (filteredSubItems.length === 0 || (!isSidebarOpen && !isMobile)) return null;
+                    if (filteredSubItems.length === 0 || (!isSidebarOpen && !isMobileView)) return null;
                     const isModuleActive = activeAccordionValue === item.module;
 
                     return (
@@ -696,7 +706,12 @@ export default function Sidebar() {
                                 {filteredSubItems.map(subItem => {
                                     const isSubItemActive = pathname.startsWith(subItem.href);
                                     return (
-                                        <Link key={subItem.href} href={subItem.href} className={cn("flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl transition-all", isSubItemActive ? "text-blue-600 bg-blue-50/80 shadow-inner" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}>
+                                        <Link 
+                                            key={subItem.href} 
+                                            href={subItem.href} 
+                                            onClick={() => isMobileView && setIsSidebarOpen(false)}
+                                            className={cn("flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl transition-all", isSubItemActive ? "text-blue-600 bg-blue-50/80 shadow-inner" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
+                                        >
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
                                         </Link>
                                     );
@@ -712,12 +727,12 @@ export default function Sidebar() {
 
     return (
         <aside 
-            onClick={handleSidebarContainerClick}
+            onClick={handleRailExpandClick} // ✅ CLICK ANYWHERE TO OPEN LOGIC
             className={cn(
                 "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
                 "relative lg:sticky top-0 left-0",
-                isSidebarOpen ? "w-full lg:w-72" : "w-full lg:w-20",
-                !isSidebarOpen && "lg:cursor-pointer hover:bg-slate-50"
+                !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:bg-slate-50", 
+                isSidebarOpen ? "w-full lg:w-72" : "w-full lg:w-20"
             )}
         >
             <div className={cn("flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]", isSidebarOpen ? "h-24" : "h-20")}>
@@ -745,18 +760,18 @@ export default function Sidebar() {
 
             <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 bg-white", !isSidebarOpen && "flex flex-col items-center")}>
                 {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
-                    <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
+                    <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild onClick={() => isMobileView && setIsSidebarOpen(false)}>
                         <Link href="/accounting/daily-ledger">
                             <Unlock size={14} className="mr-3 text-blue-400 group-hover:text-blue-600" /> 
                             <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
                         </Link>
                     </Button>
                 )}
-                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); }}>
+                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); isMobileView && setIsSidebarOpen(false); }}>
                     <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
                     {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
                 </Button>
-                <Link href="/settings" className="w-full">
+                <Link href="/settings" className="w-full" onClick={() => isMobileView && setIsSidebarOpen(false)}>
                     <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", !isSidebarOpen && "justify-center px-0 w-11 mx-auto")}>
                         <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
                         {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
