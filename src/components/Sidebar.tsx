@@ -43,7 +43,7 @@ interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
 
-// --- MASTER NAVIGATION CONFIGURATION (FULL DEEP RESTORATION) ---
+// --- MASTER NAVIGATION CONFIGURATION ---
 const navSections: NavItem[] = [
     {
         type: 'accordion', 
@@ -612,16 +612,16 @@ export default function Sidebar() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // ✅ AUTO-CLOSE ON SELECTION LOGIC (For Mobile Viewports)
+    // ✅ DEEP UPGRADE: UNIVERSAL AUTO-CLOSE ON SELECTION
+    // Now closes the sidebar automatically on BOTH Mobile and Wide screens after click.
     useEffect(() => {
-        if (isMobileView && isSidebarOpen) {
-            setIsSidebarOpen(false); // Shutdown sidebar when path changes on mobile
+        if (isSidebarOpen) {
+            setIsSidebarOpen(false); 
         }
-    }, [pathname, isMobileView]);
+    }, [pathname]);
 
-    // ✅ SMART EXPANSION LOGIC (For Large Screens/Desktop Rail)
+    // ✅ SMART EXPANSION LOGIC
     const handleRailExpandClick = (e: React.MouseEvent) => {
-        // If sidebar is collapsed and we are on desktop, clicking the container expands it.
         if (!isSidebarOpen && !isMobileView) {
             toggleSidebar();
         }
@@ -674,7 +674,6 @@ export default function Sidebar() {
                             label={item.label} 
                             Icon={item.icon} 
                             isSidebarOpen={isSidebarOpen} 
-                            onClick={() => isMobileView && setIsSidebarOpen(false)} 
                         />
                     );
                 }
@@ -709,7 +708,6 @@ export default function Sidebar() {
                                         <Link 
                                             key={subItem.href} 
                                             href={subItem.href} 
-                                            onClick={() => isMobileView && setIsSidebarOpen(false)}
                                             className={cn("flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl transition-all", isSubItemActive ? "text-blue-600 bg-blue-50/80 shadow-inner" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
                                         >
                                             <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
@@ -726,58 +724,76 @@ export default function Sidebar() {
     );
 
     return (
-        <aside 
-            onClick={handleRailExpandClick} // ✅ CLICK ANYWHERE TO OPEN LOGIC
-            className={cn(
-                "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                "relative lg:sticky top-0 left-0",
-                !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:bg-slate-50", 
-                isSidebarOpen ? "w-full lg:w-72" : "w-full lg:w-20"
+        <>
+            {/* ✅ DEEP UPGRADE: MOBILE OVERLAY BACKDROP */}
+            {/* Creates a blurred dim background on mobile so user can click 'away' to close */}
+            {isMobileView && isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/40 z-[90] backdrop-blur-sm animate-in fade-in duration-300"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
             )}
-        >
-            <div className={cn("flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]", isSidebarOpen ? "h-24" : "h-20")}>
-                {isSidebarOpen ? (
-                    <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
-                        <div className="relative z-[120]"><BusinessSwitcher /></div>
-                        <div className="flex flex-col mt-2 px-1">
-                            <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">{businessName}</span>
-                            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">{operatorName} • {activeRole}</span>
+
+            <aside 
+                onClick={handleRailExpandClick}
+                className={cn(
+                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                    // ✅ DEEP UPGRADE: FIXED POSITION ON MOBILE TO PREVENT LAYOUT OVERLAP
+                    "fixed lg:sticky top-0 left-0",
+                    
+                    // ✅ DEEP UPGRADE: TRANSLATION LOGIC
+                    // Moves the sidebar physically off-screen on mobile when closed (-translate-x-full)
+                    !isSidebarOpen 
+                        ? "-translate-x-full lg:translate-x-0 lg:w-20" 
+                        : "translate-x-0 w-full lg:w-72",
+
+                    !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:bg-slate-50"
+                )}
+            >
+                <div className={cn("flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]", isSidebarOpen ? "h-24" : "h-20")}>
+                    {isSidebarOpen ? (
+                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
+                            <div className="relative z-[120]"><BusinessSwitcher /></div>
+                            <div className="flex flex-col mt-2 px-1">
+                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">{businessName}</span>
+                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">{operatorName} • {activeRole}</span>
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                        {bizLogo ? (<img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />) : (<div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">{businessName.charAt(0).toUpperCase()}</div>)}
-                    </div>
-                )}
-                <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0", !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm")}>
-                    {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </Button>
-            </div>
-
-            <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
-                {isLoading ? (<div className="py-20 flex flex-col items-center gap-4 opacity-40"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>) : (<div className="animate-in fade-in duration-700">{renderAccordionNav(finalNavItems)}</div>)}
-            </nav>
-
-            <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 bg-white", !isSidebarOpen && "flex flex-col items-center")}>
-                {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
-                    <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild onClick={() => isMobileView && setIsSidebarOpen(false)}>
-                        <Link href="/accounting/daily-ledger">
-                            <Unlock size={14} className="mr-3 text-blue-400 group-hover:text-blue-600" /> 
-                            <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
-                        </Link>
+                    ) : (
+                        <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
+                            {bizLogo ? (<img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />) : (<div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">{businessName.charAt(0).toUpperCase()}</div>)}
+                        </div>
+                    )}
+                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0", !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm")}>
+                        {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </Button>
-                )}
-                <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); isMobileView && setIsSidebarOpen(false); }}>
-                    <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
-                    {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
-                </Button>
-                <Link href="/settings" className="w-full" onClick={() => isMobileView && setIsSidebarOpen(false)}>
-                    <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", !isSidebarOpen && "justify-center px-0 w-11 mx-auto")}>
-                        <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
+                </div>
+
+                <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
+                    {isLoading ? (<div className="py-20 flex flex-col items-center gap-4 opacity-40"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>) : (<div className="animate-in fade-in duration-700">{renderAccordionNav(finalNavItems)}</div>)}
+                </nav>
+
+                <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 bg-white", !isSidebarOpen && "flex flex-col items-center")}>
+                    {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
+                        <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
+                            <Link href="/accounting/daily-ledger">
+                                <Unlock size={14} className="mr-3 text-blue-400 group-hover:text-blue-600" /> 
+                                <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
+                            </Link>
+                        </Button>
+                    )}
+                    <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); }}>
+                        <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
                     </Button>
-                </Link>
-            </div>
-        </aside>
+                    <Link href="/settings" className="w-full">
+                        <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", !isSidebarOpen && "justify-center px-0 w-11 mx-auto")}>
+                            <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
+                            {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
+                        </Button>
+                    </Link>
+                </div>
+            </aside>
+        </>
     );
 }
