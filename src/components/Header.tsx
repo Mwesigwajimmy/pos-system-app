@@ -2,15 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN HEADER ---
- * VERSION: v19.5 OMEGA-ULTIMATUM (THE IDENTITY WELD)
+ * VERSION: v19.7 OMEGA-ULTIMATUM (THE IDENTITY WELD - MOBILE HARDENED)
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. ZERO-OVERLAP WELD: Eliminated redundant height and positioning logic 
- *    that caused identity collisions on small screens.
- * 2. RESPONSIVE ACTION BAR: Dynamically collapses the Sign-Out button 
- *    to preserve UI integrity on narrow viewports.
- * 3. IDENTITY TRUNCATION: Authoritatively constrains text widths to 
- *    prevent the "Crowded Node" bug.
+ * 1. VERTICAL ANCHOR WELD: Forces strict items-center alignment to prevent 
+ *    identity blocks from "falling" into the main content area.
+ * 2. ACTION COMPRESSION: Renamed Terminate Session to Logout and applied 
+ *    extreme-narrow viewport scaling.
+ * 3. NO-WRAP INTEGRITY: Uses whitespace-nowrap and flex-shrink-0 to 
+ *    ensure the header never breaks into two lines.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -103,27 +103,27 @@ export default function Header() {
   };
 
   return (
-    <div className="flex-1 flex justify-between items-center px-4 md:px-8 h-full bg-transparent w-full min-w-0">
+    <div className="flex-1 flex justify-between items-center px-3 md:px-8 h-full bg-transparent w-full min-w-0">
       
-      {/* --- LEFT: OPERATOR IDENTITY --- */}
-      <div className="flex items-center gap-3 md:gap-8 min-w-0">
-        <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2">
-                {/* IDENTITY WELD: Strict max-width prevents text from pushing icons */}
-                <h1 className="text-xs md:text-lg font-black tracking-tighter text-slate-900 truncate max-w-[100px] sm:max-w-[180px] md:max-w-none leading-none">
+      {/* --- LEFT: OPERATOR IDENTITY (MOBILE ANCHORED) --- */}
+      <div className="flex items-center gap-2 md:gap-8 min-w-0 h-full">
+        <div className="flex flex-col justify-center min-w-0">
+            <div className="flex items-center gap-1.5">
+                {/* IDENTITY WELD: Scaled down for very small screens */}
+                <h1 className="text-[10px] sm:text-xs md:text-lg font-black tracking-tighter text-slate-900 truncate max-w-[80px] sm:max-w-[180px] md:max-w-none leading-none">
                     {profile?.full_name || "Authorized Operator"}
                 </h1>
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Link Active" />
+                <div className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Link Active" />
             </div>
             
-            <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
-                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.15em] text-blue-600 whitespace-nowrap opacity-90">
+            <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1 overflow-hidden leading-none">
+                <span className="text-[7px] md:text-[10px] font-black uppercase tracking-widest text-blue-600 whitespace-nowrap opacity-90">
                     {profile?.role || "System Admin"}
                 </span>
-                <span className="h-2.5 w-[1px] bg-slate-200 shrink-0" />
-                <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1 truncate opacity-70">
-                    <Building2 size={10} className="shrink-0" /> 
-                    <span className="truncate max-w-[80px] sm:max-w-[150px]">{businessName}</span>
+                <span className="h-2 w-[1px] bg-slate-200 shrink-0" />
+                <span className="text-[7px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1 truncate opacity-70">
+                    <Building2 size={8} className="shrink-0 md:size-[10px]" /> 
+                    <span className="truncate max-w-[60px] sm:max-w-[150px]">{businessName}</span>
                 </span>
             </div>
         </div>
@@ -140,7 +140,7 @@ export default function Header() {
       </div>
 
       {/* --- RIGHT: ACTIONS & METRICS --- */}
-      <div className="flex items-center gap-2 md:gap-6 shrink-0">
+      <div className="flex items-center gap-1.5 md:gap-6 shrink-0 h-full">
         
         {/* Currency Node Display (Hides on smaller screens to prevent clutter) */}
         <div className="hidden sm:flex items-center gap-3 pr-4 md:pr-6 border-r border-slate-100">
@@ -156,13 +156,13 @@ export default function Header() {
         </div>
 
         {/* --- NOTIFICATION CENTER --- */}
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-1.5 md:gap-3">
             <Sheet>
                 <SheetTrigger asChild>
-                    <button className="relative p-2.5 rounded-xl bg-white border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group active:scale-95 shadow-sm">
-                        <Bell className={cn("w-5 h-5 transition-transform group-hover:rotate-12", urgentCount > 0 ? "text-blue-600" : "text-slate-400")} />
+                    <button className="relative p-2 md:p-2.5 rounded-xl bg-white border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group active:scale-95 shadow-sm">
+                        <Bell className={cn("w-4 h-4 md:w-5 md:h-5 transition-transform group-hover:rotate-12", urgentCount > 0 ? "text-blue-600" : "text-slate-400")} />
                         {urgentCount > 0 && (
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white shadow-sm animate-bounce" />
+                            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white shadow-sm animate-bounce" />
                         )}
                     </button>
                 </SheetTrigger>
@@ -227,13 +227,13 @@ export default function Header() {
                 </SheetContent>
             </Sheet>
 
-            {/* --- ACTION: SIGN OUT --- */}
+            {/* --- ACTION: LOGOUT (MOBILE COMPRESSED) --- */}
             <Button 
                 onClick={handleLogout} 
-                className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-[0.15em] px-3 sm:px-6 h-10 sm:h-11 rounded-xl flex items-center gap-2.5 text-[9px] sm:text-[10px] shadow-xl shadow-slate-900/10 transition-all active:scale-95 group border-none"
+                className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-[0.1em] px-2 sm:px-5 h-9 sm:h-11 rounded-xl flex items-center gap-1.5 sm:gap-2.5 text-[8px] sm:text-[10px] shadow-xl shadow-slate-900/10 transition-all active:scale-95 group border-none shrink-0"
             >
-                <Zap size={14} className="fill-white group-hover:scale-125 transition-transform shrink-0" />
-                <span className="hidden sm:inline">Terminate Session</span>
+                <Zap size={12} className="fill-white group-hover:scale-125 transition-transform shrink-0 sm:size-[14px]" />
+                <span className="inline-block">Logout</span>
             </Button>
         </div>
       </div>

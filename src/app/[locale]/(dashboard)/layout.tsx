@@ -149,30 +149,71 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { branding } = useBranding(); 
   const primaryColor = branding?.primary_color || '#1D4ED8'; 
 
+  /**
+   * ✅ PROFESSIONAL FIX: SMART INITIALIZATION
+   * Prevents the "White Space" flash by correctly setting the state based on viewport on mount.
+   */
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    if (isMobile) setIsSidebarOpen(true);
+    if (isMobile) {
+        setIsSidebarOpen(false); // Start closed on mobile for better UX
+    } else {
+        setIsSidebarOpen(true); // Default open on desktop
+    }
   }, [setIsSidebarOpen]);
 
+  /**
+   * ✅ PROFESSIONAL FIX: AUTO-CLOSE ON SELECTION
+   * When the user navigates (mobile only), the sidebar closes automatically.
+   */
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-    if (isSidebarOpen && isMobile) setIsSidebarOpen(false);
+    if (isSidebarOpen && isMobile) {
+      setIsSidebarOpen(false);
+    }
   }, [pathname, setIsSidebarOpen]);
+
+  /**
+   * ✅ CLICK-ANYWHERE-TO-OPEN LOGIC
+   * Specifically for the desktop 'rail' state.
+   */
+  const handleDesktopRailClick = () => {
+    if (!isSidebarOpen) {
+        setIsSidebarOpen(true);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden" style={{ '--brand-primary': primaryColor } as React.CSSProperties}>
       <SovereignLiveGuard />
-      <div className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm">
+      
+      {/* DESKTOP SIDEBAR CONTAINER: Click to Open logic applied */}
+      <div 
+        onClick={handleDesktopRailClick}
+        className="hidden lg:flex lg:flex-shrink-0 border-r border-slate-100 shadow-sm cursor-pointer"
+      >
         <Sidebar />
       </div>
+
       <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <header className="relative z-[100] flex-shrink-0 flex h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
-          <button type="button" className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-all cursor-pointer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSidebar(); }}>
+          {/* MOBILE TRIGGER: Deeply anchored to handle all screen interactions */}
+          <button 
+            type="button" 
+            className="relative z-[110] px-8 border-r border-slate-100 text-slate-500 lg:hidden hover:bg-slate-50 transition-all cursor-pointer flex items-center justify-center" 
+            onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                setIsSidebarOpen(true); // Explicitly open for mobile
+            }}
+          >
             <Menu className="h-8 w-8" />
           </button>
           <Header />
         </header>
+
         <main className="flex-1 relative overflow-y-auto focus:outline-none bg-slate-50/40">
           <div className="p-4 sm:p-8 lg:p-10 animate-in fade-in slide-in-from-bottom-3 duration-1000">
             {children}

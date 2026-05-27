@@ -599,25 +599,15 @@ export default function Sidebar() {
     const bizLogo = branding?.logo_url || tenant?.logo_url;
     const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
 
-    // ✅ 1. AUTO-OPEN ON SMALL SCREENS LOGIC
+    // ✅ 1. NAVIGATION LOGIC: Explicitly close on selection (Mobile Only)
     useEffect(() => {
         const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-        if (isMobile) {
-            setIsSidebarOpen(true); // Automatically open when system loads on phone
-        }
-    }, [setIsSidebarOpen]);
-
-    // ✅ 2. AUTO-CLOSE ON NAVIGATION LOGIC
-    useEffect(() => {
-        const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-        // On mobile, always close when a link is clicked
         if (isSidebarOpen && isMobile) {
-            toggleSidebar();
+            setIsSidebarOpen(false); // Clean explicit close
         }
     }, [pathname]);
 
-    // ✅ 3. "CLICK ANYWHERE TO OPEN" LOGIC
-    // When the sidebar is collapsed (desktop), clicking the container expands it.
+    // ✅ 2. EXPANSION LOGIC: "Click anywhere to open" when rail is collapsed
     const handleSidebarContainerClick = (e: React.MouseEvent) => {
         if (!isSidebarOpen) {
             toggleSidebar();
@@ -711,12 +701,12 @@ export default function Sidebar() {
 
     return (
         <aside 
-            onClick={handleSidebarContainerClick} // ✅ Click anywhere to expand when closed
+            onClick={handleSidebarContainerClick}
             className={cn(
                 "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[100] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
-                "relative lg:sticky top-0 left-0 cursor-pointer", // Added cursor pointer
-                !isSidebarOpen && "hover:bg-slate-50", // Slight highlight when clickable
-                isSidebarOpen ? "w-full lg:w-72" : "w-full lg:w-20"
+                "relative lg:sticky top-0 left-0",
+                isSidebarOpen ? "w-full lg:w-72" : "w-full lg:w-20",
+                !isSidebarOpen && "lg:cursor-pointer hover:bg-slate-50"
             )}
         >
             <div className={cn("flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]", isSidebarOpen ? "h-24" : "h-20")}>
