@@ -314,14 +314,15 @@ export default function ProductManagementConsole({ categories }: ProductManageme
       </DialogTrigger>
       
       {/* 
-         PROFESSIONAL DIALOG ARCHITECTURE:
-         Matches your Invoice form behavior. Fixed height, Flex column layout.
-         Uses 'overflow-hidden' on the container to ensure middle area handles the scroll.
+         ULTRA-CLEAN DYNAMIC LAYOUT:
+         - Removed h-[90vh] and replaced with max-h-[95vh].
+         - flex flex-col ensures we can keep header and footer sticky/fixed.
+         - overflow-hidden on the parent container is vital for internal scrolling.
       */}
-      <DialogContent className="sm:max-w-6xl w-full h-[95dvh] sm:h-[90vh] flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
+      <DialogContent className="sm:max-w-6xl w-[95vw] max-h-[95vh] flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
         
-        {/* FIXED HEADER: Header section stays at top */}
-        <div className="px-8 py-10 border-b shrink-0 bg-white">
+        {/* STICKY HEADER: shrink-0 keeps it from collapsing */}
+        <div className="px-8 py-10 border-b shrink-0 bg-white sticky top-0 z-20">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div className="space-y-1">
               <h2 className="text-3xl font-black text-slate-900">Register Product</h2>
@@ -333,8 +334,8 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </div>
 
-        {/* SCROLLABLE FORM BODY: Everything below is inside the scroll area */}
-        <ScrollArea className="flex-1 w-full bg-[#fcfdfe]">
+        {/* FLUID SCROLLABLE AREA: This area expands up to the max-height of the modal */}
+        <ScrollArea className="flex-1 w-full bg-[#fcfdfe] min-h-0">
           <div className="p-8 sm:p-12 space-y-12">
             
             {/* Row 1: Product Basics */}
@@ -474,7 +475,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                         </div>
                     </div>
                 ) : (
-                    /* MULTI-VARIANT TABBED BUILDER: Correctly contained within the scroll area */
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
                         <TabsList className="bg-slate-100 p-1 rounded-lg h-11 w-full max-w-sm">
                             <TabsTrigger value="configuration" className="flex-1 rounded-md font-bold text-[10px] uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-sm">1. Set Options</TabsTrigger>
@@ -515,20 +515,20 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                 <Table>
                                     <TableHeader className="bg-slate-50">
                                         <TableRow className="h-14">
-                                            <TableHead className="px-8 font-bold uppercase text-slate-400 text-[9px] tracking-widest">Variation Label</TableHead>
+                                            <TableHead className="px-8 font-bold uppercase text-slate-400 text-[9px] tracking-widest min-w-[150px]">Variation Label</TableHead>
                                             <TableHead className="text-center font-bold uppercase text-slate-400 text-[9px] tracking-widest">Price</TableHead>
                                             <TableHead className="text-center font-bold uppercase text-slate-400 text-[9px] tracking-widest">Cost</TableHead>
                                             <TableHead className="text-center font-bold uppercase text-slate-400 text-[9px] tracking-widest">Stock</TableHead>
-                                            <TableHead className="px-8 text-right font-bold uppercase text-slate-400 text-[9px] tracking-widest">Unique SKU</TableHead>
+                                            <TableHead className="px-8 text-right font-bold uppercase text-slate-400 text-[9px] tracking-widest min-w-[120px]">Unique SKU</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {variants.map((v, idx) => (
                                             <TableRow key={idx} className="h-16 border-b border-slate-50 last:border-none">
                                                 <TableCell className="px-8 text-xs font-bold text-slate-900">{v.name}</TableCell>
-                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-9 w-28 border-slate-100 bg-[#F8FAFC] text-slate-900 font-bold text-center mx-auto rounded-md" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-9 w-28 border-slate-100 bg-[#F8FAFC] text-slate-400 font-medium text-center mx-auto rounded-md" value={v.cost_price} onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="text-center"><Input type="number" className="h-9 w-28 border-slate-100 bg-[#F8FAFC] text-blue-700 font-bold text-center mx-auto rounded-md" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-9 w-24 border-slate-100 bg-[#F8FAFC] text-slate-900 font-bold text-center mx-auto rounded-md" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-9 w-24 border-slate-100 bg-[#F8FAFC] text-slate-400 font-medium text-center mx-auto rounded-md" value={v.cost_price} onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="text-center"><Input type="number" className="h-9 w-24 border-slate-100 bg-[#F8FAFC] text-blue-700 font-bold text-center mx-auto rounded-md" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
                                                 <TableCell className="px-8"><Input className="h-9 w-full border-slate-100 rounded-md uppercase text-[10px] font-bold text-right px-4 bg-[#F8FAFC]" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO" /></TableCell>
                                             </TableRow>
                                         ))}
@@ -542,13 +542,13 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                 )}
             </div>
             
-            {/* Bottom Buffer */}
-            <div className="h-10" /> 
+            {/* Added extra padding for comfort at the bottom of the scroll */}
+            <div className="h-20" /> 
           </div>
         </ScrollArea>
 
-        {/* FIXED FOOTER: Action bar always visible at the bottom */}
-        <div className="px-8 py-8 bg-[#F8FAFC] border-t flex flex-col sm:flex-row items-center justify-between gap-6 shrink-0">
+        {/* STICKY FOOTER: Fixed to the bottom of the dialog box */}
+        <div className="px-8 py-8 bg-[#F8FAFC] border-t flex flex-col sm:flex-row items-center justify-between gap-6 shrink-0 sticky bottom-0 z-20">
           <div className="flex items-center gap-3 text-emerald-600 bg-white px-5 py-2.5 rounded-full border border-emerald-100 font-bold text-[9px] uppercase tracking-widest shadow-sm">
             <CheckCircle2 size={14} />
             Global Synchronization Nodes Active
@@ -562,7 +562,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </div>
       </DialogContent>
 
-      {/* CUSTOM UNIT BUILDER: Separate context for focus */}
+      {/* SEPARATE DIALOG FOR UNIT BUILDER */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white z-[12000]">
           <DialogHeader className="px-8 py-8 bg-slate-900 text-white">
