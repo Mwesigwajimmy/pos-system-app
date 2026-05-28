@@ -50,7 +50,8 @@ import {
   RotateCcw,
   X,
   PlusCircle,
-  CheckCircle2
+  CheckCircle2,
+  MapPin
 } from 'lucide-react';
 
 import { Category } from '@/types/dashboard';
@@ -308,14 +309,11 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </Button>
       </DialogTrigger>
       
-      {/* 
-         PROFESSIONAL DIALOG ARCHITECTURE:
-         Correctly sized sm:max-w-4xl to ensure it doesn't hit sidebars.
-      */}
-      <DialogContent className="sm:max-w-4xl w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
+      {/* PROFESSIONAL MODAL CONTAINER: Adjusted width to accommodate 4 columns */}
+      <DialogContent className="sm:max-w-5xl w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
         
-        {/* CLEAN HEADER: Just like the first image */}
-        <div className="px-8 py-8 border-b shrink-0 bg-white">
+        {/* CLEAN HEADER */}
+        <div className="px-8 py-7 border-b shrink-0 bg-white">
           <div className="flex items-center gap-4">
              <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
                 <Package size={28} />
@@ -327,12 +325,12 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </div>
 
-        {/* FORM BODY */}
-        <ScrollArea className="max-h-[75vh]">
+        {/* FORM BODY: Reduced height slightly from 75vh to 68vh as requested */}
+        <ScrollArea className="max-h-[68vh]">
           <div className="p-8 space-y-8">
             
-            {/* Row 1: Product Basics (3 Column Grid) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Row 1: Product Basics (Updated to 4 columns to include Target Branch) */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Product Name</Label>
                     <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Wireless Headphones" className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4" />
@@ -346,6 +344,23 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                         </SelectTrigger>
                         <SelectContent className="z-[10000]">
                             {categories.map(c => <SelectItem key={c.id} value={String(c.id)} className="font-semibold">{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* TARGET BRANCH ADDED HERE */}
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Branch</Label>
+                    <Select value={locationId || ''} onValueChange={setLocationId}>
+                        <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
+                          <SelectValue placeholder="Select Branch" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[10000]">
+                            {locations?.map(loc => (
+                              <SelectItem key={loc.id} value={loc.id} className="font-semibold">
+                                  {loc.name}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -365,7 +380,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                 </div>
             </div>
 
-            {/* Row 2: Structural Details (2 Column Grid) */}
+            {/* Row 2: Units and Variation Switch */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Base Unit</Label>
@@ -379,7 +394,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                 <Search size={14} className="text-slate-400" />
                                 <input 
                                   type="text"
-                                  placeholder="Search metrics..."
+                                  placeholder="Search units..."
                                   value={uomSearchQuery}
                                   onChange={(e) => setUomSearchQuery(e.target.value)}
                                   className="w-full bg-transparent border-none outline-none font-bold text-[11px]"
@@ -394,7 +409,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                 </SelectGroup>
                                 {filteredUnits.length > 0 && (
                                     <SelectGroup>
-                                        <SelectLabel className="px-4 py-2 text-[8px] font-black text-slate-300 uppercase tracking-wider border-t">Custom Units</SelectLabel>
+                                        <SelectLabel className="px-4 py-2 text-[8px] font-black text-slate-300 uppercase tracking-wider border-t">System Units</SelectLabel>
                                         {filteredUnits.map(u => (
                                         <SelectItem key={u.id} value={String(u.id)} className="font-semibold">
                                             {u.name} ({u.abbreviation})
@@ -410,13 +425,13 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                       </Button>
                     </div>
                 </div>
-                <div className="flex items-center space-x-3 p-3 px-4 rounded-lg bg-slate-50/50 border border-slate-100 h-11">
+                <div className="flex items-center space-x-3 p-3 px-4 rounded-lg bg-slate-50 border border-slate-100 h-11">
                     <Label className="text-[11px] font-bold text-slate-500 flex-1 cursor-pointer">This product has variants (e.g. Size, Color)</Label>
                     <Switch checked={isMultiVariant} onCheckedChange={(checked) => { setIsMultiVariant(checked); if (!checked) setVariants([{ ...DEFAULT_VARIANT }]); }} />
                 </div>
             </div>
 
-            {/* Row 3: Inventory & Pricing */}
+            {/* Row 3: Pricing & Variant Tabs */}
             <div className="space-y-4">
                 {!isMultiVariant ? (
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50/50 p-6 rounded-xl border border-slate-100">
@@ -454,11 +469,11 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                   <div key={idx} className="flex gap-3 items-end bg-slate-50 p-4 rounded-lg border border-slate-100">
                                       <div className="w-1/3 space-y-1.5">
                                           <Label className="text-[9px] font-bold text-slate-400 uppercase">Property Name</Label>
-                                          <Input value={attr.name} onChange={e => { const updated = [...attributes]; updated[idx].name = e.target.value; setAttributes(updated); }} placeholder="e.g. Size" className="h-9 border-slate-200" />
+                                          <Input value={attr.name} onChange={e => { const updated = [...attributes]; updated[idx].name = e.target.value; setAttributes(updated); }} placeholder="e.g. Size" className="h-9 border-slate-200 rounded-md" />
                                       </div>
                                       <div className="flex-1 space-y-1.5">
                                           <Label className="text-[9px] font-bold text-slate-400 uppercase">Values (Comma separated)</Label>
-                                          <Input value={attr.inputValue} onChange={e => { const updated = [...attributes]; updated[idx].inputValue = e.target.value; setAttributes(updated); }} placeholder="Small, Large, XL" className="h-9 border-slate-200" />
+                                          <Input value={attr.inputValue} onChange={e => { const updated = [...attributes]; updated[idx].inputValue = e.target.value; setAttributes(updated); }} placeholder="Red, Blue, Green" className="h-9 border-slate-200 rounded-md" />
                                       </div>
                                       <Button variant="ghost" size="icon" onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-red-500 h-9 w-9">
                                           <Trash size={16} />
@@ -468,7 +483,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                             </div>
                             <div className="flex justify-between items-center py-2">
                                 <Button variant="outline" onClick={() => setAttributes([...attributes, { name: '', inputValue: '', values: [] }])} className="h-9 px-4 text-blue-600 font-bold text-[10px] uppercase gap-2 hover:bg-blue-50 border-blue-100">
-                                  <PlusCircle size={16} /> New Group
+                                  <PlusCircle size={16} /> Add Option
                                 </Button>
                                 <Button type="button" onClick={generateVariants} className="h-9 px-6 bg-slate-900 text-white font-bold text-[10px] uppercase tracking-widest rounded-lg transition-all active:scale-95">
                                   <Wand2 size={16} className="mr-2" /> Compute Matrix
@@ -509,25 +524,25 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </ScrollArea>
 
-        {/* FIXED FOOTER: Action bar always visible at the bottom */}
+        {/* FIXED FOOTER */}
         <div className="px-8 py-6 bg-slate-50 border-t flex items-center justify-between shrink-0">
           <Button variant="ghost" onClick={() => setOpen(false)} className="h-10 px-6 font-bold text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-lg">Cancel</Button>
-          <Button onClick={() => mutate()} disabled={isPending} className="h-10 px-10 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95 border-none">
+          <Button onClick={() => mutate()} disabled={isPending} className="h-10 px-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95 border-none">
             {isPending ? <Loader2 size={18} className="animate-spin" /> : "Save Product"}
           </Button>
         </div>
       </DialogContent>
 
-      {/* CUSTOM UNIT BUILDER: Same professional modal styling */}
+      {/* CUSTOM UNIT MODAL */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white z-[12000]">
           <DialogHeader className="px-8 py-6 bg-slate-900 text-white">
             <DialogTitle className="text-lg font-bold">Add New Unit</DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">Create a measurement unit for your inventory.</DialogDescription>
+            <DialogDescription className="text-slate-400 text-xs">Register a new measurement metric for inventory.</DialogDescription>
           </DialogHeader>
           <div className="p-8 space-y-5 bg-white">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Unit Name</Label>
+              <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Unit Full Name</Label>
               <Input placeholder="e.g. Kilograms" value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)} className="h-11 border-slate-100 font-semibold rounded-lg px-4" />
             </div>
             <div className="space-y-2">
