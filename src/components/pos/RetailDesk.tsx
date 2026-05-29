@@ -281,19 +281,18 @@ export default function RetailDesk() {
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.toArray(), []);
     
-    // --- APEX PRINT FIX: React-to-print v3 requires contentRef, not a function ---
+    // --- APEX PRINT FIX: React-to-print v3 requires contentRef ---
     const handleWebPrint = useReactToPrint({ 
-        contentRef: receiptRef, // CORRECT SYNTAX FOR V3
+        contentRef: receiptRef, 
         onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
-    // --- DEEP IDENTITY ALIGNMENT: Corporate DNA Sync (Fixed Location multiplier) ---
+    // --- DEEP IDENTITY ALIGNMENT: Multi-Tenant & Multi-Location DNA ---
     useEffect(() => {
         if (!userProfile?.business_id) return;
         const fetchCorporateDNA = async () => {
             const supabase = createClient();
             
-            // DEEP WELD: Fetch strictly mapping the specific database columns we audited
             const { data: identities } = await supabase
                 .from('view_bbu1_corporate_identity')
                 .select(`
@@ -317,7 +316,6 @@ export default function RetailDesk() {
                 setBusinessDNA({
                     name: corpIdentity.legal_name || 'Business Account',
                     phone: corpIdentity.official_phone || 'N/A',
-                    // AGGREGATION: Maps both potential tax columns to ensure we pull the correct Tax ID
                     tax_number: corpIdentity.tin_number || corpIdentity.tax_number || '', 
                     currency: corpIdentity.currency_code || 'UGX',
                     footer: corpIdentity.receipt_footer || 'Thank you for your business!',
@@ -344,7 +342,6 @@ export default function RetailDesk() {
             
             const offlineSales = await db.offlineSales.toArray();
             if (offlineSales.length > 0) {
-                // The Handshake now completes because related_deal_id exists in Dexie & backend
                 await supabase.rpc('sync_offline_sales', { sales_data: offlineSales });
                 await db.offlineSales.clear();
             }
@@ -383,7 +380,6 @@ export default function RetailDesk() {
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
-        // DEEP WELD: Construct record with related_deal_id index
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(),
             cartItems: cart,
@@ -398,12 +394,11 @@ export default function RetailDesk() {
             tax_amount: 0,
             payment_status: paymentData.amountPaid >= totalAmount ? 'paid' : 'partial',
             due_amount: Math.max(0, totalAmount - paymentData.amountPaid),
-            related_deal_id: null // Prevents trigger crash on backend sync
+            related_deal_id: null 
         };
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
-        // APEX ALIGNMENT: 1:1 Mapping for Receipt.tsx identity using verified DB columns
         const receiptData: ReceiptData = {
             saleInfo: { 
                 id: saleId, 
@@ -461,6 +456,7 @@ export default function RetailDesk() {
                     </CardHeader>
                     <CardContent className="p-8 space-y-6 bg-white">
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
+                           {/* CONTAINER FOR PRINTING - Multi-location data is injected here dynamically */}
                            <div ref={receiptRef}>
                              <Receipt receiptData={lastCompletedSale.receiptData} />
                            </div>
@@ -468,7 +464,8 @@ export default function RetailDesk() {
                         <div className="flex flex-col gap-3">
                             <Button 
                                 className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100 flex items-center justify-center gap-2" 
-                                onClick={() => handleWebPrint()}
+                                // APEX FIX: Using override to ensure conditional ref is picked up at runtime
+                                onClick={() => handleWebPrint(undefined, () => receiptRef.current)}
                             >
                                 <PrinterIcon className="h-5 w-5" /> PRINT RECEIPT
                             </Button>
