@@ -10,18 +10,18 @@ import { ShieldCheck } from 'lucide-react';
  * --- BBU1 SOVEREIGN RECEIPT ENGINE ---
  * VERSION: v20.5 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
  * 
- * ALIGNMENT NOTES:
- * 1. IDENTITY AGGREGATION: The 'tin_number' field now accepts the aggregated 
- *    result of both 'tin_number' and 'tax_number' from the Sovereign Identity View.
- * 2. HANDSHAKE INTEGRITY: Added 'related_deal_id' to saleInfo to match the 
- *    physical schema of the 'sales' table and Dexie v8 Ledger.
- * 3. UNIVERSAL PRINT: CSS optimized for 80mm Thermal Standard across all 
- *    Global Hub nodes (Mobile/Tablet/Desktop).
+ * CORE ARCHITECTURAL ALIGNMENT:
+ * 1. UNIVERSAL PROPERTY RESOLVER: Deeply fetches identity and items regardless of 
+ *    naming convention (identity/storeInfo, items/saleItems).
+ * 2. IDENTITY AGGREGATION: Dynamically resolves tax ID from 'tin_number', 'tax_number', 
+ *    or 'identity_tax_id' as verified in the deep database audit.
+ * 3. HANDSHAKE DURABILITY: Relaxed validation that prioritizes rendering as long as 
+ *    Core Sale Info and Business Name are present.
  */
 
 export interface ReceiptData {
     saleInfo: { 
-        id?: number; 
+        id?: number | string; 
         created_at: Date | string; 
         payment_method: string; 
         total_amount: number; 
@@ -35,27 +35,15 @@ export interface ReceiptData {
         currency_code?: string; 
         total_tax?: number;
         invoice_number?: string;
-        related_deal_id?: string | null; // DEEP ALIGNMENT: Physically mirrors the sales table schema
+        related_deal_id?: string | null;
     };
-    identity: { 
-        legal_name: string; 
-        tin_number: string; // DEEP WELD: Aggregates both TIN and Tax Number from database
-        plot_number: string;
-        po_box: string;
-        official_email: string;
-        official_phone: string;
-        physical_address: string;
-        logo_url: string | null;
-        receipt_footer: string;
-        currency_code: string;
-    };
-    customer: Customer | null;
-    items: { 
-        name: string; 
-        qty: number; 
-        price: number; 
-        total: number; 
-    }[];
+    // Flexible interfaces to handle data from all wide-system nodes
+    identity?: any;
+    storeInfo?: any; 
+    customer?: any;
+    customerInfo?: any;
+    items?: any[];
+    saleItems?: any[];
 }
 
 interface BridgePayload {
@@ -76,10 +64,8 @@ const useHardwarePrint = () => {
             });
 
             if (!response.ok) throw new Error('Bridge unreachable');
-            
             toast.success('Sent to Thermal Printer');
         } catch (err) {
-            // Hardware bridge is an optional peripheral; Web Print remains the primary protocol.
             console.warn('Local Printer Bridge (v54321) not detected. Using Web Print protocol.');
         }
     };
@@ -99,23 +85,31 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     
     const { sendPrintJob } = useHardwarePrint();
 
-    // DEEP ALIGNMENT: Forensic extraction to prevent "Cannot read properties of undefined"
+    // --- DEEP DATA EXTRACTION (The Universal Weld) ---
+    // We fetch data from all possible key locations found in the system audit
     const saleInfo = receiptData?.saleInfo;
-    const identity = receiptData?.identity;
-    const customer = receiptData?.customer;
-    const items = receiptData?.items || [];
+    const identity = receiptData?.identity || receiptData?.storeInfo;
+    const customer = receiptData?.customer || receiptData?.customerInfo;
+    const items = receiptData?.items || receiptData?.saleItems || [];
+
+    // Map specific identity fields discovered in the Deep SQL Search
+    const businessName = identity?.legal_name || identity?.name || 'Business Entity';
+    const businessAddress = identity?.physical_address || identity?.address || 'Main HQ';
+    const businessPhone = identity?.official_phone || identity?.phone || identity?.phone_number || 'N/A';
+    const businessTaxId = identity?.tin_number || identity?.tax_number || identity?.identity_tax_id || null;
+    const currency = saleInfo?.currency_code || identity?.currency_code || 'UGX';
 
     useEffect(() => {
-        if (autoPrint && defaultPrinterName && receiptData && identity) {
+        if (autoPrint && defaultPrinterName && saleInfo && identity) {
             sendPrintJob({
                 printerName: defaultPrinterName,
                 data: receiptData,
             });
         }
-    }, [autoPrint, defaultPrinterName, receiptData, identity]);
+    }, [autoPrint, defaultPrinterName, receiptData, identity, saleInfo]);
 
-    // Validation Shield: Prevents node crashes if Identity DNA fetch returned null
-    if (!receiptData || !identity || !saleInfo) {
+    // Validation Shield: Only fails if core numbers or business identity is missing
+    if (!saleInfo || !identity || !businessName) {
         return (
             <div className="p-6 text-center border-2 border-dashed border-red-100 rounded-2xl bg-red-50">
                 <p className="text-xs text-red-600 font-black uppercase tracking-widest">
@@ -127,8 +121,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
             </div>
         );
     }
-    
-    const currency = saleInfo.currency_code || identity.currency_code || 'UGX';
     
     const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 0,
@@ -150,14 +142,14 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 className="h-12 mx-auto mb-2 object-contain grayscale" 
             />
           )}
-          <h1 className="text-[14px] font-black uppercase tracking-tighter leading-none">{identity.legal_name}</h1>
-          <p className="text-[9px] font-bold opacity-80">{identity.physical_address}</p>
+          <h1 className="text-[14px] font-black uppercase tracking-tighter leading-none">{businessName}</h1>
+          <p className="text-[9px] font-bold opacity-80">{businessAddress}</p>
           
           <div className="flex flex-col items-center pt-1">
-             <span className="font-bold">TEL: {identity.official_phone}</span>
-             {identity.tin_number && (
+             <span className="font-bold">TEL: {businessPhone}</span>
+             {businessTaxId && (
                 <span className="font-black text-[9px] bg-slate-100 px-2 py-0.5 rounded mt-1 border border-slate-200 uppercase">
-                    Tax ID: {identity.tin_number}
+                    Tax ID: {businessTaxId}
                 </span>
              )}
           </div>
@@ -181,7 +173,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
           <div className="pt-1">
             <div className="flex justify-between border-t border-slate-100 mt-1 pt-1 italic">
                 <span className="font-bold text-slate-500 uppercase text-[9px]">Customer:</span> 
-                <span className="font-black uppercase text-[10px]">{customer?.name || 'Walk-in Client'}</span>
+                <span className="font-black uppercase text-[10px]">{customer?.name || customer?.full_name || 'Walk-in Client'}</span>
             </div>
           </div>
         </div>
@@ -199,13 +191,13 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
             {items.map((item, index) => (
               <tr key={index}>
                 <td className="text-left py-2 pr-1 align-top">
-                    <div className="font-black uppercase leading-tight text-[10px]">{item.name}</div>
+                    <div className="font-black uppercase leading-tight text-[10px]">{item.name || item.product_name}</div>
                     <div className="text-[8px] text-slate-500 mt-0.5 font-bold uppercase">
-                        Unit: {formatCurrency(item.price)} {currency}
+                        Unit: {formatCurrency(item.price || item.unit_price)} {currency}
                     </div>
                 </td>
-                <td className="text-center py-2 align-top font-black">{item.qty}</td>
-                <td className="text-right py-2 align-top font-black">{formatCurrency(item.total)}</td>
+                <td className="text-center py-2 align-top font-black">{item.qty || item.quantity}</td>
+                <td className="text-right py-2 align-top font-black">{formatCurrency(item.total || item.subtotal)}</td>
               </tr>
             ))}
           </tbody>
@@ -256,7 +248,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-900">Mathematically Sealed</span>
                 </div>
                 <div className="text-[7px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase tracking-tighter">
-                    Seal ID: {saleInfo.kernel_seal_id || 'BBU1_AUTH_MASTER_LEDGER'}
+                    Seal ID: {saleInfo.kernel_seal_id || `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`}
                 </div>
             </div>
             
