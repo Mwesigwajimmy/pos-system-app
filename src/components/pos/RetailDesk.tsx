@@ -287,7 +287,12 @@ export default function RetailDesk() {
     const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.toArray(), []);
-    const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
+    
+    // Web Printing Logic
+    const handleWebPrint = useReactToPrint({ 
+        content: () => receiptRef.current,
+        onAfterPrint: () => toast.success('Print Job Completed')
+    });
 
     // --- Corporate Identity Sync ---
     useEffect(() => {
@@ -381,15 +386,41 @@ export default function RetailDesk() {
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
+        // DEEP FIX: Align structure with Receipt.tsx expectation
         const receiptData: ReceiptData = {
             saleInfo: { 
-                id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `TRAN-${saleId}`
+                id: saleId, 
+                created_at: newSale.createdAt, 
+                payment_method: newSale.paymentMethod, 
+                total_amount: totalAmount, 
+                amount_tendered: newSale.amount_paid, 
+                change_due: Math.max(0, paymentData.amountPaid - totalAmount), 
+                subtotal, 
+                discount: discountAmount, 
+                amount_due: newSale.due_amount, 
+                currency_code: businessDNA?.currency || 'UGX', 
+                total_tax: 0, 
+                kernel_seal_id: `TRAN-${saleId}`
             },
-            storeInfo: { 
-                name: businessDNA?.name, address: businessDNA?.address, phone_number: businessDNA?.phone, receipt_footer: businessDNA?.footer, tax_number: businessDNA?.tax_number
+            identity: { 
+                legal_name: businessDNA?.name || 'Store', 
+                physical_address: businessDNA?.address || 'N/A', 
+                official_phone: businessDNA?.phone || 'N/A', 
+                receipt_footer: businessDNA?.footer || 'Thank you!', 
+                tin_number: businessDNA?.tax_number || '',
+                currency_code: businessDNA?.currency || 'UGX',
+                logo_url: null,
+                plot_number: '',
+                po_box: '',
+                official_email: ''
             },
-            customerInfo: selectedCustomer,
-            saleItems: cart.map(item => ({ product_name: item.product_name, variant_name: item.variant_name, quantity: item.quantity, unit_price: item.price, subtotal: item.price * item.quantity, tax_amount: 0, tax_code: 'VAT' }))
+            customer: selectedCustomer,
+            items: cart.map(item => ({ 
+                name: item.product_name, 
+                qty: item.quantity, 
+                price: item.price, 
+                total: item.price * item.quantity 
+            }))
         };
 
         setLastCompletedSale({ receiptData });
@@ -413,10 +444,26 @@ export default function RetailDesk() {
                         <CardDescription className="text-slate-400 font-bold uppercase text-[10px]">Document Sealed in Local Database</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 space-y-6 bg-white">
-                        <div ref={receiptRef} className="border-2 border-dashed border-slate-100 p-2 rounded-2xl">
-                           <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} />
+                        <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
+                           {/* Receipt Container for Web Print */}
+                           <div ref={receiptRef}>
+                             <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} />
+                           </div>
                         </div>
-                        <Button className="w-full h-14 bg-blue-600 text-white font-black uppercase tracking-widest rounded-2xl" onClick={() => setLastCompletedSale(null)}>New Transaction</Button>
+                        <div className="flex flex-col gap-3">
+                            <Button 
+                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2" 
+                                onClick={handleWebPrint}
+                            >
+                                <PrinterIcon className="h-5 w-5" /> Print Receipt
+                            </Button>
+                            <Button 
+                                className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest rounded-2xl" 
+                                onClick={() => setLastCompletedSale(null)}
+                            >
+                                New Transaction
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
