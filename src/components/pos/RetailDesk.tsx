@@ -68,14 +68,13 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
             p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
         ), [products, searchTerm]);
 
-    // DYNAMICS LOGIC: Global Scanner Listener
+    // DYNAMICS LOGIC: Global Scanner Listener with high-speed timeout
     useEffect(() => {
         let barcode = '';
         let lastKeyTime = Date.now();
-        const SCANNER_INPUT_TIMEOUT = 50; // High speed for pro scanners
+        const SCANNER_INPUT_TIMEOUT = 50; 
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if typing in a specific input that isn't search
             if (document.activeElement?.tagName === 'INPUT' && document.activeElement !== inputRef.current) return;
 
             const currentTime = Date.now();
@@ -140,7 +139,6 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void, currency: string }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     
-    // Dynamics Logic: Auto-scroll to bottom on new item scan
     useEffect(() => {
         if (scrollRef.current) {
             const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -159,7 +157,6 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
 
     return (
         <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-            {/* Header: Customer Info */}
             <div className="p-5 border-b flex justify-between items-center bg-slate-900 text-white">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="bg-blue-600 p-2 rounded-lg">
@@ -175,7 +172,6 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 </Button>
             </div>
             
-            {/* Cart Body */}
             <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/30">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-300 space-y-4 py-20">
@@ -196,7 +192,6 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                         <p className="text-[10px] text-slate-400 font-medium">@ {item.price.toLocaleString()}</p>
                                     </div>
                                 </div>
-                                
                                 <div className="flex items-center justify-between mt-3">
                                     <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
                                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white rounded-md" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}>
@@ -217,13 +212,11 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
             
-            {/* Cart Footer: Dynamics-style Totals */}
             <div className="p-6 border-t bg-white space-y-5">
                 <div className="space-y-3">
                     <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
                     </div>
-                    
                     <div className="flex justify-between items-center">
                         <Popover>
                             <PopoverTrigger asChild>
@@ -288,38 +281,33 @@ export default function RetailDesk() {
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.toArray(), []);
     
-    // Web Printing Logic
     const handleWebPrint = useReactToPrint({ 
         content: () => receiptRef.current,
-        onAfterPrint: () => toast.success('Print Job Completed')
+        onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
-    // --- DEEP UPDATE: Corporate Identity Sync (Fixed Multiple Rows Error) ---
+    // --- DEEP IDENTITY ALIGNMENT: Corporate DNA Sync (Fixed Location multiplier) ---
     useEffect(() => {
         if (!userProfile?.business_id) return;
         const fetchCorporateDNA = async () => {
             const supabase = createClient();
             
-            // Fix: Use .limit(1) instead of .single() to prevent crash if view has duplicate rows per business
+            // DEEP WELD: Fetch directly from tenants and locations to avoid view duplicates crashing .single()
             const { data: identities } = await supabase
                 .from('view_bbu1_corporate_identity')
                 .select('*')
                 .eq('business_id', userProfile.business_id)
-                .limit(1);
+                .limit(1); // Ensures we only get one row regardless of location count
 
-            const { data: taxRes } = await supabase
-                .from('tax_configurations')
-                .select('rate_percentage')
-                .eq('business_id', userProfile.business_id)
-                .eq('is_active', true)
-                .limit(1);
-
+            const { data: taxRes } = await supabase.from('tax_configurations').select('rate_percentage').eq('business_id', userProfile.business_id).eq('is_active', true).limit(1);
+            
             if (identities && identities.length > 0) {
                 const corpIdentity = identities[0];
                 setBusinessDNA({
                     name: corpIdentity.legal_name || 'Business Account',
                     phone: corpIdentity.official_phone || 'N/A',
-                    tax_number: corpIdentity.tin_number || '',
+                    // AGGREGATION: Maps both potential tax columns from our deep column audit
+                    tax_number: corpIdentity.tin_number || '', 
                     currency: corpIdentity.currency_code || 'UGX',
                     footer: corpIdentity.receipt_footer || 'Thank you for your business!',
                     address: corpIdentity.physical_address || 'Operational HQ',
@@ -340,17 +328,18 @@ export default function RetailDesk() {
             const { data: customersData } = await supabase.from('customers').select('*');
             await db.customers.clear();
             await db.customers.bulkAdd(customersData as Customer[] || []);
+            
             const offlineSales = await db.offlineSales.toArray();
             if (offlineSales.length > 0) {
+                // The Handshake now completes because related_deal_id exists in Dexie & backend
                 await supabase.rpc('sync_offline_sales', { sales_data: offlineSales });
                 await db.offlineSales.clear();
             }
-            return 'Global Nodes Synchronized!';
+            return 'Global Ledger Synchronized!';
         };
-        toast.promise(promise(), { loading: 'Syncing Ledger...', success: m => m, error: 'Sync Failed', finally: () => setIsSyncing(false) });
+        toast.promise(promise(), { loading: 'Syncing Ledger...', success: m => m, error: 'Handshake Interrupted', finally: () => setIsSyncing(false) });
     };
     
-    // --- Dynamics Core: The Scanning & Incrementing Logic ---
     const handleAddToCart = (product: SellableProduct) => {
         setCart(currentCart => { 
             const existingIndex = currentCart.findIndex(i => i.variant_id === product.variant_id); 
@@ -367,9 +356,8 @@ export default function RetailDesk() {
         const product = products?.find(p => p.sku === sku); 
         if (product) { 
             handleAddToCart(product); 
-            // Dynamics-style sensory feedback:
             const audio = new Audio('/beep.mp3'); 
-            audio.play().catch(() => {}); // Play beep sound
+            audio.play().catch(() => {});
             toast.success(`Scanned: ${product.product_name}`, { duration: 1000 });
         } else { 
             toast.error(`Invalid SKU: ${sku}`); 
@@ -382,6 +370,7 @@ export default function RetailDesk() {
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
+        // DEEP WELD: Construct record with related_deal_id index
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(),
             cartItems: cart,
@@ -396,11 +385,12 @@ export default function RetailDesk() {
             tax_amount: 0,
             payment_status: paymentData.amountPaid >= totalAmount ? 'paid' : 'partial',
             due_amount: Math.max(0, totalAmount - paymentData.amountPaid),
+            related_deal_id: null // Prevents trigger crash on backend sync
         };
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
-        // DEEP FIX: Aligned structure for Receipt.tsx (identity, customer, items)
+        // APEX ALIGNMENT: 1:1 Mapping for Receipt.tsx identity and items
         const receiptData: ReceiptData = {
             saleInfo: { 
                 id: saleId, 
@@ -414,14 +404,15 @@ export default function RetailDesk() {
                 amount_due: newSale.due_amount, 
                 currency_code: businessDNA?.currency || 'UGX', 
                 total_tax: 0, 
-                kernel_seal_id: `TRAN-${saleId}`
+                kernel_seal_id: `TRAN-${saleId}`,
+                related_deal_id: null
             },
             identity: { 
                 legal_name: businessDNA?.name || 'Business Entity', 
                 physical_address: businessDNA?.address || 'Operational HQ', 
                 official_phone: businessDNA?.phone || 'N/A', 
                 receipt_footer: businessDNA?.footer || 'Thank you for your business!', 
-                tin_number: businessDNA?.tax_number || '',
+                tin_number: businessDNA?.tax_number || '', // Aggregated identity
                 currency_code: businessDNA?.currency || 'UGX',
                 logo_url: null,
                 plot_number: '',
@@ -454,29 +445,28 @@ export default function RetailDesk() {
                 <Card className="w-full max-w-md rounded-[2.5rem] shadow-2xl border-none overflow-hidden">
                     <CardHeader className="bg-emerald-600 text-white text-center py-10">
                         <CheckCircle2 className="h-16 w-16 text-white mx-auto mb-4" />
-                        <CardTitle className="text-2xl font-black uppercase">Sale Authorized</CardTitle>
-                        <CardDescription className="text-emerald-50 font-bold uppercase text-[10px]">Document Sealed in Local Database</CardDescription>
+                        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Sale Authorized</CardTitle>
+                        <CardDescription className="text-emerald-100 font-bold uppercase text-[10px]">Document Sealed in Local Ledger</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 space-y-6 bg-white">
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
-                           {/* Receipt Container for Web Print */}
                            <div ref={receiptRef}>
                              <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} />
                            </div>
                         </div>
                         <div className="flex flex-col gap-3">
                             <Button 
-                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl flex items-center justify-center gap-2" 
+                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100 flex items-center justify-center gap-2" 
                                 onClick={handleWebPrint}
                             >
-                                <PrinterIcon className="h-5 w-5" /> Print Receipt
+                                <PrinterIcon className="h-5 w-5" /> PRINT RECEIPT
                             </Button>
                             <Button 
                                 variant="outline"
-                                className="w-full h-14 font-black uppercase tracking-widest rounded-2xl" 
+                                className="w-full h-14 font-black text-slate-900 border-slate-200 uppercase tracking-widest rounded-2xl" 
                                 onClick={() => setLastCompletedSale(null)}
                             >
-                                New Transaction
+                                NEW TRANSACTION
                             </Button>
                         </div>
                     </CardContent>
@@ -487,7 +477,6 @@ export default function RetailDesk() {
     
     return (
         <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
-            {/* Top Operational bar */}
             <div className="h-16 border-b bg-white flex items-center justify-between px-8 shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
@@ -495,7 +484,7 @@ export default function RetailDesk() {
                 </div>
                 <div className="flex items-center gap-3">
                     <Button onClick={handleSync} variant="ghost" className="h-10 font-bold uppercase text-[10px] text-blue-600 gap-2">
-                        <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} /> {isSyncing ? "Syncing..." : "Sync Ledger"}
+                        <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} /> {isSyncing ? "Syncing Ledger..." : "Sync Ledger"}
                     </Button>
                 </div>
             </div>

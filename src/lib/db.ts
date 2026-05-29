@@ -16,6 +16,8 @@ import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
  *    BigInts for Products and Customers to prevent 'ConstraintError' during Sync.
  * 4. MULTI-TENANT ISOLATION: Explicitly indexed 'businessId' and 'userId' to 
  *    ensure data integrity and forensic accountability across the global node.
+ * 5. HANDSHAKE WELD: Added 'related_deal_id' to align with the Wide-System 
+ *    CRM/Procurement triggers and prevent Handshake Interruptions.
  */
 
 export type { SellableProduct, CartItem, Customer };
@@ -66,6 +68,7 @@ export interface OfflineSale {
   discount_value: number | null;
   discount_amount: number | null;
   tax_amount?: number;      // Aligned with Sovereign Tax Kernel
+  related_deal_id?: string | null; // DEEP WELD: Aligns with wide-system CRM/Procurement Handshake
 }
 
 /**
@@ -130,9 +133,9 @@ class OfflineDatabase extends Dexie {
 
       /**
        * 5. OFFLINE SALES: The Browser Transaction Buffer.
-       * Uses local auto-increment (++) as these are not yet in the ledger.
+       * Added 'related_deal_id' to the index to finalize the CRM/Procurement Weld.
        */
-      offlineSales: '++id, createdAt, customerId, payment_status, user_id, business_id', 
+      offlineSales: '++id, createdAt, customerId, payment_status, user_id, business_id, related_deal_id', 
     });
   }
 }
@@ -143,10 +146,3 @@ class OfflineDatabase extends Dexie {
  * connection stability and prevent database locks during multi-tab operations.
  */
 export const db = new OfflineDatabase();
-
-/**
- * STATUS: Sovereign Node Sealed.
- * JURISDICTION: Unified Multi-Tenant Cloud.
- * ENGINE: Elite 1024-dim Data Integrity Ready.
- * ALIGNMENT: v20.5 - Verified for APEX (time@bbu1.com).
- */
