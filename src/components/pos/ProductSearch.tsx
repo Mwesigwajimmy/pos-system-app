@@ -171,11 +171,15 @@ export default function ProductSearch({ onProductSelect }: ProductSearchProps) {
         />
       </div>
 
-      {/* RESULTS DROPDOWN */}
+      {/* RESULTS DROPDOWN WITH VERTICAL SCROLLING */}
       {isFocused && searchTerm.length > 0 && (
         <div className="absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden">
-          <ScrollArea className="max-h-[400px]">
-            <div ref={resultsContainerRef} className="p-1">
+          {/* 
+              SCROLL AREA INTEGRATION 
+              Allows cashier to scroll through long result lists (max-height: 450px)
+          */}
+          <ScrollArea className="h-full max-h-[450px] w-full">
+            <div ref={resultsContainerRef} className="p-1 space-y-1">
               {results.length > 0 ? (
                 results.map((product, index) => (
                   <div

@@ -294,14 +294,28 @@ export default function RetailDesk() {
         onAfterPrint: () => toast.success('Print Job Completed')
     });
 
-    // --- Corporate Identity Sync ---
+    // --- DEEP UPDATE: Corporate Identity Sync (Fixed Multiple Rows Error) ---
     useEffect(() => {
         if (!userProfile?.business_id) return;
         const fetchCorporateDNA = async () => {
             const supabase = createClient();
-            const { data: corpIdentity } = await supabase.from('view_bbu1_corporate_identity').select('*').eq('business_id', userProfile.business_id).single();
-            const { data: taxRes } = await supabase.from('tax_configurations').select('rate_percentage').eq('business_id', userProfile.business_id).eq('is_active', true).limit(1);
-            if (corpIdentity) {
+            
+            // Fix: Use .limit(1) instead of .single() to prevent crash if view has duplicate rows per business
+            const { data: identities } = await supabase
+                .from('view_bbu1_corporate_identity')
+                .select('*')
+                .eq('business_id', userProfile.business_id)
+                .limit(1);
+
+            const { data: taxRes } = await supabase
+                .from('tax_configurations')
+                .select('rate_percentage')
+                .eq('business_id', userProfile.business_id)
+                .eq('is_active', true)
+                .limit(1);
+
+            if (identities && identities.length > 0) {
+                const corpIdentity = identities[0];
                 setBusinessDNA({
                     name: corpIdentity.legal_name || 'Business Account',
                     phone: corpIdentity.official_phone || 'N/A',
@@ -386,7 +400,7 @@ export default function RetailDesk() {
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
-        // DEEP FIX: Align structure with Receipt.tsx expectation
+        // DEEP FIX: Aligned structure for Receipt.tsx (identity, customer, items)
         const receiptData: ReceiptData = {
             saleInfo: { 
                 id: saleId, 
@@ -403,10 +417,10 @@ export default function RetailDesk() {
                 kernel_seal_id: `TRAN-${saleId}`
             },
             identity: { 
-                legal_name: businessDNA?.name || 'Store', 
-                physical_address: businessDNA?.address || 'N/A', 
+                legal_name: businessDNA?.name || 'Business Entity', 
+                physical_address: businessDNA?.address || 'Operational HQ', 
                 official_phone: businessDNA?.phone || 'N/A', 
-                receipt_footer: businessDNA?.footer || 'Thank you!', 
+                receipt_footer: businessDNA?.footer || 'Thank you for your business!', 
                 tin_number: businessDNA?.tax_number || '',
                 currency_code: businessDNA?.currency || 'UGX',
                 logo_url: null,
@@ -438,10 +452,10 @@ export default function RetailDesk() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
                 <Card className="w-full max-w-md rounded-[2.5rem] shadow-2xl border-none overflow-hidden">
-                    <CardHeader className="bg-slate-900 text-white text-center py-10">
-                        <CheckCircle2 className="h-16 w-16 text-emerald-400 mx-auto mb-4" />
+                    <CardHeader className="bg-emerald-600 text-white text-center py-10">
+                        <CheckCircle2 className="h-16 w-16 text-white mx-auto mb-4" />
                         <CardTitle className="text-2xl font-black uppercase">Sale Authorized</CardTitle>
-                        <CardDescription className="text-slate-400 font-bold uppercase text-[10px]">Document Sealed in Local Database</CardDescription>
+                        <CardDescription className="text-emerald-50 font-bold uppercase text-[10px]">Document Sealed in Local Database</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 space-y-6 bg-white">
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
@@ -452,13 +466,14 @@ export default function RetailDesk() {
                         </div>
                         <div className="flex flex-col gap-3">
                             <Button 
-                                className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-100 flex items-center justify-center gap-2" 
+                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl flex items-center justify-center gap-2" 
                                 onClick={handleWebPrint}
                             >
                                 <PrinterIcon className="h-5 w-5" /> Print Receipt
                             </Button>
                             <Button 
-                                className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest rounded-2xl" 
+                                variant="outline"
+                                className="w-full h-14 font-black uppercase tracking-widest rounded-2xl" 
                                 onClick={() => setLastCompletedSale(null)}
                             >
                                 New Transaction
