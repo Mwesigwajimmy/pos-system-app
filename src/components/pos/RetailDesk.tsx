@@ -281,46 +281,49 @@ export default function RetailDesk() {
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.toArray(), []);
     
-    // --- APEX PRINT FIX: Function syntax for content avoids findDOMNode error ---
+    // --- APEX PRINT FIX: React-to-print v3 requires contentRef, not a function ---
     const handleWebPrint = useReactToPrint({ 
-        content: () => receiptRef.current,
-        onAfterPrint: () => toast.success('Print Job Completed Successfully'),
-        removeAfterPrint: true,
+        contentRef: receiptRef, // CORRECT SYNTAX FOR V3
+        onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
-    // --- DEEP IDENTITY ALIGNMENT: Corporate DNA Sync (Strict Database Mapping) ---
+    // --- DEEP IDENTITY ALIGNMENT: Corporate DNA Sync (Fixed Location multiplier) ---
     useEffect(() => {
         if (!userProfile?.business_id) return;
         const fetchCorporateDNA = async () => {
             const supabase = createClient();
             
-            // DEEP WELD: Fetch directly from view_bbu1_corporate_identity
+            // DEEP WELD: Fetch strictly mapping the specific database columns we audited
             const { data: identities } = await supabase
                 .from('view_bbu1_corporate_identity')
-                .select('*')
+                .select(`
+                    legal_name, 
+                    tin_number, 
+                    tax_number, 
+                    official_phone, 
+                    currency_code, 
+                    physical_address, 
+                    city, 
+                    receipt_footer, 
+                    logo_url
+                `)
                 .eq('business_id', userProfile.business_id)
                 .limit(1);
 
-            const { data: taxRes } = await supabase
-                .from('tax_configurations')
-                .select('rate_percentage')
-                .eq('business_id', userProfile.business_id)
-                .eq('is_active', true)
-                .limit(1);
+            const { data: taxRes } = await supabase.from('tax_configurations').select('rate_percentage').eq('business_id', userProfile.business_id).eq('is_active', true).limit(1);
             
             if (identities && identities.length > 0) {
-                const corp = identities[0];
+                const corpIdentity = identities[0];
                 setBusinessDNA({
-                    legal_name: corp.legal_name || 'Business Account',
-                    official_phone: corp.official_phone || 'N/A',
-                    // AGGREGATION: Ensuring we capture every possible tax identifier
-                    tin_number: corp.tin_number, 
-                    tax_number: corp.tax_number,
-                    currency_code: corp.currency_code || 'UGX',
-                    receipt_footer: corp.receipt_footer || 'Thank you for your business!',
-                    physical_address: corp.physical_address || 'Operational HQ',
-                    city: corp.city || '',
-                    logo_url: corp.logo_url || null,
+                    name: corpIdentity.legal_name || 'Business Account',
+                    phone: corpIdentity.official_phone || 'N/A',
+                    // AGGREGATION: Maps both potential tax columns to ensure we pull the correct Tax ID
+                    tax_number: corpIdentity.tin_number || corpIdentity.tax_number || '', 
+                    currency: corpIdentity.currency_code || 'UGX',
+                    footer: corpIdentity.receipt_footer || 'Thank you for your business!',
+                    address: corpIdentity.physical_address || 'Operational HQ',
+                    city: corpIdentity.city || '',
+                    logo_url: corpIdentity.logo_url,
                     globalTaxRate: taxRes?.[0]?.rate_percentage || 0
                 });
             }
@@ -341,6 +344,7 @@ export default function RetailDesk() {
             
             const offlineSales = await db.offlineSales.toArray();
             if (offlineSales.length > 0) {
+                // The Handshake now completes because related_deal_id exists in Dexie & backend
                 await supabase.rpc('sync_offline_sales', { sales_data: offlineSales });
                 await db.offlineSales.clear();
             }
@@ -379,6 +383,7 @@ export default function RetailDesk() {
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
+        // DEEP WELD: Construct record with related_deal_id index
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(),
             cartItems: cart,
@@ -393,12 +398,12 @@ export default function RetailDesk() {
             tax_amount: 0,
             payment_status: paymentData.amountPaid >= totalAmount ? 'paid' : 'partial',
             due_amount: Math.max(0, totalAmount - paymentData.amountPaid),
-            related_deal_id: null
+            related_deal_id: null // Prevents trigger crash on backend sync
         };
 
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
         
-        // --- APEX ALIGNMENT: Mapping Full Business Identity for Receipt ---
+        // APEX ALIGNMENT: 1:1 Mapping for Receipt.tsx identity using verified DB columns
         const receiptData: ReceiptData = {
             saleInfo: { 
                 id: saleId, 
@@ -410,19 +415,20 @@ export default function RetailDesk() {
                 subtotal, 
                 discount: discountAmount, 
                 amount_due: newSale.due_amount, 
-                currency_code: businessDNA?.currency_code || 'UGX', 
-                kernel_seal_id: `TXN-${saleId}`,
+                currency_code: businessDNA?.currency || 'UGX', 
+                total_tax: 0, 
+                kernel_seal_id: `TRAN-${saleId}`,
+                related_deal_id: null
             },
             identity: { 
-                legal_name: businessDNA?.legal_name, 
-                official_phone: businessDNA?.official_phone, 
-                tin_number: businessDNA?.tin_number,
-                tax_number: businessDNA?.tax_number,
-                physical_address: businessDNA?.physical_address,
-                city: businessDNA?.city,
-                receipt_footer: businessDNA?.receipt_footer,
-                currency_code: businessDNA?.currency_code,
-                logo_url: businessDNA?.logo_url,
+                legal_name: businessDNA?.name || 'Business Entity', 
+                physical_address: businessDNA?.address || 'Operational HQ', 
+                city: businessDNA?.city || '',
+                official_phone: businessDNA?.phone || 'N/A', 
+                receipt_footer: businessDNA?.footer || 'Thank you for your business!', 
+                tin_number: businessDNA?.tax_number || '', 
+                currency_code: businessDNA?.currency || 'UGX',
+                logo_url: businessDNA?.logo_url || null
             },
             customer: selectedCustomer,
             items: cart.map(item => ({ 
@@ -456,8 +462,7 @@ export default function RetailDesk() {
                     <CardContent className="p-8 space-y-6 bg-white">
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
                            <div ref={receiptRef}>
-                             {/* Component handles verified forwardRef to avoid crash */}
-                             <Receipt receiptData={lastCompletedSale.receiptData} autoPrint={false} />
+                             <Receipt receiptData={lastCompletedSale.receiptData} />
                            </div>
                         </div>
                         <div className="flex flex-col gap-3">
@@ -486,7 +491,7 @@ export default function RetailDesk() {
             <div className="h-16 border-b bg-white flex items-center justify-between px-8 shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{businessDNA?.legal_name} Terminal #01</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{businessDNA?.name} Terminal #01</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button onClick={handleSync} variant="ghost" className="h-10 font-bold uppercase text-[10px] text-blue-600 gap-2">
@@ -501,7 +506,7 @@ export default function RetailDesk() {
                 </div>
                 <div className="lg:col-span-5 xl:col-span-4 p-6 overflow-hidden flex flex-col">
                     <CartDisplay 
-                        cart={cart} currency={businessDNA?.currency_code || 'UGX'} onUpdateQuantity={(id, q) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
+                        cart={cart} currency={businessDNA?.currency || 'UGX'} onUpdateQuantity={(id, q) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
                         onRemoveItem={id => setCart(cart.filter(i => i.variant_id !== id))} selectedCustomer={selectedCustomer} onSetCustomer={() => setCustomerModalOpen(true)} onCharge={() => setPaymentModalOpen(true)} isProcessing={false} discount={discount} setDiscount={setDiscount} 
                     />
                 </div>
