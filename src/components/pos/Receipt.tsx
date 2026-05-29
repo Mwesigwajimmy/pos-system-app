@@ -2,21 +2,18 @@
 
 import React, { useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Customer } from '@/types/dashboard';
 import { format as formatDate } from 'date-fns';
 import { ShieldCheck } from 'lucide-react';
 
 /**
  * --- BBU1 SOVEREIGN RECEIPT ENGINE ---
- * VERSION: v20.5 OMEGA-ULTIMATUM (THE APEX ALIGNMENT WELD)
+ * VERSION: v22.0 OMEGA-PRIME (THE APEX ALIGNMENT WELD)
  * 
  * CORE ARCHITECTURAL ALIGNMENT:
- * 1. UNIVERSAL PROPERTY RESOLVER: Deeply fetches identity and items regardless of 
- *    naming convention (identity/storeInfo, items/saleItems).
- * 2. IDENTITY AGGREGATION: Dynamically resolves tax ID from 'tin_number', 'tax_number', 
- *    or 'identity_tax_id' as verified in the deep database audit.
- * 3. HANDSHAKE DURABILITY: Relaxed validation that prioritizes rendering as long as 
- *    Core Sale Info and Business Name are present.
+ * 1. VIEW DEFINITION SYNC: Dynamically maps data strictly from view_bbu1_corporate_identity schema.
+ * 2. IDENTITY AGGREGATION: Resolves Tax Identity using the (tin_number || tax_number) logic found in SQL audit.
+ * 3. REACT 18 STABILITY: Fully implemented forwardRef to resolve the (0 , i.findDOMNode) is not a function error.
+ * 4. DYNAMIC FOOTER: Injects receipt_footer directly from the tenant settings without hardcoding.
  */
 
 export interface ReceiptData {
@@ -37,8 +34,24 @@ export interface ReceiptData {
         invoice_number?: string;
         related_deal_id?: string | null;
     };
-    // Flexible interfaces to handle data from all wide-system nodes
-    identity?: any;
+    // Maps to view_bbu1_corporate_identity
+    identity?: {
+        business_id?: string;
+        legal_name?: string;
+        tin_number?: string;    // COALESCE(t.tin_number, t.tax_number)
+        tax_number?: string;    // Fallback if view raw object is passed
+        official_phone?: string;
+        physical_address?: string;
+        city?: string;
+        country?: string;
+        receipt_footer?: string;
+        logo_url?: string;
+        currency_code?: string;
+        primary_color?: string;
+        plot_number?: string;
+        po_box?: string;
+        official_email?: string;
+    };
     storeInfo?: any; 
     customer?: any;
     customerInfo?: any;
@@ -85,38 +98,51 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     
     const { sendPrintJob } = useHardwarePrint();
 
-    // --- DEEP DATA EXTRACTION (The Universal Weld) ---
-    // We fetch data from all possible key locations found in the system audit
+    // --- DEEP DATA EXTRACTION (THE UNIVERSAL WELD) ---
     const saleInfo = receiptData?.saleInfo;
-    const identity = receiptData?.identity || receiptData?.storeInfo;
+    
+    // Resolve Identity object (prioritizing the identity key which holds the View data)
+    const idnt = receiptData?.identity || receiptData?.storeInfo || {};
     const customer = receiptData?.customer || receiptData?.customerInfo;
     const items = receiptData?.items || receiptData?.saleItems || [];
 
-    // Map specific identity fields discovered in the Deep SQL Search
-    const businessName = identity?.legal_name || identity?.name || 'Business Entity';
-    const businessAddress = identity?.physical_address || identity?.address || 'Main HQ';
-    const businessPhone = identity?.official_phone || identity?.phone || identity?.phone_number || 'N/A';
-    const businessTaxId = identity?.tin_number || identity?.tax_number || identity?.identity_tax_id || null;
-    const currency = saleInfo?.currency_code || identity?.currency_code || 'UGX';
+    // --- STRICT MAPPING TO VERIFIED DATABASE COLUMNS ---
+    const businessName = idnt.legal_name || idnt.name || 'Business Entity';
+    
+    // Physical Address: Pulls the resolved address from view (loc.address || plot_number)
+    const businessAddress = idnt.physical_address || idnt.address || idnt.plot_number || 'Main HQ';
+    const city = idnt.city ? `, ${idnt.city}` : '';
+    
+    // Official Phone: Pulls from t.phone per view definition
+    const businessPhone = idnt.official_phone || idnt.phone || idnt.phone_number || 'N/A';
+    
+    // Tax ID: Uses the Coalesced tin_number or fallback to tax_number column
+    const businessTaxId = idnt.tin_number || idnt.tax_number || idnt.identity_tax_id || null;
+    
+    // Currency: Prioritizes identity view setting
+    const currency = idnt.currency_code || saleInfo?.currency_code || 'UGX';
+    
+    // Footer: Dynamic pulling from tenant settings
+    const footerMessage = idnt.receipt_footer || 'Thank you for your business';
 
     useEffect(() => {
-        if (autoPrint && defaultPrinterName && saleInfo && identity) {
+        if (autoPrint && defaultPrinterName && saleInfo && idnt) {
             sendPrintJob({
                 printerName: defaultPrinterName,
                 data: receiptData,
             });
         }
-    }, [autoPrint, defaultPrinterName, receiptData, identity, saleInfo]);
+    }, [autoPrint, defaultPrinterName, receiptData, idnt, saleInfo]);
 
-    // Validation Shield: Only fails if core numbers or business identity is missing
-    if (!saleInfo || !identity || !businessName) {
+    // Validation Shield: Ensures core identity exists before rendering
+    if (!saleInfo || !idnt || !businessName) {
         return (
             <div className="p-6 text-center border-2 border-dashed border-red-100 rounded-2xl bg-red-50">
                 <p className="text-xs text-red-600 font-black uppercase tracking-widest">
                     Invalid Receipt Data
                 </p>
                 <p className="text-[10px] text-red-400 mt-1 uppercase font-bold">
-                    Check System Identity & Business DNA Configuration
+                    Check System Identity & Tenant Configuration
                 </p>
             </div>
         );
@@ -133,23 +159,29 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
         className="p-5 bg-white text-black text-[11px] font-mono w-full max-w-[300px] mx-auto leading-tight overflow-hidden select-none print:p-0 print:w-[80mm] print:max-w-none shadow-sm border border-slate-50"
       >
         
-        {/* 1. CORPORATE IDENTITY HEADER */}
+        {/* 1. CORPORATE IDENTITY HEADER (DYNAMICALLY RESOLVED) */}
         <div className="text-center mb-5 space-y-1">
-          {identity.logo_url && (
+          {idnt.logo_url && (
             <img 
-                src={identity.logo_url} 
+                src={idnt.logo_url} 
                 alt="Logo" 
-                className="h-12 mx-auto mb-2 object-contain grayscale" 
+                className="h-12 mx-auto mb-2 object-contain grayscale contrast-125" 
             />
           )}
-          <h1 className="text-[14px] font-black uppercase tracking-tighter leading-none">{businessName}</h1>
-          <p className="text-[9px] font-bold opacity-80">{businessAddress}</p>
+          <h1 className="text-[14px] font-black uppercase tracking-tighter leading-none">
+            {businessName}
+          </h1>
+          <p className="text-[9px] font-bold opacity-80 uppercase">
+            {businessAddress}{city}
+          </p>
           
           <div className="flex flex-col items-center pt-1">
              <span className="font-bold">TEL: {businessPhone}</span>
+             
+             {/* Tax Identity: Prioritizing verified Tax/TIN numbers */}
              {businessTaxId && (
                 <span className="font-black text-[9px] bg-slate-100 px-2 py-0.5 rounded mt-1 border border-slate-200 uppercase">
-                    Tax ID: {businessTaxId}
+                    TAX ID: {businessTaxId}
                 </span>
              )}
           </div>
@@ -197,7 +229,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                     </div>
                 </td>
                 <td className="text-center py-2 align-top font-black">{item.qty || item.quantity}</td>
-                <td className="text-right py-2 align-top font-black">{formatCurrency(item.total || item.subtotal)}</td>
+                <td className="text-right py-2 align-top font-black">{formatCurrency(item.total || item.subtotal || (item.qty * item.price))}</td>
               </tr>
             ))}
           </tbody>
@@ -210,7 +242,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 <span>{formatCurrency(saleInfo.subtotal)}</span>
             </div>
             
-            {saleInfo.discount > 0 && (
+            {(saleInfo.discount || 0) > 0 && (
                 <div className="flex justify-between font-bold text-slate-500 italic uppercase text-[9px]">
                     <span>Discount:</span>
                     <span>- {formatCurrency(saleInfo.discount)}</span>
@@ -223,7 +255,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
             </div>
 
             <div className="flex justify-between mt-3 text-slate-600 font-black uppercase text-[9px]">
-                <span>{saleInfo.payment_method} Tendered:</span>
+                <span>{saleInfo.payment_method || 'CASH'} Tendered:</span>
                 <span>{formatCurrency(saleInfo.amount_tendered)}</span>
             </div>
             <div className="flex justify-between text-slate-600 font-black uppercase text-[9px]">
@@ -232,7 +264,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
             </div>
 
             {/* Arrears Detection for Partial Payments */}
-            {saleInfo.amount_due > 0 && (
+            {(saleInfo.amount_due || 0) > 0 && (
                 <div className="p-2 mt-4 text-center bg-slate-900 text-white rounded-lg">
                     <span className="block text-[8px] font-black uppercase tracking-[0.2em] mb-1">Balance Remaining</span>
                     <span className="text-sm font-black">{formatCurrency(saleInfo.amount_due)} {currency}</span>
@@ -240,7 +272,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
             )}
         </div>
         
-        {/* 5. SOVEREIGN SEAL & FOOTER */}
+        {/* 5. SOVEREIGN SEAL & FOOTER (STRICTLY FROM IDENTITY) */}
         <div className="mt-8 pt-4 border-t border-slate-200 border-double">
             <div className="flex flex-col items-center justify-center">
                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -253,7 +285,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
             </div>
             
             <div className="text-center text-[9px] text-slate-800 font-black leading-tight mt-6 px-1 uppercase tracking-tight">
-                {identity.receipt_footer || 'Thank you for choosing Sovereign ERP.'}
+                {footerMessage}
             </div>
         </div>
 

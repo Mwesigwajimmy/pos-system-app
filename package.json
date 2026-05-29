@@ -98,7 +98,7 @@
     "react-select": "^5.10.2",
     "react-simple-maps": "^1.0.0",
     "react-timeago": "^8.3.0",
-    "react-to-print": "^2.14.7",
+    "react-to-print": "^3.3.0",
     "react18-json-view": "^0.2.7",
     "recharts": "^3.3.0",
     "remark-gfm": "^4.0.1",
