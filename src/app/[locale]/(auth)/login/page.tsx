@@ -1,4 +1,3 @@
-// src/app/(auth)/login/page.tsx
 'use client';
 
 import React, { useState, memo } from 'react';
@@ -40,10 +39,16 @@ const useLogin = () => {
     const handleEmailLogin = async (values: LoginFormInput) => {
         setIsSubmitting('email');
         const toastId = toast.loading('Authenticating...');
+        
         const { error: signInError } = await supabase.auth.signInWithPassword(values);
 
         if (signInError) {
-            toast.error(signInError.message, { id: toastId });
+            // DEEP WELD: Explicitly handling "Wrong Password" / Invalid Credentials for the user
+            const errorMessage = signInError.status === 400 
+                ? "Wrong password or invalid credentials." 
+                : signInError.message;
+                
+            toast.error(errorMessage, { id: toastId });
             setIsSubmitting(null);
             return;
         }
@@ -88,10 +93,19 @@ const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) =
             name="password"
             render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-xs font-bold text-slate-700 uppercase">Password</FormLabel>
+                    <div className="flex items-center justify-between">
+                        <FormLabel className="text-xs font-bold text-slate-700 uppercase">Password</FormLabel>
+                        {/* --- IDENTITY RECOVERY ANCHOR --- */}
+                        <Link 
+                            href="/forgot-password" 
+                            className="text-[10px] font-bold text-blue-600 hover:underline uppercase tracking-tighter"
+                        >
+                            Forgot Password?
+                        </Link>
+                    </div>
                     <div className="relative">
                         <FormControl>
-                            <Input type={isVisible ? 'text' : 'password'} className="h-11 pr-10 border-slate-200" {...field} />
+                            <Input type={isVisible ? 'text' : 'password'} className="h-11 pr-10 border-slate-200 shadow-sm" {...field} />
                         </FormControl>
                         <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-blue-600 transition-colors" aria-label={isVisible ? "Hide" : "Show"}>
                             {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
