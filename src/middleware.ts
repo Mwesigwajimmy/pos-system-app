@@ -17,7 +17,7 @@ const locales = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw',
 const defaultLocale = 'en';
 
 const publicPaths = [
-    '/', '/login', '/signup','/forgot-password','/update-password', '/accept-invite', '/auth/callback', 
+    '/', '/login', '/signup','/forgot-password','/update-password', '/accept-invite', '/callback', 
     '/blog', '/careers', '/contact', '/pricing', '/about', 
     '/aura-ai', '/industries', '/courses', '/donate', 
     '/newsletter', '/help-centre', '/download', '/features'
