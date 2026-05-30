@@ -10,10 +10,11 @@
  * 2. Identity Recovery: Links directly to the hardened ForgotPassword node.
  * 3. SSO Handshake: Managed via Supabase OAuth 2.0.
  * 4. MFA-Ready: Structure supports future second-factor implementation.
+ * 5. Visual Theme: Professional Sovereign White (Slate-50).
  */
 
 import React, { useState, memo } from 'react';
-import { useRouter, useParams } from 'next/navigation'; // DETECTING LOCALE
+import { useRouter, useParams } from 'next/navigation'; 
 import Link from 'next/link';
 import { useForm, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Eye, EyeOff, Loader2, Rocket, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { FaGoogle, FaMicrosoft } from 'react-icons/fa';
 
 // --- Schema and Types ---
@@ -41,7 +42,8 @@ type SsoProvider = 'google' | 'azure';
 // --- Logic Hook ---
 const useLogin = () => {
     const router = useRouter();
-    const params = useParams(); // CAPTURING LOCALE (en, fr, de, etc.)
+    const params = useParams(); 
+    const locale = params?.locale || 'en';
     const supabase = createClient();
     const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
     const form = useForm<LoginFormInput>({
@@ -51,14 +53,13 @@ const useLogin = () => {
 
     const handleEmailLogin = async (values: LoginFormInput) => {
         setIsSubmitting('email');
-        const toastId = toast.loading('Authenticating...');
+        const toastId = toast.loading('Verifying Identity...');
         
         const { error: signInError } = await supabase.auth.signInWithPassword(values);
 
         if (signInError) {
-            // DEEP WELD: Explicitly handling "Wrong Password" / Invalid Credentials for the user
             const errorMessage = signInError.status === 400 
-                ? "Wrong password or invalid credentials." 
+                ? "Invalid credentials. Check your master key." 
                 : signInError.message;
                 
             toast.error(errorMessage, { id: toastId });
@@ -72,16 +73,13 @@ const useLogin = () => {
         const profile = profileData ? profileData[0] : null;
 
         if (profileError || !profile) {
-            toast.error('Critical Error: Business profile not found.', { id: toastId });
+            toast.error('Identity Conflict: Business profile not resolved.', { id: toastId });
             await supabase.auth.signOut();
             setIsSubmitting(null);
             return;
         }
 
         toast.success('Access Granted. Welcome back.', { id: toastId });
-
-        // ENSURING LOCALIZED DASHBOARD REDIRECT
-        const locale = params?.locale || 'en';
         router.push(`/${locale}/dashboard`);
     };
 
@@ -92,8 +90,8 @@ const useLogin = () => {
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
             options: { 
-                // ENSURING OAUTH CALLBACK INCLUDES THE LOCALE
-                redirectTo: `${window.location.origin}/${locale}/auth/callback` 
+                // DEEP WELD FIX: Removing '/auth/' because of Route Group configuration
+                redirectTo: `${window.location.origin}/${locale}/callback` 
             },
         });
         if (error) {
@@ -118,20 +116,23 @@ const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) =
             render={({ field }) => (
                 <FormItem>
                     <div className="flex items-center justify-between">
-                        <FormLabel className="text-xs font-bold text-slate-700 uppercase">Password</FormLabel>
-                        {/* --- IDENTITY RECOVERY ANCHOR: DEEP LINKED TO /[LOCALE]/FORGOT-PASSWORD --- */}
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-tight">Master Password</FormLabel>
                         <Link 
                             href={`/${locale}/forgot-password`} 
-                            className="text-[10px] font-bold text-blue-600 hover:underline uppercase tracking-tighter"
+                            className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-tighter"
                         >
-                            Forgot Password?
+                            Forgot Key?
                         </Link>
                     </div>
                     <div className="relative">
                         <FormControl>
-                            <Input type={isVisible ? 'text' : 'password'} className="h-11 pr-10 border-slate-200 shadow-sm" {...field} />
+                            <Input 
+                                type={isVisible ? 'text' : 'password'} 
+                                className="h-12 pr-10 border-slate-100 bg-slate-50/50 rounded-xl font-bold shadow-inner" 
+                                {...field} 
+                            />
                         </FormControl>
-                        <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-blue-600 transition-colors" aria-label={isVisible ? "Hide" : "Show"}>
+                        <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-0 top-0 h-full px-4 text-slate-300 hover:text-blue-600 transition-colors" aria-label={isVisible ? "Hide" : "Show"}>
                             {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                     </div>
@@ -144,8 +145,13 @@ const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) =
 PasswordInput.displayName = 'PasswordInput';
 
 const SsoButton = memo(({ provider, icon: Icon, label, onClick, isSubmitting }: { provider: SsoProvider; icon: React.ElementType; label: string; onClick: (p: SsoProvider) => void; isSubmitting: string | null; }) => (
-    <Button variant="outline" className="h-11 border-slate-200 font-semibold" onClick={() => onClick(provider)} disabled={!!isSubmitting}>
-        {isSubmitting === provider ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+    <Button 
+        variant="outline" 
+        className="h-12 border-slate-100 bg-slate-50/50 hover:bg-slate-100 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all" 
+        onClick={() => onClick(provider)} 
+        disabled={!!isSubmitting}
+    >
+        {isSubmitting === provider ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4 text-slate-600" />}
         {label}
     </Button>
 ));
@@ -158,83 +164,79 @@ export default function LoginPage() {
     const locale = params?.locale || 'en';
 
     return (
-        <div className="min-h-screen bg-slate-950 relative flex items-center justify-center p-4 font-sans antialiased overflow-hidden">
+        <div className="min-h-screen bg-slate-50 relative flex items-center justify-center p-4 font-sans antialiased overflow-hidden">
             
-            {/* --- PREMIUM MOTION BACKGROUND --- */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                <motion.div
-                    animate={{
-                        scale: [1, 1.2, 1],
-                        rotate: [0, 45, 0],
-                        x: [-100, 100, -100],
-                        y: [-50, 50, -50],
-                    }}
-                    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                    className="absolute top-[-20%] left-[-10%] w-[80%] h-[80%] rounded-full bg-blue-600/10 blur-[120px]"
-                />
-                <motion.div
-                    animate={{
-                        scale: [1.3, 1, 1.3],
-                        rotate: [0, -45, 0],
-                        x: [100, -100, 100],
-                        y: [50, -50, 50],
-                    }}
-                    transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-                    className="absolute bottom-[-20%] right-[-10%] w-[90%] h-[90%] rounded-full bg-blue-900/15 blur-[150px]"
-                />
-                <div className="absolute inset-0 bg-[url('/patterns/grid-light.svg')] opacity-[0.03] bg-[length:40px_40px]" />
-            </div>
+            {/* --- PROFESSIONAL SOVEREIGN BACKGROUND GRID --- */}
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.04] bg-[url('/patterns/grid-dark.svg')] bg-[length:40px_40px]" />
 
-            <Card className="relative z-10 w-full max-w-md shadow-2xl bg-white/95 backdrop-blur-xl border-none rounded-2xl overflow-hidden">
-                <CardHeader className="pt-10 pb-6 text-center space-y-2">
-                    <div className="flex justify-center mb-4">
-                        <div className="p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20">
-                            <Rocket className="h-8 w-8 text-white" />
-                        </div>
+            <Card className="relative z-10 w-full max-w-md shadow-xl border-slate-200 bg-white rounded-[2.5rem] overflow-hidden border-none">
+                <CardHeader className="pt-12 pb-6 text-center space-y-4">
+                    <div className="flex justify-center mb-2">
+                        {/* THE B-LOGO INTEGRATION */}
+                        <img 
+                            src="/logo.png" 
+                            alt="BBU1 Logo" 
+                            className="h-20 w-20 object-contain drop-shadow-sm" 
+                        />
                     </div>
-                    <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">Sign In</CardTitle>
-                    <CardDescription className="text-slate-500 font-medium">Access your global business dashboard</CardDescription>
+                    <CardTitle className="text-3xl font-black uppercase tracking-tighter text-slate-900">Sign In</CardTitle>
+                    <CardDescription className="text-slate-400 font-bold uppercase text-[9px] tracking-[0.2em]">Global Sovereign Dashboard</CardDescription>
                 </CardHeader>
                 
-                <CardContent className="px-8 pb-10 space-y-6">
+                <CardContent className="px-10 pb-12 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <SsoButton provider="google" label="Google" icon={FaGoogle} onClick={handleSsoLogin} isSubmitting={isSubmitting} />
                         <SsoButton provider="azure" label="Microsoft" icon={FaMicrosoft} onClick={handleSsoLogin} isSubmitting={isSubmitting} />
                     </div>
                     
-                    <div className="relative py-2">
-                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-200" /></div>
-                        <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest"><span className="bg-white px-3 text-slate-400">Secure Email Login</span></div>
+                    <div className="relative py-4">
+                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
+                        <div className="relative flex justify-center text-[9px] font-black uppercase tracking-widest"><span className="bg-white px-4 text-slate-300">Identity Protocol</span></div>
                     </div>
 
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleEmailLogin)} className="space-y-5">
+                        <form onSubmit={form.handleSubmit(handleEmailLogin)} className="space-y-6">
                             <FormField control={form.control} name="email" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-bold text-slate-700 uppercase tracking-tight">Work Email</FormLabel>
-                                    <FormControl><Input type="email" placeholder="email@company.com" className="h-11 border-slate-200" {...field} /></FormControl>
+                                    <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-tight">Work Email</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="email" 
+                                            placeholder="admin@bbu1.com" 
+                                            className="h-12 border-slate-100 bg-slate-50/50 rounded-xl font-bold" 
+                                            {...field} 
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
                             
                             <PasswordInput control={form.control} />
                             
-                            <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-[0.98]" disabled={!!isSubmitting}>
-                                {isSubmitting === 'email' ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying...</> : "Sign In to Dashboard"}
+                            <Button 
+                                type="submit" 
+                                className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-100 transition-all active:scale-[0.98]" 
+                                disabled={!!isSubmitting}
+                            >
+                                {isSubmitting === 'email' ? (
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="h-5 w-5 animate-spin" /> 
+                                        <span>Authorizing...</span>
+                                    </div>
+                                ) : "Authorize Access"}
                             </Button>
                         </form>
                     </Form>
                     
-                    <div className="pt-4 border-t border-slate-100 text-center space-y-4">
-                        <p className="text-sm text-slate-500 font-medium">
-                            New to BBU1?{' '}
-                            {/* --- LOCALIZED SIGNUP ANCHOR --- */}
-                            <Link href={`/${locale}/signup`} className="font-bold text-blue-600 hover:underline">Create an account</Link>
+                    <div className="pt-6 border-t border-slate-50 text-center space-y-4">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                            New Node Account?{' '}
+                            <Link href={`/${locale}/signup`} className="text-blue-600 hover:underline">Register Here</Link>
                         </p>
                         
-                        <div className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase text-slate-300 tracking-widest">
+                        <div className="flex items-center justify-center gap-2 text-[8px] font-black uppercase text-slate-300 tracking-[0.3em]">
                             <ShieldCheck className="h-3 w-3" />
-                            Standard SSL Encrypted Session
+                            Sovereign SSL Protocol Active
                         </div>
                     </div>
                 </CardContent>

@@ -5,10 +5,14 @@
  * COMPONENT: ForgotPasswordPage
  * ROLE: Initializes the secure master key restoration protocol.
  * 
- * DEEP FIX: 
- * Removed the '/auth/' segment from the redirectTo URL.
- * Because '(auth)' is a Next.js Route Group, it is invisible to the browser.
- * Including it in the URL causes a 404 error. 
+ * DEEP THEME UPDATE:
+ * 1. Visual Language: Professional White (Slate-50) Sovereign Theme.
+ * 2. Identity Branding: B-Logo Integration.
+ * 3. Security UX: High-contrast inputs and refined dispatch states.
+ * 
+ * LOGIC FIX (PRESERVED): 
+ * Corrected Route Group Resolution: (auth) is invisible in URL.
+ * Redirect path uses /callback instead of /auth/callback to prevent 404.
  */
 
 import { useState } from 'react';
@@ -18,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Fingerprint } from 'lucide-react';
+import { Loader2, Fingerprint, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function ForgotPasswordPage() {
@@ -40,10 +44,8 @@ export default function ForgotPasswordPage() {
         const locale = params?.locale || 'en';
         
         /**
-         * 🛡️ THE DEEP WELD FIX:
-         * We removed '/auth' from the path below. 
-         * Path corrected from: /${locale}/auth/callback
-         * Path corrected to: /${locale}/callback
+         * 🛡️ THE DEEP WELD FIX (PRESERVED):
+         * We point to /callback (the actual Next.js route) instead of /auth/callback.
          */
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: `${window.location.origin}/${locale}/callback?next=/update-password`,
@@ -64,49 +66,63 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 selection:bg-blue-500/30">
+        <div className="min-h-screen bg-slate-50 relative flex items-center justify-center p-6 font-sans antialiased overflow-hidden">
+            
+            {/* CLEAN PROFESSIONAL BACKGROUND GRID */}
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.04] bg-[url('/patterns/grid-dark.svg')] bg-[length:40px_40px]" />
+
             <motion.div 
                 initial={{ opacity: 0, y: 20 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ duration: 0.5, ease: "easeOut" }}
-                className="w-full max-w-md"
+                className="relative z-10 w-full max-w-md"
             >
-                <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white border border-slate-100/50">
-                    {/* SOVEREIGN SECURITY HEADER */}
-                    <CardHeader className="bg-slate-900 text-white text-center py-10 relative">
-                        <div className="absolute inset-0 bg-[url('/patterns/grid-light.svg')] opacity-5 pointer-events-none" />
-                        <Fingerprint className="h-12 w-12 mx-auto mb-4 opacity-50 relative z-10" />
-                        <CardTitle className="text-xl font-black uppercase tracking-tighter relative z-10">
+                <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white border border-slate-100/50">
+                    
+                    {/* VISUAL SECURITY HEADER - SOVEREIGN WHITE THEME */}
+                    <CardHeader className="pt-12 text-center pb-8 relative">
+                        <div className="flex justify-center mb-6">
+                            {/* THE B-LOGO INTEGRATION */}
+                            <img 
+                                src="/logo.png" 
+                                alt="BBU1 Logo" 
+                                className="h-20 w-20 object-contain drop-shadow-sm" 
+                            />
+                        </div>
+                        <CardTitle className="text-3xl font-black uppercase tracking-tighter text-slate-900">
                             Identity Recovery
                         </CardTitle>
-                        <CardDescription className="text-slate-400 font-bold uppercase text-[9px] tracking-widest relative z-10">
+                        <CardDescription className="text-slate-400 font-bold uppercase text-[9px] tracking-[0.25em] mt-2">
                             BBU1 Sovereign Node Access
                         </CardDescription>
                     </CardHeader>
 
                     {/* RECOVERY FORM */}
-                    <CardContent className="p-8 space-y-6">
-                        <form onSubmit={handleReset} className="space-y-4">
+                    <CardContent className="px-10 pb-12 space-y-6">
+                        <form onSubmit={handleReset} className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
+                                <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">
                                     Registered Email Address
                                 </label>
                                 <Input 
                                     type="email" 
-                                    placeholder="email@bbu1.com" 
+                                    placeholder="admin@bbu1.com" 
                                     required 
                                     value={email} 
                                     onChange={(e) => setEmail(e.target.value)} 
-                                    className="rounded-xl h-14 bg-slate-50 border-slate-100 focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all font-medium" 
+                                    className="rounded-xl h-14 bg-slate-50/50 border-slate-100 focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all font-bold shadow-inner" 
                                 />
-                                <p className="text-[8px] text-slate-400 px-1 italic">
-                                    Link will be valid for 60 minutes for security compliance.
-                                </p>
+                                <div className="flex items-center gap-2 px-1 mt-2">
+                                    <Fingerprint className="w-3 h-3 text-slate-300" />
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">
+                                        Link valid for 60 mins for security compliance.
+                                    </p>
+                                </div>
                             </div>
 
                             {/* DISPATCH ACTION */}
                             <Button 
-                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100 active:scale-[0.98] transition-all duration-200" 
+                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100 active:scale-[0.98] transition-all duration-300" 
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
@@ -121,10 +137,21 @@ export default function ForgotPasswordPage() {
                         </form>
 
                         {/* SECURITY FOOTER */}
-                        <div className="pt-4 text-center border-t border-slate-50">
-                            <p className="text-[8px] text-slate-300 font-bold uppercase tracking-[0.2em] leading-relaxed">
-                                Authorized Personnel Only. <br /> All Recovery Attempts Are Logged On The Ledger.
-                            </p>
+                        <div className="pt-6 border-t border-slate-50 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-4">
+                                <ShieldCheck className="h-3 w-3 text-slate-200" />
+                                <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.3em] leading-relaxed">
+                                    Authorized Personnel Only. <br /> Attempts Are Logged On The Sovereign Ledger.
+                                </p>
+                            </div>
+                            
+                            <Button 
+                                variant="ghost" 
+                                onClick={() => window.history.back()}
+                                className="text-[10px] font-black uppercase text-slate-400 hover:text-blue-600 tracking-widest"
+                            >
+                                Return To Portal
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>

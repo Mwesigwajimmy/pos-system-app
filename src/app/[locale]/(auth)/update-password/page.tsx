@@ -5,6 +5,11 @@
  * COMPONENT: UpdatePasswordPage
  * ROLE: Re-securing account access via master key rotation.
  * 
+ * DEEP THEME UPDATE:
+ * 1. Visual Language: Professional White (Slate-50) Sovereign Theme.
+ * 2. Identity Branding: B-Logo Integration.
+ * 3. Security UX: High-contrast inputs and refined processing states.
+ * 
  * LOGIC: 
  * 1. Captures new master password from user input.
  * 2. Authenticates session via Supabase Identity Hook.
@@ -85,39 +90,48 @@ export default function UpdatePasswordPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 selection:bg-blue-500/30">
+        <div className="min-h-screen bg-slate-50 relative flex items-center justify-center p-6 font-sans antialiased overflow-hidden">
+            
+            {/* CLEAN PROFESSIONAL BACKGROUND GRID */}
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.04] bg-[url('/patterns/grid-dark.svg')] bg-[length:40px_40px]" />
+
             <motion.div 
                 initial={{ opacity: 0, scale: 0.98, y: 10 }} 
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="w-full max-w-md"
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="relative z-10 w-full max-w-md"
             >
-                <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden border border-slate-100/50">
-                    {/* VISUAL SECURITY HEADER */}
-                    <CardHeader className="pt-12 text-center bg-blue-600 text-white pb-10 relative">
-                        <div className="absolute top-4 right-4 opacity-20">
-                            <ShieldCheck size={40} />
+                <Card className="border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden">
+                    
+                    {/* VISUAL SECURITY HEADER - SOVEREIGN WHITE THEME */}
+                    <CardHeader className="pt-12 text-center pb-8 relative">
+                        <div className="flex justify-center mb-6">
+                            {/* THE B-LOGO INTEGRATION */}
+                            <img 
+                                src="/logo.png" 
+                                alt="BBU1 Logo" 
+                                className="h-20 w-20 object-contain drop-shadow-sm" 
+                            />
                         </div>
-                        <Lock className="h-10 w-10 mx-auto mb-4 drop-shadow-md" />
-                        <CardTitle className="text-2xl font-black uppercase tracking-tighter">
+                        <CardTitle className="text-3xl font-black uppercase tracking-tighter text-slate-900">
                             New Master Key
                         </CardTitle>
-                        <CardDescription className="text-blue-100 font-bold uppercase text-[9px] tracking-[0.2em] opacity-80">
+                        <CardDescription className="text-slate-400 font-bold uppercase text-[9px] tracking-[0.25em] mt-2">
                             Re-securing Sovereign Account Node
                         </CardDescription>
                     </CardHeader>
 
                     {/* FORM CONTENT */}
-                    <CardContent className="p-10">
+                    <CardContent className="px-10 pb-12">
                         <form onSubmit={handleUpdate} className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 ml-1">
-                                    Master Password
+                                <label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">
+                                    Define Master Password
                                 </label>
                                 <div className="relative group">
                                     <Input 
                                         type={showPassword ? "text" : "password"} 
-                                        className="h-14 rounded-xl bg-slate-50 border-slate-100 font-bold text-lg pr-12 focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all duration-200" 
+                                        className="h-14 rounded-xl bg-slate-50/50 border-slate-100 font-bold text-lg pr-12 focus:ring-2 focus:ring-blue-600/10 focus:border-blue-600 transition-all duration-200 shadow-inner" 
                                         value={password} 
                                         onChange={(e) => setPassword(e.target.value)} 
                                         placeholder="••••••••••••"
@@ -127,26 +141,29 @@ export default function UpdatePasswordPage() {
                                     <button 
                                         type="button" 
                                         onClick={() => setShowPassword(!showPassword)} 
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-blue-600 transition-colors"
                                     >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
                                 </div>
-                                <p className="text-[9px] text-slate-400 px-1 font-medium">
-                                    Minimum 8 characters required for master seal.
-                                </p>
+                                <div className="flex items-center gap-2 px-1">
+                                    <ShieldCheck className="w-3 h-3 text-blue-500" />
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">
+                                        Minimum 8 characters for master seal.
+                                    </p>
+                                </div>
                             </div>
 
                             {/* SUBMIT ACTION */}
                             <Button 
                                 type="submit" 
-                                className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest rounded-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed" 
+                                className="w-full h-14 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-widest rounded-2xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed" 
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
                                     <div className="flex items-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin" />
-                                        <span>Processing Seal...</span>
+                                        <span>Applying Seal...</span>
                                     </div>
                                 ) : (
                                     "UPDATE IDENTITY SEAL"
@@ -154,9 +171,9 @@ export default function UpdatePasswordPage() {
                             </Button>
 
                             {/* SECURITY DISCLAIMER */}
-                            <div className="pt-4 text-center">
-                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                                    By updating this key, all previous sessions <br /> will be invalidated for security compliance.
+                            <div className="pt-6 border-t border-slate-50 text-center">
+                                <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.3em] leading-relaxed">
+                                    Authorized rotation protocol active. <br /> all previous sessions will be invalidated.
                                 </p>
                             </div>
                         </form>
