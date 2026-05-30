@@ -18,7 +18,9 @@ import {
     Globe,
     FileText,
     RefreshCcw,
-    CheckCircle2
+    CheckCircle2,
+    TrendingDown, // UPGRADE: Added for COGS
+    Coins // UPGRADE: Added for Revenue
 } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -37,11 +39,13 @@ interface TaxCategoryBreakdown {
     tx_count: number;
 }
 
+// DEEP UPGRADE: Added total_cogs to handle the new backend welding
 interface TaxReportData {
   taxable_sales: number;
   tax_liability: number;
   payments_made: number;
   balance_due: number;
+  total_cogs: number; // NEW: Captured from variant costs
   forensic_integrity_score: number; 
   report_generated_at: string;
   breakdown: TaxCategoryBreakdown[]; 
@@ -66,14 +70,14 @@ const fetchTaxReport = async (startDate: string, endDate: string, businessId: st
 
 interface TaxReportGeneratorProps {
   businessId: string;
-  tenantName?: string; // UPGRADE: Added for legal PDF branding
+  tenantName?: string; 
   currencyCode?: string; 
   locale?: string;       
 }
 
 export default function TaxReportGenerator({ 
   businessId, 
-  tenantName = "Sovereign Entity", // Fallback if name is missing
+  tenantName = "Sovereign Entity", 
   currencyCode = 'UGX', 
   locale = 'en-UG' 
 }: TaxReportGeneratorProps) {
@@ -139,12 +143,13 @@ export default function TaxReportGenerator({
         doc.setFont("helvetica", "bold");
         doc.text(`Autonomous Forensic Integrity Score: ${data.forensic_integrity_score || '99.8'}%`, 30, 90);
 
-        // 3. CORE FINANCIALS TABLE
+        // 3. CORE FINANCIALS TABLE (UPGRADE: Added COGS Dimension)
         autoTable(doc, {
             startY: 110,
             head: [['Financial Dimension', `Amount (${currencyCode})`, 'Kernel Verification']],
             body: [
                 ['Total Taxable Sales', formatCurrency(data.taxable_sales), 'VERIFIED'],
+                ['Cost of Goods Sold (COGS)', formatCurrency(data.total_cogs), 'CALCULATED'],
                 ['Input Tax Credits (Paid)', formatCurrency(data.payments_made), 'CERTIFIED'],
                 ['Gross Tax Liability', formatCurrency(data.tax_liability), 'CALCULATED'],
                 ['NET LIABILITY DUE', formatCurrency(data.balance_due), data.balance_due > 0 ? 'PAYABLE' : 'CREDIT']
@@ -227,13 +232,13 @@ export default function TaxReportGenerator({
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <CalendarRange className="w-3 h-3 text-blue-500"/> Reporting Start
                 </label>
-                <Input type="date" value={range.start} onChange={e => setRange(p => ({...p, start: e.target.value}))} className="h-11 font-mono font-bold" />
+                <input type="date" value={range.start} onChange={e => setRange(p => ({...p, start: e.target.value}))} className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono font-bold" />
             </div>
             <div className="w-full space-y-2">
                 <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <CalendarRange className="w-3 h-3 text-red-500"/> Reporting End
                 </label>
-                <Input type="date" value={range.end} onChange={e => setRange(p => ({...p, end: e.target.value}))} className="h-11 font-mono font-bold" />
+                <input type="date" value={range.end} onChange={e => setRange(p => ({...p, end: e.target.value}))} className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono font-bold" />
             </div>
             <Button 
                 onClick={() => refetch()} 
@@ -259,22 +264,38 @@ export default function TaxReportGenerator({
         {data && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
                 
-                {/* Header Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* UPGRADE: Header Stats Grid (4 Columns for COGS inclusion) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-5 border rounded-xl bg-white shadow-sm border-l-4 border-l-blue-500 group hover:border-blue-600 transition-all">
-                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Taxable Revenue</p>
-                        <p className="text-2xl font-bold text-slate-900 mt-1 font-mono">{formatCurrency(data.taxable_sales)}</p>
-                    </div>
-                    <div className="p-5 border rounded-xl bg-white shadow-sm border-l-4 border-l-green-500 group hover:border-green-600 transition-all">
-                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Input Tax Credit (Recoverable)</p>
-                        <p className="text-2xl font-bold text-green-600 mt-1 font-mono">{formatCurrency(data.payments_made)}</p>
-                    </div>
-                    <div className="p-5 border rounded-xl bg-white shadow-sm border-l-4 border-l-indigo-500 group hover:border-indigo-600 transition-all">
-                        <div className="flex justify-between items-start">
-                            <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Forensic Integrity</p>
-                            <ShieldCheck className="w-4 h-4 text-indigo-500"/>
+                        <div className="flex justify-between items-start mb-1">
+                           <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Taxable Revenue</p>
+                           <Coins className="w-3.5 h-3.5 text-blue-500" />
                         </div>
-                        <p className="text-2xl font-bold text-indigo-700 mt-1 font-mono">{data.forensic_integrity_score || '99.8'}%</p>
+                        <p className="text-xl font-bold text-slate-900 font-mono">{formatCurrency(data.taxable_sales)}</p>
+                    </div>
+                    
+                    <div className="p-5 border rounded-xl bg-white shadow-sm border-l-4 border-l-red-500 group hover:border-red-600 transition-all">
+                        <div className="flex justify-between items-start mb-1">
+                           <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Cost of Goods (COGS)</p>
+                           <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+                        </div>
+                        <p className="text-xl font-bold text-slate-900 font-mono">{formatCurrency(data.total_cogs)}</p>
+                    </div>
+
+                    <div className="p-5 border rounded-xl bg-white shadow-sm border-l-4 border-l-green-500 group hover:border-green-600 transition-all">
+                        <div className="flex justify-between items-start mb-1">
+                           <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Input Tax Credit</p>
+                           <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
+                        </div>
+                        <p className="text-xl font-bold text-green-600 font-mono">{formatCurrency(data.payments_made)}</p>
+                    </div>
+
+                    <div className="p-5 border rounded-xl bg-white shadow-sm border-l-4 border-l-indigo-500 group hover:border-indigo-600 transition-all">
+                        <div className="flex justify-between items-start mb-1">
+                            <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Integrity Score</p>
+                            <Fingerprint className="w-3.5 h-3.5 text-indigo-500"/>
+                        </div>
+                        <p className="text-xl font-bold text-indigo-700 font-mono">{data.forensic_integrity_score || '99.8'}%</p>
                     </div>
                 </div>
 

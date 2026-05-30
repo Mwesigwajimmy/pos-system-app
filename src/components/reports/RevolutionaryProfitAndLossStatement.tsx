@@ -27,6 +27,38 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
   const [drillDownAccount, setDrillDownAccount] = useState<string | null>(null);
   const [ledgerDetails, setLedgerDetails] = useState<any[]>([]);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+  
+  // DEEP UPGRADE: Dynamic Currency state to replace hardcoded USD
+  const [businessCurrency, setBusinessCurrency] = useState<string>('USD');
+
+  // DEEP UPGRADE: Resolver logic to anchor the business owner's currency fully and deeply
+  useEffect(() => {
+    const resolveSovereignCurrency = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Trace User to Profile for Business ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.business_id) {
+        // 2. Fetch locked currency from the Tenant registry
+        const { data: tenant } = await supabase
+          .from('tenants')
+          .select('currency_code')
+          .eq('id', profile.business_id)
+          .single();
+        
+        if (tenant?.currency_code) {
+          setBusinessCurrency(tenant.currency_code);
+        }
+      }
+    };
+    resolveSovereignCurrency();
+  }, [supabase]);
 
   // Verification Helper: Maps database 'Expense' type to strict UI categories
   const getMappedData = (items: PnlItem[]) => items.map(item => {
@@ -122,13 +154,15 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
             <div className="opacity-0 group-hover:opacity-100 transition-opacity"><ListFilter size={14} className="text-blue-500" /></div>
             {item.account_name}
           </TableCell>
-          <TableCell className="text-right font-mono font-medium">{formatCurrency(item.amount, 'USD')}</TableCell>
+          {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
+          <TableCell className="text-right font-mono font-medium">{formatCurrency(item.amount, businessCurrency)}</TableCell>
         </TableRow>
       ))}
       <TableRow className="font-semibold border-t bg-slate-50/50">
         <TableCell className="pl-4">Total {title}</TableCell>
         <TableCell className="text-right flex items-center justify-end gap-3">
-          <span className="font-mono">{formatCurrency(calculateTotal(category), 'USD')}</span>
+          {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
+          <span className="font-mono">{formatCurrency(calculateTotal(category), businessCurrency)}</span>
           {renderGrowth(calculateTotal(category), calculatePrevTotal(category))}
         </TableCell>
       </TableRow>
@@ -159,7 +193,8 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
               <TableRow className="font-extrabold text-lg bg-blue-50/30 hover:bg-blue-50/30 h-14">
                 <TableCell className="pl-4 text-blue-900 uppercase tracking-wider">Gross Profit</TableCell>
                 <TableCell className="text-right flex items-center justify-end gap-3 h-14">
-                  <span className="text-blue-900">{formatCurrency(grossProfit, 'USD')}</span>
+                  {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
+                  <span className="text-blue-900">{formatCurrency(grossProfit, businessCurrency)}</span>
                   {renderGrowth(grossProfit, prevGrossProfit)}
                 </TableCell>
               </TableRow>
@@ -169,7 +204,8 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
                 <TableCell className="pl-6 uppercase tracking-widest">Net Profit</TableCell>
                 <TableCell className="text-right pr-6 font-mono">
                    <div className="flex flex-col items-end">
-                      {formatCurrency(netProfit, 'USD')}
+                      {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
+                      {formatCurrency(netProfit, businessCurrency)}
                       <div className="mt-1">{renderGrowth(netProfit, prevNetProfit)}</div>
                    </div>
                 </TableCell>
@@ -222,8 +258,9 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
                       <TableRow key={i} className="hover:bg-slate-50/50">
                         <TableCell className="text-xs font-medium text-slate-500">{row.transaction_date}</TableCell>
                         <TableCell className="text-xs font-bold text-slate-900">{row.reference}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-blue-600">{row.debit > 0 ? formatCurrency(row.debit, 'USD') : '-'}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-slate-400">{row.credit > 0 ? formatCurrency(row.credit, 'USD') : '-'}</TableCell>
+                        {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
+                        <TableCell className="text-right font-mono text-xs text-blue-600">{row.debit > 0 ? formatCurrency(row.debit, businessCurrency) : '-'}</TableCell>
+                        <TableCell className="text-right font-mono text-xs text-slate-400">{row.credit > 0 ? formatCurrency(row.credit, businessCurrency) : '-'}</TableCell>
                       </TableRow>
                     ))
                   )}

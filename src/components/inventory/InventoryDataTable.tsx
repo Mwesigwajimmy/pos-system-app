@@ -98,18 +98,53 @@ interface Location {
   is_primary: boolean;
 }
 
-// --- Data Access Functions ---
+// --- DEEP UPGRADE: THE SOVEREIGN FETCH ENGINE ---
+// This function replaces the old RPC call and queries our new master view directly.
 async function fetchProducts(pagination: PaginationState, searchTerm: string, businessEntityId?: string, locationId?: string) {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc('get_paginated_products', {
-    p_page: pagination.pageIndex + 1,
-    p_page_size: pagination.pageSize,
-    p_search_text: searchTerm || null,
-    p_business_entity_id: businessEntityId || null,
-    p_location_id: locationId || null,
-  });
+  
+  // 1. Pointing to the new Materialized View that joins Products & Variants
+  let query = supabase
+    .from('view_inventory_master')
+    .select('*', { count: 'exact' });
+
+  // 2. Multi-Tenant Identity Check
+  if (businessEntityId) {
+    query = query.eq('business_id', businessEntityId);
+  }
+
+  // 3. Jurisdictional Location Filter
+  if (locationId && locationId !== "ALL_BRANCHES") {
+    query = query.eq('location_id', locationId);
+  }
+
+  // 4. Forensic Search Trace
+  if (searchTerm) {
+    query = query.or(`product_name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%`);
+  }
+
+  // 5. Pagination range calculation
+  const from = pagination.pageIndex * pagination.pageSize;
+  const to = from + pagination.pageSize - 1;
+
+  const { data, count, error } = await query
+    .range(from, to)
+    .order('product_name', { ascending: true });
+
   if (error) throw new Error(error.message);
-  return data;
+
+  // --- THE MASTER WELD: DATA ALIGNMENT ---
+  // We map the database view columns back to the keys the UI expects.
+  // This 'unhides' the selling_price from the variant layer and maps it to 'price'.
+  const mappedProducts = (data || []).map((row: any) => ({
+    ...row,
+    id: row.product_id,       // Map product_id to id
+    name: row.product_name,   // Map product_name to name
+    price: row.display_price, // THE WELD: Variant price now shows as USh price
+    total_stock: row.stock_quantity // Aligns stock quantity to UI expectations
+  }));
+
+  return { products: mappedProducts, total_count: count || 0 };
 }
 
 async function bulkDeleteProducts(productIds: number[]) {
