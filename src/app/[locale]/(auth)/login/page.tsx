@@ -1,7 +1,19 @@
 'use client';
 
+/**
+ * --- BBU1 SOVEREIGN ACCESS PORTAL ---
+ * COMPONENT: LoginPage
+ * ROLE: Primary entry point for authorized business personnel.
+ * 
+ * DEEP LOGIC INTEGRATION:
+ * 1. Locale-Aware Routing: Ensures navigation persists within [locale] context.
+ * 2. Identity Recovery: Links directly to the hardened ForgotPassword node.
+ * 3. SSO Handshake: Managed via Supabase OAuth 2.0.
+ * 4. MFA-Ready: Structure supports future second-factor implementation.
+ */
+
 import React, { useState, memo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation'; // DETECTING LOCALE
 import Link from 'next/link';
 import { useForm, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,6 +41,7 @@ type SsoProvider = 'google' | 'azure';
 // --- Logic Hook ---
 const useLogin = () => {
     const router = useRouter();
+    const params = useParams(); // CAPTURING LOCALE (en, fr, de, etc.)
     const supabase = createClient();
     const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
     const form = useForm<LoginFormInput>({
@@ -66,14 +79,22 @@ const useLogin = () => {
         }
 
         toast.success('Access Granted. Welcome back.', { id: toastId });
-        router.push('/dashboard');
+
+        // ENSURING LOCALIZED DASHBOARD REDIRECT
+        const locale = params?.locale || 'en';
+        router.push(`/${locale}/dashboard`);
     };
 
     const handleSsoLogin = async (provider: SsoProvider) => {
         setIsSubmitting(provider);
+        const locale = params?.locale || 'en';
+        
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: `${window.location.origin}/auth/callback` },
+            options: { 
+                // ENSURING OAUTH CALLBACK INCLUDES THE LOCALE
+                redirectTo: `${window.location.origin}/${locale}/auth/callback` 
+            },
         });
         if (error) {
             toast.error(`SSO Error: ${error.message}`);
@@ -87,6 +108,9 @@ const useLogin = () => {
 // --- UI Sub-components ---
 const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) => {
     const [isVisible, setIsVisible] = useState(false);
+    const params = useParams();
+    const locale = params?.locale || 'en';
+
     return (
         <FormField
             control={control}
@@ -95,9 +119,9 @@ const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) =
                 <FormItem>
                     <div className="flex items-center justify-between">
                         <FormLabel className="text-xs font-bold text-slate-700 uppercase">Password</FormLabel>
-                        {/* --- IDENTITY RECOVERY ANCHOR --- */}
+                        {/* --- IDENTITY RECOVERY ANCHOR: DEEP LINKED TO /[LOCALE]/FORGOT-PASSWORD --- */}
                         <Link 
-                            href="/forgot-password" 
+                            href={`/${locale}/forgot-password`} 
                             className="text-[10px] font-bold text-blue-600 hover:underline uppercase tracking-tighter"
                         >
                             Forgot Password?
@@ -130,6 +154,8 @@ SsoButton.displayName = 'SsoButton';
 // --- Main Page Component ---
 export default function LoginPage() {
     const { form, isSubmitting, handleEmailLogin, handleSsoLogin } = useLogin();
+    const params = useParams();
+    const locale = params?.locale || 'en';
 
     return (
         <div className="min-h-screen bg-slate-950 relative flex items-center justify-center p-4 font-sans antialiased overflow-hidden">
@@ -202,7 +228,8 @@ export default function LoginPage() {
                     <div className="pt-4 border-t border-slate-100 text-center space-y-4">
                         <p className="text-sm text-slate-500 font-medium">
                             New to BBU1?{' '}
-                            <Link href="/signup" className="font-bold text-blue-600 hover:underline">Create an account</Link>
+                            {/* --- LOCALIZED SIGNUP ANCHOR --- */}
+                            <Link href={`/${locale}/signup`} className="font-bold text-blue-600 hover:underline">Create an account</Link>
                         </p>
                         
                         <div className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase text-slate-300 tracking-widest">

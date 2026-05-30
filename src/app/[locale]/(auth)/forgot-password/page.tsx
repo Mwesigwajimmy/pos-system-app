@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useParams } from 'next/navigation'; // Added to detect current locale
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,19 +13,27 @@ import { motion } from 'framer-motion';
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const params = useParams(); // Get the locale from the URL (e.g., 'en', 'fr')
     const supabase = createClient();
 
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+
+        // We determine the locale to ensure the user returns to the correct localized route
+        const locale = params?.locale || 'en';
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+            // Updated redirectTo to include the /[locale]/ segment
+            redirectTo: `${window.location.origin}/${locale}/auth/callback?next=/update-password`,
         });
 
         if (error) {
             toast.error("Handshake Refused", { description: error.message });
         } else {
-            toast.success("Recovery Link Dispatched", { description: "Check your inbox for the access key." });
+            toast.success("Recovery Link Dispatched", { 
+                description: "Check your inbox for the access key." 
+            });
         }
         setIsLoading(false);
     };
@@ -42,9 +51,19 @@ export default function ForgotPasswordPage() {
                         <form onSubmit={handleReset} className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Registered Email</label>
-                                <Input type="email" placeholder="email@bbu1.com" required value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl h-14 bg-slate-50 border-slate-100" />
+                                <Input 
+                                    type="email" 
+                                    placeholder="email@bbu1.com" 
+                                    required 
+                                    value={email} 
+                                    onChange={(e) => setEmail(e.target.value)} 
+                                    className="rounded-xl h-14 bg-slate-50 border-slate-100" 
+                                />
                             </div>
-                            <Button className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100" disabled={isLoading}>
+                            <Button 
+                                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100" 
+                                disabled={isLoading}
+                            >
                                 {isLoading ? <Loader2 className="animate-spin" /> : "DISPATCH RECOVERY LINK"}
                             </Button>
                         </form>

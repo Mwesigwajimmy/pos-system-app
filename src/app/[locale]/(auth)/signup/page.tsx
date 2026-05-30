@@ -1,6 +1,19 @@
 'use client';
+
+/**
+ * --- BBU1 SOVEREIGN BUSINESS ONBOARDING ---
+ * COMPONENT: SignupPage
+ * ROLE: Primary gateway for business node initialization.
+ * 
+ * FEATURES:
+ * - Localized Tax Atlas Integration
+ * - Industrial Logic Categorization
+ * - Geo-spatial Data Binding (Country/State)
+ * - Validates and Provisions Sovereign Business Profile
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation'; // Added useParams for localized routing
 import Link from 'next/link';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,7 +33,7 @@ import { Loader2, Eye, EyeOff, Globe2, Layers, MapPin, ShieldCheck, Calculator }
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 /** 
- * TAX ATLAS
+ * TAX ATLAS: Mapping countries to their local Tax Identification nomenclature
  */
 const taxLabelAtlas: Record<string, string> = {
     AF: 'TIN', AL: 'NIPT', DZ: 'NIF', AD: 'NR', AO: 'NIF', AG: 'TIN', AR: 'CUIT', AM: 'TIN', AU: 'ABN', AT: 'UID', 
@@ -42,7 +55,7 @@ const taxLabelAtlas: Record<string, string> = {
 };
 
 /** 
- * INDUSTRIAL LOGIC
+ * INDUSTRIAL LOGIC: Sub-categorization engine for tailored business experiences
  */
 const industryMapping: Record<string, string[]> = {
     "Retail / Wholesale": [
@@ -120,6 +133,7 @@ type SignupFormInput = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
     const router = useRouter();
+    const params = useParams(); // Detecting active locale
     const supabase = createClient();
     const [isLoading, setIsLoading] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
@@ -150,6 +164,7 @@ export default function SignupPage() {
     const availableStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode) || [], [selectedCountryCode]);
     const countryDetails = useMemo(() => Country.getCountryByCode(selectedCountryCode), [selectedCountryCode]);
 
+    // Localized dynamic defaults based on country selection
     useEffect(() => {
         if (countryDetails) {
             form.setValue('currency', countryDetails.currency);
@@ -196,11 +211,12 @@ export default function SignupPage() {
             return;
         }
 
+        const locale = params?.locale || 'en';
         if (data.session) {
-            router.push('/dashboard');
+            router.push(`/${locale}/dashboard`);
         } else {
             toast.success('Account created. Please check your email to verify.', { id: toastId, duration: 10000 });
-            router.push('/auth/check-email');
+            router.push(`/${locale}/auth/check-email`);
         }
         setIsLoading(false);
     };
@@ -248,7 +264,11 @@ export default function SignupPage() {
                 
                 <CardContent className="p-8 lg:p-12">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleSignup)} className="space-y-10">
+                        {/* handleSubmit now has an error callback to show the missing field toast */}
+                        <form 
+                            onSubmit={form.handleSubmit(handleSignup, () => toast.error("Fill in missing fields please."))} 
+                            className="space-y-10"
+                        >
                             
                             {/* SECTION I: PERSONAL */}
                             <div className="space-y-6">
@@ -258,14 +278,14 @@ export default function SignupPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="fullName" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Full Name</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Full Name <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input placeholder="John Doe" className="h-11 border-slate-200 focus:ring-blue-500" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name="businessName" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Business Name</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Business Name <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input placeholder="Acme Corp" className="h-11 border-slate-200 focus:ring-blue-500" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -281,7 +301,7 @@ export default function SignupPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     <FormField control={form.control} name="country" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Country</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Country <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl><SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
@@ -295,7 +315,7 @@ export default function SignupPage() {
 
                                     <FormField control={form.control} name="state" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">State / Region</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">State / Region <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11 bg-white border-slate-200 shadow-sm"><SelectValue placeholder="Select Region"/></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
@@ -314,14 +334,14 @@ export default function SignupPage() {
 
                                     <FormField control={form.control} name="currency" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Currency</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Currency <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input readOnly className="h-11 bg-slate-100 font-medium text-slate-600 border-slate-200" {...field} /></FormControl>
                                         </FormItem>
                                     )} />
 
                                     <FormField control={form.control} name="taxNumber" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">{taxLabelAtlas[selectedCountryCode] || 'TIN'} Number</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">{taxLabelAtlas[selectedCountryCode] || 'TIN'} Number <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input placeholder="Tax ID" className="h-11 bg-white border-slate-200 uppercase" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -329,7 +349,7 @@ export default function SignupPage() {
 
                                     <FormField control={form.control} name="manualTaxRate" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700 flex items-center gap-1"><Calculator className="w-3 h-3 text-blue-500"/> Tax Rate (%)</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700 flex items-center gap-1"><Calculator className="w-3 h-3 text-blue-500"/> Tax Rate (%) <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input type="number" step="0.01" className="h-11 bg-white border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -337,7 +357,7 @@ export default function SignupPage() {
 
                                     <FormField control={form.control} name="phone" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Phone Number</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Phone Number <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -345,7 +365,7 @@ export default function SignupPage() {
                                 </div>
                                 <FormField control={form.control} name="address" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-xs font-bold text-slate-700">Business Address</FormLabel>
+                                        <FormLabel className="text-xs font-bold text-slate-700">Business Address <span className="text-red-500 ml-1">*</span></FormLabel>
                                         <FormControl><Input placeholder="Street, City, Building" className="h-11 bg-white border-slate-200 shadow-sm" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -360,7 +380,7 @@ export default function SignupPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="businessType" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Category</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Category <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
                                                 <SelectContent>
@@ -376,7 +396,7 @@ export default function SignupPage() {
                                     
                                     <FormField control={form.control} name="industry" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Specific Industry</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Specific Industry <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value} disabled={!selectedType}>
                                                 <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Industry" /></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
@@ -397,17 +417,17 @@ export default function SignupPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="email" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Email Address</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Email Address <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <FormControl><Input type="email" placeholder="email@example.com" className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name="password" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-bold text-slate-700">Password</FormLabel>
+                                            <FormLabel className="text-xs font-bold text-slate-700">Password <span className="text-red-500 ml-1">*</span></FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input type={isVisible ? 'text' : 'password'} className="h-11 pr-10 border-slate-200 shadow-sm" {...field} /></FormControl>
-                                                <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-3 top-3 text-slate-400">
+                                                <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-900 transition-colors">
                                                     {isVisible ? <EyeOff size={18}/> : <Eye size={18}/>}
                                                 </button>
                                             </div>
@@ -420,7 +440,7 @@ export default function SignupPage() {
                             {/* SUBMIT */}
                             <Button 
                                 type="submit" 
-                                className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xl transition-all disabled:opacity-50" 
+                                className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xl transition-all disabled:opacity-50 active:scale-[0.98]" 
                                 disabled={isLoading}
                             >
                                 {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Creating Account...</> : "Create Account"}
@@ -428,7 +448,13 @@ export default function SignupPage() {
 
                             <div className="flex flex-col md:flex-row justify-center items-center gap-4 text-center">
                                 <span className="text-sm text-slate-500 font-medium">Already have an account?</span>
-                                <Link href="/login" className="text-sm font-bold text-blue-600 hover:underline">Log In</Link>
+                                {/* Localized login link */}
+                                <Link 
+                                    href={`/${params?.locale || 'en'}/login`} 
+                                    className="text-sm font-bold text-blue-600 hover:underline"
+                                >
+                                    Log In
+                                </Link>
                             </div>
                         </form>
                     </Form>
