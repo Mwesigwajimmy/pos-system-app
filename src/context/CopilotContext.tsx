@@ -2,16 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN COPILOT CONTEXT ---
- * VERSION: v28.0 OMEGA-ULTIMATUM (THE AGGRESSIVE HANDSHAKE)
+ * VERSION: v28.1 OMEGA-ULTIMATUM (THE APEX TYPING RESTORATION)
  * SDK_VERSION: @ai-sdk/react 3.0.192 (STABILIZED)
  * JURISDICTION: Global ERP / Multi-Tenant / Multi-Country
  * 
  * CORE ARCHITECTURAL UPGRADES:
  * 1. AGGRESSIVE IDENTITY RETRIEVAL: If the database profile is slow, 
  *    the context now extracts IDs directly from the JWT session token.
- * 2. TYPING LOCK REMOVAL: Removed '!contextLoading' and 'is_active' gates 
- *    from the handshake to ensure the 'handleInputChange' function is 
- *    functional the millisecond the page mounts.
+ * 2. TYPING LOCK REMOVAL: Removed '!!token' gate from the handshake to ensure
+ *    the 'handleInputChange' function is active immediately upon ID resolution.
  * 3. WIDE-SYSTEM COMPATIBILITY: Hard-coded mapping to 'id' and 'is_active' 
  *    per the forensic database audit.
  */
@@ -76,7 +75,13 @@ function NeuralSanctuary({
   });
 
   const handleSubmit = useCallback(async (e?: any, options?: any) => {
-    if (isSyncing.current || isLoading || !sessionToken) return;
+    // SECURITY: Ensure message only fires if token has arrived
+    if (!sessionToken) {
+        toast.info("Aura: Initializing secure link... please try again in a moment.");
+        return;
+    }
+    
+    if (isSyncing.current || isLoading) return;
     if (e && e.preventDefault) return sdkSubmit(e, options);
     if (typeof e === 'string' && e.trim().length > 0) {
         isSyncing.current = true;
@@ -172,13 +177,13 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
 
   /**
    * ✅ AGGRESSIVE HANDSHAKE SEAL
-   * UNLOCKS TYPING INSTANTLY: Removed !contextLoading and is_active checks 
-   * to ensure the neural sanctuary engages as soon as the ID is known.
+   * UNLOCKS TYPING INSTANTLY: Removed !!token from the handshake validity check.
+   * This ensures the NeuralSanctuary (the real typing engine) mounts as soon 
+   * as the ID is known, even while the token is still in the process of welding.
    */
   const isHandshakeValid = mounted && 
                            activeUserId !== '' && 
-                           activeBusinessId !== '' &&
-                           !!token;
+                           activeBusinessId !== '';
 
   if (!isHandshakeValid) {
     return (
@@ -197,7 +202,7 @@ export function GlobalCopilotProvider({ children }: { children: ReactNode }) {
           closeCopilot: () => setIsOpen(false), 
           toggleCopilot: () => setIsOpen((prev: boolean) => !prev),
           startAIAssistance: () => {}, 
-          handleInputChange: () => {}, // <--- UI BLOCKED HERE IF INVALID
+          handleInputChange: () => {}, 
           handleSubmit: () => {}, 
           setMessages: () => {}, 
           data: undefined 
