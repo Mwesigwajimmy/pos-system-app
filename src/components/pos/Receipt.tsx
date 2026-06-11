@@ -7,12 +7,12 @@ import { ShieldCheck } from 'lucide-react';
 
 /**
  * --- BBU1 SOVEREIGN RECEIPT ENGINE ---
- * VERSION: v22.1 OMEGA-PRIME (STABILITY WELD)
+ * VERSION: v22.2 OMEGA-PRIME (REACT 19 / NEXT 15 ALIGNMENT)
  * 
  * CORE ARCHITECTURAL ALIGNMENT:
  * 1. VIEW DEFINITION SYNC: Dynamically maps data strictly from view_bbu1_corporate_identity schema.
  * 2. IDENTITY AGGREGATION: Resolves Tax Identity using the (tin_number || tax_number) logic found in SQL audit.
- * 3. REACT 18 STABILITY: Fully implemented forwardRef with stable wrapper to prevent null reference errors.
+ * 3. REACT 19 STABILITY: Hard-wrapped forwardRef container to ensure contentRef never returns null to the print engine.
  * 4. DYNAMIC FOOTER: Injects receipt_footer directly from the tenant settings without hardcoding.
  */
 
@@ -139,17 +139,21 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
         maximumFractionDigits: 2
     }).format(value || 0);
 
-    // FIX: The ref is attached to this outer div to ensure it is ALWAYS detected by the print engine
+    // DEEP FIX: The ref is attached to this stable outer div. 
+    // This ensures that even if data is still populating, the target for 'react-to-print' exists in the DOM.
     return (
-      <div ref={ref} className="w-full bg-white">
+      <div 
+        ref={ref} 
+        className="w-full bg-white overflow-hidden"
+      >
         {!saleInfo || !idnt || !businessName ? (
-           /* VALIDATION SHIELD: Still rendered inside the ref wrapper */
-           <div className="p-6 text-center border-2 border-dashed border-red-100 rounded-2xl bg-red-50 mx-auto max-w-[300px]">
+           /* VALIDATION SHIELD: Mounted inside the ref wrapper to prevent "Nothing to print" error */
+           <div className="p-6 text-center border-2 border-dashed border-red-100 rounded-2xl bg-red-50 mx-auto max-w-[300px] my-4">
                 <p className="text-xs text-red-600 font-black uppercase tracking-widest">
-                    Invalid Receipt Data
+                    Initializing Receipt...
                 </p>
                 <p className="text-[10px] text-red-400 mt-1 uppercase font-bold">
-                    Check System Identity & Tenant Configuration
+                    Awaiting Transaction Data Serialization
                 </p>
             </div>
         ) : (
