@@ -282,19 +282,21 @@ export default function RetailDesk() {
     const [lastCompletedSale, setLastCompletedSale] = useState<CompletedSale | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     const [activeTab, setActiveTab] = useState<'products' | 'cart'>('products');
-    const receiptRef = useRef<HTMLDivElement>(null);
     const [discount, setDiscount] = useState<Discount>({ type: 'fixed', value: 0 });
     const [businessDNA, setBusinessDNA] = useState<any>(null);
-    const [devices, setDevices] = useState<any[]>([]); // DEEP HARDWARE REGISTRY STATE
+    const [devices, setDevices] = useState<any[]>([]); 
+
+    // --- SOVEREIGN REFERENCE WELD ---
+    const receiptRef = useRef<HTMLDivElement>(null);
 
     const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.toArray(), []);
     const supabase = createClient();
     
-    // --- APEX PRINT FIX: React-to-print v3 Override ---
+    // --- APEX PRINT FIX: React-to-print v3 Strict contentRef Binding ---
     const handleWebPrint = useReactToPrint({ 
-        contentRef: receiptRef, 
+        contentRef: receiptRef, // Binding strictly to the DOM node
         onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
@@ -431,7 +433,7 @@ export default function RetailDesk() {
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
-        // --- 1. SILENT CLOUD LEDGER SAVE ---
+        // --- 1. SILENT CLOUD LEDGER SAVE (SUPABASE MULTI-TENANT) ---
         const { error: saveError } = await supabase.from('offline_sales').insert({
             tenant_id: userProfile?.tenant_id, 
             seller_id: userProfile?.id,        
@@ -450,7 +452,7 @@ export default function RetailDesk() {
             return;
         }
 
-        // --- 2. LOCAL RESILIENCE SAVE ---
+        // --- 2. LOCAL RESILIENCE SAVE (DEXIE) ---
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(), cartItems: cart, customerId: selectedCustomer?.id || null,
             paymentMethod: paymentData.paymentMethod, amount_paid: paymentData.amountPaid,
@@ -462,7 +464,7 @@ export default function RetailDesk() {
         };
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
 
-        // --- 3. SILENT HARDWARE TRIGGER (DEEP PROTOCOL) ---
+        // --- 3. SILENT HARDWARE TRIGGER (ESC/POS OMEGA) ---
         try {
             const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
             if (printer) {
@@ -480,11 +482,10 @@ export default function RetailDesk() {
                 });
                 toast.success("Hardware: Receipt Printed & Drawer Opened");
             } else {
-                handleWebPrint(); 
+                console.warn("Silent Print hardware not active. Falling back to Browser Print.");
             }
         } catch (hardwareErr) {
             console.error("Deep Link Error", hardwareErr);
-            handleWebPrint(); 
         }
 
         // --- 4. UI STATE FINALIZATION ---
@@ -512,17 +513,20 @@ export default function RetailDesk() {
                     <CardHeader className="bg-emerald-600 text-white text-center py-8 lg:py-10">
                         <CheckCircle2 className="h-12 w-12 lg:h-16 lg:w-16 text-white mx-auto mb-4" />
                         <CardTitle className="text-xl lg:text-2xl font-black uppercase">Sale Authorized</CardTitle>
-                        <CardDescription className="text-emerald-100 font-bold uppercase text-[9px]">Document Sealed</CardDescription>
+                        <CardDescription className="text-emerald-100 font-bold uppercase text-[9px]">Document Sealed: {lastCompletedSale.receiptData.saleInfo.id}</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 lg:p-8 space-y-6 bg-white">
+                        
+                        {/* --- THE RECEIPT PORTAL (REF BOUND) --- */}
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden scale-90 lg:scale-100">
                            <div ref={receiptRef}>
                              <Receipt receiptData={lastCompletedSale.receiptData} />
                            </div>
                         </div>
+
                         <div className="flex flex-col gap-3">
                             <div className="grid grid-cols-2 gap-3">
-                                <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={() => handleWebPrint(undefined, () => receiptRef.current)}>
+                                <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={() => handleWebPrint()}>
                                     <PrinterIcon className="h-4 w-4" /> PRINT
                                 </Button>
                                 <Button className="h-14 bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={handleShareReceipt}>
@@ -557,7 +561,6 @@ export default function RetailDesk() {
             </div>
 
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden mb-16 lg:mb-0">
-                {/* DUAL-MODE VIEW: Switchable on Mobile, Side-by-Side on Desktop */}
                 <div className={cn("lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col", activeTab !== 'products' && 'hidden lg:flex')}>
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
@@ -569,7 +572,7 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING SUMMARY (Uber-Style) */}
+            {/* MOBILE FLOATING SUMMARY */}
             {cart.length > 0 && activeTab === 'products' && (
                 <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in slide-in-from-bottom-5">
                     <Button 
@@ -585,20 +588,14 @@ export default function RetailDesk() {
                 </div>
             )}
 
-            {/* MOBILE BOTTOM NAVIGATION (Layer Switcher) */}
+            {/* MOBILE BOTTOM NAVIGATION */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-50">
-                <button 
-                    onClick={() => setActiveTab('products')}
-                    className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}
-                >
+                <button onClick={() => setActiveTab('products')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}>
                     <LayoutGrid className="h-5 w-5" />
                     <span className="text-[8px] font-black uppercase tracking-tighter">Products</span>
                 </button>
                 <div className="h-8 w-px bg-slate-100" />
-                <button 
-                    onClick={() => setActiveTab('cart')}
-                    className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}
-                >
+                <button onClick={() => setActiveTab('cart')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}>
                     <div className="relative">
                         <ReceiptText className="h-5 w-5" />
                         {cart.length > 0 && <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-white" />}
