@@ -294,9 +294,9 @@ export default function RetailDesk() {
     const products = useLiveQuery(() => db.products.toArray(), []);
     const supabase = createClient();
     
-    // --- APEX PRINT FIX: React-to-print v3 Strict contentRef Binding ---
+    // --- APEX PRINT FIX: React-to-print v3 Callback Parameter Binding ---
     const handleWebPrint = useReactToPrint({ 
-        contentRef: receiptRef, // Binding strictly to the DOM node
+        // We remove contentRef from here to allow dynamic binding at runtime
         onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
@@ -519,6 +519,7 @@ export default function RetailDesk() {
                         
                         {/* --- THE RECEIPT PORTAL (REF BOUND) --- */}
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden scale-90 lg:scale-100">
+                           {/* Attached ref directly to the div wrapping the Receipt */}
                            <div ref={receiptRef}>
                              <Receipt receiptData={lastCompletedSale.receiptData} />
                            </div>
@@ -526,7 +527,8 @@ export default function RetailDesk() {
 
                         <div className="flex flex-col gap-3">
                             <div className="grid grid-cols-2 gap-3">
-                                <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={() => handleWebPrint()}>
+                                {/* FIX: Explicitly passing contentRef to handleWebPrint call */}
+                                <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={() => handleWebPrint({ contentRef: receiptRef })}>
                                     <PrinterIcon className="h-4 w-4" /> PRINT
                                 </Button>
                                 <Button className="h-14 bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={handleShareReceipt}>
