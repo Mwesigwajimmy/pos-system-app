@@ -22,18 +22,22 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, isValid } from 'date-fns';
 
+// --- DEEP HARDWARE IMPORT ---
+import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
+
 // --- ENTERPRISE INDUSTRIAL TYPE DEFINITIONS ---
 
 interface SecurityDevice {
     id: string;
     device_type: 'CAMERA' | 'ALARM_PANEL' | 'MOTION_SENSOR' | 'SMART_GATE' | 'EAS_ANTENNA' | 'BARCODE_SCANNER' | 'WEIGHT_DELTA_SENSOR' | 'ROBOTIC_GUARD' | 'PAYMENT_TERMINAL' | 'RECEIPT_PRINTER';
     device_name: string;
-    connection_protocol: 'RTSP' | 'MQTT' | 'HID' | 'ONVIF' | 'SERIAL' | 'WEBSOCKET' | 'TCP_IP';
+    connection_protocol: 'RTSP' | 'MQTT' | 'HID' | 'ONVIF' | 'SERIAL' | 'WEBSOCKET' | 'TCP_IP' | 'BLUETOOTH';
     ip_address: string;
     status: 'ONLINE' | 'OFFLINE' | 'TAMPER_ALERT' | 'TRIGGERED' | 'AWAITING_PAYMENT';
     last_heartbeat: string;
     zone: string;
     firmware_version: string;
+    bluetooth_device_id?: string;
     metadata?: {
         stream_url?: string;
         mqtt_topic?: string;
@@ -55,6 +59,7 @@ interface TacticalAlert {
 
 /**
  * Hardware Integration Hub - Enterprise Management Console
+ * UPGRADED: DEEP HARDWARE ALIGNMENT OMEGA
  */
 export default function SentryHub({ tenantId }: { tenantId: string }) {
     const supabase = createClient();
@@ -99,6 +104,14 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                 queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
             })
             .subscribe();
+
+        // DEEP DISCOVERY LISTENER: Monitor for USB/HID arrivals automatically
+        if ('hid' in navigator) {
+            (navigator as any).hid.addEventListener('connect', ({ device }: any) => {
+                toast.info(`New Hardware Detected: ${device.productName}`, { icon: <Cpu /> });
+                syncDeviceToRegistry(device, 'HID');
+            });
+        }
 
         return () => { 
             supabase.removeChannel(hardwareChannel); 
@@ -148,6 +161,53 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
 
     // --- 4. ADVANCED HARDWARE LOGIC ---
 
+    const syncDeviceToRegistry = async (device: any, protocol: string) => {
+        const deviceName = device.productName || device.name || "Unknown Hardware";
+        const { error } = await supabase.from('security_hardware_registry').upsert({
+            tenant_id: tenantId,
+            device_name: deviceName,
+            device_type: deviceName.toLowerCase().includes('printer') ? 'RECEIPT_PRINTER' : 'BARCODE_SCANNER',
+            connection_protocol: protocol,
+            status: 'ONLINE',
+            last_heartbeat: new Date().toISOString()
+        });
+        if (!error) queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
+    };
+
+    const pairBluetoothPrinter = async () => {
+        try {
+            toast.loading("Scanning for Bluetooth POS Hardware...");
+            const server = await DeepHardwareBridge.connectBluetooth();
+            if (server) {
+                await syncDeviceToRegistry(server.device, 'BLUETOOTH');
+                toast.success(`Deep Link Established: ${server.device.name}`);
+            }
+        } catch (err) {
+            toast.error("Bluetooth Discovery Failed");
+        }
+    };
+
+    const pairSerialScanner = async () => {
+        try {
+            const port = await DeepHardwareBridge.connectIndustrialScanner();
+            if (port) {
+                const { error } = await supabase.from('security_hardware_registry').insert({
+                    tenant_id: tenantId,
+                    device_name: "Industrial RS232 Scanner",
+                    device_type: 'BARCODE_SCANNER',
+                    connection_protocol: 'SERIAL',
+                    status: 'ONLINE'
+                });
+                if (!error) {
+                    toast.success("Industrial Scanner Welded to System");
+                    queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
+                }
+            }
+        } catch (err) {
+            toast.error("Serial Handshake Denied");
+        }
+    };
+
     const initiatePaymentFlow = async (method: 'CARD' | 'MOBILE_MONEY') => {
         if (transactionTotal <= 0) return toast.error("Basket empty", { description: "Please scan items before payment." });
         
@@ -188,15 +248,30 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
         setReceiptStatus('PRINTING');
         toast.loading("Printing Receipt...", { icon: <Printer /> });
 
-        setTimeout(() => {
-            setReceiptStatus('COMPLETE');
-            toast.success("Receipt Printed", { description: "Physical copy ready." });
-            
-            const gateNode = devices?.find(d => d.device_type === 'SMART_GATE');
-            if (gateNode) {
-                controlPhysicalAccess(gateNode.id, 'UNLOCK');
+        try {
+            const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
+            if (printer) {
+                // Trigger the deep silent print command
+                await DeepHardwareBridge.silentPrint(printer, {
+                    businessName: "Supermarket Node",
+                    items: [{ name: "Transaction Settlement", price: transactionTotal }],
+                    total: transactionTotal,
+                    currency: "UGX"
+                });
+                setReceiptStatus('COMPLETE');
+                toast.success("Silent Print Success", { description: "Physical copy ready." });
+            } else {
+                throw new Error("No active printer found");
             }
-        }, 2500);
+        } catch (err) {
+            setReceiptStatus('IDLE');
+            toast.error("Hardware Print Failed", { description: "Fallback to system print manual." });
+        }
+
+        const gateNode = devices?.find(d => d.device_type === 'SMART_GATE');
+        if (gateNode) {
+            controlPhysicalAccess(gateNode.id, 'UNLOCK');
+        }
     };
 
     const runAutonomousDiscovery = async () => {
@@ -249,6 +324,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                 await device.open();
                 setScannerDevice(device);
                 toast.success("Scanner Integrated");
+                await syncDeviceToRegistry(device, 'HID');
 
                 device.oninputreport = (event: any) => {
                     const generatedPrice = (Math.random() * 50) + 5;
@@ -322,20 +398,39 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                 </div>
 
                 <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+                    {/* NEW DEEP HARDWARE ENTRY POINTS */}
+                    <Button 
+                        variant="outline" 
+                        onClick={pairBluetoothPrinter}
+                        className="flex-1 lg:flex-none h-11 rounded-lg border-blue-200 bg-blue-50/50 hover:bg-blue-100 font-bold text-xs"
+                    >
+                        <Radio size={18} className="mr-2 text-blue-600 animate-pulse" />
+                        Pair Bluetooth POS
+                    </Button>
+
+                    <Button 
+                        variant="outline" 
+                        onClick={pairSerialScanner}
+                        className="flex-1 lg:flex-none h-11 rounded-lg border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs"
+                    >
+                        <Zap size={18} className="mr-2 text-amber-500" />
+                        Link Industrial Scanner
+                    </Button>
+
                     <Button 
                         variant="outline" 
                         onClick={connectScannerHardware}
-                        className="flex-1 lg:flex-none h-11 rounded-lg border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs tracking-tight transition-all"
+                        className="flex-1 lg:flex-none h-11 rounded-lg border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs tracking-tight"
                     >
                         <ScanBarcode size={18} className="mr-2 text-blue-600" />
-                        {scannerDevice ? "Scanner Connected" : "Link USB Scanner"}
+                        {scannerDevice ? "USB Integrated" : "Link USB Scanner"}
                     </Button>
 
                     <Button 
                         variant="outline" 
                         onClick={runAutonomousDiscovery}
                         disabled={isScanningNetwork}
-                        className="flex-1 lg:flex-none h-11 rounded-lg border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs tracking-tight transition-all"
+                        className="flex-1 lg:flex-none h-11 rounded-lg border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs tracking-tight"
                     >
                         {isScanningNetwork ? <Loader2 className="animate-spin mr-2 text-blue-600" /> : <Network className="mr-2 text-blue-600" />}
                         {isScanningNetwork ? `Mapping Subnet ${scanProgress}%` : "Hardware Scan"}
@@ -344,7 +439,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                     <Button 
                         onClick={triggerTotalLockdown}
                         disabled={isLockingDown}
-                        className="flex-1 lg:flex-none h-11 rounded-lg px-8 font-bold text-xs uppercase tracking-wider transition-all bg-red-600 hover:bg-red-700 text-white"
+                        className="flex-1 lg:flex-none h-11 rounded-lg px-8 font-bold text-xs uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white"
                     >
                         {isLockingDown ? <Loader2 className="animate-spin mr-2" /> : <Lock size={16} className="mr-2" />}
                         Lockdown

@@ -10,7 +10,7 @@ import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-// --- DEEP HARDWARE IMPORT ---
+// --- DEEP HARDWARE IMPORT (THE OMEGA WELD) ---
 import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
 
 // --- HOOKS ---
@@ -234,6 +234,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                             <PopoverContent className="w-64 p-4 rounded-2xl border-none shadow-2xl space-y-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-slate-400">Discount Logic</Label>
+                                    <span className="text-[8px] text-slate-400">Note: Manual override applies to entire basket.</span>
                                     <Select value={discount.type} onValueChange={(v: 'fixed' | 'percentage') => setDiscount({ ...discount, type: v })}>
                                         <SelectTrigger className="rounded-xl"><SelectValue/></SelectTrigger>
                                         <SelectContent>
@@ -418,13 +419,19 @@ export default function RetailDesk() {
         else { toast.error(`Invalid SKU: ${sku}`); } 
     };
 
+    /**
+     * MASTER TRANSACTION WELD (DEEP UPGRADE)
+     * 1. Silent Cloud Ledger Save (Supabase)
+     * 2. Local Resilience Save (Dexie)
+     * 3. Silent Hardware Print (ESC/POS)
+     */
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
-        // 1. DEEP DB SAVE (Permanent Cloud Ledger)
+        // --- 1. SILENT CLOUD LEDGER SAVE ---
         const { error: saveError } = await supabase.from('offline_sales').insert({
             tenant_id: userProfile?.tenant_id, 
             seller_id: userProfile?.id,        
@@ -434,7 +441,7 @@ export default function RetailDesk() {
                 cart, 
                 customer: selectedCustomer,
                 tax: 0,
-                business: businessDNA.name
+                business: businessDNA?.name
             }
         });
 
@@ -443,7 +450,7 @@ export default function RetailDesk() {
             return;
         }
 
-        // 2. OFFLINE RESILIENCE (Dexie Local)
+        // --- 2. LOCAL RESILIENCE SAVE ---
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(), cartItems: cart, customerId: selectedCustomer?.id || null,
             paymentMethod: paymentData.paymentMethod, amount_paid: paymentData.amountPaid,
@@ -455,16 +462,21 @@ export default function RetailDesk() {
         };
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
 
-        // 3. DEEP HARDWARE TRIGGER (ESC/POS & Bluetooth)
+        // --- 3. SILENT HARDWARE TRIGGER (DEEP PROTOCOL) ---
         try {
             const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
             if (printer) {
-                toast.loading("Communicating with Hardware...");
+                toast.loading("Communicating with Thermal Hardware...");
                 await DeepHardwareBridge.silentPrint(printer, {
-                    businessName: businessDNA.name,
+                    businessName: businessDNA?.name,
+                    businessAddress: businessDNA?.address,
+                    businessPhone: businessDNA?.phone,
+                    taxId: businessDNA?.tax_number,
                     items: cart,
                     total: totalAmount,
-                    currency: businessDNA.currency
+                    currency: businessDNA?.currency || 'UGX',
+                    footer: businessDNA?.footer,
+                    sealId: `TXN-${saleId}`
                 });
                 toast.success("Hardware: Receipt Printed & Drawer Opened");
             } else {
@@ -475,7 +487,7 @@ export default function RetailDesk() {
             handleWebPrint(); 
         }
 
-        // 4. UI STATE RESET
+        // --- 4. UI STATE FINALIZATION ---
         setLastCompletedSale({ receiptData: {
             saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `TRAN-${saleId}`, related_deal_id: null },
             identity: { legal_name: businessDNA?.name, physical_address: businessDNA?.address, city: businessDNA?.city, official_phone: businessDNA?.phone, receipt_footer: businessDNA?.footer, tin_number: businessDNA?.tax_number, currency_code: businessDNA?.currency, logo_url: businessDNA?.logo_url },
