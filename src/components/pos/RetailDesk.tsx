@@ -10,6 +10,9 @@ import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+// --- DEEP HARDWARE IMPORT ---
+import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
+
 // --- HOOKS ---
 import { useUserProfile } from '@/hooks/useUserProfile';
 import useDefaultPrinter from '@/hooks/useDefaultPrinter';
@@ -281,16 +284,31 @@ export default function RetailDesk() {
     const receiptRef = useRef<HTMLDivElement>(null);
     const [discount, setDiscount] = useState<Discount>({ type: 'fixed', value: 0 });
     const [businessDNA, setBusinessDNA] = useState<any>(null);
+    const [devices, setDevices] = useState<any[]>([]); // DEEP HARDWARE REGISTRY STATE
 
     const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
     const products = useLiveQuery(() => db.products.toArray(), []);
+    const supabase = createClient();
     
     // --- APEX PRINT FIX: React-to-print v3 Override ---
     const handleWebPrint = useReactToPrint({ 
         contentRef: receiptRef, 
         onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
+
+    // --- DEEP HARDWARE MONITORING ---
+    useEffect(() => {
+        if (!userProfile?.tenant_id) return;
+        const fetchDevices = async () => {
+            const { data } = await supabase
+                .from('security_hardware_registry')
+                .select('*')
+                .eq('tenant_id', userProfile.tenant_id);
+            if (data) setDevices(data);
+        };
+        fetchDevices();
+    }, [userProfile?.tenant_id, supabase]);
 
     // --- DIGITAL HANDSHAKE: WhatsApp/Email Share Engine ---
     const handleShareReceipt = async () => {
@@ -341,7 +359,6 @@ export default function RetailDesk() {
     useEffect(() => {
         if (!userProfile?.business_id) return;
         const fetchCorporateDNA = async () => {
-            const supabase = createClient();
             const { data: identities } = await supabase
                 .from('view_bbu1_corporate_identity')
                 .select('legal_name, tin_number, tax_number, official_phone, currency_code, physical_address, city, receipt_footer, logo_url')
@@ -365,12 +382,11 @@ export default function RetailDesk() {
             }
         };
         fetchCorporateDNA();
-    }, [userProfile]);
+    }, [userProfile, supabase]);
 
     const handleSync = async () => {
         setIsSyncing(true);
         const promise = async () => {
-            const supabase = createClient();
             const { data: productsData } = await supabase.rpc('get_sellable_products');
             await db.products.clear(); await db.products.bulkAdd(productsData as SellableProduct[] || []);
             const { data: customersData } = await supabase.from('customers').select('*');
@@ -408,6 +424,26 @@ export default function RetailDesk() {
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
+        // 1. DEEP DB SAVE (Permanent Cloud Ledger)
+        const { error: saveError } = await supabase.from('offline_sales').insert({
+            tenant_id: userProfile?.tenant_id, 
+            seller_id: userProfile?.id,        
+            total_amount: totalAmount,
+            payment_method: paymentData.paymentMethod,
+            sale_payload: { 
+                cart, 
+                customer: selectedCustomer,
+                tax: 0,
+                business: businessDNA.name
+            }
+        });
+
+        if (saveError) {
+            toast.error("Deep Database Save Failed", { description: saveError.message });
+            return;
+        }
+
+        // 2. OFFLINE RESILIENCE (Dexie Local)
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(), cartItems: cart, customerId: selectedCustomer?.id || null,
             paymentMethod: paymentData.paymentMethod, amount_paid: paymentData.amountPaid,
@@ -417,14 +453,37 @@ export default function RetailDesk() {
             payment_status: paymentData.amountPaid >= totalAmount ? 'paid' : 'partial',
             due_amount: Math.max(0, totalAmount - paymentData.amountPaid), related_deal_id: null 
         };
-
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
+
+        // 3. DEEP HARDWARE TRIGGER (ESC/POS & Bluetooth)
+        try {
+            const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
+            if (printer) {
+                toast.loading("Communicating with Hardware...");
+                await DeepHardwareBridge.silentPrint(printer, {
+                    businessName: businessDNA.name,
+                    items: cart,
+                    total: totalAmount,
+                    currency: businessDNA.currency
+                });
+                toast.success("Hardware: Receipt Printed & Drawer Opened");
+            } else {
+                handleWebPrint(); 
+            }
+        } catch (hardwareErr) {
+            console.error("Deep Link Error", hardwareErr);
+            handleWebPrint(); 
+        }
+
+        // 4. UI STATE RESET
         setLastCompletedSale({ receiptData: {
             saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `TRAN-${saleId}`, related_deal_id: null },
             identity: { legal_name: businessDNA?.name, physical_address: businessDNA?.address, city: businessDNA?.city, official_phone: businessDNA?.phone, receipt_footer: businessDNA?.footer, tin_number: businessDNA?.tax_number, currency_code: businessDNA?.currency, logo_url: businessDNA?.logo_url },
             customer: selectedCustomer, items: cart.map(i => ({ name: i.product_name, qty: i.quantity, price: i.price, total: i.price * i.quantity }))
         }});
+        
         setCart([]); setSelectedCustomer(null); setDiscount({ type: 'fixed', value: 0 }); setPaymentModalOpen(false);
+        toast.success("Transaction Finalized Deeply");
     };
 
     if (!products || isProfileLoading) return (
