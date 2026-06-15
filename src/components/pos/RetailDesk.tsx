@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 
 // --- DEEP HARDWARE IMPORT (THE OMEGA WELD) ---
 import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
+import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine'; // AUDIO NERVOUS SYSTEM
 
 // --- HOOKS ---
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -415,10 +416,18 @@ export default function RetailDesk() {
         });
     };
     
+    // --- SCANNER HANDSHAKE WELDED WITH AUDIO ---
     const handleSKUScan = (sku: string) => { 
         const product = products?.find(p => p.sku === sku); 
-        if (product) { handleAddToCart(product); toast.success(`Added: ${product.product_name}`, { duration: 800 }); } 
-        else { toast.error(`Invalid SKU: ${sku}`); } 
+        if (product) { 
+            DeepAudioEngine.playSuccess(); // FEEDBACK: Item recognized
+            handleAddToCart(product); 
+            toast.success(`Added: ${product.product_name}`, { duration: 800 }); 
+        } 
+        else { 
+            DeepAudioEngine.playError(); // FEEDBACK: Warning signal
+            toast.error(`Invalid SKU: ${sku}`); 
+        } 
     };
 
     /**
@@ -426,6 +435,7 @@ export default function RetailDesk() {
      * 1. Silent Cloud Ledger Save (Supabase)
      * 2. Local Resilience Save (Dexie)
      * 3. Silent Hardware Print (ESC/POS)
+     * 4. Audio Affirmation (Beep)
      */
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;
@@ -448,6 +458,7 @@ export default function RetailDesk() {
         });
 
         if (saveError) {
+            DeepAudioEngine.playError(); // FEEDBACK: Critical warning
             toast.error("Deep Database Save Failed", { description: saveError.message });
             return;
         }
@@ -488,7 +499,9 @@ export default function RetailDesk() {
             console.error("Deep Link Error", hardwareErr);
         }
 
-        // --- 4. UI STATE FINALIZATION ---
+        // --- 4. AUDIO AFFIRMATION & UI STATE FINALIZATION ---
+        DeepAudioEngine.playSuccess(); // FEEDBACK: Victory signal
+
         setLastCompletedSale({ receiptData: {
             saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `TRAN-${saleId}`, related_deal_id: null },
             identity: { legal_name: businessDNA?.name, physical_address: businessDNA?.address, city: businessDNA?.city, official_phone: businessDNA?.phone, receipt_footer: businessDNA?.footer, tin_number: businessDNA?.tax_number, currency_code: businessDNA?.currency, logo_url: businessDNA?.logo_url },
@@ -509,7 +522,7 @@ export default function RetailDesk() {
     if (lastCompletedSale) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 lg:p-6">
-                <Card className="w-full max-w-md rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl border-none overflow-hidden">
+                <Card className="w-full max-md rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl border-none overflow-hidden">
                     <CardHeader className="bg-emerald-600 text-white text-center py-8 lg:py-10">
                         <CheckCircle2 className="h-12 w-12 lg:h-16 lg:w-16 text-white mx-auto mb-4" />
                         <CardTitle className="text-xl lg:text-2xl font-black uppercase">Sale Authorized</CardTitle>
@@ -562,6 +575,7 @@ export default function RetailDesk() {
             </div>
 
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden mb-16 lg:mb-0">
+                {/* DUAL-MODE VIEW: Switchable on Mobile, Side-by-Side on Desktop */}
                 <div className={cn("lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col", activeTab !== 'products' && 'hidden lg:flex')}>
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
@@ -573,7 +587,7 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING SUMMARY */}
+            {/* MOBILE FLOATING SUMMARY (Uber-Style) */}
             {cart.length > 0 && activeTab === 'products' && (
                 <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in slide-in-from-bottom-5">
                     <Button 
@@ -589,14 +603,20 @@ export default function RetailDesk() {
                 </div>
             )}
 
-            {/* MOBILE BOTTOM NAVIGATION */}
+            {/* MOBILE BOTTOM NAVIGATION (Layer Switcher) */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-50">
-                <button onClick={() => setActiveTab('products')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}>
+                <button 
+                    onClick={() => setActiveTab('products')}
+                    className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}
+                >
                     <LayoutGrid className="h-5 w-5" />
                     <span className="text-[8px] font-black uppercase tracking-tighter">Products</span>
                 </button>
                 <div className="h-8 w-px bg-slate-100" />
-                <button onClick={() => setActiveTab('cart')} className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}>
+                <button 
+                    onClick={() => setActiveTab('cart')}
+                    className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}
+                >
                     <div className="relative">
                         <ReceiptText className="h-5 w-5" />
                         {cart.length > 0 && <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-white" />}
