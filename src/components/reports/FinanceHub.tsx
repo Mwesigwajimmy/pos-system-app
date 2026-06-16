@@ -111,11 +111,25 @@ export function FinanceHub({ pnl, prevPnl, bs, trends, pnlPeriod, bsDate, locati
   const searchParams = useSearchParams();
   const isFirstRender = useRef(true);
 
-  // GRASSROOT PNL MAPPING: Since DB sends 'Expense', we must map 'Cost of Goods Sold' accounts specifically
+  // GRASSROOT PNL MAPPING: Updated with the Deep Weld to detect 'COGS' type from Kernel v8
   const mapPnlData = (items: ProfitAndLossRecord[]) => items.map(item => {
     const name = item.account_name?.toLowerCase() || '';
-    if (name.includes('cost of goods sold')) return { ...item, category: 'Cost of Goods Sold' as const };
-    if (item.category?.toLowerCase().includes('expense')) return { ...item, category: 'Operating Expenses' as const };
+    const dbType = item.category?.toUpperCase() || ''; // Kernel tags it as 'COGS' or 'Expense'
+
+    // THE DEEP WELD: Explicit detection of the COGS identity to prevent 'General Operations' bleed
+    if (
+        dbType === 'COGS' || 
+        name.includes('cost of goods sold') || 
+        name.includes('cost of sales') || 
+        name.includes('cogs')
+    ) {
+        return { ...item, category: 'Cost of Goods Sold' as const };
+    }
+
+    if (item.category?.toLowerCase().includes('expense')) {
+        return { ...item, category: 'Operating Expenses' as const };
+    }
+
     return item;
   });
 

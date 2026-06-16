@@ -60,11 +60,32 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
     resolveSovereignCurrency();
   }, [supabase]);
 
-  // Verification Helper: Maps database 'Expense' type to strict UI categories
+  // DEEP AUDIT FIX: Maps database 'COGS' and 'Expense' types to correct UI buckets
   const getMappedData = (items: PnlItem[]) => items.map(item => {
-    if (item.category === 'Revenue' || item.category === 'REVENUE') return { ...item, category: 'Revenue' };
-    if (item.account_name?.toLowerCase().includes('cost of goods sold')) return { ...item, category: 'Cost of Goods Sold' };
-    if (item.category?.toLowerCase().includes('expense')) return { ...item, category: 'Operating Expenses' };
+    const dbType = item.category?.toUpperCase() || '';
+    const name = item.account_name?.toLowerCase() || '';
+
+    // 1. Revenue Mapping
+    if (dbType === 'REVENUE' || name.includes('sales revenue') || name.includes('income')) {
+        return { ...item, category: 'Revenue' };
+    }
+
+    // 2. THE COGS WELD: Prioritizes 'COGS' type from Kernel v8 and keyword detection
+    // This stops COGS from leaking into 'General Operations' (Operating Expenses)
+    if (
+        dbType === 'COGS' || 
+        name.includes('cost of goods') || 
+        name.includes('cost of sales') || 
+        name.includes('cogs')
+    ) {
+        return { ...item, category: 'Cost of Goods Sold' };
+    }
+
+    // 3. Operating Expenses: Catch-all for other expenses
+    if (dbType.includes('EXPENSE') || dbType === 'OPERATING') {
+        return { ...item, category: 'Operating Expenses' };
+    }
+
     return item;
   });
 
@@ -154,14 +175,12 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
             <div className="opacity-0 group-hover:opacity-100 transition-opacity"><ListFilter size={14} className="text-blue-500" /></div>
             {item.account_name}
           </TableCell>
-          {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
           <TableCell className="text-right font-mono font-medium">{formatCurrency(item.amount, businessCurrency)}</TableCell>
         </TableRow>
       ))}
       <TableRow className="font-semibold border-t bg-slate-50/50">
         <TableCell className="pl-4">Total {title}</TableCell>
         <TableCell className="text-right flex items-center justify-end gap-3">
-          {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
           <span className="font-mono">{formatCurrency(calculateTotal(category), businessCurrency)}</span>
           {renderGrowth(calculateTotal(category), calculatePrevTotal(category))}
         </TableCell>
@@ -193,7 +212,6 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
               <TableRow className="font-extrabold text-lg bg-blue-50/30 hover:bg-blue-50/30 h-14">
                 <TableCell className="pl-4 text-blue-900 uppercase tracking-wider">Gross Profit</TableCell>
                 <TableCell className="text-right flex items-center justify-end gap-3 h-14">
-                  {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
                   <span className="text-blue-900">{formatCurrency(grossProfit, businessCurrency)}</span>
                   {renderGrowth(grossProfit, prevGrossProfit)}
                 </TableCell>
@@ -204,7 +222,6 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
                 <TableCell className="pl-6 uppercase tracking-widest">Net Profit</TableCell>
                 <TableCell className="text-right pr-6 font-mono">
                    <div className="flex flex-col items-end">
-                      {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
                       {formatCurrency(netProfit, businessCurrency)}
                       <div className="mt-1">{renderGrowth(netProfit, prevNetProfit)}</div>
                    </div>
@@ -258,7 +275,6 @@ export function RevolutionaryProfitAndLossStatement({ data, prevData = [], repor
                       <TableRow key={i} className="hover:bg-slate-50/50">
                         <TableCell className="text-xs font-medium text-slate-500">{row.transaction_date}</TableCell>
                         <TableCell className="text-xs font-bold text-slate-900">{row.reference}</TableCell>
-                        {/* DEEP UPGRADE: Hardcoded USD replaced with businessCurrency */}
                         <TableCell className="text-right font-mono text-xs text-blue-600">{row.debit > 0 ? formatCurrency(row.debit, businessCurrency) : '-'}</TableCell>
                         <TableCell className="text-right font-mono text-xs text-slate-400">{row.credit > 0 ? formatCurrency(row.credit, businessCurrency) : '-'}</TableCell>
                       </TableRow>
