@@ -15,6 +15,7 @@ import Link from 'next/link';
 type RetailData = {
     dailyRevenue: number;
     dailyExpenses: number;
+    dailyCOGS: number;
     netCash: number;
     txCount: number;
     chartData: { date: string; sales: number }[];
@@ -28,11 +29,23 @@ async function fetchRetailData(): Promise<RetailData> {
     const todayStr = today.toISOString().split('T')[0];
     
     // 1. Daily Stats (Cards)
+    // Fetch Revenue
     const { data: salesToday } = await supabase.from('sales').select('total_amount').gte('created_at', todayStr);
     const dailyRevenue = salesToday?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
 
+    // Fetch Operational Expenses (Code 6000)
     const { data: expensesToday } = await supabase.from('expenses').select('amount').gte('date', todayStr);
     const dailyExpenses = expensesToday?.reduce((sum, e) => sum + e.amount, 0) || 0;
+
+    // --- DEEP HEAL: Fetch Cost of Goods Sold (Code 5000) ---
+    // We fetch journal entries for today where the account description matches our COGS logic
+    const { data: cogsEntries } = await supabase
+        .from('accounting_journal_entries')
+        .select('debit, credit')
+        .eq('description', 'Cost of Goods Sold recognized')
+        .gte('created_at', todayStr);
+    
+    const dailyCOGS = cogsEntries?.reduce((sum, entry) => sum + (Number(entry.debit) - Number(entry.credit)), 0) || 0;
 
     const { count: txCount } = await supabase.from('sales').select('*', { count: 'exact', head: true }).gte('created_at', todayStr);
 
@@ -61,10 +74,12 @@ async function fetchRetailData(): Promise<RetailData> {
         .order('created_at', { ascending: false })
         .limit(5);
 
+    // Calculation: Revenue - (Expenses + COGS) = True Net Profit
     return { 
         dailyRevenue, 
         dailyExpenses, 
-        netCash: dailyRevenue - dailyExpenses,
+        dailyCOGS,
+        netCash: dailyRevenue - (dailyExpenses + dailyCOGS),
         txCount: txCount || 0,
         chartData,
         recentSales: recentSales || []
@@ -72,7 +87,7 @@ async function fetchRetailData(): Promise<RetailData> {
 }
 
 export default function RetailDashboard() {
-    useRealtimeRefresh(['sales', 'expenses'], ['retail-dash']);
+    useRealtimeRefresh(['sales', 'expenses', 'accounting_journal_entries'], ['retail-dash']);
     const { data, isLoading } = useQuery({ queryKey: ['retail-dash'], queryFn: fetchRetailData });
 
     // Helpers
@@ -121,7 +136,7 @@ export default function RetailDashboard() {
                 </Card>
             </div>
 
-            {/* --- Row 2: Charts & Recent Activity (Fills the white space) --- */}
+            {/* --- Row 2: Charts & Recent Activity --- */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 h-full">
                 
                 {/* Left: Revenue Chart (Takes 4/7ths of width) */}
