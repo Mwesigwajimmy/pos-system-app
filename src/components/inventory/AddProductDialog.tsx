@@ -247,45 +247,62 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     setVariants(updated);
   };
 
+  // --- HEALED MUTATION LOGIC ---
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
+      // 1. CAPTURE IDENTITY: Verify business ID exists before any DB action
+      const safeBusinessId = profile?.business_id;
+      if (!safeBusinessId) {
+        toast.error("Business identity not verified. Please wait.");
+        throw new Error("Missing business_id");
+      }
+
       if (!productName.trim()) throw new Error("Please enter a product name");
 
-      const { data: product, error: prodError } = await supabase.from('products').insert({
+      // 2. UPSERT PRODUCT: Trigger-Aware logic to handle auto-setup triggers
+      const { data: product, error: prodError } = await supabase.from('products').upsert({
           name: productName,
           category_id: categoryId ? parseInt(categoryId) : null,
           uom_id: uomId || null, 
-          business_id: profile?.business_id,
+          business_id: safeBusinessId,
           location_id: locationId, 
           is_active: true,
           status: 'active',
           tax_category_code: taxCategoryCode.toUpperCase()
-        }).select('id').single();
+        }, { onConflict: 'name, business_id' }) 
+        .select('id').single();
 
       if (prodError) throw prodError;
 
-      const variantsPayload = variants.map(v => ({
+      // 3. PREPARE VARIANTS: Only save what is relevant
+      const variantsToSave = isMultiVariant ? variants : [{...variants[0], name: 'Standard'}];
+
+      const variantsPayload = variantsToSave.map(v => ({
         product_id: product.id,
-        name: v.name,
+        name: v.name || 'Standard',
         sku: v.sku || `SKU-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
         price: Number(v.price),
         selling_price: Number(v.price), 
         cost_price: Number(v.cost_price),
         stock_quantity: Number(v.stock_quantity),
         status: 'active', 
-        units_per_pack: Number(v.units_per_pack) || 1, 
-        attributes: v.attributes,
-        uom_id: v.uom_id || uomId || null, 
-        business_id: profile?.business_id,
+        business_id: safeBusinessId, // Explicitly stamp the tenant ID
         location_id: locationId, 
-        tax_category_code: taxCategoryCode.toUpperCase()
+        tax_category_code: taxCategoryCode.toUpperCase(),
+        units_per_pack: Number(v.units_per_pack) || 1,
+        attributes: v.attributes || {}
       }));
 
-      const { error: varError } = await supabase.from('product_variants').insert(variantsPayload);
+      // 4. THE UPSERT SYNC: Prevents duplicates if the DB trigger fires simultaneously
+      // and ensures 'business_id' is never NULL on variants.
+      const { error: varError } = await supabase
+        .from('product_variants')
+        .upsert(variantsPayload, { onConflict: 'product_id, name' });
+
       if (varError) throw varError;
     },
     onSuccess: () => {
-      toast.success("Product successfully added");
+      toast.success("Product successfully synchronized");
       queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
       setOpen(false);
       resetForm();
@@ -309,7 +326,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </Button>
       </DialogTrigger>
       
-      {/* PROFESSIONAL MODAL CONTAINER: Adjusted width to accommodate 4 columns */}
+      {/* PROFESSIONAL MODAL CONTAINER */}
       <DialogContent className="sm:max-w-5xl w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
         
         {/* CLEAN HEADER */}
@@ -325,11 +342,11 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </div>
 
-        {/* FORM BODY: Reduced height slightly from 75vh to 68vh as requested */}
+        {/* FORM BODY */}
         <ScrollArea className="max-h-[68vh]">
           <div className="p-8 space-y-8">
             
-            {/* Row 1: Product Basics (Updated to 4 columns to include Target Branch) */}
+            {/* Row 1: Product Basics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Product Name</Label>
@@ -348,7 +365,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                     </Select>
                 </div>
 
-                {/* TARGET BRANCH ADDED HERE */}
+                {/* TARGET BRANCH */}
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Branch</Label>
                     <Select value={locationId || ''} onValueChange={setLocationId}>
@@ -437,23 +454,23 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-slate-50/50 p-6 rounded-xl border border-slate-100">
                         <div className="space-y-2">
                             <Label className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Selling Price</Label>
-                            <Input type="number" step="0.01" className="h-10 border-slate-200 bg-white rounded-md font-bold text-slate-900" value={variants[0].price} onChange={(e) => updateVariant(0, 'price', Number(e.target.value))} />
+                            <input type="number" step="0.01" className="h-10 border border-slate-200 bg-white rounded-md font-bold text-slate-900 px-3 w-full" value={variants[0].price} onChange={(e) => updateVariant(0, 'price', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cost Price</Label>
-                            <Input type="number" step="0.01" className="h-10 border-slate-200 bg-white rounded-md font-medium" value={variants[0].cost_price} onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))} />
+                            <input type="number" step="0.01" className="h-10 border border-slate-200 bg-white rounded-md font-medium px-3 w-full" value={variants[0].cost_price} onChange={(e) => updateVariant(0, 'cost_price', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Stock</Label>
-                            <Input type="number" className="h-10 border-slate-200 bg-white rounded-md font-bold text-emerald-700" value={variants[0].stock_quantity} onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))} />
+                            <input type="number" className="h-10 border border-slate-200 bg-white rounded-md font-bold text-emerald-700 px-3 w-full" value={variants[0].stock_quantity} onChange={(e) => updateVariant(0, 'stock_quantity', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Units/Pack</Label>
-                            <Input type="number" className="h-10 border-slate-200 bg-white rounded-md font-medium" value={variants[0].units_per_pack} onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))} />
+                            <input type="number" className="h-10 border border-slate-200 bg-white rounded-md font-medium px-3 w-full" value={variants[0].units_per_pack} onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">SKU</Label>
-                            <Input placeholder="Auto" className="h-10 border-slate-200 bg-white rounded-md font-bold uppercase text-[10px]" value={variants[0].sku} onChange={(e) => updateVariant(0, 'sku', e.target.value)} />
+                            <input placeholder="Auto" className="h-10 border border-slate-200 bg-white rounded-md font-bold uppercase text-[10px] px-3 w-full" value={variants[0].sku} onChange={(e) => updateVariant(0, 'sku', e.target.value)} />
                         </div>
                     </div>
                 ) : (
@@ -507,9 +524,9 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                         {variants.map((v, idx) => (
                                             <TableRow key={idx} className="h-14">
                                                 <TableCell className="px-6 text-xs font-bold text-slate-900">{v.name}</TableCell>
-                                                <TableCell className="text-center"><Input type="number" step="0.01" className="h-8 w-24 border-slate-100 bg-slate-50 text-slate-900 font-bold text-center mx-auto rounded-md" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="text-center"><Input type="number" className="h-8 w-24 border-slate-100 bg-slate-50 text-blue-700 font-bold text-center mx-auto rounded-md" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
-                                                <TableCell className="px-6"><Input className="h-8 w-32 border-slate-100 rounded-md uppercase text-[10px] font-bold text-right ml-auto bg-slate-50" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO" /></TableCell>
+                                                <TableCell className="text-center"><input type="number" step="0.01" className="h-8 w-24 border border-slate-100 bg-slate-50 text-slate-900 font-bold text-center mx-auto rounded-md px-1" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="text-center"><input type="number" className="h-8 w-24 border border-slate-100 bg-slate-50 text-blue-700 font-bold text-center mx-auto rounded-md px-1" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="px-6"><input className="h-8 w-32 border border-slate-100 rounded-md uppercase text-[10px] font-bold text-right ml-auto bg-slate-50 px-2" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO" /></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

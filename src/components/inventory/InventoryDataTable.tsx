@@ -99,18 +99,20 @@ interface Location {
 }
 
 // --- DEEP UPGRADE: THE SOVEREIGN FETCH ENGINE ---
-// This function replaces the old RPC call and queries our new master view directly.
 async function fetchProducts(pagination: PaginationState, searchTerm: string, businessEntityId?: string, locationId?: string) {
   const supabase = createClient();
   
-  // 1. Pointing to the new Materialized View that joins Products & Variants
+  // 1. Pointing to the Master View
   let query = supabase
     .from('view_inventory_master')
     .select('*', { count: 'exact' });
 
-  // 2. Multi-Tenant Identity Check
+  // 2. Multi-Tenant Identity Check: CRITICAL GUARD
   if (businessEntityId) {
     query = query.eq('business_id', businessEntityId);
+  } else {
+    // If no business ID is provided, return empty to prevent data leakage or "disappearing" rows
+    return { products: [], total_count: 0 };
   }
 
   // 3. Jurisdictional Location Filter
@@ -134,14 +136,12 @@ async function fetchProducts(pagination: PaginationState, searchTerm: string, bu
   if (error) throw new Error(error.message);
 
   // --- THE MASTER WELD: DATA ALIGNMENT ---
-  // We map the database view columns back to the keys the UI expects.
-  // This 'unhides' the selling_price from the variant layer and maps it to 'price'.
   const mappedProducts = (data || []).map((row: any) => ({
     ...row,
-    id: row.product_id,       // Map product_id to id
-    name: row.product_name,   // Map product_name to name
-    price: row.display_price, // THE WELD: Variant price now shows as USh price
-    total_stock: row.stock_quantity // Aligns stock quantity to UI expectations
+    id: row.product_id,       
+    name: row.product_name,   
+    price: row.display_price, 
+    total_stock: row.stock_quantity 
   }));
 
   return { products: mappedProducts, total_count: count || 0 };
@@ -219,7 +219,9 @@ export default function InventoryDataTable({
     if (businessEntityId) fetchLocations();
   }, [businessEntityId, supabase]);
 
-  // Main Products Query
+  // --- IDENTITY GUARD QUERY ---
+  // We use 'enabled: !!businessEntityId' to ensure that when the user refreshes,
+  // the table waits for the Auth session to provide the ID before fetching.
   const { data, isLoading } = useQuery({
     queryKey: ['inventoryProducts', pagination, debouncedSearchTerm, businessEntityId, selectedLocationId],
     queryFn: () => fetchProducts(
@@ -228,7 +230,8 @@ export default function InventoryDataTable({
       businessEntityId,
       selectedLocationId === "ALL_BRANCHES" ? undefined : selectedLocationId
     ),
-    initialData: { products: initialData, total_count: totalCount },
+    enabled: !!businessEntityId && businessEntityId !== "", // LOCK: Wait for ID
+    initialData: initialData.length > 0 ? { products: initialData, total_count: totalCount } : undefined,
     placeholderData: keepPreviousData,
   });
 
