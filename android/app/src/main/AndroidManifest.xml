@@ -35,7 +35,18 @@
         </provider>
     </application>
 
-    <!-- Permissions -->
-
+    <!-- BBU1 SOVEREIGN HARDWARE PERMISSIONS WELD -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Bluetooth Handshake Permissions -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- Required for Android 12 and above to find and connect to Printers -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Required for Bluetooth scanning on older Android versions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
 </manifest>

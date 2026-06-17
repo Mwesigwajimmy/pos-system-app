@@ -4,16 +4,20 @@ import React, { useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { format as formatDate } from 'date-fns';
 import { ShieldCheck } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+
+// --- DEEP HARDWARE IMPORT (THE NATIVE BRIDGE) ---
+import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
 
 /**
  * --- BBU1 SOVEREIGN RECEIPT ENGINE ---
- * VERSION: v22.2 OMEGA-PRIME (REACT 19 / NEXT 15 ALIGNMENT)
+ * VERSION: v22.3 OMEGA-PRIME (HYBRID HARDWARE ALIGNMENT)
  * 
  * CORE ARCHITECTURAL ALIGNMENT:
  * 1. VIEW DEFINITION SYNC: Dynamically maps data strictly from view_bbu1_corporate_identity schema.
  * 2. IDENTITY AGGREGATION: Resolves Tax Identity using the (tin_number || tax_number) logic found in SQL audit.
- * 3. REACT 19 STABILITY: Hard-wrapped forwardRef container to ensure contentRef never returns null to the print engine.
- * 4. DYNAMIC FOOTER: Injects receipt_footer directly from the tenant settings without hardcoding.
+ * 3. REACT 19 STABILITY: Hard-wrapped forwardRef container to ensure contentRef never returns null.
+ * 4. NATIVE WELD: Injected Capacitor detection to bypass browser print dialogs in the mobile app.
  */
 
 export interface ReceiptData {
@@ -38,8 +42,8 @@ export interface ReceiptData {
     identity?: {
         business_id?: string;
         legal_name?: string;
-        tin_number?: string;    // COALESCE(t.tin_number, t.tax_number)
-        tax_number?: string;    // Fallback if view raw object is passed
+        tin_number?: string;    
+        tax_number?: string;    
         official_phone?: string;
         physical_address?: string;
         city?: string;
@@ -64,11 +68,39 @@ interface BridgePayload {
     data: ReceiptData;
 }
 
-// --- HARDWARE BRIDGE HOOK (BBU1 PROTOCOL) ---
+// --- HARDWARE BRIDGE HOOK (HYBRID BBU1 PROTOCOL) ---
 const useHardwarePrint = () => {
     const sendPrintJob = async (payload: BridgePayload) => {
-        const bridgeUrl = 'http://localhost:54321/print'; 
+        const isNative = Capacitor.isNativePlatform();
 
+        // 1. NATIVE APP HANDSHAKE (Canva Way)
+        if (isNative) {
+            try {
+                // We resolve the printer from the name or ID provided
+                // This talks to the Thermal Head directly via Bluetooth/BLE
+                await DeepHardwareBridge.silentPrint({ 
+                    type: 'BLUETOOTH', 
+                    deviceId: payload.printerName 
+                }, {
+                    businessName: payload.data.identity?.legal_name,
+                    businessAddress: payload.data.identity?.physical_address,
+                    businessPhone: payload.data.identity?.official_phone,
+                    taxId: payload.data.identity?.tin_number || payload.data.identity?.tax_number,
+                    items: payload.data.items || payload.data.saleItems,
+                    total: payload.data.saleInfo.total_amount,
+                    currency: payload.data.saleInfo.currency_code,
+                    footer: payload.data.identity?.receipt_footer,
+                    sealId: payload.data.saleInfo.kernel_seal_id
+                });
+                toast.success('Native Thermal Print Success');
+                return;
+            } catch (err) {
+                console.error('Native Hardware Handshake Failed', err);
+            }
+        }
+
+        // 2. LEGACY WEB BRIDGE (Desktop)
+        const bridgeUrl = 'http://localhost:54321/print'; 
         try {
             const response = await fetch(bridgeUrl, {
                 method: 'POST',
@@ -79,7 +111,7 @@ const useHardwarePrint = () => {
             if (!response.ok) throw new Error('Bridge unreachable');
             toast.success('Sent to Thermal Printer');
         } catch (err) {
-            console.warn('Local Printer Bridge (v54321) not detected. Using Web Print protocol.');
+            console.warn('Local Printer Bridge not detected. Fallback to Web UI.');
         }
     };
 
@@ -139,15 +171,12 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
         maximumFractionDigits: 2
     }).format(value || 0);
 
-    // DEEP FIX: The ref is attached to this stable outer div. 
-    // This ensures that even if data is still populating, the target for 'react-to-print' exists in the DOM.
     return (
       <div 
         ref={ref} 
         className="w-full bg-white overflow-hidden"
       >
         {!saleInfo || !idnt || !businessName ? (
-           /* VALIDATION SHIELD: Mounted inside the ref wrapper to prevent "Nothing to print" error */
            <div className="p-6 text-center border-2 border-dashed border-red-100 rounded-2xl bg-red-50 mx-auto max-w-[300px] my-4">
                 <p className="text-xs text-red-600 font-black uppercase tracking-widest">
                     Initializing Receipt...
@@ -157,7 +186,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 </p>
             </div>
         ) : (
-          /* ACTUAL RECEIPT CONTENT */
           <div className="p-5 bg-white text-black text-[11px] font-mono w-full max-w-[300px] mx-auto leading-tight overflow-hidden select-none print:p-0 print:w-[80mm] print:max-w-none shadow-sm border border-slate-50">
             
             {/* 1. CORPORATE IDENTITY HEADER (DYNAMICALLY RESOLVED) */}
@@ -179,7 +207,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
               <div className="flex flex-col items-center pt-1">
                  <span className="font-bold">TEL: {businessPhone}</span>
                  
-                 {/* Tax Identity: Prioritizing verified Tax/TIN numbers */}
                  {businessTaxId && (
                     <span className="font-black text-[9px] bg-slate-100 px-2 py-0.5 rounded mt-1 border border-slate-200 uppercase">
                         TAX ID: {businessTaxId}
@@ -264,7 +291,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                     <span>{formatCurrency(saleInfo.change_due)}</span>
                 </div>
 
-                {/* Arrears Detection for Partial Payments */}
                 {(saleInfo.amount_due || 0) > 0 && (
                     <div className="p-2 mt-4 text-center bg-slate-900 text-white rounded-lg">
                         <span className="block text-[8px] font-black uppercase tracking-[0.2em] mb-1">Balance Remaining</span>
@@ -273,7 +299,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 )}
             </div>
             
-            {/* 5. SOVEREIGN SEAL & FOOTER (STRICTLY FROM IDENTITY) */}
+            {/* 5. SOVEREIGN SEAL & FOOTER */}
             <div className="mt-8 pt-4 border-t border-slate-200 border-double">
                 <div className="flex flex-col items-center justify-center">
                     <div className="flex items-center gap-1.5 mb-1.5">

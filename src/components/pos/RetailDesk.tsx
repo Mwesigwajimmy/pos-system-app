@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Capacitor } from '@capacitor/core'; // NATIVE DETECTION
 
 // --- DEEP HARDWARE IMPORT (THE OMEGA WELD) ---
 import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
@@ -64,7 +65,10 @@ interface Discount {
     value: number;
 }
 
-// --- DYNAMICS-STYLE PRODUCT GRID ---
+/**
+ * --- DYNAMICS-STYLE PRODUCT GRID ---
+ * HEALED: Mobile scrolling optimized with touch-action and viewport height adjustments
+ */
 const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, onSKUScan: (sku: string) => void, disabled: boolean }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
@@ -107,8 +111,8 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     }, [onSKUScan]);
 
     return (
-        <div className={cn('flex flex-col h-full bg-white rounded-2xl lg:shadow-sm border border-slate-100', disabled && 'opacity-50 pointer-events-none')}>
-            <div className="p-4 border-b relative bg-slate-50/30">
+        <div className={cn('flex flex-col h-full bg-white rounded-2xl lg:shadow-sm border border-slate-100 overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
+            <div className="p-4 border-b relative bg-slate-50/30 shrink-0">
                 <Barcode className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500" />
                 <Input 
                     ref={inputRef}
@@ -118,8 +122,8 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                     className="pl-10 h-12 rounded-xl border-slate-200 focus:ring-blue-500 font-medium" 
                 />
             </div>
-            <ScrollArea className="flex-1">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6">
+            <ScrollArea className="flex-1 touch-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-32 lg:pb-6">
                     {filteredProducts.map(product => (
                         <Card 
                             key={product.variant_id} 
@@ -165,7 +169,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
 
     return (
         <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-            <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white">
+            <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="bg-blue-600 p-2 rounded-lg">
                         <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
@@ -180,7 +184,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 </Button>
             </div>
             
-            <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/30">
+            <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/30 touch-auto">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-300 space-y-4 py-10 lg:py-20">
                         <ShoppingCart className="h-12 w-12 lg:h-16 lg:w-16 opacity-20" />
@@ -220,7 +224,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
             
-            <div className="p-4 lg:p-6 border-t bg-white space-y-4 lg:space-y-5">
+            <div className="p-4 lg:p-6 border-t bg-white space-y-4 lg:space-y-5 shrink-0">
                 <div className="space-y-2 lg:space-y-3">
                     <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
@@ -257,7 +261,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 <div className="flex justify-between items-baseline pt-4 border-t border-slate-100">
                     <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-slate-400">Balance Due</span>
                     <span className="text-2xl lg:text-4xl font-black text-slate-900 tracking-tighter">
-                        <span className="text-xs lg:text-sm mr-1">{currency}</span>
+                        <span className="text-xs lg:sm mr-1">{currency}</span>
                         {total.toLocaleString()}
                     </span>
                 </div>
@@ -297,7 +301,6 @@ export default function RetailDesk() {
     
     // --- APEX PRINT FIX: React-to-print v3 Callback Injection ---
     const handleWebPrint = useReactToPrint({ 
-        // Note: No contentRef here at hook level to ensure dynamic binding at runtime
         onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
@@ -325,7 +328,6 @@ export default function RetailDesk() {
             const element = receiptRef.current;
             if (!element) throw new Error("Receipt template not detected");
 
-            // Convert HTML to Image
             const canvas = await html2canvas(element, {
                 scale: 3, 
                 useCORS: true,
@@ -431,10 +433,10 @@ export default function RetailDesk() {
     };
 
     /**
-     * MASTER TRANSACTION WELD (DEEP UPGRADE)
+     * MASTER TRANSACTION WELD (NATIVE APP EDITION)
      * 1. Silent Cloud Ledger Save (Supabase)
      * 2. Local Resilience Save (Dexie)
-     * 3. Silent Hardware Print (ESC/POS)
+     * 3. Native Hardware Print (Bluetooth/Capacitor)
      * 4. Audio Affirmation (Beep)
      */
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
@@ -458,7 +460,7 @@ export default function RetailDesk() {
         });
 
         if (saveError) {
-            DeepAudioEngine.playError(); // FEEDBACK: Critical warning
+            DeepAudioEngine.playError();
             toast.error("Deep Database Save Failed", { description: saveError.message });
             return;
         }
@@ -475,11 +477,11 @@ export default function RetailDesk() {
         };
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
 
-        // --- 3. SILENT HARDWARE TRIGGER (ESC/POS OMEGA) ---
+        // --- 3. NATIVE HARDWARE TRIGGER (BLUETOOTH WELD) ---
         try {
             const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
             if (printer) {
-                toast.loading("Communicating with Thermal Hardware...");
+                toast.loading("Native Bluetooth: Printing Receipt...");
                 await DeepHardwareBridge.silentPrint(printer, {
                     businessName: businessDNA?.name,
                     businessAddress: businessDNA?.address,
@@ -489,57 +491,52 @@ export default function RetailDesk() {
                     total: totalAmount,
                     currency: businessDNA?.currency || 'UGX',
                     footer: businessDNA?.footer,
-                    sealId: `TXN-${saleId}`
+                    sealId: `BBU1-TXN-${saleId}`
                 });
-                toast.success("Hardware: Receipt Printed & Drawer Opened");
-            } else {
-                console.warn("Silent Print hardware not active. Falling back to Browser Print.");
+                toast.success("Native Handshake: Success");
             }
         } catch (hardwareErr) {
-            console.error("Deep Link Error", hardwareErr);
+            console.error("Native Hardware Fail", hardwareErr);
+            toast.error("Printer Handshake Interrupted");
         }
 
         // --- 4. AUDIO AFFIRMATION & UI STATE FINALIZATION ---
-        DeepAudioEngine.playSuccess(); // FEEDBACK: Victory signal
+        DeepAudioEngine.playSuccess();
 
         setLastCompletedSale({ receiptData: {
-            saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `TRAN-${saleId}`, related_deal_id: null },
+            saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `BBU1-${saleId}`, related_deal_id: null },
             identity: { legal_name: businessDNA?.name, physical_address: businessDNA?.address, city: businessDNA?.city, official_phone: businessDNA?.phone, receipt_footer: businessDNA?.footer, tin_number: businessDNA?.tax_number, currency_code: businessDNA?.currency, logo_url: businessDNA?.logo_url },
             customer: selectedCustomer, items: cart.map(i => ({ name: i.product_name, qty: i.quantity, price: i.price, total: i.price * i.quantity }))
         }});
         
         setCart([]); setSelectedCustomer(null); setDiscount({ type: 'fixed', value: 0 }); setPaymentModalOpen(false);
-        toast.success("Transaction Finalized Deeply");
+        toast.success("Transaction Complete");
     };
 
     if (!products || isProfileLoading) return (
         <div className="h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Calibrating Retail Desk...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Deploying Retail Desk...</p>
         </div>
     );
 
     if (lastCompletedSale) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 lg:p-6">
-                <Card className="w-full max-md rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl border-none overflow-hidden">
+            <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 lg:p-6 overflow-y-auto">
+                <Card className="w-full max-w-md rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl border-none overflow-hidden my-auto">
                     <CardHeader className="bg-emerald-600 text-white text-center py-8 lg:py-10">
                         <CheckCircle2 className="h-12 w-12 lg:h-16 lg:w-16 text-white mx-auto mb-4" />
-                        <CardTitle className="text-xl lg:text-2xl font-black uppercase">Sale Authorized</CardTitle>
-                        <CardDescription className="text-emerald-100 font-bold uppercase text-[9px]">Document Sealed: {lastCompletedSale.receiptData.saleInfo.id}</CardDescription>
+                        <CardTitle className="text-xl lg:text-2xl font-black uppercase">Transaction Signed</CardTitle>
+                        <CardDescription className="text-emerald-100 font-bold uppercase text-[9px]">Ledger Reference: {lastCompletedSale.receiptData.saleInfo.id}</CardDescription>
                     </CardHeader>
                     <CardContent className="p-6 lg:p-8 space-y-6 bg-white">
-                        
-                        {/* --- THE RECEIPT PORTAL (REF BOUND) --- */}
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden scale-90 lg:scale-100">
                            <div ref={receiptRef}>
                              <Receipt receiptData={lastCompletedSale.receiptData} />
                            </div>
                         </div>
-
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-3 pb-4">
                             <div className="grid grid-cols-2 gap-3">
-                                {/* FIX: Explicitly passing contentRef to handleWebPrint call for React 19 / v3.3.0 consistency */}
                                 <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl gap-2" onClick={() => handleWebPrint({ contentRef: receiptRef })}>
                                     <PrinterIcon className="h-4 w-4" /> PRINT
                                 </Button>
@@ -548,7 +545,7 @@ export default function RetailDesk() {
                                 </Button>
                             </div>
                             <Button variant="outline" className="w-full h-14 font-black text-slate-900 border-slate-200 uppercase text-[10px] tracking-widest rounded-2xl" onClick={() => setLastCompletedSale(null)}>
-                                NEW TRANSACTION
+                                NEW SALE
                             </Button>
                         </div>
                     </CardContent>
@@ -558,8 +555,9 @@ export default function RetailDesk() {
     }
     
     return (
-        <div className="h-screen bg-slate-50 flex flex-col overflow-hidden relative">
-            <div className="h-16 border-b bg-white flex items-center justify-between px-4 lg:px-8 shrink-0">
+        <div className="h-screen bg-slate-50 flex flex-col overflow-hidden relative touch-none overscroll-none">
+            {/* TOP BAR */}
+            <div className="h-16 border-b bg-white flex items-center justify-between px-4 lg:px-8 shrink-0 z-20">
                 <div className="flex items-center gap-4">
                     <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate max-w-[150px] lg:max-w-none">
@@ -569,34 +567,49 @@ export default function RetailDesk() {
                 <div className="flex items-center gap-3">
                     <Button onClick={handleSync} variant="ghost" className="h-10 font-bold uppercase text-[10px] text-blue-600 gap-2">
                         <RefreshCw className={cn("h-3 w-3 lg:h-4 lg:w-4", isSyncing && "animate-spin")} /> 
-                        <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync Ledger"}</span>
+                        <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
                     </Button>
                 </div>
             </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden mb-16 lg:mb-0">
-                {/* DUAL-MODE VIEW: Switchable on Mobile, Side-by-Side on Desktop */}
-                <div className={cn("lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col", activeTab !== 'products' && 'hidden lg:flex')}>
+            {/* MAIN CONTENT AREA: Healed for Mobile Scrolling */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
+                
+                {/* PRODUCT GRID SECTION */}
+                <div className={cn(
+                    "h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    activeTab !== 'products' && 'hidden lg:flex'
+                )}>
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
-                <div className={cn("lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col", activeTab !== 'cart' && 'hidden lg:flex')}>
+
+                {/* CART DISPLAY SECTION */}
+                <div className={cn(
+                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    activeTab !== 'cart' && 'hidden lg:flex'
+                )}>
                     <CartDisplay 
-                        cart={cart} currency={businessDNA?.currency || 'UGX'} onUpdateQuantity={(id, q) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
-                        onRemoveItem={id => setCart(cart.filter(i => i.variant_id !== id))} selectedCustomer={selectedCustomer} onSetCustomer={() => setCustomerModalOpen(true)} onCharge={() => setPaymentModalOpen(true)} isProcessing={false} discount={discount} setDiscount={setDiscount} 
+                        cart={cart} currency={businessDNA?.currency || 'UGX'} 
+                        onUpdateQuantity={(id, q) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
+                        onRemoveItem={id => setCart(cart.filter(i => i.variant_id !== id))} 
+                        selectedCustomer={selectedCustomer} 
+                        onSetCustomer={() => setCustomerModalOpen(true)} 
+                        onCharge={() => setPaymentModalOpen(true)} 
+                        isProcessing={false} discount={discount} setDiscount={setDiscount} 
                     />
                 </div>
             </div>
 
             {/* MOBILE FLOATING SUMMARY (Uber-Style) */}
             {cart.length > 0 && activeTab === 'products' && (
-                <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in slide-in-from-bottom-5">
+                <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in slide-in-from-bottom-5 z-40">
                     <Button 
                         onClick={() => setActiveTab('cart')}
-                        className="w-full h-14 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
+                        className="w-full h-16 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
                     >
                         <div className="flex items-center gap-3">
-                            <Badge className="bg-white text-blue-600 font-black">{cart.length}</Badge>
-                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Cart</span>
+                            <Badge className="bg-white text-blue-600 font-black h-6 w-6 flex items-center justify-center p-0 rounded-full">{cart.length}</Badge>
+                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Receipt</span>
                         </div>
                         <span className="font-black text-white">{businessDNA?.currency} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</span>
                     </Button>
@@ -607,7 +620,7 @@ export default function RetailDesk() {
             <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-50">
                 <button 
                     onClick={() => setActiveTab('products')}
-                    className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}
+                    className={cn("flex flex-col items-center gap-1 transition-all flex-1 py-2", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}
                 >
                     <LayoutGrid className="h-5 w-5" />
                     <span className="text-[8px] font-black uppercase tracking-tighter">Products</span>
@@ -615,7 +628,7 @@ export default function RetailDesk() {
                 <div className="h-8 w-px bg-slate-100" />
                 <button 
                     onClick={() => setActiveTab('cart')}
-                    className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}
+                    className={cn("flex flex-col items-center gap-1 transition-all flex-1 py-2", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}
                 >
                     <div className="relative">
                         <ReceiptText className="h-5 w-5" />
