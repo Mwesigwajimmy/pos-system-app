@@ -1,6 +1,7 @@
 // next.config.mjs
 // V-REVOLUTION: ENTERPRISE BUILD ENGINE V10.4
 // Final Logic Alignment for Next.js 15 + PWA + next-intl
+// MOBILE APP WELD: Stabilized via Live Bridge (The Canva Way)
 
 import withPWAInit from "@ducanh2912/next-pwa";
 import createNextIntlPlugin from 'next-intl/plugin';
@@ -13,6 +14,8 @@ const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // NOTE: 'output: export' removed to enable Server-Side logic and AI APIs (The Canva Way)
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
