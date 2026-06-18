@@ -73,6 +73,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
     const formData = new FormData(e.currentTarget);
     const categoryCode = formData.get('tax_category_code')?.toString().toUpperCase() || 'STANDARD';
 
+    // MULTI-COUNTRY LOGIC: Check for existing active rule for this specific category
     const existingActive = configs.find(c => c.tax_category_code === categoryCode && c.is_active);
     
     const newRule = {
@@ -121,7 +122,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
   return (
     <div className="flex flex-col xl:flex-row gap-8 p-6 md:p-10 bg-white min-h-[600px] animate-in fade-in duration-500">
       
-      {/* LEFT: Configuration Form (Fixed Width on Desktop) */}
+      {/* LEFT: Configuration Form */}
       <div className="w-full xl:w-[400px] shrink-0">
         <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden sticky top-0">
           <CardHeader className="bg-slate-50 border-b border-slate-200 p-6">
@@ -130,25 +131,25 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
               Tax Setup
             </CardTitle>
             <CardDescription className="text-xs font-medium text-slate-500">
-              Configure rates for your jurisdiction.
+              Configure VAT or Income Tax rates for your jurisdiction.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSave}>
             <CardContent className="space-y-5 p-6">
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold text-slate-500 uppercase">Tax Name</Label>
-                <Input name="tax_name" placeholder="e.g. VAT" className="h-10" required />
+                <Input name="tax_name" placeholder="e.g. Corporate Income Tax" className="h-10" required />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold text-slate-500 uppercase">Category Code</Label>
-                <Input name="tax_category_code" placeholder="STANDARD" className="h-10 font-mono uppercase bg-slate-50" required />
+                <Input name="tax_category_code" placeholder="INCOME_TAX or STANDARD" className="h-10 font-mono uppercase bg-slate-50" required />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-bold text-slate-500 uppercase">Rate (%)</Label>
-                  <Input name="rate" type="number" step="0.01" placeholder="18.0" className="h-10 font-bold text-blue-600" required />
+                  <Input name="rate" type="number" step="0.01" placeholder="30.0" className="h-10 font-bold text-blue-600" required />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-bold text-slate-500 uppercase">Currency</Label>
@@ -170,7 +171,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
               <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg flex gap-3">
                 <Briefcase className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <p className="text-[10px] text-blue-700 font-semibold leading-relaxed">
-                  Automatic handling for Retail and Professional Services.
+                  Tip: Use 'INCOME_TAX' code for automatic profit-based accruals.
                 </p>
               </div>
             </CardContent>
@@ -184,7 +185,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
         </Card>
       </div>
 
-      {/* RIGHT: Active Rules Table (Expands to fill space) */}
+      {/* RIGHT: Active Rules Table */}
       <div className="flex-1 min-w-0">
         <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden h-full flex flex-col">
           <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
@@ -257,7 +258,7 @@ export default function TaxSettings({ businessId }: { businessId: string }) {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-500" /> System Verified
             </div>
-            <span>v10.2</span>
+            <span>v10.4.1</span>
           </CardFooter>
         </Card>
       </div>
