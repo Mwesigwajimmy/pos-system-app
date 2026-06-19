@@ -11,7 +11,7 @@ import {
   TrendingUp, ShieldCheck, Clock, MapPin, Mail, Hash
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation'; // Added useParams
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,6 +95,8 @@ export default function EstimateTerminal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+  const params = useParams(); // Get the locale from the URL
+  const locale = params.locale || 'en';
 
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<EstimateForm>({
     resolver: zodResolver(estimateSchema),
@@ -327,7 +329,14 @@ export default function EstimateTerminal({
       generateSovereignPDF(values);
       
       toast.success("Operational protocol synchronized to registry");
-      router.push(`/${tenantId}/invoicing/estimates/history`); 
+
+      /** 
+       * DEEP CORRECTION: Redirect to the actual folder location you found.
+       * Folder: src/app/[locale]/(dashboard)/invoicing/estimates/history
+       * URL: /[locale]/invoicing/estimates/history
+       */
+      router.push(`/${locale}/invoicing/estimates/history`); 
+
     } catch (err: any) {
       toast.error(err.message);
     } finally {
