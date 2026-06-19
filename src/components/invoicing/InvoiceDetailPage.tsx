@@ -8,14 +8,13 @@ import { format, parseISO } from "date-fns";
 import { createClient } from '@/lib/supabase/client';
 import { 
     Loader2, Mail, ArrowLeft, Printer, CheckCircle2, 
-    FileText, Hash, User, ReceiptText, Download,ShieldCheck
+    FileText, Hash, User, ReceiptText, Download, ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 
-// --- Interfaces ---
 interface InvoiceItem {
   id: string;
   description: string;
@@ -27,11 +26,11 @@ interface InvoiceItem {
 }
 
 interface InvoiceDetail {
-  id: string;
+  id: string | number;
   invoice_number: string;
-  total_amount: number; // HEALED: Standardized
+  total_amount: number; 
   subtotal: number;
-  tax_amount: number;   // HEALED: From schema audit
+  tax_amount: number;   
   amount_paid: number;
   balance_due: number;
   currency: string;
@@ -43,7 +42,7 @@ interface InvoiceDetail {
   customers: {
     name: string;
     email: string;
-    phone_number: string; // HEALED: From schema audit
+    phone_number: string; 
     tin_number?: string;
   };
   invoice_items: InvoiceItem[];
@@ -65,7 +64,6 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
     const fetchInvoice = async () => {
       setLoading(true);
       
-      // DEEP WELD: Select string aligned exactly to audited columns
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -100,10 +98,8 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
       minimumFractionDigits: 0
     }).format(val || 0);
 
-  // --- PROFESSIONAL RECEIPT HANDSHAKE ---
   const handleDownloadReceipt = () => {
     toast.success("Generating Professional Settlement Receipt...");
-    // Future: Integration with your PaymentRegistry PDF logic
   };
 
   if (loading) {
@@ -126,7 +122,7 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
             The document ID <strong>{invoiceId}</strong> could not be validated against your business registry.
         </p>
         <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest h-12 px-10 rounded-xl">
-          <Link href={`/${locale}/invoicing/all-invoices`}>Return to Registry</Link>
+          <Link href={`/${locale}/invoicing/history`}>Return to Registry</Link>
         </Button>
       </div>
     );
@@ -137,10 +133,9 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
   return (
     <div className="max-w-5xl mx-auto py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      {/* HEADER CONTROLS */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 px-2">
         <Link 
-          href={`/${locale}/invoicing/all-invoices`}
+          href={`/${locale}/invoicing/history`}
           className="group flex items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-all"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> 
@@ -148,7 +143,6 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
         </Link>
         
         <div className="flex gap-3">
-          {/* PROFESSIONAL RECEIPT BUTTON: Visible only when paid */}
           {isPaid && (
             <Button onClick={handleDownloadReceipt} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl shadow-lg shadow-emerald-100 gap-2">
                 <ReceiptText size={16} /> Get Payment Receipt
@@ -163,7 +157,6 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
         </div>
       </div>
 
-      {/* MAIN INVOICE INFRASTRUCTURE */}
       <Card className="shadow-2xl shadow-slate-200/50 border-none overflow-hidden rounded-[2.5rem] bg-white">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-10 md:p-14">
           <div className="flex flex-col md:flex-row justify-between items-start gap-10">
@@ -267,7 +260,6 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
             </Table>
           </div>
 
-          {/* TOTALS ENGINE */}
           <div className="mt-16 flex flex-col md:flex-row justify-between gap-16">
             <div className="flex-1">
               {invoice.notes && (
@@ -298,10 +290,9 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
         </CardContent>
       </Card>
       
-      {/* SYSTEM FOOTER */}
       <div className="text-center py-10 opacity-30">
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] flex items-center justify-center gap-3">
-           <ShieldCheck size={12} className="text-blue-600"/> Handshake Hash: {invoice.id.substring(0,18).toUpperCase()} • PRO-SECTOR INFRASTRUCTURE
+           <ShieldCheck size={12} className="text-blue-600"/> Handshake Hash: {String(invoice.id).substring(0,18).toUpperCase()} • PRO-SECTOR INFRASTRUCTURE
         </p>
       </div>
     </div>
