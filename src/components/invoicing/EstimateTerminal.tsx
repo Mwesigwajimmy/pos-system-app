@@ -77,7 +77,7 @@ interface EstimateTerminalProps {
         name: string; 
         email: string; 
         phone: string; 
-        tin: string; 
+        tin_number: string; // HEALED: Standardized column name from audit
         address: string;
         plot?: string;
         pobox?: string;
@@ -100,11 +100,11 @@ export default function EstimateTerminal({
     resolver: zodResolver(estimateSchema),
     defaultValues: { 
         title: 'Commercial Quotation and Service Estimate', 
-        currencyCode: 'USD',
+        currencyCode: 'UGX',
         issueDate: format(new Date(), 'yyyy-MM-dd'),
         validUntil: format(new Date(Date.now() + 30 * 86400000), 'yyyy-MM-dd'),
         officialEmail: businessInfo.email,
-        tinNumber: businessInfo.tin,
+        tinNumber: businessInfo.tin_number, // HEALED mapping
         plotNumber: businessInfo.plot || '',
         pobox: businessInfo.pobox || '',
         chequesPayableTo: businessInfo.name,
@@ -126,20 +126,24 @@ export default function EstimateTerminal({
   const discount = watch("discountAmount");
   const adjustment = watch("adjustment");
 
-  // Dynamic currency symbol lookup
   const activeCurrency = useMemo(() => {
-    return currencies.find(c => c.code === currentCurrencyCode) || { code: 'USD', symbol: '$' };
+    return currencies.find(c => c.code === currentCurrencyCode) || { code: 'UGX', symbol: 'Shs' };
   }, [currentCurrencyCode, currencies]);
 
   useEffect(() => {
     async function fetchNextSequence() {
-        const { count, error } = await supabase
+        // HEALED LOGIC: Since estimate_uid is Globally Unique, we must ensure 
+        // a sequence that never collides across different tenants.
+        const { data, error } = await supabase
             .from('estimates')
-            .select('*', { count: 'exact', head: true })
-            .eq('tenant_id', tenantId);
-        if (!error) {
-            setValue('estimateUid', `QT-${((count || 0) + 1).toString().padStart(4, '0')}`);
-        }
+            .select('estimate_uid')
+            .order('created_at', { ascending: false })
+            .limit(1);
+        
+        // We use a high-entropy suffix (Last 4 of timestamp) to prevent 23505 errors
+        const entropy = Date.now().toString().slice(-4);
+        const sequence = data?.length ? (parseInt(data[0].estimate_uid.split('-')[1]) + 1) : 1;
+        setValue('estimateUid', `QT-${sequence.toString().padStart(4, '0')}-${entropy}`);
     }
     fetchNextSequence();
   }, [tenantId, setValue, supabase]);
@@ -161,6 +165,7 @@ export default function EstimateTerminal({
     try {
       const { data: estData, error: estErr } = await supabase.from('estimates').insert({
         tenant_id: tenantId,
+        business_id: tenantId,
         customer_id: values.customerId,
         estimate_uid: values.estimateUid,
         title: values.title,
@@ -169,7 +174,7 @@ export default function EstimateTerminal({
         total_amount: totals.grandTotal,
         valid_until: values.validUntil,
         client_name: customers.find(c => String(c.id) === values.customerId)?.name,
-        metadata: { ...values } 
+        metadata: { ...values, totals_at_creation: totals } 
       }).select('id').single();
 
       if (estErr) throw estErr;
@@ -177,6 +182,8 @@ export default function EstimateTerminal({
       const { error: lineErr } = await supabase.from('estimate_line_items').insert(
         values.items.map(item => ({
           estimate_id: estData.id,
+          tenant_id: tenantId,
+          business_id: tenantId,
           description: item.description,
           quantity: item.quantity,
           unit_cost: item.unitCost,
@@ -186,8 +193,8 @@ export default function EstimateTerminal({
       );
 
       if (lineErr) throw lineErr;
-      toast.success("Operational protocol saved to registry");
-      router.push('/invoicing/estimates/history'); 
+      toast.success("Commercial protocol synchronized to registry");
+      router.push(`/${tenantId}/invoicing/estimates/history`); 
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -199,7 +206,6 @@ export default function EstimateTerminal({
     <div className="min-h-screen bg-white">
       <div className="max-w-[1400px] mx-auto py-8 px-4 md:px-8 space-y-8 animate-in fade-in duration-500">
         
-        {/* HEADER SECTION */}
         <Card className="border border-slate-100 shadow-sm rounded-xl overflow-hidden bg-slate-50/30">
           <CardContent className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-5">
@@ -239,7 +245,6 @@ export default function EstimateTerminal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             
-            {/* 1. REGISTRY & CORPORATE IDENTITY */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Registry Details</h2>
@@ -286,7 +291,6 @@ export default function EstimateTerminal({
                 </div>
             </div>
 
-            {/* 2. CUSTOMER & PAYMENT */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Stakeholder Context</h2>
@@ -326,7 +330,6 @@ export default function EstimateTerminal({
               </div>
             </div>
 
-            {/* 3. ITEM TABLE */}
             <div className="space-y-4">
                 <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Technical Specifications</h2>
                 <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden bg-white">
@@ -385,7 +388,6 @@ export default function EstimateTerminal({
                 </Card>
             </div>
 
-            {/* 4. SUMMARY & LEGAL */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 <div className="grid gap-6">
                     <div className="space-y-2">
