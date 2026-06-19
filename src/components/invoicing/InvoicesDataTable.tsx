@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import Link from "next/navigation";
+import Link from "next/link"; // HEALED: Correct import for Link
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Correct import for useRouter
 
 import { 
   DropdownMenu,
@@ -55,7 +55,7 @@ export interface InvoiceData {
   total: number;
   subtotal: number;
   tax_amount: number;
-  amount_paid: number; // ADDED: For partial payment awareness
+  amount_paid: number; 
   balance_due: number;
   currency: string;
   status: string;
@@ -70,7 +70,7 @@ interface Props {
   data: InvoiceData[]; 
   locale?: string;
   tenantName?: string;
-  businessId?: string; // ADDED: For action handshakes
+  businessId?: string; 
 }
 
 export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organization", businessId }: Props) {
@@ -325,7 +325,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                       </TableCell>
                       
                       <TableCell className="text-right">
-                          {/* HEALED: Conditional green/red balance based on balance_due value */}
                           {inv.balance_due > 0 ? (
                               <span className="text-red-600 font-bold text-xs bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
                                   {formatMoney(inv.balance_due, inv.currency)}
@@ -373,12 +372,10 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
 
                                       <DropdownMenuSeparator />
                                       
-                                      {/* ACTION: MARK AS PAID / PARTIAL PAYMENT */}
                                       {inv.balance_due > 0 && (
                                           <DropdownMenuItem 
                                             className="rounded-lg font-bold text-slate-900 cursor-pointer bg-blue-50/50"
                                             onClick={() => {
-                                                // Bridge to the Payment Registry we birthed earlier
                                                 toast.success("Redirecting to Payment Registry...");
                                                 window.location.href = `/${locale}/invoicing/payments?invoiceId=${inv.id}`;
                                             }}
@@ -389,7 +386,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
 
                                       <DropdownMenuSeparator />
 
-                                      {/* ACTION: ARCHIVE (SOFT DELETE) */}
                                       <DropdownMenuItem 
                                         className="rounded-lg font-bold text-red-600 cursor-pointer hover:bg-red-50"
                                         onClick={() => handleArchiveInvoice(inv.id)}
