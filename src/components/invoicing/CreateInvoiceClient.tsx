@@ -178,7 +178,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
 
       if (error) throw error;
       toast.success("Invoice successfully posted to ledger");
-      router.push(`/${locale}/invoicing/history`);
+      router.push(`/${locale}/invoicing/list`);
     } catch (err: any) {
       setSubmitError(err.message);
     } finally {
