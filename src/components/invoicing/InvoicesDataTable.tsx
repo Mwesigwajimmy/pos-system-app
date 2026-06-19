@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import Link from "next/link";
+import Link from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,13 +13,28 @@ import {
   FileDown, 
   CheckCircle2, 
   ArrowUpDown,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Banknote,
+  Trash2,
+  MoreVertical,
+  History
 } from 'lucide-react';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from 'react-hot-toast';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { 
   Tooltip, 
@@ -40,6 +55,7 @@ export interface InvoiceData {
   total: number;
   subtotal: number;
   tax_amount: number;
+  amount_paid: number; // ADDED: For partial payment awareness
   balance_due: number;
   currency: string;
   status: string;
@@ -54,18 +70,39 @@ interface Props {
   data: InvoiceData[]; 
   locale?: string;
   tenantName?: string;
+  businessId?: string; // ADDED: For action handshakes
 }
 
-export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organization" }: Props) {
+export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organization", businessId }: Props) {
   const [filter, setFilter] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: keyof InvoiceData, direction: 'asc' | 'desc' } | null>(null);
+  const supabase = createClient();
+  const router = useRouter();
 
-  // --- PDF GENERATOR (Professional Standard) ---
+  // --- 1. ARCHIVE HANDSHAKE (No Delete, Only Archive) ---
+  const handleArchiveInvoice = async (id: string) => {
+    const promise = async () => {
+        const { error } = await supabase
+            .from('invoices')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', id);
+        if (error) throw error;
+        router.refresh();
+        return "Invoice moved to archive";
+    };
+
+    toast.promise(promise(), {
+        loading: 'Archiving document...',
+        success: (m) => m,
+        error: 'Archive process failed'
+    });
+  };
+
+  // --- 2. PDF GENERATOR (Professional Standard) ---
   const handleDownloadPDF = (inv: InvoiceData) => {
     const doc = new jsPDF();
     const timestamp = format(new Date(), 'dd MMM yyyy, HH:mm');
 
-    // 1. Header
     doc.setFontSize(22);
     doc.setTextColor(15, 23, 42); 
     doc.text("INVOICE", 14, 22);
@@ -85,7 +122,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
     doc.setDrawColor(241, 245, 249);
     doc.line(14, 45, 196, 45);
 
-    // 2. Billing Info
     doc.setFontSize(11);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
@@ -99,7 +135,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
     doc.text(inv.customer_name || "Valued Customer", 120, 62);
     doc.text(`Currency: ${inv.currency || 'UGX'}`, 120, 68);
 
-    // 3. Table
     autoTable(doc, {
       startY: 80,
       head: [['Description', 'Qty', 'Unit Price', 'Amount']],
@@ -117,7 +152,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
       columnStyles: { 3: { halign: 'right' }, 2: { halign: 'right' } }
     });
 
-    // 4. Totals
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -133,7 +167,6 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
     doc.text("TOTAL DUE:", 135, finalY + 18);
     doc.text(`${inv.currency} ${new Intl.NumberFormat().format(inv.total)}`, 196, finalY + 18, { align: 'right' });
 
-    // 5. Footer
     doc.setFontSize(8);
     doc.setTextColor(150);
     doc.text(`Report Generated: ${timestamp}`, 14, 285);
@@ -181,10 +214,11 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
     const s = (status || '').toUpperCase();
     switch (s) {
         case 'PAID': return <Badge className="bg-emerald-500 hover:bg-emerald-600 border-none text-white px-3 py-0.5">Paid</Badge>;
-        case 'OVERDUE': return <Badge variant="destructive" className="px-3 py-0.5">Overdue</Badge>;
-        case 'PARTIAL': return <Badge className="bg-amber-500 hover:bg-amber-600 border-none text-white px-3 py-0.5">Partial</Badge>;
-        case 'ISSUED': return <Badge className="bg-blue-600 hover:bg-blue-700 border-none text-white px-3 py-0.5">Issued</Badge>;
-        default: return <Badge variant="outline" className="px-3 py-0.5 text-slate-500">{status}</Badge>;
+        case 'OVERDUE': return <Badge variant="destructive" className="px-3 py-0.5 font-bold uppercase">Overdue</Badge>;
+        case 'PARTIALLY PAID': 
+        case 'PARTIAL': return <Badge className="bg-amber-500 hover:bg-amber-600 border-none text-white px-3 py-0.5 font-bold uppercase">Partial</Badge>;
+        case 'ISSUED': return <Badge className="bg-blue-600 hover:bg-blue-700 border-none text-white px-3 py-0.5 font-bold uppercase">Issued</Badge>;
+        default: return <Badge variant="outline" className="px-3 py-0.5 text-slate-500 font-bold uppercase">{status}</Badge>;
     }
   };
 
@@ -214,7 +248,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
               placeholder="Search invoices..." 
               value={filter} 
               onChange={e => setFilter(e.target.value)} 
-              className="pl-10 h-10 bg-white border-slate-200 rounded-lg text-sm" 
+              className="pl-10 h-10 bg-white border-slate-200 rounded-lg text-sm font-medium" 
             />
           </div>
         </div>
@@ -222,7 +256,7 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
       
       <CardContent className="p-0">
         <ScrollArea className="h-[600px] w-full">
-          <div className="min-w-[1000px]"> {/* Ensures horizontal scroll on narrow containers */}
+          <div className="min-w-[1100px]">
             <Table>
               <TableHeader className="bg-slate-50/80 border-b">
                 <TableRow>
@@ -275,9 +309,9 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                       
                       <TableCell>
                           <div className="flex flex-col">
-                              <span className="font-semibold text-slate-800">{inv.customer_name || "Customer"}</span>
+                              <span className="font-semibold text-slate-800">{inv.customer_name || "Walk-in Client"}</span>
                               <span className="text-[10px] text-slate-400 flex items-center gap-1 font-bold">
-                                  <FileSpreadsheet className="h-2.5 w-2.5" /> {inv.items_count} items
+                                  <FileSpreadsheet className="h-2.5 w-2.5" /> {inv.items_count || 0} items
                               </span>
                           </div>
                       </TableCell>
@@ -291,12 +325,16 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                       </TableCell>
                       
                       <TableCell className="text-right">
+                          {/* HEALED: Conditional green/red balance based on balance_due value */}
                           {inv.balance_due > 0 ? (
-                              <span className="text-red-600 font-bold text-xs bg-red-50 px-2 py-0.5 rounded">
+                              <span className="text-red-600 font-bold text-xs bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
                                   {formatMoney(inv.balance_due, inv.currency)}
                               </span>
                           ) : (
-                              <span className="text-emerald-600 font-bold text-[10px] uppercase">Paid</span>
+                              <div className="flex items-center justify-end gap-1.5 text-emerald-600 font-bold">
+                                  <CheckCircle2 size={12} />
+                                  <span className="text-[10px] uppercase">Paid</span>
+                              </div>
                           )}
                       </TableCell>
                       
@@ -310,22 +348,69 @@ export function InvoicesDataTable({ data, locale = 'en', tenantName = "Organizat
                       
                       <TableCell className="text-right pr-6">
                           <div className="flex justify-end gap-1">
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-100">
+                                          <MoreVertical className="h-4 w-4 text-slate-400" />
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48 p-2 rounded-xl shadow-xl border-slate-200">
+                                      <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 px-2 py-1.5">Authorization</DropdownMenuLabel>
+                                      
+                                      <DropdownMenuItem 
+                                        className="rounded-lg font-bold text-blue-600 cursor-pointer"
+                                        onClick={() => window.location.href = `/${locale}/invoicing/invoice/${inv.id}`}
+                                      >
+                                          <FileText className="mr-2 h-4 w-4" /> View Details
+                                      </DropdownMenuItem>
+
+                                      <DropdownMenuItem 
+                                        className="rounded-lg font-bold text-emerald-600 cursor-pointer"
+                                        onClick={() => handleDownloadPDF(inv)}
+                                      >
+                                          <FileDown className="mr-2 h-4 w-4" /> Download PDF
+                                      </DropdownMenuItem>
+
+                                      <DropdownMenuSeparator />
+                                      
+                                      {/* ACTION: MARK AS PAID / PARTIAL PAYMENT */}
+                                      {inv.balance_due > 0 && (
+                                          <DropdownMenuItem 
+                                            className="rounded-lg font-bold text-slate-900 cursor-pointer bg-blue-50/50"
+                                            onClick={() => {
+                                                // Bridge to the Payment Registry we birthed earlier
+                                                toast.success("Redirecting to Payment Registry...");
+                                                window.location.href = `/${locale}/invoicing/payments?invoiceId=${inv.id}`;
+                                            }}
+                                          >
+                                              <Banknote className="mr-2 h-4 w-4" /> Record Settlement
+                                          </DropdownMenuItem>
+                                      )}
+
+                                      <DropdownMenuSeparator />
+
+                                      {/* ACTION: ARCHIVE (SOFT DELETE) */}
+                                      <DropdownMenuItem 
+                                        className="rounded-lg font-bold text-red-600 cursor-pointer hover:bg-red-50"
+                                        onClick={() => handleArchiveInvoice(inv.id)}
+                                      >
+                                          <Trash2 className="mr-2 h-4 w-4" /> Discard / Archive
+                                      </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+
                               <TooltipProvider>
                                   <Tooltip>
                                       <TooltipTrigger asChild>
-                                          <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-100" onClick={() => handleDownloadPDF(inv)}>
-                                              <FileDown className="h-4 w-4 text-slate-500" />
+                                          <Button asChild size="icon" variant="ghost" className="h-8 w-8 hover:bg-blue-50 rounded-lg">
+                                              <Link href={`/${locale}/invoicing/invoice/${inv.id}`}>
+                                                  <ArrowRight className="h-4 w-4 text-blue-600" />
+                                              </Link>
                                           </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>Download PDF</TooltipContent>
+                                      <TooltipContent className="font-bold text-[10px] uppercase">Open Protocol</TooltipContent>
                                   </Tooltip>
                               </TooltipProvider>
-                              
-                              <Button asChild size="icon" variant="ghost" className="h-8 w-8 hover:bg-blue-50">
-                                  <Link href={`/${locale}/invoicing/invoice/${inv.id}`}>
-                                      <ArrowRight className="h-4 w-4 text-blue-600" />
-                                  </Link>
-                              </Button>
                           </div>
                       </TableCell>
                     </TableRow>
