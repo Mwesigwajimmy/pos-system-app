@@ -162,7 +162,7 @@ export default function CreateInvoiceModal({ isOpen, onClose, tenantId, userId, 
         tenant_id: tenantId,
         business_id: tenantId,
         customer_id: data.customerId,
-        total: totals.grandTotal,
+        total_amount: totals.grandTotal, // HEALED: Changed 'total' to 'total_amount' to fix naming handshake
         currency_code: data.currency,
         status: 'ISSUED',
         metadata: { ...data }

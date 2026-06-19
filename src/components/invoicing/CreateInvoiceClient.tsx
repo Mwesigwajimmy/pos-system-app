@@ -111,7 +111,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
   const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
-      currency: businessDNA.currency,
+      currency: 'UGX',
       exchangeRate: 1.0,
       issueDate: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
@@ -133,7 +133,9 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
     let totalDiscount = 0;
 
     watchedItems.forEach(item => {
-      const lineBase = Money.multiply(item.unitPrice, item.quantity);
+      const qty = Number(item.quantity) || 0;
+      const price = Number(item.unitPrice) || 0;
+      const lineBase = Money.multiply(price, qty);
       const discountVal = Number(item.discount) || 0;
       const taxableAmount = lineBase - discountVal;
       const lineTax = Money.calculateTax(taxableAmount, item.taxRate);
@@ -166,11 +168,12 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
     try {
       const { data: inv, error } = await supabase.from('invoices').insert({
         tenant_id: tenantId,
+        business_id: tenantId,
         customer_id: data.customerId,
         currency_code: data.currency,
-        total: totals.grandTotal,
+        total_amount: totals.grandTotal, // HEALED: Standardized naming to bypass NOT-NULL constraint
         status: 'ISSUED',
-        metadata: { ...data }
+        metadata: { ...data, totals_snapshot: totals }
       }).select('id').single();
 
       if (error) throw error;
@@ -283,7 +286,9 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
                   </TableHeader>
                   <TableBody>
                     {fields.map((field, index) => {
-                      const lineBase = Money.multiply(watchedItems[index]?.unitPrice || 0, watchedItems[index]?.quantity || 0);
+                      const qty = Number(watchedItems[index]?.quantity) || 0;
+                      const price = Number(watchedItems[index]?.unitPrice) || 0;
+                      const lineBase = Money.multiply(price, qty);
                       const disc = Number(watchedItems[index]?.discount) || 0;
                       const tax = Money.calculateTax(lineBase - disc, watchedItems[index]?.taxRate || 0);
                       
@@ -294,11 +299,11 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
                             <Input {...register(`items.${index}.productName` as const)} placeholder="Item name" className="h-9 text-xs font-bold" />
                             <Textarea {...register(`items.${index}.description` as const)} placeholder="Details..." className="min-h-[60px] text-[11px] p-2 resize-none bg-slate-50/30" />
                           </TableCell>
-                          <TableCell className="align-top pt-4"><Input type="number" {...register(`items.${index}.quantity` as const)} className="h-9 text-center text-xs font-bold" /></TableCell>
-                          <TableCell className="align-top pt-4"><Input type="number" {...register(`items.${index}.unitPrice` as const)} className="h-9 text-right text-xs font-bold" /></TableCell>
-                          <TableCell className="align-top pt-4"><Input type="number" {...register(`items.${index}.discount` as const)} className="h-9 text-center text-xs font-medium bg-amber-50/30" /></TableCell>
-                          <TableCell className="align-top pt-4"><Input type="number" {...register(`items.${index}.taxRate` as const)} className="h-9 text-center text-xs font-medium bg-blue-50/30" /></TableCell>
-                          <TableCell className="align-top pt-6 text-right pr-6 text-xs font-bold text-slate-900">
+                          <TableCell className="align-top pt-4"><Input type="number" step="any" {...register(`items.${index}.quantity` as const)} className="h-9 text-center text-xs font-bold" /></TableCell>
+                          <TableCell className="align-top pt-4"><Input type="number" step="any" {...register(`items.${index}.unitPrice` as const)} className="h-9 text-right text-xs font-bold" /></TableCell>
+                          <TableCell className="align-top pt-4"><Input type="number" step="any" {...register(`items.${index}.discount` as const)} className="h-9 text-center text-xs font-medium bg-amber-50/30" /></TableCell>
+                          <TableCell className="align-top pt-4"><Input type="number" step="any" {...register(`items.${index}.taxRate` as const)} className="h-9 text-center text-xs font-medium bg-blue-50/30" /></TableCell>
+                          <TableCell className="align-top pt-6 text-right pr-6 text-xs font-black text-slate-900 tabular-nums">
                             {formatCurrency(lineBase - disc + tax)}
                           </TableCell>
                           <TableCell className="align-top pt-4">
@@ -351,7 +356,7 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
                   </div>
                   <div className="flex justify-between items-center pt-3 border-t border-white/5">
                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Adjustment ({selectedCurrencyCode})</span>
-                    <Input type="number" {...register("adjustment")} className="w-24 h-8 border-none bg-white/10 rounded-md text-right font-bold text-white text-xs" />
+                    <Input type="number" step="any" {...register("adjustment")} className="w-24 h-8 border-none bg-white/10 rounded-md text-right font-bold text-white text-xs" />
                   </div>
                 </div>
 
@@ -367,17 +372,17 @@ export default function CreateInvoiceClient({ tenantId, userId, locale }: Create
 
                 <Button 
                     type="submit" 
-                    disabled={isSubmitting} 
+                    disabled={isSubmitting || totals.grandTotal <= 0} 
                     className="w-full h-12 bg-white hover:bg-slate-100 text-slate-900 font-bold uppercase tracking-widest text-[11px] rounded-xl shadow-lg transition-all active:scale-95 flex gap-2"
                 >
                     {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 size={16} />}
-                    {isSubmitting ? "Processing..." : "Authorize Invoice"}
+                    {isSubmitting ? "Authorizing..." : "Authorize Invoice"}
                 </Button>
               </Card>
 
               <div className="flex justify-center items-center gap-2 opacity-40">
                 <CheckCircle2 size={12} className="text-emerald-500" />
-                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.3em]">Encrypted Ledger Integrity Verified</span>
+                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.4em]">Encrypted Ledger Integrity Verified</span>
               </div>
             </div>
           </div>
