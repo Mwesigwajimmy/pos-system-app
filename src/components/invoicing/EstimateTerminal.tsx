@@ -108,7 +108,7 @@ export default function EstimateTerminal({
         plotNumber: businessInfo.plot || 'N/A',
         pobox: businessInfo.pobox || 'N/A',
         chequesPayableTo: businessInfo.name,
-        bankDetails: 'Bank Name: \nBranch: \nAccount: ',
+        bankDetails: 'Bank: \nBranch: \nAcc: ',
         ceoName: '',
         ceoDesignation: 'Managing Director',
         inquiryContact: businessInfo.phone,
@@ -148,109 +148,145 @@ export default function EstimateTerminal({
     const subTotal = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitRate || 0, curr.quantity || 0), 0);
     const totalCost = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitCost || 0, curr.quantity || 0), 0);
     const margin = subTotal > 0 ? ((subTotal - totalCost) / subTotal) * 100 : 0;
+    
     const taxableBasis = subTotal - discount;
     const taxAmount = taxableBasis * (taxRate / 100);
     const grandTotal = taxableBasis + taxAmount + adjustment;
+
     return { subTotal, totalCost, margin, taxAmount, grandTotal };
   }, [watchedItems, taxRate, discount, adjustment]);
 
-  const generateProfessionalPDF = (values: EstimateForm) => {
+  /**
+   * --- PROFESSIONAL PDF GENERATION ENGINE ---
+   * HEALED: Overlapping prevention and dynamic data injection
+   */
+  const generateSovereignPDF = (values: EstimateForm) => {
     const doc = new jsPDF();
     const clientName = customers.find(c => String(c.id) === values.customerId)?.name || 'Valued Client';
-    
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 40, 'F');
+
+    // 1. CORPORATE HEADER (The Dark Seal)
+    doc.setFillColor(15, 23, 42); // Slate 900
+    doc.rect(0, 0, 210, 45, 'F');
     
     doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text(businessInfo.name.toUpperCase(), 15, 22);
+    
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`TIN: ${values.tinNumber || 'N/A'}`, 15, 30);
+    doc.text(`EMAIL: ${values.officialEmail || 'N/A'}`, 15, 34);
+    doc.text(`PHONE: ${values.inquiryContact || 'N/A'}`, 15, 38);
+
+    // 2. DOCUMENT SUBJECT
+    doc.setTextColor(15, 23, 42);
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text(businessInfo.name.toUpperCase(), 15, 25);
-    
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`TIN: ${values.tinNumber || 'N/A'} | EMAIL: ${values.officialEmail || 'N/A'}`, 15, 33);
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(22);
-    doc.text("COMMERCIAL QUOTATION", 15, 55);
+    doc.text("COMMERCIAL QUOTATION", 15, 65);
     
     doc.setFontSize(10);
-    doc.text(`REFERENCE: ${values.estimateUid}`, 15, 63);
-    doc.text(`DATE: ${format(new Date(values.issueDate), 'MMMM do, yyyy')}`, 15, 68);
-    doc.text(`VALID UNTIL: ${format(new Date(values.validUntil), 'MMMM do, yyyy')}`, 15, 73);
+    doc.setFont("helvetica", "normal");
+    doc.text(`REF NO: ${values.estimateUid}`, 15, 73);
+    doc.text(`DATE: ${format(new Date(values.issueDate), 'dd MMMM yyyy')}`, 15, 78);
+    doc.text(`VALID UNTIL: ${format(new Date(values.validUntil), 'dd MMMM yyyy')}`, 15, 83);
 
-    doc.setDrawColor(226, 232, 240);
-    doc.line(15, 80, 195, 80);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(15, 90, 195, 90);
+
+    // 3. STAKEHOLDER MATRIX
+    doc.setFont("helvetica", "bold");
+    doc.text("BILL TO:", 15, 100);
+    doc.setFont("helvetica", "normal");
+    doc.text(clientName, 15, 105);
+    doc.text(`Currency: ${activeCurrency.code}`, 15, 110);
 
     doc.setFont("helvetica", "bold");
-    doc.text("BILL TO:", 15, 90);
+    doc.text("LOCATION ORIGIN:", 120, 100);
     doc.setFont("helvetica", "normal");
-    doc.text(clientName, 15, 95);
-    doc.text(`Currency: ${activeCurrency.code} (${activeCurrency.symbol})`, 15, 100);
+    doc.text(`Plot No: ${values.plotNumber || 'N/A'}`, 120, 105);
+    doc.text(`P.O Box: ${values.pobox || 'N/A'}`, 120, 110);
+    doc.text(`Physical: ${businessInfo.address || 'N/A'}`, 120, 115);
 
-    doc.setFont("helvetica", "bold");
-    doc.text("FROM (Location):", 120, 90);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Plot: ${values.plotNumber || 'N/A'}`, 120, 95);
-    doc.text(`P.O Box: ${values.pobox || 'N/A'}`, 120, 100);
-    doc.text(`Phone: ${values.inquiryContact || 'N/A'}`, 120, 105);
-
+    // 4. TECHNICAL SPECIFICATIONS TABLE
     autoTable(doc, {
-      startY: 115,
-      head: [['#', 'Item Description & Specifications', 'Qty', 'Unit Rate', 'Total']],
-      body: values.items.map((item, i) => [
-        i + 1,
-        { content: `${item.description}\n${item.details || ''}`, styles: { fontStyle: 'bold' } },
+      startY: 125,
+      head: [['#', 'Description & Specifications', 'Qty', 'Unit Rate', 'Total']],
+      body: values.items.map((item, index) => [
+        index + 1,
+        { content: `${item.description}\n${item.details || ''}`, styles: { fontSize: 9, cellPadding: 3 } },
         item.quantity,
         `${activeCurrency.symbol}${item.unitRate.toLocaleString()}`,
         `${activeCurrency.symbol}${(item.quantity * item.unitRate).toLocaleString()}`
       ]),
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
-      bodyStyles: { fontSize: 9 },
-      columnStyles: { 0: { cellWidth: 10 }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+      columnStyles: { 0: { cellWidth: 10 }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
+      margin: { left: 15, right: 15 },
+      theme: 'grid'
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    // 5. SETTLEMENT SUMMARY (Prevent Overlapping)
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
     
+    // Check for page overflow
+    if (finalY > 230) { doc.addPage(); finalY = 20; }
+
     doc.setFont("helvetica", "bold");
-    doc.text(`Subtotal:`, 140, finalY);
+    doc.text("Subtotal:", 140, finalY);
     doc.text(`${activeCurrency.symbol}${totals.subTotal.toLocaleString()}`, 195, finalY, { align: 'right' });
     
-    doc.text(`VAT/Tax (${values.taxRate}%):`, 140, finalY + 7);
-    doc.text(`${activeCurrency.symbol}${totals.taxAmount.toLocaleString()}`, 195, finalY + 7, { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.text(`Discount:`, 140, finalY + 7);
+    doc.text(`-${activeCurrency.symbol}${discount.toLocaleString()}`, 195, finalY + 7, { align: 'right' });
+    
+    doc.text(`Tax (${values.taxRate}%):`, 140, finalY + 14);
+    doc.text(`+${activeCurrency.symbol}${totals.taxAmount.toLocaleString()}`, 195, finalY + 14, { align: 'right' });
 
     doc.setFontSize(14);
-    doc.rect(135, finalY + 12, 65, 12, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.setFillColor(15, 23, 42);
+    doc.rect(135, finalY + 19, 65, 12, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.text(`TOTAL DUE:`, 140, finalY + 20);
-    doc.text(`${activeCurrency.symbol}${totals.grandTotal.toLocaleString()}`, 195, finalY + 20, { align: 'right' });
+    doc.text(`TOTAL DUE:`, 140, finalY + 27);
+    doc.text(`${activeCurrency.symbol}${totals.grandTotal.toLocaleString()}`, 195, finalY + 27, { align: 'right' });
 
+    // 6. SETTLEMENT PROTOCOLS & TERMS
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(10);
-    doc.text("SETTLEMENT PROTOCOLS:", 15, finalY + 40);
+    doc.text("SETTLEMENT PROTOCOLS:", 15, finalY + 45);
     doc.setFontSize(8);
-    doc.text(`Bank Instructions: ${values.bankDetails || 'N/A'}`, 15, finalY + 45);
-    doc.text(`Mobile Money (MOMO): ${values.momoDetails || 'N/A'}`, 15, finalY + 50);
-    doc.text(`Cheques Payable to: ${values.chequesPayableTo || businessInfo.name}`, 15, finalY + 55);
+    doc.setFont("helvetica", "normal");
+    
+    // Use multi-line text for bank details to avoid overlap
+    const splitBank = doc.splitTextToSize(`Bank Instructions: ${values.bankDetails || 'N/A'}`, 180);
+    doc.text(splitBank, 15, finalY + 51);
+    
+    const nextY = finalY + 51 + (splitBank.length * 4);
+    doc.text(`MOMO/Digital: ${values.momoDetails || 'N/A'}`, 15, nextY);
+    doc.text(`Beneficiary: ${values.chequesPayableTo || 'N/A'}`, 15, nextY + 5);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("TERMS & CONDITIONS:", 15, finalY + 70);
+    doc.text("TERMS & CONDITIONS:", 15, nextY + 20);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    const splitTerms = doc.splitTextToSize(values.termsAndConditions || 'Standard terms apply.', 180);
-    doc.text(splitTerms, 15, finalY + 75);
+    const splitTerms = doc.splitTextToSize(values.termsAndConditions || 'Standard commercial terms apply.', 180);
+    doc.text(splitTerms, 15, nextY + 26);
 
-    const signY = 270;
-    doc.line(15, signY, 70, signY);
-    doc.text(`Authorized by: ${values.ceoName || 'System Generated'}`, 15, signY + 5);
-    doc.text(values.ceoDesignation || 'Management', 15, signY + 10);
+    // 7. AUTHORIZATION SEAL
+    const footerY = 275;
+    doc.line(15, footerY, 70, footerY);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(values.ceoName || 'Authorized Official', 15, footerY + 5);
+    doc.setFont("helvetica", "normal");
+    doc.text(values.ceoDesignation || 'Management', 15, footerY + 10);
 
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
-    doc.text(`Mathematically Sealed | BBU1 Enterprise OS | ${new Date().toISOString()}`, 105, 285, { align: 'center' });
+    doc.text(`Mathematically Sealed | BBU1 Infrastructure | ${new Date().toISOString()}`, 105, 290, { align: 'center' });
 
-    doc.save(`Quotation_${values.estimateUid}_${clientName.replace(' ', '_')}.pdf`);
+    doc.save(`Quotation_${values.estimateUid}.pdf`);
   };
 
   const onSubmit: SubmitHandler<EstimateForm> = async (values) => {
@@ -287,10 +323,10 @@ export default function EstimateTerminal({
 
       if (lineErr) throw lineErr;
       
-      // TRIGGER PROFESSIONAL PDF
-      generateProfessionalPDF(values);
+      // TRIGGER HEALED PDF GENERATOR
+      generateSovereignPDF(values);
       
-      toast.success("Quotation Dispatched & PDF Generated");
+      toast.success("Operational protocol synchronized to registry");
       router.push(`/${tenantId}/invoicing/estimates/history`); 
     } catch (err: any) {
       toast.error(err.message);
@@ -303,6 +339,7 @@ export default function EstimateTerminal({
     <div className="min-h-screen bg-white">
       <div className="max-w-[1400px] mx-auto py-8 px-4 md:px-8 space-y-8 animate-in fade-in duration-500">
         
+        {/* HEADER SECTION */}
         <Card className="border border-slate-100 shadow-sm rounded-xl overflow-hidden bg-slate-50/30">
           <CardContent className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-5">
@@ -342,6 +379,7 @@ export default function EstimateTerminal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             
+            {/* 1. REGISTRY & CORPORATE IDENTITY */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Registry Details</h2>
@@ -388,6 +426,7 @@ export default function EstimateTerminal({
                 </div>
             </div>
 
+            {/* 2. CUSTOMER & PAYMENT */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Stakeholder Context</h2>
@@ -427,6 +466,7 @@ export default function EstimateTerminal({
               </div>
             </div>
 
+            {/* 3. ITEM TABLE */}
             <div className="space-y-4">
                 <h2 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest border-l-2 border-red-500 pl-3">Technical Specifications</h2>
                 <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden bg-white">
