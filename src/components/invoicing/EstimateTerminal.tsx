@@ -77,7 +77,7 @@ interface EstimateTerminalProps {
         name: string; 
         email: string; 
         phone: string; 
-        tin_number: string; // HEALED: Standardized column name from audit
+        tin_number: string; 
         address: string;
         plot?: string;
         pobox?: string;
@@ -104,13 +104,13 @@ export default function EstimateTerminal({
         issueDate: format(new Date(), 'yyyy-MM-dd'),
         validUntil: format(new Date(Date.now() + 30 * 86400000), 'yyyy-MM-dd'),
         officialEmail: businessInfo.email,
-        tinNumber: businessInfo.tin_number, // HEALED mapping
-        plotNumber: businessInfo.plot || '',
-        pobox: businessInfo.pobox || '',
+        tinNumber: businessInfo.tin_number,
+        plotNumber: businessInfo.plot || 'N/A',
+        pobox: businessInfo.pobox || 'N/A',
         chequesPayableTo: businessInfo.name,
-        bankDetails: 'Bank Name, Branch, Account Number',
+        bankDetails: 'Bank Name: \nBranch: \nAccount: ',
         ceoName: '',
-        ceoDesignation: 'Management',
+        ceoDesignation: 'Managing Director',
         inquiryContact: businessInfo.phone,
         taxRate: 0,
         discountAmount: 0,
@@ -132,15 +132,11 @@ export default function EstimateTerminal({
 
   useEffect(() => {
     async function fetchNextSequence() {
-        // HEALED LOGIC: Since estimate_uid is Globally Unique, we must ensure 
-        // a sequence that never collides across different tenants.
         const { data, error } = await supabase
             .from('estimates')
             .select('estimate_uid')
             .order('created_at', { ascending: false })
             .limit(1);
-        
-        // We use a high-entropy suffix (Last 4 of timestamp) to prevent 23505 errors
         const entropy = Date.now().toString().slice(-4);
         const sequence = data?.length ? (parseInt(data[0].estimate_uid.split('-')[1]) + 1) : 1;
         setValue('estimateUid', `QT-${sequence.toString().padStart(4, '0')}-${entropy}`);
@@ -152,13 +148,110 @@ export default function EstimateTerminal({
     const subTotal = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitRate || 0, curr.quantity || 0), 0);
     const totalCost = watchedItems.reduce((acc, curr) => acc + Money.multiply(curr.unitCost || 0, curr.quantity || 0), 0);
     const margin = subTotal > 0 ? ((subTotal - totalCost) / subTotal) * 100 : 0;
-    
     const taxableBasis = subTotal - discount;
     const taxAmount = taxableBasis * (taxRate / 100);
     const grandTotal = taxableBasis + taxAmount + adjustment;
-
     return { subTotal, totalCost, margin, taxAmount, grandTotal };
   }, [watchedItems, taxRate, discount, adjustment]);
+
+  const generateProfessionalPDF = (values: EstimateForm) => {
+    const doc = new jsPDF();
+    const clientName = customers.find(c => String(c.id) === values.customerId)?.name || 'Valued Client';
+    
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text(businessInfo.name.toUpperCase(), 15, 25);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`TIN: ${values.tinNumber || 'N/A'} | EMAIL: ${values.officialEmail || 'N/A'}`, 15, 33);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(22);
+    doc.text("COMMERCIAL QUOTATION", 15, 55);
+    
+    doc.setFontSize(10);
+    doc.text(`REFERENCE: ${values.estimateUid}`, 15, 63);
+    doc.text(`DATE: ${format(new Date(values.issueDate), 'MMMM do, yyyy')}`, 15, 68);
+    doc.text(`VALID UNTIL: ${format(new Date(values.validUntil), 'MMMM do, yyyy')}`, 15, 73);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, 80, 195, 80);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("BILL TO:", 15, 90);
+    doc.setFont("helvetica", "normal");
+    doc.text(clientName, 15, 95);
+    doc.text(`Currency: ${activeCurrency.code} (${activeCurrency.symbol})`, 15, 100);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("FROM (Location):", 120, 90);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Plot: ${values.plotNumber || 'N/A'}`, 120, 95);
+    doc.text(`P.O Box: ${values.pobox || 'N/A'}`, 120, 100);
+    doc.text(`Phone: ${values.inquiryContact || 'N/A'}`, 120, 105);
+
+    autoTable(doc, {
+      startY: 115,
+      head: [['#', 'Item Description & Specifications', 'Qty', 'Unit Rate', 'Total']],
+      body: values.items.map((item, i) => [
+        i + 1,
+        { content: `${item.description}\n${item.details || ''}`, styles: { fontStyle: 'bold' } },
+        item.quantity,
+        `${activeCurrency.symbol}${item.unitRate.toLocaleString()}`,
+        `${activeCurrency.symbol}${(item.quantity * item.unitRate).toLocaleString()}`
+      ]),
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: { 0: { cellWidth: 10 }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    doc.setFont("helvetica", "bold");
+    doc.text(`Subtotal:`, 140, finalY);
+    doc.text(`${activeCurrency.symbol}${totals.subTotal.toLocaleString()}`, 195, finalY, { align: 'right' });
+    
+    doc.text(`VAT/Tax (${values.taxRate}%):`, 140, finalY + 7);
+    doc.text(`${activeCurrency.symbol}${totals.taxAmount.toLocaleString()}`, 195, finalY + 7, { align: 'right' });
+
+    doc.setFontSize(14);
+    doc.rect(135, finalY + 12, 65, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.text(`TOTAL DUE:`, 140, finalY + 20);
+    doc.text(`${activeCurrency.symbol}${totals.grandTotal.toLocaleString()}`, 195, finalY + 20, { align: 'right' });
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(10);
+    doc.text("SETTLEMENT PROTOCOLS:", 15, finalY + 40);
+    doc.setFontSize(8);
+    doc.text(`Bank Instructions: ${values.bankDetails || 'N/A'}`, 15, finalY + 45);
+    doc.text(`Mobile Money (MOMO): ${values.momoDetails || 'N/A'}`, 15, finalY + 50);
+    doc.text(`Cheques Payable to: ${values.chequesPayableTo || businessInfo.name}`, 15, finalY + 55);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("TERMS & CONDITIONS:", 15, finalY + 70);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const splitTerms = doc.splitTextToSize(values.termsAndConditions || 'Standard terms apply.', 180);
+    doc.text(splitTerms, 15, finalY + 75);
+
+    const signY = 270;
+    doc.line(15, signY, 70, signY);
+    doc.text(`Authorized by: ${values.ceoName || 'System Generated'}`, 15, signY + 5);
+    doc.text(values.ceoDesignation || 'Management', 15, signY + 10);
+
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Mathematically Sealed | BBU1 Enterprise OS | ${new Date().toISOString()}`, 105, 285, { align: 'center' });
+
+    doc.save(`Quotation_${values.estimateUid}_${clientName.replace(' ', '_')}.pdf`);
+  };
 
   const onSubmit: SubmitHandler<EstimateForm> = async (values) => {
     setIsSubmitting(true);
@@ -174,7 +267,7 @@ export default function EstimateTerminal({
         total_amount: totals.grandTotal,
         valid_until: values.validUntil,
         client_name: customers.find(c => String(c.id) === values.customerId)?.name,
-        metadata: { ...values, totals_at_creation: totals } 
+        metadata: { ...values, totals_snapshot: totals } 
       }).select('id').single();
 
       if (estErr) throw estErr;
@@ -193,7 +286,11 @@ export default function EstimateTerminal({
       );
 
       if (lineErr) throw lineErr;
-      toast.success("Commercial protocol synchronized to registry");
+      
+      // TRIGGER PROFESSIONAL PDF
+      generateProfessionalPDF(values);
+      
+      toast.success("Quotation Dispatched & PDF Generated");
       router.push(`/${tenantId}/invoicing/estimates/history`); 
     } catch (err: any) {
       toast.error(err.message);
@@ -297,7 +394,7 @@ export default function EstimateTerminal({
                 <Card className="rounded-xl border-slate-100 shadow-sm p-6 bg-slate-50/20 space-y-5">
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Target Client / Entity</Label>
-                    <select {...register("customerId")} className="w-full h-10 border-slate-200 bg-white font-medium rounded-lg px-4 text-sm outline-none focus:ring-1 focus:ring-blue-500">
+                    <select {...register("customerId")} className="w-full h-10 border border-slate-200 bg-white font-medium rounded-lg px-4 text-sm outline-none focus:ring-1 focus:ring-blue-500">
                       <option value="">Syncing Client Registry...</option>
                       {customers.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                     </select>
@@ -436,7 +533,7 @@ export default function EstimateTerminal({
                         <div className="pt-6 border-t border-white/10 flex justify-between items-end">
                             <div className="space-y-0.5">
                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Total Receivable Valuation</p>
-                                <h4 className="text-3xl font-bold text-white tracking-tight tabular-nums">
+                                <h4 className="text-4xl font-bold text-white tracking-tighter tabular-nums">
                                     {activeCurrency.symbol}{totals.grandTotal.toLocaleString()}
                                 </h4>
                             </div>
@@ -468,10 +565,6 @@ export default function EstimateTerminal({
                                 Network Registry Synchronized
                             </span>
                         </div>
-                        
-                        <Button type="button" onClick={() => toast.error("Complete the draft before printing")} variant="ghost" className="text-slate-400 font-bold text-[9px] uppercase tracking-widest gap-2 hover:text-slate-900 transition-colors">
-                          <Printer size={14} /> Print Audit Specification
-                        </Button>
                     </div>
                 </div>
             </div>
