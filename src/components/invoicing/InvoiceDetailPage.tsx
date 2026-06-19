@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
+import { cn } from "@/lib/utils";
 
 // --- Interfaces ---
 interface InvoiceItem {
