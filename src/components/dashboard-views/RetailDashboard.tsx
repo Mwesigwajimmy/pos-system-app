@@ -3,7 +3,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Package, Activity, ArrowRight } from 'lucide-react';
+import { 
+    DollarSign, 
+    ShoppingCart, 
+    TrendingUp, 
+    TrendingDown, 
+    Package, 
+    Activity, 
+    ArrowRight,
+    ShieldCheck, // NEW FOR TAX IDENTITY
+    Scale // NEW FOR BALANCE LOGIC
+} from 'lucide-react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +25,8 @@ import Link from 'next/link';
 type RetailData = {
     dailyRevenue: number;
     dailyExpenses: number;
+    dailyCOGS: number;       // NEW: Cost of Sales
+    taxLiability: number;    // NEW: Real-time Tax Debt
     netCash: number;
     txCount: number;
     chartData: { date: string; sales: number }[];
@@ -24,17 +36,53 @@ type RetailData = {
 // --- Data Fetching ---
 async function fetchRetailData(): Promise<RetailData> {
     const supabase = createClient();
+    
+    // Identity Handshake: Get current business context
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase.from('profiles').select('business_id').eq('id', user?.id).single();
+    const bId = profile?.business_id;
+
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     
     // 1. Daily Stats (Cards)
-    const { data: salesToday } = await supabase.from('sales').select('total_amount').gte('created_at', todayStr);
+    const { data: salesToday } = await supabase.from('sales')
+        .select('total_amount')
+        .eq('business_id', bId)
+        .gte('created_at', todayStr);
     const dailyRevenue = salesToday?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
 
-    const { data: expensesToday } = await supabase.from('expenses').select('amount').gte('date', todayStr);
+    const { data: expensesToday } = await supabase.from('expenses')
+        .select('amount')
+        .eq('business_id', bId)
+        .gte('date', todayStr);
     const dailyExpenses = expensesToday?.reduce((sum, e) => sum + e.amount, 0) || 0;
 
-    const { count: txCount } = await supabase.from('sales').select('*', { count: 'exact', head: true }).gte('created_at', todayStr);
+    // --- DEEP LEDGER HANDSHAKE: COGS & TAX PROVISIONS ---
+    // Fetching from the Accounting Journal Entries we birthed today
+    const { data: ledgerToday } = await supabase.from('accounting_journal_entries')
+        .select(`
+            debit, 
+            credit, 
+            accounting_accounts!inner(code)
+        `)
+        .eq('business_id', bId)
+        .gte('created_at', todayStr);
+
+    // Calculate COGS (Code 5000)
+    const dailyCOGS = ledgerToday
+        ?.filter(entry => entry.accounting_accounts.code === '5000')
+        .reduce((sum, entry) => sum + (Number(entry.debit) - Number(entry.credit)), 0) || 0;
+
+    // Calculate Today's Income Tax Provision (Code 2200 / 8500)
+    const taxLiability = ledgerToday
+        ?.filter(entry => entry.accounting_accounts.code === '2200')
+        .reduce((sum, entry) => sum + (Number(entry.credit) - Number(entry.debit)), 0) || 0;
+
+    const { count: txCount } = await supabase.from('sales')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', bId)
+        .gte('created_at', todayStr);
 
     // 2. Chart Data (Last 7 Days Trend)
     const sevenDaysAgo = new Date();
@@ -43,10 +91,10 @@ async function fetchRetailData(): Promise<RetailData> {
     const { data: weekSales } = await supabase
         .from('sales')
         .select('created_at, total_amount')
+        .eq('business_id', bId)
         .gte('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: true });
 
-    // Aggregate sales by date for the chart
     const chartMap = new Map<string, number>();
     weekSales?.forEach(sale => {
         const date = new Date(sale.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -58,13 +106,20 @@ async function fetchRetailData(): Promise<RetailData> {
     const { data: recentSales } = await supabase
         .from('sales')
         .select('id, total_amount, created_at, status')
+        .eq('business_id', bId)
         .order('created_at', { ascending: false })
         .limit(5);
+
+    // --- SOVEREIGN PROFIT FORMULA ---
+    // Net Position = Revenue - (COGS + Expenses + Tax Provision)
+    const totalCosts = dailyExpenses + dailyCOGS + taxLiability;
 
     return { 
         dailyRevenue, 
         dailyExpenses, 
-        netCash: dailyRevenue - dailyExpenses,
+        dailyCOGS,
+        taxLiability,
+        netCash: dailyRevenue - totalCosts,
         txCount: txCount || 0,
         chartData,
         recentSales: recentSales || []
@@ -72,7 +127,7 @@ async function fetchRetailData(): Promise<RetailData> {
 }
 
 export default function RetailDashboard() {
-    useRealtimeRefresh(['sales', 'expenses'], ['retail-dash']);
+    useRealtimeRefresh(['sales', 'expenses', 'accounting_journal_entries'], ['retail-dash']);
     const { data, isLoading } = useQuery({ queryKey: ['retail-dash'], queryFn: fetchRetailData });
 
     // Helpers
@@ -89,8 +144,8 @@ export default function RetailDashboard() {
                 </div>
             </div>
 
-            {/* --- Row 1: KPI Cards --- */}
-            <div className="grid gap-4 md:grid-cols-4">
+            {/* --- Row 1: KPI Cards (Updated with Tax Identity) --- */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card className="border-l-4 border-l-green-500 shadow-sm">
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Today's Sales</CardTitle></CardHeader>
                     <CardContent>
@@ -98,30 +153,34 @@ export default function RetailDashboard() {
                         <div className="flex items-center text-xs text-green-600 mt-1"><TrendingUp className="h-3 w-3 mr-1"/> Cash Inflow</div>
                     </CardContent>
                 </Card>
-                <Card className="border-l-4 border-l-red-500 shadow-sm">
-                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Today's Expenses</CardTitle></CardHeader>
+
+                {/* HEALED: This card now accurately reflects the total daily tax debt */}
+                <Card className="border-l-4 border-l-amber-500 shadow-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Tax Liability</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-700">{isLoading ? "..." : formatFullCurrency(data?.dailyExpenses)}</div>
-                        <div className="flex items-center text-xs text-red-600 mt-1"><TrendingDown className="h-3 w-3 mr-1"/> Cash Outflow</div>
+                        <div className="text-2xl font-bold text-amber-700">{isLoading ? "..." : formatFullCurrency(data?.taxLiability)}</div>
+                        <div className="flex items-center text-xs text-amber-600 mt-1"><ShieldCheck className="h-3 w-3 mr-1"/> Reserved for URA</div>
                     </CardContent>
                 </Card>
+
                 <Card className="border-l-4 border-l-blue-500 shadow-sm">
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Net Position</CardTitle></CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-blue-700">{isLoading ? "..." : formatFullCurrency(data?.netCash)}</div>
-                        <div className="flex items-center text-xs text-muted-foreground mt-1">Daily Profit/Loss</div>
+                        <div className="flex items-center text-xs text-muted-foreground mt-1">Real Spendable Profit</div>
                     </CardContent>
                 </Card>
-                <Card>
+
+                <Card className="border-l-4 border-l-slate-800 shadow-sm">
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{isLoading ? "..." : data?.txCount}</div>
+                        <div className="text-2xl font-bold text-slate-900">{isLoading ? "..." : data?.txCount}</div>
                         <div className="flex items-center text-xs text-muted-foreground mt-1"><ShoppingCart className="h-3 w-3 mr-1"/> Orders Processed</div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* --- Row 2: Charts & Recent Activity (Fills the white space) --- */}
+            {/* --- Row 2: Charts & Recent Activity --- */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 h-full">
                 
                 {/* Left: Revenue Chart (Takes 4/7ths of width) */}
