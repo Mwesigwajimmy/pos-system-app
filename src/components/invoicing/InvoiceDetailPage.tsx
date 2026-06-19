@@ -8,7 +8,7 @@ import { format, parseISO } from "date-fns";
 import { createClient } from '@/lib/supabase/client';
 import { 
     Loader2, Mail, ArrowLeft, Printer, CheckCircle2, 
-    FileText, Hash, User, ReceiptText, Download 
+    FileText, Hash, User, ReceiptText, Download,ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
