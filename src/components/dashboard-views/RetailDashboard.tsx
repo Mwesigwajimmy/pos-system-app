@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useParams } from 'next/navigation'; // Added for dynamic pathing
 
 // --- Types ---
 type RetailData = {
@@ -127,6 +128,9 @@ async function fetchRetailData(): Promise<RetailData> {
 }
 
 export default function RetailDashboard() {
+    const params = useParams();
+    const locale = params.locale || 'en'; // Anchor the language node
+
     useRealtimeRefresh(['sales', 'expenses', 'accounting_journal_entries'], ['retail-dash']);
     const { data, isLoading } = useQuery({ queryKey: ['retail-dash'], queryFn: fetchRetailData });
 
@@ -275,7 +279,8 @@ export default function RetailDashboard() {
                     </CardContent>
                     <div className="p-4 border-t bg-muted/20">
                         <Button variant="ghost" size="sm" className="w-full" asChild>
-                            <Link href="/sales/history" className="flex items-center justify-center">
+                            {/* HEALED PATH: Corrected to point to reports/sales-history based on your file structure */}
+                            <Link href={`/${locale}/reports/sales-history`} className="flex items-center justify-center">
                                 View All Transactions <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
                         </Button>
