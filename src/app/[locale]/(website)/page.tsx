@@ -1415,7 +1415,7 @@ const DynamicPricingSection = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
                     {/* Row 1: First 3 Plans */}
                     {PLANS.slice(0, 3).map((plan, index) => (
-                        <Card key={index} className={cn("flex flex-col relative transition-all duration-300 hover:shadow-lg", plan.highlight ? "border-blue-600 shadow-2xl scale-105 z-10" : "border-border")}>
+                        <Card key={index} className={cn("flex flex-col relative transition-all duration-300 hover:shadow-lg", plan.highlight ? "border-blue-600 shadow-2xl md:scale-105 z-10" : "border-border")}>
                             <CardHeader>
                                 {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
                                 <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
@@ -2415,7 +2415,7 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                 <AnimatePresence>
                     {showCookieBanner && (
                         <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
-                            <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md">
+                            <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md max-h-[80vh] overflow-y-auto">
                                 <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> Privacy Choice</CardTitle></CardHeader>
                                 {!isCustomizingCookies ? (
                                     <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">

@@ -522,7 +522,7 @@ export default function RetailDesk() {
 
     if (lastCompletedSale) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 lg:p-6 overflow-y-auto">
+            <div className="min-h-screen flex items-start lg:items-center justify-center bg-slate-100 p-4 lg:p-6 overflow-y-auto">
                 <Card className="w-full max-w-md rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl border-none overflow-hidden my-auto">
                     <CardHeader className="bg-emerald-600 text-white text-center py-8 lg:py-10">
                         <CheckCircle2 className="h-12 w-12 lg:h-16 lg:w-16 text-white mx-auto mb-4" />
@@ -585,7 +585,7 @@ export default function RetailDesk() {
 
                 {/* CART DISPLAY SECTION */}
                 <div className={cn(
-                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-5 xl:col-span-4 p-4 pb-24 lg:p-6 lg:pb-6 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
                 )}>
                     <CartDisplay 
