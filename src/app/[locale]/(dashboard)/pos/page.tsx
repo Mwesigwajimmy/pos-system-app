@@ -49,7 +49,7 @@ type SearchResultProduct = {
     units_per_pack?: number;
 };
 
-// --- PRODUCT GRID ---
+// --- PRODUCT GRID (DEEP UPGRADE) ---
 const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, disabled: boolean, onSKUScan: (sku: string) => void }) => {
     
     useEffect(() => {
@@ -80,8 +80,9 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
                     <Barcode size={14} /> SCANNER READY
                 </div>
             </div>
+            {/* flex-1 handles the internal scrolling for the grid area only */}
             <ScrollArea className="flex-1 w-full">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pb-32">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pb-40 lg:pb-10">
                     {products.map(product => (
                         <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
                             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
@@ -102,7 +103,7 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
     );
 };
 
-// --- CART DISPLAY (UPDATED WITH STICKY FOOTER) ---
+// --- CART DISPLAY (DEEP UPGRADE: STICKY FOOTER) ---
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency = 'UGX' }: any) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -113,7 +114,6 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     }, [subtotal, discount]);
     const total = subtotal - discountAmount;
 
-    // Auto-scroll to bottom when item added
     useEffect(() => {
         if (scrollRef.current) {
             const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -122,9 +122,10 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     }, [cart.length]);
     
     return (
+        /* MASTER FIX: h-full and flex-col locks the cart container. Header/Footer shrink-0, Middle flex-1. */
         <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
             {/* PINNED HEADER */}
-            <div className="p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
+            <div className="p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="p-2 bg-blue-600 rounded-lg">
                         <User className="h-5 w-5 text-white" />
@@ -139,17 +140,17 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 <Button variant="outline" size="sm" className="font-bold text-[10px] h-8 bg-transparent border-slate-700 text-white" onClick={onSetCustomer}>Change (F2)</Button>
             </div>
 
-            {/* SCROLLABLE ITEMS */}
-            <ScrollArea ref={scrollRef} className="flex-1 bg-white">
+            {/* SCROLLABLE ITEMS MIDDLE */}
+            <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/20">
                 {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-[300px] text-slate-300 p-8 gap-4">
+                    <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-300 p-8 gap-4">
                         <ShoppingCart size={40} className="opacity-20" />
                         <p className="text-xs font-semibold uppercase tracking-widest opacity-40">Cart is empty</p>
                     </div>
                 ) : (
-                    <div className="p-4 space-y-3 pb-10">
+                    <div className="p-4 space-y-3 pb-20 lg:pb-10">
                         {cart.map((item: any) => (
-                            <div key={item.variant_id} className="flex flex-col p-4 bg-white border border-slate-100 rounded-xl shadow-sm gap-2 hover:bg-slate-50 transition-colors">
+                            <div key={item.variant_id} className="flex flex-col p-4 bg-white border border-slate-100 rounded-xl shadow-sm gap-2 hover:bg-blue-50 transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-bold text-slate-900 truncate">{item.product_name}</p>
@@ -173,8 +174,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
 
-            {/* PINNED FOOTER (FIXED) */}
-            <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-10">
+            {/* PINNED FOOTER (FIXED POSITION) */}
+            <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-20">
                 <div className="space-y-2">
                     <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase">
                         <span>Subtotal</span>
@@ -184,12 +185,12 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button variant="link" className="p-0 h-auto text-blue-600 font-bold text-[11px] gap-1">
-                                    <Tag className="h-3 w-3" /> Apply Discount
+                                    <Tag className="h-3 w-3" /> Adjust Discount
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-64 p-5 rounded-xl shadow-xl">
-                                <Label className="text-[10px] font-bold uppercase text-slate-400">Discount Value</Label>
-                                <Input type="number" className="mt-2" value={discount.value} onChange={(e) => setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })}/>
+                            <PopoverContent className="w-64 p-5 rounded-xl shadow-xl border-none">
+                                <Label className="text-[10px] font-bold uppercase text-slate-400">Rate</Label>
+                                <Input type="number" className="mt-2 rounded-xl" value={discount.value} onChange={(e) => setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })}/>
                             </PopoverContent>
                         </Popover>
                         <span className="font-bold text-red-600 text-sm">-{currency} {discountAmount.toLocaleString()}</span>
@@ -197,14 +198,14 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 </div>
 
                 <div className="flex justify-between items-baseline pt-2 border-t border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Due</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Balance Due</span>
                     <span className="font-bold text-3xl text-slate-900 tracking-tighter">
                         {currency} {total.toLocaleString()}
                     </span>
                 </div>
 
                 <Button 
-                    className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all" 
+                    className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all active:scale-95" 
                     onClick={onCharge} 
                     disabled={cart.length === 0 || isProcessing}
                 >
@@ -290,23 +291,23 @@ export default function POSPage() {
         } finally { setIsSaving(false); }
     };
 
-    if (isProfileLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+    if (isProfileLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
     if (lastCompletedSale) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-screen bg-slate-50">
-                <Card className="w-full max-w-md shadow-2xl">
-                    <CardHeader className="bg-emerald-600 text-white text-center rounded-t-xl py-10">
+            <div className="p-8 flex items-center justify-center min-h-screen bg-slate-100">
+                <Card className="w-full max-w-md shadow-2xl border-none rounded-3xl overflow-hidden">
+                    <CardHeader className="bg-emerald-600 text-white text-center py-10">
                         <CheckCircle className="mx-auto h-16 w-16 mb-4" />
-                        <CardTitle className="uppercase font-bold text-2xl">Sale Completed</CardTitle>
+                        <CardTitle className="uppercase font-black text-2xl tracking-widest">Sale Signed</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-6">
-                        <div className="border p-4 rounded-xl scale-90">
+                    <CardContent className="p-8 space-y-6 bg-white">
+                        <div className="border border-dashed p-4 rounded-2xl scale-90 lg:scale-100">
                             <Receipt ref={receiptRef} receiptData={lastCompletedSale.receiptData} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Button variant="outline" className="h-12 font-bold" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
-                            <Button className="h-12 bg-blue-600 font-bold" onClick={() => handleWebPrint()}><PrinterIcon className="mr-2 h-4 w-4" /> Print</Button>
+                        <div className="grid grid-cols-2 gap-4 pb-4">
+                            <Button variant="outline" className="h-14 font-black rounded-2xl border-slate-200" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
+                            <Button className="h-14 bg-blue-600 hover:bg-blue-700 font-black rounded-2xl shadow-lg" onClick={() => handleWebPrint()}><PrinterIcon className="mr-2 h-4 w-4" /> Print</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -315,31 +316,34 @@ export default function POSPage() {
     }
 
     return (
+        /* MASTER FIX: Lock the app height to the viewport. No overall page scrolling. */
         <div className="h-[100dvh] flex flex-col bg-slate-50 overflow-hidden relative overscroll-none">
             {/* Header */}
             <div className="bg-white border-b px-6 py-3 flex items-center justify-between shrink-0 z-30">
                 <div className="flex items-center gap-3">
-                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider truncate max-w-[150px] lg:max-w-none">
                         {userProfile?.business_name || 'Terminal Active'}
                      </span>
                 </div>
-                <Button onClick={triggerSync} variant="outline" size="sm" className="h-9 font-bold text-[10px]">
-                    <RefreshCw className={cn("mr-2 h-3 w-3", isSyncing && 'animate-spin')} />
-                    SYNC DATA
+                <Button onClick={triggerSync} variant="outline" size="sm" className="h-9 font-bold text-[10px] gap-2 border-slate-200 text-blue-600">
+                    <RefreshCw className={cn("h-3 w-3", isSyncing && 'animate-spin')} />
+                    {isSyncing ? 'SYNCING...' : 'SYNC DATA'}
                 </Button>
             </div>
 
-            {/* Layout */}
+            {/* Layout Main: Locked Height columns */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
-                {/* Product Section */}
-                <div className={cn("h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all", activeTab !== 'products' && 'hidden lg:flex')}>
-                    <div className="mb-4"><ProductSearch onProductSelect={handleAddToCart} /></div>
-                    <ProductGrid products={products || []} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
+                {/* Inventory View */}
+                <div className={cn("h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300", activeTab !== 'products' && 'hidden lg:flex')}>
+                    <div className="mb-4 shrink-0"><ProductSearch onProductSelect={handleAddToCart} /></div>
+                    <div className="flex-1 overflow-hidden min-h-0">
+                        <ProductGrid products={products || []} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
+                    </div>
                 </div>
 
-                {/* Cart Section */}
-                <div className={cn("h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all", activeTab !== 'cart' && 'hidden lg:flex')}>
+                {/* Receipt View */}
+                <div className={cn("h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300", activeTab !== 'cart' && 'hidden lg:flex')}>
                     <CartDisplay 
                         cart={cart} 
                         onUpdateQuantity={(id: number, q: number) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
@@ -354,40 +358,52 @@ export default function POSPage() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING PAY SUMMARY */}
+            {/* MOBILE FLOATING PAY SUMMARY (Uber-Style) */}
             {cart.length > 0 && activeTab === 'products' && (
-                <div className="lg:hidden fixed bottom-20 left-4 right-4 z-[100] animate-in slide-in-from-bottom-4">
+                <div className="lg:hidden fixed bottom-20 left-4 right-4 z-[100] animate-in slide-in-from-bottom-5">
                     <Button 
                         onClick={() => setActiveTab('cart')}
-                        className="w-full h-16 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800"
+                        className="w-full h-16 bg-blue-600 shadow-[0_10px_30px_rgba(37,99,235,0.4)] rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
                     >
                         <div className="flex items-center gap-3">
-                            <Badge className="bg-white text-blue-600 font-bold h-7 w-7 flex items-center justify-center p-0 rounded-full border-none">{cart.length}</Badge>
-                            <span className="font-bold uppercase text-[10px] text-white">Review Receipt</span>
+                            <Badge className="bg-white text-blue-600 font-black h-7 w-7 flex items-center justify-center p-0 rounded-full border-none shadow-md">{cart.length}</Badge>
+                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Receipt</span>
                         </div>
-                        <span className="font-bold text-white text-lg">
+                        <span className="font-black text-white text-lg">
                             {userProfile?.currency_symbol} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}
                         </span>
                     </Button>
                 </div>
             )}
 
-            {/* MOBILE BOTTOM TABS */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around z-[110]">
-                <button onClick={() => setActiveTab('products')} className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'products' ? "text-blue-600" : "text-slate-400")}>
-                    <LayoutGrid className="h-5 w-5" /><span className="text-[9px] font-bold uppercase mt-1">Inventory</span>
+            {/* MOBILE BOTTOM NAVIGATION TABS */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around z-[110] px-4">
+                <button 
+                    onClick={() => setActiveTab('products')} 
+                    className={cn("flex flex-col items-center flex-1 py-2 transition-all", activeTab === 'products' ? "text-blue-600 scale-105" : "text-slate-400")}
+                >
+                    <LayoutGrid className="h-5 w-5" />
+                    <span className="text-[9px] font-black uppercase mt-1">Inventory</span>
                 </button>
-                <button onClick={() => setActiveTab('cart')} className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'cart' ? "text-blue-600" : "text-slate-400")}>
+                <div className="h-8 w-px bg-slate-100" />
+                <button 
+                    onClick={() => setActiveTab('cart')} 
+                    className={cn("flex flex-col items-center flex-1 py-2 transition-all", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}
+                >
                     <div className="relative">
                         <ReceiptText className="h-5 w-5" />
                         {cart.length > 0 && <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-white" />}
                     </div>
-                    <span className="text-[9px] font-bold uppercase mt-1">Receipt ({cart.length})</span>
+                    <span className="text-[9px] font-black uppercase mt-1">Receipt ({cart.length})</span>
                 </button>
             </div>
 
             <CustomerSearchModal isOpen={isCustomerModalOpen} onClose={() => setCustomerModalOpen(false)} onSelectCustomer={(c) => {setSelectedCustomer(c); setCustomerModalOpen(false);}} />
-            <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} totalAmount={cart.reduce((a, b) => a + (b.price * b.quantity), 0) - (discount.type === 'percentage' ? (cart.reduce((a, b) => a + (b.price * b.quantity), 0) * discount.value) / 100 : discount.value)} onConfirm={handleProcessPayment} isProcessing={isSaving} />
+            <PaymentModal 
+                isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} 
+                totalAmount={cart.reduce((a, b) => a + (b.price * b.quantity), 0) - (discount.type === 'percentage' ? (cart.reduce((a, b) => a + (b.price * b.quantity), 0) * discount.value) / 100 : discount.value)} 
+                onConfirm={handleProcessPayment} isProcessing={isSaving} 
+            />
         </div>
     );
 }
