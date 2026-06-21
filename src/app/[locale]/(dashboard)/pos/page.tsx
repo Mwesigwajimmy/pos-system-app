@@ -49,7 +49,7 @@ type SearchResultProduct = {
     units_per_pack?: number;
 };
 
-// --- PRODUCT GRID (DEEP UPGRADE) ---
+// --- PRODUCT GRID (DEEP UPGRADE: INTERNAL SCROLLING) ---
 const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, disabled: boolean, onSKUScan: (sku: string) => void }) => {
     
     useEffect(() => {
@@ -80,11 +80,11 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
                     <Barcode size={14} /> SCANNER READY
                 </div>
             </div>
-            {/* flex-1 handles the internal scrolling for the grid area only */}
+            {/* DEEP SCROLL AREA: flex-1 allows this middle section to grow and scroll independently */}
             <ScrollArea className="flex-1 w-full">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pb-40 lg:pb-10">
                     {products.map(product => (
-                        <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
+                        <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
                             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                                 {(product as any).units_per_pack > 1 && (
                                     <div className="absolute top-0 right-0 p-1 bg-blue-600 text-white rounded-bl-lg">
@@ -103,7 +103,7 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
     );
 };
 
-// --- CART DISPLAY (DEEP UPGRADE: STICKY FOOTER) ---
+// --- CART DISPLAY (DEEP UPGRADE: SOVEREIGN STICKY FOOTER) ---
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency = 'UGX' }: any) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -124,7 +124,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     return (
         /* MASTER FIX: h-full and flex-col locks the cart container. Header/Footer shrink-0, Middle flex-1. */
         <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-            {/* PINNED HEADER */}
+            {/* PINNED HEADER (Does not move) */}
             <div className="p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="p-2 bg-blue-600 rounded-lg">
@@ -140,7 +140,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 <Button variant="outline" size="sm" className="font-bold text-[10px] h-8 bg-transparent border-slate-700 text-white" onClick={onSetCustomer}>Change (F2)</Button>
             </div>
 
-            {/* SCROLLABLE ITEMS MIDDLE */}
+            {/* SCROLLABLE ITEMS MIDDLE (Deep internal scroll) */}
             <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/20">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-300 p-8 gap-4">
@@ -174,8 +174,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
 
-            {/* PINNED FOOTER (FIXED POSITION) */}
-            <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-20">
+            {/* PINNED FOOTER (FIXED POSITION: Pay Now Button never moves) */}
+            <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-20 pb-24 lg:pb-6">
                 <div className="space-y-2">
                     <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase">
                         <span>Subtotal</span>
@@ -189,7 +189,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-5 rounded-xl shadow-xl border-none">
-                                <Label className="text-[10px] font-bold uppercase text-slate-400">Rate</Label>
+                                <Label className="text-[10px] font-bold uppercase text-slate-400">Value</Label>
                                 <Input type="number" className="mt-2 rounded-xl" value={discount.value} onChange={(e) => setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })}/>
                             </PopoverContent>
                         </Popover>
@@ -316,7 +316,7 @@ export default function POSPage() {
     }
 
     return (
-        /* MASTER FIX: Lock the app height to the viewport. No overall page scrolling. */
+        /* MASTER FIX: Lock the app height to the dynamic viewport. No overall page scrolling. */
         <div className="h-[100dvh] flex flex-col bg-slate-50 overflow-hidden relative overscroll-none">
             {/* Header */}
             <div className="bg-white border-b px-6 py-3 flex items-center justify-between shrink-0 z-30">
@@ -358,7 +358,7 @@ export default function POSPage() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING PAY SUMMARY (Uber-Style) */}
+            {/* MOBILE FLOATING PAY SUMMARY (Uber-Style Quick Bar) */}
             {cart.length > 0 && activeTab === 'products' && (
                 <div className="lg:hidden fixed bottom-20 left-4 right-4 z-[100] animate-in slide-in-from-bottom-5">
                     <Button 
@@ -376,7 +376,7 @@ export default function POSPage() {
                 </div>
             )}
 
-            {/* MOBILE BOTTOM NAVIGATION TABS */}
+            {/* MOBILE BOTTOM NAVIGATION TABS (UPGRADED TO TRIPLE ACTION) */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around z-[110] px-4">
                 <button 
                     onClick={() => setActiveTab('products')} 
@@ -385,7 +385,20 @@ export default function POSPage() {
                     <LayoutGrid className="h-5 w-5" />
                     <span className="text-[9px] font-black uppercase mt-1">Inventory</span>
                 </button>
-                <div className="h-8 w-px bg-slate-100" />
+
+                {/* THE NEW CENTER PAY BUTTON FOR MOBILE */}
+                <button 
+                    disabled={cart.length === 0}
+                    onClick={() => setPaymentModalOpen(true)}
+                    className={cn(
+                        "flex flex-col items-center justify-center bg-blue-600 text-white rounded-xl h-12 w-20 shadow-lg active:scale-95 transition-all mb-2",
+                        cart.length === 0 && "opacity-20 grayscale pointer-events-none"
+                    )}
+                >
+                    <CreditCard className="h-5 w-5" />
+                    <span className="text-[8px] font-black uppercase mt-0.5">Pay</span>
+                </button>
+
                 <button 
                     onClick={() => setActiveTab('cart')} 
                     className={cn("flex flex-col items-center flex-1 py-2 transition-all", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}

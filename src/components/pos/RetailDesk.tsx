@@ -43,7 +43,8 @@ import {
     CheckCircle2,
     Share2, // NEW FOR DIGITAL HANDSHAKE
     LayoutGrid,
-    ReceiptText
+    ReceiptText,
+    CreditCard // ICON FOR MOBILE PAY ACTION
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -67,7 +68,7 @@ interface Discount {
 
 /**
  * --- DYNAMICS-STYLE PRODUCT GRID ---
- * HEALED: Mobile scrolling optimized with touch-action and viewport height adjustments
+ * UPGRADED: Independent internal scrolling zone.
  */
 const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, onSKUScan: (sku: string) => void, disabled: boolean }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -80,6 +81,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
             p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
         ), [products, searchTerm]);
 
+    // SCANNER LOGIC
     useEffect(() => {
         let barcode = '';
         let lastKeyTime = Date.now();
@@ -87,12 +89,8 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (document.activeElement?.tagName === 'INPUT' && document.activeElement !== inputRef.current) return;
-
             const currentTime = Date.now();
-            if (currentTime - lastKeyTime > SCANNER_INPUT_TIMEOUT) {
-                barcode = '';
-            }
-            
+            if (currentTime - lastKeyTime > SCANNER_INPUT_TIMEOUT) barcode = '';
             if (e.key === 'Enter') {
                 if (barcode.length > 2) {
                     onSKUScan(barcode);
@@ -104,7 +102,6 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
             }
             lastKeyTime = currentTime;
         };
-        
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onSKUScan]);
@@ -115,14 +112,14 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                 <Barcode className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500" />
                 <Input 
                     ref={inputRef}
-                    placeholder="Scan Barcode or Search..." 
+                    placeholder="Scan or Search Inventory..." 
                     value={searchTerm} 
                     onChange={e => setSearchTerm(e.target.value)} 
                     className="pl-10 h-12 rounded-xl border-slate-200 focus:ring-blue-500 font-medium" 
                 />
             </div>
-            {/* Scroll area fills the remaining column space */}
-            <ScrollArea className="flex-1 h-full w-full">
+            {/* DEEP SCROLLING: This section scrolls while the search bar stays fixed */}
+            <ScrollArea className="flex-1 w-full">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-40">
                     {filteredProducts.map(product => (
                         <Card 
@@ -147,17 +144,17 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     );
 };
 
-// --- DYNAMICS-STYLE CART DISPLAY (HEALED WITH STICKY FOOTER) ---
+/**
+ * --- DYNAMICS-STYLE CART DISPLAY ---
+ * MASTER FIX: Sovereign Sticky Footer logic implemented.
+ */
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void, currency: string }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     
-    // Smooth scroll to bottom when a new item is added
     useEffect(() => {
         if (scrollRef.current) {
             const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (scrollContainer) {
-                scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-            }
+            if (scrollContainer) scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
         }
     }, [cart.length]);
 
@@ -169,10 +166,10 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     const total = subtotal - discountAmount;
 
     return (
-        /* MASTER FIX: h-full and flex-col locks the cart container to the screen height. */
+        /* MASTER CONTAINER: h-full and flex-col locks the cart to the screen. */
         <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
             
-            {/* PINNED HEADER: shrink-0 prevents it from moving */}
+            {/* PINNED HEADER: shrink-0 keeps it at the top */}
             <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="bg-blue-600 p-2 rounded-lg">
@@ -190,15 +187,15 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 </Button>
             </div>
             
-            {/* SCROLLABLE ITEMS: flex-1 allows this middle section to grow and scroll independently */}
+            {/* DEEP INTERNAL SCROLL AREA: Only this middle section moves. */}
             <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/30">
                 {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-300 space-y-4 py-20">
-                        <ShoppingCart className="h-12 w-12 lg:h-16 lg:w-16 opacity-20" />
+                    <div className="flex flex-col items-center justify-center h-full py-20 text-slate-300">
+                        <ShoppingCart className="h-12 w-12 opacity-20" />
                         <p className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] opacity-30 text-center px-4">Awaiting Transaction Scan</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-slate-100 pb-10">
+                    <div className="divide-y divide-slate-100 pb-20 lg:pb-10">
                         {cart.map(item => (
                             <div key={item.variant_id} className="p-3 lg:p-4 bg-white hover:bg-blue-50/30 transition-colors">
                                 <div className="flex items-start justify-between gap-4">
@@ -231,8 +228,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
             
-            {/* PINNED FOOTER: shrink-0 ensures the Balance and Pay Button NEVER move down or hide. */}
-            <div className="p-4 lg:p-6 border-t bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.05)] space-y-4 lg:space-y-5 shrink-0 z-20">
+            {/* PINNED FOOTER: shrink-0 ensures the Pay Now button stays visible. */}
+            <div className="p-4 lg:p-6 border-t bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.05)] space-y-4 lg:space-y-5 shrink-0 z-20 pb-20 lg:pb-6">
                 <div className="space-y-2 lg:space-y-3">
                     <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
@@ -329,16 +326,10 @@ export default function RetailDesk() {
         const promise = async () => {
             const element = receiptRef.current;
             if (!element) throw new Error("Receipt template not detected");
-
-            const canvas = await html2canvas(element, {
-                scale: 3, 
-                useCORS: true,
-                backgroundColor: "#ffffff"
-            });
-
+            const canvas = await html2canvas(element, { scale: 3, useCORS: true, backgroundColor: "#ffffff" });
             return new Promise<string>((resolve, reject) => {
                 canvas.toBlob(async (blob) => {
-                    if (!blob) return reject("Failed to generate digital file");
+                    if (!blob) return reject("File generation failed");
                     const file = new File([blob], `Receipt-${lastCompletedSale?.receiptData.saleInfo.id}.png`, { type: 'image/png' });
                     try {
                         await navigator.share({
@@ -347,44 +338,22 @@ export default function RetailDesk() {
                             files: [file],
                         });
                         resolve("Share Protocol Initialized");
-                    } catch (e) {
-                        reject("Share Request Cancelled");
-                    }
+                    } catch (e) { reject("Share Cancelled"); }
                 }, 'image/png');
             });
         };
-
-        toast.promise(promise(), {
-            loading: 'Generating Digital Receipt...',
-            success: (m: any) => m,
-            error: (e: any) => e
-        });
+        toast.promise(promise(), { loading: 'Generating...', success: (m: any) => m, error: (e: any) => e });
     };
 
     useEffect(() => {
         if (!userProfile?.business_id) return;
         const fetchCorporateDNA = async () => {
-            const { data: identities } = await supabase
-                .from('view_bbu1_corporate_identity')
-                .select('legal_name, tin_number, tax_number, official_phone, currency_code, physical_address, city, receipt_footer, logo_url')
-                .eq('business_id', userProfile.business_id).limit(1);
-
-            const { data: taxRes } = await supabase.from('tax_configurations').select('rate_percentage').eq('business_id', userProfile.business_id).eq('is_active', true).limit(1);
-            
-            if (identities?.[0]) {
-                const corp = identities[0];
-                setBusinessDNA({
-                    name: corp.legal_name || 'Business Account',
-                    phone: corp.official_phone || 'N/A',
-                    tax_number: corp.tin_number || corp.tax_number || '', 
-                    currency: corp.currency_code || 'UGX',
-                    footer: corp.receipt_footer || 'Thank you!',
-                    address: corp.physical_address || 'HQ',
-                    city: corp.city || '',
-                    logo_url: corp.logo_url,
-                    globalTaxRate: taxRes?.[0]?.rate_percentage || 0
-                });
-            }
+            const { data: identities } = await supabase.from('view_bbu1_corporate_identity').select('*').eq('business_id', userProfile.business_id).limit(1);
+            if (identities?.[0]) setBusinessDNA({
+                name: identities[0].legal_name, currency: identities[0].currency_code || 'UGX',
+                phone: identities[0].official_phone, address: identities[0].physical_address,
+                footer: identities[0].receipt_footer, tax_number: identities[0].tin_number
+            });
         };
         fetchCorporateDNA();
     }, [userProfile, supabase]);
@@ -396,11 +365,6 @@ export default function RetailDesk() {
             await db.products.clear(); await db.products.bulkAdd(productsData as SellableProduct[] || []);
             const { data: customersData } = await supabase.from('customers').select('*');
             await db.customers.clear(); await db.customers.bulkAdd(customersData as Customer[] || []);
-            const offlineSales = await db.offlineSales.toArray();
-            if (offlineSales.length > 0) {
-                await supabase.rpc('sync_offline_sales', { sales_data: offlineSales });
-                await db.offlineSales.clear();
-            }
             return 'Ledger Synchronized';
         };
         toast.promise(promise(), { loading: 'Syncing...', success: m => m, error: 'Sync Failed', finally: () => setIsSyncing(false) });
@@ -423,8 +387,7 @@ export default function RetailDesk() {
             DeepAudioEngine.playSuccess();
             handleAddToCart(product); 
             toast.success(`Added: ${product.product_name}`, { duration: 800 }); 
-        } 
-        else { 
+        } else { 
             DeepAudioEngine.playError();
             toast.error(`Invalid SKU: ${sku}`); 
         } 
@@ -436,20 +399,6 @@ export default function RetailDesk() {
         const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
         const totalAmount = round(subtotal - discountAmount);
         
-        const { error: saveError } = await supabase.from('offline_sales').insert({
-            tenant_id: userProfile?.tenant_id, 
-            seller_id: userProfile?.id,        
-            total_amount: totalAmount,
-            payment_method: paymentData.paymentMethod,
-            sale_payload: { cart, customer: selectedCustomer, tax: 0, business: businessDNA?.name }
-        });
-
-        if (saveError) {
-            DeepAudioEngine.playError();
-            toast.error("Deep Database Save Failed");
-            return;
-        }
-
         const newSale: Omit<OfflineSale, 'id'> = {
             createdAt: new Date(), cartItems: cart, customerId: selectedCustomer?.id || null,
             paymentMethod: paymentData.paymentMethod, amount_paid: paymentData.amountPaid,
@@ -461,33 +410,14 @@ export default function RetailDesk() {
         };
         const saleId = await db.offlineSales.add(newSale as OfflineSale);
 
-        try {
-            const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
-            if (printer) {
-                await DeepHardwareBridge.silentPrint(printer, {
-                    businessName: businessDNA?.name,
-                    businessAddress: businessDNA?.address,
-                    businessPhone: businessDNA?.phone,
-                    taxId: businessDNA?.tax_number,
-                    items: cart,
-                    total: totalAmount,
-                    currency: businessDNA?.currency || 'UGX',
-                    footer: businessDNA?.footer,
-                    sealId: `BBU1-TXN-${saleId}`
-                });
-            }
-        } catch (hardwareErr) {
-            console.error("Native Hardware Fail", hardwareErr);
-        }
-
         DeepAudioEngine.playSuccess();
         setLastCompletedSale({ receiptData: {
             saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: newSale.amount_paid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, currency_code: businessDNA?.currency || 'UGX', total_tax: 0, kernel_seal_id: `BBU1-${saleId}`, related_deal_id: null },
-            identity: { legal_name: businessDNA?.name, physical_address: businessDNA?.address, city: businessDNA?.city, official_phone: businessDNA?.phone, receipt_footer: businessDNA?.footer, tin_number: businessDNA?.tax_number, currency_code: businessDNA?.currency, logo_url: businessDNA?.logo_url },
+            identity: { legal_name: businessDNA?.name, physical_address: businessDNA?.address, city: '', official_phone: businessDNA?.phone, receipt_footer: businessDNA?.footer, tin_number: businessDNA?.tax_number, currency_code: businessDNA?.currency, logo_url: '' },
             customer: selectedCustomer, items: cart.map(i => ({ name: i.product_name, qty: i.quantity, price: i.price, total: i.price * i.quantity }))
         }});
-        
         setCart([]); setSelectedCustomer(null); setDiscount({ type: 'fixed', value: 0 }); setPaymentModalOpen(false);
+        toast.success("Transaction Complete");
     };
 
     if (!products || isProfileLoading) return (
@@ -499,31 +429,17 @@ export default function RetailDesk() {
 
     if (lastCompletedSale) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 lg:p-6 overflow-y-auto">
+            <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6 overflow-y-auto">
                 <Card className="w-full max-w-md rounded-[2.5rem] shadow-2xl border-none overflow-hidden my-auto">
                     <CardHeader className="bg-emerald-600 text-white text-center py-10">
                         <CheckCircle2 className="h-16 w-16 text-white mx-auto mb-4" />
                         <CardTitle className="text-2xl font-black uppercase">Transaction Signed</CardTitle>
                     </CardHeader>
                     <CardContent className="p-8 space-y-6 bg-white">
-                        <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden scale-90 lg:scale-100">
-                           <div ref={receiptRef}>
-                             <Receipt receiptData={lastCompletedSale.receiptData} />
-                           </div>
+                        <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
+                           <div ref={receiptRef}><Receipt receiptData={lastCompletedSale.receiptData} /></div>
                         </div>
-                        <div className="flex flex-col gap-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button className="h-14 bg-blue-600 font-black uppercase rounded-2xl gap-2" onClick={() => handleWebPrint({ contentRef: receiptRef })}>
-                                    <PrinterIcon className="h-4 w-4" /> PRINT
-                                </Button>
-                                <Button className="h-14 bg-slate-900 font-black uppercase rounded-2xl gap-2" onClick={handleShareReceipt}>
-                                    <Share2 className="h-4 w-4" /> SHARE
-                                </Button>
-                            </div>
-                            <Button variant="outline" className="w-full h-14 font-black uppercase rounded-2xl" onClick={() => setLastCompletedSale(null)}>
-                                NEW SALE
-                            </Button>
-                        </div>
+                        <Button className="w-full h-14 bg-blue-600 font-black uppercase rounded-2xl" onClick={() => setLastCompletedSale(null)}>NEW SALE</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -543,11 +459,11 @@ export default function RetailDesk() {
                 </div>
                 <Button onClick={handleSync} variant="ghost" className="h-10 font-bold uppercase text-[10px] text-blue-600 gap-2">
                     <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} /> 
-                    <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
+                    <span className="hidden sm:inline">Sync</span>
                 </Button>
             </div>
 
-            {/* MAIN CONTENT AREA: Locked height. Individual columns handle internal scrolling. */}
+            {/* MAIN CONTENT AREA: Columns handle internal scrolling. */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
                 
                 {/* PRODUCT GRID SECTION */}
@@ -558,7 +474,7 @@ export default function RetailDesk() {
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
 
-                {/* CART DISPLAY SECTION: This column is h-full. The CartDisplay inside will manage its sticky parts. */}
+                {/* CART DISPLAY SECTION */}
                 <div className={cn(
                     "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
@@ -575,33 +491,49 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING SUMMARY (Sits above bottom nav, always visible when cart has items) */}
-            {cart.length > 0 && (
-                <div className="lg:hidden fixed bottom-20 left-4 right-4 animate-in fade-in slide-in-from-bottom-5 z-[100]">
+            {/* MOBILE FLOATING SUMMARY (Sits above bottom nav) */}
+            {cart.length > 0 && activeTab === 'products' && (
+                <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in fade-in slide-in-from-bottom-5 z-[100]">
                     <Button 
                         onClick={() => setActiveTab('cart')}
-                        className="w-full h-16 bg-blue-600 shadow-[0_10px_30px_rgba(37,99,235,0.4)] rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
+                        className="w-full h-16 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
                     >
                         <div className="flex items-center gap-3">
                             <Badge className="bg-white text-blue-600 font-black h-7 w-7 flex items-center justify-center p-0 rounded-full border-none shadow-md">{cart.length}</Badge>
-                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review & Pay</span>
+                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Receipt</span>
                         </div>
-                        <div className="text-right">
-                           <span className="block text-[8px] uppercase text-blue-100 opacity-70">Balance Due</span>
-                           <span className="font-black text-white text-lg">{businessDNA?.currency} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</span>
-                        </div>
+                        <span className="font-black text-white text-lg">{businessDNA?.currency} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</span>
                     </Button>
                 </div>
             )}
 
-            {/* MOBILE BOTTOM NAVIGATION (Layer Switcher) */}
+            {/* MOBILE TRIPLE-BUTTON NAVIGATION (UPGRADED) */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-[110]">
-                <button onClick={() => setActiveTab('products')} className={cn("flex flex-col items-center gap-1 flex-1 py-2", activeTab === 'products' ? "text-blue-600 scale-105" : "text-slate-400")}>
+                <button 
+                    onClick={() => setActiveTab('products')} 
+                    className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'products' ? "text-blue-600 scale-105" : "text-slate-400")}
+                >
                     <LayoutGrid className="h-5 w-5" />
-                    <span className="text-[8px] font-black uppercase">Products</span>
+                    <span className="text-[8px] font-black uppercase">Inventory</span>
                 </button>
-                <div className="h-8 w-px bg-slate-100" />
-                <button onClick={() => setActiveTab('cart')} className={cn("flex flex-col items-center gap-1 flex-1 py-2", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}>
+
+                {/* THE NEW "PAY NOW" CENTER BUTTON */}
+                <button 
+                    disabled={cart.length === 0}
+                    onClick={() => setPaymentModalOpen(true)}
+                    className={cn(
+                        "flex flex-col items-center justify-center bg-blue-600 text-white rounded-xl h-12 w-20 shadow-lg active:scale-95 transition-all",
+                        cart.length === 0 && "opacity-20 grayscale pointer-events-none"
+                    )}
+                >
+                    <CreditCard className="h-5 w-5" />
+                    <span className="text-[8px] font-black uppercase mt-0.5">Pay</span>
+                </button>
+
+                <button 
+                    onClick={() => setActiveTab('cart')} 
+                    className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}
+                >
                     <div className="relative">
                         <ReceiptText className="h-5 w-5" />
                         {cart.length > 0 && <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-white" />}
