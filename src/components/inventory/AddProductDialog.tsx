@@ -326,10 +326,10 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </Button>
       </DialogTrigger>
       
-      {/* PROFESSIONAL MODAL CONTAINER */}
-      <DialogContent className="sm:max-w-5xl w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden">
+      {/* PROFESSIONAL MODAL CONTAINER - Updated for mobile flexibility */}
+      <DialogContent className="sm:max-w-5xl w-[95vw] sm:w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden max-h-[95vh] sm:max-h-[90vh]">
         
-        {/* CLEAN HEADER */}
+        {/* CLEAN HEADER - shrink-0 ensures it stays at the top */}
         <div className="px-8 py-7 border-b shrink-0 bg-white">
           <div className="flex items-center gap-4">
              <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
@@ -342,9 +342,9 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </div>
 
-        {/* FORM BODY */}
-        <ScrollArea className="max-h-[68vh]">
-          <div className="p-8 space-y-8">
+        {/* FORM BODY - flex-1 and overflow-y-auto enables scrolling on mobile */}
+        <ScrollArea className="flex-1 w-full overflow-y-auto">
+          <div className="p-6 sm:p-8 space-y-8">
             
             {/* Row 1: Product Basics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -541,7 +541,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </ScrollArea>
 
-        {/* FIXED FOOTER */}
+        {/* FIXED FOOTER - shrink-0 ensures it stays at the bottom */}
         <div className="px-8 py-6 bg-slate-50 border-t flex items-center justify-between shrink-0">
           <Button variant="ghost" onClick={() => setOpen(false)} className="h-10 px-6 font-bold text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-lg">Cancel</Button>
           <Button onClick={() => mutate()} disabled={isPending} className="h-10 px-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95 border-none">
