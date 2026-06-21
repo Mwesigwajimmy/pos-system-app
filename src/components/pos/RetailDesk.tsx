@@ -123,7 +123,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                 />
             </div>
             <ScrollArea className="flex-1 touch-auto h-full w-full">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-32 lg:pb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-40">
                     {filteredProducts.map(product => (
                         <Card 
                             key={product.variant_id} 
@@ -147,7 +147,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     );
 };
 
-// --- DYNAMICS-STYLE CART DISPLAY ---
+// --- DYNAMICS-STYLE CART DISPLAY (HEALED WITH STICKY FOOTER) ---
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void, currency: string }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
     
@@ -168,15 +168,18 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     const total = subtotal - discountAmount;
 
     return (
-        /* DEEP FIX: Removed overflow-y-auto to LOCK the container height. Only the ScrollArea will move. */
+        /* FIXED: The flex-col and overflow-hidden here ensure the container height is locked */
         <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+            {/* PINNED HEADER: Does not move */}
             <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="bg-blue-600 p-2 rounded-lg">
                         <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-black text-xs lg:text-sm uppercase tracking-wider">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
+                        <span className="font-black text-xs lg:text-sm uppercase tracking-wider truncate max-w-[120px] lg:max-w-none">
+                            {selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}
+                        </span>
                         <span className="text-[8px] lg:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Standard Retail</span>
                     </div>
                 </div>
@@ -185,14 +188,15 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 </Button>
             </div>
             
+            {/* DEEP SCROLL AREA: Middle section takes remaining space and allows deep scrolling */}
             <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/30 touch-auto">
                 {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-300 space-y-4 py-10 lg:py-20">
+                    <div className="flex flex-col items-center justify-center h-[300px] lg:h-full text-slate-300 space-y-4 py-10 lg:py-20">
                         <ShoppingCart className="h-12 w-12 lg:h-16 lg:w-16 opacity-20" />
-                        <p className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] opacity-30">Awaiting Transaction Scan</p>
+                        <p className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] opacity-30 text-center px-4">Awaiting Transaction Scan</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-100 pb-20 lg:pb-10">
                         {cart.map(item => (
                             <div key={item.variant_id} className="p-3 lg:p-4 bg-white hover:bg-blue-50/30 transition-colors">
                                 <div className="flex items-start justify-between gap-4">
@@ -200,7 +204,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                         <p className="text-[13px] lg:text-sm font-black text-slate-800 leading-tight">{item.product_name}</p>
                                         <p className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase">{item.variant_name}</p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right shrink-0">
                                         <p className="text-[13px] lg:text-sm font-black text-slate-900">{currency} {(item.price * item.quantity).toLocaleString()}</p>
                                         <p className="text-[9px] lg:text-[10px] text-slate-400 font-medium">@ {item.price.toLocaleString()}</p>
                                     </div>
@@ -225,8 +229,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
             
-            {/* PINNED FOOTER: shrink-0 ensures this area NEVER moves or disappears. pb-24 handles the mobile nav space. */}
-            <div className="p-4 pb-24 lg:pb-6 border-t bg-white shadow-[0_-4px_10px_rgba(0,0,0,0.02)] space-y-4 lg:space-y-5 shrink-0">
+            {/* PINNED FOOTER: Fixed to the bottom, never disappears. Added padding for mobile bottom bars. */}
+            <div className="p-4 pb-20 lg:pb-6 border-t bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.03)] space-y-4 lg:space-y-5 shrink-0 z-10">
                 <div className="space-y-2 lg:space-y-3">
                     <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
@@ -241,7 +245,6 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                             <PopoverContent className="w-64 p-4 rounded-2xl border-none shadow-2xl space-y-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase text-slate-400">Discount Logic</Label>
-                                    <span className="text-[8px] text-slate-400">Note: Manual override applies to entire basket.</span>
                                     <Select value={discount.type} onValueChange={(v: 'fixed' | 'percentage') => setDiscount({ ...discount, type: v })}>
                                         <SelectTrigger className="rounded-xl"><SelectValue/></SelectTrigger>
                                         <SelectContent>
@@ -251,7 +254,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-slate-400">Rate</Label>
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">Value</Label>
                                     <Input type="number" value={discount.value} className="rounded-xl" onChange={(e) => setDiscount({ ...discount, value: Math.max(0, parseFloat(e.target.value) || 0) })}/>
                                 </div>
                             </PopoverContent>
@@ -273,7 +276,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     onClick={onCharge} 
                     disabled={cart.length === 0 || isProcessing}
                 >
-                    {isProcessing ? <Loader2 className="animate-spin h-6 w-6"/> : "Finalize Charge"}
+                    {isProcessing ? <Loader2 className="animate-spin h-6 w-6"/> : "Pay Now (F1)"}
                 </Button>
             </div>
         </div>
@@ -575,7 +578,7 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MAIN CONTENT AREA: Locked height. The individual columns handle their own internal scrolling. */}
+            {/* MAIN CONTENT AREA: Locked height. Individual columns handle internal scrolling. */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
                 
                 {/* PRODUCT GRID SECTION */}
@@ -586,7 +589,7 @@ export default function RetailDesk() {
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
 
-                {/* CART DISPLAY SECTION */}
+                {/* CART DISPLAY SECTION (FIXED HEIGHT CONTAINER) */}
                 <div className={cn(
                     "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
@@ -603,27 +606,30 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING SUMMARY (Uber-Style) */}
-            {cart.length > 0 && activeTab === 'products' && (
-                <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in slide-in-from-bottom-5 z-40">
+            {/* MOBILE FLOATING SUMMARY (Sits above bottom nav, always visible when cart has items) */}
+            {cart.length > 0 && (
+                <div className="lg:hidden fixed bottom-20 left-4 right-4 animate-in fade-in slide-in-from-bottom-5 z-[100]">
                     <Button 
                         onClick={() => setActiveTab('cart')}
-                        className="w-full h-16 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
+                        className="w-full h-16 bg-blue-600 shadow-[0_10px_30px_rgba(37,99,235,0.4)] rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
                     >
                         <div className="flex items-center gap-3">
-                            <Badge className="bg-white text-blue-600 font-black h-6 w-6 flex items-center justify-center p-0 rounded-full">{cart.length}</Badge>
-                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Receipt</span>
+                            <Badge className="bg-white text-blue-600 font-black h-7 w-7 flex items-center justify-center p-0 rounded-full border-none shadow-md">{cart.length}</Badge>
+                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review & Pay</span>
                         </div>
-                        <span className="font-black text-white">{businessDNA?.currency} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</span>
+                        <div className="text-right">
+                           <span className="block text-[8px] uppercase text-blue-100 opacity-70">Balance Due</span>
+                           <span className="font-black text-white text-lg">{businessDNA?.currency} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</span>
+                        </div>
                     </Button>
                 </div>
             )}
 
             {/* MOBILE BOTTOM NAVIGATION (Layer Switcher) */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-50">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-[110]">
                 <button 
                     onClick={() => setActiveTab('products')}
-                    className={cn("flex flex-col items-center gap-1 transition-all flex-1 py-2", activeTab === 'products' ? "text-blue-600 scale-110" : "text-slate-400")}
+                    className={cn("flex flex-col items-center gap-1 transition-all flex-1 py-2", activeTab === 'products' ? "text-blue-600 scale-105" : "text-slate-400")}
                 >
                     <LayoutGrid className="h-5 w-5" />
                     <span className="text-[8px] font-black uppercase tracking-tighter">Products</span>
@@ -631,7 +637,7 @@ export default function RetailDesk() {
                 <div className="h-8 w-px bg-slate-100" />
                 <button 
                     onClick={() => setActiveTab('cart')}
-                    className={cn("flex flex-col items-center gap-1 transition-all flex-1 py-2", activeTab === 'cart' ? "text-blue-600 scale-110" : "text-slate-400")}
+                    className={cn("flex flex-col items-center gap-1 transition-all flex-1 py-2", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}
                 >
                     <div className="relative">
                         <ReceiptText className="h-5 w-5" />
