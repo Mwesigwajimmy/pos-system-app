@@ -17,7 +17,7 @@ import {
     X, User, Plus, Minus, Printer as PrinterIcon, RefreshCw, 
     FileText, Loader2, Tag, Calculator, CheckCircle2,
     ShieldAlert, Lock, Zap, KeyRound, CheckCircle, Barcode,
-    Search, ShoppingCart, CreditCard
+    Search, ShoppingCart, CreditCard, LayoutGrid, ReceiptText
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -73,18 +73,15 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
     }, [onSKUScan]);
 
     return (
-        /* DEEP FIX: Added h-full and min-h to ensure the grid container fills space for scrolling */
         <div className={cn('flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
-            {/* DEEP FIX: Added shrink-0 to keep the header visible while scrolling products */}
             <div className="p-4 border-b bg-slate-50 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Quick Selection</h3>
                 <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600">
                     <Barcode size={14} /> SCANNER READY
                 </div>
             </div>
-            {/* DEEP FIX: Explicit h-full to force the ScrollArea to work internally */}
-            <ScrollArea className="flex-1 h-full w-full">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+            <ScrollArea className="flex-1 w-full">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pb-32">
                     {products.map(product => (
                         <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
                             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
@@ -105,74 +102,68 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
     );
 };
 
-// --- CART DISPLAY ---
+// --- CART DISPLAY (UPDATED WITH STICKY FOOTER) ---
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency = 'UGX' }: any) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    
     const subtotal = useMemo(() => cart.reduce((acc: any, item: any) => acc + item.price * item.quantity, 0), [cart]);
     const discountAmount = useMemo(() => {
         if (discount.type === 'percentage') return (subtotal * discount.value) / 100;
         return Math.min(subtotal, discount.value);
     }, [subtotal, discount]);
     const total = subtotal - discountAmount;
+
+    // Auto-scroll to bottom when item added
+    useEffect(() => {
+        if (scrollRef.current) {
+            const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        }
+    }, [cart.length]);
     
     return (
         <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-            {/* Cart Header */}
-            <div className="p-5 border-b flex justify-between items-center bg-slate-50 shrink-0">
-                <div className="flex items-center gap-3 cursor-pointer group" onClick={onSetCustomer}>
-                    <div className="p-2 bg-white rounded-lg border border-slate-200 group-hover:border-blue-500 transition-colors">
-                        <User className="h-5 w-5 text-blue-600" />
+            {/* PINNED HEADER */}
+            <div className="p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
+                    <div className="p-2 bg-blue-600 rounded-lg">
+                        <User className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-bold text-sm text-slate-900">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
-                        <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-tight">
+                        <span className="font-bold text-sm truncate max-w-[150px]">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase">
                             {selectedCustomer ? `ID: ${selectedCustomer.id}` : 'Guest Sale'}
                         </span>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" className="font-bold text-xs h-8 border-slate-200 shadow-sm" onClick={onSetCustomer}>Change (F2)</Button>
+                <Button variant="outline" size="sm" className="font-bold text-[10px] h-8 bg-transparent border-slate-700 text-white" onClick={onSetCustomer}>Change (F2)</Button>
             </div>
 
-            {/* Cart Items */}
-            <ScrollArea className="flex-1 bg-white">
+            {/* SCROLLABLE ITEMS */}
+            <ScrollArea ref={scrollRef} className="flex-1 bg-white">
                 {cart.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-300 p-8 gap-4">
+                    <div className="flex flex-col items-center justify-center h-[300px] text-slate-300 p-8 gap-4">
                         <ShoppingCart size={40} className="opacity-20" />
                         <p className="text-xs font-semibold uppercase tracking-widest opacity-40">Cart is empty</p>
                     </div>
                 ) : (
-                    <div className="p-4 space-y-3">
+                    <div className="p-4 space-y-3 pb-10">
                         {cart.map((item: any) => (
-                            <div key={item.variant_id} className="flex flex-col p-4 bg-white border border-slate-100 rounded-xl shadow-sm gap-2 group hover:bg-slate-50 transition-colors">
+                            <div key={item.variant_id} className="flex flex-col p-4 bg-white border border-slate-100 rounded-xl shadow-sm gap-2 hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-bold text-slate-900 truncate">{item.product_name}</p>
-                                            {item.tax_category_code && (
-                                                <Badge variant="outline" className="text-[9px] h-4 border-slate-200 text-slate-500 px-1 font-mono uppercase">
-                                                    {item.tax_category_code}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">
-                                            {item.variant_name} 
-                                            {item.units_per_pack > 1 && ` • ${item.units_per_pack} Units`}
-                                        </p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">{item.product_name}</p>
+                                        <p className="text-[10px] text-slate-400 font-semibold uppercase">{item.variant_name}</p>
                                     </div>
-                                    
-                                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}><Minus className="h-3 w-3" /></Button>
-                                        <Input 
-                                            className="w-12 h-7 text-center font-bold text-xs p-0 border-none bg-transparent" 
-                                            type="number" 
-                                            value={item.quantity}
-                                            onChange={(e) => onUpdateQuantity(item.variant_id, parseFloat(e.target.value) || 0)}
-                                        />
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" onClick={() => onUpdateQuantity(item.variant_id, item.quantity + 1)}><Plus className="h-3 w-3" /></Button>
-                                    </div>
-
-                                    <div className="w-24 text-right">
+                                    <div className="w-24 text-right shrink-0">
                                         <p className="font-bold text-sm text-slate-900">{(item.price * item.quantity).toLocaleString()}</p>
-                                        <p className="text-[9px] text-slate-400 font-medium italic">@ {item.price.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between mt-1">
+                                    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.variant_id, item.quantity - 1)}><Minus className="h-3 w-3 text-red-500" /></Button>
+                                        <span className="w-8 text-center font-bold text-xs">{item.quantity}</span>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.variant_id, item.quantity + 1)}><Plus className="h-3 w-3 text-blue-500" /></Button>
                                     </div>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-red-500" onClick={() => onRemoveItem(item.variant_id)}><X className="h-4 w-4" /></Button>
                                 </div>
@@ -182,61 +173,42 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
 
-            {/* DEEP FIX: Added pb-20 for mobile safety so the Pay button isn't covered */}
-            <div className="p-6 pb-20 lg:pb-6 border-t bg-slate-50 space-y-6 shrink-0">
-                <div className="space-y-3">
-                    <div className="flex justify-between text-xs font-semibold text-slate-500 uppercase">
+            {/* PINNED FOOTER (FIXED) */}
+            <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-10">
+                <div className="space-y-2">
+                    <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase">
                         <span>Subtotal</span>
                         <span>{currency} {subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button variant="ghost" size="sm" className="p-0 h-auto flex items-center gap-1.5 text-blue-600 font-bold hover:bg-transparent">
-                                    <Tag className="h-3.5 w-3.5" /> Apply Discount
+                                <Button variant="link" className="p-0 h-auto text-blue-600 font-bold text-[11px] gap-1">
+                                    <Tag className="h-3 w-3" /> Apply Discount
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-64 p-5 rounded-xl shadow-xl border-slate-200" align="start">
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Discount Type</Label>
-                                        <Select value={discount.type} onValueChange={(v: 'fixed' | 'percentage') => setDiscount({ ...discount, type: v })}>
-                                            <SelectTrigger className="h-10"><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="fixed">Fixed ({currency})</SelectItem>
-                                                <SelectItem value="percentage">Percentage (%)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Value</Label>
-                                        <Input type="number" className="h-10" value={discount.value} onChange={(e) => setDiscount({ ...discount, value: Math.max(0, parseFloat(e.target.value) || 0) })}/>
-                                    </div>
-                                </div>
+                            <PopoverContent className="w-64 p-5 rounded-xl shadow-xl">
+                                <Label className="text-[10px] font-bold uppercase text-slate-400">Discount Value</Label>
+                                <Input type="number" className="mt-2" value={discount.value} onChange={(e) => setDiscount({ ...discount, value: parseFloat(e.target.value) || 0 })}/>
                             </PopoverContent>
                         </Popover>
-                        <span className="font-bold text-red-600">-{currency} {discountAmount.toLocaleString()}</span>
+                        <span className="font-bold text-red-600 text-sm">-{currency} {discountAmount.toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div className="flex justify-between items-end pt-2 border-t border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Due</span>
-                    <span className="font-bold text-3xl text-slate-900 tracking-tight leading-none">
-                        <span className="text-sm font-bold text-slate-400 mr-1">{currency}</span>
-                        {total.toLocaleString()}
+                <div className="flex justify-between items-baseline pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Due</span>
+                    <span className="font-bold text-3xl text-slate-900 tracking-tighter">
+                        {currency} {total.toLocaleString()}
                     </span>
                 </div>
 
                 <Button 
-                    className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50" 
+                    className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all" 
                     onClick={onCharge} 
                     disabled={cart.length === 0 || isProcessing}
                 >
-                    {isProcessing ? (
-                        <><Loader2 className="mr-2 h-6 w-6 animate-spin"/> Processing...</>
-                    ) : (
-                        <><CreditCard className="mr-3 h-6 w-6" /> Pay Now (F1)</>
-                    )}
+                    {isProcessing ? <Loader2 className="animate-spin" /> : "PAY NOW (F1)"}
                 </Button>
             </div>
         </div>
@@ -252,166 +224,16 @@ export default function POSPage() {
     const [lastCompletedSale, setLastCompletedSale] = useState<CompletedSale | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [discount, setDiscount] = useState<Discount>({ type: 'fixed', value: 0 });
+    const [activeTab, setActiveTab] = useState<'products' | 'cart'>('products');
+    
     const receiptRef = useRef<HTMLDivElement>(null);
-    
-    // Security States
-    const [isLockedDown, setIsLockedDown] = useState(false);
-    const [managerEmail, setManagerEmail] = useState("");
-    const [managerPassword, setManagerPassword] = useState("");
-    const [isVerifyingManager, setIsVerifyingManager] = useState(false);
-
     const { isSyncing, triggerSync } = useSync();
-    const { data: userProfile, isLoading: isProfileLoading, refetch: refetchProfile } = useUserProfile();
+    const { data: userProfile, isLoading: isProfileLoading } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
-    
-    /* DEEP FIX: Removed .orderBy().toArray() order to speed up render and ensure full product list loads */
     const products = useLiveQuery(() => db.products.toArray(), []);
-    
-    const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
     const supabase = createClient();
 
-    // Security Channel Sync
-    useEffect(() => {
-        if (!userProfile?.id) return;
-        const channel = supabase.channel('pos_security_sync')
-            .on('postgres_changes', { 
-                event: 'UPDATE', 
-                schema: 'public', 
-                table: 'profiles', 
-                filter: `id=eq.${userProfile.id}` 
-            }, (payload) => {
-                if (payload.new.is_active === false) {
-                    setIsLockedDown(true);
-                }
-            }).subscribe();
-        return () => { supabase.removeChannel(channel); };
-    }, [userProfile?.id, supabase]);
-
-    const handleManagerOverride = async () => {
-        setIsVerifyingManager(true);
-        try {
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: managerEmail,
-                password: managerPassword,
-            });
-
-            if (authError) throw new Error("Invalid credentials");
-
-            const { data: managerProfile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', authData.user.id)
-                .single();
-
-            if (managerProfile?.role !== 'admin' && managerProfile?.role !== 'manager') {
-                throw new Error("Authorization denied: Manager status required.");
-            }
-
-            const { error: reactivateErr } = await supabase
-                .from('profiles')
-                .update({ is_active: true })
-                .eq('id', userProfile?.id);
-
-            if (reactivateErr) throw reactivateErr;
-
-            setIsLockedDown(false);
-            setManagerEmail("");
-            setManagerPassword("");
-            refetchProfile();
-            toast.success("Terminal unlocked.");
-        } catch (err: any) {
-            toast.error(err.message || "Bypass failed.");
-        } finally {
-            setIsVerifyingManager(false);
-        }
-    };
-
-    const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
-        if (!userProfile?.business_id || !userProfile.id) return;
-
-        setIsSaving(true);
-        try {
-            const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-            const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
-            const totalAmount = subtotal - discountAmount;
-            
-            const taxRate = (userProfile as any).tax_rate || 0;
-            const taxAmount = (totalAmount * taxRate) / (100 + taxRate); 
-            const netAmount = totalAmount - taxAmount;
-
-            const changeDue = paymentData.amountPaid > totalAmount ? paymentData.amountPaid - totalAmount : 0;
-            const dueAmount = totalAmount - paymentData.amountPaid;
-
-            if (dueAmount > 0.01 && !selectedCustomer) {
-                throw new Error("Select a customer to process a partial payment.");
-            }
-
-            let payment_status: 'paid' | 'partial' | 'unpaid' = 'paid';
-            if (dueAmount > 0.01) payment_status = 'partial';
-            else if (paymentData.amountPaid <= 0 && totalAmount > 0) payment_status = 'unpaid';
-
-            const receiptData = await db.transaction('rw', db.offlineSales, async () => {
-                const newSale: Omit<OfflineSale, 'id'> = {
-                    createdAt: new Date(),
-                    cartItems: cart,
-                    customerId: selectedCustomer?.id || null,
-                    paymentMethod: paymentData.paymentMethod,
-                    business_id: userProfile.business_id,
-                    user_id: userProfile.id,
-                    amount_paid: paymentData.amountPaid,
-                    payment_status,
-                    due_amount: dueAmount > 0 ? dueAmount : 0,
-                    discount_type: discount.value > 0 ? discount.type : null,
-                    discount_value: discount.value > 0 ? discount.value : null,
-                    discount_amount: discountAmount > 0 ? discountAmount : null,
-                };
-                
-                const saleId = await db.offlineSales.add(newSale as OfflineSale);
-                
-                return {
-                    saleInfo: { 
-                        id: saleId, 
-                        created_at: newSale.createdAt, 
-                        payment_method: newSale.paymentMethod, 
-                        total_amount: totalAmount, 
-                        amount_tendered: paymentData.amountPaid, 
-                        change_due: changeDue, 
-                        subtotal, 
-                        discount: discountAmount,
-                        tax_amount: taxAmount, 
-                        net_amount: netAmount, 
-                        amount_due: dueAmount,
-                        kernel_seal_id: `ID-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
-                    },
-                    storeInfo: { 
-                        name: userProfile.business_name || 'Store', 
-                        address: (userProfile as any).address || '-', 
-                        phone_number: (userProfile as any).phone_number || '-', 
-                        receipt_footer: (userProfile as any).receipt_footer || 'Thank you for shopping!' 
-                    },
-                    customerInfo: selectedCustomer,
-                    saleItems: cart.map(item => ({ 
-                        product_name: item.product_name, 
-                        variant_name: item.variant_name, 
-                        quantity: item.quantity, 
-                        unit_price: item.price, 
-                        subtotal: item.quantity * item.price 
-                    }))
-                };
-            });
-            
-            setLastCompletedSale({ receiptData });
-            toast.success(`Sale Complete. Change: UGX ${changeDue.toLocaleString()}`);
-            setCart([]);
-            setSelectedCustomer(null);
-            setDiscount({ type: 'fixed', value: 0 });
-            setPaymentModalOpen(false);
-        } catch (error: any) {
-            toast.error(error.message || "Payment failed.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
 
     const handleAddToCart = (product: SellableProduct | SearchResultProduct) => {
         setCart(currentCart => { 
@@ -433,102 +255,58 @@ export default function POSPage() {
         }
     };
 
-    const handleUpdateQuantity = (id: number, qty: number) => { 
-        if (qty <= 0) { handleRemoveItem(id); return; } 
-        setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: qty } : i)); 
+    const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
+        if (!userProfile?.business_id || !userProfile.id) return;
+        setIsSaving(true);
+        try {
+            const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+            const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
+            const totalAmount = subtotal - discountAmount;
+            
+            const newSale: Omit<OfflineSale, 'id'> = {
+                createdAt: new Date(), cartItems: cart, customerId: selectedCustomer?.id || null,
+                paymentMethod: paymentData.paymentMethod, business_id: userProfile.business_id,
+                user_id: userProfile.id, amount_paid: paymentData.amountPaid,
+                payment_status: paymentData.amountPaid >= totalAmount ? 'paid' : 'partial',
+                due_amount: Math.max(0, totalAmount - paymentData.amountPaid),
+                discount_type: discount.value > 0 ? discount.type : null,
+                discount_value: discount.value > 0 ? discount.value : null,
+                discount_amount: discountAmount > 0 ? discountAmount : null,
+            };
+            
+            const saleId = await db.offlineSales.add(newSale as OfflineSale);
+            
+            setLastCompletedSale({ receiptData: {
+                saleInfo: { id: saleId, created_at: newSale.createdAt, payment_method: newSale.paymentMethod, total_amount: totalAmount, amount_tendered: paymentData.amountPaid, change_due: Math.max(0, paymentData.amountPaid - totalAmount), subtotal, discount: discountAmount, amount_due: newSale.due_amount, kernel_seal_id: `TXN-${saleId}` },
+                storeInfo: { name: userProfile.business_name || 'Store', address: '-', phone_number: '-', receipt_footer: 'Thank you!' },
+                customerInfo: selectedCustomer,
+                saleItems: cart.map(item => ({ product_name: item.product_name, variant_name: item.variant_name, quantity: item.quantity, unit_price: item.price, subtotal: item.quantity * item.price }))
+            }});
+            
+            setCart([]); setSelectedCustomer(null); setDiscount({ type: 'fixed', value: 0 }); setPaymentModalOpen(false);
+            toast.success("Sale Complete");
+        } catch (error: any) {
+            toast.error("Payment failed.");
+        } finally { setIsSaving(false); }
     };
-    
-    const handleRemoveItem = (id: number) => {
-        setCart(cart.filter(i => i.variant_id !== id));
-    }
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (isLockedDown) return; 
-            if (document.querySelector('[role="dialog"]')) return;
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-            if (e.key === 'F1' && cart.length > 0) { e.preventDefault(); setPaymentModalOpen(true); }
-            if (e.key === 'F2') { e.preventDefault(); setCustomerModalOpen(true); }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.addEventListener('keydown', handleKeyDown);
-    }, [cart, isLockedDown]);
-
-    const totalAmount = useMemo(() => {
-        const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value) / 100 : Math.min(subtotal, discount.value);
-        return subtotal - discountAmount;
-    }, [cart, discount]);
-    
-    const isLoading = (!products && !isSyncing) || isProfileLoading;
-
-    // LOCKED TERMINAL UI
-    if (isLockedDown || userProfile?.is_active === false) {
-        return (
-            <div className="flex flex-col items-center justify-center h-screen bg-slate-50 p-10 text-center space-y-8 animate-in fade-in duration-500">
-                <div className="p-10 bg-white rounded-full border border-red-100 shadow-xl relative">
-                    <Lock size={80} className="text-red-500" />
-                    <div className="absolute top-6 right-6">
-                        <ShieldAlert size={28} className="text-red-600" />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold text-slate-900">Terminal Locked</h1>
-                    <p className="max-w-md text-slate-500 font-medium mx-auto">This station has been suspended. Please provide manager credentials to continue.</p>
-                </div>
-                <Card className="w-full max-w-sm bg-white border-slate-200 shadow-2xl overflow-hidden">
-                    <CardHeader className="bg-slate-50 border-b border-slate-100 pb-4">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-center gap-2">
-                            <KeyRound size={14}/> Manager Override
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-6 pb-6">
-                        <div className="space-y-1.5 text-left">
-                            <Label className="text-[11px] font-bold text-slate-600 uppercase ml-1">Email</Label>
-                            <Input type="email" placeholder="manager@example.com" className="h-11" value={managerEmail} onChange={(e) => setManagerEmail(e.target.value)} />
-                        </div>
-                        <div className="space-y-1.5 text-left">
-                            <Label className="text-[11px] font-bold text-slate-600 uppercase ml-1">Password</Label>
-                            <Input type="password" placeholder="••••••••" className="h-11" value={managerPassword} onChange={(e) => setManagerPassword(e.target.value)} />
-                        </div>
-                        <Button className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md" onClick={handleManagerOverride} disabled={isVerifyingManager || !managerEmail || !managerPassword}>
-                            {isVerifyingManager ? <Loader2 className="animate-spin h-5 w-5 mr-2"/> : <Zap size={16} className="mr-2" />} Unlock Terminal
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    if (isLoading) {
-        return (
-            <div className="p-10 text-center flex flex-col items-center justify-center h-screen bg-white">
-                <Loader2 className="animate-spin h-10 w-10 text-blue-600 mb-4" />
-                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Connecting to system...</p>
-                <Button variant="ghost" size="sm" onClick={triggerSync} disabled={isSyncing} className="mt-4 text-slate-400">
-                    Refresh Sync
-                </Button>
-            </div>
-        );
-    }
+    if (isProfileLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     if (lastCompletedSale) {
         return (
-            <div className="p-4 md:p-8 flex flex-col items-center justify-center min-h-screen bg-slate-50 animate-in zoom-in duration-300">
-                <Card className="w-full max-w-md shadow-2xl border-none rounded-2xl overflow-hidden bg-white">
-                    <CardHeader className="bg-emerald-600 text-white p-10 text-center">
+            <div className="p-8 flex items-center justify-center min-h-screen bg-slate-50">
+                <Card className="w-full max-w-md shadow-2xl">
+                    <CardHeader className="bg-emerald-600 text-white text-center rounded-t-xl py-10">
                         <CheckCircle className="mx-auto h-16 w-16 mb-4" />
-                        <CardTitle className="uppercase font-bold text-2xl tracking-tight">Sale Completed</CardTitle>
-                        <CardDescription className="text-emerald-100 font-semibold text-xs mt-1">Transaction recorded: {lastCompletedSale.receiptData.saleInfo.id}</CardDescription>
+                        <CardTitle className="uppercase font-bold text-2xl">Sale Completed</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6 pt-8 px-8 pb-8">
-                        <div className="border border-slate-100 rounded-xl shadow-sm bg-white p-3">
-                            <Receipt ref={receiptRef} receiptData={lastCompletedSale.receiptData} autoPrint={true} defaultPrinterName={defaultPrinter ?? undefined} />
+                    <CardContent className="p-8 space-y-6">
+                        <div className="border p-4 rounded-xl scale-90">
+                            <Receipt ref={receiptRef} receiptData={lastCompletedSale.receiptData} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <Button variant="outline" className="h-12 font-bold uppercase text-xs rounded-xl border-slate-200" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
-                            <Button className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs rounded-xl shadow-md" onClick={() => handleWebPrint()}><PrinterIcon className="mr-2 h-4 w-4" /> Print</Button>
+                            <Button variant="outline" className="h-12 font-bold" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
+                            <Button className="h-12 bg-blue-600 font-bold" onClick={() => handleWebPrint()}><PrinterIcon className="mr-2 h-4 w-4" /> Print</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -537,82 +315,79 @@ export default function POSPage() {
     }
 
     return (
-        /* DEEP FIX: Replaced h-screen with h-[100dvh] and unlocked scrolling for mobile stack */
-        <div className="h-[100dvh] flex flex-col bg-slate-50 overflow-y-auto lg:overflow-hidden relative overscroll-none">
-            {/* System Status Header */}
-            <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between z-30 shrink-0">
+        <div className="h-[100dvh] flex flex-col bg-slate-50 overflow-hidden relative overscroll-none">
+            {/* Header */}
+            <div className="bg-white border-b px-6 py-3 flex items-center justify-between shrink-0 z-30">
                 <div className="flex items-center gap-3">
-                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        Terminal Active: {userProfile?.business_name || 'Loading...'}
+                        {userProfile?.business_name || 'Terminal Active'}
                      </span>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                    <Button onClick={triggerSync} variant="outline" size="sm" disabled={isSyncing} className="h-9 px-4 border-slate-200 text-xs font-bold uppercase">
-                        <RefreshCw className={cn("mr-2 h-3.5 w-3.5 text-blue-600", isSyncing && 'animate-spin')} />
-                        {isSyncing ? 'Syncing...' : 'Sync Data'}
-                    </Button>
-                </div>
+                <Button onClick={triggerSync} variant="outline" size="sm" className="h-9 font-bold text-[10px]">
+                    <RefreshCw className={cn("mr-2 h-3 w-3", isSyncing && 'animate-spin')} />
+                    SYNC DATA
+                </Button>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 lg:overflow-hidden min-h-0">
-                {/* Left Side: Search and Grid */}
-                <div className="lg:col-span-7 flex flex-col gap-6 lg:overflow-hidden min-h-0">
-                    <div className="shrink-0">
-                        <ProductSearch onProductSelect={handleAddToCart} />
-                    </div>
-                    <div className="flex-1 lg:overflow-hidden min-h-0">
-                        <ProductGrid 
-                            /* DEEP FIX: Removed the .slice(0, 24) to allow full inventory scrolling */
-                            products={products || []}
-                            onProductSelect={handleAddToCart} 
-                            onSKUScan={handleSKUScan}
-                            disabled={isSyncing} 
-                        />
-                    </div>
+            {/* Layout */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
+                {/* Product Section */}
+                <div className={cn("h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all", activeTab !== 'products' && 'hidden lg:flex')}>
+                    <div className="mb-4"><ProductSearch onProductSelect={handleAddToCart} /></div>
+                    <ProductGrid products={products || []} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
 
-                {/* Right Side: Cart */}
-                <div className="lg:col-span-5 h-full lg:overflow-hidden min-h-0">
+                {/* Cart Section */}
+                <div className={cn("h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all", activeTab !== 'cart' && 'hidden lg:flex')}>
                     <CartDisplay 
                         cart={cart} 
-                        onUpdateQuantity={handleUpdateQuantity} 
-                        onRemoveItem={handleRemoveItem} 
+                        onUpdateQuantity={(id: number, q: number) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
+                        onRemoveItem={(id: number) => setCart(cart.filter(i => i.variant_id !== id))} 
                         selectedCustomer={selectedCustomer} 
                         onSetCustomer={() => setCustomerModalOpen(true)} 
                         onCharge={() => setPaymentModalOpen(true)} 
                         isProcessing={isSaving} 
-                        discount={discount} 
-                        setDiscount={setDiscount}
+                        discount={discount} setDiscount={setDiscount}
                         currency={userProfile?.currency_symbol || 'UGX'}
                     />
                 </div>
             </div>
 
+            {/* MOBILE FLOATING PAY SUMMARY */}
+            {cart.length > 0 && activeTab === 'products' && (
+                <div className="lg:hidden fixed bottom-20 left-4 right-4 z-[100] animate-in slide-in-from-bottom-4">
+                    <Button 
+                        onClick={() => setActiveTab('cart')}
+                        className="w-full h-16 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800"
+                    >
+                        <div className="flex items-center gap-3">
+                            <Badge className="bg-white text-blue-600 font-bold h-7 w-7 flex items-center justify-center p-0 rounded-full border-none">{cart.length}</Badge>
+                            <span className="font-bold uppercase text-[10px] text-white">Review Receipt</span>
+                        </div>
+                        <span className="font-bold text-white text-lg">
+                            {userProfile?.currency_symbol} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}
+                        </span>
+                    </Button>
+                </div>
+            )}
+
+            {/* MOBILE BOTTOM TABS */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around z-[110]">
+                <button onClick={() => setActiveTab('products')} className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'products' ? "text-blue-600" : "text-slate-400")}>
+                    <LayoutGrid className="h-5 w-5" /><span className="text-[9px] font-bold uppercase mt-1">Inventory</span>
+                </button>
+                <button onClick={() => setActiveTab('cart')} className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'cart' ? "text-blue-600" : "text-slate-400")}>
+                    <div className="relative">
+                        <ReceiptText className="h-5 w-5" />
+                        {cart.length > 0 && <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-white" />}
+                    </div>
+                    <span className="text-[9px] font-bold uppercase mt-1">Receipt ({cart.length})</span>
+                </button>
+            </div>
+
             <CustomerSearchModal isOpen={isCustomerModalOpen} onClose={() => setCustomerModalOpen(false)} onSelectCustomer={(c) => {setSelectedCustomer(c); setCustomerModalOpen(false);}} />
-            <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} totalAmount={totalAmount} onConfirm={handleProcessPayment} isProcessing={isSaving} />
+            <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setPaymentModalOpen(false)} totalAmount={cart.reduce((a, b) => a + (b.price * b.quantity), 0) - (discount.type === 'percentage' ? (cart.reduce((a, b) => a + (b.price * b.quantity), 0) * discount.value) / 100 : discount.value)} onConfirm={handleProcessPayment} isProcessing={isSaving} />
         </div>
     );
-}
-
-function ShieldCheck(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-            <path d="m9 12 2 2 4-4" />
-        </svg>
-    )
 }
