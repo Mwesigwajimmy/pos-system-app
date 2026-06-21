@@ -14,7 +14,20 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { ArrowUpDown, Eye, Mail, MessageSquare } from "lucide-react";
+import { 
+    ArrowUpDown, 
+    Eye, 
+    Mail, 
+    MessageSquare, 
+    Globe, 
+    TrendingUp, 
+    Coins, 
+    Target,
+    FileText,
+    MapPin
+} from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,16 +42,20 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 
-// --- TYPES & CONSTANTS ---
+// --- TYPES & CONSTANTS ENHANCED FOR DEEP INTEL ---
 interface Creator { id: string; full_name: string; }
 export interface Campaign {
     id: string;
     name: string;
-    type: 'EMAIL' | 'SMS';
-    status: 'DRAFT' | 'SCHEDULED' | 'SENT' | 'ARCHIVED';
+    campaign_category: 'EMAIL' | 'SMS' | 'ADS' | 'BOOTCAMP' | 'EVENT' | 'OUTREACH';
+    status: 'DRAFT' | 'SCHEDULED' | 'SENT' | 'ACTIVE' | 'ARCHIVED';
     created_at: string;
     scheduled_at: string | null;
     sent_at: string | null;
+    budget_spent: number;
+    projected_revenue: number;
+    currency_code: string;
+    target_location: string | null;
     employees: Creator | null;
 }
 
@@ -46,74 +63,111 @@ type BadgeVariant = "default" | "destructive" | "outline" | "secondary";
 
 const getStatusVariant = (status: Campaign['status']): BadgeVariant => {
     switch (status) {
-        case 'SENT': return 'default';
-        case 'SCHEDULED': return 'default';
-        case 'ARCHIVED': return 'secondary';
+        case 'SENT': 
+        case 'ACTIVE': return 'default';
+        case 'SCHEDULED': return 'secondary';
+        case 'ARCHIVED': return 'destructive';
         case 'DRAFT':
         default: return 'outline';
     }
 };
 
-// Define the columns for the data table
+// --- FORENSIC AUDIT GENERATOR ---
+const generateCampaignAudit = (campaigns: Campaign[]) => {
+    const doc = new jsPDF('landscape');
+    doc.setFontSize(18);
+    doc.text("Sovereign Marketing: Campaign Forensic Audit", 14, 20);
+    
+    autoTable(doc, {
+        startY: 30,
+        head: [['Name', 'Category', 'Status', 'Location', 'Budget', 'Projection', 'Agent']],
+        body: campaigns.map(c => [
+            c.name,
+            c.campaign_category,
+            c.status,
+            c.target_location || 'Global',
+            `${c.budget_spent.toLocaleString()} ${c.currency_code}`,
+            `${c.projected_revenue.toLocaleString()} ${c.currency_code}`,
+            c.employees?.full_name || 'N/A'
+        ]),
+        headStyles: { fillColor: [15, 23, 42] }
+    });
+    doc.save(`Marketing_Audit_${Date.now()}.pdf`);
+};
+
+// --- ENHANCED COLUMNS FOR ENTERPRISE TRACKING ---
 export const columns: ColumnDef<Campaign>[] = [
     {
         accessorKey: "name",
         header: ({ column }) => (
-            <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Campaign Name
-                <ArrowUpDown className="ml-2 h-4 w-4" />
+            <Button variant="ghost" className="font-black text-[10px] uppercase tracking-widest p-0 hover:bg-transparent" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Campaign Identity <ArrowUpDown className="ml-2 h-3 w-3" />
             </Button>
         ),
         cell: ({ row }) => (
-            <Link href={`/crm/marketing/${row.original.id}`} className="font-medium text-primary hover:underline">
-                {row.getValue("name")}
-            </Link>
+            <div className="flex flex-col">
+                <Link href={`/crm/marketing/${row.original.id}`} className="font-bold text-slate-900 hover:underline">
+                    {row.getValue("name")}
+                </Link>
+                <div className="flex items-center text-[9px] text-slate-400 font-bold uppercase mt-0.5">
+                    <MapPin className="h-2.5 w-2.5 mr-1" /> {row.original.target_location || 'Global Reach'}
+                </div>
+            </div>
         ),
     },
     {
-        accessorKey: "type",
-        header: "Type",
+        accessorKey: "campaign_category",
+        header: "Strategy",
         cell: ({ row }) => {
-            const type = row.getValue("type") as Campaign['type'];
-            const Icon = type === 'EMAIL' ? Mail : MessageSquare;
-            return <div className="flex items-center"><Icon className="mr-2 h-4 w-4 text-muted-foreground" /> {type}</div>;
+            const cat = row.getValue("campaign_category") as Campaign['campaign_category'];
+            const Icon = cat === 'EMAIL' ? Mail : (cat === 'SMS' ? MessageSquare : (cat === 'ADS' ? Target : Globe));
+            return (
+                <div className="flex items-center text-[11px] font-bold text-slate-600">
+                    <Icon className="mr-2 h-3.5 w-3.5 text-blue-500" /> {cat}
+                </div>
+            );
         },
+    },
+    {
+        accessorKey: "financials",
+        header: "Forensic ROI",
+        cell: ({ row }) => (
+            <div className="flex flex-col">
+                <div className="text-[10px] font-black text-emerald-600">
+                    +{row.original.projected_revenue.toLocaleString()} {row.original.currency_code}
+                </div>
+                <div className="text-[9px] font-bold text-slate-400 italic">
+                    Cost: {row.original.budget_spent.toLocaleString()}
+                </div>
+            </div>
+        ),
     },
     {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => (
-            <Badge variant={getStatusVariant(row.getValue("status"))} className="capitalize">
-                {/* --- THIS IS THE FIXED LINE --- */}
-                {(row.getValue("status") as string).toLowerCase()}
+            <Badge variant={getStatusVariant(row.getValue("status"))} className="text-[9px] font-black uppercase px-2 py-0.5">
+                {row.getValue("status")}
             </Badge>
         ),
     },
     {
         accessorKey: "employees",
-        header: "Created By",
-        cell: ({ row }) => row.original.employees?.full_name || 'N/A',
-    },
-    {
-        accessorKey: "created_at",
-        header: "Date",
-        cell: ({ row }) => {
-            const status: Campaign['status'] = row.original.status;
-            const date = status === 'SENT' ? row.original.sent_at : (status === 'SCHEDULED' ? row.original.scheduled_at : row.original.created_at);
-            const prefix = status === 'SENT' ? 'Sent' : (status === 'SCHEDULED' ? 'Sends' : 'Created');
-            return date ? `${prefix}: ${format(new Date(date), 'LLL dd, yyyy')}` : 'N/A';
-        }
+        header: "Agent",
+        cell: ({ row }) => (
+            <div className="flex items-center text-[11px] font-bold text-slate-700">
+                <UserCheck className="h-3.5 w-3.5 mr-1.5 text-slate-300" />
+                {row.original.employees?.full_name || 'System Auto'}
+            </div>
+        ),
     },
     {
         id: "actions",
         cell: ({ row }) => (
             <div className="text-right">
                  <Link href={`/crm/marketing/${row.original.id}`}>
-                    <Button variant="ghost" size="sm">
-                        <Eye className="mr-2 h-4 w-4" /> View
+                    <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase text-blue-600">
+                        <Eye className="mr-2 h-3.5 w-3.5" /> View Intel
                     </Button>
                 </Link>
             </div>
@@ -123,7 +177,7 @@ export const columns: ColumnDef<Campaign>[] = [
 
 // The main data table component
 export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
-    const [sorting, setSorting] = React.useState<SortingState>([{ id: 'created_at', desc: true }]);
+    const [sorting, setSorting] = React.useState<SortingState>([{ id: 'name', desc: false }]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
 
     const table = useReactTable({
@@ -139,23 +193,29 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
     });
 
     return (
-        <Card>
-            <CardContent className="p-4">
-                <div className="flex items-center py-4">
-                    <Input
-                        placeholder="Filter by campaign name..."
-                        value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-                        onChange={(event) => table.getColumn("name")?.setFilterValue(event.target.value)}
-                        className="max-w-sm"
-                    />
+        <Card className="border-slate-100 shadow-sm overflow-hidden">
+            <CardContent className="p-0">
+                <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50 border-b">
+                    <div className="relative w-full max-w-sm">
+                        <Input
+                            placeholder="Search campaign DNA..."
+                            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+                            onChange={(event) => table.getColumn("name")?.setFilterValue(event.target.value)}
+                            className="h-9 font-semibold text-xs border-slate-200"
+                        />
+                    </div>
+                    <Button variant="outline" size="sm" className="h-9 font-black text-[10px] uppercase tracking-widest gap-2 border-slate-200" onClick={() => generateCampaignAudit(campaigns)}>
+                        <FileText size={14} /> Download Audit
+                    </Button>
                 </div>
-                <div className="rounded-md border">
+                
+                <div className="w-full overflow-x-auto">
                     <Table>
-                        <TableHeader>
+                        <TableHeader className="bg-white">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
+                                <TableRow key={headerGroup.id} className="hover:bg-transparent border-slate-100">
                                     {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id}>
+                                        <TableHead key={header.id} className="h-12 px-6 font-black text-[10px] uppercase tracking-widest text-slate-400">
                                             {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                                         </TableHead>
                                     ))}
@@ -165,29 +225,37 @@ export function CampaignList({ campaigns }: { campaigns: Campaign[] }) {
                         <TableBody>
                             {table.getRowModel().rows?.length ? (
                                 table.getRowModel().rows.map((row) => (
-                                    <TableRow key={row.id}>
+                                    <TableRow key={row.id} className="hover:bg-slate-50/50 border-slate-50 transition-colors">
                                         {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                                            <TableCell key={cell.id} className="px-6 py-4">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </TableCell>
                                         ))}
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                        No campaigns found.
+                                    <TableCell colSpan={columns.length} className="h-32 text-center text-xs font-bold text-slate-400">
+                                        No forensic campaign records found.
                                     </TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </div>
-                <div className="flex items-center justify-end space-x-2 py-4">
-                    <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-                        Previous
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-                        Next
-                    </Button>
+                
+                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Showing {table.getRowModel().rows.length} of {campaigns.length} Active Strategies
+                    </p>
+                    <div className="flex items-center space-x-2">
+                        <Button variant="outline" size="sm" className="h-8 font-bold text-[10px] uppercase border-slate-100" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+                            Prev
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 font-bold text-[10px] uppercase border-slate-100" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                            Next
+                        </Button>
+                    </div>
                 </div>
             </CardContent>
         </Card>
