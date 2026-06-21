@@ -73,17 +73,20 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
     }, [onSKUScan]);
 
     return (
+        /* DEEP FIX: Added h-full and min-h to ensure the grid container fills space for scrolling */
         <div className={cn('flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
-            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+            {/* DEEP FIX: Added shrink-0 to keep the header visible while scrolling products */}
+            <div className="p-4 border-b bg-slate-50 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Quick Selection</h3>
                 <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600">
                     <Barcode size={14} /> SCANNER READY
                 </div>
             </div>
-            <ScrollArea className="flex-1 p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* DEEP FIX: Explicit h-full to force the ScrollArea to work internally */}
+            <ScrollArea className="flex-1 h-full w-full">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
                     {products.map(product => (
-                        <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden bg-white border-slate-100">
+                        <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
                             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                                 {(product as any).units_per_pack > 1 && (
                                     <div className="absolute top-0 right-0 p-1 bg-blue-600 text-white rounded-bl-lg">
@@ -114,7 +117,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     return (
         <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
             {/* Cart Header */}
-            <div className="p-5 border-b flex justify-between items-center bg-slate-50">
+            <div className="p-5 border-b flex justify-between items-center bg-slate-50 shrink-0">
                 <div className="flex items-center gap-3 cursor-pointer group" onClick={onSetCustomer}>
                     <div className="p-2 bg-white rounded-lg border border-slate-200 group-hover:border-blue-500 transition-colors">
                         <User className="h-5 w-5 text-blue-600" />
@@ -179,8 +182,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
 
-            {/* Totals Section */}
-            <div className="p-6 border-t bg-slate-50 space-y-6">
+            {/* DEEP FIX: Added pb-20 for mobile safety so the Pay button isn't covered */}
+            <div className="p-6 pb-20 lg:pb-6 border-t bg-slate-50 space-y-6 shrink-0">
                 <div className="space-y-3">
                     <div className="flex justify-between text-xs font-semibold text-slate-500 uppercase">
                         <span>Subtotal</span>
@@ -260,7 +263,9 @@ export default function POSPage() {
     const { isSyncing, triggerSync } = useSync();
     const { data: userProfile, isLoading: isProfileLoading, refetch: refetchProfile } = useUserProfile();
     const { defaultPrinter } = useDefaultPrinter();
-    const products = useLiveQuery(() => db.products.orderBy('product_name').toArray(), []);
+    
+    /* DEEP FIX: Removed .orderBy().toArray() order to speed up render and ensure full product list loads */
+    const products = useLiveQuery(() => db.products.toArray(), []);
     
     const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
     const supabase = createClient();
@@ -447,7 +452,7 @@ export default function POSPage() {
             if (e.key === 'F2') { e.preventDefault(); setCustomerModalOpen(true); }
         };
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        return () => window.addEventListener('keydown', handleKeyDown);
     }, [cart, isLockedDown]);
 
     const totalAmount = useMemo(() => {
@@ -532,7 +537,8 @@ export default function POSPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+        /* DEEP FIX: Replaced h-screen with h-[100dvh] and unlocked scrolling for mobile stack */
+        <div className="h-[100dvh] flex flex-col bg-slate-50 overflow-y-auto lg:overflow-hidden relative overscroll-none">
             {/* System Status Header */}
             <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between z-30 shrink-0">
                 <div className="flex items-center gap-3">
@@ -551,15 +557,16 @@ export default function POSPage() {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden min-h-0">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 lg:overflow-hidden min-h-0">
                 {/* Left Side: Search and Grid */}
-                <div className="lg:col-span-7 flex flex-col gap-6 overflow-hidden min-h-0">
+                <div className="lg:col-span-7 flex flex-col gap-6 lg:overflow-hidden min-h-0">
                     <div className="shrink-0">
                         <ProductSearch onProductSelect={handleAddToCart} />
                     </div>
-                    <div className="flex-1 overflow-hidden min-h-0">
+                    <div className="flex-1 lg:overflow-hidden min-h-0">
                         <ProductGrid 
-                            products={products?.slice(0, 24) || []}
+                            /* DEEP FIX: Removed the .slice(0, 24) to allow full inventory scrolling */
+                            products={products || []}
                             onProductSelect={handleAddToCart} 
                             onSKUScan={handleSKUScan}
                             disabled={isSyncing} 
@@ -568,7 +575,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Right Side: Cart */}
-                <div className="lg:col-span-5 h-full overflow-hidden min-h-0">
+                <div className="lg:col-span-5 h-full lg:overflow-hidden min-h-0">
                     <CartDisplay 
                         cart={cart} 
                         onUpdateQuantity={handleUpdateQuantity} 

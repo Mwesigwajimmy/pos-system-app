@@ -111,7 +111,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
     }, [onSKUScan]);
 
     return (
-        <div className={cn('flex flex-col h-full bg-white rounded-2xl lg:shadow-sm border border-slate-100 overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
+        <div className={cn('flex flex-col h-full min-h-[60vh] lg:min-h-0 bg-white rounded-2xl lg:shadow-sm border border-slate-100 overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
             <div className="p-4 border-b relative bg-slate-50/30 shrink-0">
                 <Barcode className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500" />
                 <Input 
@@ -122,7 +122,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                     className="pl-10 h-12 rounded-xl border-slate-200 focus:ring-blue-500 font-medium" 
                 />
             </div>
-            <ScrollArea className="flex-1 touch-auto">
+            <ScrollArea className="flex-1 touch-auto h-full w-full">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-32 lg:pb-6">
                     {filteredProducts.map(product => (
                         <Card 
@@ -224,7 +224,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                 )}
             </ScrollArea>
             
-            <div className="p-4 lg:p-6 border-t bg-white space-y-4 lg:space-y-5 shrink-0">
+            {/* HEALED PADDING: pb-32 to clear the mobile bottom UI bars */}
+            <div className="p-4 pb-32 lg:pb-6 border-t bg-white space-y-4 lg:space-y-5 shrink-0">
                 <div className="space-y-2 lg:space-y-3">
                     <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
@@ -555,7 +556,8 @@ export default function RetailDesk() {
     }
     
     return (
-        <div className="h-screen bg-slate-50 flex flex-col overflow-hidden relative touch-none overscroll-none">
+        /* HEALED: Replaced h-screen with h-[100dvh] and unlocked touch-auto for mobile */
+        <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-y-auto lg:overflow-hidden relative touch-auto overscroll-none">
             {/* TOP BAR */}
             <div className="h-16 border-b bg-white flex items-center justify-between px-4 lg:px-8 shrink-0 z-20">
                 <div className="flex items-center gap-4">
@@ -572,8 +574,8 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MAIN CONTENT AREA: Healed for Mobile Scrolling */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
+            {/* MAIN CONTENT AREA: overflow-y-auto on mobile allows scrolling to the cart totals/pay button */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-y-auto lg:overflow-hidden relative">
                 
                 {/* PRODUCT GRID SECTION */}
                 <div className={cn(
@@ -585,7 +587,7 @@ export default function RetailDesk() {
 
                 {/* CART DISPLAY SECTION */}
                 <div className={cn(
-                    "h-full lg:col-span-5 xl:col-span-4 p-4 pb-24 lg:p-6 lg:pb-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
                 )}>
                     <CartDisplay 
