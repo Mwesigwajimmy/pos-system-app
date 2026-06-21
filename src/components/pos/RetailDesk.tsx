@@ -168,7 +168,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     const total = subtotal - discountAmount;
 
     return (
-        <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+        /* DEEP FIX: Added overflow-y-auto to allow mobile scrolling through items + totals */
+        <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-y-auto lg:overflow-hidden">
             <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
                 <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
                     <div className="bg-blue-600 p-2 rounded-lg">
@@ -557,7 +558,7 @@ export default function RetailDesk() {
     
     return (
         /* HEALED: Replaced h-screen with h-[100dvh] and unlocked touch-auto for mobile */
-        <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-y-auto lg:overflow-hidden relative touch-auto overscroll-none">
+        <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-hidden relative touch-auto overscroll-none">
             {/* TOP BAR */}
             <div className="h-16 border-b bg-white flex items-center justify-between px-4 lg:px-8 shrink-0 z-20">
                 <div className="flex items-center gap-4">
@@ -575,11 +576,11 @@ export default function RetailDesk() {
             </div>
 
             {/* MAIN CONTENT AREA: overflow-y-auto on mobile allows scrolling to the cart totals/pay button */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-y-auto lg:overflow-hidden relative">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-y-auto lg:overflow-hidden relative scroll-smooth">
                 
                 {/* PRODUCT GRID SECTION */}
                 <div className={cn(
-                    "h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-y-auto lg:overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'products' && 'hidden lg:flex'
                 )}>
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
@@ -587,7 +588,7 @@ export default function RetailDesk() {
 
                 {/* CART DISPLAY SECTION */}
                 <div className={cn(
-                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-y-auto lg:overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
                 )}>
                     <CartDisplay 
