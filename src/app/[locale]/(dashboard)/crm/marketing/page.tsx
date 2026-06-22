@@ -2,12 +2,12 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
-// Import the real components
 import { CampaignList } from '@/components/crm/marketing/CampaignList';
 import { CreateCampaignModal } from '@/components/crm/marketing/CreateCampaignModal';
 
-
-// This utility should ideally live in a central auth file
+/**
+ * Retrieves the current operator and verifies permissions.
+ */
 async function getCurrentUser(supabase: any) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -21,7 +21,9 @@ async function getCurrentUser(supabase: any) {
     return employee;
 }
 
-// Data fetching function for all marketing campaigns
+/**
+ * Fetches the database records for all marketing campaigns.
+ */
 async function getMarketingCampaigns(supabase: any) {
     const { data, error } = await supabase
         .from('marketing_campaigns')
@@ -38,7 +40,7 @@ async function getMarketingCampaigns(supabase: any) {
         .order('created_at', { ascending: false });
 
     if (error) {
-        console.error("Error fetching marketing campaigns:", error);
+        console.error("Database error fetching campaigns:", error);
         return [];
     }
 
@@ -46,15 +48,21 @@ async function getMarketingCampaigns(supabase: any) {
 }
 
 export default async function MarketingCampaignsPage() {
-    const cookieStore = cookies();
+    // Standardizing for Next.js 15
+    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
     const currentUser = await getCurrentUser(supabase);
 
+    // Permission Security Layer - Clean Error State
     if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) {
          return (
-             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-                <h2 className="text-3xl font-bold tracking-tight text-destructive">Access Denied</h2>
-                <p>You do not have permission to access the marketing module.</p>
+             <div className="flex flex-col items-center justify-center flex-1 h-full p-10 bg-white">
+                <div className="max-w-md text-center space-y-3">
+                    <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
+                    <p className="text-sm text-slate-500 font-medium">
+                        You do not have the required permissions to access the marketing management module.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -62,18 +70,24 @@ export default async function MarketingCampaignsPage() {
     const campaigns = await getMarketingCampaigns(supabase);
 
     return (
-        <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between">
+        <div className="flex-1 p-6 md:p-10 bg-white">
+            {/* Header Section: Clean, Balanced, and Professionally Positioned */}
+            <header className="flex flex-wrap items-center justify-between gap-6 mb-10">
                  <div className="space-y-1">
-                    <h2 className="text-3xl font-bold tracking-tight">Marketing Campaigns</h2>
-                    <p className="text-muted-foreground">
-                        Create and manage your email and SMS marketing campaigns.
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Marketing Campaigns</h1>
+                    <p className="text-sm font-medium text-slate-500">
+                        Manage and track your organization's email and SMS communication strategy.
                     </p>
                 </div>
-                 <CreateCampaignModal employeeId={currentUser.id} />
-            </div>
+                <div className="flex items-center">
+                    <CreateCampaignModal employeeId={currentUser.id} />
+                </div>
+            </header>
 
-            <CampaignList campaigns={campaigns} />
+            {/* Campaign Dashboard Content */}
+            <div className="bg-white border-t border-slate-100 pt-6">
+                <CampaignList campaigns={campaigns} />
+            </div>
         </div>
     );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Coins, CreditCard, ShieldCheck, Receipt, NotebookPen } from 'lucide-react';
+import { Coins, CreditCard, Receipt, NotebookPen, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -48,25 +48,33 @@ export function RecordPaymentModal({ isOpen, onOpenChange, client }: RecordPayme
         
         setIsPending(false);
         if (result.success) {
-            toast({ title: "Forensic Sync Success", description: result.message });
+            toast({ 
+                title: "Success", 
+                description: "The payment has been successfully recorded." 
+            });
             onOpenChange(false);
         } else {
-            toast({ title: "Reconciliation Failed", description: result.message, variant: "destructive" });
+            toast({ 
+                title: "Error", 
+                description: result.message || "Failed to record payment.", 
+                variant: "destructive" 
+            });
         }
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none rounded-xl shadow-2xl">
-                <form onSubmit={handleSubmit} className="bg-white">
-                    <DialogHeader className="px-8 py-6 bg-slate-900 text-white">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                                <Coins className="text-emerald-400" size={24} />
+            <DialogContent className="sm:max-w-[500px] p-0 border border-slate-200 shadow-xl overflow-hidden bg-white rounded-xl outline-none">
+                <form onSubmit={handleSubmit}>
+                    {/* CLEAN PROFESSIONAL HEADER */}
+                    <DialogHeader className="px-8 py-6 border-b border-slate-100 bg-white">
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center border border-emerald-100">
+                                <Coins className="text-emerald-600" size={22} />
                             </div>
-                            <div>
-                                <DialogTitle className="text-xl font-bold">Record Client Payment</DialogTitle>
-                                <DialogDescription className="text-slate-400 text-xs">Reconcile debt for {client.name}</DialogDescription>
+                            <div className="space-y-0.5">
+                                <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">Record Payment</DialogTitle>
+                                <DialogDescription className="text-slate-500 text-xs font-medium">Add payment details for {client.name}</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
@@ -76,25 +84,34 @@ export function RecordPaymentModal({ isOpen, onOpenChange, client }: RecordPayme
                     <input type="hidden" name="currency_code" value={client.currency} />
 
                     <div className="p-8 space-y-6">
-                        {/* DEBT ALERT BOX */}
-                        <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between">
-                            <span className="text-[10px] font-black text-slate-400 uppercase">Outstanding Balance</span>
-                            <span className="text-lg font-black text-slate-900">{client.current_debt.toLocaleString()} {client.currency}</span>
+                        {/* OUTSTANDING BALANCE DISPLAY */}
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Balance</span>
+                            <span className="text-lg font-bold text-slate-900">
+                                {client.current_debt.toLocaleString()} {client.currency}
+                            </span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-500">Payment Amount</Label>
-                                <Input name="amount" type="number" step="0.01" required placeholder="0.00" className="h-11 font-black text-emerald-600 border-slate-200" />
+                                <Label className="text-xs font-bold text-slate-700">Payment Amount</Label>
+                                <Input 
+                                    name="amount" 
+                                    type="number" 
+                                    step="0.01" 
+                                    required 
+                                    placeholder="0.00" 
+                                    className="h-10 text-sm font-bold text-emerald-700 border-slate-200 focus:ring-emerald-500" 
+                                />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-500">Method</Label>
+                                <Label className="text-xs font-bold text-slate-700">Method</Label>
                                 <Select name="payment_method" required defaultValue="CASH">
-                                    <SelectTrigger className="h-11 font-bold">
+                                    <SelectTrigger className="h-10 text-sm font-semibold border-slate-200">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="font-bold">
-                                        <SelectItem value="CASH">Cash Payment</SelectItem>
+                                    <SelectContent>
+                                        <SelectItem value="CASH">Cash</SelectItem>
                                         <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
                                         <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
                                         <SelectItem value="CHEQUE">Cheque</SelectItem>
@@ -104,26 +121,52 @@ export function RecordPaymentModal({ isOpen, onOpenChange, client }: RecordPayme
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-500">Reference / Receipt No.</Label>
+                            <Label className="text-xs font-bold text-slate-700">Reference Number</Label>
                             <div className="relative">
-                                <Receipt className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                                <Input name="reference_no" placeholder="e.g. TRX-99821" className="h-11 pl-10 font-semibold border-slate-200" />
+                                <Receipt className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <Input 
+                                    name="reference_no" 
+                                    placeholder="e.g. Receipt # or TRX ID" 
+                                    className="h-10 pl-10 text-sm font-medium border-slate-200" 
+                                />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-500">Forensic Notes</Label>
+                            <Label className="text-xs font-bold text-slate-700">Internal Notes</Label>
                             <div className="relative">
-                                <NotebookPen className="absolute left-3 top-3 text-slate-300" size={16} />
-                                <Input name="notes" placeholder="Reason for payment or partial reconciliation..." className="h-20 pl-10 pt-2 border-slate-200 align-top" />
+                                <NotebookPen className="absolute left-3 top-3 text-slate-400" size={16} />
+                                <Input 
+                                    name="notes" 
+                                    placeholder="Any additional details regarding this payment..." 
+                                    className="h-20 pl-10 pt-2 text-sm border-slate-200 align-top" 
+                                />
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex items-center justify-between">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-[10px] font-black uppercase text-slate-400">Cancel</Button>
-                        <Button type="submit" disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest px-8 h-11 shadow-lg shadow-emerald-100">
-                            {isPending ? "Syncing..." : "Commit Payment"}
+                    <DialogFooter className="px-8 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={() => onOpenChange(false)} 
+                            className="text-xs font-bold text-slate-500 hover:text-slate-900"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={isPending} 
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-8 h-10 shadow-sm transition-all"
+                        >
+                            {isPending ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Processing...
+                                </span>
+                            ) : (
+                                "Record Payment"
+                            )}
                         </Button>
                     </DialogFooter>
                 </form>

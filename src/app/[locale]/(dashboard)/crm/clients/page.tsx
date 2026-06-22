@@ -5,14 +5,12 @@ import { redirect } from 'next/navigation';
 import { ClientIntelligenceLedger } from '@/components/crm/clients/ClientLedger';
 
 /**
- * 🛡️ IDENTITY RESOLUTION
- * Fetches the specific business node ID for the current operator.
+ * Retrieves the business ID for the current authenticated user.
  */
 async function getCurrentUser(supabase: any) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
     
-    // Fetching business_id from the employee ledger
     const { data: employee } = await supabase
         .from('employees')
         .select('id, business_id')
@@ -23,55 +21,54 @@ async function getCurrentUser(supabase: any) {
 }
 
 /**
- * 🧠 FORENSIC LEDGER FETCH
- * Pulls all client financials and subscription statuses for the business.
+ * Fetches customer records and subscription data for the business.
  */
-async function getClientLedgerData(supabase: any, bizId: string) {
+async function getCustomerData(supabase: any, bizId: string) {
     const { data, error } = await supabase
         .from('view_client_subscription_ledger')
         .select('*')
-        .eq('business_id', bizId) // Security: Isolation by Business ID
+        .eq('business_id', bizId)
         .order('full_name', { ascending: true });
 
     if (error) {
-        console.error("Forensic Ledger Fetch Error:", error);
+        console.error("Database Fetch Error:", error);
         return [];
     }
     return data;
 }
 
 export default async function ClientLedgerPage() {
-    // ✅ Next.js 15 Requirement: Await cookies
+    // Next.js 15 Requirement: Await cookies
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
     
     const currentUser = await getCurrentUser(supabase);
 
-    // Security Gate: Ensure the user is linked to a business
+    // Validate business context
     if (!currentUser || !currentUser.business_id) {
          return (
-             <div className="flex-1 space-y-4 p-8 pt-6">
-                <h2 className="text-3xl font-black tracking-tight text-red-600 uppercase">Forensic Access Denied</h2>
-                <p className="font-bold text-slate-500">Your profile is not linked to a verified business node.</p>
+             <div className="flex flex-col items-center justify-center h-full p-10 bg-white">
+                <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
+                <p className="text-sm text-slate-500 mt-2">Your profile is not linked to a verified business account.</p>
             </div>
         );
     }
 
-    const clients = await getClientLedgerData(supabase, currentUser.business_id);
+    const clients = await getCustomerData(supabase, currentUser.business_id);
 
     return (
-        <div className="flex-1 space-y-6 p-6 md:p-8 pt-6 bg-white">
-            {/* SOVEREIGN CRM HEADER */}
-            <div className="flex items-center justify-between">
+        <div className="flex-1 p-6 md:p-10 bg-white">
+            {/* Header Section */}
+            <div className="mb-8">
                 <div className="space-y-1">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic">Client Intelligence</h2>
-                    <p className="text-muted-foreground text-sm font-medium">
-                        Manage global subscriptions, debt standing, and forensic client billing.
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Customer Management</h1>
+                    <p className="text-slate-500 text-sm font-medium">
+                        View and manage customer records, billing status, and active subscriptions.
                     </p>
                 </div>
             </div>
 
-            {/* Passing both the data and the Business ID for onboarding actions */}
+            {/* Main Content */}
             <ClientIntelligenceLedger 
                 clients={clients} 
                 businessId={currentUser.business_id} 

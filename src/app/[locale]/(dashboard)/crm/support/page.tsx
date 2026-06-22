@@ -5,13 +5,25 @@ import { redirect } from 'next/navigation';
 import { TicketList } from '@/components/crm/support/TicketList';
 import { CreateTicketModal } from '@/components/crm/support/CreateTicketModal';
 
+/**
+ * Retrieves the current user and their professional context.
+ */
 async function getCurrentUser(supabase: any) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
-    const { data: employee } = await supabase.from('employees').select('id, role, business_id').eq('user_id', user.id).single();
+    
+    const { data: employee } = await supabase
+        .from('employees')
+        .select('id, role, business_id')
+        .eq('user_id', user.id)
+        .single();
+        
     return employee;
 }
 
+/**
+ * Fetches ticket records and the list of available support agents.
+ */
 async function getSupportData(supabase: any) {
     const ticketsPromise = supabase.from('support_tickets')
         .select(`
@@ -22,37 +34,49 @@ async function getSupportData(supabase: any) {
         `)
         .order('updated_at', { ascending: false });
 
-    const employeesPromise = supabase.from('employees').select('id, full_name');
+    const employeesPromise = supabase.from('employees')
+        .select('id, full_name');
 
     const [tickets, employees] = await Promise.all([ticketsPromise, employeesPromise]);
-    return { tickets: tickets.data || [], employees: employees.data || [] };
+    return { 
+        tickets: tickets.data || [], 
+        employees: employees.data || [] 
+    };
 }
 
 export default async function SupportCenterPage() {
-    const cookieStore = cookies();
+    // Standardized for Next.js 15
+    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
+    
     const currentUser = await getCurrentUser(supabase);
-
     if (!currentUser) redirect('/login');
     
     const { tickets, employees } = await getSupportData(supabase);
 
     return (
-        <div className="flex-1 space-y-6 p-6 md:p-8 pt-6">
-            <div className="flex items-center justify-between">
+        <div className="flex-1 p-6 md:p-10 bg-white min-h-screen">
+            {/* Header Section: Professionally positioned with balanced typography */}
+            <header className="flex flex-wrap items-center justify-between gap-6 mb-10">
                  <div className="space-y-1">
-                    <h2 className="text-3xl font-black tracking-tight">Support Center</h2>
-                    <p className="text-muted-foreground font-medium text-sm">
-                        Forensic resolution tracking for client intelligence.
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Support Center</h1>
+                    <p className="text-sm font-medium text-slate-500">
+                        Manage and track customer support requests and ticket resolutions.
                     </p>
                 </div>
-                 <CreateTicketModal 
-                    employees={employees} 
-                    currentBusinessId={currentUser.business_id} 
-                 />
-            </div>
+                
+                <div className="flex items-center">
+                    <CreateTicketModal 
+                        employees={employees} 
+                        currentBusinessId={currentUser.business_id} 
+                    />
+                </div>
+            </header>
 
-            <TicketList tickets={tickets} />
+            {/* Support Ticket Dashboard */}
+            <div className="bg-white border-t border-slate-100 pt-6">
+                <TicketList tickets={tickets} />
+            </div>
         </div>
     );
 }

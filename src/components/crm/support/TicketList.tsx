@@ -19,7 +19,6 @@ import {
     ArrowUpDown, 
     Eye, 
     Check, 
-    X, 
     Hourglass, 
     ChevronsRight, 
     Flag, 
@@ -28,7 +27,8 @@ import {
     Coins,
     UserCheck,
     History,
-    AlertCircle
+    AlertCircle,
+    Search
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -48,7 +48,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTableFacetedFilter } from "@/components/ui/data-table-faceted-filter";
 
-// --- TYPES & CONSTANTS ENHANCED FOR FORENSIC TRACKING ---
+// --- TYPES & CONSTANTS ---
 interface Customer { id: string; name: string; }
 interface Assignee { id: string; full_name: string; }
 export interface Ticket {
@@ -66,17 +66,17 @@ export interface Ticket {
 }
 
 export const statuses = [
-    { value: "OPEN", label: "Open Record", icon: Circle },
-    { value: "IN_PROGRESS", label: "Resolving", icon: Hourglass },
-    { value: "CLOSED", label: "Finalized", icon: Check },
-    { value: "ON_HOLD", label: "Blocked", icon: ChevronsRight },
+    { value: "OPEN", label: "Open", icon: Circle },
+    { value: "IN_PROGRESS", label: "In Progress", icon: Hourglass },
+    { value: "CLOSED", label: "Closed", icon: Check },
+    { value: "ON_HOLD", label: "On Hold", icon: ChevronsRight },
 ];
 
 export const priorities = [
-    { value: "LOW", label: "Routine", icon: Flag },
-    { value: "MEDIUM", label: "Standard", icon: Flag },
-    { value: "HIGH", label: "High Risk", icon: Flag },
-    { value: "URGENT", label: "Critical", icon: AlertCircle },
+    { value: "LOW", label: "Low", icon: Flag },
+    { value: "MEDIUM", label: "Medium", icon: Flag },
+    { value: "HIGH", label: "High", icon: Flag },
+    { value: "URGENT", label: "Urgent", icon: AlertCircle },
 ];
 
 type BadgeVariant = "default" | "destructive" | "outline" | "secondary";
@@ -90,15 +90,15 @@ const getPriorityVariant = (priority: Ticket['priority']): BadgeVariant => {
     }
 };
 
-// --- FORENSIC AUDIT GENERATOR ---
+// --- REPORT GENERATOR ---
 const generateSupportAudit = (tickets: Ticket[]) => {
     const doc = new jsPDF('landscape');
-    doc.setFontSize(18);
-    doc.text("Sovereign Support: Resolution Forensic Audit", 14, 20);
+    doc.setFontSize(16);
+    doc.text("Support Ticket Audit Report", 14, 20);
     
     autoTable(doc, {
         startY: 30,
-        head: [['ID', 'Subject', 'Client', 'Agent', 'Status', 'Priority', 'Est. Cost']],
+        head: [['UID', 'Subject', 'Customer', 'Agent', 'Status', 'Priority', 'Cost']],
         body: tickets.map(t => [
             t.ticket_uid,
             t.subject,
@@ -108,13 +108,13 @@ const generateSupportAudit = (tickets: Ticket[]) => {
             t.priority,
             `${t.estimated_cost?.toLocaleString()} ${t.currency_code || 'UGX'}`
         ]),
-        headStyles: { fillColor: [15, 23, 42] },
-        styles: { fontSize: 8 }
+        headStyles: { fillColor: [30, 41, 59] },
+        styles: { fontSize: 9 }
     });
-    doc.save(`Support_Audit_${Date.now()}.pdf`);
+    doc.save(`Support_Ticket_Audit_${Date.now()}.pdf`);
 };
 
-// --- ENHANCED COLUMNS ---
+// --- TABLE COLUMNS ---
 export const columns: ColumnDef<Ticket>[] = [
     {
         id: "select",
@@ -138,28 +138,29 @@ export const columns: ColumnDef<Ticket>[] = [
         accessorKey: "ticket_uid",
         header: "UID",
         cell: ({ row }) => (
-            <Link href={`/crm/support/${row.original.id}`} className="font-black text-[11px] text-blue-600 hover:underline tracking-tighter">
+            <Link href={`/crm/support/${row.original.id}`} className="font-semibold text-xs text-blue-600 hover:text-blue-800">
                 #{row.getValue("ticket_uid")}
             </Link>
         ),
     },
     {
         accessorKey: "subject",
-        header: "Issue DNA",
+        header: "Subject",
         cell: ({ row }) => (
-            <div className="flex flex-col">
-                <div className="font-bold text-slate-800 text-xs leading-tight">{row.getValue("subject")}</div>
-                <div className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 flex items-center">
-                    <History size={10} className="mr-1" /> Updated {formatDistanceToNow(new Date(row.original.updated_at), { addSuffix: true })}
+            <div className="flex flex-col py-1">
+                <div className="font-semibold text-slate-900 text-sm leading-tight">{row.getValue("subject")}</div>
+                <div className="text-[11px] font-medium text-slate-500 mt-1 flex items-center">
+                    <History size={12} className="mr-1.5 text-slate-400" /> 
+                    Updated {formatDistanceToNow(new Date(row.original.updated_at), { addSuffix: true })}
                 </div>
             </div>
         ),
     },
     {
         accessorKey: "customers",
-        header: "Client",
+        header: "Customer",
         cell: ({ row }) => (
-            <div className="font-semibold text-xs text-slate-600">
+            <div className="font-medium text-xs text-slate-700">
                 {row.original.customers?.name || 'N/A'}
             </div>
         ),
@@ -168,18 +169,18 @@ export const columns: ColumnDef<Ticket>[] = [
         accessorKey: "employees",
         header: "Agent",
         cell: ({ row }) => (
-            <div className="flex items-center text-[10px] font-bold text-slate-500">
-                <UserCheck className="mr-1.5 h-3 w-3 text-slate-300" />
+            <div className="flex items-center text-xs font-medium text-slate-600">
+                <UserCheck className="mr-2 h-3.5 w-3.5 text-slate-400" />
                 {row.original.employees?.full_name || 'Unassigned'}
             </div>
         ),
     },
     {
-        accessorKey: "resolution_cost",
-        header: "Resolution Cost",
+        accessorKey: "estimated_cost",
+        header: "Cost",
         cell: ({ row }) => (
-            <div className="flex items-center text-[10px] font-black text-slate-900">
-                <Coins className="mr-1.5 h-3 w-3 text-emerald-500" />
+            <div className="flex items-center text-xs font-bold text-slate-900">
+                <Coins className="mr-2 h-3.5 w-3.5 text-emerald-500" />
                 {row.original.estimated_cost?.toLocaleString()} {row.original.currency_code || 'UGX'}
             </div>
         ),
@@ -190,8 +191,8 @@ export const columns: ColumnDef<Ticket>[] = [
         cell: ({ row }) => {
             const status = statuses.find(s => s.value === row.getValue("status"));
             return status ? (
-                <div className="flex items-center text-[10px] font-bold text-slate-600">
-                    <status.icon className="mr-1.5 h-3 w-3 text-slate-400" />
+                <div className="flex items-center text-xs font-medium text-slate-600">
+                    <status.icon className="mr-2 h-3.5 w-3.5 text-slate-400" />
                     {status.label}
                 </div>
             ) : null;
@@ -202,7 +203,7 @@ export const columns: ColumnDef<Ticket>[] = [
         accessorKey: "priority",
         header: "Priority",
         cell: ({ row }) => (
-            <Badge variant={getPriorityVariant(row.getValue("priority"))} className="text-[9px] font-black uppercase px-2 py-0">
+            <Badge variant={getPriorityVariant(row.getValue("priority"))} className="text-[10px] font-bold px-2.5 py-0.5 border-none">
                 {row.getValue("priority")}
             </Badge>
         ),
@@ -213,8 +214,8 @@ export const columns: ColumnDef<Ticket>[] = [
         cell: ({ row }) => (
             <div className="text-right">
                 <Link href={`/crm/support/${row.original.id}`}>
-                    <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase text-blue-600">
-                        <Eye className="mr-1.5 h-3.5 w-3.5" /> Intel
+                    <Button variant="outline" size="sm" className="h-8 text-xs font-bold border-slate-200 hover:bg-slate-50 text-blue-600">
+                        <Eye className="mr-2 h-4 w-4" /> View Details
                     </Button>
                 </Link>
             </div>
@@ -241,18 +242,21 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
     });
 
     return (
-        <Card className="border-slate-100 shadow-sm overflow-hidden">
+        <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden bg-white">
             <CardContent className="p-0">
-                {/* FORENSIC SEARCH & FILTER HEADER */}
-                <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 bg-slate-50/50 border-b gap-4">
-                    <div className="flex items-center w-full max-w-xl gap-2">
-                        <Input
-                            placeholder="Filter by subject or UID..."
-                            value={(table.getColumn("subject")?.getFilterValue() as string) ?? ""}
-                            onChange={(event) => table.getColumn("subject")?.setFilterValue(event.target.value)}
-                            className="h-9 font-semibold text-xs border-slate-200 bg-white"
-                        />
-                        <div className="flex space-x-2">
+                {/* SEARCH & FILTER BAR */}
+                <div className="flex flex-wrap items-center justify-between px-6 py-4 bg-slate-50/50 border-b border-slate-100 gap-4">
+                    <div className="flex flex-wrap items-center w-full max-w-2xl gap-3">
+                        <div className="relative min-w-[280px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search by subject or UID..."
+                                value={(table.getColumn("subject")?.getFilterValue() as string) ?? ""}
+                                onChange={(event) => table.getColumn("subject")?.setFilterValue(event.target.value)}
+                                className="h-10 pl-10 text-sm font-medium border-slate-200 bg-white focus:ring-1 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div className="flex gap-2">
                             <DataTableFacetedFilter column={table.getColumn("status")} title="Status" options={statuses} />
                             <DataTableFacetedFilter column={table.getColumn("priority")} title="Priority" options={priorities} />
                         </div>
@@ -260,10 +264,10 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
                     <Button 
                         variant="outline" 
                         size="sm" 
-                        className="h-9 font-black text-[10px] uppercase tracking-widest gap-2 border-slate-200" 
+                        className="h-10 text-xs font-bold gap-2 border-slate-200 bg-white hover:bg-slate-50" 
                         onClick={() => generateSupportAudit(tickets)}
                     >
-                        <FileText size={14} /> Download Ledger
+                        <FileText size={16} /> Export PDF
                     </Button>
                 </div>
 
@@ -271,9 +275,9 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
                     <Table>
                         <TableHeader className="bg-white">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id} className="hover:bg-transparent border-slate-100">
+                                <TableRow key={headerGroup.id} className="border-slate-100 hover:bg-transparent">
                                     {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id} className="h-12 px-6 font-black text-[10px] uppercase tracking-widest text-slate-400">
+                                        <TableHead key={header.id} className="h-12 px-6 text-xs font-bold text-slate-700">
                                             {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                                         </TableHead>
                                     ))}
@@ -286,7 +290,7 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
                                     <TableRow 
                                         key={row.id} 
                                         data-state={row.getIsSelected() && "selected"}
-                                        className="hover:bg-slate-50/50 border-slate-50 transition-colors"
+                                        className="hover:bg-slate-50/30 border-slate-50 transition-colors"
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id} className="px-6 py-4">
@@ -297,8 +301,8 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-32 text-center text-xs font-bold text-slate-400">
-                                        No forensic support records found.
+                                    <TableCell colSpan={columns.length} className="h-40 text-center text-sm font-medium text-slate-500">
+                                        No support tickets found.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -306,16 +310,29 @@ export function TicketList({ tickets }: { tickets: Ticket[] }) {
                     </Table>
                 </div>
 
-                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-50">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {/* PAGINATION FOOTER */}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
+                    <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                         {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                        {table.getFilteredRowModel().rows.length} Tickets Selected
+                        {table.getFilteredRowModel().rows.length} Records Selected
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm" className="h-8 font-bold text-[10px] uppercase border-slate-100" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-                            Prev
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs font-bold border-slate-200" 
+                            onClick={() => table.previousPage()} 
+                            disabled={!table.getCanPreviousPage()}
+                        >
+                            Previous
                         </Button>
-                        <Button variant="outline" size="sm" className="h-8 font-bold text-[10px] uppercase border-slate-100" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs font-bold border-slate-200" 
+                            onClick={() => table.nextPage()} 
+                            disabled={!table.getCanNextPage()}
+                        >
                             Next
                         </Button>
                     </div>

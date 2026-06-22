@@ -1,12 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserPlus, ShieldCheck, Mail, Phone, Briefcase, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogDescription, 
+    DialogFooter, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogTrigger 
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
 
@@ -20,7 +34,10 @@ export function AddClientModal({ businessId }: { businessId: string }) {
     useEffect(() => {
         if (isOpen) {
             const fetchPkgs = async () => {
-                const { data } = await supabase.from('crm_subscription_packages').select('id, name').eq('business_id', businessId);
+                const { data } = await supabase
+                    .from('crm_subscription_packages')
+                    .select('id, name')
+                    .eq('business_id', businessId);
                 setPackages(data || []);
             };
             fetchPkgs();
@@ -45,10 +62,20 @@ export function AddClientModal({ businessId }: { businessId: string }) {
             billing_day_of_month: parseInt(formData.get('billing_day') as string) || 1
         });
 
-        setIsPending(false);
-        if (error) toast({ title: "Onboarding Failed", description: error.message, variant: "destructive" });
-        else {
-            toast({ title: "Client Onboarded", description: "Identity verified and added to ledger." });
+        setIsPending(true); // Maintenance of state during transition
+        if (error) {
+            toast({ 
+                title: "Error", 
+                description: error.message, 
+                variant: "destructive" 
+            });
+            setIsPending(false);
+        } else {
+            toast({ 
+                title: "Success", 
+                description: "The customer has been successfully added." 
+            });
+            setIsPending(false);
             setIsOpen(false);
         }
     };
@@ -56,57 +83,79 @@ export function AddClientModal({ businessId }: { businessId: string }) {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 font-black text-[10px] uppercase tracking-widest gap-2 h-10 px-6">
-                    <UserPlus size={16} /> Onboard Client
+                <Button className="bg-blue-600 hover:bg-blue-700 font-semibold text-sm gap-2 h-10 px-5 shadow-sm">
+                    <UserPlus size={16} /> Add New Customer
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[550px] p-0 border-none shadow-2xl overflow-hidden bg-white">
+            <DialogContent className="sm:max-w-[500px] p-0 border border-slate-200 shadow-xl overflow-hidden bg-white outline-none">
                 <form onSubmit={handleSubmit}>
-                    <DialogHeader className="px-8 py-6 bg-slate-900 text-white">
-                        <DialogTitle className="text-xl font-bold">Manual Client Onboarding</DialogTitle>
-                        <DialogDescription className="text-slate-400 text-xs font-medium">Establish a new forensic client identity in the system.</DialogDescription>
+                    {/* Professional Clean Header */}
+                    <DialogHeader className="px-6 py-5 border-b border-slate-100">
+                        <DialogTitle className="text-lg font-bold text-slate-900 tracking-tight">Customer Registration</DialogTitle>
+                        <DialogDescription className="text-slate-500 text-xs">
+                            Enter the details below to create a new customer record.
+                        </DialogDescription>
                     </DialogHeader>
-                    <div className="p-8 space-y-6">
+
+                    <div className="p-6 space-y-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Full Name</Label>
-                                <Input name="full_name" required className="h-10 font-bold" />
+                                <Label className="text-xs font-semibold text-slate-700">Full Name</Label>
+                                <Input name="full_name" required className="h-10 text-sm border-slate-200" />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Business Nature</Label>
-                                <Input name="biz_nature" placeholder="e.g. Retail" className="h-10 font-semibold" />
+                                <Label className="text-xs font-semibold text-slate-700">Nature of Business</Label>
+                                <Input name="biz_nature" placeholder="e.g. Retail" className="h-10 text-sm border-slate-200" />
                             </div>
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Email Address</Label>
-                                <Input name="email" type="email" required className="h-10 font-medium" />
+                                <Label className="text-xs font-semibold text-slate-700">Email Address</Label>
+                                <Input name="email" type="email" required className="h-10 text-sm border-slate-200" />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase text-slate-400">Phone</Label>
-                                <Input name="phone" className="h-10 font-medium" />
+                                <Label className="text-xs font-semibold text-slate-700">Phone Number</Label>
+                                <Input name="phone" className="h-10 text-sm border-slate-200" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 border-t pt-4">
+
+                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-5">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase text-blue-600">Assign Package</Label>
+                                <Label className="text-xs font-semibold text-blue-600">Subscription Package</Label>
                                 <Select name="package_id">
-                                    <SelectTrigger className="h-10 font-bold"><SelectValue placeholder="No Package" /></SelectTrigger>
-                                    <SelectContent className="font-bold">
-                                        {packages.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    <SelectTrigger className="h-10 text-sm border-slate-200">
+                                        <SelectValue placeholder="Select Package" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {packages.map(p => (
+                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-black uppercase text-blue-600">Billing Day</Label>
-                                <Input name="billing_day" type="number" min="1" max="31" defaultValue="1" className="h-10 font-black" />
+                                <Label className="text-xs font-semibold text-blue-600">Billing Day</Label>
+                                <Input name="billing_day" type="number" min="1" max="31" defaultValue="1" className="h-10 text-sm border-slate-200" />
                             </div>
                         </div>
                     </div>
-                    <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex items-center justify-between">
-                        <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="text-[10px] font-black uppercase text-slate-400">Abort</Button>
-                        <Button type="submit" disabled={isPending} className="bg-blue-600 hover:bg-blue-700 h-11 px-10 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100">
-                            {isPending ? <Loader2 className="animate-spin" /> : "Commit Identity"}
+
+                    <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={() => setIsOpen(false)} 
+                            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={isPending} 
+                            className="bg-blue-600 hover:bg-blue-700 h-10 px-8 font-semibold text-sm shadow-sm"
+                        >
+                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Customer"}
                         </Button>
                     </DialogFooter>
                 </form>
