@@ -7,7 +7,6 @@ import { z } from 'zod';
 
 /**
  * 🛡️ ENTERPRISE VALIDATION SCHEMA
- * Captures the full forensic DNA of the lead including commissions
  */
 const CreateLeadSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
@@ -31,7 +30,6 @@ export interface FormState {
 
 /**
  * 🧠 CREATE FORENSIC RECORD
- * Saves the lead directly into crm_contacts (The Master Ledger)
  */
 export async function createDeal(prevState: FormState, formData: FormData): Promise<FormState> {
     const cookieStore = await cookies(); 
@@ -63,7 +61,7 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
             stage_id: validatedFields.data.stage_id,
             lead_source_category: validatedFields.data.lead_source_category,
             business_id: validatedFields.data.business_id,
-            tenant_id: validatedFields.data.business_id, // Syncing tenant_id for board visibility
+            tenant_id: validatedFields.data.business_id, 
             status: 'lead' 
         });
 
@@ -77,7 +75,7 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
 }
 
 /**
- * 🔄 UPDATE STAGE (Kanban Sync)
+ * 🔄 UPDATE STAGE
  */
 export async function updateDealStage(dealId: string, newStageId: string): Promise<{ success: boolean; message: string }> {
     const cookieStore = await cookies();
@@ -95,41 +93,49 @@ export async function updateDealStage(dealId: string, newStageId: string): Promi
 }
 
 /**
- * 🏗️ CONVERT TO WORK ORDER (Enterprise Bridge)
- * Welds CRM Leads to Field Service Fulfillment using UUIDs
+ * 🏗️ CONVERT TO WORK ORDER (Kernel-Aligned)
+ * Synchronizes Leads with Accounting-Ready Field Service
  */
 export async function convertDealToWorkOrder(dealId: string): Promise<{ success: boolean; message: string }> {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. Fetch the Forensic Lead DNA
+    // 1. Fetch Forensic Lead DNA
     const { data: lead, error: fetchError } = await supabase
         .from('crm_contacts')
-        .select('id, title, full_name, business_id, tenant_id')
+        .select('id, title, full_name, business_id, tenant_id, currency_code')
         .eq('id', dealId)
         .maybeSingle();
 
-    if (fetchError || !lead) return { success: false, message: "Could not find forensic record." };
+    if (fetchError || !lead) return { success: false, message: "Forensic record not found." };
     
-    // 2. Insert into Work Orders using the UUID Bridge column
-    // This bypasses the legacy customer_id (BIGINT) conflict
+    // 2. Insert into Work Orders
+    // We explicitly send the columns required by 'fn_sovereign_accounting_kernel_v8'
     const { error: insertError } = await supabase.from('work_orders').insert({
         work_order_uid: `WO-CRM-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
         summary: `Fulfillment: ${lead.title || lead.full_name}`,
-        crm_contact_id: lead.id, // 🛡️ THE UUID BRIDGE
+        crm_contact_id: lead.id, 
         business_id: lead.business_id,
         tenant_id: lead.tenant_id || lead.business_id,
+        
+        // 🛡️ FINANCIAL ALIGNMENT FOR KERNEL
+        currency: lead.currency_code || 'UGX', 
+        currency_code: lead.currency_code || 'UGX',
+        total_amount: 0,       // Fulfillment setup starts at zero financial impact
+        tax_amount: 0,
+        payment_method: 'Cash', 
+        
         status: 'SCHEDULED',
         priority: 'MEDIUM',
         scheduled_date: new Date().toISOString(),
     });
 
     if (insertError) {
-        console.error("Fulfillment Weld Error:", insertError);
-        return { success: false, message: "Forensic Weld Failed: " + insertError.message };
+        console.error("Accounting Kernel Conflict:", insertError);
+        return { success: false, message: "Kernel Weld Failed: " + insertError.message };
     }
 
-    // 3. Promote Lead to Active Subscription status
+    // 3. Promote Lead to Active Subscriber
     await supabase.from('crm_contacts')
         .update({ subscription_status: 'ACTIVE', status: 'customer' })
         .eq('id', dealId);
@@ -137,5 +143,5 @@ export async function convertDealToWorkOrder(dealId: string): Promise<{ success:
     revalidatePath('/crm/leads');
     revalidatePath('/field-service/work-orders');
 
-    return { success: true, message: `Lead successfully synchronized for Field Fulfillment.` };
+    return { success: true, message: `Successfully synchronized to Accounting & Fulfillment.` };
 }
