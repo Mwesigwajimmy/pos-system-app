@@ -39,7 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { updateDealStage, convertDealToWorkOrder } from '@/lib/crm/actions/leads';
 
-// --- TYPES ENHANCED FOR DEEP COMMISSION & AGENT TRACKING ---
+// --- TYPES ---
 export interface Stage {
     id: string;
     name: string;
@@ -67,15 +67,12 @@ export interface Deal {
 interface DealCardProps { deal: Deal; }
 interface ColumnProps { stage: Stage; deals: Deal[]; }
 
-// --- ENTERPRISE UTILITY: DEEP FORENSIC REPORTING ---
+// --- REPORTING UTILITIES ---
 
-/**
- * Generates an audit of all active deals in the pipeline
- */
 const generatePipelineAudit = (deals: Deal[]) => {
     const doc = new jsPDF('landscape');
     doc.setFontSize(18);
-    doc.text("Sovereign CRM: Pipeline Forensic Audit", 14, 20);
+    doc.text("Sales Pipeline: Audit Report", 14, 20);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString()} | Total Active Deals: ${deals.length}`, 14, 28);
 
@@ -95,23 +92,19 @@ const generatePipelineAudit = (deals: Deal[]) => {
         styles: { fontSize: 8 }
     });
 
-    doc.save(`Forensic_Pipeline_Audit_${Date.now()}.pdf`);
+    doc.save(`Pipeline_Audit_${Date.now()}.pdf`);
 };
 
-/**
- * Generates an evaluation per agent or a full team summary including commissions
- */
 const downloadAgentEvaluationReport = (deals: Deal[], targetAgentId?: string) => {
     const doc = new jsPDF();
     const isSummary = !targetAgentId;
-    
     const filteredDeals = targetAgentId ? deals.filter(d => d.marketing_agent_id === targetAgentId) : deals;
     const agentName = isSummary ? "Global Marketing Teams" : (filteredDeals[0]?.employees?.full_name || "Agent Record");
 
-    doc.setFontSize(20);
-    doc.text(isSummary ? "Global Marketing Summary" : "Agent Performance Audit", 14, 20);
+    doc.setFontSize(18);
+    doc.text(isSummary ? "Team Performance Summary" : "Agent Performance Audit", 14, 20);
     doc.setFontSize(10);
-    doc.text(`Target: ${agentName} | Forensic Date: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Target: ${agentName} | Date: ${new Date().toLocaleDateString()}`, 14, 30);
 
     const totalLeads = filteredDeals.length;
     const closedWon = filteredDeals.filter(d => d.stage_id.toLowerCase().includes('won') || d.stage_id.toLowerCase().includes('closed')).length;
@@ -121,23 +114,22 @@ const downloadAgentEvaluationReport = (deals: Deal[], targetAgentId?: string) =>
 
     autoTable(doc, {
         startY: 40,
-        head: [['Performance Metric', 'Value']],
+        head: [['Metric', 'Value']],
         body: [
-            ['Total Prospects Captured', totalLeads],
-            ['Closed/Converted Sales', closedWon],
-            ['Conversion Efficiency', `${convRate}%`],
-            ['Gross Revenue Pipeline', `${totalRev.toLocaleString()} (Mixed Currencies)`],
-            ['TOTAL COMMISSIONS EARNED', `${totalComm.toLocaleString()} UGX`],
-            ['Audit Status', 'Verified via Autonomous Paymaster']
+            ['Total Prospects', totalLeads],
+            ['Closed Sales', closedWon],
+            ['Conversion Rate', `${convRate}%`],
+            ['Gross Revenue', `${totalRev.toLocaleString()} Mixed`],
+            ['Total Commissions', `${totalComm.toLocaleString()} UGX`],
         ],
         theme: 'striped',
-        headStyles: { fillColor: [5, 150, 105] } // Forensic Green for Financials
+        headStyles: { fillColor: [37, 99, 235] }
     });
 
-    doc.save(`${isSummary ? 'Team_Financial_Summary' : 'Agent_Payout_Audit'}_${Date.now()}.pdf`);
+    doc.save(`${isSummary ? 'Team_Summary' : 'Agent_Audit'}_${Date.now()}.pdf`);
 };
 
-// --- UPGRADED DealCard: FORENSIC DATA VIEW ---
+// --- DEAL CARD ---
 function DealCard({ deal }: DealCardProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: deal.id,
@@ -149,59 +141,59 @@ function DealCard({ deal }: DealCardProps) {
     const { toast } = useToast();
 
     const formattedValue = deal.value 
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: deal.currency_code || 'UGX' }).format(deal.value) 
-        : 'No value';
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: deal.currency_code || 'UGX', maximumFractionDigits: 0 }).format(deal.value) 
+        : '—';
 
     const handleConvert = () => {
         if (!deal.customers) {
-            toast({ title: "Action Required", description: "Assign a customer to this deal before converting.", variant: "destructive" });
+            toast({ title: "Action Required", description: "Assign a customer before converting.", variant: "destructive" });
             return;
         }
         startTransition(async () => {
             const result = await convertDealToWorkOrder(deal.id);
-            if (result.success) toast({ title: "Success!", description: result.message });
+            if (result.success) toast({ title: "Success", description: result.message });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
     };
 
     return (
-        <Card ref={setNodeRef} style={style} {...attributes} className="mb-3 bg-card border-slate-200/60 shadow-sm hover:shadow-md transition-shadow touch-none">
-            <CardContent className="p-3">
-                <div className="flex justify-between items-start gap-2">
-                    <div className="space-y-1.5 flex-grow">
-                        <div className="flex items-center gap-2 mb-1">
-                             <Badge variant="outline" className="text-[9px] font-black uppercase py-0 px-1.5 border-slate-200 text-slate-400">
-                                {deal.nature_of_business || 'General Business'}
+        <Card ref={setNodeRef} style={style} {...attributes} className="mb-3 bg-white border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 touch-none">
+            <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                    <div className="space-y-2 flex-grow">
+                        <div className="flex items-center gap-2">
+                             <Badge variant="secondary" className="text-[10px] font-medium px-2 py-0 border-slate-200 text-slate-600 bg-slate-50">
+                                {deal.nature_of_business || 'General'}
                              </Badge>
-                             {deal.subscription_status === 'ACTIVE' && <ShieldCheck className="h-3 w-3 text-blue-500" />}
+                             {deal.subscription_status === 'ACTIVE' && <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />}
                         </div>
-                        <p className="font-bold text-[13px] text-slate-800 leading-tight">{deal.title}</p>
+                        <h4 className="font-semibold text-sm text-slate-900 leading-snug">{deal.title}</h4>
+                        
                         <div className="flex items-center gap-3">
-                            <p className="font-black text-xs text-emerald-600 uppercase tracking-tight">{formattedValue}</p>
+                            <span className="font-bold text-sm text-emerald-600">{formattedValue}</span>
                             {deal.agreed_commission_percentage && (
-                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 rounded">{deal.agreed_commission_percentage}% COMM</span>
+                                <span className="text-[10px] font-medium text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">{deal.agreed_commission_percentage}% Comm</span>
                             )}
                         </div>
                         
-                        <div className="grid grid-cols-1 gap-1.5 mt-2">
+                        <div className="grid grid-cols-1 gap-1.5 mt-3">
                             {deal.customers && (
-                                <div className="flex items-center text-[10px] font-semibold text-slate-500">
-                                    <Landmark className="h-3 w-3 mr-1.5 text-slate-400" />
+                                <div className="flex items-center text-[11px] text-slate-600">
+                                    <Landmark className="h-3.5 w-3.5 mr-2 text-slate-400" />
                                     {deal.customers.name}
                                 </div>
                             )}
-                            <div className="flex items-center text-[10px] font-medium text-slate-400">
-                                <Package className="h-3 w-3 mr-1.5" />
-                                {deal.target_package_name || 'Standard Setup'}
+                            <div className="flex items-center text-[11px] text-slate-500">
+                                <Package className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                                {deal.target_package_name || 'Standard Package'}
                             </div>
-                            <div className="flex items-center text-[10px] font-bold text-blue-600/70">
-                                <User className="h-3 w-3 mr-1.5" />
-                                {deal.employees?.full_name || 'No Agent'} 
-                                {deal.marketing_team_name && <span className="ml-1 opacity-50">({deal.marketing_team_name})</span>}
+                            <div className="flex items-center text-[11px] font-medium text-slate-700">
+                                <User className="h-3.5 w-3.5 mr-2 text-blue-500" />
+                                {deal.employees?.full_name || 'Unassigned'}
                             </div>
-                            <div className="flex items-center text-[9px] font-bold text-slate-300 uppercase">
-                                <MapPin className="h-2.5 w-2.5 mr-1.5" />
-                                {deal.country_code || 'UG'} | {deal.currency_code || 'UGX'}
+                            <div className="flex items-center text-[10px] text-slate-400 font-medium">
+                                <MapPin className="h-3 w-3 mr-2" />
+                                {deal.country_code || 'UG'} · {deal.currency_code || 'UGX'}
                             </div>
                         </div>
                     </div>
@@ -209,9 +201,15 @@ function DealCard({ deal }: DealCardProps) {
                         <GripVertical className="h-5 w-5" />
                     </div>
                 </div>
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                    <Button size="sm" variant="outline" className="w-full h-8 text-[10px] font-black uppercase tracking-widest border-slate-200 hover:bg-slate-50" onClick={handleConvert} disabled={isConverting}>
-                        {isConverting ? "Processing..." : "Convert to Work Order"}
+                <div className="mt-4 pt-3 border-t border-slate-50">
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full h-9 text-xs font-medium border-slate-200 hover:bg-slate-50 hover:text-blue-600 transition-colors" 
+                        onClick={handleConvert} 
+                        disabled={isConverting}
+                    >
+                        {isConverting ? "Converting..." : "Convert to Work Order"}
                     </Button>
                 </div>
             </CardContent>
@@ -219,7 +217,7 @@ function DealCard({ deal }: DealCardProps) {
     );
 }
 
-// --- PIPELINE COLUMN ---
+// --- COLUMN ---
 function PipelineColumn({ stage, deals }: ColumnProps) {
     const { setNodeRef } = useSortable({ id: stage.id, data: { type: 'Stage' } });
     const totalValue = deals.reduce((sum, deal) => sum + (deal.value || 0), 0);
@@ -228,13 +226,13 @@ function PipelineColumn({ stage, deals }: ColumnProps) {
 
     return (
         <div ref={setNodeRef} className="flex-1 max-w-[320px] min-w-[300px] h-full">
-            <div className="flex flex-col h-full bg-slate-50/50 border border-slate-200/50 rounded-xl overflow-hidden">
+            <div className="flex flex-col h-full bg-slate-50/60 border border-slate-200 rounded-lg overflow-hidden">
                 <div className="p-4 bg-white border-b border-slate-100">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-black text-xs uppercase tracking-widest text-slate-500">{stage.name}</h3>
-                        <Badge className="bg-slate-900 text-white font-black text-[10px]">{deals.length}</Badge>
+                    <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-xs text-slate-500 uppercase tracking-tight">{stage.name}</h3>
+                        <Badge variant="outline" className="bg-white text-slate-700 text-[11px] border-slate-200 font-medium">{deals.length}</Badge>
                     </div>
-                    <p className="mt-1 font-black text-lg text-slate-900 tracking-tighter">{formattedTotal}</p>
+                    <p className="text-xl font-bold text-slate-900">{formattedTotal}</p>
                 </div>
                 <div className="p-3 flex-grow overflow-y-auto">
                     <SortableContext items={deals.map(d => d.id)} strategy={verticalListSortingStrategy}>
@@ -248,15 +246,14 @@ function PipelineColumn({ stage, deals }: ColumnProps) {
     );
 }
 
-// --- MAIN ENTERPRISE COMPONENT ---
+// --- MAIN BOARD ---
 export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: Stage[] }) {
     const { toast } = useToast();
     const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
 
     const stats = useMemo(() => {
         const closedCount = deals.filter(d => d.stage_id.toLowerCase().includes('won') || d.stage_id.toLowerCase().includes('closed')).length;
-        const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
-        return { closedCount, totalValue };
+        return { closedCount };
     }, [deals]);
 
     const [columns, setColumns] = useState<Map<string, Deal[]>>(() => {
@@ -306,46 +303,51 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
 
             const result = await updateDealStage(dealToMove.id, newStage.id);
             if (!result.success) {
-                toast({ title: "Forensic Sync Error", description: result.message, variant: 'destructive' });
+                toast({ title: "Sync Error", description: result.message, variant: 'destructive' });
             } else {
-                 toast({ title: "Pipeline Updated", description: `"${dealToMove.title}" synchronized to ${newStage.name}.` });
+                 toast({ title: "Pipeline Updated", description: `"${dealToMove.title}" moved to ${newStage.name}.` });
             }
         }
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-white">
-            {/* SOVEREIGN INTELLIGENCE HEADER - REDUNDANT BUTTON REMOVED */}
-            <div className="px-6 py-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-white sticky top-0 z-20">
-                <div className="flex items-center gap-5">
-                    <div className="h-12 w-12 bg-slate-900 rounded-xl flex items-center justify-center text-white">
-                        <TrendingUp size={24} />
+        <div className="flex flex-col h-full w-full bg-white font-sans">
+            <header className="px-8 py-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-white sticky top-0 z-20">
+                <div className="flex items-center gap-4">
+                    <div className="h-11 w-11 bg-slate-900 rounded-lg flex items-center justify-center text-white shadow-sm">
+                        <TrendingUp size={22} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Sales Pipeline</h1>
-                        <div className="flex items-center gap-3 mt-1">
-                            <span className="flex items-center text-[10px] font-black uppercase text-emerald-600">
-                                <BarChart3 size={12} className="mr-1" /> {stats.closedCount} Closed Won
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Sales Pipeline</h1>
+                        <div className="flex items-center gap-2.5 mt-0.5">
+                            <span className="flex items-center text-xs font-medium text-emerald-600">
+                                <BarChart3 size={14} className="mr-1.5" /> {stats.closedCount} Won
                             </span>
                             <span className="h-1 w-1 rounded-full bg-slate-200" />
-                            <span className="text-[10px] font-bold text-slate-400">Commission Engine Active</span>
+                            <span className="text-xs text-slate-500 font-medium">Auto-Commissioning Enabled</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" className="font-black text-[10px] uppercase tracking-widest gap-2 h-10 border-slate-200 hover:bg-slate-50" onClick={() => generatePipelineAudit(deals)}>
-                        <FileText size={14} /> Full Audit
+                <div className="flex items-center gap-3">
+                    <Button 
+                        variant="outline" 
+                        className="text-xs font-semibold gap-2 h-10 border-slate-200 px-4 hover:bg-slate-50" 
+                        onClick={() => generatePipelineAudit(deals)}
+                    >
+                        <FileText size={16} className="text-slate-400" /> Pipeline Audit
                     </Button>
-                    <Button className="bg-blue-600 hover:bg-blue-700 font-black text-[10px] uppercase tracking-widest gap-2 h-10 px-6 shadow-lg shadow-blue-200" onClick={() => downloadAgentEvaluationReport(deals)}>
-                        <Users size={14} /> Team Summary
+                    <Button 
+                        className="bg-blue-600 hover:bg-blue-700 text-xs font-semibold gap-2 h-10 px-5 shadow-sm shadow-blue-100" 
+                        onClick={() => downloadAgentEvaluationReport(deals)}
+                    >
+                        <Users size={16} /> Team Performance
                     </Button>
                 </div>
-            </div>
+            </header>
 
-            {/* DND PIPELINE BOARD */}
-            <div className="flex-grow overflow-x-auto">
-                <div className="flex h-full p-6 gap-6 min-w-max">
+            <main className="flex-grow overflow-x-auto">
+                <div className="flex h-full p-8 gap-8 min-w-max">
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                         <SortableContext items={stages.map(s => s.id)}>
                             {stages.map(stage => (
@@ -355,7 +357,7 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
                         {createPortal(<DragOverlay>{activeDeal ? <DealCard deal={activeDeal} /> : null}</DragOverlay>, document.body)}
                     </DndContext>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

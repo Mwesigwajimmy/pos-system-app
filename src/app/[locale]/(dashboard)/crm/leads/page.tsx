@@ -6,8 +6,7 @@ import { SalesPipelineBoard } from '@/components/crm/leads/SalesPipelineBoard';
 import { CreateDealModal } from '@/components/crm/leads/CreateDealModal';
 
 /**
- * 🛡️ IDENTITY RESOLUTION ENGINE
- * Resolved the operator context and business node affinity.
+ * Retrieves the current authenticated user and their associated employee record.
  */
 async function getCurrentUser(supabase: any) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -26,11 +25,10 @@ async function getCurrentUser(supabase: any) {
 }
 
 /**
- * 🧠 GLOBAL DATA ORCHESTRATION
- * Synchronizes Leads, Stages, Employees, and Subscription Packages for the node.
+ * Fetches all necessary data for the Sales Pipeline including deals, stages, and agent lists.
  */
 async function getSalesPipelineData(supabase: any, bizId: string) {
-    // 1. Fetch CRM Leads (Master Forensic Ledger)
+    // 1. Fetch CRM Deals
     const dealsPromise = supabase.from('crm_contacts')
         .select(`
             id, 
@@ -54,18 +52,18 @@ async function getSalesPipelineData(supabase: any, bizId: string) {
         .not('stage_id', 'is', null) 
         .order('created_at', { ascending: false });
         
-    // 2. Fetch Pipeline Logic Stages
+    // 2. Fetch Pipeline Stages
     const stagesPromise = supabase.from('pipeline_stages')
         .select('*')
         .eq('tenant_id', bizId)
         .order('order', { ascending: true });
 
-    // 3. Fetch Authorized Agents
+    // 3. Fetch Authorized Marketing Agents
     const employeesPromise = supabase.from('employees')
         .select('id, full_name')
         .eq('business_id', bizId);
 
-    // 4. 🧠 FETCH LIVE SUBSCRIPTION CATALOG (New Weld)
+    // 4. Fetch Available Subscription Packages
     const packagesPromise = supabase.from('crm_subscription_packages')
         .select('id, name')
         .eq('business_id', bizId)
@@ -87,18 +85,22 @@ async function getSalesPipelineData(supabase: any, bizId: string) {
 }
 
 export default async function SalesLeadsPage() {
-    // ✅ Next.js 15 Requirement: Await cookies
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
     
     const currentUser = await getCurrentUser(supabase);
 
-    // Security Perimeter: Validate business context
+    // Access Control: Validate that the user belongs to a business
     if (!currentUser || !currentUser.business_id) {
          return (
-             <div className="flex-1 space-y-4 p-10 pt-8">
-                <h2 className="text-3xl font-black tracking-tighter text-red-600 uppercase">Forensic Access Denied</h2>
-                <p className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Operator node not recognized in secure ledger.</p>
+             <div className="flex flex-col items-center justify-center flex-1 h-full p-10 bg-slate-50">
+                <div className="max-w-md text-center space-y-4">
+                    <h2 className="text-2xl font-bold text-slate-900">Access Denied</h2>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                        Your account is not currently associated with an active business profile. 
+                        Please contact your administrator to resolve this issue.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -107,26 +109,27 @@ export default async function SalesLeadsPage() {
 
     return (
         <div className="flex flex-col h-full bg-white">
-            {/* SOVEREIGN ARCHITECTURE HEADER */}
-            <header className="flex-shrink-0 p-8 flex flex-wrap items-center justify-between border-b bg-white gap-6">
-                 <div className="space-y-1.5">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Sales Pipeline</h2>
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.25em]">
-                        Forensic tracking of field leads, conversions, and agent performance monitoring.
+            {/* PAGE HEADER */}
+            <header className="flex-shrink-0 px-8 py-7 flex flex-wrap items-center justify-between border-b border-slate-100 bg-white gap-6">
+                 <div className="space-y-1">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Sales Pipeline</h1>
+                    <p className="text-sm font-medium text-slate-500">
+                        Track leads, monitor conversions, and manage agent performance.
                     </p>
                 </div>
                  
-                 {/* 🧠 Passing Live Catalog & Employees to the Entry Form */}
-                 <CreateDealModal 
-                    stages={stages} 
-                    employees={employees} 
-                    packages={packages}
-                    currentBusinessId={currentUser.business_id} 
-                 />
+                 <div className="flex items-center">
+                    <CreateDealModal 
+                        stages={stages} 
+                        employees={employees} 
+                        packages={packages}
+                        currentBusinessId={currentUser.business_id} 
+                    />
+                 </div>
             </header>
             
-            <main className="flex-grow overflow-hidden bg-slate-50/20">
-                {/* 🛡️ Synchronizing the dataset to the board */}
+            {/* PIPELINE BOARD AREA */}
+            <main className="flex-grow overflow-hidden bg-slate-50/30">
                 <SalesPipelineBoard deals={deals} stages={stages} />
             </main>
         </div>
