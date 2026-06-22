@@ -97,7 +97,8 @@ const navSections: NavItem[] = [
         type: 'accordion', title: 'CRM', icon: Handshake, roles: ['admin', 'manager', 'owner', 'architect', 'marketing_specialist', 'support_agent'], 
         module: 'crm',
         subItems: [ 
-            { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 }, 
+            { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 },
+            { href: '/crm/clients', label: 'Clients & Billing', icon: Landmark }, 
             { href: '/crm/marketing', label: 'Marketing', icon: Megaphone }, 
             { href: '/crm/support', label: 'Support', icon: Users }, 
         ]

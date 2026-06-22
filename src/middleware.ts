@@ -75,6 +75,7 @@ const rolePermissions: Record<string, string[]> = {
     '/field-service': ['admin', 'manager', 'owner', 'architect', 'commander', 'field_technician', 'dispatcher', 'technician'],
     '/nonprofit': ['admin', 'manager', 'owner', 'architect', 'commander', 'grant_manager', 'donor_relations', 'volunteer_coordinator', 'donor_manager'],
     '/ecommerce': ['admin', 'manager', 'owner', 'architect', 'commander', 'ecommerce_manager'],
+    '/crm/clients': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant'],
     '/crm': ['admin', 'manager', 'owner', 'architect', 'commander', 'support_agent', 'marketing_specialist'],
     '/booking': ['admin', 'manager', 'owner', 'architect', 'commander', 'receptionist'],
     '/management': ['admin', 'manager', 'owner', 'architect', 'commander', 'auditor', 'hr_manager'],
