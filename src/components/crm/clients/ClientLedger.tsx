@@ -46,7 +46,9 @@ import {
     ShieldCheck,
     BookOpen,
     Database,
-    Fingerprint
+    Fingerprint,
+    Clock,
+    CalendarDays
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -147,6 +149,7 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     
+    // --- MULTI-MODAL ORCHESTRATION ---
     const [vaultOpen, setVaultOpen] = React.useState(false);
     const [activeVaultClient, setActiveVaultClient] = React.useState<any>(null);
     const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
@@ -281,7 +284,7 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
             <CardContent className="p-0">
                 
                 {/* SOVEREIGN FORENSIC HEADER */}
-                <div className="flex flex-col md:flex-row items-center justify-between px-8 py-8 bg-slate-50/50 border-b gap-6">
+                <div className="flex flex-col md:flex-row items-center justify-between px-8 py-10 bg-slate-50/50 border-b gap-6">
                     <div className="flex items-center gap-6">
                         <div className="h-16 w-16 bg-slate-900 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-200">
                             <ShieldCheck size={32} />
