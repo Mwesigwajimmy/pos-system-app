@@ -24,7 +24,8 @@ import {
     Coins, 
     Target,
     FileText,
-    MapPin
+    MapPin,
+    UserCheck
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -86,8 +87,8 @@ const generateCampaignAudit = (campaigns: Campaign[]) => {
             c.campaign_category,
             c.status,
             c.target_location || 'Global',
-            `${c.budget_spent.toLocaleString()} ${c.currency_code}`,
-            `${c.projected_revenue.toLocaleString()} ${c.currency_code}`,
+            `${(c.budget_spent || 0).toLocaleString()} ${c.currency_code || 'UGX'}`,
+            `${(c.projected_revenue || 0).toLocaleString()} ${c.currency_code || 'UGX'}`,
             c.employees?.full_name || 'N/A'
         ]),
         headStyles: { fillColor: [15, 23, 42] }
@@ -123,7 +124,7 @@ export const columns: ColumnDef<Campaign>[] = [
             const Icon = cat === 'EMAIL' ? Mail : (cat === 'SMS' ? MessageSquare : (cat === 'ADS' ? Target : Globe));
             return (
                 <div className="flex items-center text-[11px] font-bold text-slate-600">
-                    <Icon className="mr-2 h-3.5 w-3.5 text-blue-500" /> {cat}
+                    <Icon className="mr-2 h-3.5 w-3.5 text-blue-500" /> {cat || 'GENERAL'}
                 </div>
             );
         },
@@ -134,10 +135,10 @@ export const columns: ColumnDef<Campaign>[] = [
         cell: ({ row }) => (
             <div className="flex flex-col">
                 <div className="text-[10px] font-black text-emerald-600">
-                    +{row.original.projected_revenue.toLocaleString()} {row.original.currency_code}
+                    +{(row.original.projected_revenue || 0).toLocaleString()} {row.original.currency_code || 'UGX'}
                 </div>
                 <div className="text-[9px] font-bold text-slate-400 italic">
-                    Cost: {row.original.budget_spent.toLocaleString()}
+                    Cost: {(row.original.budget_spent || 0).toLocaleString()}
                 </div>
             </div>
         ),

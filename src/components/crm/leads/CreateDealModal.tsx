@@ -11,7 +11,9 @@ import {
     CreditCard, 
     Package, 
     Target,
-    Users
+    Users,
+    Coins,
+    Percent
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -105,7 +107,7 @@ export function CreateDealModal({ stages, employees, currentBusinessId }: Create
                              <div>
                                 <DialogTitle className="text-xl font-bold tracking-tight">Lead Intelligence Entry</DialogTitle>
                                 <DialogDescription className="text-slate-400 text-xs font-medium">
-                                    Record forensic data for field leads and conversion opportunities.
+                                    Record forensic data for field leads and commission opportunities.
                                 </DialogDescription>
                              </div>
                         </div>
@@ -114,10 +116,10 @@ export function CreateDealModal({ stages, employees, currentBusinessId }: Create
                     {/* HIDDEN LOGISTICS */}
                     <input type="hidden" name="business_id" value={currentBusinessId} />
 
-                    <ScrollArea className="max-h-[70vh]">
+                    <ScrollArea className="max-h-[75vh]">
                         <div className="p-8 space-y-8">
                             
-                            {/* SECTION: PRIMARY IDENTITIES */}
+                            {/* SECTION 1: PRIMARY IDENTITIES */}
                             <div className="space-y-4">
                                 <Label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">1. Core Intelligence</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -132,7 +134,7 @@ export function CreateDealModal({ stages, employees, currentBusinessId }: Create
                                 </div>
                             </div>
 
-                            {/* SECTION: AGENT & SOURCE TRACKING */}
+                            {/* SECTION 2: AGENT & SOURCE TRACKING */}
                             <div className="space-y-4">
                                 <Label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">2. Agent Performance tracking</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -156,11 +158,11 @@ export function CreateDealModal({ stages, employees, currentBusinessId }: Create
                                 </div>
                             </div>
 
-                            {/* SECTION: FINANCIALS & PACKAGE */}
+                            {/* SECTION 3: FINANCIALS, PACKAGE & COMMISSION */}
                             <div className="space-y-4">
-                                <Label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">3. Financial Intent & Package</Label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    <div className="space-y-1.5 col-span-2 md:col-span-1">
+                                <Label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">3. Financials & Commission Intel</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="space-y-1.5">
                                         <Label htmlFor="value" className="text-xs font-bold text-slate-500">Deal Value</Label>
                                         <Input id="value" name="value" type="number" step="0.01" placeholder="0.00" className="h-10 font-black text-emerald-700" />
                                     </div>
@@ -174,12 +176,15 @@ export function CreateDealModal({ stages, employees, currentBusinessId }: Create
                                                 <SelectItem value="UGX">UGX (Uganda)</SelectItem>
                                                 <SelectItem value="KES">KES (Kenya)</SelectItem>
                                                 <SelectItem value="USD">USD (Global)</SelectItem>
-                                                <SelectItem value="TZS">TZS (Tanzania)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-bold text-slate-500">Target Package</Label>
+                                        <Label htmlFor="agreed_commission_percentage" className="text-xs font-bold text-blue-700">Commission %</Label>
+                                        <Input id="agreed_commission_percentage" name="agreed_commission_percentage" type="number" step="0.1" placeholder="5.0" className="h-10 font-black border-blue-100 bg-blue-50/50 text-blue-900" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold text-slate-500">Package</Label>
                                         <Select name="target_package_name" defaultValue="STANDARD">
                                             <SelectTrigger className="h-10 font-bold">
                                                 <SelectValue />
@@ -188,14 +193,14 @@ export function CreateDealModal({ stages, employees, currentBusinessId }: Create
                                                 <SelectItem value="BASIC">Basic Entry</SelectItem>
                                                 <SelectItem value="STANDARD">Standard Pro</SelectItem>
                                                 <SelectItem value="PREMIUM">Enterprise Gold</SelectItem>
-                                                <SelectItem value="CUSTOM">Custom Setup</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
+                                <p className="text-[9px] font-bold text-slate-400 italic px-1">Forensic Note: Commission percentage is calculated against actual confirmed payments.</p>
                             </div>
 
-                            {/* SECTION: LOGISTICS & STATUS */}
+                            {/* SECTION 4: LOGISTICS & STATUS */}
                             <div className="space-y-4">
                                 <Label className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">4. Pipeline Logistics</Label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

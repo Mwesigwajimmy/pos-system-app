@@ -29,7 +29,9 @@ import {
     TrendingUp,
     MapPin,
     Plus,
-    Users
+    Users,
+    Coins,
+    Percent
 } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -40,10 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { updateDealStage, convertDealToWorkOrder } from '@/lib/crm/actions/leads';
 
-// --- IMPORT YOUR CREATE MODAL HERE ---
-// import { CreateDealModal } from './CreateDealModal'; 
-
-// --- TYPES ENHANCED FOR DEEP TRACKING ---
+// --- TYPES ENHANCED FOR DEEP COMMISSION & AGENT TRACKING ---
 export interface Stage {
     id: string;
     name: string;
@@ -61,6 +60,8 @@ export interface Deal {
     subscription_status: string | null;
     marketing_agent_id: string | null;
     marketing_team_name: string | null;
+    agreed_commission_percentage: number | null;
+    commission_earned_ugx: number | null;
     customers: { name: string; email: string } | null;
     employees: { full_name: string } | null; 
     created_at: string;
@@ -69,7 +70,7 @@ export interface Deal {
 interface DealCardProps { deal: Deal; }
 interface ColumnProps { stage: Stage; deals: Deal[]; }
 
-// --- ENTERPRISE UTILITY: DEEP PERFORMANCE REPORTING ---
+// --- ENTERPRISE UTILITY: DEEP FORENSIC REPORTING ---
 
 /**
  * Generates an audit of all active deals in the pipeline
@@ -83,59 +84,60 @@ const generatePipelineAudit = (deals: Deal[]) => {
 
     autoTable(doc, {
         startY: 35,
-        head: [['Title', 'Agent', 'Team', 'Value', 'Package', 'Country', 'Nature of Biz']],
+        head: [['Title', 'Agent', 'Value', 'Comm %', 'Package', 'Nature of Biz', 'Status']],
         body: deals.map(d => [
             d.title,
             d.employees?.full_name || 'Unassigned',
-            d.marketing_team_name || 'N/A',
             `${(d.value || 0).toLocaleString()} ${d.currency_code || 'UGX'}`,
+            `${d.agreed_commission_percentage || 0}%`,
             d.target_package_name || 'Standard',
-            d.country_code || 'UG',
-            d.nature_of_business || 'General'
+            d.nature_of_business || 'General',
+            d.subscription_status || 'PROSPECT'
         ]),
         headStyles: { fillColor: [15, 23, 42] },
         styles: { fontSize: 8 }
     });
 
-    doc.save(`Pipeline_Audit_${Date.now()}.pdf`);
+    doc.save(`Forensic_Pipeline_Audit_${Date.now()}.pdf`);
 };
 
 /**
- * Generates an evaluation per agent or a full team summary
+ * Generates an evaluation per agent or a full team summary including commissions
  */
 const downloadAgentEvaluationReport = (deals: Deal[], targetAgentId?: string) => {
     const doc = new jsPDF();
     const isSummary = !targetAgentId;
     
-    // Logic: If targetAgentId provided, filter for that agent. Otherwise, summarize all.
     const filteredDeals = targetAgentId ? deals.filter(d => d.marketing_agent_id === targetAgentId) : deals;
-    const agentName = isSummary ? "All Marketing Teams" : (filteredDeals[0]?.employees?.full_name || "Unknown Agent");
+    const agentName = isSummary ? "Global Marketing Teams" : (filteredDeals[0]?.employees?.full_name || "Agent Record");
 
     doc.setFontSize(20);
-    doc.text(isSummary ? "Global Marketing Performance Summary" : "Agent Performance Audit", 14, 20);
+    doc.text(isSummary ? "Global Marketing Summary" : "Agent Performance Audit", 14, 20);
     doc.setFontSize(10);
-    doc.text(`Target: ${agentName} | Period: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Target: ${agentName} | Forensic Date: ${new Date().toLocaleDateString()}`, 14, 30);
 
     const totalLeads = filteredDeals.length;
     const closedWon = filteredDeals.filter(d => d.stage_id.toLowerCase().includes('won') || d.stage_id.toLowerCase().includes('closed')).length;
     const convRate = totalLeads > 0 ? ((closedWon / totalLeads) * 100).toFixed(1) : "0";
     const totalRev = filteredDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+    const totalComm = filteredDeals.reduce((sum, d) => sum + (d.commission_earned_ugx || 0), 0);
 
     autoTable(doc, {
         startY: 40,
-        head: [['Performance Metric', 'Metric Value']],
+        head: [['Performance Metric', 'Value']],
         body: [
             ['Total Prospects Captured', totalLeads],
             ['Closed/Converted Sales', closedWon],
-            ['Efficiency (Conversion Rate)', `${convRate}%`],
+            ['Conversion Efficiency', `${convRate}%`],
             ['Gross Revenue Pipeline', `${totalRev.toLocaleString()} (Mixed Currencies)`],
-            ['Status', isSummary ? 'Consolidated Data' : 'Individual Performance']
+            ['TOTAL COMMISSIONS EARNED', `${totalComm.toLocaleString()} UGX`],
+            ['Audit Status', 'Verified via Autonomous Paymaster']
         ],
         theme: 'striped',
-        headStyles: { fillColor: [37, 99, 235] }
+        headStyles: { fillColor: [5, 150, 105] } // Forensic Green for Financials
     });
 
-    doc.save(`${isSummary ? 'Team_Summary' : 'Agent_Evaluation'}_${Date.now()}.pdf`);
+    doc.save(`${isSummary ? 'Team_Financial_Summary' : 'Agent_Payout_Audit'}_${Date.now()}.pdf`);
 };
 
 // --- UPGRADED DealCard: FORENSIC DATA VIEW ---
@@ -177,7 +179,12 @@ function DealCard({ deal }: DealCardProps) {
                              {deal.subscription_status === 'ACTIVE' && <ShieldCheck className="h-3 w-3 text-blue-500" />}
                         </div>
                         <p className="font-bold text-[13px] text-slate-800 leading-tight">{deal.title}</p>
-                        <p className="font-black text-xs text-emerald-600 uppercase tracking-tight">{formattedValue}</p>
+                        <div className="flex items-center gap-3">
+                            <p className="font-black text-xs text-emerald-600 uppercase tracking-tight">{formattedValue}</p>
+                            {deal.agreed_commission_percentage && (
+                                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 rounded">{deal.agreed_commission_percentage}% COMM</span>
+                            )}
+                        </div>
                         
                         <div className="grid grid-cols-1 gap-1.5 mt-2">
                             {deal.customers && (
@@ -248,7 +255,7 @@ function PipelineColumn({ stage, deals }: ColumnProps) {
 export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: Stage[] }) {
     const { toast } = useToast();
     const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); // Modal state for admin entry
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); 
 
     const stats = useMemo(() => {
         const closedCount = deals.filter(d => d.stage_id.toLowerCase().includes('won') || d.stage_id.toLowerCase().includes('closed')).length;
@@ -305,7 +312,7 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
             if (!result.success) {
                 toast({ title: "Forensic Sync Error", description: result.message, variant: 'destructive' });
             } else {
-                 toast({ title: "Pipeline Updated", description: `"${dealToMove.title}" moved to ${newStage.name}.` });
+                 toast({ title: "Pipeline Updated", description: `"${dealToMove.title}" synchronized to ${newStage.name}.` });
             }
         }
     };
@@ -325,13 +332,12 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
                                 <BarChart3 size={12} className="mr-1" /> {stats.closedCount} Closed Won
                             </span>
                             <span className="h-1 w-1 rounded-full bg-slate-200" />
-                            <span className="text-[10px] font-bold text-slate-400">Deep Agent Tracking Active</span>
+                            <span className="text-[10px] font-bold text-slate-400">Commission Engine Active</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* ADMINISTRATIVE ENTRY BUTTON */}
                     <Button onClick={() => setIsCreateModalOpen(true)} className="bg-slate-900 hover:bg-slate-800 font-black text-[10px] uppercase tracking-widest gap-2 h-10 px-6">
                         <Plus size={16} /> Record Field Data
                     </Button>
