@@ -13,7 +13,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { 
     ArrowUpDown, 
     Eye, 
@@ -397,7 +397,7 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
                                                     <span className="font-black text-slate-900 uppercase text-xs tracking-tighter">{pkg.name}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="px-8 text-[11px] font-black uppercase text-slate-500 max-w-sm">{pkg.description || 'Enterprise Solution Entry'}</TableCell>
+                                            <TableCell className="px-8 text-[11px] font-black uppercase text-slate-500 max-sm truncate">{pkg.description || 'Enterprise Solution Entry'}</TableCell>
                                             <TableCell className="px-8 text-center">
                                                 <Badge className="bg-blue-600 text-white font-black text-[10px] uppercase px-4 py-1 rounded-full shadow-md">
                                                     {pkg.billing_interval}
@@ -429,32 +429,38 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
                             </div>
                             
                             <div className="space-y-6 relative ml-6 border-l-2 border-slate-100 pl-10">
-                                {clients.map((c, i) => (
-                                    <div key={i} className="relative group cursor-pointer">
-                                        <div className="absolute -left-[54px] top-0 h-10 w-10 bg-white rounded-full border-4 border-slate-50 flex items-center justify-center group-hover:border-blue-100 transition-colors shadow-sm">
-                                            <CheckCircle2 size={20} className="text-emerald-500" />
-                                        </div>
-                                        <div className="p-6 bg-white border border-slate-100 rounded-3xl group-hover:bg-blue-50/50 group-hover:border-blue-200 transition-all shadow-sm">
-                                            <div className="flex justify-between items-start">
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-black uppercase text-slate-900 tracking-tight">IDENTITY_PROVISIONED: {c.full_name}</p>
-                                                    <p className="text-[10px] font-black uppercase text-slate-400">Manual Onboarding successfully committed to master ledger</p>
-                                                </div>
-                                                <Badge variant="outline" className="text-[9px] font-black uppercase text-blue-600 border-blue-200">
-                                                    NODE_{i + 100}
-                                                </Badge>
+                                {clients.map((c, i) => {
+                                    // 🛡️ FORENSIC DATE GUARD: Prevents 'Invalid time value' crash
+                                    const dateObj = c.created_at ? new Date(c.created_at) : null;
+                                    const isDateOk = isValid(dateObj);
+
+                                    return (
+                                        <div key={i} className="relative group cursor-pointer">
+                                            <div className="absolute -left-[54px] top-0 h-10 w-10 bg-white rounded-full border-4 border-slate-50 flex items-center justify-center group-hover:border-blue-100 transition-colors shadow-sm">
+                                                <CheckCircle2 size={20} className="text-emerald-500" />
                                             </div>
-                                            <div className="flex items-center gap-4 mt-4">
-                                                <div className="flex items-center text-[9px] font-black uppercase text-slate-300">
-                                                    <Clock size={10} className="mr-1" /> {format(new Date(c.created_at), 'HH:mm')}
+                                            <div className="p-6 bg-white border border-slate-100 rounded-3xl group-hover:bg-blue-50/50 group-hover:border-blue-200 transition-all shadow-sm">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-black uppercase text-slate-900 tracking-tight">IDENTITY_PROVISIONED: {c.full_name}</p>
+                                                        <p className="text-[10px] font-black uppercase text-slate-400">Manual Onboarding successfully committed to master ledger</p>
+                                                    </div>
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase text-blue-600 border-blue-200">
+                                                        NODE_{i + 100}
+                                                    </Badge>
                                                 </div>
-                                                <div className="flex items-center text-[9px] font-black uppercase text-slate-300">
-                                                    <CalendarDays size={10} className="mr-1" /> {format(new Date(c.created_at), 'dd LLL yyyy')}
+                                                <div className="flex items-center gap-4 mt-4">
+                                                    <div className="flex items-center text-[9px] font-black uppercase text-slate-300">
+                                                        <Clock size={10} className="mr-1" /> {isDateOk ? format(dateObj!, 'HH:mm') : '00:00'}
+                                                    </div>
+                                                    <div className="flex items-center text-[9px] font-black uppercase text-slate-300">
+                                                        <CalendarDays size={10} className="mr-1" /> {isDateOk ? format(dateObj!, 'dd LLL yyyy') : 'PENDING'}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {clients.length === 0 && (
                                     <div className="h-64 flex flex-col items-center justify-center text-slate-300 gap-4">
                                         <Database size={48} className="opacity-10" />
