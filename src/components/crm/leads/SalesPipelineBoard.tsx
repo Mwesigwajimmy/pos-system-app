@@ -28,10 +28,7 @@ import {
     BarChart3,
     TrendingUp,
     MapPin,
-    Plus,
-    Users,
-    Coins,
-    Percent
+    Users
 } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -255,7 +252,6 @@ function PipelineColumn({ stage, deals }: ColumnProps) {
 export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: Stage[] }) {
     const { toast } = useToast();
     const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); 
 
     const stats = useMemo(() => {
         const closedCount = deals.filter(d => d.stage_id.toLowerCase().includes('won') || d.stage_id.toLowerCase().includes('closed')).length;
@@ -319,7 +315,7 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
 
     return (
         <div className="flex flex-col h-full w-full bg-white">
-            {/* SOVEREIGN INTELLIGENCE HEADER */}
+            {/* SOVEREIGN INTELLIGENCE HEADER - REDUNDANT BUTTON REMOVED */}
             <div className="px-6 py-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-white sticky top-0 z-20">
                 <div className="flex items-center gap-5">
                     <div className="h-12 w-12 bg-slate-900 rounded-xl flex items-center justify-center text-white">
@@ -338,9 +334,6 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Button onClick={() => setIsCreateModalOpen(true)} className="bg-slate-900 hover:bg-slate-800 font-black text-[10px] uppercase tracking-widest gap-2 h-10 px-6">
-                        <Plus size={16} /> Record Field Data
-                    </Button>
                     <Button variant="outline" className="font-black text-[10px] uppercase tracking-widest gap-2 h-10 border-slate-200 hover:bg-slate-50" onClick={() => generatePipelineAudit(deals)}>
                         <FileText size={14} /> Full Audit
                     </Button>
@@ -363,9 +356,6 @@ export function SalesPipelineBoard({ deals, stages }: { deals: Deal[], stages: S
                     </DndContext>
                 </div>
             </div>
-
-            {/* INTEGRATION: Record Field Data Modal */}
-            {/* <CreateDealModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} /> */}
         </div>
     );
 }

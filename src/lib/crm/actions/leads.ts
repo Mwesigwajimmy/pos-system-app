@@ -5,161 +5,123 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-// --- CREATE DEAL ---
-
-const CreateDealSchema = z.object({
-  title: z.string().min(3, { message: "Deal title must be at least 3 characters." }),
-  value: z.coerce.number().optional().nullable(), // Coerce turns empty string into 0
-  stage_id: z.string().uuid({ message: "A valid stage must be selected." }),
-  owner_id: z.string().uuid({ message: "Invalid owner ID." }),
-  contact_name: z.string().optional().nullable(),
+/**
+ * 🛡️ ENTERPRISE VALIDATION SCHEMA
+ * Captures the full forensic DNA of the lead
+ */
+const CreateLeadSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters."),
+  nature_of_business: z.string().optional(),
+  marketing_agent_id: z.string().uuid("Agent must be selected."),
+  marketing_team_name: z.string().optional(),
+  value: z.coerce.number().default(0),
+  currency_code: z.string().default('UGX'),
+  agreed_commission_percentage: z.coerce.number().default(0),
+  target_package_name: z.string().default('STANDARD'),
+  stage_id: z.string().uuid("Invalid pipeline stage."),
+  lead_source_category: z.string().default('DIRECT'),
+  business_id: z.string().uuid()
 });
 
 export interface FormState {
     success: boolean;
     message: string;
-    errors?: {
-        [key: string]: string[];
-    } | null;
+    errors?: { [key: string]: string[]; } | null;
 }
 
+/**
+ * 🧠 CREATE FORENSIC RECORD
+ * Saves the lead directly into crm_contacts (The Master Ledger)
+ */
 export async function createDeal(prevState: FormState, formData: FormData): Promise<FormState> {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
     const rawFormData = Object.fromEntries(formData.entries());
-    const validatedFields = CreateDealSchema.safeParse(rawFormData);
+    const validatedFields = CreateLeadSchema.safeParse(rawFormData);
 
     if (!validatedFields.success) {
         return {
             success: false,
-            message: "Validation failed. Please check the form fields.",
+            message: "Forensic validation failed.",
             errors: validatedFields.error.flatten().fieldErrors,
         };
     }
-    
-    const { error } = await supabase.from('deals').insert({
-        title: validatedFields.data.title,
-        value: validatedFields.data.value,
-        stage_id: validatedFields.data.stage_id,
-        owner_id: validatedFields.data.owner_id,
-        contact_name: validatedFields.data.contact_name,
-        currency_code: 'USD', // Hardcoded for now, can be a tenant setting later
-    });
+
+    const { data, error } = await supabase
+        .from('crm_contacts')
+        .insert({
+            full_name: validatedFields.data.title, // Simplified Identity
+            title: validatedFields.data.title,
+            nature_of_business: validatedFields.data.nature_of_business,
+            marketing_agent_id: validatedFields.data.marketing_agent_id,
+            marketing_team_name: validatedFields.data.marketing_team_name,
+            value: validatedFields.data.value,
+            currency_code: validatedFields.data.currency_code,
+            agreed_commission_percentage: validatedFields.data.agreed_commission_percentage,
+            target_package_name: validatedFields.data.target_package_name,
+            stage_id: validatedFields.data.stage_id,
+            lead_source_category: validatedFields.data.lead_source_category,
+            business_id: validatedFields.data.business_id,
+            status: 'lead' // Ensure it starts as a lead
+        });
 
     if (error) {
-        console.error('Supabase Error:', error);
-        return {
-            success: false,
-            message: "Database Error: Failed to create the new deal.",
-            errors: null,
-        };
+        console.error('Forensic Insert Error:', error);
+        return { success: false, message: "Database Error: " + error.message, errors: null };
     }
 
     revalidatePath('/crm/leads');
-
-    return {
-        success: true,
-        message: "The new deal has been successfully created.",
-        errors: null,
-    };
+    return { success: true, message: "Lead Intelligence synchronized successfully.", errors: null };
 }
 
-
-// --- UPDATE DEAL STAGE ---
-
-const UpdateDealStageSchema = z.object({
-    dealId: z.string().uuid(),
-    newStageId: z.string().uuid(),
-});
-
 /**
- * Updates the stage of a single deal.
- * Called from the Sales Pipeline Kanban board after a drag-and-drop action.
+ * 🔄 UPDATE STAGE (Kanban Sync)
  */
 export async function updateDealStage(dealId: string, newStageId: string): Promise<{ success: boolean; message: string }> {
-    const validation = UpdateDealStageSchema.safeParse({ dealId, newStageId });
-    if (!validation.success) {
-        return { success: false, message: "Invalid input provided." };
-    }
-
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
     const { error } = await supabase
-        .from('deals')
+        .from('crm_contacts')
         .update({ stage_id: newStageId })
         .eq('id', dealId);
 
-    if (error) {
-        console.error('Supabase Error:', error);
-        return { success: false, message: "Database Error: Failed to update deal stage." };
-    }
+    if (error) return { success: false, message: "Sync Error: " + error.message };
 
     revalidatePath('/crm/leads');
-
-    return { success: true, message: "Deal stage updated." };
+    return { success: true, message: "Pipeline position synchronized." };
 }
 
-// --- NEW SMART ACTION: CONVERT DEAL TO WORK ORDER ---
-
 /**
- * Converts a CRM deal into a Field Service Work Order, linking the two modules.
- * @param dealId The UUID of the deal to convert.
+ * 🏗️ CONVERT TO WORK ORDER
  */
 export async function convertDealToWorkOrder(dealId: string): Promise<{ success: boolean; message: string }> {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. Fetch the deal to get its details
-    const { data: deal, error: fetchError } = await supabase
-        .from('deals')
-        .select('id, title, customer_id')
+    const { data: lead, error: fetchError } = await supabase
+        .from('crm_contacts')
+        .select('id, title, full_name, business_id')
         .eq('id', dealId)
         .single();
 
-    if (fetchError || !deal) {
-        console.error("Deal conversion failed: Could not find original deal.", fetchError);
-        return { success: false, message: "Could not find the original deal." };
-    }
-    if (!deal.customer_id) {
-        return { success: false, message: "Deal must be associated with a customer before converting." };
-    }
+    if (fetchError || !lead) return { success: false, message: "Could not find forensic record." };
     
-    // 2. Generate a new, unique Work Order UID
-    // In a high-concurrency environment, a database sequence or a more robust UID generator would be better.
-    const { data: lastWO, error: uidError } = await supabase
-        .from('work_orders')
-        .select('work_order_uid')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-    if (uidError) {
-        console.error("Deal conversion failed: Could not generate new WO UID.", uidError);
-        return { success: false, message: "Database Error: " + uidError.message };
-    }
-    const newUID = lastWO && lastWO.length > 0 ? `WO-${parseInt(lastWO[0].work_order_uid.split('-')[1]) + 1}` : 'WO-1001';
-
-    // 3. Insert the new Work Order, linking it to the source deal
+    // Create the Work Order
     const { error: insertError } = await supabase.from('work_orders').insert({
-        work_order_uid: newUID,
-        summary: deal.title,
-        customer_id: deal.customer_id,
-        source_deal_id: deal.id,
-        status: 'SCHEDULED', // Default to 'SCHEDULED' so it appears on the dispatch board
+        summary: lead.title,
+        customer_id: lead.id,
+        business_id: lead.business_id,
+        status: 'SCHEDULED',
         priority: 'MEDIUM',
-        scheduled_date: new Date().toISOString(), // Default to today, dispatcher can move it
+        scheduled_date: new Date().toISOString(),
     });
 
-    if (insertError) {
-        console.error("Deal conversion failed: Could not insert new work order.", insertError);
-        return { success: false, message: "Database Error: " + insertError.message };
-    }
+    if (insertError) return { success: false, message: "Conversion failed: " + insertError.message };
 
-    // 4. Revalidate all relevant paths to update the UI across different modules
     revalidatePath('/crm/leads');
-    revalidatePath('/field-service/schedule');
     revalidatePath('/field-service/work-orders');
 
-    return { success: true, message: `Successfully converted to Work Order ${newUID}.` };
+    return { success: true, message: `Converted "${lead.title}" to Work Order successfully.` };
 }
