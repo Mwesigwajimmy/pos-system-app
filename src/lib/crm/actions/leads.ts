@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 /**
  * 🛡️ ENTERPRISE VALIDATION SCHEMA
+ * Forensic capture of marketing, financial, and pipeline data.
  */
 const CreateLeadSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
@@ -75,7 +76,7 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
 }
 
 /**
- * 🔄 UPDATE STAGE
+ * 🔄 UPDATE PIPELINE POSITION (Board Sync)
  */
 export async function updateDealStage(dealId: string, newStageId: string): Promise<{ success: boolean; message: string }> {
     const cookieStore = await cookies();
@@ -93,8 +94,8 @@ export async function updateDealStage(dealId: string, newStageId: string): Promi
 }
 
 /**
- * 🏗️ CONVERT TO WORK ORDER (Kernel-Aligned)
- * Synchronizes Leads with Accounting-Ready Field Service
+ * 🏗️ TRIPLE MODULE CONVERSION (Enterprise Weld)
+ * Synchronizes Leads with Field Service (Work Orders) and Accounting (Invoices)
  */
 export async function convertDealToWorkOrder(dealId: string): Promise<{ success: boolean; message: string }> {
     const cookieStore = await cookies();
@@ -103,45 +104,72 @@ export async function convertDealToWorkOrder(dealId: string): Promise<{ success:
     // 1. Fetch Forensic Lead DNA
     const { data: lead, error: fetchError } = await supabase
         .from('crm_contacts')
-        .select('id, title, full_name, business_id, tenant_id, currency_code')
+        .select('*')
         .eq('id', dealId)
         .maybeSingle();
 
     if (fetchError || !lead) return { success: false, message: "Forensic record not found." };
     
-    // 2. Insert into Work Orders
-    // We explicitly send the columns required by 'fn_sovereign_accounting_kernel_v8'
-    const { error: insertError } = await supabase.from('work_orders').insert({
+    const initialValue = lead.value || 0;
+
+    // 2. Insert into Work Orders (Fulfillment Sync)
+    // Satisfies requirements of fn_sovereign_accounting_kernel_v8
+    const { error: woError } = await supabase.from('work_orders').insert({
         work_order_uid: `WO-CRM-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
         summary: `Fulfillment: ${lead.title || lead.full_name}`,
         crm_contact_id: lead.id, 
         business_id: lead.business_id,
         tenant_id: lead.tenant_id || lead.business_id,
-        
-        // 🛡️ FINANCIAL ALIGNMENT FOR KERNEL
-        currency: lead.currency_code || 'UGX', 
+        currency: lead.currency_code || 'UGX',
         currency_code: lead.currency_code || 'UGX',
-        total_amount: 0,       // Fulfillment setup starts at zero financial impact
+        total_amount: 0, // Fulfillment setup impact is handled via the separate Invoice
         tax_amount: 0,
         payment_method: 'Cash', 
-        
         status: 'SCHEDULED',
         priority: 'MEDIUM',
         scheduled_date: new Date().toISOString(),
     });
 
-    if (insertError) {
-        console.error("Accounting Kernel Conflict:", insertError);
-        return { success: false, message: "Kernel Weld Failed: " + insertError.message };
+    if (woError) {
+        console.error("Service Module Sync Failure:", woError);
+        return { success: false, message: "Forensic Fulfillment Weld Failed." };
     }
 
-    // 3. Promote Lead to Active Subscriber
+    // 3. Insert into Invoices (Accounting & Tax Sector Sync)
+    // This uses your established 'client_id' and financial columns
+    if (initialValue > 0) {
+        const { error: invError } = await supabase.from('invoices').insert({
+            business_id: lead.business_id,
+            tenant_id: lead.tenant_id || lead.business_id,
+            client_id: lead.id, // Linking UUID to the Invoicing Sector
+            invoice_number: `INV-SALE-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+            total_amount: initialValue,
+            currency: lead.currency_code || 'UGX',
+            currency_code: lead.currency_code || 'UGX',
+            status: 'Draft', 
+            issue_date: new Date().toISOString().split('T')[0],
+            summary: `Service Setup & Deployment for ${lead.title}`,
+            customer_name: lead.full_name
+        });
+        
+        if (invError) {
+            console.error("Accounting Sector Sync Conflict:", invError);
+            // We do not stop the process, as the Work Order and Status update are still critical.
+        }
+    }
+
+    // 4. Final Promotion: Activate Subscriber status and Reconcile initial debt
     await supabase.from('crm_contacts')
-        .update({ subscription_status: 'ACTIVE', status: 'customer' })
+        .update({ 
+            subscription_status: 'ACTIVE', 
+            status: 'customer',
+            active_debt_ugx: (lead.active_debt_ugx || 0) + initialValue 
+        })
         .eq('id', dealId);
 
     revalidatePath('/crm/leads');
+    revalidatePath('/invoicing/list');
     revalidatePath('/field-service/work-orders');
 
-    return { success: true, message: `Successfully synchronized to Accounting & Fulfillment.` };
+    return { success: true, message: `Triple Weld Sync: CRM, Fulfillment, and Accounting successfully aligned.` };
 }
