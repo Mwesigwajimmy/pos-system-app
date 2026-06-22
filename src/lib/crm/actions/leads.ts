@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 /**
  * 🛡️ ENTERPRISE VALIDATION SCHEMA
- * Captures the full forensic DNA of the lead
+ * Captures the full forensic DNA of the lead including commissions
  */
 const CreateLeadSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
@@ -34,7 +34,7 @@ export interface FormState {
  * Saves the lead directly into crm_contacts (The Master Ledger)
  */
 export async function createDeal(prevState: FormState, formData: FormData): Promise<FormState> {
-    const cookieStore = cookies();
+    const cookieStore = await cookies(); 
     const supabase = createClient(cookieStore);
 
     const rawFormData = Object.fromEntries(formData.entries());
@@ -48,10 +48,10 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
         };
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('crm_contacts')
         .insert({
-            full_name: validatedFields.data.title, // Simplified Identity
+            full_name: validatedFields.data.title, 
             title: validatedFields.data.title,
             nature_of_business: validatedFields.data.nature_of_business,
             marketing_agent_id: validatedFields.data.marketing_agent_id,
@@ -63,7 +63,8 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
             stage_id: validatedFields.data.stage_id,
             lead_source_category: validatedFields.data.lead_source_category,
             business_id: validatedFields.data.business_id,
-            status: 'lead' // Ensure it starts as a lead
+            tenant_id: validatedFields.data.business_id, // Syncing tenant_id for board visibility
+            status: 'lead' 
         });
 
     if (error) {
@@ -79,7 +80,7 @@ export async function createDeal(prevState: FormState, formData: FormData): Prom
  * 🔄 UPDATE STAGE (Kanban Sync)
  */
 export async function updateDealStage(dealId: string, newStageId: string): Promise<{ success: boolean; message: string }> {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
     const { error } = await supabase
@@ -94,34 +95,47 @@ export async function updateDealStage(dealId: string, newStageId: string): Promi
 }
 
 /**
- * 🏗️ CONVERT TO WORK ORDER
+ * 🏗️ CONVERT TO WORK ORDER (Enterprise Bridge)
+ * Welds CRM Leads to Field Service Fulfillment using UUIDs
  */
 export async function convertDealToWorkOrder(dealId: string): Promise<{ success: boolean; message: string }> {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
+    // 1. Fetch the Forensic Lead DNA
     const { data: lead, error: fetchError } = await supabase
         .from('crm_contacts')
-        .select('id, title, full_name, business_id')
+        .select('id, title, full_name, business_id, tenant_id')
         .eq('id', dealId)
-        .single();
+        .maybeSingle();
 
     if (fetchError || !lead) return { success: false, message: "Could not find forensic record." };
     
-    // Create the Work Order
+    // 2. Insert into Work Orders using the UUID Bridge column
+    // This bypasses the legacy customer_id (BIGINT) conflict
     const { error: insertError } = await supabase.from('work_orders').insert({
-        summary: lead.title,
-        customer_id: lead.id,
+        work_order_uid: `WO-CRM-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        summary: `Fulfillment: ${lead.title || lead.full_name}`,
+        crm_contact_id: lead.id, // 🛡️ THE UUID BRIDGE
         business_id: lead.business_id,
+        tenant_id: lead.tenant_id || lead.business_id,
         status: 'SCHEDULED',
         priority: 'MEDIUM',
         scheduled_date: new Date().toISOString(),
     });
 
-    if (insertError) return { success: false, message: "Conversion failed: " + insertError.message };
+    if (insertError) {
+        console.error("Fulfillment Weld Error:", insertError);
+        return { success: false, message: "Forensic Weld Failed: " + insertError.message };
+    }
+
+    // 3. Promote Lead to Active Subscription status
+    await supabase.from('crm_contacts')
+        .update({ subscription_status: 'ACTIVE', status: 'customer' })
+        .eq('id', dealId);
 
     revalidatePath('/crm/leads');
     revalidatePath('/field-service/work-orders');
 
-    return { success: true, message: `Converted "${lead.title}" to Work Order successfully.` };
+    return { success: true, message: `Lead successfully synchronized for Field Fulfillment.` };
 }
