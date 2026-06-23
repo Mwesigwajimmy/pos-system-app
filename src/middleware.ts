@@ -1,11 +1,12 @@
 /**
  * --- BBU1 SOVEREIGN MIDDLEWARE ---
- * VERSION: v22.6 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER)
+ * VERSION: v22.7 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER + EMPLOYEE BYPASS)
  * 
  * DEEP FIX SUMMARY:
  * 1. Targeted the Billing <-> Command Center "Ping-Pong" loop.
  * 2. Optimized redirect destinations to prevent "Middle-man" hops.
  * 3. Hardened Subscription whitelist logic.
+ * 4. NEW: Restricted /welcome redirect to only Owners/Admins (Invited employees bypass setup).
  */
 
 import { match } from '@formatjs/intl-localematcher';
@@ -253,11 +254,22 @@ export async function middleware(request: NextRequest) {
      * PRIORITY: Setup -> Billing -> Access
      */
 
+    // --- SETUP AUTHORITY CHECK ---
+    const setupAuthorizedRoles = ['admin', 'owner', 'architect', 'commander'];
+    const isSetupRole = setupAuthorizedRoles.includes(userRole);
+
     // GATE 1: Setup Enforcement (Highest Priority)
-    if (!setupComplete && pathWithoutLocale !== '/welcome' && !isOnBillingPage) {
+    // ONLY redirect to welcome if setup is incomplete AND user is an authorized setup role (Owner/Admin)
+    if (isSetupRole && !setupComplete && pathWithoutLocale !== '/welcome' && !isOnBillingPage) {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
+
+    // PROTECTION: If an invited employee (non-setup role) somehow lands on /welcome, send them to their dashboard
+    if (!isSetupRole && pathWithoutLocale === '/welcome') {
+        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+    }
     
+    // If setup is done, prevent anyone from staying on the welcome page
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }

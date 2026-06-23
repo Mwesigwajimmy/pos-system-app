@@ -10,6 +10,8 @@ import { ThemeProvider } from '@/components/theme-provider';
 import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
+// ✅ DEEP WELD: Added the missing BusinessProvider to global scope
+import { BusinessProvider } from '@/context/BusinessContext'; 
 import type { Session } from '@supabase/supabase-js';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import Script from 'next/script';
@@ -17,7 +19,7 @@ import React from 'react';
 
 /**
  * --- BBU1 SOVEREIGN GLOBAL LAYOUT ---
- * VERSION: v18.5 OMEGA (THE MASTER ARCHITECT)
+ * VERSION: v18.6 OMEGA (THE MASTER ARCHITECT - CONTEXT SEALED)
  * JURISDICTION: Global Multi-Tenant Infrastructure
  * 
  * CORE UPGRADES:
@@ -29,6 +31,8 @@ import React from 'react';
  *    CSS environment to ensure the entire UI respects the active node's DNA.
  * 4. PWA & SEO INTEGRITY: 100% preservation of site.webmanifest and 
  *    SoftwareApplication JSON-LD schemas.
+ * 5. CONTEXT ARCHITECTURE: Integrated BusinessProvider globally to 
+ *    ensure useBusiness() works on Welcome and Setup screens.
  */
 
 // --- PROFESSIONAL GLOBAL METADATA (UNTOUCHED) ---
@@ -194,10 +198,13 @@ export default async function LocaleRootLayout({
               enableSystem={false}
               disableTransitionOnChange
             >
-              <SidebarProvider>
-                {children}
-                <Toaster richColors position="bottom-right" />
-              </SidebarProvider>
+              {/* ✅ FIX: BusinessProvider is now at the Top Level to prevent useBusiness() crashes */}
+              <BusinessProvider>
+                <SidebarProvider>
+                  {children}
+                  <Toaster richColors position="bottom-right" />
+                </SidebarProvider>
+              </BusinessProvider>
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
