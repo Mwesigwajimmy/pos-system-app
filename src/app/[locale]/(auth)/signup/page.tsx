@@ -20,14 +20,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
     Loader2, Eye, EyeOff, Layers, MapPin, 
     ShieldCheck, Calculator, ScrollText, 
-    Rocket, CheckCircle2, Globe, FileCheck, Database,
+    CheckCircle2, Globe, FileCheck, Database,
     FileText, UserCircle, Target
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /** 
- * Tax Identification Nomenclature Atlas
+ * FULL TAX ATLAS 
  */
 const taxLabelAtlas: Record<string, string> = {
     AF: 'TIN', AL: 'NIPT', DZ: 'NIF', AD: 'NR', AO: 'NIF', AG: 'TIN', AR: 'CUIT', AM: 'TIN', AU: 'ABN', AT: 'UID', 
@@ -48,44 +48,81 @@ const taxLabelAtlas: Record<string, string> = {
     UY: 'RUT', UZ: 'TIN', VE: 'RIF', VN: 'MST', YE: 'TIN', ZM: 'TPIN', ZW: 'BP'
 };
 
+/** 
+ * RESTORED: ALL 11 CATEGORIES AND INDUSTRIES
+ */
 const industryMapping: Record<string, string[]> = {
     "Retail / Wholesale": [
-        "Supermarket / Grocery", "Boutique / Fashion", "Hardware Store", "Pharmacy / Drug Store",
-        "Electronics & Mobile", "Cosmetics & Beauty", "Auto Spare Parts", "Liquor Store", "Furniture & Home Decor"
+        "Local Shop / Kiosk", "Small-Scale Vendor / Hawker", "Market Stall / Trader", "General Supermarket / Grocery",
+        "Boutique / Fashion & Apparel", "Hardware & Construction Materials", "Pharmacy / Chemist / Drug Store",
+        "Agro-vet & Farm Supplies", "Electronics & Mobile Accessories", "Cosmetics & Beauty Shop",
+        "Auto Spare Parts", "Liquor Store / Wines & Spirits", "Bookshop & Stationery", "Furniture & Home Decor",
+        "Wholesale Distribution (FMCG)", "Pet Shop / Supplies", "Jewelry & Luxury Goods", "Toy Store", "Gas Station Shop"
     ],
     "Restaurant / Cafe": [
-        "Eatery / Restaurant", "Coffee Shop / Cafe", "Bakery", "Bar / Lounge", "Catering Services"
+        "Local Eatery (Kibanda / Mama Ntilie)", "Coffee Shop / Cafe", "Fast Food / Quick Service", "Fine Dining / Restaurant",
+        "Bakery & Pastry Shop", "Bar / Pub / Lounge", "Nightclub / Entertainment Venue", "Food Truck / Mobile Kitchen",
+        "Catering Services", "Pizzeria", "Ice Cream / Dessert Parlor", "Juice & Smoothie Bar"
+    ],
+    "Contractor": [
+        "Civil Engineering / Roadwork", "General Building Contractor", "Electrical Installation & Repair",
+        "Plumbing & Sanitation", "HVAC / Air Conditioning", "Interior Design & Fit-out", "Carpentry & Joinery",
+        "Roofing & Waterproofing", "Landscaping & Gardening", "Painting & Specialist Finishes", "Masonry & Tiling"
+    ],
+    "Field Service": [
+        "Cleaning & Janitorial Services", "Salon / Barber Shop / Spa", "Laundry & Dry Cleaning", "Security & Surveillance",
+        "Pest Control / Fumigation", "Waste Management / Recycling", "Appliance Repair", "Logistics / Courier / Delivery",
+        "Moving & Storage", "Tailoring & Fashion Design", "Shoe Repair & Cobbler", "Photography & Videography"
     ],
     "Professional Services": [
-        "Accounting & Tax", "Legal Services", "IT & Software Development", "Medical Clinic", "Marketing Agency", "Real Estate Brokerage"
+        "Accounting / Audit / Tax", "Legal Services / Law Firm", "IT Support & Software Development",
+        "Medical Clinic / Private Practice", "Dental Clinic", "Veterinary Services", "Marketing & Digital Agency",
+        "Real Estate Agency / Brokerage", "Architecture & Urban Planning", "HR & Recruitment Consultancy",
+        "Insurance Agency / Brokerage", "Business Consultancy"
     ],
-    "Contractor / Engineering": [
-        "Civil Engineering", "General Building", "Electrical Installation", "Plumbing & Sanitation"
+    "Distribution": [
+        "FMCG Distribution", "Pharmaceutical Wholesale", "Agricultural Produce Aggregator",
+        "Building Materials Distribution", "Industrial Chemicals / Supplies", "Textile & Fabric Wholesale",
+        "Hardware & Tool Distribution"
+    ],
+    "Lending / Microfinance": [
+        "Micro-lending / Credit Provider", "Savings & Credit Union", "Fintech Lending Platform",
+        "Debt Collection Agency", "Pawn Shop / Collateral Lending", "Leasing & Asset Finance"
+    ],
+    "Rentals / Real Estate": [
+        "Residential Property Management", "Commercial Property Management", "Short-stay / Airbnb Host",
+        "Car & Vehicle Hire", "Event Space / Tent & Chair Hire", "Construction Equipment Rental"
     ],
     "SACCO / Co-operative": [
-        "Transport SACCO", "Farmers Co-operative", "Investment Group", "Savings SACCO"
+        "Transport / Matatu SACCO", "Farmers Co-operative", "Investment Group (Chama)",
+        "Housing Co-operative", "Employee Savings SACCO", "Artisan / Trade Co-operative"
+    ],
+    "Telecom Services": [
+        "Cyber Cafe / Business Center", "Mobile Money & Agency Banking", "Internet Service Provider (ISP)",
+        "Network Infrastructure / Fiber", "Satellite & VOIP Services", "Telecom Hardware Sales"
     ],
     "Nonprofit": [
-        "NGO", "Foundation / Trust", "Community Based Organization", "Educational Institution"
+        "NGO (International / National)", "Religious Organization / Church / Mosque", "Foundation / Trust",
+        "Community Based Organization (CBO)", "School / Educational Institution", "Professional Association"
     ]
 };
 
 const signupSchema = z.object({
     fullName: z.string().min(2, "Full name required."),
     businessName: z.string().min(2, "Business name required."),
-    businessType: z.string().min(1, "Select category."),
-    industry: z.string().min(1, "Select industry."),
+    businessType: z.string().min(1, "Select business category."),
+    industry: z.string().min(1, "Select specific industry."),
     country: z.string().min(2),
-    state: z.string().min(1, "Region required."),
+    state: z.string().min(1, "Region selection required."),
     currency: z.string().min(3),
     taxNumber: z.string().min(4, "Tax ID required."),
     manualTaxRate: z.coerce.number().min(0).max(100),
-    phone: z.string().min(8, "Phone number required."),
+    phone: z.string().min(8, "Valid phone number required."),
     address: z.string().min(5, "Address required."),
     email: z.string().email("Valid email required."),
     password: z.string().min(8, "Password must be at least 8 characters."),
     acceptTerms: z.literal(true, {
-        errorMap: () => ({ message: "Please accept the terms of service." }),
+        errorMap: () => ({ message: "You must accept the terms of service." }),
     }),
 });
 
@@ -125,23 +162,20 @@ export default function SignupPage() {
     const availableStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode) || [], [selectedCountryCode]);
     const countryDetails = useMemo(() => Country.getCountryByCode(selectedCountryCode), [selectedCountryCode]);
 
-    // FIX: Corrected Phone Code logic to prevent "+undefined"
+    // Update phone logic to fix "+undefined"
     useEffect(() => {
         if (countryDetails) {
             form.setValue('currency', countryDetails.currency);
-            
             const code = (countryDetails as any).phonecode || (countryDetails as any).phoneCode;
             if (code) {
                 form.setValue('phone', `+${code.replace('+', '')}`);
             }
-            
             const c = selectedCountryCode;
             if (c === 'UG' || c === 'TZ' || c === 'RW') form.setValue('manualTaxRate', 18.0);
             else if (c === 'KE') form.setValue('manualTaxRate', 16.0);
             else if (['GB', 'FR', 'DE'].includes(c)) form.setValue('manualTaxRate', 20.0);
             else if (c === 'ZA') form.setValue('manualTaxRate', 15.0);
             else form.setValue('manualTaxRate', 0);
-            
             form.setValue('state', ''); 
         }
     }, [selectedCountryCode, countryDetails, form]);
@@ -174,47 +208,47 @@ export default function SignupPage() {
         if (data.session) {
             router.push(`/${locale}/dashboard`);
         } else {
-            toast.success('Account created successfully. Check your email to verify.', { duration: 6000 });
+            toast.success('Account created. Please check your email.');
             router.push(`/${locale}/auth/check-email`);
         }
         setIsLoading(false);
     };
 
     return (
-        <div className="min-h-screen flex bg-white font-sans antialiased text-slate-900">
+        <div className="min-h-screen flex bg-white font-sans antialiased text-slate-900 flex-row-reverse">
             
-            {/* LEFT PANEL: COMPREHENSIVE SIGNUP FORM */}
+            {/* RIGHT PANEL: RESTORED DEEP LONG FORM */}
             <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-20 overflow-y-auto">
                 <div className="w-full max-w-2xl space-y-10 py-10">
                     
-                    <header className="space-y-2">
-                        <div className="lg:hidden flex mb-8">
-                             <img src="/logo.png" alt="BBU1 Logo" className="h-14 w-auto" />
+                    <header className="text-center space-y-4">
+                        <div className="flex justify-center mb-4">
+                             <img src="/logo.png" alt="BBU1 Logo" className="h-16 w-auto" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Create Business Account</h2>
-                        <p className="text-slate-500 font-medium italic">bold business solutions</p>
+                        <p className="text-slate-500 font-medium">bold business solutions</p>
                     </header>
 
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleSignup)} className="space-y-10">
                             
-                            {/* SECTION: PERSONAL INFORMATION */}
+                            {/* SECTION: PERSONAL */}
                             <div className="space-y-6">
                                 <h3 className="text-xs font-bold uppercase text-blue-600 tracking-wider flex items-center gap-2">
-                                    <UserCircle size={18} /> Personal Details
+                                    <UserCircle size={18} /> Personal Information
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="fullName" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Full Name</FormLabel>
-                                            <FormControl><Input placeholder="John Doe" className="h-11 rounded-lg border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input placeholder="John Doe" className="h-11 rounded-lg border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
                                     <FormField control={form.control} name="businessName" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Business Name</FormLabel>
-                                            <FormControl><Input placeholder="Acme Corp" className="h-11 rounded-lg border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input placeholder="Acme Corp Ltd" className="h-11 rounded-lg border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -224,14 +258,14 @@ export default function SignupPage() {
                             {/* SECTION: LOCATION & TAX */}
                             <div className="space-y-6">
                                 <h3 className="text-xs font-bold uppercase text-blue-600 tracking-wider flex items-center gap-2">
-                                    <MapPin size={18} /> Location & Tax Information
+                                    <MapPin size={18} /> Business Location & Tax
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                                     <FormField control={form.control} name="country" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Country</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger className="h-11 border-slate-200 shadow-sm"><SelectValue/></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue/></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
                                                     <ScrollArea className="h-64">
                                                         {allCountries.map(c => <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>)}
@@ -245,7 +279,7 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">State / Region</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger className="h-11 border-slate-200 shadow-sm"><SelectValue placeholder="Select"/></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Region"/></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
                                                     <ScrollArea className="h-64">
                                                         {availableStates.length > 0 ? (
@@ -263,14 +297,14 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="currency" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Currency</FormLabel>
-                                            <FormControl><Input readOnly className="h-11 bg-slate-50 font-semibold text-slate-500 border-slate-200" {...field} /></FormControl>
+                                            <FormControl><Input readOnly className="h-11 bg-slate-50 font-semibold border-slate-200" {...field} /></FormControl>
                                         </FormItem>
                                     )} />
 
                                     <FormField control={form.control} name="taxNumber" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">{taxLabelAtlas[selectedCountryCode] || 'TIN'} Number</FormLabel>
-                                            <FormControl><Input placeholder="Tax ID" className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input placeholder="Tax ID" className="h-11 border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -278,7 +312,7 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="manualTaxRate" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Tax Rate (%)</FormLabel>
-                                            <FormControl><Input type="number" step="0.01" className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input type="number" step="0.01" className="h-11 border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -286,7 +320,7 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="phone" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Phone Number</FormLabel>
-                                            <FormControl><Input className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input className="h-11 border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -294,13 +328,13 @@ export default function SignupPage() {
                                 <FormField control={form.control} name="address" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-xs font-semibold text-slate-700">Business Address</FormLabel>
-                                        <FormControl><Input placeholder="Building, Street, City" className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
+                                        <FormControl><Input placeholder="Building, Street, City" className="h-11 border-slate-200" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                             </div>
 
-                            {/* SECTION: INDUSTRY & CATEGORY */}
+                            {/* SECTION: INDUSTRY (RESTORED ALL 11) */}
                             <div className="space-y-6">
                                 <h3 className="text-xs font-bold uppercase text-blue-600 tracking-wider flex items-center gap-2">
                                     <Layers size={18} /> Business Classification
@@ -310,7 +344,7 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Category</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger className="h-11 border-slate-200 shadow-sm"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     <SelectGroup>
                                                         {Object.keys(industryMapping).map(k => (
@@ -326,7 +360,7 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Specific Industry</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value} disabled={!selectedType}>
-                                                <FormControl><SelectTrigger className="h-11 border-slate-200 shadow-sm"><SelectValue placeholder="Select Industry" /></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Industry" /></SelectTrigger></FormControl>
                                                 <SelectContent className="max-h-[300px]">
                                                     <ScrollArea className="h-64">
                                                         {(industryMapping[selectedType] || []).map(s => (
@@ -340,7 +374,7 @@ export default function SignupPage() {
                                 </div>
                             </div>
 
-                            {/* SECTION: LOGIN CREDENTIALS */}
+                            {/* SECTION: SECURITY */}
                             <div className="space-y-6 pt-6 border-t border-slate-100">
                                 <h3 className="text-xs font-bold uppercase text-blue-600 tracking-wider flex items-center gap-2">
                                     <Database size={18} /> Security Credentials
@@ -349,7 +383,7 @@ export default function SignupPage() {
                                     <FormField control={form.control} name="email" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Email Address</FormLabel>
-                                            <FormControl><Input type="email" placeholder="name@company.com" className="h-11 border-slate-200 shadow-sm" {...field} /></FormControl>
+                                            <FormControl><Input type="email" placeholder="name@company.com" className="h-11 border-slate-200" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -357,8 +391,8 @@ export default function SignupPage() {
                                         <FormItem>
                                             <FormLabel className="text-xs font-semibold text-slate-700">Password</FormLabel>
                                             <div className="relative">
-                                                <FormControl><Input type={isVisible ? 'text' : 'password'} className="h-11 pr-12 border-slate-200 shadow-sm" {...field} /></FormControl>
-                                                <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+                                                <FormControl><Input type={isVisible ? 'text' : 'password'} className="h-11 pr-12 border-slate-200" {...field} /></FormControl>
+                                                <button type="button" onClick={() => setIsVisible(!isVisible)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors">
                                                     {isVisible ? <EyeOff size={18}/> : <Eye size={18}/>}
                                                 </button>
                                             </div>
@@ -379,7 +413,12 @@ export default function SignupPage() {
                                                     className="w-5 h-5 rounded border-slate-300"
                                                 />
                                             </FormControl>
-                                            <div className="space-y-1"><FormLabel className="text-xs font-medium text-slate-600 leading-normal">I agree to the <TermsDialog /> and Privacy Policy.</FormLabel><FormMessage /></div>
+                                            <div className="space-y-1">
+                                                <FormLabel className="text-xs font-medium text-slate-600 leading-normal">
+                                                    I agree to the <TermsDialog /> and Privacy Policy.
+                                                </FormLabel>
+                                                <FormMessage />
+                                            </div>
                                         </FormItem>
                                     )}
                                 />
@@ -397,7 +436,7 @@ export default function SignupPage() {
                                 <span className="text-xs font-medium text-slate-500">Already have an account?</span>
                                 <Link 
                                     href={`/${params?.locale || 'en'}/login`} 
-                                    className="text-xs font-bold text-blue-600 hover:text-blue-700"
+                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
                                 >
                                     Log In
                                 </Link>
@@ -407,31 +446,26 @@ export default function SignupPage() {
                 </div>
             </div>
 
-            {/* RIGHT PANEL: ENTERPRISE VISION PANEL */}
-            <div className="hidden lg:flex w-[400px] bg-slate-950 text-white flex-col justify-between p-12 lg:p-20 relative overflow-hidden shrink-0 border-l border-slate-900">
-                <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('/patterns/grid-light.svg')] bg-[length:40px_40px]" />
-                
+            {/* LEFT PANEL: RESTORED BRANDING (BLUE THEME, NO GRIDS) */}
+            <div className="hidden lg:flex w-[450px] bg-blue-900 text-white flex-col justify-between p-12 lg:p-20 relative overflow-hidden shrink-0">
                 <div className="relative z-10 space-y-12">
-                    {/* BRANDING */}
+                    {/* COMPANY "B" LOGO */}
                     <div className="flex items-center gap-4">
-                        <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/20">
-                            <Rocket className="text-white" size={32} />
-                        </div>
+                        <img src="/logo.png" alt="BBU1 Logo" className="h-14 w-auto brightness-0 invert" />
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight">BBU1 <span className="text-blue-400 font-medium ml-1">GLOBAL</span></h1>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">bold business solutions</p>
+                            <h1 className="text-2xl font-bold tracking-tight">BBU1 GLOBAL</h1>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300">bold business solutions</p>
                         </div>
                     </div>
 
                     <div className="space-y-6">
-                        <h2 className="text-3xl font-bold leading-tight">Your unified Operating System for business.</h2>
-                        <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                            Sign up to experience a unified platform where everything resides in one place. 
+                        <p className="text-blue-100 text-sm leading-relaxed font-medium">
+                            Signup to experience a platform or system with everything in one place for your organisation. 
                             Built for modern organizations operating in a complex global market.
                         </p>
                     </div>
 
-                    {/* FEATURE SET */}
+                    {/* FULL FEATURE SET */}
                     <div className="grid grid-cols-1 gap-5">
                         {[
                             { icon: FileCheck, text: "Internal & External Auditing" },
@@ -442,8 +476,8 @@ export default function SignupPage() {
                             { icon: Calculator, text: "Cloud Accounting & Invoicing" },
                             { icon: ShieldCheck, text: "HR, Payroll & AI Insights" }
                         ].map((item, i) => (
-                            <div key={i} className="flex items-center gap-4 text-sm font-semibold text-slate-300">
-                                <item.icon size={18} className="text-blue-500 shrink-0" />
+                            <div key={i} className="flex items-center gap-4 text-sm font-semibold text-blue-100">
+                                <item.icon size={18} className="text-blue-400 shrink-0" />
                                 <span>{item.text}</span>
                             </div>
                         ))}
@@ -451,7 +485,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="relative z-10 pt-10 border-t border-white/10">
-                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">
+                    <p className="text-[11px] text-blue-300 font-bold uppercase tracking-widest">
                         Built for the world · Trusted by Enterprises
                     </p>
                 </div>
@@ -460,17 +494,55 @@ export default function SignupPage() {
     );
 }
 
+/** 
+ * RESTORED: FULL TERMS OF SERVICE (10 POINTS)
+ */
 function TermsDialog() {
     return (
         <Dialog>
             <DialogTrigger asChild><button type="button" className="text-blue-600 font-bold hover:underline">Terms of Service</button></DialogTrigger>
-            <DialogContent className="max-w-xl bg-white rounded-xl p-0 overflow-hidden outline-none">
-                <DialogHeader className="p-6 border-b border-slate-100"><DialogTitle className="text-lg font-bold flex items-center gap-2"><ScrollText className="w-5 h-5 text-blue-600" />Terms of Service</DialogTitle></DialogHeader>
-                <ScrollArea className="h-[50vh] p-8 text-slate-600 text-sm leading-relaxed">
+            <DialogContent className="max-w-2xl bg-white rounded-xl p-0 overflow-hidden outline-none">
+                <DialogHeader className="p-6 border-b border-slate-100 bg-white">
+                    <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                        <ScrollText className="w-5 h-5 text-blue-600" />
+                        Terms of Service
+                    </DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] p-10 text-slate-600 text-sm leading-relaxed">
                     <div className="space-y-6">
                         <p className="font-bold text-slate-900">Effective Date: June 2026</p>
-                        <p>BBU1 is a unified operating system for business. By registering, you agree to provide accurate information for accounting, auditing, and tax purposes.</p>
-                        <p>We implement top-tier security for your data, including end-to-end encryption for sensitive financial records.</p>
+                        <p>Welcome to BBU1. These Terms of Service ("Terms") govern your access to and use of the BBU1 website, products, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">1. Acceptance of Terms</h4>
+                        <p>By creating an account, accessing, or using the Services, you acknowledge that you have read, understood, and agree to be bound by these Terms, and by our Privacy Policy and Cookie Policy.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">2. Changes to Terms</h4>
+                        <p>We reserve the right to modify these Terms at any time. We will notify you of any changes by posting the new Terms on the BBU1 website.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">3. User Accounts</h4>
+                        <p>To access certain features of the Services, you must register for an account. You agree to provide accurate, current, and complete information during the registration process.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">4. Intellectual Property</h4>
+                        <p>All content, trademarks, service marks, trade names, logos, and intellectual property rights displayed on the Services are the property of BBU1 or its licensors.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">5. User Conduct</h4>
+                        <p>You agree not to use the Services for any unlawful purpose or in any way that might harm, abuse, or interfere with any other user.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">6. Payments and Billing</h4>
+                        <p>If you subscribe to any paid Services, you agree to pay all applicable fees and taxes. BBU1 reserves the right to change its pricing at any time.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">7. Termination</h4>
+                        <p>We may terminate or suspend your access to the Services immediately, without prior notice or liability, for any reason whatsoever.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">8. Disclaimer of Warranties</h4>
+                        <p>The Services are provided on an "AS IS" and "AS AVAILABLE" basis. BBU1 makes no warranties, expressed or implied, regarding the Services.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">9. Limitation of Liability</h4>
+                        <p>In no event shall BBU1, nor its directors or employees, be liable for any indirect, incidental, or punitive damages resulting from your use of the Services.</p>
+                        
+                        <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-widest">10. Governing Law</h4>
+                        <p>These Terms shall be governed and construed in accordance with the laws of Uganda, without regard to its conflict of law provisions.</p>
+                        
                         <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-xs font-medium text-slate-500">Contact: support@bbu1.com</div>
                     </div>
                 </ScrollArea>
