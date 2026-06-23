@@ -21,7 +21,7 @@ import {
     Loader2, Eye, EyeOff, Layers, MapPin, 
     ShieldCheck, Calculator, ScrollText, 
     Rocket, CheckCircle2, Globe, FileCheck, Database,
-    FileText, UserCircle
+    FileText, UserCircle, Target
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
