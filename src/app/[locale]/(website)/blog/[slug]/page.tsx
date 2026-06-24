@@ -1,8 +1,9 @@
 import { Metadata } from "next";
-import { 
-  Calendar, User, ArrowLeft, Tag, Share2, Clock, 
-  CheckCircle2, ArrowRight, Linkedin, Twitter, Facebook, MessageCircle 
+import {
+  Calendar, User, ArrowLeft, Tag, Share2, Clock,
+  CheckCircle2, ArrowRight, Link2, X, Globe2, MessageCircle
 } from "lucide-react";
+import BackNavbar from '@/components/BackNavbar';
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -166,7 +167,8 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 
   return (
     <article className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100">
-      
+      <BackNavbar backHref="/blog" backLabel="Blog" />
+
       {/* --- HERO SECTION --- */}
       <header className="relative w-full bg-slate-50 border-b border-slate-100">
         <div className="container mx-auto px-6 pt-24 pb-16 max-w-7xl">
@@ -224,13 +226,13 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                </p>
                <div className="grid grid-cols-2 gap-3">
                   <a href={shareLinks.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-600 hover:text-blue-600 transition-all">
-                     <Linkedin className="h-5 w-5" />
+                     <Link2 className="h-5 w-5" />
                   </a>
                   <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-400 hover:text-blue-400 transition-all">
-                     <Twitter className="h-5 w-5" />
+                     <X className="h-5 w-5" />
                   </a>
                   <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-700 hover:text-blue-700 transition-all">
-                     <Facebook className="h-5 w-5" />
+                     <Globe2 className="h-5 w-5" />
                   </a>
                   <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center h-12 rounded-xl bg-slate-50 border border-slate-200 hover:border-green-500 hover:text-green-500 transition-all">
                      <MessageCircle className="h-5 w-5" />

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useChat } from '@ai-sdk/react';
-import { type CoreMessage } from 'ai';
+// CoreMessage type removed (not exported by installed ai version)
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -19,10 +19,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Facebook, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, Linkedin, LucideIcon, Menu, ArrowRight, Utensils, WifiOff, Rocket, Send, Signal, Store, Twitter, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck, Mail, Globe2, Target, Layers, Microscope, Cpu, Award, BookOpen, Quote, Heart, Smartphone, User
+    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, Utensils, WifiOff, Rocket, Send, Signal, Store, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck, Mail, Globe2, Link2, Target, Layers, Microscope, Cpu, Award, BookOpen, Quote, Heart, Smartphone, User, Home
 } from 'lucide-react';
-import { toast } from 'sonner'; 
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import FooterNewsletter from '@/components/FooterNewsletter';
+import NewsletterPopup from '@/components/NewsletterPopup';
 // --- Constants ---
 const COOKIE_CONSENT_NAME = 'bbu1_cookie_consent';
 const COOKIE_EXPIRY_DAYS = 365;
@@ -94,7 +96,7 @@ const siteConfig = {
         socials: { 
             linkedin: "https://www.linkedin.com/in/mwesigwa-jimmy-8248a1243", 
             twitter: "https://x.com/MwesigwaJimmy5", 
-            facebook: "https://facebook.com/bbu1official" // Update this if you have the link
+            facebook: "https://facebook.com/bbu1official" // 
         }
     },
     featureSets: [
@@ -530,11 +532,47 @@ const siteConfig = {
 };
 
 // --- Framer Motion Variants ---
-const sectionVariants: Variants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut", staggerChildren: 0.2 } } };
-const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
-const textVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } } };
-const heroImageVariants: Variants = { initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } } };
-const pillarCardContentVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } } };
+const EASE_SPRING = [0.16, 1, 0.3, 1] as const;
+
+const sectionVariants: Variants = {
+    hidden: { opacity: 0, y: 55, filter: 'blur(3px)' },
+    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.85, ease: EASE_SPRING, staggerChildren: 0.13 } }
+};
+const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 28, filter: 'blur(4px)' },
+    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.65, ease: EASE_SPRING } }
+};
+const textVariants: Variants = {
+    hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE_SPRING } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.5, ease: "easeIn" } }
+};
+const heroImageVariants: Variants = {
+    initial: { scale: 1 }, animate: { scale: [1, 1.05, 1], transition: { duration: 20, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" } }
+};
+const pillarCardContentVariants: Variants = {
+    hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_SPRING } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }
+};
+const slideLeft: Variants = {
+    hidden: { opacity: 0, x: -55, filter: 'blur(3px)' },
+    visible: { opacity: 1, x: 0, filter: 'blur(0px)', transition: { duration: 0.75, ease: EASE_SPRING } }
+};
+const slideRight: Variants = {
+    hidden: { opacity: 0, x: 55, filter: 'blur(3px)' },
+    visible: { opacity: 1, x: 0, filter: 'blur(0px)', transition: { duration: 0.75, ease: EASE_SPRING } }
+};
+const scaleIn: Variants = {
+    hidden: { opacity: 0, scale: 0.88, filter: 'blur(4px)' },
+    visible: { opacity: 1, scale: 1, filter: 'blur(0px)', transition: { duration: 0.6, ease: EASE_SPRING } }
+};
+const staggerContainer: Variants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
+};
+const staggerItem: Variants = {
+    hidden: { opacity: 0, y: 38, filter: 'blur(3px)' },
+    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.58, ease: EASE_SPRING } }
+};
 
 // --- CORRECTED ListItem Component ---
 const ListItem = forwardRef<ElementRef<"div">, ComponentPropsWithoutRef<"div"> & { icon: LucideIcon }>(({ className, title, children, icon: Icon, ...props }, ref) => (
@@ -628,296 +666,337 @@ const FullScreenDialog = ({ children, title, description, backgroundImage, icon:
     );
 };
 
+const FEATURE_SLUGS: Record<string, string> = {
+    'Human Resources': 'human-resources',
+    'CRM': 'crm',
+    'Finance & Accounting': 'finance-accounting',
+    'Inventory & Supply Chain': 'inventory-supply-chain',
+    'Sales & E-commerce': 'sales-ecommerce',
+    'Project Management': 'project-management',
+    'Compliance & Governance': 'compliance-governance',
+    'Telecom Services': 'telecom-services',
+    'Business Intelligence & AI': 'business-intelligence-ai',
+};
+
+const INDUSTRY_SLUGS: Record<string, string> = {
+    'Retail / Wholesale': 'retail-wholesale',
+    'Restaurant / Cafe': 'restaurant-cafe',
+    'Professional Services': 'professional-services',
+    'Manufacturing': 'manufacturing',
+    'Construction & Engineering': 'construction-engineering',
+    'Field Service Management': 'field-service',
+    'Distribution & Logistics': 'distribution-logistics',
+    'Lending / Microfinance': 'lending-microfinance',
+    'Real Estate & Property Management': 'real-estate',
+    'SACCO / Co-operative': 'sacco-cooperative',
+    'Telecom Services': 'telecom',
+    'Nonprofit & NGOs': 'nonprofit-ngo',
+    'Healthcare & Clinics': 'healthcare',
+    'Education & Institutions': 'education',
+    'Agriculture & Agribusiness': 'agriculture',
+    'Creative Agencies': 'creative-agencies',
+    'Tech & Software': 'tech-software',
+};
+
 const MegaMenuHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [openMenu, setOpenMenu] = useState<'features' | 'industries' | null>(null);
     const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
+    const [scrolled, setScrolled] = useState(false);
+    const navRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handler = (e: Event) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
+        const onScroll = () => setScrolled(window.scrollY > 30);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+
+    useEffect(() => {
+        const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
         window.addEventListener('beforeinstallprompt', handler);
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
+    useEffect(() => {
+        const onClickOutside = (e: MouseEvent) => {
+            if (navRef.current && !navRef.current.contains(e.target as Node)) setOpenMenu(null);
+        };
+        document.addEventListener('mousedown', onClickOutside);
+        return () => document.removeEventListener('mousedown', onClickOutside);
+    }, []);
+
     const handleInstallClick = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            setDeferredPrompt(null);
-        }
+        if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; setDeferredPrompt(null); }
     };
 
-    return (
-        <header className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/60">
-            <div className="container mx-auto flex h-16 items-center justify-between px-4">
-                {/* Brand Identity */}
-                <Link href="/" className="flex items-center space-x-2 font-bold text-lg text-blue-600 hover:text-blue-700 transition-colors">
-                    <Rocket className="h-6 w-6" /> <span>{siteConfig.name}</span>
-                </Link>
+    const toggleMenu = (key: 'features' | 'industries') =>
+        setOpenMenu(prev => (prev === key ? null : key));
 
-                {/* Desktop Navigation Menu */}
-                <NavigationMenu className="hidden lg:flex">
-                    <NavigationMenuList className="gap-1">
-                        
-                        {/* Features Dropdown */}
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger className="bg-transparent hover:bg-slate-50 font-semibold text-slate-600 transition-all">
-                                Features
-                            </NavigationMenuTrigger>
-                            <NavigationMenuContent className="bg-white border border-slate-200 shadow-2xl">
-                                <ScrollArea className="h-[60vh] w-[800px] max-w-[94vw] rounded-md">
-                                    <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-                                        <h4 className="font-bold text-blue-600 uppercase text-[10px] tracking-widest">Platform Capabilities</h4>
-                                        <Link href="/features" className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-2">
-                                            Explorer Features <ArrowRight size={12}/>
-                                        </Link>
-                                    </div>
-                                    <ul className="grid gap-3 p-6 md:grid-cols-2">
+    const navLinkClass = cn(
+        "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors",
+        scrolled
+            ? "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+            : "text-slate-200 hover:text-white hover:bg-white/10"
+    );
+
+    return (
+        <>
+        <header className={cn(
+            "fixed top-0 z-40 w-full transition-all duration-300",
+            scrolled
+                ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-800/70 shadow-sm"
+                : "bg-transparent border-b border-transparent"
+        )}>
+            <div className="container mx-auto flex h-16 items-center justify-between px-4 gap-2">
+
+                {/* Logo — visible on all screens, animates on mount */}
+                <motion.div
+                    initial={{ opacity: 0, x: -18 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="shrink-0"
+                >
+                    <Link href="/" className="group flex items-center gap-2 font-bold text-lg">
+                        <motion.span
+                            animate={{ rotate: [0, -14, 0], scale: [1, 1.15, 1] }}
+                            transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 4 }}
+                            className="inline-flex"
+                        >
+                            <Rocket className={cn("h-5 w-5 transition-colors duration-300", scrolled ? "text-blue-600" : "text-blue-400")} />
+                        </motion.span>
+                        <span className={cn("font-extrabold tracking-tight transition-colors duration-300", scrolled ? "text-blue-600" : "text-white")}>
+                            {siteConfig.name}
+                        </span>
+                    </Link>
+                </motion.div>
+
+                {/* Desktop Nav */}
+                <nav ref={navRef} className="hidden lg:flex items-center gap-0.5 relative">
+
+                    {/* Home */}
+                    <Link href="/" className={navLinkClass}>
+                        <Home className="h-3.5 w-3.5" />
+                    </Link>
+
+                    {/* Features dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggleMenu('features')}
+                            className={cn(navLinkClass, openMenu === 'features' && 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white')}
+                        >
+                            Features <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", openMenu === 'features' && 'rotate-180')} />
+                        </button>
+                        {openMenu === 'features' && (
+                            <div className="absolute left-0 top-full mt-2 w-[760px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Platform Capabilities</span>
+                                    <Link href="/features" onClick={() => setOpenMenu(null)} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-1.5">
+                                        All Features <ArrowRight size={11} />
+                                    </Link>
+                                </div>
+                                <div className="max-h-[60vh] overflow-y-auto">
+                                    <ul className="grid grid-cols-2 gap-1 p-4">
                                         {siteConfig.featureSets.map((feature) => (
                                             <li key={feature.title} className="list-none">
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <button className="w-full text-left">
-                                                            <ListItem title={feature.title} icon={feature.icon}>{feature.description}</ListItem>
-                                                        </button>
-                                                    </DialogTrigger>
-                                                    <FullScreenDialog title={feature.title} description={feature.description} backgroundImage={feature.backgroundImage} icon={feature.icon}>
-                                                        <div className="py-4 space-y-6">
-                                                            {feature.details.map(detail => (
-                                                                <div key={detail.name} className="flex items-start">
-                                                                    <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-4 mt-1 flex-shrink-0"/>
-                                                                    <div>
-                                                                        <h4 className="font-bold text-lg text-slate-900">{detail.name}</h4>
-                                                                        <p className="text-base text-slate-500 mt-1 leading-relaxed">{detail.detail}</p>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </FullScreenDialog>
-                                                </Dialog>
+                                                <Link href={`/features/${FEATURE_SLUGS[feature.title] || ''}`} onClick={() => setOpenMenu(null)}>
+                                                    <ListItem title={feature.title} icon={feature.icon}>{feature.description}</ListItem>
+                                                </Link>
                                             </li>
                                         ))}
                                     </ul>
-                                </ScrollArea>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
-                        {/* Industries Dropdown */}
-                        <NavigationMenuItem>
-                            <NavigationMenuTrigger className="bg-transparent hover:bg-slate-50 font-semibold text-slate-600 transition-all">
-                                Industries
-                            </NavigationMenuTrigger>
-                            <NavigationMenuContent className="bg-white border border-slate-200 shadow-2xl">
-                                <ScrollArea className="h-[60vh] w-[800px] max-w-[94vw] rounded-md">
-                                    <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-                                        <h4 className="font-bold text-blue-600 uppercase text-[10px] tracking-widest">Industry Solutions</h4>
-                                        <Link href="/industries" className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-2">
-                                            View All Sectors <ArrowRight size={12}/>
-                                        </Link>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 p-6">
-                                        {['Common', 'Trades & Services', 'Specialized'].map(category => (
-                                            <div key={category} className="space-y-3">
-                                                <h3 className="font-bold text-[10px] uppercase tracking-widest text-slate-400 border-b pb-2">{category}</h3>
+                    {/* Industries dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggleMenu('industries')}
+                            className={cn(navLinkClass, openMenu === 'industries' && 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white')}
+                        >
+                            Industries <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", openMenu === 'industries' && 'rotate-180')} />
+                        </button>
+                        {openMenu === 'industries' && (
+                            <div className="absolute left-0 top-full mt-2 w-[820px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Industry Solutions</span>
+                                    <Link href="/industries" onClick={() => setOpenMenu(null)} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-1.5">
+                                        All Sectors <ArrowRight size={11} />
+                                    </Link>
+                                </div>
+                                <div className="max-h-[65vh] overflow-y-auto">
+                                    <div className="grid grid-cols-2 gap-6 p-5">
+                                        {(['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'] as const).map(category => (
+                                            <div key={category} className="space-y-0.5">
+                                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-2 mb-1 px-3">{category}</h3>
                                                 {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
-                                                    <Dialog key={item.name}>
-                                                        <DialogTrigger asChild>
-                                                            <button className="w-full text-left group">
-                                                                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                                                                    <item.icon size={16} className="text-slate-400 group-hover:text-blue-600" />
-                                                                    <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-700">{item.name}</span>
-                                                                </div>
-                                                            </button>
-                                                        </DialogTrigger>
-                                                        <FullScreenDialog title={item.name} description={item.description} backgroundImage={item.backgroundImage} icon={item.icon}>
-                                                            <div className="max-w-3xl space-y-8">
-                                                                <p className="text-xl text-slate-600 leading-relaxed font-medium">{item.fullDescription}</p>
-                                                                <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
-                                                                    <h4 className="font-bold text-blue-600 uppercase text-xs tracking-widest mb-6">Core Industry DNA</h4>
-                                                                    <ul className="grid gap-4">
-                                                                        {item.keyFeatures.map((feature, idx) => (
-                                                                            <li key={idx} className="flex items-start gap-3"><CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" /><span className="text-slate-700 font-medium">{feature}</span></li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            </div>
-                                                        </FullScreenDialog>
-                                                    </Dialog>
+                                                    <Link key={item.name} href={`/industries/${INDUSTRY_SLUGS[item.name] || ''}`} onClick={() => setOpenMenu(null)}>
+                                                        <ListItem title={item.name} icon={item.icon}>{item.description}</ListItem>
+                                                    </Link>
                                                 ))}
                                             </div>
                                         ))}
                                     </div>
-                                </ScrollArea>
-                            </NavigationMenuContent>
-                        </NavigationMenuItem>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
-                        {/* Standard Links */}
-                        <NavigationMenuItem>
-                            <Link href="/download" legacyBehavior passHref>
-                                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent text-blue-600 font-bold hover:bg-blue-50")}>
-                                    Download App
-                                </NavigationMenuLink>
-                            </Link>
-                        </NavigationMenuItem>
+                    {/* Plain links */}
+                    <Link href="/download" className={cn(navLinkClass, scrolled ? "text-blue-600 dark:text-blue-400" : "text-blue-300", "font-bold")}>
+                        Download App
+                    </Link>
+                    <Link href="/aura-ai" className={cn(navLinkClass, scrolled ? "text-blue-500 dark:text-blue-400" : "text-blue-300", "font-bold")}>
+                        <Sparkles className="h-3.5 w-3.5" /> Aura AI
+                    </Link>
+                    <Link href="/blog" className={navLinkClass}>
+                        Journal
+                    </Link>
+                </nav>
 
-                        <NavigationMenuItem>
-                            <Link href="/aura-ai" legacyBehavior passHref>
-                                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent text-blue-500 font-bold")}>
-                                    <Sparkles className="h-3 w-3 mr-1.5" /> Aura AI
-                                </NavigationMenuLink>
-                            </Link>
-                        </NavigationMenuItem>
-
-                        <NavigationMenuItem>
-                            <Link href="/blog" legacyBehavior passHref>
-                                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent font-semibold")}>
-                                    Journal
-                                </NavigationMenuLink>
-                            </Link>
-                        </NavigationMenuItem>
-                    </NavigationMenuList>
-                </NavigationMenu>
-
-                {/* Right Side Actions */}
-                <div className="hidden lg:flex items-center gap-3">
+                {/* Desktop right-side actions */}
+                <div className="hidden lg:flex items-center gap-2 shrink-0">
                     {deferredPrompt && (
-                        <Button variant="outline" onClick={handleInstallClick} className="border-blue-600 text-blue-600 font-bold hover:bg-blue-50">
-                            <DownloadCloud className="h-4 w-4 mr-2" /> Install
+                        <Button variant="outline" size="sm" onClick={handleInstallClick} className={cn("font-bold", scrolled ? "border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-600" : "bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white")}>
+                            <DownloadCloud className="h-4 w-4 mr-1.5" /> Install
                         </Button>
                     )}
-                    <Button variant="outline" asChild className="border-slate-200 text-slate-600 font-bold hover:bg-slate-50">
+                    <Button variant="outline" size="sm" asChild className={cn("font-semibold transition-colors", scrolled ? "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" : "bg-transparent border-white/25 text-white hover:bg-white/10 hover:text-white")}>
                         <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
                     </Button>
-                    <Button variant="ghost" asChild className="font-bold text-slate-500">
+                    <Button variant="ghost" size="sm" asChild className={cn("font-semibold", scrolled ? "text-slate-500 dark:text-slate-400" : "text-slate-200 hover:text-white hover:bg-white/10")}>
                         <Link href="/login">Log In</Link>
                     </Button>
-                    <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/20">
+                    <Button size="sm" asChild className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shadow-blue-600/30">
                         <Link href="/signup">Get Started</Link>
                     </Button>
                     <ModeToggle />
                 </div>
 
-                {/* Mobile Controls */}
-                <div className="lg:hidden flex items-center gap-2">
+                {/* Mobile controls */}
+                <div className="lg:hidden flex items-center gap-1.5 shrink-0">
                     <ModeToggle />
-                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
-                        {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(v => !v)}
+                        className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        aria-label="Toggle menu"
+                    >
+                        {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </button>
                 </div>
             </div>
-{/* Mobile Sidebar Overlay - FIXED FOR NO OVERLAP & ADDED DROPDOWNS */}
-            <AnimatePresence>
+        </header>
+
+        {/* Mobile full-screen menu — outside <header> so backdrop-filter doesn't trap it */}
+        <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div 
-                        initial={{ opacity: 0, x: '100%' }} 
-                        animate={{ opacity: 1, x: 0 }} 
-                        exit={{ opacity: 0, x: '100%' }} 
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
-                        className="lg:hidden fixed inset-0 top-16 bg-white dark:bg-slate-950 z-[200] overflow-y-auto"
+                    <motion.div
+                        initial={{ opacity: 0, x: '100%' }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: '100%' }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+                        className="fixed inset-x-0 bottom-0 z-[200] overflow-y-auto"
+                        style={{ top: '64px', background: 'linear-gradient(135deg, #0f172a 0%, #0d1a3a 50%, #0f172a 100%)' }}
                     >
-                        <div className="container mx-auto py-8 px-6 space-y-6">
+                        <div className="w-full max-w-lg mx-auto py-5 px-4 space-y-3">
                             <nav className="flex flex-col">
-                                {/* Accordion for Mobile Dropdowns */}
+                                <Link href="/" className="flex items-center gap-3 py-3.5 border-b border-white/10 text-base font-bold text-white hover:text-blue-400 transition-colors group" onClick={() => setIsMobileMenuOpen(false)}>
+                                    <span className="p-2 rounded-xl bg-white/10 group-hover:bg-blue-600/40 transition-colors"><Home size={17} className="text-blue-400" /></span>
+                                    Home
+                                </Link>
+
                                 <Accordion type="single" collapsible className="w-full">
-                                    
-                                    {/* FEATURES DROPDOWN */}
-                                    <AccordionItem value="features" className="border-b border-slate-100 dark:border-slate-800">
-                                        <AccordionTrigger className="text-xl font-bold py-4 hover:no-underline text-slate-900 dark:text-white">
+                                    <AccordionItem value="features" className="border-b border-white/10">
+                                        <AccordionTrigger className="text-base font-bold py-3.5 hover:no-underline text-white [&>svg]:text-slate-400">
                                             Features
                                         </AccordionTrigger>
-                                        <AccordionContent className="pt-2 pb-6 space-y-3">
+                                        <AccordionContent className="pb-4 space-y-1.5">
                                             {siteConfig.featureSets.map((feature) => (
-                                                <Link 
-                                                    key={feature.title} 
-                                                    href="/features" 
-                                                    className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+                                                <Link key={feature.title} href="/features"
+                                                    className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] border border-white/10 transition-colors"
                                                     onClick={() => setIsMobileMenuOpen(false)}
                                                 >
-                                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                                                        <feature.icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                                    </div>
-                                                    <span className="font-bold text-slate-800 dark:text-slate-200">{feature.title}</span>
+                                                    <span className="p-1.5 bg-blue-600/30 rounded-lg shrink-0"><feature.icon className="h-4 w-4 text-blue-400" /></span>
+                                                    <span className="font-semibold text-slate-200 text-sm">{feature.title}</span>
                                                 </Link>
                                             ))}
                                         </AccordionContent>
                                     </AccordionItem>
-
-                                    {/* INDUSTRIES DROPDOWN */}
-                                    <AccordionItem value="industries" className="border-b border-slate-100 dark:border-slate-800">
-                                        <AccordionTrigger className="text-xl font-bold py-4 hover:no-underline text-slate-900 dark:text-white">
+                                    <AccordionItem value="industries" className="border-b border-white/10">
+                                        <AccordionTrigger className="text-base font-bold py-3.5 hover:no-underline text-white [&>svg]:text-slate-400">
                                             Industries
                                         </AccordionTrigger>
-                                        <AccordionContent className="pt-2 pb-6 grid grid-cols-1 gap-2">
+                                        <AccordionContent className="pb-4 grid grid-cols-1 gap-1">
                                             {siteConfig.industryItems.map((item) => (
-                                                <Link 
-                                                    key={item.name} 
-                                                    href="/industries" 
-                                                    className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                                <Link key={item.name} href="/industries"
+                                                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.08] transition-colors"
                                                     onClick={() => setIsMobileMenuOpen(false)}
                                                 >
-                                                    <item.icon size={20} className="text-slate-400" />
-                                                    <span className="font-semibold text-slate-700 dark:text-slate-300">{item.name}</span>
+                                                    <item.icon size={16} className="text-blue-400 shrink-0" />
+                                                    <span className="font-semibold text-slate-300 text-sm">{item.name}</span>
                                                 </Link>
                                             ))}
                                         </AccordionContent>
                                     </AccordionItem>
                                 </Accordion>
 
-                                {/* Standard Mobile Links */}
-                                <Link href="/download" className="text-xl font-bold text-blue-600 border-b border-slate-100 dark:border-slate-800 py-5 flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <DownloadCloud size={24} /> Download Application
-                                </Link>
-                                <Link href="/aura-ai" className="text-xl font-bold text-blue-500 border-b border-slate-100 dark:border-slate-800 py-5" onClick={() => setIsMobileMenuOpen(false)}>
-                                    Aura Intelligence
-                                </Link>
-                                <Link href="/blog" className="text-xl font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 py-5" onClick={() => setIsMobileMenuOpen(false)}>
-                                    Engineering Journal
-                                </Link>
-                                <Link href="/help-centre" className="text-xl font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 py-5" onClick={() => setIsMobileMenuOpen(false)}>
-                                    Help Center
-                                </Link>
+                                {[
+                                    { href: '/download', label: 'Download Application', icon: DownloadCloud, color: 'text-blue-400' },
+                                    { href: '/aura-ai', label: 'Aura Intelligence', icon: Sparkles, color: 'text-blue-400' },
+                                    { href: '/blog', label: 'Engineering Journal', icon: BookOpen, color: 'text-slate-300' },
+                                    { href: '/help-centre', label: 'Help Center', icon: HelpCircle, color: 'text-slate-300' },
+                                ].map(({ href, label, icon: Icon, color }) => (
+                                    <Link key={href} href={href}
+                                        className="flex items-center gap-3 py-3.5 border-b border-white/10 text-base font-bold text-white hover:text-blue-400 transition-colors group"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        <span className="p-2 rounded-xl bg-white/10 group-hover:bg-blue-600/40 transition-colors"><Icon size={17} className={color} /></span>
+                                        {label}
+                                    </Link>
+                                ))}
                             </nav>
-                            
-                            {/* Call to Action Buttons */}
-                            <div className="flex flex-col gap-4 pt-6 pb-24">
-                                <Button asChild className="h-16 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-2xl shadow-lg">
-                                    <Link href="/signup">Create Free Account</Link>
+
+                            <div className="flex flex-col gap-2.5 pt-3 pb-20">
+                                <Button asChild className="h-12 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-900/50 border border-blue-500/30 text-sm">
+                                    <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>Create Free Account</Link>
                                 </Button>
-                                <Button variant="outline" asChild className="h-16 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold text-lg rounded-2xl">
+                                <Button variant="outline" asChild className="h-12 border-white/20 bg-white/[0.08] text-white font-bold rounded-2xl hover:bg-white/[0.14] hover:text-white text-sm">
                                     <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Request Private Demo</a>
                                 </Button>
-                                <Button variant="ghost" asChild className="h-16 font-bold text-slate-500 text-lg">
-                                    <Link href="/login">Sign In</Link>
+                                <Button variant="ghost" asChild className="h-12 font-bold text-slate-400 hover:text-white hover:bg-white/10 rounded-2xl text-sm">
+                                    <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>Sign In</Link>
                                 </Button>
                             </div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-        </header>
+        </>
     );
 };
 
 // --- LandingFooter Component - DEFINITIVE EXECUTIVE CORPORATE EDITION ---
 const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => (
-    <footer className="relative bg-slate-950 text-slate-200 pt-24 pb-12 border-t border-slate-800 z-10 selection:bg-blue-600/30">
+    <footer className="relative bg-gradient-to-b from-blue-400 via-blue-600 via-60% to-blue-950 text-white pt-24 pb-12 border-t-0 z-10 selection:bg-white/30">
+        {/* Smooth blend from the section above */}
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-slate-50 to-transparent pointer-events-none" />
         <div className="container mx-auto px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-16 mb-20">
                 
                 {/* 1. CORPORATE BRANDING & PRIMARY CONTACTS (4 Columns) */}
                 <div className="lg:col-span-4 space-y-8">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/30">
-                            <Rocket className="h-7 w-7 text-white" />
+                        <div className="p-2.5 bg-white rounded-xl shadow-lg shadow-blue-900/30">
+                            <Rocket className="h-7 w-7 text-blue-600" />
                         </div>
                         <h3 className="text-2xl font-bold text-white tracking-tight">
-                            {siteConfig.name} <span className="text-blue-500 font-light text-base ml-1 uppercase tracking-widest">Global</span>
+                            {siteConfig.name} <span className="text-blue-100 font-light text-base ml-1 uppercase tracking-widest">Global</span>
                         </h3>
                     </div>
-                    
-                    <p className="text-sm text-slate-400 max-w-sm leading-relaxed font-medium">
+
+                    <p className="text-sm text-blue-100 max-w-sm leading-relaxed font-medium">
                         {siteConfig.shortDescription}
                     </p>
 
@@ -925,14 +1004,14 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                         {/* CEO / FOUNDER DIRECT LINE */}
                         <a 
                             href="mailto:ceo@bbu1.com" 
-                            className="flex items-center gap-4 text-sm text-slate-400 hover:text-blue-500 transition-all group"
+                            className="flex items-center gap-4 text-sm text-blue-100 hover:text-white transition-all group"
                         >
-                            <div className="h-11 w-11 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-                                <User size={20} className="text-slate-400 group-hover:text-white" />
+                            <div className="h-11 w-11 rounded-xl bg-white flex items-center justify-center group-hover:bg-red-50 transition-colors shadow-sm">
+                                <User size={20} className="text-blue-600 group-hover:text-red-500 transition-colors" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Founder & CEO</span>
-                                <span className="text-slate-200 font-semibold">ceo@bbu1.com</span>
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-blue-200">Founder & CEO</span>
+                                <span className="text-white font-semibold">ceo@bbu1.com</span>
                             </div>
                         </a>
 
@@ -941,27 +1020,27 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                             href="https://wa.me/256703572503" 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center gap-4 text-sm text-slate-400 hover:text-emerald-500 transition-all group"
+                            className="flex items-center gap-4 text-sm text-blue-100 hover:text-white transition-all group"
                         >
-                            <div className="h-11 w-11 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:bg-emerald-600 transition-colors">
-                                <Smartphone size={20} className="text-slate-400 group-hover:text-white" />
+                            <div className="h-11 w-11 rounded-xl bg-white flex items-center justify-center group-hover:bg-emerald-500 transition-colors shadow-sm">
+                                <Smartphone size={20} className="text-emerald-600 group-hover:text-white transition-colors" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Official WhatsApp</span>
-                                <span className="text-slate-200 font-semibold">+256 703 572 503</span>
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-blue-200">Official WhatsApp</span>
+                                <span className="text-white font-semibold">+256 703 572 503</span>
                             </div>
                         </a>
                         
                         {/* SOCIAL ARCHIVE */}
                         <div className="flex items-center gap-4 pt-4">
-                            <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-700 hover:text-white transition-all">
-                                <Linkedin size={18} />
+                            <a href={siteConfig.contactInfo.socials.linkedin} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-blue-700 hover:bg-blue-700 hover:text-white transition-all shadow-sm">
+                                <Link2 size={18} />
                             </a>
-                            <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-400 hover:text-white transition-all">
-                                <Twitter size={18} />
+                            <a href={siteConfig.contactInfo.socials.twitter} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-slate-800 hover:bg-black hover:text-white transition-all shadow-sm">
+                                <X size={18} />
                             </a>
-                            <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all">
-                                <Facebook size={18} />
+                            <a href={siteConfig.contactInfo.socials.facebook} target="_blank" rel="noopener noreferrer" className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                                <Globe2 size={18} />
                             </a>
                         </div>
                     </div>
@@ -971,21 +1050,21 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                 <div className="lg:col-span-2">
                     <h4 className="font-bold text-white text-xs uppercase tracking-[0.2em] mb-10">Platform</h4>
                     <ul className="space-y-5 text-sm font-medium">
-                        <li><Link href="/features" className="text-slate-400 hover:text-blue-500 transition-colors">OS Capabilities</Link></li>
-                        <li><Link href="/industries" className="text-slate-400 hover:text-blue-500 transition-colors">Sector Solutions</Link></li>
+                        <li><Link href="/features" className="text-blue-100 hover:text-white transition-colors">OS Capabilities</Link></li>
+                        <li><Link href="/industries" className="text-blue-100 hover:text-white transition-colors">Sector Solutions</Link></li>
                         <li>
-                            <Link href="/download" className="text-blue-600 font-bold flex items-center gap-2.5 hover:text-blue-400 transition-all group">
-                                <DownloadCloud size={16} className="group-hover:scale-110 transition-transform" /> 
+                            <Link href="/download" className="text-white font-bold flex items-center gap-2.5 hover:text-blue-100 transition-all group">
+                                <DownloadCloud size={16} className="group-hover:scale-110 transition-transform" />
                                 Download App
                             </Link>
                         </li>
                         <li>
-                            <Link href="/aura-ai" className="text-blue-500 font-bold flex items-center gap-2.5 hover:text-blue-400 transition-all">
+                            <Link href="/aura-ai" className="text-white font-bold flex items-center gap-2.5 hover:text-blue-100 transition-all">
                                 <Sparkles size={16} /> Aura AI Core
                             </Link>
                         </li>
-                        <li><Link href="/pricing" className="text-slate-400 hover:text-blue-500 transition-colors">Pricing Plans</Link></li>
-                        <li><Link href="/blog" className="text-slate-400 hover:text-blue-500 transition-colors">Engineering Journal</Link></li>
+                        <li><Link href="/pricing" className="text-blue-100 hover:text-white transition-colors">Pricing Plans</Link></li>
+                        <li><Link href="/blog" className="text-blue-100 hover:text-white transition-colors">Engineering Journal</Link></li>
                     </ul>
                 </div>
 
@@ -994,16 +1073,16 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     <h4 className="font-bold text-white text-xs uppercase tracking-[0.2em] mb-10">Organization</h4>
                     <ul className="space-y-5 text-sm font-medium">
                         <li>
-                            <a href="https://wa.me/256703572503" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-blue-500 transition-colors">
+                            <a href="https://wa.me/256703572503" target="_blank" rel="noopener noreferrer" className="text-blue-100 hover:text-white transition-colors">
                                 Book a Strategic Demo
                             </a>
                         </li>
-                        <li><Link href="/help-centre" className="text-slate-400 hover:text-blue-500 transition-colors">Documentation</Link></li>
-                        <li><Link href="/courses" className="text-slate-400 hover:text-blue-500 transition-colors">BBU1 Academy</Link></li>
+                        <li><Link href="/help-centre" className="text-blue-100 hover:text-white transition-colors">Documentation</Link></li>
+                        <li><Link href="/courses" className="text-blue-100 hover:text-white transition-colors">BBU1 Academy</Link></li>
                         <li>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button className="text-slate-400 hover:text-blue-500 text-left transition-colors font-semibold">
+                                    <button className="text-blue-100 hover:text-white text-left transition-colors font-semibold">
                                         Executive Profile
                                     </button>
                                 </DialogTrigger>
@@ -1032,7 +1111,7 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                                 </DialogContent>
                             </Dialog>
                         </li>
-                        <li><Link href="/careers" className="text-slate-400 hover:text-blue-500 transition-colors">Careers</Link></li>
+                        <li><Link href="/careers" className="text-blue-100 hover:text-white transition-colors">Careers</Link></li>
                     </ul>
                 </div>
 
@@ -1041,20 +1120,20 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                     <h4 className="font-bold text-white text-xs uppercase tracking-[0.2em] mb-10">Support & Admin</h4>
                     <ul className="space-y-5 text-sm font-medium">
                         <li>
-                            <a href="mailto:support@bbu1.com" className="text-slate-400 hover:text-blue-500 transition-all flex items-center gap-3">
-                                <div className="p-1.5 bg-slate-900 rounded-md"><MessageSquareText size={14} className="text-blue-500" /></div>
+                            <a href="mailto:support@bbu1.com" className="text-blue-100 hover:text-white transition-all flex items-center gap-3 group">
+                                <div className="p-1.5 bg-white rounded-md shadow-sm group-hover:bg-red-50 transition-colors"><MessageSquareText size={14} className="text-blue-600 group-hover:text-red-500 transition-colors" /></div>
                                 Technical Support
                             </a>
                         </li>
                         <li>
-                            <a href="mailto:admin@bbu1.com" className="text-slate-400 hover:text-blue-500 transition-all flex items-center gap-3">
-                                <div className="p-1.5 bg-slate-900 rounded-md"><ShieldCheck size={14} className="text-blue-500" /></div>
+                            <a href="mailto:admin@bbu1.com" className="text-blue-100 hover:text-white transition-all flex items-center gap-3 group">
+                                <div className="p-1.5 bg-white rounded-md shadow-sm group-hover:bg-emerald-50 transition-colors"><ShieldCheck size={14} className="text-blue-600 group-hover:text-emerald-600 transition-colors" /></div>
                                 Account & Admin
                             </a>
                         </li>
                         <li>
                             <Dialog>
-                                <DialogTrigger asChild><button className="text-slate-400 hover:text-blue-500 text-left transition-colors font-semibold">Terms of Service</button></DialogTrigger>
+                                <DialogTrigger asChild><button className="text-blue-100 hover:text-white text-left transition-colors font-semibold">Terms of Service</button></DialogTrigger>
                                 <FullScreenDialog title="Terms of Service" icon={FileText} backgroundImage="/images/showcase/office-admin-bbU1.jpg">
                                     <ScrollArea className="h-[60vh] pr-4">{siteConfig.termsOfService}</ScrollArea>
                                 </FullScreenDialog>
@@ -1062,37 +1141,41 @@ const LandingFooter = ({ onManageCookies }: { onManageCookies: () => void }) => 
                         </li>
                         <li>
                             <Dialog>
-                                <DialogTrigger asChild><button className="text-slate-400 hover:text-blue-500 text-left transition-colors font-semibold">Privacy Policy</button></DialogTrigger>
+                                <DialogTrigger asChild><button className="text-blue-100 hover:text-white text-left transition-colors font-semibold">Privacy Policy</button></DialogTrigger>
                                 <FullScreenDialog title="Privacy Policy" icon={ShieldCheck} backgroundImage="/images/showcase/office-presentation-dashboard.jpg">
                                     <ScrollArea className="h-[60vh] pr-4">{siteConfig.privacyPolicy}</ScrollArea>
                                 </FullScreenDialog>
                             </Dialog>
                         </li>
-                        <li><button onClick={onManageCookies} className="text-slate-400 hover:text-blue-500 text-left transition-colors font-semibold">Cookie Preferences</button></li>
-                        <li><Link href="/donate" className="flex items-center gap-2.5 text-emerald-500 font-bold hover:text-emerald-400 transition-colors"><Heart size={16} /> Philanthropy</Link></li>
+                        <li><button onClick={onManageCookies} className="text-blue-100 hover:text-white text-left transition-colors font-semibold">Cookie Preferences</button></li>
+                        <li><Link href="/donate" className="flex items-center gap-2.5 text-white font-bold hover:text-blue-100 transition-colors"><Heart size={16} /> Philanthropy</Link></li>
                     </ul>
                 </div>
             </div>
 
+            {/* NEWSLETTER SUBSCRIPTION */}
+            <FooterNewsletter />
+
             {/* BOTTOM LEGAL ARCHITECTURE */}
-            <div className="border-t border-slate-800/60 pt-12 flex flex-col md:flex-row justify-between items-center gap-10">
+            <div className="border-t border-blue-500/50 pt-12 flex flex-col md:flex-row justify-between items-center gap-10">
                 <div className="space-y-2 text-center md:text-left">
-                    <p className="text-slate-300 font-bold text-base tracking-tight">
-                        BBU1 is a professional product of <span className="text-blue-500 uppercase">Litonu Business Base Universe Ltd.</span>
+                    <p className="text-blue-100 font-semibold text-base tracking-tight">
+                        BBU1 is a professional product of{' '}
+                        <span className="text-white font-extrabold uppercase tracking-wide">Litonu Business Base Universe Ltd.</span>
                     </p>
-                    <p className="text-[11px] text-slate-500 font-medium uppercase tracking-[0.1em]">
+                    <p className="text-[11px] text-blue-200 font-medium uppercase tracking-[0.1em]">
                         © {new Date().getFullYear()} All rights reserved. • Registered in Uganda: No. 80034302367494
                     </p>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center justify-center gap-6">
-                    <div className="flex items-center gap-2.5 px-5 py-2 bg-slate-900 border border-slate-800 rounded-xl">
-                        <ShieldCheck className="h-5 w-5 text-blue-500" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Verified Legal Entity</span>
+                    <div className="flex items-center gap-2.5 px-5 py-2 bg-blue-700 border border-blue-500 rounded-xl">
+                        <ShieldCheck className="h-5 w-5 text-blue-200" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-100">Verified Legal Entity</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                            Engineered with <Leaf className="h-3.5 w-3.5 text-green-600 inline mx-0.5" /> for the Global Economy.
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200">
+                            Engineered with <Leaf className="h-3.5 w-3.5 text-green-300 inline mx-0.5" /> for the Global Economy.
                         </p>
                     </div>
                 </div>
@@ -1159,7 +1242,7 @@ const AdvancedChatWidget = () => {
                             <CardContent className="flex-1 flex flex-col p-0">
                                 <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                                     <div className="space-y-4">
-                                        {messages.map((m: CoreMessage, i: number) => (
+                                        {messages.map((m: any, i: number) => (
                                             <div key={i} className={cn('flex items-start gap-3 text-sm', m.role === 'user' ? 'justify-end' : '')}>
                                                 {m.role === 'assistant' && <Avatar className="h-8 w-8"><AvatarFallback><Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" /></AvatarFallback></Avatar>}
                                                 <div className={cn('rounded-lg p-3 max-w-[85%] break-words prose dark:prose-invert', m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-background border')}>
@@ -1306,7 +1389,7 @@ const DynamicPricingSection = () => {
     const PLANS = [
         {
             name: "BUSINESS STARTER",
-            basePrice: 4, 
+            basePrice: 14,
             userLimit: "1 User",
             idealFor: "Kiosks & Micro-Shops",
             highlight: false,
@@ -1315,7 +1398,7 @@ const DynamicPricingSection = () => {
         },
         {
             name: "GROWTH ",
-            basePrice: 15, 
+            basePrice: 42,
             userLimit: "2 Users",
             idealFor: "Small Shops & Solo Founders",
             highlight: false,
@@ -1324,7 +1407,7 @@ const DynamicPricingSection = () => {
         },
         {
             name: "SCALE SME ",
-            basePrice: 49,
+            basePrice: 69,
             userLimit: "10 Users",
             idealFor: "Growing SMEs & Teams",
             highlight: true,
@@ -1333,7 +1416,7 @@ const DynamicPricingSection = () => {
         },
         {
             name: "ENTERPRISE ERP ",
-            basePrice: 119,
+            basePrice: 122,
             userLimit: "Unlimited Users",
             idealFor: "Large Enterprises",
             highlight: false,
@@ -1400,29 +1483,46 @@ const DynamicPricingSection = () => {
                 <div className="text-center max-w-4xl mx-auto mb-16">
                     <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl mb-6">Fair Pricing for Every Business</h2>
                     <div className="flex items-center justify-center gap-4 mb-8">
-                        <span className={cn("text-sm font-medium transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
-                        <button onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')} className="relative w-14 h-7 bg-blue-600/20 rounded-full p-1 transition-colors hover:bg-blue-600/30">
-                            <motion.div className="h-5 w-5 bg-blue-600 rounded-full shadow-sm" animate={{ x: billingCycle === 'yearly' ? 28 : 0 }} />
+                        <span className={cn("text-sm font-bold transition-colors", billingCycle === 'monthly' ? "text-foreground" : "text-muted-foreground")}>Monthly</span>
+                        <button
+                            onClick={() => setBillingCycle(prev => prev === 'monthly' ? 'yearly' : 'monthly')}
+                            className={cn("relative w-14 h-7 rounded-full p-1 transition-colors", billingCycle === 'yearly' ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700")}
+                        >
+                            <motion.div
+                                className={cn("h-5 w-5 rounded-full shadow-sm", billingCycle === 'yearly' ? "bg-white" : "bg-blue-600")}
+                                animate={{ x: billingCycle === 'yearly' ? 28 : 0 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            />
                         </button>
-                        <span className={cn("text-sm font-medium transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
-                            Yearly <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
+                        <span className={cn("text-sm font-bold transition-colors flex items-center gap-1.5", billingCycle === 'yearly' ? "text-foreground" : "text-muted-foreground")}>
+                            Annual <span className="text-[10px] font-bold bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full border border-green-500/20">SAVE 20%</span>
                         </span>
                     </div>
                     {loading && <p className="text-xs text-muted-foreground animate-pulse">Detecting your local currency...</p>}
                 </div>
 
                 {/* --- PRICING GRID --- */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                <motion.div
+                    className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto"
+                    initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.05 }}
+                    variants={staggerContainer}
+                >
                     {/* Row 1: First 3 Plans */}
                     {PLANS.slice(0, 3).map((plan, index) => (
-                        <Card key={index} className={cn("flex flex-col relative transition-all duration-300 hover:shadow-lg", plan.highlight ? "border-blue-600 shadow-2xl md:scale-105 z-10" : "border-border")}>
+                        <motion.div key={index} variants={staggerItem} whileHover={{ y: plan.highlight ? 0 : -8, transition: { duration: 0.25 } }}>
+                        <Card className={cn("flex flex-col relative transition-all duration-300 hover:shadow-xl h-full", plan.highlight ? "border-blue-600 shadow-2xl md:scale-105 z-10" : "border-border")}>
                             <CardHeader>
                                 {plan.highlight && <div className="mb-2"><span className="text-xs font-bold text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span></div>}
                                 <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                                 <CardDescription className="text-sm font-medium mt-1">{plan.idealFor}</CardDescription>
-                                <div className="mt-6 flex items-baseline">
-                                    <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
-                                    <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                                <div className="mt-6">
+                                    <div className="flex items-baseline">
+                                        <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(plan.basePrice)}</span>
+                                        <span className="text-muted-foreground ml-2">/mo</span>
+                                    </div>
+                                    {billingCycle === 'yearly' && (
+                                        <p className="text-xs text-green-600 font-semibold mt-1">Billed annually · 20% off</p>
+                                    )}
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-grow space-y-6">
@@ -1438,16 +1538,23 @@ const DynamicPricingSection = () => {
                             </CardContent>
                             <CardFooter><Button className="w-full h-11 font-semibold bg-blue-600 hover:bg-blue-700 text-white" asChild><Link href="/signup">{plan.btnText}</Link></Button></CardFooter>
                         </Card>
+                        </motion.div>
                     ))}
 
                     {/* Row 2: Enterprise Card (Left) */}
-                    <Card className="flex flex-col relative transition-all duration-300 hover:shadow-lg border-border">
+                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
+                    <Card className="flex flex-col relative transition-all duration-300 hover:shadow-xl border-border h-full">
                         <CardHeader>
                             <CardTitle className="text-2xl font-bold">{PLANS[3].name}</CardTitle>
                             <CardDescription className="text-sm font-medium mt-1">{PLANS[3].idealFor}</CardDescription>
-                            <div className="mt-6 flex items-baseline">
-                                <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(PLANS[3].basePrice)}</span>
-                                <span className="text-muted-foreground ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                            <div className="mt-6">
+                                <div className="flex items-baseline">
+                                    <span className="text-4xl font-extrabold tracking-tight">{currency.symbol} {formatPrice(PLANS[3].basePrice)}</span>
+                                    <span className="text-muted-foreground ml-2">/mo</span>
+                                </div>
+                                {billingCycle === 'yearly' && (
+                                    <p className="text-xs text-green-600 font-semibold mt-1">Billed annually · 20% off</p>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-6">
@@ -1463,6 +1570,7 @@ const DynamicPricingSection = () => {
                         </CardContent>
                         <CardFooter><Button className="w-full h-11 font-semibold border-blue-600 text-blue-600 hover:bg-blue-50" variant="outline" asChild><Link href="/signup">{PLANS[3].btnText}</Link></Button></CardFooter>
                     </Card>
+                    </motion.div>
 
                     {/* Row 2: Slideshow Box (Right - Fills two columns) */}
                     <div className="md:col-span-2 relative rounded-xl bg-slate-950 overflow-hidden border border-slate-800 shadow-2xl flex flex-col min-h-[450px]">
@@ -1533,7 +1641,7 @@ const DynamicPricingSection = () => {
                             </span>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* The Trust Banner is now removed to let the Partner Section sit closer */}
                 <div className="mt-12 text-center text-xs text-muted-foreground">
@@ -1609,10 +1717,14 @@ const PartnerWithUsSection = () => {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                    
+                <motion.div
+                    className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto"
+                    initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}
+                    variants={staggerContainer}
+                >
                     {/* 1. Affiliate Card */}
-                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-600 bg-white dark:bg-slate-950">
+                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
+                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-blue-600 bg-card h-full">
                         <CardHeader>
                             <div className="h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
                                 <Megaphone className="h-7 w-7" />
@@ -1661,8 +1773,11 @@ const PartnerWithUsSection = () => {
                         </CardContent>
                     </Card>
 
+                    </motion.div>
+
                     {/* 2. Investor Card */}
-                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500 bg-white dark:bg-slate-950">
+                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
+                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-green-500 bg-card h-full">
                         <div className="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm">
                             OPEN ROUND
                         </div>
@@ -1741,8 +1856,11 @@ const PartnerWithUsSection = () => {
                         </CardContent>
                     </Card>
 
+                    </motion.div>
+
                     {/* 3. Solution Partner Card */}
-                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500 bg-white dark:bg-slate-950">
+                    <motion.div variants={staggerItem} whileHover={{ y: -8, transition: { duration: 0.25 } }}>
+                    <Card className="hover:border-blue-600/50 transition-all hover:shadow-xl group relative overflow-hidden border-t-4 border-t-purple-500 bg-card h-full">
                         <CardHeader>
                             <div className="h-14 w-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform">
                                 <GitBranch className="h-7 w-7" />
@@ -1817,8 +1935,9 @@ const PartnerWithUsSection = () => {
                             </Dialog>
                         </CardContent>
                     </Card>
+                    </motion.div>
 
-                </div>
+                </motion.div>
             </div>
         </AnimatedSection>
     );
@@ -2015,11 +2134,12 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
 
    // 2. DATA ARRAYS
     const rotatingTexts = [
-    "Book Keeping.", 
-    "Advanced Accounting.", 
-    "Business Reports.", 
-    "Internal & External Auditing."
-];
+        "fully automated.",
+        "always in control.",
+        "built to scale.",
+        "running on one OS.",
+        "ahead of the game.",
+    ];
     const slideshowContent = [
         { 
             is_video: true, 
@@ -2153,137 +2273,196 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
 
     return (
         <div className="flex flex-col min-h-screen">
+            <NewsletterPopup />
             <MegaMenuHeader />
             <main className="flex-grow">
 
-               {/* HERO SECTION - 4-LINE PROFESSIONAL STRUCTURE */}
-<section id="hero" className="relative pt-24 pb-32 overflow-hidden text-center min-h-[850px] flex items-center justify-center">
-    
-    {/* UPGRADED: HIGH-INTENSITY ENTERPRISE TECH BACKGROUND */}
-    <motion.div 
-        className="absolute inset-0 z-0 bg-[#020617]" 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        transition={{ duration: 1.5 }}
-    >
-        {/* Layer 1: High-Intensity Mesh Gradients (The "Universe" Glow) */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(37,99,235,0.25)_0%,transparent_50%),radial-gradient(circle_at_80%_70%,rgba(29,78,216,0.2)_0%,transparent_50%),radial-gradient(circle_at_50%_50%,rgba(15,23,42,0.8)_0%,transparent_100%)]" />
-        
-        {/* Layer 2: Sharper Engineering Grid Pattern (Representing Structure) */}
-        <div 
-            className="absolute inset-0 opacity-[0.1]" 
-            style={{ 
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%23ffffff' fill-opacity='1'/%3E%3C/svg%3E")`,
-                backgroundSize: '40px 40px'
-            }} 
-        />
+               {/* HERO SECTION — Paradigm-inspired dark tech design */}
+<section id="hero" className="relative overflow-hidden text-center flex items-center justify-center" style={{ minHeight: '100svh' }}>
 
-        {/* Layer 3: Depth Fog - Makes the text pop in the center */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#020617] opacity-60" />
+    {/* ── Background layers ── */}
+    <div className="absolute inset-0 bg-[#020617]" />
 
-        {/* Layer 4: Subtle Top Light */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
-    </motion.div>
-    
-    <div className="container mx-auto relative z-10 text-white px-4">
-        <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.2 } } }}>
-            
-            {/* TAGLINE */}
-            <motion.span variants={itemVariants} className="inline-flex items-center rounded-full bg-blue-500/10 backdrop-blur-md px-4 py-1.5 text-sm font-bold border border-blue-500/20 text-blue-400 mb-8">
-                <Sparkles className="mr-2 h-4 w-4" /> The Intelligent Business OS
-            </motion.span>
-            
-            {/* THE 4-LINE HEADER STACK */}
-            <div className="flex flex-col items-center gap-10 mb-10">
-                
-                {/* LINE 1: Static */}
-                <motion.span variants={itemVariants} className="text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight">
-                    We are part of your business.
-                </motion.span>
+    {/* Ambient blue glows */}
+    <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,rgba(37,99,235,0.35)_0%,transparent_70%)]" />
+    <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_80%,rgba(29,78,216,0.18)_0%,transparent_60%)]" />
+    <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_20%_70%,rgba(37,99,235,0.12)_0%,transparent_60%)]" />
 
-                {/* LINE 2: Static "In." */}
-                <motion.span variants={itemVariants} className="text-2xl sm:text-4xl lg:text-5xl font-black text-blue-400">
-                    In.
-                </motion.span>
+    {/* Fine grid */}
+    <div className="absolute inset-0 opacity-[0.07]"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%234f8ef7' fill-opacity='1'/%3E%3C/svg%3E")`, backgroundSize: '40px 40px' }}
+    />
 
-                {/* LINE 3: Dynamic (The Slide Show) */}
-                <div className="relative h-[80px] sm:h-[110px] lg:h-[130px] w-full overflow-hidden">
-                    <AnimatePresence mode="wait">
-                        <motion.span 
-                            key={currentTextIndex} 
-                            initial={{ opacity: 0, y: 40 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -40 }}
-                            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute inset-0 flex items-center justify-center text-3xl sm:text-5xl lg:text-6xl font-black text-blue-300 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
-                        >
-                            {memoizedRotatingTexts[currentTextIndex]}
-                        </motion.span>
-                    </AnimatePresence>
-                </div>
+    {/* Bottom fade to next section */}
+    <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#020617] to-transparent" />
 
-                {/* LINE 4: Static Footer */}
-                <motion.span variants={itemVariants} className="text-xl sm:text-3xl lg:text-4xl font-semibold text-slate-300">
-                    From startup to enterprise. For every ambition.
-                </motion.span>
+    {/* Top edge line */}
+    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
+
+    {/* Large background "BBU1" watermark */}
+    <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none overflow-hidden">
+        <span className="text-[28vw] sm:text-[22vw] font-black text-white/[0.025] tracking-tighter leading-none">BBU1</span>
+    </div>
+
+    {/* Central spotlight card — the Paradigm signature element */}
+    <div className="absolute inset-x-4 sm:inset-x-12 lg:inset-x-24 top-16 bottom-0 rounded-t-3xl border border-white/[0.06] bg-white/[0.015] pointer-events-none" />
+
+    {/* ── Content ── */}
+    <div className="relative z-10 text-white px-5 sm:px-8 max-w-5xl mx-auto w-full pt-28 pb-24 sm:pt-36 sm:pb-32">
+        <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.15 } } }}>
+
+            {/* Chip */}
+            <motion.div variants={itemVariants} className="flex justify-center mb-8">
+                <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 backdrop-blur-md px-4 py-1.5 text-xs sm:text-sm font-bold text-blue-300 tracking-wide">
+                    <Sparkles className="h-3.5 w-3.5" /> The Intelligent Business Operating System
+                </span>
+            </motion.div>
+
+            {/* Main headline — 2 lines, very large */}
+            <motion.h1 variants={itemVariants}
+                className="text-[2.6rem] leading-[1.1] sm:text-6xl lg:text-8xl font-black tracking-tight text-white mb-4 sm:mb-6">
+                Your business,
+            </motion.h1>
+
+            {/* Rotating second line */}
+            <div className="relative h-[5rem] sm:h-[5.5rem] lg:h-[7rem] mb-8 sm:mb-10 overflow-hidden">
+                <AnimatePresence mode="wait">
+                    <motion.p
+                        key={currentTextIndex}
+                        initial={{ opacity: 0, y: 40, filter: 'blur(4px)' }}
+                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, y: -40, filter: 'blur(4px)' }}
+                        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute inset-0 flex items-center justify-center text-[1.9rem] leading-tight sm:text-6xl lg:text-8xl font-black tracking-tight text-blue-400 drop-shadow-[0_0_30px_rgba(59,130,246,0.4)] text-center"
+                    >
+                        {memoizedRotatingTexts[currentTextIndex]}
+                    </motion.p>
+                </AnimatePresence>
             </div>
 
-            {/* SECONDARY SUBTEXT */}
-            <motion.p className="mt-6 text-lg sm:text-xl leading-8 text-slate-400 max-w-2xl mx-auto font-medium" variants={itemVariants}>
-                BBU1 is the single, unified operating system where growth is our priority.
+            {/* Subtitle */}
+            <motion.p variants={itemVariants}
+                className="text-sm sm:text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium mb-10 sm:mb-12 px-2 sm:px-0">
+                From Accounting to HR. From CRM to Inventory. BBU1 is the single platform that runs every corner of your business — from a single kiosk to a global enterprise.
             </motion.p>
-            
-            {/* BUTTONS */}
-            <motion.div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4" variants={itemVariants}>
-                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 text-lg font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-transform hover:scale-105">
+
+            {/* CTAs */}
+            <motion.div variants={itemVariants}
+                className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
+                <Button asChild size="lg"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 h-13 sm:h-14 text-base sm:text-lg font-bold rounded-2xl shadow-lg shadow-blue-900/30 transition-all hover:scale-105 hover:shadow-blue-600/40 hover:shadow-xl">
                     <Link href="/signup">Start Free Trial</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-slate-700 text-white bg-white/5 hover:bg-white/10 backdrop-blur-sm px-10 h-14 text-lg font-bold rounded-xl transition-transform hover:scale-105">
-                    <a href={siteConfig.contactInfo.whatsappLink} target='_blank' rel="noopener noreferrer">Request a Demo <ArrowRight className="ml-2 h-4 w-4" /></a>
+                {/* Glass / iOS water-effect button */}
+                <Button asChild size="lg" variant="outline"
+                    className="w-full sm:w-auto border-white/25 text-white bg-white/10 hover:bg-white/20 hover:text-white backdrop-blur-xl px-8 h-13 sm:h-14 text-base sm:text-lg font-bold rounded-2xl transition-all hover:scale-105 hover:border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_4px_24px_rgba(0,0,0,0.25)]">
+                    <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2">
+                        Let&apos;s talk <ArrowRight className="h-4 w-4" />
+                    </a>
                 </Button>
             </motion.div>
+
+            {/* Trust line */}
+            <motion.p variants={itemVariants} className="mt-8 text-xs text-slate-500 font-medium tracking-wide leading-relaxed">
+                No credit card required<br />Trusted by enterprises across Africa
+            </motion.p>
         </motion.div>
     </div>
+
+    {/* Scroll indicator */}
+    <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 text-slate-500"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}
+    >
+        <span className="text-[10px] uppercase tracking-widest font-semibold">Scroll</span>
+        <motion.div animate={{ y: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+            <ChevronDown className="h-4 w-4" />
+        </motion.div>
+    </motion.div>
 </section>
 
 {/* PLATFORM SECTION - THE 6 CORE PILLARS */}
 <section id="platform" className="relative py-16 sm:py-20 overflow-hidden bg-background">
     <div className="absolute inset-0 z-0 opacity-5 dark:[&_path]:fill-white/10" style={{ backgroundImage: 'url("/images/tech-pattern.svg")', backgroundSize: '300px 300px' }}></div>
     <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 text-slate-900">An Operating System <br /> Engineered for Growth</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.</p>
-        </div>
+        <motion.div
+            initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.4 }}
+            variants={staggerContainer}
+            className="text-center mb-12 md:mb-16"
+        >
+            <motion.h2 variants={staggerItem} className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">An Operating System <br /> Engineered for Growth</motion.h2>
+            <motion.p variants={staggerItem} className="text-lg text-muted-foreground max-w-2xl mx-auto">BBU1 is more than software. It's a complete platform designed to simplify complexity and accelerate your business.</motion.p>
+        </motion.div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-start">
-            <div className="space-y-4 md:space-y-6">
+            <motion.div
+                initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}
+                variants={slideLeft}
+                className="space-y-4 md:space-y-6"
+            >
                 <AnimatePresence mode="wait">
-                    <motion.div key={activePillarIndex} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.5 }} className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
-                        <div className="flex items-start gap-5">
-                            <div className="p-3 bg-blue-50 rounded-xl">
-                                {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-7 w-7 text-blue-600" })}
+                    <motion.div key={activePillarIndex}
+                        initial={{ opacity: 0, y: 18, scale: 0.97, filter: 'blur(6px)' }}
+                        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, y: -14, scale: 0.97, filter: 'blur(6px)' }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        className="bg-card border border-border rounded-2xl p-8 shadow-sm overflow-hidden relative"
+                    >
+                        <div className="flex items-center gap-5 mb-4">
+                            <div className="p-3 bg-blue-500/10 rounded-xl shrink-0">
+                                {React.createElement(memoizedPlatformPillars[activePillarIndex].icon, { className: "h-7 w-7 text-blue-500" })}
                             </div>
-                            <div>
-                                <h3 className="text-2xl font-bold text-slate-900">{memoizedPlatformPillars[activePillarIndex].title}</h3>
-                                <p className="text-slate-500 mt-3 leading-relaxed">{memoizedPlatformPillars[activePillarIndex].description}</p>
-                            </div>
+                            <h3 className="text-2xl font-bold">{memoizedPlatformPillars[activePillarIndex].title}</h3>
+                        </div>
+                        <p className="text-muted-foreground leading-relaxed">{memoizedPlatformPillars[activePillarIndex].description}</p>
+                        {/* Auto-cycle progress bar */}
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-100 dark:bg-blue-900/40">
+                            <motion.div
+                                key={activePillarIndex}
+                                className="h-full bg-blue-500"
+                                initial={{ scaleX: 0, originX: 0 }}
+                                animate={{ scaleX: 1, originX: 0 }}
+                                transition={{ duration: PILLAR_INTERVAL / 1000, ease: 'linear' }}
+                            />
                         </div>
                     </motion.div>
                 </AnimatePresence>
-                <div className="flex flex-wrap gap-2 md:gap-3">
+                <motion.div
+                    initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }}
+                    variants={staggerContainer}
+                    className="flex flex-wrap gap-2 md:gap-3"
+                >
                     {memoizedPlatformPillars.map((pillar, index) => (
-                        <button key={pillar.title} onClick={() => setActivePillarIndex(index)} className={cn("flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all duration-300", activePillarIndex === index ? "bg-blue-600 text-white shadow-lg" : "bg-slate-50 hover:bg-slate-100 text-slate-600")}>
+                        <motion.button
+                            key={pillar.title}
+                            variants={staggerItem}
+                            whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
+                            onClick={() => setActivePillarIndex(index)}
+                            className={cn("flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all duration-300", activePillarIndex === index ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105" : "bg-card/80 backdrop-blur-md border border-border hover:border-blue-300 text-muted-foreground hover:text-foreground hover:bg-blue-50/50 dark:hover:bg-blue-900/20")}
+                        >
                             {pillar.title}
-                        </button>
+                        </motion.button>
                     ))}
-                </div>
-            </div>
-            <div className="relative h-[300px] md:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-slate-100">
+                </motion.div>
+            </motion.div>
+            <motion.div
+                initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}
+                variants={slideRight}
+                className="relative h-[300px] md:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-border"
+            >
                 <AnimatePresence mode="wait">
-                    <motion.div key={activePillarIndex} initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.7 }} className="absolute inset-0">
+                    <motion.div key={activePillarIndex}
+                        initial={{ opacity: 0, scale: 1.08, filter: 'blur(8px)' }}
+                        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, scale: 0.95, filter: 'blur(8px)' }}
+                        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                        className="absolute inset-0"
+                    >
                         <Image src={memoizedPlatformPillars[activePillarIndex].backgroundImage} alt="Platform Capability" fill style={{ objectFit: 'cover' }} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                     </motion.div>
                 </AnimatePresence>
-            </div>
+            </motion.div>
         </div>
     </div>
 </section>
@@ -2416,9 +2595,16 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                     {showCookieBanner && (
                         <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
                             <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md max-h-[80vh] overflow-y-auto">
-                                <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> Privacy Choice</CardTitle></CardHeader>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> Privacy Choice
+                                    </CardTitle>
+                                    <CardDescription className="text-sm text-muted-foreground mt-1">
+                                        We use cookies to improve your experience, analyze site traffic, and personalize content. You can accept all cookies or customize your preferences. Essential cookies are always active as they are required for the site to function.
+                                    </CardDescription>
+                                </CardHeader>
                                 {!isCustomizingCookies ? (
-                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
                                         <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
                                         <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAcceptAllCookies}>Accept All</Button>
                                     </CardFooter>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import BackNavbar from '@/components/BackNavbar';
 import { 
   BrainCircuit, BarChart3, AlertCircle, Zap, ShieldCheck, 
   TrendingUp, Sparkles, Cpu, Layers, ArrowRight, Bot 
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 export default function AuraAIPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans">
+      <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           

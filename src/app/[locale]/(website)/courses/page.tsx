@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from "next";
 import Link from "next/link";
 import { courses } from '@/lib/data/courses';
+import BackNavbar from '@/components/BackNavbar';
 import { 
   Award, 
   BookOpen, 
@@ -46,6 +47,7 @@ export default async function CoursesPage({
 
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+      <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           

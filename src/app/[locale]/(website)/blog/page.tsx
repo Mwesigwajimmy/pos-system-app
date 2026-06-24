@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import BackNavbar from '@/components/BackNavbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, Calendar, User, Tag } from 'lucide-react';
 
@@ -75,6 +76,7 @@ const articles = [
 export default function BlogListPage() {
     return (
         <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans">
+            <BackNavbar backHref="/" backLabel="Home" />
             <main className="flex-grow pt-20 pb-24">
                 <div className="container mx-auto px-6 max-w-7xl">
                     

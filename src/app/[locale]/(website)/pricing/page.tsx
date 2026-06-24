@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle, Sparkles, Zap, ShieldCheck, Rocket, Landmark, ArrowRight } from "lucide-react";
+import BackNavbar from '@/components/BackNavbar';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -23,6 +24,7 @@ const ENTERPRISE_STANDARDS = [
 export default function PricingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans overflow-x-hidden">
+      <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           

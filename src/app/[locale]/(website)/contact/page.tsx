@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from "next";
 import Link from "next/link";
 import { Mail, MessageSquareText, MapPin, Sparkles, Landmark, ArrowRight, ShieldCheck, Globe, Phone } from "lucide-react";
+import BackNavbar from '@/components/BackNavbar';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30">
+      <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           

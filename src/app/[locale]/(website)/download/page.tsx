@@ -2,14 +2,14 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import BackNavbar from '@/components/BackNavbar';
 import { 
     DownloadCloud, 
     Smartphone, 
     Monitor, 
     ShieldCheck, 
-    CheckCircle2, 
-    Chrome, 
-    Apple, 
+    CheckCircle2,
+    Globe,
     Laptop,
     Rocket
 } from 'lucide-react';
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 export default function DownloadPage() {
     return (
         <div className="min-h-screen bg-[#F8FAFC] py-20 px-4">
+            <BackNavbar backHref="/" backLabel="Home" />
             <div className="max-w-4xl mx-auto space-y-12">
                 
                 {/* Header */}
@@ -45,7 +46,7 @@ export default function DownloadPage() {
                     <Card className="border-slate-200 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader className="bg-white border-b border-slate-50 p-8">
                             <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center text-white mb-4">
-                                <Chrome size={24} />
+                                <Globe size={24} />
                             </div>
                             <CardTitle className="text-xl font-bold">Android & Desktop</CardTitle>
                             <CardDescription>Install directly via your browser</CardDescription>
@@ -63,7 +64,7 @@ export default function DownloadPage() {
                     <Card className="border-slate-200 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader className="bg-white border-b border-slate-50 p-8">
                             <div className="h-12 w-12 rounded-xl bg-slate-900 flex items-center justify-center text-white mb-4">
-                                <Apple size={24} />
+                                <Smartphone size={24} />
                             </div>
                             <CardTitle className="text-xl font-bold">iOS & Safari</CardTitle>
                             <CardDescription>Optimized for iPhone and iPad</CardDescription>

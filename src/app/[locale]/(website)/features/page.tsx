@@ -1,12 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { featureSets } from '@/lib/data/features';
+import BackNavbar from '@/components/BackNavbar';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Zap, Sparkles } from 'lucide-react';
 
 export default function FeaturesPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30">
+      <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           

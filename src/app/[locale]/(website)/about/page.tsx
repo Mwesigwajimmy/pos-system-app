@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from "next";
 import { Heart, Target, Globe, Users, Sparkles, ShieldCheck, Zap, ArrowRight, Award } from 'lucide-react';
+import BackNavbar from '@/components/BackNavbar';
 
 export const metadata: Metadata = {
     title: "About BBU1 - Engineering the Business Base Universe",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
     return (
         <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans">
+            <BackNavbar backHref="/" backLabel="Home" />
             <main className="flex-grow pt-20 pb-24">
                 <div className="container mx-auto px-6 max-w-7xl">
                     

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { featureSets } from '@/lib/data/features';
 import { ArrowLeft, CheckCircle, Sparkles, ShieldCheck, Cpu } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import BackNavbar from '@/components/BackNavbar';
 
 export default async function FeatureDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -12,6 +13,7 @@ export default async function FeatureDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-500/30">
+      <BackNavbar backHref="/features" backLabel="Features" />
       <main className="pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           
