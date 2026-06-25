@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 
 // ✅ MASTER CONTEXT IMPORTS
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
-import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext';
+import { GlobalCopilotProvider, useCopilot } from '@/context/CopilotContext'; // RESTORED: Corrected import path
 import { SidebarProvider, useSidebar } from '@/context/SidebarContext'; 
 
 // REDIRECTION & ROUTING
@@ -179,7 +179,10 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
         // 2. PATH STATUS MAP
         const isOnWelcome = segments.includes('welcome');
-        const isOnBilling = segments.includes('billing'); 
+        
+        // FIX: Broadened billing detection to ensure total neutrality for both root-level and nested billing paths
+        const isOnBilling = segments.includes('billing') || segments.includes('settings'); 
+        
         const isOnCommandCenter = segments.includes('command-center');
         
         // 3. ARCHITECT DETECTION
@@ -189,6 +192,8 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
 
         /**
          * 🛡️ THE DEEP REDIRECT LOCK
+         * APEX FIX: Strictly enforce absolute silence if the user is in a billing flow
+         * to prevent the "Ping-Pong" loop with the Middleware.
          */
         if (isOnBilling || (isArchitect && isOnCommandCenter)) {
             return; 

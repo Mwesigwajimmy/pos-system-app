@@ -56,7 +56,7 @@ const rolePermissions: Record<string, string[]> = {
     '/compliance/income-tax': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
     '/compliance': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander', 'accountant', 'legal_counsel'],
     '/audit': ['admin', 'auditor', 'architect', 'commander', 'owner'],
-    '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'warehouse_manager', 'inventory_manager', 'chef', 'technician', 'warehouse_staff'],
+    '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'warehouse_manager', 'inventory_manager','cashier', 'chef', 'technician', 'warehouse_staff'],
     '/purchases': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'warehouse_manager'],
     '/procurement': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'grant_officer'],
     '/hr': ['admin', 'manager', 'owner', 'architect', 'commander', 'hr_manager', 'teacher_principal'],
@@ -247,7 +247,9 @@ export async function middleware(request: NextRequest) {
     const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
     // Broadening whitelist to ensure active accounts are never trapped
     const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', 'past_due', ''].includes(subStatus);
-    const isOnBillingPage = pathWithoutLocale.includes('/settings/billing');
+    
+    // FIX: Optimized billing detection to unify both the admin-billing and dashboard-settings-billing paths
+    const isOnBillingPage = pathWithoutLocale.includes('/billing') || pathWithoutLocale.includes('/settings/billing');
 
     /**
      * 🛡️ THE LOOP-BREAKER ENGINE
@@ -276,7 +278,8 @@ export async function middleware(request: NextRequest) {
 
     // GATE 2: Billing Enforcement
     if (!isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
-        return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
+        // Redirecting to the primary billing route to break the Command Center loop
+        return NextResponse.redirect(new URL(`/${localeInPath}/billing`, request.url));
     }
 
     // FIX: If paid user is on billing, send them directly to THEIR specific dashboard, not generic /dashboard
