@@ -29,7 +29,7 @@ const rolePermissions: Record<string, string[]> = {
     '/sovereign-control': ['architect', 'commander'],
     '/tenants': ['architect', 'commander'],
     '/telemetry': ['architect', 'commander'],
-    '/billing': ['architect', 'commander'],
+    '/billing': ['architect', 'commander', 'admin', 'owner', 'manager', 'accountant'],
     '/dashboard': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'auditor', 'hr_manager', 'procurement_officer', 'fleet_manager', 'sacco_manager'],
     '/copilot': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer'],
     '/time-clock': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'waiter_staff', 'pharmacist', 'nurse', 'technician', 'driver', 'barber_stylist'],
@@ -300,10 +300,15 @@ export async function middleware(request: NextRequest) {
     }
 
     // GATE 5: Role Permission Security Scan
-    const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
-    if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
-        if (pathWithoutLocale !== defaultDashboard) {
-            return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+    // APEX FIX: Architects and Commanders must bypass folder checks for the Command Center to prevent "Identity Desync" loops.
+    const isApexPower = (systemPower === 'architect' || systemPower === 'commander');
+    
+    if (!isApexPower || !pathWithoutLocale.startsWith('/command-center')) {
+        const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
+        if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
+            if (pathWithoutLocale !== defaultDashboard) {
+                return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
+            }
         }
     }
     
