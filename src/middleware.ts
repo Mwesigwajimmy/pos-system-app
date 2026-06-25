@@ -278,8 +278,8 @@ export async function middleware(request: NextRequest) {
 
     // GATE 2: Billing Enforcement
     if (!isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
-        // Redirecting to the primary billing route to break the Command Center loop
-        return NextResponse.redirect(new URL(`/${localeInPath}/billing`, request.url));
+        // FIX: Redirecting to the correct billing page path inside the dashboard (settings/billing)
+        return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
     }
 
     // FIX: If paid user is on billing, send them directly to THEIR specific dashboard, not generic /dashboard
