@@ -78,18 +78,124 @@ export default function QuotationHistoryManager() {
         });
     }, [quotes, search, statusFilter]);
 
+    /**
+     * --- PROFESSIONAL DEEP DOWNLOAD ENGINE ---
+     * RESTORED: Pulls all Client details, Business Address, and Branding logic
+     */
     const printQuotation = (q: any) => {
         const doc = new jsPDF('p', 'mm', 'a4');
-        doc.setFontSize(20); doc.setFont("helvetica", "bold");
-        doc.text("COMMERCIAL QUOTATION", 14, 25);
+        const meta = q.metadata || {}; // Extracts saved Branding and Client Info
+        
+        const hexToRgb = (hex: string = "#0F172A") => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return [r, g, b];
+        };
+
+        const primaryRGB = hexToRgb(meta.branding?.primary_color || '#1E293B');
+        const textRGB = hexToRgb(meta.branding?.document_text_color || '#334155');
+
+        // 1. WATERMARK
+        if (meta.branding?.logo_url) {
+            try {
+                doc.saveGraphicsState();
+                doc.setGState(new (doc as any).GState({ opacity: meta.branding.watermark_opacity || 0.05 }));
+                doc.addImage(meta.branding.logo_url, 'PNG', 45, 90, 120, 120, undefined, 'FAST');
+                doc.restoreGraphicsState();
+            } catch (e) {}
+        }
+
+        // 2. CLEAN CORPORATE HEADER
+        if (meta.branding?.logo_url) doc.addImage(meta.branding.logo_url, 'PNG', 15, 15, 30, 30);
+        doc.setTextColor(primaryRGB[0], primaryRGB[1], primaryRGB[2]);
+        doc.setFontSize(22); doc.setFont("helvetica", "bold");
+        const bizName = meta.branding?.company_name_display || q.client_name; 
+        doc.text((bizName).toUpperCase(), 50, 25);
+
+        doc.setTextColor(textRGB[0], textRGB[1], textRGB[2]);
+        doc.setFontSize(8); doc.setFont("helvetica", "normal");
+        doc.text(`TIN: ${meta.tinNumber || 'N/A'}`, 50, 32);
+        doc.text(`Email: ${meta.officialEmail || 'N/A'}`, 50, 36);
+        doc.text(`Contact: ${meta.inquiryContact || 'N/A'}`, 50, 40);
+        doc.text(`Address: ${meta.plotNumber || ''}, ${meta.pobox || ''}`, 50, 44);
+
+        doc.setDrawColor(primaryRGB[0], primaryRGB[1], primaryRGB[2]);
+        doc.setLineWidth(0.5); doc.line(15, 52, 195, 52);
+
+        // 3. DOCUMENT SUBJECT
+        doc.setFontSize(22); doc.setFont("helvetica", "bold");
+        doc.text((q.title || "QUOTATION").toUpperCase(), 15, 70);
         doc.setFontSize(9); doc.setFont("helvetica", "normal");
-        doc.text(`REFERENCE: ${q.estimate_uid} | FISCAL DATE: ${format(new Date(q.created_at), 'PPP')}`, 14, 32);
+        doc.text(`REF: ${q.estimate_uid}`, 15, 78);
+        doc.text(`DATE: ${format(new Date(q.created_at), 'PPP')}`, 15, 83);
+        doc.text(`VALID UNTIL: ${format(new Date(q.valid_until), 'PPP')}`, 15, 88);
+
+        // 4. CLIENT IDENTITY (Deep Pull)
+        doc.setFillColor(248, 250, 252); doc.rect(15, 95, 180, 35, 'F');
+        doc.setFont("helvetica", "bold"); doc.text("BILL TO / CLIENT:", 20, 103);
+        doc.setFont("helvetica", "normal");
+        doc.text(q.client_name, 20, 108);
+        doc.text(`${meta.clientEmail || ''} | ${meta.clientPhone || ''}`, 20, 114);
+        doc.text(`Location: ${meta.clientLocation || 'N/A'}`, 20, 120);
+
+        // 5. LINE ITEMS TABLE
         autoTable(doc, {
-            startY: 50,
-            head: [['Description', 'Quantity', 'Unit Rate', 'Total']],
-            body: q.items.map((i: any) => [i.description, i.quantity, i.unit_price.toLocaleString(), i.total.toLocaleString()]),
-            headStyles: { fillColor: [15, 23, 42] }
+            startY: 135,
+            head: [['#', 'Description & Specifications', 'Qty', 'Rate', 'Total']],
+            body: q.items.map((it: any, i: number) => [
+                i + 1,
+                { content: `${it.description}`, styles: { fontSize: 8, cellPadding: 3 } },
+                it.quantity,
+                `${q.currency_code} ${it.unit_price.toLocaleString()}`,
+                `${q.currency_code} ${it.total.toLocaleString()}`
+            ]),
+            headStyles: { fillColor: primaryRGB, textColor: [255, 255, 255] },
+            theme: 'grid', margin: { left: 15, right: 15 }
         });
+
+        // 6. VALUATION SUMMARY
+        let finalY = (doc as any).lastAutoTable.finalY + 10;
+        const snap = meta.totals_snapshot || {};
+        doc.setFontSize(10);
+        doc.text("Sub-total:", 140, finalY);
+        doc.text(`${q.currency_code} ${snap.subTotal?.toLocaleString() || q.total_amount.toLocaleString()}`, 195, finalY, { align: 'right' });
+        
+        doc.text(`Tax (${meta.taxRate || 0}%):`, 140, finalY + 7);
+        doc.text(`+${q.currency_code} ${snap.taxAmount?.toLocaleString() || 0}`, 195, finalY + 7, { align: 'right' });
+
+        doc.setFillColor(primaryRGB[0], primaryRGB[1], primaryRGB[2]);
+        doc.rect(130, finalY + 12, 70, 12, 'F');
+        doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold");
+        doc.text("TOTAL DUE:", 135, finalY + 20);
+        doc.text(`${q.currency_code} ${q.total_amount.toLocaleString()}`, 195, finalY + 20, { align: 'right' });
+
+        // 7. SETTLEMENT & TERMS
+        doc.setTextColor(textRGB[0], textRGB[1], textRGB[2]);
+        doc.setFontSize(9); doc.text("SETTLEMENT PROTOCOLS:", 15, finalY + 45);
+        doc.setFontSize(8); doc.setFont("helvetica", "normal");
+        doc.text(`Bank: ${meta.bankDetails || 'N/A'}`, 15, finalY + 51);
+        doc.text(`MOMO/Digital: ${meta.momoDetails || 'N/A'}`, 15, finalY + 56);
+        doc.text(`Beneficiary: ${meta.chequesPayableTo || 'N/A'}`, 15, finalY + 61);
+
+        doc.setFont("helvetica", "bold"); doc.text("TERMS & CONDITIONS:", 15, finalY + 75);
+        doc.setFont("helvetica", "normal");
+        const terms = doc.splitTextToSize(meta.termsAndConditions || 'Standard terms apply.', 175);
+        doc.text(terms, 15, finalY + 80);
+
+        // 8. AUTHORIZATION SEAL
+        const footerY = 275;
+        doc.line(15, footerY, 70, footerY);
+        doc.setFontSize(9); doc.setFont("helvetica", "bold");
+        doc.text(meta.ceoName || 'Authorized Official', 15, footerY + 5);
+        doc.setFontSize(8); doc.setFont("helvetica", "normal");
+        doc.text(meta.ceoDesignation || 'Management', 15, footerY + 10);
+
+        if (meta.branding?.receipt_footer) {
+            doc.setFontSize(7); doc.setTextColor(150, 150, 150);
+            doc.text(meta.branding.receipt_footer, 105, 290, { align: 'center' });
+        }
+
         doc.save(`Record_${q.estimate_uid}.pdf`);
     };
 
