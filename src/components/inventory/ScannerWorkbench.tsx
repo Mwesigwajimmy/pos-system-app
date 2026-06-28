@@ -27,6 +27,7 @@ import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface ScannedSessionItem {
     variant_id: number;
