@@ -348,6 +348,9 @@ const navSections: NavItem[] = [
         businessTypes: ['Distribution', 'Distribution / Wholesale Supply', 'Mixed/Conglomerate', 'Logistics', 'all'],
         subItems: [ 
             { href: '/distribution', label: 'Dashboard', icon: LayoutDashboard },
+            { href: '/distribution/radar', label: 'Fleet Radar', icon: Activity }, 
+            { href: '/distribution/dispatch', label: 'Dispatch Workbench', icon: ScanLine },
+            { href: '/distribution/handshake', label: 'Handshake Queue', icon: KeyRound },
             { href: '/distribution/aura-master', label: 'Aura Master HUD', icon: Zap },
             { href: '/distribution/manifest-entry', label: 'Global Manifest', icon: Anchor },
             { href: '/distribution/customs', label: 'Forensic Customs', icon: Fingerprint },
