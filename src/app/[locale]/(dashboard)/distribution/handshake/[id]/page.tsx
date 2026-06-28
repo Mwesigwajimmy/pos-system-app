@@ -1,7 +1,7 @@
 /**
- * --- BBU1 SOVEREIGN: DELIVERY HANDSHAKE ROUTE ---
+ * --- DELIVERY VERIFICATION PAGE ---
  * PATH: /distribution/handshake/[id]
- * JURISDICTION: Final Destination Verification
+ * Use: Final confirmation and seal verification at destination
  */
 
 import DeliveryHandshake from "@/components/distribution/DeliveryHandshake";
@@ -16,7 +16,7 @@ export default async function HandshakePage({
     params: { locale: string; id: string } 
 }) {
   
-  // 1. Enterprise Security Check
+  // 1. Authentication Check
   const supabase = await createClient(await cookies());
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect(`/${locale}/auth/login`);
@@ -30,23 +30,43 @@ export default async function HandshakePage({
   if (!profile?.business_id) redirect(`/${locale}/dashboard`);
 
   return (
-    <div className="flex-1 bg-slate-50 min-h-screen flex flex-col items-center justify-center p-6">
-      <div className="mb-8 text-center space-y-2">
-        <div className="flex items-center justify-center gap-2 text-blue-600 mb-4">
-            <MapPin size={24} />
-            <div className="h-px w-8 bg-blue-200" />
-            <QrCode size={24} />
+    <main className="flex-1 bg-slate-50/20 min-h-screen flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+      
+      {/* SECTION HEADER */}
+      <div className="mb-10 text-center space-y-3">
+        <div className="flex items-center justify-center gap-3 text-blue-600 mb-6 opacity-80">
+            <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100">
+                <MapPin size={22} />
+            </div>
+            <div className="h-px w-10 bg-slate-200" />
+            <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100">
+                <QrCode size={22} />
+            </div>
         </div>
-        <h2 className="text-xl font-black uppercase tracking-tight text-slate-900">Destination Arrival</h2>
-        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Verifying Load Identity: #{id}</p>
+        
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+            Confirm Delivery
+        </h2>
+        <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest">
+            Verifying Shipment ID: #{id}
+        </p>
       </div>
 
-      {/* THE HANDSHAKE COMPONENT: Validates GPS and Breaks the Digital Seal */}
-      <DeliveryHandshake loadId={id} businessId={profile.business_id} />
+      {/* 
+          THE VERIFICATION COMPONENT 
+          Handles GPS validation and security seal confirmation
+      */}
+      <div className="w-full max-w-md shadow-sm">
+        <DeliveryHandshake loadId={id} businessId={profile.business_id} />
+      </div>
       
-      <p className="mt-10 text-[9px] font-black uppercase tracking-[0.5em] text-slate-300">
-        BBU1 Sovereign Neural Logistics Shield
-      </p>
-    </div>
+      {/* SYSTEM FOOTER */}
+      <div className="mt-12 flex flex-col items-center gap-2 opacity-30">
+        <div className="h-px w-24 bg-slate-300" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+            Secure Logistics Verification System
+        </p>
+      </div>
+    </main>
   );
 }

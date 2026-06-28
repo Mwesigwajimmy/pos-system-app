@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * --- BBU1 SOVEREIGN: DELIVERY HANDSHAKE ---
- * VERSION: v1.0 OMEGA (THE FINAL DESTINATION)
- * LOGIC: Digital Seal Verification & GPS Handshake
+ * --- DELIVERY VERIFICATION ---
+ * VERSION: v1.2 PROFESSIONAL
+ * LOGIC: Digital Seal Verification & GPS Location Confirmation
+ * STYLE: Clean White Dashboard for Corporate Use
  */
 
 import React, { useState } from 'react';
@@ -27,13 +28,13 @@ export default function DeliveryHandshake({ loadId, businessId }: { loadId: stri
     const handleHandshake = async () => {
         setIsVerifying(true);
         
-        // 1. Capture Location (Enterprise GPS Handshake)
+        // 1. Capture Location (Professional Location Verification)
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const { latitude, longitude } = pos.coords;
 
-            // 2. Break the Digital Seal via RPC
+            // 2. Verify Digital Seal via RPC
             const { error } = await supabase.rpc('execute_logistics_handshake', {
-                p_seal_hash: `SEAL-${loadId}`, // Logic matches dispatch hash
+                p_seal_hash: `SEAL-${loadId}`, 
                 p_lat: latitude,
                 p_lng: longitude,
                 p_user_id: (await supabase.auth.getUser()).data.user?.id,
@@ -41,69 +42,100 @@ export default function DeliveryHandshake({ loadId, businessId }: { loadId: stri
             });
 
             if (error) {
-                toast.error("Handshake Protocol Denied", { description: "Seal verification failed or GPS is out of range." });
+                toast.error("Verification Denied", { 
+                    description: "Seal verification failed or the device is out of the required range." 
+                });
             } else {
                 setIsDelivered(true);
-                toast.success("Logistics Handshake Complete", { description: "Digital seal broken and stock recorded as Delivered." });
+                toast.success("Verification Complete", { 
+                    description: "The security seal was verified and delivery is confirmed." 
+                });
             }
             setIsVerifying(false);
         }, () => {
-            toast.error("GPS Identity Failure", { description: "Please enable location services to break the digital seal." });
+            toast.error("Location Error", { 
+                description: "Please enable location services to verify this delivery." 
+            });
             setIsVerifying(false);
         });
     };
 
     if (isDelivered) {
         return (
-            <Card className="max-w-md mx-auto p-12 text-center space-y-8 bg-white border-none shadow-2xl rounded-[3rem] animate-in zoom-in">
-                <div className="bg-emerald-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 size={48} className="text-emerald-500" />
+            <Card className="max-w-md mx-auto p-10 text-center space-y-8 bg-white border border-slate-200 shadow-sm rounded-2xl animate-in zoom-in duration-300">
+                <div className="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={40} className="text-emerald-600" />
                 </div>
-                <div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter">Delivery Confirmed</h2>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Sovereign Audit Logged</p>
+                <div className="space-y-2">
+                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Delivery Confirmed</h2>
+                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">The delivery has been logged in the system audit.</p>
                 </div>
-                <div className="flex flex-col gap-3">
-                    <Button variant="outline" className="h-14 rounded-2xl border-slate-200 font-bold text-[10px] uppercase">
-                        <Download size={14} className="mr-2" /> Download Proof (PDF)
+                <div className="flex flex-col gap-3 pt-4">
+                    <Button variant="outline" className="h-11 rounded-lg border-slate-200 font-semibold text-xs uppercase tracking-wider text-slate-700 hover:bg-slate-50 transition-colors">
+                        <Download size={14} className="mr-2" /> Download Delivery Proof
                     </Button>
-                    <Button variant="ghost" className="text-slate-400 font-bold text-[10px] uppercase" onClick={() => window.location.reload()}>Close Session</Button>
+                    <Button 
+                        variant="ghost" 
+                        className="text-slate-400 font-semibold text-xs uppercase tracking-wider hover:text-slate-600" 
+                        onClick={() => window.location.reload()}
+                    >
+                        Finish Session
+                    </Button>
                 </div>
             </Card>
         );
     }
 
     return (
-        <Card className="max-w-md mx-auto p-10 bg-slate-900 text-white rounded-[3rem] border-none shadow-2xl space-y-8">
-            <div className="flex justify-between items-start">
+        <Card className="max-w-md mx-auto p-8 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="flex justify-between items-center px-1">
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-black uppercase tracking-tighter">Handshake Mode</h2>
-                    <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">Awaiting Seal Verification</p>
+                    <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Delivery Verification</h2>
+                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Awaiting security seal check</p>
                 </div>
-                <Badge className="bg-blue-600 text-white border-none">ACTIVE LOAD</Badge>
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-semibold text-[10px] px-3 py-1 rounded-md uppercase tracking-wider">
+                    Active Delivery
+                </Badge>
             </div>
 
-            <div className="p-8 bg-white/5 rounded-[2rem] border border-white/10 flex flex-col items-center text-center space-y-4">
-                <QrCode size={120} className="text-blue-400" />
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Scan the cargo QR code to verify the Digital Seal</p>
+            <div className="p-10 bg-slate-50/50 rounded-xl border border-slate-100 flex flex-col items-center text-center space-y-6">
+                <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200/50">
+                    <QrCode size={80} className="text-slate-900" />
+                </div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-widest leading-relaxed px-4">
+                    Scan the cargo QR code to verify the security seal
+                </p>
             </div>
 
-            <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <MapPin className="text-slate-400" size={20} />
+            <div className="space-y-4 px-1">
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-slate-400 border border-slate-200">
+                        <MapPin size={18} />
+                    </div>
                     <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase">Verification Site</p>
-                        <p className="text-xs font-bold uppercase">Destination Node Detected</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Verification Site</p>
+                        <p className="text-sm font-semibold text-slate-800 uppercase tracking-tight">Destination Location Detected</p>
                     </div>
                 </div>
 
                 <Button 
                     disabled={isVerifying}
                     onClick={handleHandshake}
-                    className="w-full h-20 rounded-[2rem] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
+                    className="w-full h-14 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold uppercase tracking-widest text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
                 >
-                    {isVerifying ? <Loader2 className="animate-spin" /> : "Break Digital Seal"}
+                    {isVerifying ? (
+                        <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Verifying...</span>
+                        </div>
+                    ) : (
+                        "Verify Security Seal"
+                    )}
                 </Button>
+            </div>
+
+            <div className="flex justify-center pt-2 border-t border-slate-50">
+                <p className="text-[9px] font-semibold text-slate-300 uppercase tracking-[0.2em]">Secure Logistics Handshake Protocol</p>
             </div>
         </Card>
     );

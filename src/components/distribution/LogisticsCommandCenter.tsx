@@ -1,15 +1,9 @@
 'use client';
 
 /**
- * --- BBU1 SOVEREIGN: LOGISTICS COMMAND CENTER ---
- * VERSION: v4.5 OMEGA-ULTIMATUM (THE GLOBAL ARCHITECT)
- * JURISDICTION: Professional Multi-Sector Tracking & Exports
- * 
- * CORE ARCHITECTURAL SEAL:
- * 1. UNIFIED RADAR: Parallel fetching of Local Van Loads and International Manifests.
- * 2. SECTOR INTELLIGENCE: Auto-categorization of shipments based on audited schema.
- * 3. ENTERPRISE EXPORTS: Integrated jsPDF and CSV Ledger generators.
- * 4. NODE IDENTITY: Real-time currency and legal branding synchronization.
+ * --- LOGISTICS MANAGEMENT DASHBOARD ---
+ * VERSION: v4.6 PROFESSIONAL
+ * Use: Multi-Sector Shipment Tracking & Reporting
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -36,16 +30,16 @@ export default function LogisticsCommandCenter() {
     const [manifests, setManifests] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [businessIdentity, setBusinessIdentity] = useState({ name: "Authorized Node", currency: "UGX" });
+    const [businessProfile, setBusinessProfile] = useState({ name: "Authorized Business", currency: "UGX" });
     const supabase = createClient();
 
-    // --- DEEP DATA HANDSHAKE ---
+    // --- DATABASE SYNCHRONIZATION ---
     useEffect(() => {
-        const fetchDeepLogistics = async () => {
+        const fetchLogisticsData = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // 1. Resolve Corporate Identity (Audit-Verified View)
+            // 1. Fetch Business Identity
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('business_id, business_name')
@@ -55,15 +49,15 @@ export default function LogisticsCommandCenter() {
                 const { data: identity } = await supabase
                     .from('view_bbu1_corporate_identity')
                     .select('legal_name, currency_code')
-                    .eq('business_id', profile.business_id).single();
+                    .eq('business_id', profile.business_id).maybeSingle();
                 
-                setBusinessIdentity({
+                setBusinessProfile({
                     name: identity?.legal_name || profile.business_name,
                     currency: identity?.currency_code || "UGX"
                 });
 
-                // 2. Fetch Manifests & Joined Van Loads (Audited Tables)
-                const { data: radarData, error } = await supabase
+                // 2. Fetch Shipment Manifests
+                const { data: shipmentData, error } = await supabase
                     .from('logistics_manifests')
                     .select(`
                         *,
@@ -74,17 +68,17 @@ export default function LogisticsCommandCenter() {
                     .order('created_at', { ascending: false });
                 
                 if (error) {
-                    toast.error("Radar Fault", { description: "Failed to connect to the logistics ledger." });
-                } else if (radarData) {
-                    setManifests(radarData);
+                    toast.error("Connection Error", { description: "Could not retrieve shipment records." });
+                } else if (shipmentData) {
+                    setManifests(shipmentData);
                 }
             }
             setIsLoading(false);
         };
-        fetchDeepLogistics();
+        fetchLogisticsData();
     }, [supabase]);
 
-    // --- FILTERING ENGINE ---
+    // --- FILTERING LOGIC ---
     const filteredManifests = useMemo(() => {
         return manifests.filter(m => {
             const matchesSearch = (m.seal_no?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
@@ -93,39 +87,37 @@ export default function LogisticsCommandCenter() {
         });
     }, [manifests, searchTerm]);
 
-    const localLoads = useMemo(() => filteredManifests.filter(m => m.shipment_type === 'LOCAL'), [filteredManifests]);
-    const globalCargo = useMemo(() => filteredManifests.filter(m => m.shipment_type === 'INTERNATIONAL'), [filteredManifests]);
+    const localShipments = useMemo(() => filteredManifests.filter(m => m.shipment_type === 'LOCAL'), [filteredManifests]);
+    const internationalShipments = useMemo(() => filteredManifests.filter(m => m.shipment_type === 'INTERNATIONAL'), [filteredManifests]);
 
-    // --- ENTERPRISE REPORTING ENGINE (PDF) ---
-    const generateDispatchReport = () => {
+    // --- REPORT GENERATION (PDF) ---
+    const generatePDFReport = () => {
         const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text("SOVEREIGN LOGISTICS LEDGER", 105, 20, { align: 'center' });
+        doc.setFontSize(16);
+        doc.text("LOGISTICS SHIPMENT LEDGER", 105, 20, { align: 'center' });
         doc.setFontSize(10);
-        doc.text(`Node Identity: ${businessIdentity.name}`, 20, 35);
-        doc.text(`Jurisdiction: Global Distribution`, 20, 41);
-        doc.text(`Ledger Timestamp: ${new Date().toLocaleString()}`, 20, 47);
+        doc.text(`Business: ${businessProfile.name}`, 20, 35);
+        doc.text(`Date: ${new Date().toLocaleString()}`, 20, 41);
 
         autoTable(doc, {
-            startY: 55,
-            head: [['Seal ID', 'Ref', 'Type', 'Status', 'Liability']],
+            startY: 50,
+            head: [['Security Seal', 'Reference', 'Type', 'Status', 'Tax/Duty']],
             body: filteredManifests.map(m => [
-                m.seal_no || 'N/A',
+                m.seal_no || 'Pending',
                 m.shipment_ref || 'N/A',
                 m.shipment_type,
                 m.status,
-                `${businessIdentity.currency} ${m.est_tax_liability_local?.toLocaleString() || 0}`
+                `${businessProfile.currency} ${m.est_tax_liability_local?.toLocaleString() || 0}`
             ]),
-            theme: 'striped',
-            headStyles: { fillColor: [15, 23, 42] }
+            headStyles: { fillColor: [51, 65, 85] }
         });
 
-        doc.save(`BBU1-LOGISTICS-LEDGER-${Date.now()}.pdf`);
+        doc.save(`Shipment-Report-${Date.now()}.pdf`);
     };
 
-    // --- ENTERPRISE REPORTING ENGINE (CSV) ---
-    const generateCSV = () => {
-        const headers = ["Seal_ID", "Reference", "Type", "Status", "Created_At", "Tax_Liability"];
+    // --- DATA EXPORT (CSV) ---
+    const generateCSVExport = () => {
+        const headers = ["Security_Seal", "Reference", "Type", "Status", "Date", "Liability"];
         const rows = filteredManifests.map(m => [
             m.seal_no, m.shipment_ref, m.shipment_type, m.status, m.created_at, m.est_tax_liability_local
         ]);
@@ -134,166 +126,164 @@ export default function LogisticsCommandCenter() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Logistics-Ledger-${Date.now()}.csv`;
+        a.download = `Logistics-Data-${Date.now()}.csv`;
         a.click();
     };
 
     if (isLoading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white space-y-4">
-            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Synchronizing Logistics Radar...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Loading Shipment Records...</p>
         </div>
     );
 
     return (
-        <main className="min-h-screen bg-slate-50/30 p-6 lg:p-10 space-y-10 animate-in fade-in duration-1000">
+        <main className="min-h-screen bg-slate-50/20 p-6 lg:p-10 space-y-10 animate-in fade-in duration-500">
             
-            {/* --- TOP SECTOR: NODE IDENTITY --- */}
-            <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-slate-200 pb-10">
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3 text-blue-600">
-                        <div className="bg-blue-600 p-2.5 rounded-2xl text-white shadow-lg">
-                            <Truck size={22} />
-                        </div>
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">Fleet Management Hub</span>
+            {/* --- HEADER SECTION --- */}
+            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 pb-10">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-blue-600">
+                        <Truck size={20} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Logistics Management</span>
                     </div>
-                    <h1 className="text-5xl font-black tracking-tighter text-slate-900 uppercase">Logistics Radar</h1>
-                    <p className="text-slate-500 font-medium max-w-lg">
-                        Tracking jurisdictional and international cargo for <span className="text-slate-900 font-bold">{businessIdentity.name}</span>.
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Shipment Tracking</h1>
+                    <p className="text-sm text-slate-500 font-medium">
+                        Monitor active deliveries and global cargo for <span className="text-slate-800 font-semibold">{businessProfile.name}</span>.
                     </p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                    <Button onClick={generateCSV} variant="outline" className="h-14 px-6 rounded-2xl bg-white border-slate-200 font-bold text-[10px] uppercase tracking-widest gap-2 shadow-sm hover:bg-slate-50">
-                        <FileSpreadsheet size={16} className="text-emerald-600" /> Export CSV
+                    <Button onClick={generateCSVExport} variant="outline" className="h-11 px-5 rounded-xl bg-white border-slate-200 font-bold text-[10px] uppercase tracking-wider gap-2 hover:bg-slate-50">
+                        <FileSpreadsheet size={15} className="text-emerald-600" /> Export CSV
                     </Button>
-                    <Button onClick={generateDispatchReport} variant="outline" className="h-14 px-6 rounded-2xl bg-white border-slate-200 font-bold text-[10px] uppercase tracking-widest gap-2 shadow-sm hover:bg-slate-50">
-                        <FileText size={16} className="text-blue-600" /> Dispatch PDF
+                    <Button onClick={generatePDFReport} variant="outline" className="h-11 px-5 rounded-xl bg-white border-slate-200 font-bold text-[10px] uppercase tracking-wider gap-2 hover:bg-slate-50">
+                        <FileText size={15} className="text-blue-600" /> Export PDF
                     </Button>
-                    <Button className="h-14 px-8 rounded-2xl bg-slate-950 hover:bg-black text-white font-black text-[10px] uppercase tracking-widest shadow-xl transition-all" asChild>
+                    <Button className="h-11 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider shadow-sm transition-all" asChild>
                         <Link href="/distribution/dispatch">
-                            <Plus size={18} className="mr-2" /> New Load Out
+                            <Plus size={16} className="mr-2" /> New Shipment
                         </Link>
                     </Button>
                 </div>
             </header>
 
-            {/* --- MAIN SECTOR: TRACKING INTERFACE --- */}
-            <Tabs defaultValue="all" className="space-y-8">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-white p-3 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                    <TabsList className="bg-slate-100/50 p-1.5 rounded-[1.8rem] h-14">
-                        <TabsTrigger value="all" className="rounded-2xl px-10 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-md">
-                            All Loads ({manifests.length})
+            {/* --- FILTER & TABS --- */}
+            <Tabs defaultValue="all" className="space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-2 rounded-2xl border border-slate-200/60 shadow-sm">
+                    <TabsList className="bg-slate-50 p-1 rounded-xl h-12">
+                        <TabsTrigger value="all" className="rounded-lg px-8 font-bold text-[10px] uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                            All ({manifests.length})
                         </TabsTrigger>
-                        <TabsTrigger value="local" className="rounded-2xl px-10 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                        <TabsTrigger value="local" className="rounded-lg px-8 font-bold text-[10px] uppercase tracking-wider data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
                             Local
                         </TabsTrigger>
-                        <TabsTrigger value="global" className="rounded-2xl px-10 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+                        <TabsTrigger value="global" className="rounded-lg px-8 font-bold text-[10px] uppercase tracking-wider data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-600">
                             International
                         </TabsTrigger>
                     </TabsList>
 
-                    <div className="relative w-full md:w-96 px-2">
-                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 h-4 w-4" />
+                    <div className="relative w-full md:w-80 px-2">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 h-3.5 w-3.5" />
                         <Input 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Filter by Seal ID or Reference..." 
-                            className="h-12 pl-12 rounded-2xl bg-slate-50 border-none font-bold text-xs" 
+                            placeholder="Search by Seal ID or Ref..." 
+                            className="h-10 pl-10 rounded-xl bg-slate-50 border-none font-medium text-xs text-slate-700" 
                         />
                     </div>
                 </div>
 
-                {/* --- TAB CONTENT: DYNAMIC FEED --- */}
+                {/* --- SHIPMENT FEED --- */}
                 <div className="space-y-4">
                     {filteredManifests.length === 0 ? (
-                        <div className="py-40 text-center space-y-4 opacity-30">
-                            <Package size={64} className="mx-auto" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.4em]">No Active Shipments Detected</p>
+                        <div className="py-32 text-center space-y-3 opacity-40">
+                            <Package size={48} className="mx-auto text-slate-300" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">No shipments found</p>
                         </div>
                     ) : (
                         <TabsContent value="all" className="space-y-4 m-0">
-                            {filteredManifests.map((m) => <ManifestCard key={m.id} manifest={m} identity={businessIdentity} />)}
+                            {filteredManifests.map((m) => <ManifestCard key={m.id} manifest={m} profile={businessProfile} />)}
                         </TabsContent>
                     )}
                     
                     <TabsContent value="local" className="space-y-4 m-0">
-                        {localLoads.map((m) => <ManifestCard key={m.id} manifest={m} identity={businessIdentity} />)}
+                        {localShipments.map((m) => <ManifestCard key={m.id} manifest={m} profile={businessProfile} />)}
                     </TabsContent>
 
                     <TabsContent value="global" className="space-y-4 m-0">
-                        {globalCargo.map((m) => <ManifestCard key={m.id} manifest={m} identity={businessIdentity} />)}
+                        {internationalShipments.map((m) => <ManifestCard key={m.id} manifest={m} profile={businessProfile} />)}
                     </TabsContent>
                 </div>
             </Tabs>
 
-            {/* --- SYSTEM FOOTER --- */}
-            <footer className="pt-20 pb-10 flex flex-col items-center gap-6">
-                <div className="flex items-center gap-4 opacity-20">
-                    <div className="h-px w-20 bg-slate-300" />
-                    <ShieldCheck size={20} className="text-slate-500" />
-                    <div className="h-px w-20 bg-slate-300" />
+            {/* --- FOOTER --- */}
+            <footer className="pt-16 pb-8 flex flex-col items-center gap-4">
+                <div className="flex items-center gap-4 opacity-30">
+                    <div className="h-px w-16 bg-slate-300" />
+                    <ShieldCheck size={18} className="text-slate-400" />
+                    <div className="h-px w-16 bg-slate-300" />
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-[0.5em] text-slate-400">
-                    Sovereign Logistics Shield • End-to-End Encryption
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                    Secure Logistics Management System
                 </p>
             </footer>
         </main>
     );
 }
 
-// --- SUB-COMPONENT: DISPATCH CARD ---
-const ManifestCard = ({ manifest, identity }: { manifest: any, identity: any }) => (
-    <Card className="group border-none shadow-sm hover:shadow-xl hover:translate-y-[-2px] transition-all bg-white rounded-[3rem] overflow-hidden">
+// --- SUB-COMPONENT: SHIPMENT CARD ---
+const ManifestCard = ({ manifest, profile }: { manifest: any, profile: any }) => (
+    <Card className="group border border-slate-100 shadow-sm hover:shadow-md transition-all bg-white rounded-2xl overflow-hidden">
         <CardContent className="p-0">
-            <div className="flex flex-col lg:flex-row items-center p-8 gap-8">
+            <div className="flex flex-col lg:flex-row items-center p-6 gap-6">
                 
-                {/* SECTOR INDICATOR */}
-                <div className="flex flex-col items-center justify-center w-24 h-24 rounded-[2.2rem] bg-slate-50 group-hover:bg-blue-50 transition-colors">
-                    {manifest.shipment_type === 'INTERNATIONAL' ? <Globe className="text-emerald-500" /> : <Truck className="text-blue-500" />}
-                    <span className="mt-2 text-[8px] font-black uppercase text-slate-400">
+                {/* ICON */}
+                <div className="flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-slate-50 group-hover:bg-blue-50 transition-colors border border-slate-100/50">
+                    {manifest.shipment_type === 'INTERNATIONAL' ? <Globe size={24} className="text-emerald-500" /> : <Truck size={24} className="text-blue-500" />}
+                    <span className="mt-2 text-[8px] font-bold uppercase text-slate-400">
                         {manifest.shipment_type === 'INTERNATIONAL' ? 'Global' : 'Local'}
                     </span>
                 </div>
 
-                {/* IDENTITY */}
+                {/* INFO */}
                 <div className="flex-1 space-y-1 text-center lg:text-left">
                     <div className="flex items-center justify-center lg:justify-start gap-3">
-                        <h4 className="text-lg font-black text-slate-900 uppercase tracking-tighter">
-                            {manifest.seal_no || 'SECURE-SEAL-PENDING'}
+                        <h4 className="text-md font-bold text-slate-900 uppercase tracking-tight">
+                            {manifest.seal_no || 'Verification Pending'}
                         </h4>
-                        <Badge className="bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase px-3 border-none">
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-600 font-bold text-[8px] uppercase px-2 border-none rounded-md">
                             {manifest.status}
                         </Badge>
                     </div>
-                    <div className="flex items-center justify-center lg:justify-start gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        <span className="flex items-center gap-1"><ClipboardList size={12} /> Ref: {manifest.shipment_ref}</span>
+                    <div className="flex items-center justify-center lg:justify-start gap-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        <span className="flex items-center gap-1"><ClipboardList size={11} /> Ref: {manifest.shipment_ref}</span>
                         <span>•</span>
-                        <span className="flex items-center gap-1"><MapPin size={12} /> {manifest.destination_country || 'Internal Route'}</span>
+                        <span className="flex items-center gap-1"><MapPin size={11} /> {manifest.destination_country || 'Internal Route'}</span>
                     </div>
                 </div>
 
-                {/* ANALYTICS */}
-                <div className="grid grid-cols-2 gap-8 px-10 border-x border-slate-100 hidden md:grid">
+                {/* METRICS */}
+                <div className="grid grid-cols-2 gap-8 px-8 border-x border-slate-100 hidden md:grid">
                     <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Load Weight</p>
-                        <p className="text-sm font-black text-slate-900">{manifest.gross_weight_kg || 0} KG</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Gross Weight</p>
+                        <p className="text-sm font-bold text-slate-700">{manifest.gross_weight_kg || 0} KG</p>
                     </div>
                     <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Tax Liability</p>
-                        <p className="text-sm font-black text-emerald-600">
-                            {identity.currency} {manifest.est_tax_liability_local?.toLocaleString() || 0}
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tax/Duty Liability</p>
+                        <p className="text-sm font-bold text-emerald-600">
+                            {profile.currency} {manifest.est_tax_liability_local?.toLocaleString() || 0}
                         </p>
                     </div>
                 </div>
 
-                {/* ACTION */}
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl hover:bg-slate-50">
-                        <Printer size={18} className="text-slate-400" />
+                {/* ACTIONS */}
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-blue-600">
+                        <Printer size={16} />
                     </Button>
-                    <Button className="h-14 px-8 rounded-2xl bg-white border border-slate-200 text-slate-950 font-black text-[10px] uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all group">
-                        Track Details <ChevronRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                    <Button className="h-11 px-6 rounded-xl bg-white border border-slate-200 text-slate-900 font-bold text-[10px] uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all">
+                        Details <ChevronRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
                 </div>
             </div>

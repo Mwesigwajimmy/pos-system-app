@@ -1,22 +1,22 @@
 /**
- * --- BBU1 SOVEREIGN: DISPATCH HUB ROUTE ---
+ * --- LOGISTICS DISPATCH PAGE ---
  * PATH: /distribution/dispatch
- * JURISDICTION: Professional Outbound Sealing
+ * Use: Shipment confirmation and dispatch management
  */
 
 import DispatchWorkbench from "@/components/distribution/DispatchWorkbench";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { ShieldCheck, ArrowLeft, Navigation } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default async function DispatchPage({ params: { locale } }: { params: { locale: string } }) {
   
-  // 1. Enterprise Identity Handshake
+  // 1. Initialize Database Client
   const supabase = await createClient(await cookies());
   
-  // 2. Security Guard
+  // 2. Authentication Check
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect(`/${locale}/auth/login`);
 
@@ -29,27 +29,29 @@ export default async function DispatchPage({ params: { locale } }: { params: { l
   if (!profile?.business_id) redirect(`/${locale}/dashboard`);
 
   return (
-    <div className="flex-1 bg-white min-h-screen">
-      {/* PROFESSIONAL HEADER FOR DISPATCH SECTOR */}
-      <div className="max-w-[1400px] mx-auto p-8 border-b border-slate-50 flex items-center justify-between">
-        <div className="space-y-1">
-            <div className="flex items-center gap-2 text-blue-600">
-                <Navigation size={16} strokeWidth={2.5} />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Logistics Dispatch Protocol</span>
-            </div>
-            <h1 className="text-3xl font-black tracking-tighter text-slate-900">Cargo Dispatch & Sealing</h1>
+    <main className="flex-1 bg-slate-50/20 min-h-screen">
+      <div className="max-w-[1450px] mx-auto p-6 md:p-10 space-y-6">
+        
+        {/* SUBTLE NAVIGATION */}
+        <div className="flex items-center justify-start">
+            <Link 
+                href={`/${locale}/distribution`} 
+                className="flex items-center gap-2 text-slate-400 hover:text-blue-600 transition-colors group"
+            >
+                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Back to Logistics</span>
+            </Link>
         </div>
 
-        <Link href={`/${locale}/distribution`} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors group">
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Back to Overview</span>
-        </Link>
+        {/* 
+            The main header has been removed from this page file.
+            The DispatchWorkbench component will manage its own 
+            title and interface to ensure a clean, non-duplicate layout.
+        */}
+        <div className="animate-in fade-in duration-700">
+            <DispatchWorkbench businessId={profile.business_id} />
+        </div>
       </div>
-
-      <div className="max-w-[1400px] mx-auto p-8">
-         {/* THE MASTER COMPONENT: Handles Scanning, Multi-Currency, and PDF Generation */}
-         <DispatchWorkbench businessId={profile.business_id} />
-      </div>
-    </div>
+    </main>
   );
 }

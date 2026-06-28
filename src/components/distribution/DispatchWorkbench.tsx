@@ -1,16 +1,9 @@
 'use client';
 
 /**
- * --- BBU1 SOVEREIGN: LOGISTICS DISPATCH WORKBENCH ---
- * VERSION: v4.0 OMEGA-ULTIMATUM (THE GLOBAL DISTRIBUTOR)
- * JURISDICTION: Integrated Local & International Logistics
- * 
- * CORE ARCHITECTURAL SEAL:
- * 1. DUAL-SECTOR LOGIC: Handles Local Van Loads (BigInt) and Cargo Manifests (UUID).
- * 2. IDENTITY ANCHOR: Dynamic Business Name & Multi-Currency Detection.
- * 3. HARDWARE BRIDGE: High-speed buffer scanning with Neural Audio feedback.
- * 4. ATOMIC SEALING: Cryptographic Seal injection with GPS Dispatch Handshake.
- * 5. ENTERPRISE REPORTING: Layout-perfect PDF and CSV Ledger generation.
+ * --- LOGISTICS DISPATCH MANAGER ---
+ * VERSION: v4.1 PROFESSIONAL
+ * Use: Management of Local and International Shipping
  */
 
 import React, { useState, useEffect } from 'react';
@@ -42,7 +35,7 @@ interface ScannedManifestItem {
     units_per_pack: number;
 }
 
-interface BusinessDNA {
+interface CompanyInfo {
     name: string;
     currency: string;
     business_id: string;
@@ -54,15 +47,15 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
     const [isScanning, setIsScanning] = useState(false);
     const [manifestItems, setManifestItems] = useState<ScannedManifestItem[]>([]);
     const [shipmentType, setShipmentType] = useState<'LOCAL' | 'INTERNATIONAL'>('LOCAL');
-    const [dna, setDna] = useState<BusinessDNA | null>(null);
+    const [company, setCompany] = useState<CompanyInfo | null>(null);
     const [isSealing, setIsSealing] = useState(false);
     const [sealedData, setSealedData] = useState<any>(null);
     
     const supabase = createClient();
 
-    // --- IDENTITY ANCHOR: Fetch Node DNA ---
+    // --- FETCH COMPANY INFORMATION ---
     useEffect(() => {
-        const fetchDNA = async () => {
+        const fetchCompanyData = async () => {
             const { data } = await supabase
                 .from('view_bbu1_corporate_identity')
                 .select('legal_name, currency_code, tenant_id')
@@ -70,7 +63,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 .maybeSingle();
             
             if (data) {
-                setDna({
+                setCompany({
                     name: data.legal_name,
                     currency: data.currency_code || 'UGX',
                     business_id: businessId,
@@ -78,10 +71,10 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 });
             }
         };
-        fetchDNA();
+        fetchCompanyData();
     }, [businessId, supabase]);
 
-    // --- HARDWARE SCANNER BUFFER ---
+    // --- SCANNER INPUT BUFFER ---
     useEffect(() => {
         let buffer = '';
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,7 +99,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
 
         if (!item || error) {
             DeepAudioEngine.playError();
-            toast.error("Unrecognized Identity", { description: `Code ${code} is not registered in this Node.` });
+            toast.error("Item Not Found", { description: `The code ${code} is not recognized in the system.` });
             setIsScanning(false);
             return;
         }
@@ -128,25 +121,25 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 batch_number: item.batch_number 
             }];
         });
-        toast.success(`Identified: ${item.product_name} (+${multiplier})`);
+        toast.success(`Scanned: ${item.product_name} (+${multiplier})`);
         setIsScanning(false);
     };
 
-    // --- SOVEREIGN SEALING PROTOCOL ---
+    // --- DISPATCH CONFIRMATION PROTOCOL ---
     const executeDispatchSeal = async () => {
         setIsSealing(true);
-        const sealHash = `BBU1-SEAL-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+        const securityID = `ID-SHIP-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-        // 1. Capture Dispatch GPS (Enterprise Security)
+        // 1. Capture Location for Verification
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const { latitude, longitude } = pos.coords;
 
-            // 2. Create Global Manifest (UUID Sector)
+            // 2. Create Shipment Manifest
             const { data: manifest, error: mError } = await supabase
                 .from('logistics_manifests')
                 .insert({
                     business_id: businessId,
-                    seal_no: sealHash,
+                    seal_no: securityID,
                     status: 'sealed',
                     shipment_type: shipmentType,
                     shipment_ref: `REF-${Date.now()}`,
@@ -155,12 +148,12 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 .select().single();
 
             if (mError) {
-                toast.error("Manifest Breach", { description: "Global registry rejected the seal." });
+                toast.error("Database Error", { description: "The system could not save the manifest." });
                 setIsSealing(false);
                 return;
             }
 
-            // 3. Create Van Load (BigInt Sector)
+            // 3. Register Load
             const { data: vanLoad } = await supabase
                 .from('van_loads')
                 .insert({
@@ -171,93 +164,93 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 })
                 .select().single();
 
-            // 4. Traceability Handshake (Inject Items)
-            const lines = manifestItems.map(i => ({
+            // 4. Map Items to Manifest
+            const itemsToInsert = manifestItems.map(i => ({
                 manifest_id: manifest.id,
                 product_variant_id: i.variant_id,
                 quantity: i.qty
             }));
 
-            await supabase.from('logistics_manifest_items').insert(lines);
+            await supabase.from('logistics_manifest_items').insert(itemsToInsert);
 
             setSealedData({ manifest, vanLoad, items: manifestItems, lat: latitude, lng: longitude });
             DeepAudioEngine.playSuccess();
-            toast.success("Logistics Manifest Sealed", { description: `Digital Seal ${sealHash} is hardware-locked.` });
+            toast.success("Dispatch Confirmed", { description: `Shipping ID ${securityID} has been registered.` });
             setIsSealing(false);
 
         }, () => {
-            toast.error("GPS Identity Failure", { description: "Cannot seal dispatch without GPS verification." });
+            toast.error("Location Required", { description: "Please enable GPS to authorize this dispatch." });
             setIsSealing(false);
         });
     };
 
-    // --- ENTERPRISE EXPORTS ---
+    // --- DATA EXPORTS ---
     const exportCSV = () => {
-        const headers = ["SKU", "Product", "Quantity", "Batch"];
+        const headers = ["SKU", "Product Name", "Quantity", "Batch Number"];
         const rows = manifestItems.map(i => [i.sku, i.product_name, i.qty, i.batch_number || 'N/A']);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Dispatch-Ledger-${Date.now()}.csv`;
+        a.download = `Shipping-Manifest-${Date.now()}.csv`;
         a.click();
     };
 
     const downloadPDF = () => {
         const doc = new jsPDF();
         doc.setFont("helvetica", "bold");
-        doc.text("SOVEREIGN DISPATCH MANIFEST", 105, 20, { align: 'center' });
+        doc.text("SHIPPING MANIFEST", 105, 20, { align: 'center' });
         
         doc.setFontSize(10);
-        doc.text(`BUSINESS: ${dna?.name}`, 20, 35);
-        doc.text(`SEAL ID: ${sealedData.manifest.seal_no}`, 20, 42);
-        doc.text(`LOAD TYPE: ${shipmentType}`, 20, 49);
-        doc.text(`GPS ORIGIN: ${sealedData.lat}, ${sealedData.lng}`, 20, 56);
+        doc.text(`COMPANY: ${company?.name}`, 20, 35);
+        doc.text(`SECURITY ID: ${sealedData.manifest.seal_no}`, 20, 42);
+        doc.text(`SHIPMENT TYPE: ${shipmentType}`, 20, 49);
+        doc.text(`LOCATION ORIGIN: ${sealedData.lat}, ${sealedData.lng}`, 20, 56);
 
         autoTable(doc, {
             startY: 65,
             head: [['SKU', 'ITEM DESCRIPTION', 'QTY', 'BATCH']],
             body: manifestItems.map(i => [i.sku, i.product_name, i.qty, i.batch_number || '-']),
             styles: { fontSize: 9, cellPadding: 4 },
-            headStyles: { fillColor: [15, 23, 42] }
+            headStyles: { fillColor: [51, 65, 85] }
         });
 
-        doc.save(`BBU1-MANIFEST-${sealedData.manifest.seal_no}.pdf`);
+        doc.save(`Manifest-${sealedData.manifest.seal_no}.pdf`);
     };
 
     if (sealedData) {
         return (
-            <Card className="max-w-2xl mx-auto p-12 text-center space-y-10 border-none shadow-[0_40px_100px_rgba(0,0,0,0.1)] bg-white rounded-[4rem] animate-in zoom-in">
-                <div className="w-28 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
-                    <ShieldCheck size={56} className="text-emerald-500" />
+            <Card className="max-w-2xl mx-auto p-12 text-center space-y-10 border border-slate-200 shadow-xl bg-white rounded-[2rem] animate-in zoom-in duration-500">
+                <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={48} className="text-emerald-600" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900">Sovereign Dispatch Locked</h2>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.5em]">Logistics Chain Confirmed</p>
+                    <h2 className="text-2xl font-bold text-slate-900">Dispatch Confirmed</h2>
+                    <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">Shipping records successfully updated</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-5 bg-slate-50 rounded-3xl text-left border border-slate-100">
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Status</p>
-                        <p className="font-black text-emerald-600 uppercase">In-Transit</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase">Status</p>
+                        <p className="font-bold text-emerald-600 uppercase">In-Transit</p>
                     </div>
-                    <div className="p-5 bg-slate-50 rounded-3xl text-left border border-slate-100">
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Seal Hash</p>
-                        <p className="font-black text-slate-900 truncate">{sealedData.manifest.seal_no}</p>
+                    <div className="p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase">Security ID</p>
+                        <p className="font-bold text-slate-900 truncate">{sealedData.manifest.seal_no}</p>
                     </div>
-                    <div className="p-5 bg-slate-50 rounded-3xl text-left border border-slate-100">
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Load Ref</p>
-                        <p className="font-black text-slate-900">VAN-{sealedData.vanLoad.id}</p>
+                    <div className="p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase">Load Ref</p>
+                        <p className="font-bold text-slate-900">REF-{sealedData.vanLoad.id}</p>
                     </div>
                 </div>
 
-                <div className="space-y-3">
-                    <Button onClick={downloadPDF} className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-xs shadow-xl">
-                       <Printer size={18} className="mr-3" /> Download Legal Manifest (PDF)
+                <div className="space-y-4">
+                    <Button onClick={downloadPDF} className="w-full h-14 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase tracking-wider text-xs shadow-md">
+                       <Download size={18} className="mr-3" /> Download Shipping Manifest (PDF)
                     </Button>
-                    <Button variant="ghost" className="text-[10px] font-bold uppercase text-slate-400" onClick={() => { setManifestItems([]); setSealedData(null); }}>
-                        Initialize Next Delivery
+                    <Button variant="ghost" className="text-xs font-semibold uppercase text-slate-400" onClick={() => { setManifestItems([]); setSealedData(null); }}>
+                        Start New Shipment
                     </Button>
                 </div>
             </Card>
@@ -265,43 +258,43 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 h-[calc(100vh-180px)] animate-in fade-in duration-1000">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 h-[calc(100vh-180px)] animate-in fade-in duration-700">
             
-            {/* --- LEFT SECTOR: LOGISTICS SETUP & HARDWARE --- */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-                <Card className="p-8 bg-slate-900 text-white rounded-[2.5rem] border-none shadow-2xl space-y-6">
+            {/* --- LEFT COLUMN: SETTINGS & SCANNER --- */}
+            <div className="lg:col-span-4 flex flex-col gap-6">
+                <Card className="p-8 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-6">
                     <div className="flex items-center gap-3">
-                        <Activity className="text-blue-400 h-5 w-5" />
-                        <h3 className="font-black uppercase text-[11px] tracking-widest">Load Configuration</h3>
+                        <Activity className="text-blue-600 h-5 w-5" />
+                        <h3 className="font-bold uppercase text-xs tracking-wider text-slate-700">Shipment Settings</h3>
                     </div>
                     
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Distribution Sector</p>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider ml-1">Delivery Region</p>
                             <Select value={shipmentType} onValueChange={(v: any) => setShipmentType(v)}>
-                                <SelectTrigger className="h-14 bg-white/5 border-white/10 rounded-2xl font-bold uppercase text-[11px] tracking-widest">
+                                <SelectTrigger className="h-12 bg-slate-50 border-slate-200 rounded-xl font-semibold text-xs tracking-tight">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-white/10 text-white">
-                                    <SelectItem value="LOCAL">Jurisdictional Delivery</SelectItem>
-                                    <SelectItem value="INTERNATIONAL">International Cargo</SelectItem>
+                                <SelectContent>
+                                    <SelectItem value="LOCAL">Local Delivery</SelectItem>
+                                    <SelectItem value="INTERNATIONAL">International Export</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="flex-1 border-dashed border-4 border-slate-100 bg-slate-50/50 flex flex-col items-center justify-center p-12 text-center relative rounded-[3rem]">
-                    {shipmentType === 'LOCAL' ? <Truck size={100} strokeWidth={1} className="text-blue-500/20" /> : <Globe size={100} strokeWidth={1} className="text-emerald-500/20" />}
-                    <div className="mt-8 space-y-2">
-                        <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-950">Scanner Ready</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] max-w-xs mx-auto">
-                            Awaiting hardware link to {dna?.name || "Target Node"}
+                <Card className="flex-1 border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center p-10 text-center relative rounded-[2rem]">
+                    {shipmentType === 'LOCAL' ? <Truck size={80} className="text-slate-300" /> : <Globe size={80} className="text-slate-300" />}
+                    <div className="mt-6 space-y-2">
+                        <h2 className="text-xl font-bold text-slate-800">Ready to Scan</h2>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest max-w-[200px] mx-auto">
+                            Scan items to add them to the shipment for {company?.name || "Target Node"}
                         </p>
                     </div>
                     {isScanning && (
-                        <div className="absolute inset-0 bg-white/40 backdrop-blur-sm flex items-center justify-center rounded-[3rem]">
-                            <Loader2 className="animate-spin text-blue-600 h-10 w-10" />
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center rounded-[2rem]">
+                            <Loader2 className="animate-spin text-blue-600 h-8 w-8" />
                         </div>
                     )}
                 </Card>
@@ -309,56 +302,55 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 <Button 
                     disabled={manifestItems.length === 0 || isSealing}
                     onClick={executeDispatchSeal}
-                    className="h-20 rounded-[2rem] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-100 transition-all active:scale-95"
+                    className="h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95 disabled:opacity-50"
                 >
-                    {isSealing ? <Loader2 className="animate-spin" /> : "Authorize Digital Seal"}
+                    {isSealing ? <Loader2 className="animate-spin" /> : "Confirm Dispatch"}
                 </Button>
             </div>
 
-            {/* --- RIGHT SECTOR: LIVE LOGISTICS LEDGER --- */}
-            <Card className="lg:col-span-7 bg-white rounded-[3.5rem] border-slate-100 shadow-sm flex flex-col overflow-hidden">
-                <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
-                    <div className="flex items-center gap-5">
-                        <div className="bg-white p-4 rounded-3xl shadow-sm"><ClipboardList className="text-blue-600" /></div>
-                        <div className="space-y-1">
-                            <h3 className="font-black uppercase text-sm tracking-widest text-slate-950">Manifest Ledger</h3>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sector: {shipmentType}</p>
+            {/* --- RIGHT COLUMN: SHIPPING LIST --- */}
+            <Card className="lg:col-span-8 bg-white rounded-[2rem] border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100"><ClipboardList className="text-blue-600 h-5 w-5" /></div>
+                        <div>
+                            <h3 className="font-bold text-sm text-slate-800">Shipment Items</h3>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{shipmentType} Manifest</p>
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <Button onClick={exportCSV} variant="outline" size="sm" className="h-12 px-6 rounded-2xl border-slate-200 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-50 transition-all">
-                            <FileSpreadsheet size={16} className="mr-2 text-emerald-600" /> Export CSV
+                        <Button onClick={exportCSV} variant="outline" size="sm" className="h-10 px-5 rounded-xl border-slate-200 text-[10px] font-bold uppercase tracking-widest hover:bg-white transition-all">
+                            <FileSpreadsheet size={14} className="mr-2 text-emerald-600" /> Export CSV
                         </Button>
                     </div>
                 </div>
 
-                <ScrollArea className="flex-1 p-10">
+                <ScrollArea className="flex-1 p-8">
                     {manifestItems.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center opacity-20 py-32 space-y-4">
-                            <QrCode size={80} strokeWidth={1} />
-                            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-center">Identity Handshake Pending</p>
+                        <div className="h-full flex flex-col items-center justify-center opacity-30 py-32 space-y-4">
+                            <QrCode size={60} />
+                            <p className="text-xs font-semibold uppercase tracking-widest text-center">No items scanned yet</p>
                         </div>
                     ) : (
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             {manifestItems.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-6 bg-slate-50/50 rounded-[2.5rem] border border-transparent hover:border-blue-100 transition-all animate-in slide-in-from-right-4">
-                                    <div className="flex items-center gap-6">
-                                        <div className="h-14 w-14 bg-white rounded-3xl shadow-sm flex items-center justify-center text-blue-500">
-                                            <Package size={28} />
+                                <div key={idx} className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 transition-all shadow-sm group">
+                                    <div className="flex items-center gap-5">
+                                        <div className="h-12 w-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                                            <Package size={24} />
                                         </div>
                                         <div className="space-y-1">
-                                            <h4 className="font-black text-slate-950 text-base">{item.product_name}</h4>
-                                            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                <Badge variant="outline" className="text-[9px] border-slate-200">SKU: {item.sku}</Badge>
-                                                {item.batch_number && <span className="flex items-center gap-1"><History size={10} /> {item.batch_number}</span>}
+                                            <h4 className="font-bold text-slate-800 text-sm">{item.product_name}</h4>
+                                            <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                <span className="bg-slate-100 px-2 py-0.5 rounded text-[9px]">SKU: {item.sku}</span>
+                                                {item.batch_number && <span className="flex items-center gap-1"><History size={10} /> Batch: {item.batch_number}</span>}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="text-right flex items-center gap-6">
-                                        <div className="h-px w-10 bg-slate-200 hidden md:block" />
                                         <div>
-                                            <span className="text-3xl font-black text-slate-900 tracking-tighter">x{item.qty}</span>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Loaded</p>
+                                            <span className="text-2xl font-bold text-slate-900 tracking-tight">x{item.qty}</span>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Quantity</p>
                                         </div>
                                     </div>
                                 </div>
@@ -366,6 +358,11 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                         </div>
                     )}
                 </ScrollArea>
+                
+                <div className="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">System Ready • Records Sync Active</p>
+                    <Badge variant="outline" className="text-[9px] font-bold border-slate-200 text-slate-500">{manifestItems.length} Total Unique Items</Badge>
+                </div>
             </Card>
         </div>
     );
