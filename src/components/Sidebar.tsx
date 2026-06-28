@@ -26,7 +26,7 @@ import {
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, ChevronRight, Menu, Unlock
+    ChevronLeft, ChevronRight, Menu, ScanLine, Unlock
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -183,7 +183,8 @@ const navSections: NavItem[] = [
         type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
-            { href: '/inventory', label: 'Products & Stock', icon: Boxes }, 
+            { href: '/inventory', label: 'Products & Stock', icon: Boxes },
+            { href: '/inventory/scanner', label: 'Scanner Workbench', icon: ScanLine },
             { href: '/inventory/categories', label: 'Categories', icon: Tags }, 
             { href: '/inventory/raw-materials', label: 'Raw Materials', icon: FlaskConical, businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale', 'Restaurant / Cafe'] },
             { href: '/inventory/composites/designer', label: 'Production Catalog', icon: Layers, businessTypes: ['Manufacturing', 'Distribution', 'Retail / Wholesale'] },
