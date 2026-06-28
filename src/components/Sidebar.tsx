@@ -26,7 +26,7 @@ import {
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, ChevronRight, Menu, ScanLine, Unlock
+    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -358,6 +358,10 @@ const navSections: NavItem[] = [
             { href: '/distribution/routes', label: 'Routes', icon: Route }, 
             { href: '/distribution/assignments', label: 'Assignments', icon: UserCog },
             { href: '/distribution/loading', label: 'Loading', icon: Boxes },
+            { href: '/distribution/picking', label: 'Picking Queue', icon: ListChecks },
+            { href: '/distribution/handshake', label: 'Delivery Verification', icon: KeyRound },
+            { href: '/distribution/tracking', label: 'Active Shipments', icon: Navigation },
+            { href: '/distribution/reconciliation', label: 'Returns Reconciliation', icon: ArrowLeftRight },
             { href: '/distribution/settlement', label: 'Settlements', icon: ClipboardCheck },
             { href: '/distribution/fulfillment', label: 'Fulfillment', icon: Package },
             { href: '/distribution/fleet-maintenance', label: 'Fleet Maintenance', icon: Wrench },
