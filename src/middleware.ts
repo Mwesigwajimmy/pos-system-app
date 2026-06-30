@@ -37,7 +37,7 @@ const rolePermissions: Record<string, string[]> = {
     '/reports': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'fleet_manager', 'donor_manager'],
     '/workbooks': ['admin', 'manager', 'cashier', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'practitioner', 'consultant'],
     '/library': ['admin', 'manager', 'accountant', 'cashier', 'auditor', 'owner', 'architect', 'commander', 'legal_counsel', 'teacher_principal'],
-    '/pos': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'bartender', 'waiter_staff', 'barista', 'dsr_rep'],
+    '/pos': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'bartender', 'waiter_staff', 'accountant', 'barista', 'dsr_rep'],
     '/kds': ['admin', 'manager', 'kitchen_staff', 'chef', 'architect', 'commander'],
     '/sales': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'accountant', 'cashier', 'collections_agent', 'marketing_specialist'],
     '/customers': ['admin', 'manager', 'cashier', 'owner', 'architect', 'commander', 'pharmacist', 'support_agent', 'collections_agent'],

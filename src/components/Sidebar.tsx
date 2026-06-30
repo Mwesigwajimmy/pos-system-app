@@ -69,7 +69,7 @@ const navSections: NavItem[] = [
         href: '/pos', 
         label: 'Point of Sale', 
         icon: ShoppingCart, 
-        roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
+        roles: ['admin', 'manager', 'cashier', 'owner', 'accountant', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
         module: 'sales', 
         businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services', 'Distribution', 'Distribution / Wholesale Supply']
     },
