@@ -2,7 +2,7 @@
 
 /**
  * --- LOGISTICS DISPATCH MANAGER ---
- * VERSION: v4.4 ENTERPRISE (STRICT IDENTITY)
+ * VERSION: v4.5 ENTERPRISE (STRICT IDENTITY)
  * Use: Multi-Country & Multi-Tenant Shipping with Legal Compliance
  */
 
@@ -78,7 +78,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
             const { data: { user } } = await supabase.auth.getUser();
             setCurrentUser(user);
 
-            // 2. Fetch Company Identity & Origin Country
+            // 2. Fetch Company Identity & Origin Country (Audit-Verified View)
             const { data: identity } = await supabase
                 .from('view_bbu1_corporate_identity')
                 .select('legal_name, currency_code, tenant_id, country')
@@ -93,7 +93,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                     business_id: businessId,
                     tenant_id: identity.tenant_id
                 });
-                // Default destination to local country
+                // Default destination to local country automatically
                 setDestinationCountry(identity.country);
             }
 
@@ -104,13 +104,22 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 .eq('business_id', businessId);
             if (items) setAvailableProducts(items);
 
-            // 4. Fetch Fleet Registry (Required for Legal Handshake)
+            /** 
+             * 🛡️ AUDIT-VERIFIED FETCH (CORRECTED)
+             * The Record Audit shows van_loads uses integer IDs (e.g. 8).
+             * This means we MUST fetch from the 'vehicles' table, not 'fleet_vehicles'.
+             */
             const { data: fleet } = await supabase
-                .from('fleet_vehicles')
-                .select('id, name, license_plate')
+                .from('vehicles')
+                .select('id, name')
                 .eq('business_id', businessId)
-                .eq('status', 'Available');
-            if (fleet) setAvailableVehicles(fleet);
+                .eq('is_active', true);
+            
+            if (fleet) {
+                setAvailableVehicles(fleet);
+            } else {
+                console.warn("[SECURITY] No active vehicles found for this Node.");
+            }
         };
         fetchTerminalData();
     }, [businessId, supabase]);
@@ -168,7 +177,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
     // --- DISPATCH CONFIRMATION PROTOCOL (THE LEGAL SEAL) ---
     const executeDispatchSeal = async () => {
         if (!selectedVehicleId || !loadingBay || !destinationCountry) {
-            toast.error("Legal Parameters Missing", { description: "Specify Vehicle, Loading Station, and Destination Country." });
+            toast.error("Authorization Blocked", { description: "Assign Vehicle, Loading Station, and Destination." });
             return;
         }
 
@@ -178,18 +187,18 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const { latitude, longitude } = pos.coords;
 
-            // 1. Authorize Official Manifest (UUID Sector)
+            // 1. Authorize Official Manifest (Fulfilling NOT NULL Country Requirements)
             const { data: manifest, error: mError } = await supabase
                 .from('logistics_manifests')
                 .insert({
                     business_id: businessId,
-                    digital_seal_hash: securityID, // Using database specific column
+                    digital_seal_hash: securityID, 
                     seal_no: securityID,
                     status: 'sealed',
                     shipment_type: shipmentType,
                     shipment_ref: `REF-${Date.now()}`,
-                    origin_country: company?.country, // Dynamic Identity
-                    destination_country: destinationCountry, // Dynamic Target
+                    origin_country: company?.country, 
+                    destination_country: destinationCountry, 
                     total_weight_kg: totalWeight, 
                     loading_bay_id: loadingBay,
                     created_by: currentUser?.id,
@@ -198,12 +207,12 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 .select().single();
 
             if (mError) {
-                toast.error("Manifest Authorization Failed", { description: mError.message });
+                toast.error("Security Authorization Denied", { description: mError.message });
                 setIsSealing(false);
                 return;
             }
 
-            // 2. Register Load (BigInt Sector)
+            // 2. Register Transit Load (Matching Record ID 8 / BigInt logic)
             const { data: vanLoad, error: vError } = await supabase
                 .from('van_loads')
                 .insert({
@@ -219,12 +228,12 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 .select().single();
 
             if (vError) {
-                toast.error("Van Registry Error", { description: vError.message });
+                toast.error("Transit Registry Failure", { description: vError.message });
                 setIsSealing(false);
                 return;
             }
 
-            // 3. Map Manifest Items
+            // 3. Map Items for Forensic Traceability
             const itemsToInsert = manifestItems.map(i => ({
                 manifest_id: manifest.id,
                 product_variant_id: i.variant_id,
@@ -236,11 +245,11 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
 
             setSealedData({ manifest, vanLoad, items: manifestItems, lat: latitude, lng: longitude, weight: totalWeight });
             DeepAudioEngine.playSuccess();
-            toast.success("Shipment Locked & Dispatched");
+            toast.success("Identity Dispatched & Synchronized");
             setIsSealing(false);
 
         }, () => {
-            toast.error("GPS Identity Failure", { description: "Cannot seal manifest without location verification." });
+            toast.error("Satellite Identity Failure", { description: "Location verification required to authorize seal." });
             setIsSealing(false);
         });
     };
@@ -254,7 +263,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
         doc.text(`ORIGIN: ${company?.country}`, 20, 42);
         doc.text(`DESTINATION: ${destinationCountry}`, 20, 49);
         doc.text(`SECURITY ID: ${sealedData.manifest.seal_no}`, 20, 56);
-        doc.text(`VEHICLE REF: ${availableVehicles.find(v => v.id.toString() === selectedVehicleId)?.license_plate}`, 20, 63);
+        doc.text(`VEHICLE: ${availableVehicles.find(v => v.id.toString() === selectedVehicleId)?.name}`, 20, 63);
 
         autoTable(doc, {
             startY: 75,
@@ -274,13 +283,13 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                     <CheckCircle2 size={48} />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-2xl font-bold text-slate-900 uppercase">Dispatch Protocol Complete</h2>
-                    <p className="text-slate-500 text-sm font-medium uppercase tracking-widest">Shipment has been sealed and transit logs updated.</p>
+                    <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Identity Secured</h2>
+                    <p className="text-slate-500 text-sm font-medium uppercase tracking-widest leading-relaxed">The load has been legally disaptched <br/> and synchronized to the global registry.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Mass</p>
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Load Weight</p>
                         <p className="font-bold text-slate-900 text-lg">{sealedData.weight.toLocaleString()} KG</p>
                     </div>
                     <div className="p-6 bg-slate-50 rounded-2xl text-left border border-slate-100">
@@ -294,7 +303,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                        <Download size={18} className="mr-3" /> Download Legal Manifest
                     </Button>
                     <Button variant="ghost" className="text-xs font-semibold uppercase text-slate-400" onClick={() => window.location.reload()}>
-                        Initialize Next Shipment
+                        Confirm Next Load Out
                     </Button>
                 </div>
             </Card>
@@ -304,7 +313,7 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-180px)] animate-in fade-in duration-700">
             
-            {/* --- LEFT SECTOR: IDENTITY & LEGAL CONFIGURATION --- */}
+            {/* --- LEFT SECTOR: LEGAL CONFIGURATION --- */}
             <div className="lg:col-span-4 flex flex-col gap-6">
                 <Card className="p-8 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-6">
                     <div className="flex items-center gap-3">
@@ -321,29 +330,29 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                                 </SelectTrigger>
                                 <SelectContent>
                                     {availableVehicles.map((v) => (
-                                        <SelectItem key={v.id} value={v.id.toString()}>{v.name} ({v.license_plate})</SelectItem>
+                                        <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Loading Bay</Label>
-                                <Input placeholder="Bay #" value={loadingBay} onChange={(e) => setLoadingBay(e.target.value)} className="h-11 rounded-xl text-xs font-bold" />
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Loading Station</Label>
+                                <Input placeholder="Station #" value={loadingBay} onChange={(e) => setLoadingBay(e.target.value)} className="h-11 rounded-xl text-xs font-bold" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Load Type</Label>
                                 <Select value={shipmentType} onValueChange={(v: any) => setShipmentType(v)}>
                                     <SelectTrigger className="h-11 border-slate-200 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="LOCAL">Local</SelectItem>
-                                        <SelectItem value="INTERNATIONAL">Global</SelectItem>
+                                        <SelectItem value="LOCAL">Local Transport</SelectItem>
+                                        <SelectItem value="INTERNATIONAL">Global Cargo</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Destination Country</Label>
+                            <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Destination Identity (Country)</Label>
                             <Input placeholder="Enter destination..." value={destinationCountry} onChange={(e) => setDestinationCountry(e.target.value)} className="h-11 rounded-xl text-xs font-bold" />
                         </div>
                     </div>
@@ -355,37 +364,31 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                         const item = availableProducts.find(p => p.variant_id.toString() === v);
                         if (item) addItemToManifest(item);
                     }}>
-                        <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl font-bold text-xs"><SelectValue placeholder="Find product SPEC..." /></SelectTrigger>
+                        <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl font-bold text-xs"><SelectValue placeholder="Search system database..." /></SelectTrigger>
                         <SelectContent><ScrollArea className="h-60">{availableProducts.map((p) => (
                             <SelectItem key={p.variant_id} value={p.variant_id.toString()}><div className="flex flex-col text-left py-1"><span className="font-bold text-slate-800 text-xs">{p.product_name}</span><span className="text-[9px] text-slate-400 uppercase tracking-widest">SKU: {p.sku} • {p.weight_kg}KG</span></div></SelectItem>
                         ))}</ScrollArea></SelectContent>
                     </Select>
                 </Card>
 
-                <Card className="flex-1 border-2 border-dashed border-slate-100 bg-slate-50/50 flex flex-col items-center justify-center p-8 text-center relative rounded-[2rem]">
-                    <ScanLine size={48} className="text-slate-200 mb-2" />
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Hardware Scanner Sync <br /> Origin: {company?.country}</p>
-                    {isScanning && <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-[2rem]"><Loader2 className="animate-spin text-blue-600 h-8 w-8" /></div>}
-                </Card>
-
                 <Button disabled={manifestItems.length === 0 || isSealing} onClick={executeDispatchSeal} className="h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 disabled:opacity-50">
-                    {isSealing ? <Loader2 className="animate-spin h-5 w-5" /> : <div className="flex items-center gap-2"><ShieldCheck size={18}/> Authorize Dispatch</div>}
+                    {isSealing ? <Loader2 className="animate-spin h-5 w-5" /> : <div className="flex items-center gap-2"><ShieldCheck size={18}/> Authorize Security Seal</div>}
                 </Button>
             </div>
 
-            {/* --- RIGHT SECTOR: THE MANIFEST LEDGER --- */}
+            {/* --- RIGHT SECTOR: LIVE MANIFEST --- */}
             <Card className="lg:col-span-8 bg-white rounded-[2rem] border border-slate-200 shadow-sm flex flex-col overflow-hidden">
                 <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
                     <div className="flex items-center gap-4">
                         <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100"><ClipboardList className="text-blue-600 h-5 w-5" /></div>
                         <div>
                             <h3 className="font-bold text-sm text-slate-800 tracking-tight">Active Shipment Manifest</h3>
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Storage Node: {company?.name}</p>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Node Context: {company?.name}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-8 text-right">
                         <div className="hidden sm:block">
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Weight</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Calculated Mass</p>
                             <p className="text-sm font-bold text-slate-900 flex items-center gap-2 justify-end"><Weight size={14} className="text-blue-500" /> {totalWeight.toLocaleString()} KG</p>
                         </div>
                     </div>
@@ -395,19 +398,19 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                     {manifestItems.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center opacity-30 py-32 space-y-5">
                             <div className="p-8 bg-slate-50 rounded-full border border-slate-100"><Package size={48} strokeWidth={1} /></div>
-                            <p className="text-xs font-semibold uppercase tracking-widest text-center leading-relaxed">System Awaiting Loading Operations... <br /> Use Hardware Scanner or Search above.</p>
+                            <p className="text-xs font-semibold uppercase tracking-widest text-center leading-relaxed">Waiting for dispatch loading... <br /> Scan or search items above.</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {manifestItems.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between p-5 bg-white rounded-2xl border border-slate-100 hover:border-blue-200 transition-all shadow-sm group">
                                     <div className="flex items-center gap-5">
-                                        <div className="h-12 w-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-50 group-hover:text-blue-500 transition-colors"><Package size={22} /></div>
+                                        <div className="h-12 w-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors"><Package size={22} /></div>
                                         <div className="space-y-1">
                                             <h4 className="font-bold text-slate-800 text-sm">{item.product_name}</h4>
                                             <div className="flex items-center gap-3 text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
                                                 <span className="bg-slate-100 px-2 py-0.5 rounded">SKU: {item.sku}</span>
-                                                <span className="flex items-center gap-1 font-bold text-slate-500"><Weight size={10} /> {item.unit_weight_kg} KG / Unit</span>
+                                                <span className="flex items-center gap-1 font-bold text-slate-500"><Weight size={10} /> {item.unit_weight_kg} KG Unit</span>
                                             </div>
                                         </div>
                                     </div>
@@ -425,8 +428,8 @@ export default function DispatchWorkbench({ businessId }: { businessId: string }
                 </ScrollArea>
                 
                 <div className="px-8 py-4 bg-slate-50/80 border-t border-slate-100 flex justify-between items-center backdrop-blur-sm">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Activity size={12} className="text-emerald-500" /> Database Synchronized • Fleet Node Connected</p>
-                    <Badge variant="secondary" className="text-[10px] font-bold bg-white border-slate-200 text-slate-600 px-4">{manifestItems.length} Product Lines Registered</Badge>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Activity size={12} className="text-emerald-500" /> Database Synchronized • Identity Verified</p>
+                    <Badge variant="secondary" className="text-[10px] font-bold bg-white border-slate-200 text-slate-600 px-4">{manifestItems.length} Products Registered</Badge>
                 </div>
             </Card>
         </div>
