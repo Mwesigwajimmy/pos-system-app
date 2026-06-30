@@ -15,7 +15,7 @@ import {
     Loader2, CheckCircle2, Navigation,
     ScanLine, ArrowRight, Printer, Download,
     FileSpreadsheet, History, ClipboardList,
-    Globe, MapPin, Activity, ShieldAlert,
+    Globe, MapPin, Activity, Trash2, ShieldAlert,
     Building2, Briefcase, Warehouse, Weight, Search, Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
