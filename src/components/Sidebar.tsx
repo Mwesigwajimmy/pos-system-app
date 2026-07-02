@@ -26,7 +26,7 @@ import {
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock
+    ChevronLeft, BadgeCheck, PackagePlus, Tag, CalendarClock, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -323,24 +323,36 @@ const navSections: NavItem[] = [
         ]
     },
 
-    {
-        type: 'accordion', title: 'Accounting', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
-        module: 'finance',
-        subItems: [ 
-            { href: '/finance/banking', label: 'Banking', icon: Landmark },
-            { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
-            { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
-            { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
-            { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
-            { href: '/expenses', label: 'Expenses', icon: Wallet },
-            { href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant', 'owner', 'architect'] },
-            { href: '/finance/journal', label: 'Journal', icon: BookCopy },
-            { href: '/finance/tax-returns', label: 'Tax Returns', icon: FileWarning },
-            { href: '/finance/fiscal-positions', label: 'Fiscal Positions', icon: Settings },
-            { href: '/finance/lock-dates', label: 'Lock Dates', icon: KeyRound },
-            { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
-        ]
-    },
+   {
+    type: 'accordion', 
+    title: 'Accounting', 
+    icon: Scale, 
+    roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
+    module: 'finance',
+    subItems: [ 
+        { href: '/finance/banking', label: 'Banking', icon: Landmark },
+        { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
+        
+        // --- NEW: THE RECEIPT HUB ---
+        { href: '/accounting/receipt-registry', label: 'Receipt Registry', icon: FileDigit }, 
+        
+        { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
+        { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
+        { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
+        
+        // --- NEW: DEBT & ASSET CONTROL ---
+        { href: '/accounting/installments', label: 'Installment Plans', icon: CalendarDays },
+        { href: '/accounting/assets', label: 'Fixed Asset Registry', icon: Building2 },
+
+        { href: '/expenses', label: 'Expenses', icon: Wallet },
+        { href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant', 'owner', 'architect'] },
+        { href: '/finance/journal', label: 'Journal', icon: BookCopy },
+        { href: '/finance/tax-returns', label: 'Tax Returns', icon: FileWarning },
+        { href: '/finance/fiscal-positions', label: 'Fiscal Positions', icon: Settings },
+        { href: '/finance/lock-dates', label: 'Lock Dates', icon: KeyRound },
+        { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
+    ]
+},
 
     {
         type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
