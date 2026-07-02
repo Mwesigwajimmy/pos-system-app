@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * --- ASSET ACQUISITION & VOUCHER TERMINAL ---
- * VERSION: v2.0 ENTERPRISE
- * Use: Legal recording of corporate property with direct ledger integration.
- * Logic: Multi-currency detection + automated voucher generation + receipt vaulting.
+ * --- ASSET PURCHASE MANAGEMENT ---
+ * VERSION: v2.5 PROFESSIONAL
+ * Use: Recording business equipment and property with direct ledger integration.
+ * Logic: Multi-currency support + automated vouchers + receipt document storage.
  */
 
 import React, { useState, useMemo } from 'react';
@@ -29,7 +29,7 @@ const supabase = createClient();
 export default function AssetPurchaseForm() {
     const queryClient = useQueryClient();
     
-    // --- LOCAL STATE ---
+    // --- FORM STATE ---
     const [isUploading, setIsUploading] = useState(false);
     const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
     const [selectedAccountId, setSelectedAccountId] = useState<string>("");
@@ -38,9 +38,9 @@ export default function AssetPurchaseForm() {
     const [serial, setSerial] = useState("");
     const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-    // 1. IDENTITY HANDSHAKE: Get Business Context (Currency, ID)
+    // 1. IDENTITY: Get Business Profile and Currency
     const { data: profile } = useQuery({
-        queryKey: ['active_node_context'],
+        queryKey: ['business_profile_context'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             const { data } = await supabase.from('profiles').select('business_id, business_name, currency').eq('id', user?.id).single();
@@ -48,8 +48,8 @@ export default function AssetPurchaseForm() {
         }
     });
 
-    // 2. DATA: Fetch active Cash/Bank accounts authorized for the business
-    const { data: accounts, isLoading: accountsLoading } = useQuery({
+    // 2. DATA: Fetch authorized Bank/Cash accounts for this business
+    const { data: accounts } = useQuery({
         queryKey: ['asset_payment_accounts', profile?.business_id],
         queryFn: async () => {
             if (!profile?.business_id) return [];
@@ -70,33 +70,35 @@ export default function AssetPurchaseForm() {
         return acc?.currency || profile?.currency || '---';
     }, [selectedAccountId, accounts, profile]);
 
-    // 3. LOGIC: Secure Receipt Vaulting
+    // 3. STORAGE: Secure Document Upload to 'receipts' bucket
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         
         setIsUploading(true);
         const fileExt = file.name.split('.').pop();
-        const fileName = `audit/asset-${Date.now()}.${fileExt}`;
+        const fileName = `assets/receipt-${Date.now()}.${fileExt}`;
         
         const { data, error } = await supabase.storage
-            .from('financial-vouchers')
+            .from('receipts') 
             .upload(fileName, file);
 
         if (error) {
-            toast.error("Security Breach: Upload Blocked", { description: error.message });
+            toast.error("Upload Error", { description: error.message });
         } else {
-            const { data: { publicUrl } } = supabase.storage.from('financial-vouchers').getPublicUrl(data.path);
+            const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(data.path);
             setReceiptUrl(publicUrl);
-            toast.success("Document Secured", { description: "Physical proof attached to transaction." });
+            toast.success("Document uploaded successfully.");
         }
         setIsUploading(false);
     };
 
-    // 4. MUTATION: Finalize the Acquisition in the Registry
-    const authorizeAcquisition = useMutation({
+    // 4. ACTION: Finalize the Purchase in the Records
+    const authorizePurchase = useMutation({
         mutationFn: async () => {
-            if (!selectedAccountId || !assetName || !cost) throw new Error("Mandatory fields incomplete.");
+            if (!selectedAccountId || !assetName || !cost) {
+                throw new Error("Please complete all required fields.");
+            }
 
             const { error } = await supabase.rpc('proc_record_asset_acquisition', {
                 p_asset_name: assetName,
@@ -104,68 +106,70 @@ export default function AssetPurchaseForm() {
                 p_account_id: selectedAccountId,
                 p_serial: serial || 'N/A',
                 p_receipt_url: receiptUrl,
-                p_voucher_no: `VCHR-AST-${Date.now().toString().slice(-6)}`
+                p_voucher_no: `V-ASSET-${Date.now().toString().slice(-6)}`
             });
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Asset Registered Successfully", { description: "General Ledger and Fixed Asset Registry updated." });
+            toast.success("Purchase Recorded", { description: "The asset has been added to your business records." });
             queryClient.invalidateQueries({ queryKey: ['asset_payment_accounts'] });
             
-            // RESET
+            // Clear form
             setAssetName(""); setCost(""); setSerial(""); setReceiptUrl(null); setSelectedAccountId("");
         },
-        onError: (err: any) => toast.error("Handshake Refused", { description: err.message })
+        onError: (err: any) => toast.error("System Error", { description: err.message })
     });
 
     return (
-        <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-700 pb-24">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-100 pb-8">
+        <div className="max-w-[1400px] mx-auto space-y-10 animate-in fade-in duration-700 pb-20">
+            
+            {/* PAGE HEADER */}
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-8">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-4">
-                        <PackagePlus className="text-blue-600" size={32} /> Record Asset Acquisition
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+                        <PackagePlus className="text-blue-600" size={28} /> Record Asset Purchase
                     </h1>
-                    <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Capital Expenditure (CAPEX) Terminal</p>
+                    <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">Enterprise Capital Expenditure Management</p>
                 </div>
-                <div className="flex items-center gap-3 px-4 py-2 bg-slate-900 rounded-xl shadow-xl">
-                    <Database size={14} className="text-blue-400" />
-                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">Node: {profile?.business_name}</span>
+                <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{profile?.business_name}</span>
                 </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 
-                {/* --- LEFT SECTOR: ASSET SPECIFICATIONS --- */}
+                {/* 1. ASSET SPECIFICATIONS SECTION */}
                 <div className="lg:col-span-7 space-y-8">
-                    <Card className="border-slate-200 shadow-sm rounded-[2rem] bg-white overflow-hidden">
-                        <CardHeader className="bg-slate-50/50 py-5 px-8 border-b border-slate-100">
+                    <Card className="border-slate-200 shadow-sm rounded-2xl bg-white overflow-hidden">
+                        <CardHeader className="bg-slate-50/50 py-4 px-8 border-b border-slate-100">
                             <CardTitle className="text-xs font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2">
-                                <Tag size={14} /> 1. Asset Identity Details
+                                <Tag size={14} /> 1. Asset Details
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Asset Description / Item Name</Label>
+                                <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Asset Name / Description</Label>
                                 <Input 
                                     value={assetName} 
                                     onChange={e => setAssetName(e.target.value)} 
-                                    placeholder="e.g. Industrial Mixer, Delivery Truck..." 
-                                    className="h-14 rounded-2xl border-slate-200 font-bold text-slate-900 shadow-inner" 
+                                    placeholder="e.g. Office Computer, Delivery Vehicle, Generator..." 
+                                    className="h-12 rounded-xl border-slate-200 font-semibold text-slate-900 shadow-sm" 
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Serial / Chassis Number</Label>
+                                    <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Serial Number</Label>
                                     <Input 
                                         value={serial} 
                                         onChange={e => setSerial(e.target.value)} 
-                                        placeholder="Identification code" 
+                                        placeholder="Manufacturer ID" 
                                         className="h-12 rounded-xl border-slate-200" 
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Date of Acquisition</Label>
+                                    <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Date of Purchase</Label>
                                     <Input 
                                         type="date" 
                                         value={purchaseDate} 
@@ -176,21 +180,21 @@ export default function AssetPurchaseForm() {
                             </div>
 
                             <div className="pt-6 border-t border-slate-50">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase block mb-4">Physical Proof (Audit Requirement)</Label>
-                                <div className="relative h-40 border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-blue-200 group">
+                                <Label className="text-[11px] font-bold text-slate-500 uppercase block mb-4">Upload Receipt Copy</Label>
+                                <div className="relative h-40 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-blue-300 group">
                                     {receiptUrl ? (
-                                        <div className="text-center space-y-3">
-                                            <div className="bg-emerald-100 p-3 rounded-2xl inline-block">
-                                                <FileCheck size={28} className="text-emerald-600" />
+                                        <div className="text-center space-y-2">
+                                            <div className="bg-emerald-100 p-3 rounded-xl inline-block">
+                                                <FileCheck size={24} className="text-emerald-600" />
                                             </div>
-                                            <p className="text-[10px] font-black text-emerald-600 uppercase">Audit Copy Verified</p>
-                                            <button onClick={() => setReceiptUrl(null)} className="text-[9px] font-bold text-slate-400 uppercase underline hover:text-red-500">Remove & Rescan</button>
+                                            <p className="text-[10px] font-bold text-emerald-700 uppercase">Document Attached</p>
+                                            <button onClick={() => setReceiptUrl(null)} className="text-[9px] font-bold text-slate-400 underline hover:text-red-500">Remove</button>
                                         </div>
                                     ) : (
                                         <>
                                             <input type="file" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                            <UploadCloud size={32} className="text-slate-300 group-hover:text-blue-400 transition-colors mb-2" />
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Scan Receipt or Upload PDF</p>
+                                            <UploadCloud size={32} className="text-slate-300 mb-2 group-hover:text-blue-500" />
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select PDF or Image file</p>
                                         </>
                                     )}
                                 </div>
@@ -199,70 +203,69 @@ export default function AssetPurchaseForm() {
                     </Card>
                 </div>
 
-                {/* --- RIGHT SECTOR: FINANCIAL AUTHORIZATION --- */}
+                {/* 2. FINANCIAL SETTLEMENT SECTION */}
                 <div className="lg:col-span-5 space-y-6">
-                    <Card className="border-none shadow-2xl rounded-[3rem] bg-slate-900 text-white p-10 space-y-10 border-b-[16px] border-blue-600">
+                    <Card className="border-none shadow-xl rounded-[2.5rem] bg-slate-900 text-white p-10 space-y-8">
                         <div className="space-y-6">
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Wallet size={16} className="text-blue-400" />
-                                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payment Settlement Source</Label>
+                                    <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Payment Account</Label>
                                 </div>
                                 <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                                    <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl font-bold text-white shadow-inner focus:ring-blue-600">
-                                        <SelectValue placeholder="Identify Liquidity Account" />
+                                    <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl font-bold text-white focus:ring-blue-600">
+                                        <SelectValue placeholder="Identify Payment Source" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                                    <SelectContent className="rounded-xl border-none">
                                         {accounts?.map(acc => (
-                                            <SelectItem key={acc.id} value={acc.id} className="py-3 font-bold text-xs">
-                                                {acc.name} <span className="text-blue-500 ml-2">[{acc.current_balance.toLocaleString()} {acc.currency}]</span>
+                                            <SelectItem key={acc.id} value={acc.id} className="py-3 font-bold text-xs uppercase">
+                                                {acc.name} <span className="text-blue-400 ml-2">[{acc.current_balance.toLocaleString()} {acc.currency}]</span>
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            <div className="pt-8 border-t border-white/5 space-y-6">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Acquisition Cost</Label>
-                                        <Badge className="bg-blue-600 text-white font-black text-[9px] px-2">{activeCurrency}</Badge>
-                                    </div>
-                                    <div className="relative">
-                                        <Input 
-                                            type="number" 
-                                            value={cost} 
-                                            onChange={e => setCost(e.target.value)} 
-                                            className="h-16 bg-white/5 border-white/10 rounded-2xl font-black text-white text-4xl tabular-nums pl-12 shadow-inner focus-visible:ring-blue-500/30" 
-                                        />
-                                        <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={24} />
-                                    </div>
+                            <div className="pt-8 border-t border-white/5 space-y-4">
+                                <div className="flex justify-between items-center px-1">
+                                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Total Amount Paid</Label>
+                                    <Badge className="bg-blue-600 text-white font-bold text-[10px] uppercase border-none">{activeCurrency}</Badge>
+                                </div>
+                                <div className="relative">
+                                    <Input 
+                                        type="number" 
+                                        value={cost} 
+                                        onChange={e => setCost(e.target.value)} 
+                                        className="h-16 bg-white/5 border-white/10 rounded-2xl font-bold text-white text-4xl tabular-nums pl-12 shadow-inner focus-visible:ring-0" 
+                                    />
+                                    <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-white/10" size={24} />
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             <Button 
-                                onClick={() => authorizeAcquisition.mutate()}
-                                disabled={authorizeAcquisition.isPending || isUploading || !selectedAccountId}
-                                className="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-3xl shadow-xl uppercase tracking-[0.2em] text-xs transition-all active:scale-95 border-none"
+                                onClick={() => authorizePurchase.mutate()}
+                                disabled={authorizePurchase.isPending || isUploading || !selectedAccountId}
+                                className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95 border-none uppercase tracking-widest text-xs"
                             >
-                                {authorizeAcquisition.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Verify & Authorize Payment"}
+                                {authorizePurchase.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Verify & Save Purchase"}
                             </Button>
 
-                            <div className="flex justify-center items-center gap-3 opacity-40">
+                            <div className="flex justify-center items-center gap-3 opacity-30">
                                 <ShieldCheck size={14} />
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-white">Full Financial Reconciliation Active</span>
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-white">Financial Reconciliation Active</span>
                             </div>
                         </div>
                     </Card>
 
-                    <Card className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                    {/* INFORMATION FOOTNOTE */}
+                    <Card className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-50">
                             <Activity size={18} />
                         </div>
-                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed uppercase tracking-wider">
-                            Authorization will trigger an immediate credit to account <span className="text-slate-900 font-bold">1000</span> and generate a forensic record in the corporate asset ledger.
+                        <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed tracking-wider">
+                            Authorization will trigger an immediate debit entry to your fixed asset register and a credit entry to the selected cash account.
                         </p>
                     </Card>
                 </div>
