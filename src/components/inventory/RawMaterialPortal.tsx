@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   FlaskConical, ShieldCheck, Truck, Scale, BadgeAlert, 
-  Trash2, Search, History, FileDown, 
+  Trash2, Search, History, Package, FileDown, 
   AlertTriangle, CheckCircle2, Loader2, Database, 
   Table as TableIcon, Layers, FileText, X, Globe,
   ArrowDownToLine, Filter, Settings, Calculator, Plus, Download,
