@@ -2,9 +2,9 @@
 
 /**
  * --- RAW MATERIAL REGISTRY ---
- * VERSION: v4.0 PROFESSIONAL (CLEAN)
+ * VERSION: v4.1 PROFESSIONAL (CLEAN)
  * Use: Enterprise management for raw material inventory and supplier tracking.
- * Logic: Dynamic currency detection + multi-tenant supplier integration.
+ * Logic: Dynamic currency detection + multi-tenant supplier integration + color tracking.
  */
 
 import React, { useState, useMemo } from "react";
@@ -42,7 +42,8 @@ export default function RawMaterialPortal() {
   
   const [form, setForm] = useState({
     name: '', sku: '', type: 'Solid', quality: 'Standard', 
-    price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: ''
+    price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '',
+    color: '' // Logic: Added color state
   });
 
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
@@ -128,11 +129,12 @@ export default function RawMaterialPortal() {
         p_initial_qty: form.qty,
         p_uom_id: form.uom_id, 
         p_vendor_id: form.supplier_id || null,
-        p_currency: businessCurrency
+        p_currency: businessCurrency,
+        p_color: form.color // Logic: Added color parameter for enterprise grade function
       });
       if (error) throw error;
       toast.success("Material added to inventory.");
-      setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '' });
+      setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '', color: '' });
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     } catch (e: any) {
       toast.error(e.message);
@@ -299,7 +301,7 @@ export default function RawMaterialPortal() {
               <Input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="h-11 border-blue-100 bg-blue-50/30 rounded-xl font-bold text-right text-blue-700 shadow-inner" />
             </div>
             
-            <div className="lg:col-span-3 space-y-2">
+            <div className="lg:col-span-2 space-y-2">
               <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Verified Supply Partner</Label>
               <Select onValueChange={v => setForm({...form, supplier_id: v})}>
                 <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Identify Supplier" /></SelectTrigger>
@@ -307,6 +309,12 @@ export default function RawMaterialPortal() {
                   {suppliers?.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* UI: Color distinction field added here to fulfill manufacturing production requirements */}
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Material Color / Tone</Label>
+              <Input placeholder="e.g. RAL 9010" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
             </div>
 
             <div className="flex items-end">
@@ -366,7 +374,10 @@ export default function RawMaterialPortal() {
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900 text-[15px] tracking-tight">{m.product_name}</span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{m.sku} — {m.quality_grade}</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{m.sku} — {m.quality_grade}</span>
+                            {m.color && <Badge variant="outline" className="h-4 px-1.5 text-[8px] border-slate-200 text-slate-500 font-bold uppercase">{m.color}</Badge>}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
