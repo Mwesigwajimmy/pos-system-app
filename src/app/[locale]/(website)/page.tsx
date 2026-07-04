@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
 import {
-    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, Utensils, WifiOff, Rocket, Send, Signal, Store, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck, Mail, Globe2, Link2, Target, Layers, Microscope, Cpu, Award, BookOpen, Quote, Heart, Smartphone, User, Home
+    Banknote, Bot, BrainCircuit, Handshake, ShieldCheck, TrendingUp, Landmark, Leaf, LucideIcon, Menu, ArrowRight, ChevronDown, Utensils, WifiOff, Rocket, Send, Signal, Store, Users, X, Zap, ShieldHalf, LayoutGrid, Lightbulb, Wallet, ClipboardList, Package, UserCog, Files, Download, Share, Sparkles, Loader2, CheckCircle, CheckCircle2, Briefcase, Globe, BarChart3, Clock, Scale, Phone, Building, Wrench, HeartHandshake, Car, PawPrint, Megaphone, Palette, FileText, Settings, KeyRound, Cloud, GitBranch, BadgeCheck, Coins, PiggyBank, ReceiptText, Barcode, Warehouse, ShoppingCart, CalendarDays, LineChart, MessageSquareText, HelpCircle, Book, CircleDollarSign, DownloadCloud, Truck, Mail, Globe2, Link2, Target, Layers, Microscope, Cpu, Award, BookOpen, Quote, Heart, Smartphone, User, Home, Moon, Sun
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -703,6 +703,7 @@ const MegaMenuHeader = () => {
     const [openMenu, setOpenMenu] = useState<'features' | 'industries' | null>(null);
     const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
     const [scrolled, setScrolled] = useState(false);
+    const [isDark, setIsDark] = useState(false);
     const navRef = useRef<HTMLDivElement>(null);
     const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -712,6 +713,15 @@ const MegaMenuHeader = () => {
         onScroll();
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
+
+    useEffect(() => {
+        setIsDark(document.documentElement.classList.contains('dark'));
+    }, []);
+
+    const toggleDark = () => {
+        document.documentElement.classList.toggle('dark');
+        setIsDark(prev => !prev);
+    };
 
     useEffect(() => {
         const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -738,7 +748,7 @@ const MegaMenuHeader = () => {
     };
     const closeHover = (e: React.PointerEvent) => {
         if (e.pointerType !== 'mouse') return;
-        hoverTimeout.current = setTimeout(() => setOpenMenu(null), 120);
+        hoverTimeout.current = setTimeout(() => setOpenMenu(null), 220);
     };
 
     const navLinkClass = cn(
@@ -891,10 +901,26 @@ const MegaMenuHeader = () => {
 
                 {/* Mobile controls */}
                 <div className="lg:hidden flex items-center gap-1.5 shrink-0">
-                    <ModeToggle />
+                    <button
+                        onClick={toggleDark}
+                        className={cn(
+                            "p-2 rounded-lg transition-colors",
+                            scrolled
+                                ? "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                                : "text-white hover:bg-white/10"
+                        )}
+                        aria-label="Toggle theme"
+                    >
+                        {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                    </button>
                     <button
                         onClick={() => setIsMobileMenuOpen(v => !v)}
-                        className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        className={cn(
+                            "p-2 rounded-lg transition-colors",
+                            scrolled
+                                ? "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                                : "text-white hover:bg-white/10"
+                        )}
                         aria-label="Toggle menu"
                     >
                         {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -944,7 +970,7 @@ const MegaMenuHeader = () => {
                                         </AccordionTrigger>
                                         <AccordionContent className="pb-4 grid grid-cols-1 gap-1">
                                             {siteConfig.industryItems.map((item) => (
-                                                <Link key={item.name} href="/industries"
+                                                <Link key={item.name} href={`/industries/${INDUSTRY_SLUGS[item.name] || ''}`}
                                                     className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.08] transition-colors"
                                                     onClick={() => setIsMobileMenuOpen(false)}
                                                 >
@@ -2609,31 +2635,31 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
                 <AnimatePresence>
                     {showCookieBanner && (
                         <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="fixed bottom-0 left-0 right-0 z-[100] p-4">
-                            <Card className="max-w-xl mx-auto shadow-2xl bg-background/90 backdrop-blur-md max-h-[80vh] overflow-y-auto">
+                            <Card className="max-w-xl mx-auto shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 max-h-[80vh] overflow-y-auto">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
+                                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
                                         <ShieldCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" /> Privacy Choice
                                     </CardTitle>
-                                    <CardDescription className="text-sm text-muted-foreground mt-1">
+                                    <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                                         We use cookies to improve your experience, analyze site traffic, and personalize content. You can accept all cookies or customize your preferences. Essential cookies are always active as they are required for the site to function.
                                     </CardDescription>
                                 </CardHeader>
                                 {!isCustomizingCookies ? (
                                     <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
-                                        <Button variant="outline" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
-                                        <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleAcceptAllCookies}>Accept All</Button>
+                                        <Button variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" onClick={() => setIsCustomizingCookies(true)}>Customize</Button>
+                                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAcceptAllCookies}>Accept All</Button>
                                     </CardFooter>
                                 ) : (
                                     <CardContent className="space-y-4 pt-0">
                                         {siteConfig.cookieCategories.map(category => (
-                                            <div key={category.id} className="flex items-start space-x-3 py-2 border-t first:border-t-0">
+                                            <div key={category.id} className="flex items-start space-x-3 py-2 border-t border-slate-100 dark:border-slate-800 first:border-t-0">
                                                 <Checkbox id={category.id} checked={cookiePreferences[category.id as CookieCategoryKey]} onCheckedChange={() => setCookiePreferences(prev => ({...prev, [category.id]: !prev[category.id as CookieCategoryKey]}))} disabled={category.isRequired} />
-                                                <div className="grid gap-1.5 leading-none"><label htmlFor={category.id} className="text-sm font-medium">{category.name}</label><p className="text-sm text-muted-foreground">{category.description}</p></div>
+                                                <div className="grid gap-1.5 leading-none"><label htmlFor={category.id} className="text-sm font-medium text-slate-800 dark:text-slate-200">{category.name}</label><p className="text-sm text-slate-500 dark:text-slate-400">{category.description}</p></div>
                                             </div>
                                         ))}
-                                        <div className="flex justify-end gap-2 pt-4 border-t">
-                                            <Button variant="outline" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
-                                            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSaveCookiePreferences}>Save Preferences</Button>
+                                        <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                            <Button variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300" onClick={() => setIsCustomizingCookies(false)}>Back</Button>
+                                            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSaveCookiePreferences}>Save Preferences</Button>
                                         </div>
                                     </CardContent>
                                 )}

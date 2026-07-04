@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { 
-  Globe, Heart, Users, Zap, Code, Wrench, TrendingUp, 
-  FileText, Sparkles, Building2, ArrowRight, MapPin, Clock 
+import {
+  Globe, Heart, Users, Zap, Code, Wrench, TrendingUp,
+  FileText, Sparkles, Building2, ArrowRight, MapPin, Clock
 } from "lucide-react";
+import BackNavbar from '@/components/BackNavbar';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -45,6 +46,7 @@ const jobCategories = [
 export default function CareersPage() {
   return (
     <div className="flex flex-col min-h-screen bg-white text-slate-900 selection:bg-blue-500/30 font-sans overflow-x-hidden">
+      <BackNavbar backHref="/" backLabel="Home" />
       <main className="flex-grow pt-20 pb-24">
         <div className="container mx-auto px-6 max-w-7xl">
           
