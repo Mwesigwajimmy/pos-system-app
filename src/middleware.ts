@@ -1,11 +1,12 @@
 /**
  * --- BBU1 SOVEREIGN MIDDLEWARE ---
- * VERSION: v22.8 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER + COMMANDER BYPASS)
+ * VERSION: v22.9 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER + PERMISSION PRECISION)
  * 
  * DEEP FIX SUMMARY:
- * 1. APEX BYPASS: Architects and Commanders now bypass Billing Gates.
- * 2. SUBSCRIPTION FIX: Removed empty string from isPaid to allow new users to stay on billing.
- * 3. IDENTITY LOCK: Forced role fetching from system_power for Commander accounts.
+ * 1. PERMISSION BYPASS: Accountants can now access /settings/billing without being blocked by /settings rules.
+ * 2. SPECIFIC ROUTING: Implemented Longest-Match-First for role permissions to break directory loops.
+ * 3. APEX BYPASS: Commanders and Architects completely bypass subscription/billing enforcement.
+ * 4. SUBSCRIPTION HARDENING: Fixed the '' status bug that trapped new registrants.
  */
 
 import { match } from '@formatjs/intl-localematcher';
@@ -28,6 +29,8 @@ const rolePermissions: Record<string, string[]> = {
     '/sovereign-control': ['architect', 'commander'],
     '/tenants': ['architect', 'commander'],
     '/telemetry': ['architect', 'commander'],
+    // FIX: Explicitly allowed accountants to stay on the billing page to pay
+    '/settings/billing': ['architect', 'commander', 'admin', 'owner', 'manager', 'accountant'],
     '/billing': ['architect', 'commander', 'admin', 'owner', 'manager', 'accountant'],
     '/dashboard': ['admin', 'manager', 'owner', 'architect', 'commander', 'accountant', 'auditor', 'hr_manager', 'procurement_officer', 'fleet_manager', 'sacco_manager'],
     '/copilot': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander', 'hr_manager', 'procurement_officer'],
@@ -234,7 +237,7 @@ export async function middleware(request: NextRequest) {
     
     const userContext = userContextData[0];
     const systemPower = userContext.system_power || null;
-    const userRole = userContext.user_role || 'guest';
+    const userRole = (userContext.user_role || 'guest').toLowerCase();
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
 
@@ -248,7 +251,7 @@ export async function middleware(request: NextRequest) {
 
     // 💳 SUBSCRIPTION ENFORCEMENT
     const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
-    // Broadening whitelist. Note: Removed '' to ensure new users stay on billing until they pay.
+    // Removed '' from whitelist to force new users to the billing page
     const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', 'past_due'].includes(subStatus);
     
     const isOnBillingPage = pathWithoutLocale.includes('/billing') || pathWithoutLocale.includes('/settings/billing');
@@ -262,23 +265,22 @@ export async function middleware(request: NextRequest) {
     const setupAuthorizedRoles = ['admin', 'owner', 'architect', 'commander'];
     const isSetupRole = setupAuthorizedRoles.includes(userRole);
 
-    // GATE 1: Setup Enforcement (Highest Priority)
+    // GATE 1: Setup Enforcement
     if (isSetupRole && !setupComplete && pathWithoutLocale !== '/welcome' && !isOnBillingPage) {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
 
-    // PROTECTION: If setup is done, prevent anyone from staying on the welcome page
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
     // GATE 2: Billing Enforcement
-    // APEX FIX: Architects and Commanders skip the billing forced redirect.
+    // APEX FIX: Commanders never get trapped by the billing gate.
     if (!isApexPower && !isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
     }
 
-    // FIX: Only move paid users away from billing if they aren't on a valid callback/payment route
+    // FIX: Only redirect paid users AWAY from billing if they aren't on a valid callback/payment route
     if (isPaid && isOnBillingPage && !pathWithoutLocale.includes('callback')) {
         const target = `/${localeInPath}${defaultDashboard}`;
         if (pathname !== target) return NextResponse.redirect(new URL(target, request.url));
@@ -295,10 +297,14 @@ export async function middleware(request: NextRequest) {
     }
 
     // GATE 5: Role Permission Security Scan
-    // APEX FIX: Architects and Commanders bypass folder checks for the Command Center.
+    // APEX FIX: Commanders bypass folder checks for the Command Center.
     if (!isApexPower || !pathWithoutLocale.startsWith('/command-center')) {
-        const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
+        // ENT-LEVEL FIX: Find the LONGEST matching path to prevent directory-level overrides
+        const sortedPaths = Object.keys(rolePermissions).sort((a, b) => b.length - a.length);
+        const requiredRolesForPath = sortedPaths.find(path => pathWithoutLocale.startsWith(path));
+        
         if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
+            // Check if we are already at home to prevent secondary loops
             if (pathWithoutLocale !== defaultDashboard) {
                 return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
             }
