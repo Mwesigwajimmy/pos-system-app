@@ -2,9 +2,9 @@
 
 /**
  * --- RAW MATERIAL REGISTRY ---
- * VERSION: v4.1 PROFESSIONAL (CLEAN)
+ * VERSION: v4.2 PROFESSIONAL (CLEAN)
  * Use: Enterprise management for raw material inventory and supplier tracking.
- * Logic: Dynamic currency detection + multi-tenant supplier integration + color tracking.
+ * Logic: Dynamic currency + multi-tenant supplier + color tracking + restock/waste dual logic.
  */
 
 import React, { useState, useMemo } from "react";
@@ -43,7 +43,7 @@ export default function RawMaterialPortal() {
   const [form, setForm] = useState({
     name: '', sku: '', type: 'Solid', quality: 'Standard', 
     price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '',
-    color: '' // Logic: Added color state
+    color: ''
   });
 
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
@@ -82,7 +82,7 @@ export default function RawMaterialPortal() {
     }
   });
 
-  // 4. DATA: Suppliers (Switched to 'suppliers' table per instructions)
+  // 4. DATA: Suppliers
   const { data: suppliers } = useQuery({
     queryKey: ['suppliers_raw_registry'],
     queryFn: async () => {
@@ -130,7 +130,7 @@ export default function RawMaterialPortal() {
         p_uom_id: form.uom_id, 
         p_vendor_id: form.supplier_id || null,
         p_currency: businessCurrency,
-        p_color: form.color // Logic: Added color parameter for enterprise grade function
+        p_color: form.color
       });
       if (error) throw error;
       toast.success("Material added to inventory.");
@@ -145,15 +145,19 @@ export default function RawMaterialPortal() {
 
   const logAdjustment = useMutation({
     mutationFn: async () => {
+      // Logic: Deep RESTOCK vs WASTE switch
+      // If the reason is 'Restock', we add the quantity. Otherwise, we subtract.
+      const direction = adjustData.reason === 'Restock' ? 1 : -1;
+      
       const { error } = await supabase.rpc('process_stock_adjustment_v2', {
         p_variant_id: adjustData.variant_id,
-        p_qty_change: -Math.abs(adjustData.qty),
-        p_reason: `Stock Adjustment: ${adjustData.reason}`
+        p_qty_change: Math.abs(adjustData.qty) * direction,
+        p_reason: `Registry Update: ${adjustData.reason}`
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Inventory levels corrected.");
+      toast.success("Inventory levels synchronized.");
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     }
   });
@@ -311,7 +315,6 @@ export default function RawMaterialPortal() {
               </Select>
             </div>
 
-            {/* UI: Color distinction field added here to fulfill manufacturing production requirements */}
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Material Color / Tone</Label>
               <Input placeholder="e.g. RAL 9010" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
@@ -396,28 +399,29 @@ export default function RawMaterialPortal() {
                     <TableCell className="pr-6 text-center">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <button onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id})} className="h-10 w-10 text-slate-300 hover:text-slate-900 rounded-full flex items-center justify-center transition-all hover:bg-slate-100">
+                          <button onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id, reason: 'Restock'})} className="h-10 w-10 text-slate-300 hover:text-slate-900 rounded-full flex items-center justify-center transition-all hover:bg-slate-100">
                             <BadgeAlert size={20} />
                           </button>
                         </DialogTrigger>
                         <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden border-none shadow-3xl bg-white">
                           <div className="bg-slate-900 p-8 text-white text-center">
-                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Inventory Correction</DialogTitle>
+                            <DialogTitle className="text-lg font-bold uppercase tracking-widest">Inventory Update</DialogTitle>
                             <DialogDescription className="text-slate-400 text-xs mt-1 uppercase font-medium">{m.product_name}</DialogDescription>
                           </div>
                           <div className="p-10 space-y-8">
                               <div className="space-y-4">
-                                <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center block">Actual Count Adjustment</Label>
+                                <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center block">Adjustment Quantity</Label>
                                 <div className="relative">
                                   <Input type="number" className="h-20 border-slate-100 bg-slate-50 font-black text-4xl text-center rounded-2xl shadow-inner text-slate-900 focus-visible:ring-0" onChange={e => setAdjustData({...adjustData, qty: Number(e.target.value)})} />
                                   <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[11px]">{m.unit}</span>
                                 </div>
                               </div>
                               <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Identify Reason</Label>
-                                <Select onValueChange={v => setAdjustData({...adjustData, reason: v})}>
+                                <Label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Identify Purpose</Label>
+                                <Select value={adjustData.reason} onValueChange={v => setAdjustData({...adjustData, reason: v})}>
                                   <SelectTrigger className="h-12 border-slate-200 bg-white font-semibold rounded-xl text-sm"><SelectValue placeholder="Reason for change" /></SelectTrigger>
                                   <SelectContent>
+                                    <SelectItem value="Restock">Restock / Incoming Shipment</SelectItem>
                                     <SelectItem value="Waste">Production Waste</SelectItem>
                                     <SelectItem value="Damage">Material Damage</SelectItem>
                                     <SelectItem value="Audit">Audit Correction</SelectItem>
@@ -427,7 +431,7 @@ export default function RawMaterialPortal() {
                           </div>
                           <DialogFooter className="p-8 bg-slate-50 border-t">
                             <Button onClick={() => logAdjustment.mutate()} className="w-full h-14 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-xl uppercase tracking-widest text-xs">
-                              Confirm Adjustment
+                              Confirm Synchronization
                             </Button>
                           </DialogFooter>
                         </DialogContent>

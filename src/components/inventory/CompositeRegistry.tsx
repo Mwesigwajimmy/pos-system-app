@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Factory, ShieldCheck, Layers, Plus, Database, 
   Settings2, Loader2, Package, Beaker, Zap, Ruler,
-  ArrowRight, CheckCircle2, AlertCircle, Scale, X, Tags, FolderPlus
+  ArrowRight, CheckCircle2, AlertCircle, Scale, X, Tags, FolderPlus,
+  Search, ClipboardList, Info, Trash2, Edit3, MoreHorizontal
 } from "lucide-react";
 import toast from 'react-hot-toast';
 
@@ -29,15 +30,19 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogFooter, 
-  DialogDescription 
+  DialogDescription,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const supabase = createClient();
 
 export default function CompositeRegistry() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Modal States
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
@@ -66,11 +71,41 @@ export default function CompositeRegistry() {
     }
   });
 
+  // Fetch Existing Designs (Composite Assets)
+  const { data: designs, isLoading: isDesignsLoading } = useQuery({
+    queryKey: ['composite_design_ledger', profile?.business_id],
+    queryFn: async () => {
+        if (!profile?.business_id) return [];
+        const { data, error } = await supabase
+            .from('product_variants')
+            .select(`
+                id,
+                sku,
+                price,
+                cost_price,
+                product_id,
+                uom_id,
+                units_of_measure ( name, abbreviation ),
+                products (
+                    name,
+                    category_id,
+                    categories ( name )
+                )
+            `)
+            .eq('business_id', profile?.business_id)
+            .eq('is_composite', true)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        return data || [];
+    },
+    enabled: !!profile?.business_id
+  });
+
   const { data: categories } = useQuery({
     queryKey: ['mfg_registry_categories', profile?.business_id],
     queryFn: async () => {
       if (!profile?.business_id) return [];
-      // Fetching categories. Note: Production categories are filtered by the business node
       const { data } = await supabase.from('categories').select('id, name').eq('business_id', profile?.business_id);
       return data || [];
     },
@@ -87,8 +122,14 @@ export default function CompositeRegistry() {
 
   // --- 2. AUTONOMOUS LOGIC ---
 
-  // UTILITY: Forensic SKU Generator
-  // Standard: [PREFIX]-[INITIALS]-[TIMESTAMP_SHORT]
+  const filteredDesigns = useMemo(() => {
+    if (!designs) return [];
+    return designs.filter(d => 
+        d.products?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.sku?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [designs, searchTerm]);
+
   const generateForensicSKU = (name: string) => {
     if (!name || name.length < 2) return '';
     const prefix = "MFG-";
@@ -97,7 +138,6 @@ export default function CompositeRegistry() {
     return `${prefix}${initials}-${timestamp}`;
   };
 
-  // Sync Name with SKU automatically to assist the user
   useEffect(() => {
     if (form.name && !form.sku) {
         setForm(prev => ({ ...prev, sku: generateForensicSKU(form.name) }));
@@ -106,7 +146,6 @@ export default function CompositeRegistry() {
 
   // --- 3. REGISTRY HANDLERS ---
 
-  // Procedure: Birth New Industrial Metric
   const handleCreateUnit = async () => {
     if (!newUnit.name || !newUnit.abbreviation) return toast.error("Unit details required.");
     try {
@@ -131,7 +170,6 @@ export default function CompositeRegistry() {
     }
   };
 
-  // Procedure: Birth New Production Category
   const handleCreateCategory = async () => {
     if (!newCategory.name) return toast.error("Category name required.");
     try {
@@ -165,8 +203,6 @@ export default function CompositeRegistry() {
     setLoading(true);
 
     try {
-      // THE INDUSTRIAL BIRTH: 
-      // 1. Create the Master Product Record (The Identity)
       const { data: product, error: pErr } = await supabase
         .from('products')
         .insert([{
@@ -180,8 +216,6 @@ export default function CompositeRegistry() {
 
       if (pErr) throw pErr;
 
-      // 2. Create the Variant (The Market Instance)
-      // We set price = selling price for NIM PAINTS distributive needs
       const { error: vErr } = await supabase
         .from('product_variants')
         .insert([{
@@ -191,7 +225,7 @@ export default function CompositeRegistry() {
           sku: form.sku || generateForensicSKU(form.name),
           price: parseFloat(form.base_price as string) || 0,
           cost_price: parseFloat(form.cost_estimate as string) || 0,
-          is_composite: true, // Crucial for Manufacturing dropdown
+          is_composite: true, 
           is_raw_material: false,
           uom_id: form.uom_id,
           status: 'active'
@@ -202,7 +236,7 @@ export default function CompositeRegistry() {
       toast.success(`${form.name} authorized in Production Catalog.`);
       setForm({ name: '', sku: '', category_id: '', uom_id: '', base_price: '', cost_estimate: '' });
       
-      queryClient.invalidateQueries({ queryKey: ['mfg_products_targets'] });
+      queryClient.invalidateQueries({ queryKey: ['composite_design_ledger'] });
       queryClient.invalidateQueries({ queryKey: ['allVariants'] });
     } catch (e: any) {
       toast.error(`Registry Sync Error: ${e.message}`);
@@ -212,150 +246,233 @@ export default function CompositeRegistry() {
   };
 
   return (
-    <Card className="max-w-7xl mx-auto border-slate-200 shadow-sm overflow-hidden bg-white rounded-3xl animate-in fade-in duration-700">
-      <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-               <div className="p-4 bg-slate-900 rounded-2xl text-white shadow-2xl transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                    <Factory size={28} />
-               </div>
-               <div>
-                   <CardTitle className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-none">Finished Good Designer</CardTitle>
-                   <CardDescription className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]">
-                        Establish master identities for manufactured goods.
-                   </CardDescription>
-               </div>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-100 shadow-sm">
-                <ShieldCheck className="text-emerald-500" size={16} />
-                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Security Node: Active</span>
-            </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-          
-          {/* PRODUCT IDENTITY */}
-          <div className="space-y-3 relative z-10">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Finished Asset Identity</Label>
-            <Input 
-                placeholder="e.g. NIM Gloss White Paint 5L" 
-                value={form.name} 
-                onChange={e => setForm({...form, name: e.target.value})} 
-                className="h-12 border-slate-200 focus:ring-blue-500 font-bold rounded-2xl shadow-sm bg-white transition-all" 
-            />
+    <div className="space-y-10 max-w-7xl mx-auto pb-20">
+      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white rounded-3xl animate-in fade-in duration-700">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                 <div className="p-4 bg-slate-900 rounded-2xl text-white shadow-2xl">
+                      <Factory size={28} />
+                 </div>
+                 <div>
+                     <CardTitle className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-none">Finished Good Designer</CardTitle>
+                     <CardDescription className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]">
+                          Establish master identities for manufactured goods.
+                     </CardDescription>
+                 </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-100 shadow-sm">
+                  <ShieldCheck className="text-emerald-500" size={16} />
+                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Security Node: Active</span>
+              </div>
           </div>
+        </CardHeader>
 
-          <div className="space-y-3 relative z-10">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Global SKU / Lot Serial</Label>
-            <Input 
-                placeholder="Auto-generated" 
-                value={form.sku} 
-                onChange={e => setForm({...form, sku: e.target.value})} 
-                className="h-12 border-slate-200 font-mono text-sm rounded-2xl shadow-sm bg-white" 
-            />
-          </div>
-
-          {/* DYNAMIC UNIT SELECTOR */}
-          <div className="space-y-3 relative z-10">
-            <div className="flex justify-between items-center px-1">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Output Metric</Label>
-                <button 
-                  type="button"
-                  onClick={() => setIsUnitModalOpen(true)}
-                  className="text-[9px] font-black text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 uppercase"
-                >
-                    <Plus size={10} /> Define New
-                </button>
+        <CardContent className="p-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Finished Asset Identity</Label>
+              <Input 
+                  placeholder="e.g. NIM Gloss White Paint 5L" 
+                  value={form.name} 
+                  onChange={e => setForm({...form, name: e.target.value})} 
+                  className="h-12 border-slate-200 focus:ring-blue-500 font-bold rounded-2xl shadow-sm bg-white" 
+              />
             </div>
-            <Select value={form.uom_id} onValueChange={v => setForm({...form, uom_id: v})}>
-              <SelectTrigger className="h-12 border-slate-200 font-bold rounded-2xl shadow-sm text-sm bg-white">
-                <SelectValue placeholder="Metric (Liters/KG/Drums)" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
-                {uoms?.map(u => (
-                  <SelectItem key={u.id} value={u.id} className="font-medium focus:bg-blue-50">
-                    {u.name} ({u.abbreviation})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* DYNAMIC CATEGORY SELECTOR */}
-          <div className="space-y-3 relative z-10">
-            <div className="flex justify-between items-center px-1">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Asset Classification</Label>
-                <button 
-                  type="button"
-                  onClick={() => setIsCategoryModalOpen(true)}
-                  className="text-[9px] font-black text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 uppercase"
-                >
-                    <Plus size={10} /> Add Category
-                </button>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Global SKU / Lot Serial</Label>
+              <Input 
+                  placeholder="Auto-generated" 
+                  value={form.sku} 
+                  onChange={e => setForm({...form, sku: e.target.value})} 
+                  className="h-12 border-slate-200 font-mono text-sm rounded-2xl shadow-sm bg-white" 
+              />
             </div>
-            <Select value={form.category_id} onValueChange={v => setForm({...form, category_id: v})}>
-              <SelectTrigger className="h-12 border-slate-200 font-bold rounded-2xl shadow-sm text-sm bg-white">
-                <SelectValue placeholder="Select Production Type" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
-                {categories?.map(c => (
-                  <SelectItem key={c.id} value={c.id.toString()} className="font-medium focus:bg-blue-50">
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* VALUATION */}
-          <div className="space-y-3 relative z-10">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Retail Price ({profile?.currency})</Label>
-            <Input 
-                type="number" 
-                value={form.base_price} 
-                onChange={e => setForm({...form, base_price: e.target.value})} 
-                className="h-12 border-slate-200 font-black text-lg text-blue-600 rounded-2xl shadow-sm bg-white" 
-            />
-          </div>
-
-          <div className="flex items-end relative z-10">
-            <Button 
-                onClick={handleRegisterDesign} 
-                disabled={loading} 
-                className="w-full bg-slate-900 hover:bg-blue-700 text-white font-black h-12 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.3)] rounded-2xl transition-all uppercase tracking-widest text-xs group"
-            >
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform"/>} 
-              Authorize Design
-            </Button>
-          </div>
-
-        </div>
-
-        {/* LOGIC INFO BOX */}
-        <div className="mt-14 p-10 bg-slate-50 rounded-[3rem] border border-slate-100 flex flex-col md:flex-row items-center gap-8 shadow-inner">
-            <div className="h-16 w-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 shrink-0">
-                <Zap size={32} />
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Output Metric</Label>
+                  <button 
+                    type="button"
+                    onClick={() => setIsUnitModalOpen(true)}
+                    className="text-[9px] font-black text-blue-600 hover:text-blue-800 flex items-center gap-1 uppercase"
+                  >
+                      <Plus size={10} /> Define New
+                  </button>
+              </div>
+              <Select value={form.uom_id} onValueChange={v => setForm({...form, uom_id: v})}>
+                <SelectTrigger className="h-12 border-slate-200 font-bold rounded-2xl shadow-sm text-sm bg-white">
+                  <SelectValue placeholder="Metric (Liters/KG/Drums)" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-slate-100">
+                  {uoms?.map(u => (
+                    <SelectItem key={u.id} value={u.id} className="font-medium">
+                      {u.name} ({u.abbreviation})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-                <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Forensic Interlink Protocol Active</h4>
-                <p className="text-xs font-medium text-slate-500 leading-relaxed max-w-3xl">
-                    By authorizing this design, the system births a <span className="font-bold text-blue-600 underline">Composite Asset</span>. You must then navigate to the <span className="font-bold text-slate-900 underline">Composite Builder</span> to define the exact molecular recipe or material ratio. Once the formula is committed, the asset becomes available for <span className="font-bold text-slate-900">Atomic Industrial Runs</span>.
-                </p>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                  <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Asset Classification</Label>
+                  <button 
+                    type="button"
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="text-[9px] font-black text-blue-600 hover:text-blue-800 flex items-center gap-1 uppercase"
+                  >
+                      <Plus size={10} /> Add Category
+                  </button>
+              </div>
+              <Select value={form.category_id} onValueChange={v => setForm({...form, category_id: v})}>
+                <SelectTrigger className="h-12 border-slate-200 font-bold rounded-2xl shadow-sm text-sm bg-white">
+                  <SelectValue placeholder="Select Production Type" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-slate-100">
+                  {categories?.map(c => (
+                    <SelectItem key={c.id} value={c.id.toString()} className="font-medium">
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-        </div>
-      </CardContent>
+
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Retail Price ({profile?.currency})</Label>
+              <Input 
+                  type="number" 
+                  value={form.base_price} 
+                  onChange={e => setForm({...form, base_price: e.target.value})} 
+                  className="h-12 border-slate-200 font-black text-lg text-blue-600 rounded-2xl shadow-sm bg-white" 
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button 
+                  onClick={handleRegisterDesign} 
+                  disabled={loading} 
+                  className="w-full bg-slate-900 hover:bg-blue-700 text-white font-black h-12 shadow-lg rounded-2xl transition-all uppercase tracking-widest text-xs"
+              >
+                {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="mr-2 h-5 w-5"/>} 
+                Authorize Design
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="bg-slate-50/30 p-8 border-t border-slate-100 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <Package size={14} className="text-slate-300" />
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sovereign OS Manufacturing Node v10.6.0</span>
+            </div>
+            <Badge variant="outline" className="bg-white text-[9px] font-black tracking-tighter border-slate-200 shadow-sm">ISO-9001 COMPLIANT_REGISTRY</Badge>
+        </CardFooter>
+      </Card>
+
+      {/* --- DESIGNED ASSET LEDGER (THE LIST) --- */}
+      <Card className="border-slate-200 shadow-sm overflow-hidden bg-white rounded-[2.5rem] animate-in slide-in-from-bottom duration-700">
+        <CardHeader className="p-10 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                    <ClipboardList size={22} />
+                </div>
+                <div>
+                    <CardTitle className="text-lg font-black uppercase tracking-tight text-slate-900">Designed Asset Ledger</CardTitle>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Authorized manufacturing master identities</p>
+                </div>
+            </div>
+            <div className="relative w-full md:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <Input 
+                    placeholder="Search by Identity or SKU..." 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-11 h-11 border-slate-100 bg-slate-50/50 rounded-2xl text-xs font-bold"
+                />
+            </div>
+        </CardHeader>
+        <CardContent className="p-0">
+            <ScrollArea className="w-full">
+                <Table>
+                    <TableHeader className="bg-slate-50/50">
+                        <TableRow className="hover:bg-transparent border-none">
+                            <TableHead className="pl-10 h-14 text-[10px] font-black text-slate-400 uppercase tracking-widest">Design Identity</TableHead>
+                            <TableHead className="h-14 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Output Metric</TableHead>
+                            <TableHead className="h-14 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Classification</TableHead>
+                            <TableHead className="h-14 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Retail Valuation</TableHead>
+                            <TableHead className="pr-10 h-14 w-20"></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isDesignsLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="h-40 text-center">
+                                    <Loader2 className="animate-spin h-6 w-6 text-slate-200 mx-auto" />
+                                </TableCell>
+                            </TableRow>
+                        ) : filteredDesigns.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="h-40 text-center">
+                                    <div className="flex flex-col items-center gap-2 text-slate-300">
+                                        <Layers size={32} strokeWidth={1} />
+                                        <p className="text-xs font-bold uppercase tracking-widest">No Authorized Designs Found</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredDesigns.map((design) => (
+                                <TableRow key={design.id} className="group hover:bg-slate-50/50 border-b border-slate-50 transition-colors">
+                                    <TableCell className="pl-10 py-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black text-slate-900 uppercase tracking-tight">{design.products?.name}</span>
+                                            <span className="text-[10px] font-mono text-slate-400 mt-1 uppercase">{design.sku}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge variant="outline" className="bg-white border-slate-200 text-slate-600 font-bold px-3 py-1 rounded-lg">
+                                            {design.units_of_measure?.abbreviation}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                            {design.products?.categories?.name || 'Unclassified'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black text-slate-900 tabular-nums">
+                                                {design.price.toLocaleString()}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase">{profile?.currency}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="pr-10 text-right">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-300 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-100">
+                                            <MoreHorizontal size={16} />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+        </CardContent>
+      </Card>
 
       {/* MODAL: NEW UNIT */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
-          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] p-0 overflow-hidden">
-              <div className="bg-slate-900 p-8 text-white">
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+              <div className="bg-slate-900 p-8 text-white text-center">
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center justify-center gap-3">
                       <Scale className="text-blue-400" /> Metric Registry
                   </DialogTitle>
                   <DialogDescription className="text-slate-400 text-xs mt-2 leading-relaxed font-medium">
-                      Establish a new measurement standard for Pharmaceutical or Chemical tracking.
+                      Establish a new measurement standard for Industrial tracking.
                   </DialogDescription>
               </div>
               <div className="p-8 space-y-6 bg-white">
@@ -380,7 +497,7 @@ export default function CompositeRegistry() {
               </div>
               <DialogFooter className="bg-slate-50 p-6 border-t border-slate-100 flex gap-3">
                   <Button variant="ghost" onClick={() => setIsUnitModalOpen(false)} className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Discard</Button>
-                  <Button onClick={handleCreateUnit} className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 rounded-2xl shadow-xl shadow-blue-600/20 uppercase tracking-widest text-[10px]">Save Metric</Button>
+                  <Button onClick={handleCreateUnit} className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 rounded-2xl shadow-xl uppercase tracking-widest text-[10px]">Save Metric</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -388,12 +505,12 @@ export default function CompositeRegistry() {
       {/* MODAL: NEW CATEGORY */}
       <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
           <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
-              <div className="bg-slate-900 p-8 text-white">
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+              <div className="bg-slate-900 p-8 text-white text-center">
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center justify-center gap-3">
                       <FolderPlus className="text-blue-400" /> Sector Classification
                   </DialogTitle>
                   <DialogDescription className="text-slate-400 text-xs mt-2 leading-relaxed font-medium">
-                      Define a new production category to logically separate manufactured assets.
+                      Define a new production category.
                   </DialogDescription>
               </div>
               <div className="p-8 space-y-6 bg-white">
@@ -422,14 +539,6 @@ export default function CompositeRegistry() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
-      
-      <CardFooter className="bg-slate-50/30 p-8 border-t border-slate-100 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-              <Package size={14} className="text-slate-300" />
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sovereign OS Manufacturing Node v10.6.0</span>
-          </div>
-          <Badge variant="outline" className="bg-white text-[9px] font-black tracking-tighter border-slate-200 shadow-sm">ISO-9001 COMPLIANT_REGISTRY</Badge>
-      </CardFooter>
-    </Card>
+    </div>
   );
 }
