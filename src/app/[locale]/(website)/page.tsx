@@ -761,12 +761,12 @@ const MegaMenuHeader = () => {
     return (
         <>
         <header className={cn(
-            "fixed top-0 z-40 w-full transition-all duration-300",
+            "fixed top-0 z-40 w-full h-16 transition-all duration-300",
             scrolled
                 ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-800/70 shadow-sm"
                 : "bg-transparent border-b border-transparent"
         )}>
-            <div className="container mx-auto flex h-16 items-center justify-between px-4 gap-2">
+            <div className="max-w-7xl mx-auto flex h-full items-center justify-between px-4 gap-2">
 
                 {/* Logo — visible on all screens, animates on mount */}
                 <motion.div
@@ -877,7 +877,7 @@ const MegaMenuHeader = () => {
                         className={cn(
                             "p-2 rounded-lg transition-colors",
                             scrolled
-                                ? "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                                ? "text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
                                 : "text-white hover:bg-white/10"
                         )}
                         aria-label="Toggle theme"
@@ -888,9 +888,11 @@ const MegaMenuHeader = () => {
                         onClick={() => setIsMobileMenuOpen(v => !v)}
                         className={cn(
                             "p-2 rounded-lg transition-colors",
-                            scrolled
-                                ? "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                                : "text-white hover:bg-white/10"
+                            isMobileMenuOpen
+                                ? "bg-slate-900 text-white hover:bg-slate-800"
+                                : scrolled
+                                    ? "text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+                                    : "text-white hover:bg-white/10"
                         )}
                         aria-label="Toggle menu"
                     >
