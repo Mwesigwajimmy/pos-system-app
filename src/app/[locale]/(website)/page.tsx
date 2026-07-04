@@ -828,39 +828,10 @@ const MegaMenuHeader = () => {
                         )}
                     </div>
 
-                    {/* Industries dropdown */}
-                    <div className="relative">
-                        <button
-                            onPointerEnter={(e) => openHover('industries', e)} onPointerLeave={closeHover}
-                            className={cn(navLinkClass, openMenu === 'industries' && 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white')}
-                        >
-                            Industries <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", openMenu === 'industries' && 'rotate-180')} />
-                        </button>
-                        {openMenu === 'industries' && (
-                            <div onPointerEnter={(e) => openHover('industries', e)} onPointerLeave={closeHover} className="absolute left-0 top-full mt-2 w-[820px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Industry Solutions</span>
-                                    <Link href="/industries" onClick={() => setOpenMenu(null)} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-1.5">
-                                        All Sectors <ArrowRight size={11} />
-                                    </Link>
-                                </div>
-                                <div className="max-h-[65vh] overflow-y-auto">
-                                    <div className="grid grid-cols-2 gap-6 p-5">
-                                        {(['Common', 'Trades & Services', 'Specialized', 'Creative & Digital'] as const).map(category => (
-                                            <div key={category} className="space-y-0.5">
-                                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-2 mb-1 px-3">{category}</h3>
-                                                {siteConfig.industryItems.filter(i => i.category === category).map((item) => (
-                                                    <Link key={item.name} href={`/industries/${INDUSTRY_SLUGS[item.name] || ''}`} onClick={() => setOpenMenu(null)}>
-                                                        <ListItem title={item.name} icon={item.icon}>{item.description}</ListItem>
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    {/* Industries — plain link */}
+                    <Link href="/industries" className={navLinkClass}>
+                        Industries
+                    </Link>
 
                     {/* Plain links */}
                     <Link href="/aura-ai" className={cn(navLinkClass, scrolled ? "text-blue-500 dark:text-blue-400" : "text-blue-300", "font-bold")}>
@@ -900,7 +871,7 @@ const MegaMenuHeader = () => {
                 </div>
 
                 {/* Mobile controls */}
-                <div className="lg:hidden flex items-center gap-1.5 shrink-0">
+                <div className="lg:hidden flex items-center gap-1.5 shrink-0 ml-auto">
                     <button
                         onClick={toggleDark}
                         className={cn(
@@ -947,42 +918,9 @@ const MegaMenuHeader = () => {
                                     Home
                                 </Link>
 
-                                <Accordion type="single" collapsible className="w-full">
-                                    <AccordionItem value="features" className="border-b border-white/10">
-                                        <AccordionTrigger className="text-base font-bold py-3.5 hover:no-underline text-white [&>svg]:text-slate-400">
-                                            Features
-                                        </AccordionTrigger>
-                                        <AccordionContent className="pb-4 space-y-1.5">
-                                            {siteConfig.featureSets.map((feature) => (
-                                                <Link key={feature.title} href="/features"
-                                                    className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] border border-white/10 transition-colors"
-                                                    onClick={() => setIsMobileMenuOpen(false)}
-                                                >
-                                                    <span className="p-1.5 bg-blue-600/30 rounded-lg shrink-0"><feature.icon className="h-4 w-4 text-blue-400" /></span>
-                                                    <span className="font-semibold text-slate-200 text-sm">{feature.title}</span>
-                                                </Link>
-                                            ))}
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="industries" className="border-b border-white/10">
-                                        <AccordionTrigger className="text-base font-bold py-3.5 hover:no-underline text-white [&>svg]:text-slate-400">
-                                            Industries
-                                        </AccordionTrigger>
-                                        <AccordionContent className="pb-4 grid grid-cols-1 gap-1">
-                                            {siteConfig.industryItems.map((item) => (
-                                                <Link key={item.name} href={`/industries/${INDUSTRY_SLUGS[item.name] || ''}`}
-                                                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.08] transition-colors"
-                                                    onClick={() => setIsMobileMenuOpen(false)}
-                                                >
-                                                    <item.icon size={16} className="text-blue-400 shrink-0" />
-                                                    <span className="font-semibold text-slate-300 text-sm">{item.name}</span>
-                                                </Link>
-                                            ))}
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-
                                 {[
+                                    { href: '/features', label: 'Features', icon: Layers, color: 'text-blue-400' },
+                                    { href: '/industries', label: 'Industries', icon: LayoutGrid, color: 'text-blue-400' },
                                     { href: '/download', label: 'Download Application', icon: DownloadCloud, color: 'text-blue-400' },
                                     { href: '/aura-ai', label: 'Aura Intelligence', icon: Sparkles, color: 'text-blue-400' },
                                     { href: '/courses', label: 'Academy', icon: BookOpen, color: 'text-blue-400' },
