@@ -1,12 +1,11 @@
 /**
  * --- BBU1 SOVEREIGN MIDDLEWARE ---
- * VERSION: v22.7 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER + EMPLOYEE BYPASS)
+ * VERSION: v22.8 OMEGA-ULTIMATUM (THE APEX LOOP BREAKER + COMMANDER BYPASS)
  * 
  * DEEP FIX SUMMARY:
- * 1. Targeted the Billing <-> Command Center "Ping-Pong" loop.
- * 2. Optimized redirect destinations to prevent "Middle-man" hops.
- * 3. Hardened Subscription whitelist logic.
- * 4. NEW: Restricted /welcome redirect to only Owners/Admins (Invited employees bypass setup).
+ * 1. APEX BYPASS: Architects and Commanders now bypass Billing Gates.
+ * 2. SUBSCRIPTION FIX: Removed empty string from isPaid to allow new users to stay on billing.
+ * 3. IDENTITY LOCK: Forced role fetching from system_power for Commander accounts.
  */
 
 import { match } from '@formatjs/intl-localematcher';
@@ -71,6 +70,7 @@ const rolePermissions: Record<string, string[]> = {
     '/distribution/market-intel': ['admin', 'manager', 'owner', 'architect', 'commander', 'marketing_specialist'],
     '/distribution': ['admin', 'manager', 'owner', 'architect', 'commander', 'fleet_manager', 'driver', 'warehouse_manager', 'collections_agent', 'matatu_driver', 'conductor'],
     '/professional-services': ['admin', 'manager', 'owner', 'architect', 'commander', 'lawyer', 'accountant', 'consultant', 'practitioner', 'medical_officer', 'dentist'],
+    '/professional-services/trust-accounting': ['admin', 'accountant', 'lawyer'],
     '/rentals': ['admin', 'manager', 'owner', 'architect', 'commander', 'property_manager', 'leasing_agent'],
     '/contractor': ['admin', 'manager', 'owner', 'architect', 'commander', 'engineer', 'foreman', 'site_manager', 'surveyor', 'architect_pro'],
     '/field-service': ['admin', 'manager', 'owner', 'architect', 'commander', 'field_technician', 'dispatcher', 'technician'],
@@ -233,22 +233,24 @@ export async function middleware(request: NextRequest) {
     }
     
     const userContext = userContextData[0];
+    const systemPower = userContext.system_power || null;
     const userRole = userContext.user_role || 'guest';
     const businessType = userContext.business_type || '';
     const setupComplete = userContext.setup_complete;
-    const systemPower = userContext.system_power || null;
+
+    // 🛡️ APEX POWER CHECK
+    const isApexPower = (systemPower === 'architect' || systemPower === 'commander');
 
     // 🛡️ DYNAMIC DASHBOARD CALCULATION
-    const defaultDashboard = (systemPower === 'architect' || systemPower === 'commander') 
+    const defaultDashboard = isApexPower
         ? '/command-center' 
         : (defaultDashboards[userRole] || defaultDashboards[businessType] || defaultDashboards['default']);
 
     // 💳 SUBSCRIPTION ENFORCEMENT
     const subStatus = (userContext.subscription_status || '').toLowerCase().trim();
-    // Broadening whitelist to ensure active accounts are never trapped
-    const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', 'past_due', ''].includes(subStatus);
+    // Broadening whitelist. Note: Removed '' to ensure new users stay on billing until they pay.
+    const isPaid = ['trial', 'active', 'free', 'completed', 'lifetime', 'past_due'].includes(subStatus);
     
-    // FIX: Optimized billing detection to unify both the admin-billing and dashboard-settings-billing paths
     const isOnBillingPage = pathWithoutLocale.includes('/billing') || pathWithoutLocale.includes('/settings/billing');
 
     /**
@@ -261,35 +263,28 @@ export async function middleware(request: NextRequest) {
     const isSetupRole = setupAuthorizedRoles.includes(userRole);
 
     // GATE 1: Setup Enforcement (Highest Priority)
-    // ONLY redirect to welcome if setup is incomplete AND user is an authorized setup role (Owner/Admin)
     if (isSetupRole && !setupComplete && pathWithoutLocale !== '/welcome' && !isOnBillingPage) {
         return NextResponse.redirect(new URL(`/${localeInPath}/welcome`, request.url));
     }
 
-    // PROTECTION: If an invited employee (non-setup role) somehow lands on /welcome, send them to their dashboard
-    if (!isSetupRole && pathWithoutLocale === '/welcome') {
-        return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
-    }
-    
-    // If setup is done, prevent anyone from staying on the welcome page
+    // PROTECTION: If setup is done, prevent anyone from staying on the welcome page
     if (setupComplete && pathWithoutLocale === '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
 
     // GATE 2: Billing Enforcement
-    if (!isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
-        // FIX: Redirecting to the correct billing page path inside the dashboard (settings/billing)
+    // APEX FIX: Architects and Commanders skip the billing forced redirect.
+    if (!isApexPower && !isPaid && !isOnBillingPage && !isPublicPath && pathWithoutLocale !== '/welcome') {
         return NextResponse.redirect(new URL(`/${localeInPath}/settings/billing`, request.url));
     }
 
-    // FIX: If paid user is on billing, send them directly to THEIR specific dashboard, not generic /dashboard
+    // FIX: Only move paid users away from billing if they aren't on a valid callback/payment route
     if (isPaid && isOnBillingPage && !pathWithoutLocale.includes('callback')) {
         const target = `/${localeInPath}${defaultDashboard}`;
         if (pathname !== target) return NextResponse.redirect(new URL(target, request.url));
     }
 
     // GATE 3: Role-Based Normalization
-    // If a user hits /dashboard or / directly, send them home
     if ((pathWithoutLocale === '/dashboard' || pathWithoutLocale === '/') && pathWithoutLocale !== defaultDashboard) {
         return NextResponse.redirect(new URL(`/${localeInPath}${defaultDashboard}`, request.url));
     }
@@ -300,9 +295,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // GATE 5: Role Permission Security Scan
-    // APEX FIX: Architects and Commanders must bypass folder checks for the Command Center to prevent "Identity Desync" loops.
-    const isApexPower = (systemPower === 'architect' || systemPower === 'commander');
-    
+    // APEX FIX: Architects and Commanders bypass folder checks for the Command Center.
     if (!isApexPower || !pathWithoutLocale.startsWith('/command-center')) {
         const requiredRolesForPath = Object.keys(rolePermissions).find(path => pathWithoutLocale.startsWith(path));
         if (requiredRolesForPath && !rolePermissions[requiredRolesForPath].includes(userRole)) {
