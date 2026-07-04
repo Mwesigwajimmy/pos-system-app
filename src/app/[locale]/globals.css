@@ -1,11 +1,52 @@
 /* 
-  BBU1 SOVEREIGN STYLESHEET - Version 3.0.0
+  BBU1 SOVEREIGN STYLESHEET - Version 4.1.0
   DYNAMIC IDENTITY BROADCAST EDITION
+  DEEPLY UPGRADED FOR NEXT.JS 15 + TAILWIND V4
 */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* --- MODERN VARIANT ARCHITECTURE --- */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* --- THEME MAPPING ARCHITECTURE --- */
+  /* This maps your sovereign variables to Tailwind utilities for v4 compatibility */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
 
 @layer base {
   :root {
@@ -45,6 +86,29 @@
     --ring: 221 83% 45%;
     --radius: 0.85rem; /* Million Dollar Rounded corners */
   }
+
+  /* Dark mode preservation for HSL structure */
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
 }
 
 @layer components {
@@ -67,14 +131,22 @@
     @apply transition-all duration-300 active:scale-95 shadow-lg hover:shadow-none;
     background-color: var(--primary-raw);
     color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
 @layer base {
-  * { @apply border-border; }
+  * { 
+    border-color: hsl(var(--border)); 
+  }
   body {
     @apply bg-background text-foreground;
     background-color: #F8FAFC;
+    font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
   }

@@ -1,13 +1,74 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* 
-  Note: Removed @theme and @custom-variant as these are v4 features. 
-  v3 handles these via the tailwind.config.js file and standard CSS.
+  BBU1 SOVEREIGN STYLESHEET - Version 4.2.0
+  ULTRA-LONG ENTERPRISE BROADCAST EDITION
+  UPGRADED FOR TAILWIND V4 + NEXT.JS 15
 */
 
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Modern Dark Mode Variant */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* --- THEME ARCHITECTURE --- */
+  /* This section connects your OKLCH variables to Tailwind classes */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
 :root {
+  /* --- IDENTITY HANDSHAKE --- */
+  /* Preserves dynamic brand color switching logic from Layout.tsx */
+  --primary-raw: var(--brand-primary, #1D4ED8);
+  
+  /* --- CORE LIGHT MODE (OKLCH) --- */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -23,15 +84,19 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  
+  --radius: 0.85rem; /* Your custom BBU1 rounded corners */
+  
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -43,30 +108,32 @@
 }
 
 .dark {
-  /* Deep navy blue dark mode — not black */
+  /* --- CORE DARK MODE (DEEP NAVY) --- */
   --background: oklch(0.12 0.03 260);        /* #0b0f1e deep navy */
-  --foreground: oklch(0.93 0.01 255);         /* near-white, slightly cool */
-  --card: oklch(0.17 0.04 262);               /* #131b2e dark navy card */
+  --foreground: oklch(0.93 0.01 255);         /* near-white */
+  --card: oklch(0.17 0.04 262);               /* dark navy card */
   --card-foreground: oklch(0.93 0.01 255);
   --popover: oklch(0.17 0.04 262);
   --popover-foreground: oklch(0.93 0.01 255);
   --primary: oklch(0.92 0.01 255);
   --primary-foreground: oklch(0.17 0.04 262);
-  --secondary: oklch(0.22 0.05 262);          /* #192038 medium navy */
+  --secondary: oklch(0.22 0.05 262);          /* medium navy */
   --secondary-foreground: oklch(0.93 0.01 255);
   --muted: oklch(0.22 0.05 262);
-  --muted-foreground: oklch(0.68 0.025 258);  /* readable blue-grey */
+  --muted-foreground: oklch(0.68 0.025 258);  
   --accent: oklch(0.22 0.05 262);
   --accent-foreground: oklch(0.93 0.01 255);
   --destructive: oklch(0.65 0.22 22);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 11%);
   --ring: oklch(0.55 0.22 264);
+  
   --chart-1: oklch(0.65 0.18 264);
   --chart-2: oklch(0.55 0.15 264);
   --chart-3: oklch(0.45 0.12 264);
   --chart-4: oklch(0.38 0.09 264);
   --chart-5: oklch(0.30 0.06 264);
+  
   --sidebar: oklch(0.15 0.04 262);
   --sidebar-foreground: oklch(0.93 0.01 255);
   --sidebar-primary: oklch(0.55 0.22 264);
@@ -79,13 +146,73 @@
 
 @layer base {
   * {
-    /* Changed to standard CSS variables so the build succeeds without config changes */
+    /* Critical v4 Fix: Ensures borders use the variable in every component */
     border-color: var(--border);
     outline-color: color-mix(in srgb, var(--ring), transparent 50%);
   }
   html, body {
-    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: var(--font-sans);
     background-color: var(--background);
     color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* --- THE SOVEREIGN OVERRIDE --- */
+  /* This ensures all BBU1 components follow your dynamic brand primary HEX */
+  .bg-primary {
+    background-color: var(--primary-raw) !important;
+  }
+  
+  .text-primary {
+    color: var(--primary-raw) !important;
+  }
+
+  .border-primary {
+    border-color: var(--primary-raw) !important;
+  }
+
+  /* High-fidelity sovereign button architecture */
+  .btn-sovereign {
+    @apply transition-all duration-300 active:scale-95 shadow-lg hover:shadow-none;
+    background-color: var(--primary-raw);
+    color: white;
+    padding: 0.6rem 1.5rem;
+    border-radius: var(--radius);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Enterprise UI Utilities */
+  .bg-identity-gradient {
+    background: linear-gradient(135deg, var(--primary-raw) 0%, #000000 150%);
+  }
+
+  .bg-glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20;
+  }
+}
+
+/* Professional Forensic Shadow */
+.shadow-sovereign {
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.08);
+}
+
+/* Scrollbar Hide for clean Report Dashboards */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- MOBILE UI REPAIR --- */
+@media (max-width: 768px) {
+  .flex.justify-between.items-center, header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1.5rem !important;
+    padding: 1.5rem !important;
   }
 }

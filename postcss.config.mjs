@@ -2,7 +2,11 @@
 /** @type {import('postcss-load-config').Config} */
 const config = {
   plugins: {
-    tailwindcss: {},
+    /* 
+       In Version 4, 'tailwindcss' was RENAMED to '@tailwindcss/postcss'.
+       To fix the build crash, we use the new name. 
+    */
+    '@tailwindcss/postcss': {}, 
     autoprefixer: {},
   },
 };
