@@ -2,7 +2,7 @@
 
 /**
  * --- MANUFACTURING & PRODUCTION MANAGER ---
- * VERSION: v5.1 ENTERPRISE (LAYOUT FIXED)
+ * VERSION: v5.2 ENTERPRISE (ULTRA-WIDE PRO LAYOUT)
  * Use: Professional batch tracking, cost analysis, and stock reconciliation.
  */
 
@@ -358,73 +358,85 @@ export default function ManufacturingOrderManager() {
             </DialogContent>
         </Dialog>
 
-        {/* --- ULTRA-WIDE MODAL: FINALIZE & RECONCILE (FIXED CSS) --- */}
+        {/* --- ULTRA-WIDE MODAL: FINALIZE & RECONCILE (FIXED PRO LAYOUT) --- */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-            <DialogContent className="max-w-[1550px] w-[98vw] max-h-[96vh] h-[96vh] flex flex-col p-0 overflow-hidden border border-slate-200 shadow-3xl rounded-[2.5rem] bg-white">
+            <DialogContent className="max-w-[1650px] w-[98vw] max-h-[96vh] h-[96vh] flex flex-col p-0 overflow-hidden border-none shadow-3xl rounded-[2.5rem] bg-white">
                 
-                {/* WIDE HEADER - FIXED TOP */}
-                <div className="shrink-0 bg-slate-50/60 backdrop-blur-md border-b border-slate-100 p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-6">
-                        <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 text-slate-900">
-                            <ClipboardList size={24} />
+                {/* 1. PROFESSIONAL HEADER - Pinned at Top */}
+                <div className="shrink-0 bg-slate-900 p-8 md:p-10 flex flex-col md:flex-row justify-between items-center gap-8 text-white">
+                    <div className="flex items-center gap-8">
+                        <div className="h-20 w-20 bg-white/10 backdrop-blur-xl rounded-[2rem] flex items-center justify-center border border-white/20">
+                            <ClipboardList size={32} className="text-blue-400" />
                         </div>
-                        <div className="space-y-0.5">
-                            <DialogTitle className="text-2xl font-bold text-slate-900 tracking-tight">Finalize Batch Statistics</DialogTitle>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Lot ID:</span>
-                                <Badge variant="outline" className="border-blue-100 text-blue-600 font-bold px-3 py-1 rounded-lg text-[10px] uppercase tracking-tight">{selectedOrder?.batch_number}</Badge>
+                        <div className="space-y-1">
+                            <DialogTitle className="text-4xl font-black tracking-tight">Finalize Batch Statistics</DialogTitle>
+                            <div className="flex items-center gap-4">
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Active Manufacturing Lot:</span>
+                                <Badge variant="secondary" className="bg-blue-600 text-white font-mono px-5 py-2 rounded-xl text-sm border-none shadow-lg">
+                                    {selectedOrder?.batch_number}
+                                </Badge>
                             </div>
                         </div>
                     </div>
                     
-                    <div className="bg-white px-8 py-4 rounded-2xl text-right min-w-[280px] shadow-sm border border-slate-100">
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Calculated Item Unit Cost</p>
-                        <p className="text-3xl font-bold text-slate-900 tabular-nums tracking-tighter">
-                            {costSummary.unitCost.toLocaleString()} <span className="text-xs text-slate-300 font-medium ml-1">{currency}</span>
+                    <div className="bg-white/5 backdrop-blur-2xl px-12 py-6 rounded-[2.5rem] text-right min-w-[350px] border border-white/10 shadow-inner">
+                        <p className="text-[10px] text-blue-400 font-black uppercase tracking-[0.3em] mb-1">Forecasted Item Unit Cost</p>
+                        <p className="text-5xl font-black tabular-nums tracking-tighter">
+                            {costSummary.unitCost.toLocaleString()} <span className="text-sm text-slate-400 font-bold ml-1 uppercase">{currency}</span>
                         </p>
                     </div>
                 </div>
 
-                {/* CONTENT AREA - FLEX GROW WITH INTERNAL SCROLLING */}
+                {/* 2. MAIN WORKSPACE - Ultra Wide Flex Grid */}
                 <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 bg-white">
                     
-                    {/* LEFT AREA: Data Input */}
+                    {/* LEFT AREA: Consumption Ledger & Expenses (WIDE) */}
                     <div className="lg:col-span-8 h-full flex flex-col border-r border-slate-100">
                         <ScrollArea className="flex-1">
-                            <div className="p-8 md:p-12 space-y-12">
+                            <div className="p-10 md:p-14 space-y-16">
                                 
-                                {/* 1. Materials Section */}
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between px-2">
-                                        <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-900 flex items-center gap-3">
-                                            <div className="h-2.5 w-2.5 rounded-full bg-blue-600 shadow-sm" /> 1. Material Consumption Ledger
-                                        </h3>
-                                        <Badge className="bg-slate-50 text-slate-400 font-bold px-3 py-1 rounded-lg border-none uppercase text-[9px]">Verified Recipe Path</Badge>
+                                {/* A. Material Consumption Section */}
+                                <div className="space-y-10">
+                                    <div className="flex items-center justify-between border-l-4 border-blue-600 pl-6">
+                                        <div>
+                                            <h3 className="text-lg font-black uppercase tracking-tight text-slate-900">1. Material Consumption Ledger</h3>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Verify actual raw weights used in this production run</p>
+                                        </div>
+                                        <Badge className="bg-emerald-50 text-emerald-600 font-black px-4 py-2 rounded-xl border-none uppercase text-[10px] tracking-tighter">Atomic Inventory Sync</Badge>
                                     </div>
                                     
-                                    <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white shadow-sm">
+                                    <div className="rounded-[2.5rem] border border-slate-100 overflow-hidden bg-slate-50/20 shadow-sm">
                                         <Table>
-                                            <TableHeader className="bg-slate-50/50">
-                                                <TableRow className="h-12">
-                                                    <TableHead className="text-[10px] font-bold pl-8 uppercase tracking-widest text-slate-400">Material specification</TableHead>
-                                                    <TableHead className="text-[10px] font-bold text-center uppercase tracking-widest text-slate-400">Actual units used</TableHead>
-                                                    <TableHead className="text-[10px] font-bold text-right pr-8 uppercase tracking-widest text-slate-400">Unit Rate ({currency})</TableHead>
+                                            <TableHeader className="bg-slate-100/50">
+                                                <TableRow className="h-16 border-none">
+                                                    <TableHead className="text-[11px] font-black pl-12 uppercase tracking-[0.2em] text-slate-500">Material specification</TableHead>
+                                                    <TableHead className="text-[11px] font-black text-center uppercase tracking-[0.2em] text-slate-500">Actual units used</TableHead>
+                                                    <TableHead className="text-[11px] font-black text-right pr-12 uppercase tracking-[0.2em] text-slate-500">Inventory Rate ({currency})</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {ingredientLogs.map((log, idx) => (
-                                                    <TableRow key={idx} className="h-16 hover:bg-slate-50/30 transition-colors border-b last:border-none">
-                                                        <TableCell className="pl-8 font-bold text-slate-700 text-sm">{log.name}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Input 
-                                                                type="number" 
-                                                                step="0.001" 
-                                                                value={log.actual_qty} 
-                                                                onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} 
-                                                                className="h-10 w-36 mx-auto text-center border-slate-200 bg-slate-50/50 font-bold text-blue-600 rounded-xl focus:bg-white shadow-inner" 
-                                                            />
+                                                    <TableRow key={idx} className="h-24 hover:bg-white transition-all border-b border-slate-100 last:border-none">
+                                                        <TableCell className="pl-12">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-black text-slate-800 text-lg uppercase tracking-tight">{log.name}</span>
+                                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Formula Reference ID: {log.variant_id}</span>
+                                                            </div>
                                                         </TableCell>
-                                                        <TableCell className="text-right pr-8 font-mono font-bold text-slate-400 text-xs tabular-nums">{log.unit_cost.toLocaleString()}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <div className="relative inline-block">
+                                                                <Input 
+                                                                    type="number" 
+                                                                    step="0.001" 
+                                                                    value={log.actual_qty} 
+                                                                    onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} 
+                                                                    className="h-14 w-52 text-center border-slate-200 bg-white font-black text-blue-600 text-2xl rounded-2xl focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all" 
+                                                                />
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-12 font-mono font-black text-slate-400 text-sm tabular-nums">
+                                                            {log.unit_cost.toLocaleString()}
+                                                        </TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -432,39 +444,42 @@ export default function ManufacturingOrderManager() {
                                     </div>
                                 </div>
 
-                                {/* 2. Overheads Section */}
-                                <div className="space-y-6">
-                                    <div className="flex justify-between items-center px-2">
-                                        <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-900 flex items-center gap-3">
-                                            <div className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm" /> 2. Overheads & External Expenses
-                                        </h3>
-                                        <Button variant="ghost" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-8 text-blue-600 font-bold text-[10px] uppercase tracking-wider hover:bg-blue-50 px-4 rounded-lg transition-all">
-                                            <Plus className="mr-1.5 h-3 w-3" /> Add Expense Line
+                                {/* B. Overheads Section */}
+                                <div className="space-y-10">
+                                    <div className="flex justify-between items-center border-l-4 border-rose-500 pl-6">
+                                        <div>
+                                            <h3 className="text-lg font-black uppercase tracking-tight text-slate-900">2. External Production Overheads</h3>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Log labour, logistics, and facility utility costs</p>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-11 text-blue-600 font-black text-[10px] uppercase tracking-widest border-blue-100 hover:bg-blue-50 px-8 rounded-2xl transition-all shadow-sm">
+                                            <Plus className="mr-2 h-4 w-4" /> Add Expense Node
                                         </Button>
                                     </div>
                                     
-                                    <div className="space-y-3">
+                                    <div className="grid grid-cols-1 gap-5">
                                         {expenses.map((exp, idx) => (
-                                            <div key={idx} className="flex gap-4 items-center bg-slate-50/30 p-3 rounded-xl border border-slate-100 transition-all hover:border-slate-200">
+                                            <div key={idx} className="flex gap-6 items-center bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
                                                 <div className="flex-1">
+                                                    <Label className="text-[9px] font-black text-slate-300 uppercase ml-4 mb-2 block">Expense category</Label>
                                                     <Input 
-                                                        placeholder="Reason (Labour, Logistics...)" 
+                                                        placeholder="e.g. Mechanical Labour, Transport..." 
                                                         value={exp.category} 
                                                         onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} 
-                                                        className="h-11 border-slate-200 bg-white font-medium text-slate-800 rounded-xl px-4 text-xs" 
+                                                        className="h-14 border-slate-100 bg-slate-50/50 font-bold text-slate-900 rounded-2xl px-8 text-sm focus:bg-white" 
                                                     />
                                                 </div>
-                                                <div className="w-56 relative">
+                                                <div className="w-80 relative">
+                                                    <Label className="text-[9px] font-black text-slate-300 uppercase ml-4 mb-2 block text-right">Aggregated amount</Label>
                                                     <Input 
                                                         type="number" 
                                                         value={exp.amount} 
                                                         onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} 
-                                                        className="h-11 border-slate-200 bg-white text-right font-bold text-slate-900 rounded-xl text-sm pr-12" 
+                                                        className="h-14 border-slate-100 bg-slate-50/50 text-right font-black text-slate-900 rounded-2xl text-xl pr-14 focus:bg-white" 
                                                     />
-                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-300 uppercase">{currency}</span>
+                                                    <span className="absolute right-5 bottom-4 text-[10px] font-black text-slate-300 uppercase">{currency}</span>
                                                 </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl">
-                                                    <Trash2 size={16} />
+                                                <Button variant="ghost" size="icon" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-14 w-14 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-colors mt-6">
+                                                    <Trash2 size={24} />
                                                 </Button>
                                             </div>
                                         ))}
@@ -474,66 +489,73 @@ export default function ManufacturingOrderManager() {
                         </ScrollArea>
                     </div>
 
-                    {/* RIGHT AREA: Summary & Finalization (FIXED SIDEBAR) */}
-                    <div className="lg:col-span-4 bg-slate-50/20 p-8 flex flex-col justify-between border-l border-slate-50 h-full overflow-hidden">
-                        <div className="space-y-8">
-                            <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-200/50 text-center space-y-4">
-                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block">Actual Finished Yield</Label>
+                    {/* RIGHT AREA: Yield & Summary (CLEAN SIDEBAR) */}
+                    <div className="lg:col-span-4 bg-slate-50/40 p-10 flex flex-col border-l border-slate-100 h-full overflow-hidden">
+                        <div className="space-y-12">
+                            {/* Yield Capture Card */}
+                            <div className="bg-white p-12 rounded-[3rem] shadow-2xl shadow-slate-200/50 border border-slate-200/50 text-center space-y-6">
+                                <Label className="text-[12px] font-black text-slate-400 uppercase tracking-[0.3em] block">Actual Finished Yield</Label>
                                 <div className="relative">
                                     <Input 
                                         type="number" 
                                         value={actualYield} 
                                         onChange={e => setActualYield(Number(e.target.value))} 
-                                        className="h-24 text-6xl font-black border-none text-center bg-slate-50/50 rounded-2xl text-slate-900 tabular-nums shadow-inner focus-visible:ring-0" 
+                                        className="h-40 text-8xl font-black border-none text-center bg-slate-50 rounded-[2.5rem] text-slate-900 tabular-nums shadow-inner focus-visible:ring-0 focus-visible:bg-slate-100" 
                                     />
                                 </div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Post-production inventory count</p>
+                                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] bg-blue-50 py-3 rounded-2xl mx-10">Final Inventory Verification</p>
                             </div>
 
-                            <div className="space-y-6 px-4 py-2">
-                                <h4 className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-300 border-b border-slate-100 pb-3">Operational Financials</h4>
-                                <div className="flex justify-between items-center text-xs font-semibold">
-                                    <span className="text-slate-400 uppercase tracking-widest text-[10px]">Material Pool</span>
-                                    <span className="font-bold text-slate-900">{costSummary.matTotal.toLocaleString()} {currency}</span>
+                            {/* Operational Summary */}
+                            <div className="space-y-8 px-6">
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-300 border-b border-slate-200 pb-5">Operational Financials</h4>
+                                <div className="flex justify-between items-center text-sm font-bold">
+                                    <span className="text-slate-400 uppercase tracking-widest text-[11px]">Direct Material Pool</span>
+                                    <span className="text-slate-900 text-lg tabular-nums">{costSummary.matTotal.toLocaleString()} <span className="text-[10px] text-slate-400">{currency}</span></span>
                                 </div>
-                                <div className="flex justify-between items-center text-xs font-semibold">
-                                    <span className="text-slate-400 uppercase tracking-widest text-[10px]">Overhead Pool</span>
-                                    <span className="font-bold text-slate-900">{costSummary.expTotal.toLocaleString()} {currency}</span>
+                                <div className="flex justify-between items-center text-sm font-bold">
+                                    <span className="text-slate-400 uppercase tracking-widest text-[11px]">Aggregate Overhead Pool</span>
+                                    <span className="text-slate-900 text-lg tabular-nums">{costSummary.expTotal.toLocaleString()} <span className="text-[10px] text-slate-400">{currency}</span></span>
                                 </div>
-                                <div className="pt-8 mt-4 border-t-2 border-slate-100 flex flex-col items-center">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">Aggregate Valuation</span>
-                                    <span className="text-5xl font-black text-blue-600 tabular-nums tracking-tighter">
+                                
+                                <div className="pt-12 mt-10 border-t-4 border-slate-900 flex flex-col items-center">
+                                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.5em] mb-4">Total Net Batch Valuation</span>
+                                    <span className="text-7xl font-black text-slate-900 tabular-nums tracking-tighter">
                                         {costSummary.total.toLocaleString()}
                                     </span>
+                                    <span className="text-xs font-black text-blue-600 uppercase tracking-widest mt-2">{currency} (Authorized Units)</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl mb-2">
-                            <div className="flex items-start gap-4">
-                                <ShieldCheck size={18} className="text-blue-400 mt-0.5" />
-                                <p className="text-[9px] text-slate-400 font-medium leading-relaxed uppercase tracking-wider">
-                                    Confirming finalization will trigger a forensic inventory handshake, updating master stock and general ledger entries.
+                        {/* Safety Notice */}
+                        <div className="p-8 bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl mt-auto">
+                            <div className="flex items-start gap-5">
+                                <div className="h-12 w-12 bg-blue-600/20 rounded-2xl flex items-center justify-center shrink-0 border border-blue-500/20">
+                                    <ShieldCheck size={24} className="text-blue-400" />
+                                </div>
+                                <p className="text-[11px] text-slate-400 font-bold leading-relaxed uppercase tracking-wider">
+                                    Finalizing will trigger a forensic handshake: reconciling stock levels and updating general ledger assets in real-time.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* WIDE FOOTER - FIXED BOTTOM */}
-                <div className="shrink-0 bg-white border-t border-slate-100 p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
-                    <div className="flex items-center gap-3 text-emerald-600 font-bold text-[10px] uppercase tracking-widest bg-emerald-50 px-6 py-2.5 rounded-full border border-emerald-100">
-                        <CheckCircle2 size={16} /> Autonomous Data Link: High Integrity
+                {/* 3. WIDE FOOTER - Pinned at Bottom */}
+                <div className="shrink-0 bg-white border-t border-slate-100 p-10 flex flex-col sm:flex-row items-center justify-between gap-10">
+                    <div className="flex items-center gap-4 text-emerald-600 font-black text-[12px] uppercase tracking-[0.2em] bg-emerald-50 px-10 py-4 rounded-2xl border border-emerald-100">
+                        <CheckCircle2 size={20} /> Integrity Verified Protocol
                     </div>
-                    <div className="flex gap-4 w-full sm:w-auto">
-                        <Button variant="outline" onClick={() => setSelectedOrder(null)} className="h-14 px-8 font-bold text-slate-400 hover:text-slate-900 text-[10px] uppercase tracking-widest rounded-xl transition-all">Discard Run</Button>
+                    <div className="flex gap-6 w-full sm:w-auto">
+                        <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-16 px-12 font-black text-slate-400 hover:text-rose-600 text-xs uppercase tracking-[0.2em] rounded-2xl transition-all">Discard Run</Button>
                         <Button 
                             onClick={() => finalizeProductionMutation.mutate()} 
                             disabled={finalizeProductionMutation.isPending} 
-                            className="h-14 px-12 bg-slate-900 hover:bg-black text-white font-bold rounded-xl shadow-xl uppercase tracking-widest text-[10px] min-w-[320px] transition-all"
+                            className="h-20 px-20 bg-slate-900 hover:bg-black text-white font-black rounded-3xl shadow-2xl shadow-slate-900/40 uppercase tracking-[0.2em] text-sm min-w-[450px] transition-all active:scale-[0.98]"
                         >
                             {finalizeProductionMutation.isPending ? (
-                                <><Loader2 className="animate-spin h-4 w-4 mr-2" /> Finalizing Node...</>
+                                <><Loader2 className="animate-spin h-6 w-6 mr-4" /> Finalizing Manufacturing Node...</>
                             ) : "Confirm & Finalize Production Output"}
                         </Button>
                     </div>
@@ -545,7 +567,7 @@ export default function ManufacturingOrderManager() {
         <footer className="mt-20 border-t border-slate-100 pt-12 pb-16 opacity-30 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em]">
                 <ShieldCheck size={14} />
-                <span>Facility Protocol V5.1.0 • System Verified</span>
+                <span>Facility Protocol V5.2.0 • Industrial Verification Stable</span>
             </div>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                 &copy; {new Date().getFullYear()} INDUSTRIAL MANAGEMENT SOLUTIONS
