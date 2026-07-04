@@ -704,6 +704,7 @@ const MegaMenuHeader = () => {
     const [deferredPrompt, setDeferredPrompt] = useState<any | null>(null);
     const [scrolled, setScrolled] = useState(false);
     const navRef = useRef<HTMLDivElement>(null);
+    const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 30);
@@ -730,8 +731,15 @@ const MegaMenuHeader = () => {
         if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; setDeferredPrompt(null); }
     };
 
-    const toggleMenu = (key: 'features' | 'industries') =>
-        setOpenMenu(prev => (prev === key ? null : key));
+    const openHover = (key: 'features' | 'industries', e: React.PointerEvent) => {
+        if (e.pointerType !== 'mouse') return;
+        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+        setOpenMenu(key);
+    };
+    const closeHover = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'mouse') return;
+        hoverTimeout.current = setTimeout(() => setOpenMenu(null), 120);
+    };
 
     const navLinkClass = cn(
         "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors",
@@ -782,13 +790,13 @@ const MegaMenuHeader = () => {
                     {/* Features dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => toggleMenu('features')}
+                            onPointerEnter={(e) => openHover('features', e)} onPointerLeave={closeHover}
                             className={cn(navLinkClass, openMenu === 'features' && 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white')}
                         >
                             Features <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", openMenu === 'features' && 'rotate-180')} />
                         </button>
                         {openMenu === 'features' && (
-                            <div className="absolute left-0 top-full mt-2 w-[760px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                            <div onPointerEnter={(e) => openHover('features', e)} onPointerLeave={closeHover} className="absolute left-0 top-full mt-2 w-[760px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
                                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60">
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Platform Capabilities</span>
                                     <Link href="/features" onClick={() => setOpenMenu(null)} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-1.5">
@@ -813,13 +821,13 @@ const MegaMenuHeader = () => {
                     {/* Industries dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => toggleMenu('industries')}
+                            onPointerEnter={(e) => openHover('industries', e)} onPointerLeave={closeHover}
                             className={cn(navLinkClass, openMenu === 'industries' && 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white')}
                         >
                             Industries <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", openMenu === 'industries' && 'rotate-180')} />
                         </button>
                         {openMenu === 'industries' && (
-                            <div className="absolute left-0 top-full mt-2 w-[820px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                            <div onPointerEnter={(e) => openHover('industries', e)} onPointerLeave={closeHover} className="absolute left-0 top-full mt-2 w-[820px] max-w-[94vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
                                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/60">
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">Industry Solutions</span>
                                     <Link href="/industries" onClick={() => setOpenMenu(null)} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600 flex items-center gap-1.5">
@@ -845,11 +853,14 @@ const MegaMenuHeader = () => {
                     </div>
 
                     {/* Plain links */}
-                    <Link href="/download" className={cn(navLinkClass, scrolled ? "text-blue-600 dark:text-blue-400" : "text-blue-300", "font-bold")}>
-                        Download App
-                    </Link>
                     <Link href="/aura-ai" className={cn(navLinkClass, scrolled ? "text-blue-500 dark:text-blue-400" : "text-blue-300", "font-bold")}>
                         <Sparkles className="h-3.5 w-3.5" /> Aura AI
+                    </Link>
+                    <Link href="/courses" className={cn(navLinkClass, scrolled ? "text-slate-600 dark:text-slate-300" : "text-slate-200", "font-semibold")}>
+                        Academy
+                    </Link>
+                    <Link href="/help-centre" className={navLinkClass}>
+                        Help
                     </Link>
                     <Link href="/blog" className={navLinkClass}>
                         Journal
@@ -863,6 +874,9 @@ const MegaMenuHeader = () => {
                             <DownloadCloud className="h-4 w-4 mr-1.5" /> Install
                         </Button>
                     )}
+                    <Link href="/download" className={cn("p-2 rounded-lg transition-colors", scrolled ? "text-blue-600 hover:bg-blue-50" : "text-blue-300 hover:bg-white/10")} title="Download App">
+                        <DownloadCloud className="h-4 w-4" />
+                    </Link>
                     <Button variant="outline" size="sm" asChild className={cn("font-semibold transition-colors", scrolled ? "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" : "bg-transparent border-white/25 text-white hover:bg-white/10 hover:text-white")}>
                         <a href={siteConfig.contactInfo.whatsappLink} target="_blank" rel="noopener noreferrer">Book a Demo</a>
                     </Button>
@@ -945,6 +959,7 @@ const MegaMenuHeader = () => {
                                 {[
                                     { href: '/download', label: 'Download Application', icon: DownloadCloud, color: 'text-blue-400' },
                                     { href: '/aura-ai', label: 'Aura Intelligence', icon: Sparkles, color: 'text-blue-400' },
+                                    { href: '/courses', label: 'Academy', icon: BookOpen, color: 'text-blue-400' },
                                     { href: '/blog', label: 'Engineering Journal', icon: BookOpen, color: 'text-slate-300' },
                                     { href: '/help-centre', label: 'Help Center', icon: HelpCircle, color: 'text-slate-300' },
                                 ].map(({ href, label, icon: Icon, color }) => (
