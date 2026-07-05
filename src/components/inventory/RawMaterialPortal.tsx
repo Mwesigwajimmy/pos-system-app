@@ -6,7 +6,7 @@
  * Use: Enterprise management for raw material inventory and supplier tracking.
  * Logic: Restock/Waste + Price Adjustment + Bulk Delete + Identity Editing.
  */
-
+import { cn } from "@/lib/utils"; // <--- Add this line
 import React, { useState, useMemo } from "react";
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
