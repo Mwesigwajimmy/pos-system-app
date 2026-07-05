@@ -2,9 +2,9 @@
 
 /**
  * --- RAW MATERIAL REGISTRY ---
- * VERSION: v4.6 PROFESSIONAL (ULTIMATE INTEGRATION)
+ * VERSION: v4.7 PROFESSIONAL (TOTAL INTEGRATION)
  * Use: Enterprise management for raw material inventory and supplier tracking.
- * Logic: Dynamic currency + Multi-tenant suppliers + Color tracking + Restock/Waste + Price Adj + Bulk Delete + Identity Editing.
+ * Logic: Restock/Waste + Price Adj + Bulk Delete + Identity & Supplier Editing.
  */
 
 import React, { useState, useMemo } from "react";
@@ -16,7 +16,7 @@ import {
   AlertTriangle, CheckCircle2, Loader2, Database, 
   Table as TableIcon, Layers, FileText, X, Globe,
   ArrowDownToLine, Filter, Settings, Calculator, Plus, Download,
-  Ruler, Activity, DollarSign, Warehouse, Edit3
+  Ruler, Activity, DollarSign, Warehouse, Edit3, UserCheck
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { jsPDF } from "jspdf";
@@ -52,7 +52,14 @@ export default function RawMaterialPortal() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [newUnit, setNewUnit] = useState({ name: '', abbreviation: '' });
   const [adjustData, setAdjustData] = useState({ variant_id: '', qty: 0, reason: 'Restock', price: 0 });
-  const [editData, setEditData] = useState({ variant_id: '', name: '', product_id: '' });
+  
+  // Logic: Extended editData to include supplier_id for linkage correction
+  const [editData, setEditData] = useState({ 
+    variant_id: '', 
+    name: '', 
+    product_id: '', 
+    supplier_id: '' 
+  });
 
   // 1. DATA: Identity Handshake (Determines dynamic currency)
   const { data: profile } = useQuery({
@@ -102,7 +109,7 @@ export default function RawMaterialPortal() {
     return { totalValuation, count: materials.length };
   }, [materials]);
 
-  // HANDLER: Create Unit of Measure
+  // HANDLER: Create Unit
   const handleCreateUnit = async () => {
     if (!newUnit.name || !newUnit.abbreviation) return toast.error("Required fields missing.");
     try {
@@ -111,7 +118,7 @@ export default function RawMaterialPortal() {
             abbreviation: newUnit.abbreviation.toUpperCase() 
         }]).select().single();
         if (error) throw error;
-        toast.success("Unit of measure created.");
+        toast.success("Unit created.");
         setForm({ ...form, uom_id: data.id }); 
         setNewUnit({ name: '', abbreviation: '' });
         setIsUnitModalOpen(false);
@@ -121,25 +128,25 @@ export default function RawMaterialPortal() {
     }
   };
 
-  // HANDLER: Onboard New Material
+  // HANDLER: Onboard
   const handleOnboard = async () => {
     if (!form.name || !form.uom_id) return toast.error("Please provide material name and unit.");
     setLoading(true);
     try {
       const { error } = await supabase.rpc('fn_industrial_material_onboard_v1', {
-        p_name: form.name,
-        p_sku: form.sku,
-        p_type: form.type,
+        p_name: form.name, 
+        p_sku: form.sku, 
+        p_type: form.type, 
         p_quality: form.quality,
-        p_price: form.price,
-        p_initial_qty: form.qty,
+        p_price: form.price, 
+        p_initial_qty: form.qty, 
         p_uom_id: form.uom_id, 
-        p_vendor_id: form.supplier_id || null,
-        p_currency: businessCurrency,
+        p_vendor_id: form.supplier_id ? parseInt(form.supplier_id) : null, 
+        p_currency: businessCurrency, 
         p_color: form.color
       });
       if (error) throw error;
-      toast.success("Material added to inventory.");
+      toast.success("Material authorized.");
       setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '', color: '' });
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     } catch (e: any) {
@@ -149,7 +156,7 @@ export default function RawMaterialPortal() {
     }
   };
 
-  // MUTATION: Bulk Delete
+  // MUTATION: Delete Selected
   const deleteSelectedMutation = useMutation({
     mutationFn: async () => {
       if (selectedItems.length === 0) return;
@@ -157,49 +164,54 @@ export default function RawMaterialPortal() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Registry items removed.");
+      toast.success("Materials removed.");
       setSelectedItems([]);
+      queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
+    }
+  });
+
+  // MUTATION: Update Identity (Includes Supplier Link Correction)
+  const updateMaterialMutation = useMutation({
+    mutationFn: async () => {
+      // Logic: Update both name and vendor link in products table
+      const { error } = await supabase
+        .from('products')
+        .update({ 
+            name: editData.name,
+            preferred_vendor_id: editData.supplier_id || null 
+        })
+        .eq('id', editData.product_id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Material master updated.");
+      setIsEditModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     },
     onError: (e: any) => toast.error(e.message)
   });
 
-  // MUTATION: Update Name
-  const updateMaterialMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('products').update({ name: editData.name }).eq('id', editData.product_id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Identity updated successfully.");
-      setIsEditModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
-    }
-  });
-
-  // MUTATION: Adjustment Logic (Quantity + Price)
+  // MUTATION: Stock & Price Adjustment
   const logAdjustment = useMutation({
     mutationFn: async () => {
-      // 1. Calculate the signed quantity change
+      // Logic: Deep calculation of quantity change
       const direction = adjustData.reason === 'Restock' ? 1 : -1;
-      const signedQty = Math.abs(adjustData.qty) * direction;
-      
-      // 2. Perform Stock RPC call
+      const signedQty = Number(adjustData.qty) * direction;
+
+      // 1. Sync Stock Level via RPC
       const { error: stockError } = await supabase.rpc('process_stock_adjustment_v2', {
-        p_variant_id: adjustData.variant_id,
+        p_variant_id: parseInt(adjustData.variant_id),
         p_qty_change: signedQty,
-        p_reason: `Industrial Update: ${adjustData.reason}`
+        p_reason: `Registry Manual Sync: ${adjustData.reason}`
       });
       if (stockError) throw stockError;
 
-      // 3. Update the Price in product_variants
-      const { error: priceError } = await supabase
-        .from('product_variants')
-        .update({ 
-            cost_price: adjustData.price, 
-            price: adjustData.price 
-        })
-        .eq('id', adjustData.variant_id);
+      // 2. Sync Valuation per Unit
+      const { error: priceError } = await supabase.from('product_variants').update({ 
+        cost_price: adjustData.price, 
+        price: adjustData.price 
+      }).eq('id', adjustData.variant_id);
       
       if (priceError) throw priceError;
     },
@@ -207,18 +219,17 @@ export default function RawMaterialPortal() {
       toast.success("Quantity and Valuation synchronized.");
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     },
-    onError: (e: any) => toast.error(e.message)
+    onError: (e: any) => toast.error(`Sync Failure: ${e.message}`)
   });
 
   const downloadReport = (format: 'PDF' | 'EXCEL') => {
     if (format === 'EXCEL') {
         const headers = "Description,SKU,Stock,Price,Value\n";
         const rows = materials?.map(m => `${m.product_name},${m.sku},${m.current_stock} ${m.unit},${m.buying_price},${m.current_stock * m.buying_price}`).join("\n");
-        const blob = new Blob([headers + rows], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
+        const url = window.URL.createObjectURL(new Blob([headers + rows], { type: 'text/csv' }));
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Inventory_Report_${Date.now()}.csv`;
+        link.download = `Material_Registry_${Date.now()}.csv`;
         link.click();
         return;
     }
@@ -226,13 +237,13 @@ export default function RawMaterialPortal() {
     doc.text("RAW MATERIAL REGISTRY REPORT", 14, 22);
     (doc as any).autoTable({
         startY: 40,
-        head: [['Description', 'SKU / ID', 'Balance', 'Price', 'Valuation']],
+        head: [['Description', 'SKU', 'Stock', 'Rate', 'Value']],
         body: materials?.map(m => [m.product_name, m.sku, `${m.current_stock} ${m.unit}`, m.buying_price, (m.current_stock * m.buying_price)])
     });
     doc.save(`Material_Audit_${Date.now()}.pdf`);
   };
 
-  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Syncing Material Ledger...</p></div>;
+  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Syncing Ledger...</p></div>;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
@@ -273,7 +284,7 @@ export default function RawMaterialPortal() {
           </div>
       </header>
 
-      {/* 2. ENROLLMENT FORM */}
+      {/* 2. ENROLLMENT FORM (Fully Unified) */}
       <Card className="border border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
         <CardHeader className="px-8 py-6 border-b border-slate-100 bg-slate-50/30">
           <div className="flex items-center gap-3">
@@ -353,7 +364,7 @@ export default function RawMaterialPortal() {
 
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Material Color / Tone</Label>
-              <Input placeholder="e.g. White" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
+              <Input placeholder="e.g. RAL 9010" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
             </div>
 
             <div className="flex items-end">
@@ -375,7 +386,7 @@ export default function RawMaterialPortal() {
           <div className="flex items-center gap-4 w-full md:w-auto">
               {selectedItems.length > 0 && (
                 <Button onClick={() => deleteSelectedMutation.mutate()} variant="destructive" className="h-11 px-6 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 animate-in slide-in-from-right-4 transition-all">
-                  <Trash2 size={16} className="mr-2" /> Remove Selected ({selectedItems.length})
+                  <Trash2 size={16} className="mr-2" /> Remove ({selectedItems.length})
                 </Button>
               )}
               <div className="relative w-full md:w-[400px]">
@@ -419,7 +430,7 @@ export default function RawMaterialPortal() {
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900 text-[15px] tracking-tight">{m.product_name}</span>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{m.sku} — {m.quality_grade}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{m.sku}</span>
                             {m.color && <Badge variant="outline" className="h-4 px-1.5 text-[8px] border-slate-200 text-slate-500 font-bold uppercase">{m.color}</Badge>}
                         </div>
                       </div>
@@ -439,8 +450,16 @@ export default function RawMaterialPortal() {
                     </TableCell>
                     <TableCell className="pr-6">
                         <div className="flex items-center justify-center gap-2">
-                             {/* ACTION: Edit Name */}
-                            <button onClick={() => { setEditData({ variant_id: m.variant_id, name: m.product_name, product_id: m.product_id }); setIsEditModalOpen(true); }} className="h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full flex items-center justify-center transition-all">
+                             {/* ACTION: Edit Name & Supplier Link */}
+                            <button onClick={() => { 
+                                setEditData({ 
+                                    variant_id: m.variant_id, 
+                                    name: m.product_name, 
+                                    product_id: m.product_id,
+                                    supplier_id: m.preferred_vendor_id 
+                                }); 
+                                setIsEditModalOpen(true); 
+                            }} className="h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full flex items-center justify-center transition-all">
                                 <Edit3 size={18} />
                             </button>
 
@@ -502,21 +521,33 @@ export default function RawMaterialPortal() {
         </CardContent>
       </Card>
 
-      {/* MODAL: EDIT NAME */}
+      {/* MODAL: EDIT NAME & SUPPLIER */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="max-w-sm rounded-[2rem] p-0 overflow-hidden border-none shadow-3xl bg-white">
               <div className="bg-slate-900 p-8 text-white text-center">
-                  <DialogTitle className="text-sm font-bold uppercase tracking-widest">Update Identity</DialogTitle>
+                  <DialogTitle className="text-sm font-bold uppercase tracking-widest">Update Identity Master</DialogTitle>
               </div>
               <div className="p-8 space-y-6">
                   <div className="space-y-2">
                       <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">New Material Name</Label>
-                      <Input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-12 border-slate-200 rounded-xl font-bold text-slate-900" />
+                      <Input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-11 border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-blue-600" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                      <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Primary Supplier Link</Label>
+                      <Select value={editData.supplier_id || "none"} onValueChange={v => setEditData({...editData, supplier_id: v === "none" ? "" : v})}>
+                        <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Fix Supplier Link" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- No Supplier Linked --</SelectItem>
+                          {suppliers?.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[9px] text-slate-400 font-medium px-1">Allows fixing accidental supplier linkages across the registry.</p>
                   </div>
               </div>
               <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex gap-4">
                   <Button variant="ghost" onClick={() => setIsEditModalOpen(false)} className="h-11 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Cancel</Button>
-                  <Button onClick={() => updateMaterialMutation.mutate()} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-lg uppercase tracking-widest text-[10px] flex-1">Authorize Change</Button>
+                  <Button onClick={() => updateMaterialMutation.mutate()} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-lg uppercase tracking-widest text-[10px] flex-1 active:scale-95 transition-all">Authorize Changes</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -548,14 +579,14 @@ export default function RawMaterialPortal() {
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-3">
                 <ShieldCheck size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.6 • Material Integrity Node</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.7 • Material Integrity Node</span>
              </div>
              <div className="h-4 w-px bg-slate-200 hidden md:block" />
              <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Registry Synchronized</span>
           </div>
           <div className="flex items-center gap-3 mt-6 md:mt-0">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Connection: {profile?.business_name}</span>
+             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Connected Unit: {profile?.business_name}</span>
           </div>
       </footer>
     </div>
