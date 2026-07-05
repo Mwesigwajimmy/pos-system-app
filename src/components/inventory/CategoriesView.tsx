@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox'; // Added for selection
 import toast from 'react-hot-toast';
 import { useState } from 'react';
-import { Pencil, PlusCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 
 // Interface defining the shape of a Category object
 interface Category {
