@@ -2,7 +2,7 @@
 
 /**
  * --- RAW MATERIAL REGISTRY ---
- * VERSION: v4.5 PROFESSIONAL (TOTAL INTEGRATION)
+ * VERSION: v4.6 PROFESSIONAL (ULTIMATE INTEGRATION)
  * Use: Enterprise management for raw material inventory and supplier tracking.
  * Logic: Dynamic currency + Multi-tenant suppliers + Color tracking + Restock/Waste + Price Adj + Bulk Delete + Identity Editing.
  */
@@ -86,7 +86,7 @@ export default function RawMaterialPortal() {
     }
   });
 
-  // 4. DATA: Suppliers (Procurement context)
+  // 4. DATA: Suppliers
   const { data: suppliers } = useQuery({
     queryKey: ['suppliers_raw_registry'],
     queryFn: async () => {
@@ -153,12 +153,11 @@ export default function RawMaterialPortal() {
   const deleteSelectedMutation = useMutation({
     mutationFn: async () => {
       if (selectedItems.length === 0) return;
-      // Industrial cleanup through variants (cascades to stock)
       const { error } = await supabase.from('product_variants').delete().in('id', selectedItems);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Registry cleaned. Materials removed.");
+      toast.success("Registry items removed.");
       setSelectedItems([]);
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     },
@@ -172,33 +171,43 @@ export default function RawMaterialPortal() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Material identity updated.");
+      toast.success("Identity updated successfully.");
       setIsEditModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     }
   });
 
-  // MUTATION: Adjustment Logic (Restock + Price)
+  // MUTATION: Adjustment Logic (Quantity + Price)
   const logAdjustment = useMutation({
     mutationFn: async () => {
+      // 1. Calculate the signed quantity change
       const direction = adjustData.reason === 'Restock' ? 1 : -1;
+      const signedQty = Math.abs(adjustData.qty) * direction;
+      
+      // 2. Perform Stock RPC call
       const { error: stockError } = await supabase.rpc('process_stock_adjustment_v2', {
         p_variant_id: adjustData.variant_id,
-        p_qty_change: Math.abs(adjustData.qty) * direction,
-        p_reason: `Manual Sync: ${adjustData.reason}`
+        p_qty_change: signedQty,
+        p_reason: `Industrial Update: ${adjustData.reason}`
       });
       if (stockError) throw stockError;
 
-      const { error: priceError } = await supabase.from('product_variants').update({ 
-        cost_price: adjustData.price, 
-        price: adjustData.price 
-      }).eq('id', adjustData.variant_id);
+      // 3. Update the Price in product_variants
+      const { error: priceError } = await supabase
+        .from('product_variants')
+        .update({ 
+            cost_price: adjustData.price, 
+            price: adjustData.price 
+        })
+        .eq('id', adjustData.variant_id);
+      
       if (priceError) throw priceError;
     },
     onSuccess: () => {
-      toast.success("Inventory and Valuation synchronized.");
+      toast.success("Quantity and Valuation synchronized.");
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
-    }
+    },
+    onError: (e: any) => toast.error(e.message)
   });
 
   const downloadReport = (format: 'PDF' | 'EXCEL') => {
@@ -206,9 +215,10 @@ export default function RawMaterialPortal() {
         const headers = "Description,SKU,Stock,Price,Value\n";
         const rows = materials?.map(m => `${m.product_name},${m.sku},${m.current_stock} ${m.unit},${m.buying_price},${m.current_stock * m.buying_price}`).join("\n");
         const blob = new Blob([headers + rows], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = `Registry_Audit_${Date.now()}.csv`;
+        link.href = url;
+        link.download = `Inventory_Report_${Date.now()}.csv`;
         link.click();
         return;
     }
@@ -219,10 +229,10 @@ export default function RawMaterialPortal() {
         head: [['Description', 'SKU / ID', 'Balance', 'Price', 'Valuation']],
         body: materials?.map(m => [m.product_name, m.sku, `${m.current_stock} ${m.unit}`, m.buying_price, (m.current_stock * m.buying_price)])
     });
-    doc.save(`Material_Ledger_${Date.now()}.pdf`);
+    doc.save(`Material_Audit_${Date.now()}.pdf`);
   };
 
-  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Accessing Material Nodes...</p></div>;
+  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Syncing Material Ledger...</p></div>;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
@@ -263,7 +273,7 @@ export default function RawMaterialPortal() {
           </div>
       </header>
 
-      {/* 2. ENROLLMENT FORM (Fully Restored) */}
+      {/* 2. ENROLLMENT FORM */}
       <Card className="border border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
         <CardHeader className="px-8 py-6 border-b border-slate-100 bg-slate-50/30">
           <div className="flex items-center gap-3">
@@ -343,7 +353,7 @@ export default function RawMaterialPortal() {
 
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Material Color / Tone</Label>
-              <Input placeholder="e.g. RAL 9010" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
+              <Input placeholder="e.g. White" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
             </div>
 
             <div className="flex items-end">
@@ -538,14 +548,14 @@ export default function RawMaterialPortal() {
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-3">
                 <ShieldCheck size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.5 • Material Integrity Node</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.6 • Material Integrity Node</span>
              </div>
              <div className="h-4 w-px bg-slate-200 hidden md:block" />
              <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Registry Synchronized</span>
           </div>
           <div className="flex items-center gap-3 mt-6 md:mt-0">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Link: {profile?.business_name}</span>
+             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Connection: {profile?.business_name}</span>
           </div>
       </footer>
     </div>
