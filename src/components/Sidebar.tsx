@@ -26,7 +26,7 @@ import {
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, BadgeCheck, PackagePlus, Tag, CalendarClock, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock
+    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -69,7 +69,7 @@ const navSections: NavItem[] = [
         href: '/pos', 
         label: 'Point of Sale', 
         icon: ShoppingCart, 
-        roles: ['admin', 'manager', 'cashier', 'owner', 'accountant', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
+        roles: ['admin', 'manager', 'cashier', 'owner', 'architect', 'pharmacist', 'bartender', 'dsr_rep'], 
         module: 'sales', 
         businessTypes: ['Retail / Wholesale', 'Restaurant / Cafe', 'Mixed/Conglomerate', 'Professional Services', 'Distribution', 'Distribution / Wholesale Supply']
     },
@@ -180,7 +180,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
@@ -305,7 +305,24 @@ const navSections: NavItem[] = [
     },
    
     {
-        type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager', 'owner', 'architect', 'hr_manager'], 
+        type: 'accordion',
+        title: 'Medical',
+        icon: Stethoscope,
+        roles: ['admin', 'manager', 'owner', 'architect', 'doctor', 'nurse', 'pharmacist', 'lab_technician', 'receptionist'],
+        module: 'medical',
+        businessTypes: ['Healthcare / Medical / Pharmacy', 'Mixed/Conglomerate'],
+        subItems: [
+            { href: '/medical', label: 'Medical Hub', icon: LayoutDashboard },
+            { href: '/medical/patients', label: 'Patient Registry', icon: Users },
+            { href: '/medical/encounters', label: 'Encounters & Visits', icon: ClipboardPlus },
+            { href: '/medical/prescriptions', label: 'Pharmacy', icon: Pill },
+            { href: '/medical/lab-results', label: 'Lab Results', icon: FlaskConical },
+            { href: '/medical/vitals', label: 'Vitals & Triage', icon: Thermometer },
+        ]
+    },
+
+    {
+        type: 'accordion', title: 'Human Resources', icon: UsersRound, roles: ['admin', 'manager', 'owner', 'architect', 'hr_manager'],
         module: 'hcm',
         subItems: [ 
             { href: '/hr/dashboard', label: 'HR Dashboard', icon: LayoutDashboard },
@@ -323,36 +340,24 @@ const navSections: NavItem[] = [
         ]
     },
 
-   {
-    type: 'accordion', 
-    title: 'Accounting', 
-    icon: Scale, 
-    roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
-    module: 'finance',
-    subItems: [ 
-        { href: '/finance/banking', label: 'Banking', icon: Landmark },
-        { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
-        
-        // --- NEW: THE RECEIPT HUB ---
-        { href: '/accounting/receipt-registry', label: 'Receipt Registry', icon: FileDigit }, 
-        
-        { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
-        { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
-        { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
-        
-        // --- NEW: DEBT & ASSET CONTROL ---
-        { href: '/accounting/installments', label: 'Installment Plans', icon: CalendarDays },
-        { href: '/accounting/assets', label: 'Fixed Asset Registry', icon: Building2 },
-
-        { href: '/expenses', label: 'Expenses', icon: Wallet },
-        { href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant', 'owner', 'architect'] },
-        { href: '/finance/journal', label: 'Journal', icon: BookCopy },
-        { href: '/finance/tax-returns', label: 'Tax Returns', icon: FileWarning },
-        { href: '/finance/fiscal-positions', label: 'Fiscal Positions', icon: Settings },
-        { href: '/finance/lock-dates', label: 'Lock Dates', icon: KeyRound },
-        { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
-    ]
-},
+    {
+        type: 'accordion', title: 'Accounting', icon: Scale, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'auditor'], 
+        module: 'finance',
+        subItems: [ 
+            { href: '/finance/banking', label: 'Banking', icon: Landmark },
+            { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
+            { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
+            { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
+            { href: '/finance/receivables', label: 'Receivables', icon: FilePlus },
+            { href: '/expenses', label: 'Expenses', icon: Wallet },
+            { href: '/ledger', label: 'General Ledger', icon: BookOpen, roles: ['admin', 'manager', 'accountant', 'owner', 'architect'] },
+            { href: '/finance/journal', label: 'Journal', icon: BookCopy },
+            { href: '/finance/tax-returns', label: 'Tax Returns', icon: FileWarning },
+            { href: '/finance/fiscal-positions', label: 'Fiscal Positions', icon: Settings },
+            { href: '/finance/lock-dates', label: 'Lock Dates', icon: KeyRound },
+            { href: '/finance/chart-of-accounts', label: 'Chart of Accounts', icon: Settings },
+        ]
+    },
 
     {
         type: 'accordion', title: 'Logistics', icon: Truck, roles: ['admin', 'manager', 'owner', 'architect', 'fleet_manager', 'driver'], 
@@ -775,9 +780,15 @@ export default function Sidebar() {
                     {isSidebarOpen ? (
                         <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
                             <div className="relative z-[120]"><BusinessSwitcher /></div>
-                            <div className="flex flex-col mt-2 px-1">
-                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-900 truncate">{businessName}</span>
-                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 mt-0.5">{operatorName} • {activeRole}</span>
+                            {/* User identity — visible when sidebar is open */}
+                            <div className="flex items-center gap-2.5 mt-3 px-1">
+                                <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm shadow-blue-600/30">
+                                    {operatorName.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] font-black text-slate-900 truncate leading-tight">{operatorName}</span>
+                                    <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 leading-tight mt-0.5">{businessName} · {activeRole}</span>
+                                </div>
                             </div>
                         </div>
                     ) : (
