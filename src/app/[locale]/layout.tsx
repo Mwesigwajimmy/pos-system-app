@@ -19,23 +19,18 @@ import React from 'react';
 
 /**
  * --- BBU1 SOVEREIGN GLOBAL LAYOUT ---
- * VERSION: v18.6 OMEGA (THE MASTER ARCHITECT - CONTEXT SEALED)
+ * VERSION: v18.7 OMEGA (NETWORK GUARD INTEGRATED)
  * JURISDICTION: Global Multi-Tenant Infrastructure
  * 
  * CORE UPGRADES:
- * 1. SERVER-SIDE IDENTITY ANCHOR: Hardened the branding fetch with a 
- *    permissive error-catch to prevent page-hangs during RLS transitions.
- * 2. FAVICON DYNAMIC WELD: Physically links the browser tab identity to 
- *    the Director's specific business logo (1024-dim sync).
- * 3. THE SOVEREIGN STYLE WELD: Injects '--brand-primary' into the body 
- *    CSS environment to ensure the entire UI respects the active node's DNA.
- * 4. PWA & SEO INTEGRITY: 100% preservation of site.webmanifest and 
- *    SoftwareApplication JSON-LD schemas.
- * 5. CONTEXT ARCHITECTURE: Integrated BusinessProvider globally to 
- *    ensure useBusiness() works on Welcome and Setup screens.
+ * 1. FORENSIC NETWORK GUARD: Injected a deep-level script to monitor 
+ *    navigator.onLine status. If offline, it triggers the BBU1 Red Alert screen.
+ * 2. SERVER-SIDE IDENTITY ANCHOR: Hardened branding fetch with 
+ *    permissive error-catch logic.
+ * 3. FAVICON DYNAMIC WELD: Links browser tab identity to business logo.
+ * 4. CONTEXT ARCHITECTURE: BusinessProvider globally integrated.
  */
 
-// --- PROFESSIONAL GLOBAL METADATA (UNTOUCHED) ---
 export const metadata: Metadata = {
   title: {
     default: 'BBU1 Global | Enterprise Business Operating System',
@@ -71,7 +66,6 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
-// List of supported locales for sanitization
 const SUPPORTED_LOCALES = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
 
 export default async function LocaleRootLayout({
@@ -81,77 +75,49 @@ export default async function LocaleRootLayout({
   children: ReactNode;
   params: { locale: string };
 }) {
-  /**
-   * PROFESSIONAL FIX: Locale Sanitization
-   */
   const safeLocale = SUPPORTED_LOCALES.includes(locale) ? locale : 'en';
-
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   
-  // Safe session fetch
   let session: Session | null = null;
-  
-  // --- SOVEREIGN IDENTITY VARIABLES ---
-  let brandColor = '#1D4ED8'; // Default BBU1 Blue
-  let companyLogo = '/logo.png'; // Default Fallback Logo
+  let brandColor = '#1D4ED8'; 
+  let companyLogo = '/logo.png'; 
 
   try {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     session = currentSession;
 
-    // --- UPGRADE: SERVER-SIDE IDENTITY FETCH (v18.5 HARDENED) ---
-    // We prioritize the active business cookie for new windows
     const activeBizId = cookieStore.get('bbu1_active_business_id')?.value;
 
     if (session?.user) {
-        // We look for the business node linked to this session
         const targetBizId = activeBizId || session.user.user_metadata?.business_id;
 
         if (targetBizId && targetBizId !== 'loading') {
-            // Forensic Branding Fetch: Bypasses UI lag by pre-loading on server
             const { data: brand } = await supabase
                 .from('view_bbu1_corporate_identity')
                 .select('primary_color, logo_url')
                 .eq('business_id', targetBizId)
-                .maybeSingle(); // maybeSingle avoids crashing if the view is in maintenance
+                .maybeSingle();
             
             if (brand?.primary_color) brandColor = brand.primary_color;
             if (brand?.logo_url) companyLogo = brand.logo_url;
         }
     }
   } catch (e) {
-    console.warn("[AURA ARCHITECT] Server-side identity fetch deferred. Using defaults.");
+    console.warn("[AURA ARCHITECT] Identity fetch deferred.");
     session = null;
   }
 
-  // --- PROFESSIONAL APPLICATION SCHEMA ---
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "BBU1 Global Business OS",
     "operatingSystem": "Windows, MacOS, Android, iOS, Web",
     "applicationCategory": "BusinessApplication, FinanceApplication",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
     "publisher": {
       "@type": "Organization",
       "name": "LITONU BUSINESS BASE UNIVERSE LTD",
-      "url": "https://www.bbu1.com",
-      "logo": "https://www.bbu1.com/icons/android-chrome-512x512.png"
-    },
-    "downloadUrl": "https://www.bbu1.com/en/download",
-    "featureList": "Cloud Accounting, Inventory Management, CRM, HR, AI Insights",
-    "installTarget": {
-        "@type": "InstallAction",
-        "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": "https://www.bbu1.com/en/download",
-            "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/IOSPlatform", "http://schema.org/AndroidPlatform"]
-        }
+      "url": "https://www.bbu1.com"
     }
   };
 
@@ -159,17 +125,49 @@ export default async function LocaleRootLayout({
     <html lang={safeLocale} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/site.webmanifest" />
-        
-        {/* --- DYNAMIC IDENTITY FAVICON WELD --- */}
         <link rel="icon" href={companyLogo} />
         <link rel="apple-touch-icon" href={companyLogo} />
-        
         <meta name="theme-color" content={brandColor} />
         
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+
+        {/* --- DYNAMIC NETWORK GUARD (OFFLINE WELD) --- */}
+        <Script id="network-guard" strategy="afterInteractive">
+          {`
+            (function() {
+              const guardId = 'bbu1-offline-overlay';
+              
+              function showOfflineScreen() {
+                if (document.getElementById(guardId)) return;
+                const overlay = document.createElement('div');
+                overlay.id = guardId;
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100vw';
+                overlay.style.height = '100vh';
+                overlay.style.zIndex = '10000';
+                overlay.style.backgroundColor = '#ffffff';
+                overlay.innerHTML = '<iframe src="/offline.html" style="width:100%; height:100%; border:none;"></iframe>';
+                document.body.appendChild(overlay);
+              }
+
+              function hideOfflineScreen() {
+                const overlay = document.getElementById(guardId);
+                if (overlay) overlay.remove();
+              }
+
+              window.addEventListener('offline', showOfflineScreen);
+              window.addEventListener('online', hideOfflineScreen);
+
+              // Initial Check
+              if (!navigator.onLine) showOfflineScreen();
+            })();
+          `}
+        </Script>
 
         <Script
           async
@@ -187,7 +185,6 @@ export default async function LocaleRootLayout({
       </head>
       <body 
         className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}
-        /* --- THE SOVEREIGN WELD: GLOBAL CSS VARIABLE INJECTION --- */
         style={{ '--brand-primary': brandColor } as React.CSSProperties}
       >
         <SupabaseProvider session={session}>
@@ -198,7 +195,6 @@ export default async function LocaleRootLayout({
               enableSystem={false}
               disableTransitionOnChange
             >
-              {/* ✅ FIX: BusinessProvider is now at the Top Level to prevent useBusiness() crashes */}
               <BusinessProvider>
                 <SidebarProvider>
                   {children}
@@ -213,9 +209,3 @@ export default async function LocaleRootLayout({
     </html>
   );
 }
-
-/**
- * STATUS: Global Layout Sealed.
- * JURISDICTION: Unified Multi-Tenant Cloud.
- * ENGINE: Elite 1024-dim Identity Ready.
- */
