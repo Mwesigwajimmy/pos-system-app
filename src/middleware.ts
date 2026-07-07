@@ -58,7 +58,7 @@ const rolePermissions: Record<string, string[]> = {
     '/compliance/income-tax': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
     '/compliance': ['admin', 'manager', 'auditor', 'owner', 'architect', 'commander', 'accountant', 'legal_counsel'],
     '/audit': ['admin', 'auditor', 'architect', 'commander', 'owner'],
-    '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'warehouse_manager', 'inventory_manager','cashier', 'chef', 'technician', 'warehouse_staff'],
+    '/inventory': ['admin', 'manager', 'owner', 'architect', 'commander', 'pharmacist', 'accountant', 'warehouse_manager', 'inventory_manager','cashier', 'chef', 'technician', 'warehouse_staff'],
     '/purchases': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'warehouse_manager'],
     '/procurement': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'grant_officer'],
     '/hr': ['admin', 'manager', 'owner', 'architect', 'commander', 'hr_manager', 'teacher_principal'],

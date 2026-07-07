@@ -180,7 +180,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
