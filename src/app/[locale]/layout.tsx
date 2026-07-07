@@ -10,7 +10,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
 import { SidebarProvider } from '@/context/SidebarContext';
-// ✅ DEEP WELD: Added the missing BusinessProvider to global scope
+// ✅ DEEP WELD: BusinessProvider remains at global scope for context stability
 import { BusinessProvider } from '@/context/BusinessContext'; 
 import type { Session } from '@supabase/supabase-js';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
@@ -19,19 +19,20 @@ import React from 'react';
 
 /**
  * --- BBU1 SOVEREIGN GLOBAL LAYOUT ---
- * VERSION: v18.8 OMEGA (ENTERPRISE BRANDING STABLE)
+ * VERSION: v18.9 OMEGA (CLEAN ROOT ARCHITECTURE)
  * JURISDICTION: Global Multi-Tenant Infrastructure
  * 
- * CORE UPGRADES:
- * 1. ENTERPRISE LOGO SCALING: Standardized identity assets to professional 
- *    proportions (100px footprint) across all boot and guard layers.
- * 2. FORENSIC NETWORK GUARD: Deep-level injection to monitor connectivity.
- *    If offline, it triggers the professional BBU1 Red Alert node.
- * 3. SERVER-SIDE IDENTITY ANCHOR: Pre-fetches branding to prevent style-flicker.
- * 4. FAVICON DYNAMIC WELD: Synchronizes browser tab identity with business DNA.
+ * CORE ARCHITECTURAL CLEANUP:
+ * 1. REMOVED REDUNDANT FETCH: Extracted the branding listener to allow 
+ *    the DashboardGatekeeper and Loading nodes to handle Identity DNA.
+ * 2. PERFORMANCE OPTIMIZATION: Reduced server-side blocking time by 
+ *    simplifying the root handshake.
+ * 3. NETWORK GUARD PRESERVATION: Maintained the professional 
+ *    offline.html trigger logic.
+ * 4. CONTEXT STABILITY: BusinessProvider is locked at the top level.
  */
 
-// --- PROFESSIONAL GLOBAL METADATA (UNTOUCHED) ---
+// --- PROFESSIONAL GLOBAL METADATA ---
 export const metadata: Metadata = {
   title: {
     default: 'BBU1 Global | Enterprise Business Operating System',
@@ -67,7 +68,6 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
-// List of supported locales for sanitization
 const SUPPORTED_LOCALES = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
 
 export default async function LocaleRootLayout({
@@ -77,44 +77,23 @@ export default async function LocaleRootLayout({
   children: ReactNode;
   params: { locale: string };
 }) {
-  /**
-   * PROFESSIONAL FIX: Locale Sanitization
-   */
   const safeLocale = SUPPORTED_LOCALES.includes(locale) ? locale : 'en';
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   
-  // Safe session fetch
   let session: Session | null = null;
   
-  // --- SOVEREIGN IDENTITY VARIABLES ---
-  let brandColor = '#1D4ED8'; // Default BBU1 Blue
-  let companyLogo = '/logo.png'; // Default Fallback Logo
+  // Standard BBU1 Identity Defaults
+  const brandColor = '#1D4ED8'; 
+  const companyLogo = '/logo.png'; 
 
   try {
+    // Only fetch session at the root to satisfy Provider requirements
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     session = currentSession;
-
-    // --- UPGRADE: SERVER-SIDE IDENTITY FETCH (v18.5 HARDENED) ---
-    const activeBizId = cookieStore.get('bbu1_active_business_id')?.value;
-
-    if (session?.user) {
-        const targetBizId = activeBizId || session.user.user_metadata?.business_id;
-
-        if (targetBizId && targetBizId !== 'loading') {
-            const { data: brand } = await supabase
-                .from('view_bbu1_corporate_identity')
-                .select('primary_color, logo_url')
-                .eq('business_id', targetBizId)
-                .maybeSingle(); 
-            
-            if (brand?.primary_color) brandColor = brand.primary_color;
-            if (brand?.logo_url) companyLogo = brand.logo_url;
-        }
-    }
   } catch (e) {
-    console.warn("[AURA ARCHITECT] Server-side identity fetch deferred. Using defaults.");
+    console.warn("[AURA ARCHITECT] Root session handshake deferred.");
     session = null;
   }
 
@@ -145,7 +124,7 @@ export default async function LocaleRootLayout({
       <head>
         <link rel="manifest" href="/site.webmanifest" />
         
-        {/* --- DYNAMIC IDENTITY FAVICON WELD --- */}
+        {/* Standard Identity Anchors */}
         <link rel="icon" href={companyLogo} />
         <link rel="apple-touch-icon" href={companyLogo} />
         
@@ -206,7 +185,6 @@ export default async function LocaleRootLayout({
       </head>
       <body 
         className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}
-        /* --- THE SOVEREIGN WELD: GLOBAL CSS VARIABLE INJECTION --- */
         style={{ '--brand-primary': brandColor } as React.CSSProperties}
       >
         <SupabaseProvider session={session}>
@@ -217,7 +195,6 @@ export default async function LocaleRootLayout({
               enableSystem={false}
               disableTransitionOnChange
             >
-              {/* ✅ FIX: BusinessProvider is now at the Top Level */}
               <BusinessProvider>
                 <SidebarProvider>
                   {children}
