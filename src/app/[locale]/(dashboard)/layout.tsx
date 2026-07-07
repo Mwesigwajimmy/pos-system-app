@@ -2,19 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN DASHBOARD LAYOUT ---
- * VERSION: v29.1 OMEGA-ULTIMATUM (CLEAN ARCHITECTURE + GLOBAL EDGE BRIDGE)
+ * VERSION: v29.2 OMEGA-ULTIMATUM (FORENSIC LOADING INTEGRATED)
  * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP
  * 
  * CORE ARCHITECTURAL FIXES:
- * 1. CLEAN-STATE WELD: Removed redundant mobile effects. The Sidebar component 
- *    is now "Self-Aware" and manages its own viewport logic.
- * 2. COMMAND CENTER PROTECTION: Explicitly preserved segments for Architects
- *    to prevent locale-stacking loops.
- * 3. BILLING NEUTRALITY: Maintained total "Redirect Silence" for active billing 
- *    sessions to allow Middleware priority.
- * 4. HYDRATION GUARD: Unified state management within the SidebarProvider to 
- *    prevent the "White Space" flash.
- * 5. APEX CONNECTIVITY: Added Forensic Edge Bridge to bypass regional firewalls.
+ * 1. FORENSIC LOADER WELD: Replaced the legacy green "Anchoring" screen with 
+ *    the professional BBU1 Signal Breathing loader and tagline rotation.
+ * 2. LOGO NORMALIZATION: Reduced logo size to 100px for enterprise aesthetic.
+ * 3. TAGLINE REGISTRY: Integrated all 12 professional system insights.
+ * 4. HYDRATION GUARD: Unified state management within the SidebarProvider.
  */
 
 import React, { memo, ReactNode, useEffect, useMemo, useState, useCallback } from 'react';
@@ -40,6 +36,108 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
+ * --- PROFESSIONAL BBU1 FORENSIC LOADER ---
+ * Logic: Cycles through enterprise taglines while maintaining a breathing brand signal.
+ */
+const BBU1ForensicLoader = ({ businessId }: { businessId?: string }) => {
+    const [taglineIndex, setTaglineIndex] = useState(0);
+    const [opacity, setTaglineOpacity] = useState(1);
+
+    const taglines = [
+        "Preparing your all-in-one business OS...",
+        "Unifying accounting, CRM, HR and inventory in one place.",
+        "Aura AI is warming up to watch your cash flow 24/7.",
+        "Tip: Aura can flag anomalies before they become problems.",
+        "Bank-level encryption keeps every transaction locked down.",
+        "Your data stays safe with row-level, multi-tenant security.",
+        "Tip: BBU1 keeps working even when the internet doesn't.",
+        "Offline mode syncs automatically the moment you're back online.",
+        "One login. Every department. Zero spreadsheets.",
+        "Tip: Aura automates up to 90% of your bookkeeping.",
+        "Manufacturing, retail, healthcare, or NGOs, BBU1 fits your industry.",
+        "Good things take a moment, great insights are worth the wait."
+    ];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTaglineOpacity(0);
+            setTimeout(() => {
+                setTaglineIndex((prev) => (prev + 1) % taglines.length);
+                setTaglineOpacity(1);
+            }, 500);
+        }, 3500);
+        return () => clearInterval(interval);
+    }, [taglines.length]);
+
+    return (
+        <div className="flex h-screen w-screen flex-col items-center justify-center bg-white z-[9999] fixed inset-0">
+            <style jsx>{`
+                .loader-container { 
+                    position: relative; 
+                    width: 180px; 
+                    height: 180px; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                }
+                .logo-img { 
+                    width: 100px; /* Reduced to professional enterprise size */
+                    height: 100px; 
+                    object-fit: contain; 
+                    z-index: 10; 
+                    animation: breathe 2.4s infinite ease-in-out; 
+                    user-select: none;
+                }
+                .signal-ring { 
+                    position: absolute; 
+                    width: 100px; 
+                    height: 100px; 
+                    border: 2px solid rgba(0, 0, 255, 0.4); 
+                    border-radius: 50%; 
+                    z-index: 1; 
+                    animation: signalOut 2.4s infinite cubic-bezier(0.25, 0.1, 0.25, 1); 
+                }
+                .delay-1 { animation-delay: 0.8s; }
+                .delay-2 { animation-delay: 1.6s; }
+
+                @keyframes breathe { 
+                    0%, 100% { transform: scale(1); } 
+                    50% { transform: scale(1.06); } 
+                }
+                @keyframes signalOut { 
+                    0% { transform: scale(0.8); opacity: 0.8; } 
+                    100% { transform: scale(2.8); opacity: 0; } 
+                }
+            `}</style>
+
+            <div className="loader-container">
+                <div className="signal-ring"></div>
+                <div className="signal-ring delay-1"></div>
+                <div className="signal-ring delay-2"></div>
+                <img src="/logo.png" alt="BBU1 Logo" className="logo-img" />
+            </div>
+
+            <p className="mt-14 text-[10px] font-black uppercase tracking-[0.6em] text-blue-600/40 animate-pulse">
+                System Syncing
+            </p>
+
+            <div className="mt-6 min-h-[40px] max-w-md px-10 text-center transition-all duration-500" style={{ opacity }}>
+                <p className="text-sm font-semibold text-[#0b6c89] leading-relaxed">
+                    {taglines[taglineIndex]}
+                </p>
+            </div>
+
+            <div className="absolute bottom-10 opacity-20 flex flex-col items-center gap-2">
+                <div className="h-0.5 w-8 bg-slate-400 rounded-full" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-900">
+                    Vault: {businessId?.substring(0, 12) || 'Handshake'}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+/**
  * --- SOVEREIGN LIVE GUARD ---
  * 🛡️ The Sentinel: Now equipped with the Global Edge Bridge
  */
@@ -51,14 +149,10 @@ const SovereignLiveGuard = () => {
 
     /**
      * 🔐 APEX EDGE HANDSHAKE
-     * This function performs a deeply secure handshake with the Edge Function
-     * when the primary database path is blocked by a regional firewall.
      */
     const performEdgeSync = useCallback(async (anomalyData: any) => {
         try {
-            // Generate a one-time cryptographic signature (Grade Architecture)
             const forensicSignature = btoa(`bbu1-handshake-${Date.now()}`);
-
             const { data, error } = await supabase.functions.invoke('sovereign-global-gatekeeper', {
                 body: {
                     action: 'SECURE_SYNC',
@@ -69,9 +163,7 @@ const SovereignLiveGuard = () => {
                     'x-sovereign-signature': forensicSignature
                 }
             });
-
             if (error) throw error;
-            console.log("[SOVEREIGN EDGE]: Data successfully tunneled through Global Bridge.");
         } catch (err) {
             console.error("[SOVEREIGN ERROR]: Edge Tunnel instability detected.");
         }
@@ -80,8 +172,6 @@ const SovereignLiveGuard = () => {
     useEffect(() => {
         if (!activeBizId) return;
 
-        // 🛡️ CONNECTIVITY MONITOR
-        // Detects if the real-time channel is being blocked by a local firewall
         const channel = supabase
             .channel(`sovereign_forensics_${activeBizId}`)
             .on('postgres_changes', { 
@@ -100,21 +190,15 @@ const SovereignLiveGuard = () => {
                 }
             })
             .subscribe(async (status) => {
-                // If the channel is blocked/throttled for more than 10 seconds, trigger Edge Tunnel
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.warn("[FORENSIC ALERT]: Direct Database Path Throttled. Activating Global Bridge.");
                     setIsEdgeActive(true);
-                    
-                    // Send a heartbeat through the Edge Function to verify access
                     await performEdgeSync({
                         anomaly_type: 'CONNECTIVITY_FAILOVER',
                         description: `Regional firewall detected. Edge tunnel established for biz: ${activeBizId}`,
                         severity: 'LOW'
                     });
                 }
-                
                 if (status === 'SUBSCRIBED') {
-                    console.log("[SOVEREIGN NODE]: Direct Neural Link Stable.");
                     setIsEdgeActive(false);
                 }
             });
@@ -122,7 +206,6 @@ const SovereignLiveGuard = () => {
         return () => { supabase.removeChannel(channel); };
     }, [supabase, activeBizId, performEdgeSync]);
 
-    // Hidden Visual indicator for Architects only
     return isEdgeActive ? (
         <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
             <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full backdrop-blur-xl animate-pulse">
@@ -160,7 +243,6 @@ const CopilotToggleButton = ({ brandColor }: { brandColor: string }) => {
 
 /**
  * --- APPLAYOUT ---
- * 🛡️ The Structural Frame (Clean Version)
  */
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { toggleSidebar } = useSidebar();
@@ -203,7 +285,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 /**
  * --- SOVEREIGN GATEKEEPER ---
- * 🛡️ The Identity Sentinel (STRICT JURISDICTION)
  */
 const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
     const { profile, isLoading: isBusinessLoading, error } = useBusiness();
@@ -249,23 +330,9 @@ const DashboardGatekeeper = ({ children }: { children: ReactNode }) => {
         
     }, [profile, isBusinessLoading, isBrandingLoading, pathname, router, isClient]);
 
+    // ✅ INTEGRATED PROFESSIONAL LOADER (v18.7 OMEGA)
     if (!isClient || isBusinessLoading || isBrandingLoading || !identityIsVerified) {
-        return (
-            <div className="flex h-screen w-screen flex-col items-center justify-center bg-white">
-                <div className="relative mb-12">
-                   <Loader2 className="h-16 w-16 animate-spin text-emerald-600" />
-                   <Activity className="absolute inset-0 m-auto h-6 w-6 text-emerald-500 animate-pulse" />
-                </div>
-                <div className="text-center space-y-2">
-                   <p className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-800 animate-pulse">
-                       Anchoring Sovereign Node...
-                   </p>
-                   <p className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">
-                       VAULT: {profile?.business_id?.substring(0, 18) || 'CONNECTING...'}
-                   </p>
-                </div>
-            </div>
-        );
+        return <BBU1ForensicLoader businessId={profile?.business_id} />;
     }
 
     if (error || !profile) {

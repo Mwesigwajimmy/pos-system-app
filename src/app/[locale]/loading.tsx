@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 
 /**
  * --- BBU1 SOVEREIGN OS LOADING SYSTEM ---
- * VERSION: v1.0.0 INDUSTRIAL BATCH
- * Logic: Client-side state rotation for system tips + Forensic signal animations.
+ * VERSION: v1.1.0 INDUSTRIAL BATCH (REFINED SIZE)
+ * JURISDICTION: Professional Enterprise Infrastructure
  * Placement: src/app/[locale]/loading.tsx
  */
 
@@ -13,7 +13,7 @@ export default function Loading() {
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [opacity, setTaglineOpacity] = useState(1);
 
-  // LONG & COMPLETE TAGLINE REGISTRY
+  // FULL TAGLINE REGISTRY PRESERVED
   const taglines = [
     "Preparing your all-in-one business OS...",
     "Unifying accounting, CRM, HR and inventory in one place.",
@@ -49,13 +49,9 @@ export default function Loading() {
     "Good things take a moment, great insights are worth the wait."
   ];
 
-  // Logic: Forensic Tagline Rotation Heartbeat
   useEffect(() => {
     const interval = setInterval(() => {
-      // Fade out
       setTaglineOpacity(0);
-      
-      // Wait for fade, then switch text and fade in
       setTimeout(() => {
         setTaglineIndex((prev) => (prev + 1) % taglines.length);
         setTaglineOpacity(1);
@@ -67,20 +63,19 @@ export default function Loading() {
 
   return (
     <div className="fixed inset-0 z-[9999] bg-white flex flex-col justify-center items-center overflow-hidden">
-      {/* INJECTED INDUSTRIAL CSS ANIMATIONS */}
       <style jsx>{`
         .loader-container {
           position: relative;
-          width: 180px;
-          height: 180px;
+          width: 120px; /* Reduced from 180px */
+          height: 120px;
           display: flex;
           justify-content: center;
           align-items: center;
         }
 
         .logo-img {
-          width: 100px;
-          height: 100px;
+          width: 64px; /* Professional Enterprise Icon Size */
+          height: 64px;
           object-fit: contain;
           z-index: 10;
           animation: breathe 2.4s infinite ease-in-out;
@@ -89,11 +84,10 @@ export default function Loading() {
 
         .signal-ring {
           position: absolute;
-          width: 100px;
-          height: 100px;
-          border: 2px solid rgba(0, 0, 255, 0.4); /* NIM Brand Blue */
+          width: 64px;
+          height: 64px;
+          border: 1.5px solid rgba(0, 0, 255, 0.35);
           border-radius: 50%;
-          box-shadow: 0 0 20px rgba(0, 0, 255, 0.2);
           z-index: 1;
           animation: signalOut 2.4s infinite cubic-bezier(0.25, 0.1, 0.25, 1);
         }
@@ -102,41 +96,41 @@ export default function Loading() {
         .delay-2 { animation-delay: 1.6s; }
 
         .loading-pulse {
-          margin-top: 50px;
+          margin-top: 32px; /* Tighter margin */
           font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-          font-size: 10px;
-          font-weight: 900;
-          letter-spacing: 0.6em;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.5em;
           text-transform: uppercase;
           color: rgba(0, 0, 255, 0.4);
           animation: textPulse 2.4s infinite ease-in-out;
         }
 
         .tagline-container {
-          margin-top: 24px;
+          margin-top: 18px;
           min-height: 40px;
-          max-width: 450px;
-          padding: 0 30px;
+          max-width: 400px;
+          padding: 0 40px;
           text-align: center;
         }
 
         .tagline-text {
           font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 600;
-          line-height: 1.6;
-          color: #0b6c89; /* Forensic Blue-Grey */
+          line-height: 1.5;
+          color: #0b6c89; 
           transition: opacity 0.5s ease, transform 0.5s ease;
         }
 
         @keyframes breathe {
-          0%, 100% { transform: scale(1); filter: brightness(1); }
-          50% { transform: scale(1.08); filter: brightness(1.1); }
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.04); }
         }
 
         @keyframes signalOut {
-          0% { transform: scale(0.8); opacity: 0.8; }
-          100% { transform: scale(3); opacity: 0; }
+          0% { transform: scale(0.9); opacity: 0.8; }
+          100% { transform: scale(2.2); opacity: 0; }
         }
 
         @keyframes textPulse {
@@ -145,16 +139,15 @@ export default function Loading() {
         }
       `}</style>
 
-      {/* VISUAL NODES */}
+      {/* REFINED VISUAL NODES */}
       <div className="loader-container">
         <div className="signal-ring"></div>
         <div className="signal-ring delay-1"></div>
         <div className="signal-ring delay-2"></div>
         
-        {/* LOGO: Points to /public/logo.png as verified in your audit */}
         <img 
           src="/logo.png" 
-          alt="NIM BBU1 Logo" 
+          alt="BBU1 Logo" 
           className="logo-img"
         />
       </div>
@@ -166,18 +159,18 @@ export default function Loading() {
           className="tagline-text" 
           style={{ 
             opacity: opacity,
-            transform: opacity === 1 ? 'translateY(0)' : 'translateY(5px)'
+            transform: opacity === 1 ? 'translateY(0)' : 'translateY(4px)'
           }}
         >
           {taglines[taglineIndex]}
         </p>
       </div>
 
-      {/* FOOTER METADATA */}
-      <div className="absolute bottom-10 flex flex-col items-center gap-2 opacity-20">
-          <div className="h-1 w-12 bg-slate-400 rounded-full" />
-          <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-900">
-            Sovereign OS Manufacturing Node
+      {/* MINIMALIST FOOTER */}
+      <div className="absolute bottom-12 flex flex-col items-center gap-3 opacity-20">
+          <div className="h-[1px] w-8 bg-slate-400" />
+          <span className="text-[7px] font-black uppercase tracking-[0.4em] text-slate-900">
+            Sovereign OS • BBU1 Global
           </span>
       </div>
     </div>
