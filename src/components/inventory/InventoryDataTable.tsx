@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * --- INVENTORY DATA TABLE ---
+ * VERSION: v6.0 PROFESSIONAL (INDUSTRIAL SEPARATION)
+ * Logic: Multi-tenant asset distinction (Retail vs Raw vs Composite)
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   ColumnDef,
@@ -65,7 +71,11 @@ import {
   Package, 
   ChevronLeft, 
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  Filter,
+  FlaskConical,
+  Factory,
+  ShoppingBag
 } from 'lucide-react';
 
 // Custom Inventory Components
@@ -99,7 +109,13 @@ interface Location {
 }
 
 // --- DEEP UPGRADE: THE SOVEREIGN FETCH ENGINE ---
-async function fetchProducts(pagination: PaginationState, searchTerm: string, businessEntityId?: string, locationId?: string) {
+async function fetchProducts(
+    pagination: PaginationState, 
+    searchTerm: string, 
+    businessEntityId?: string, 
+    locationId?: string,
+    assetType?: string // Logic: New filter parameter
+) {
   const supabase = createClient();
   
   // 1. Pointing to the Master View
@@ -111,8 +127,17 @@ async function fetchProducts(pagination: PaginationState, searchTerm: string, bu
   if (businessEntityId) {
     query = query.eq('business_id', businessEntityId);
   } else {
-    // If no business ID is provided, return empty to prevent data leakage or "disappearing" rows
     return { products: [], total_count: 0 };
+  }
+
+  // --- THE INDUSTRIAL DISTINCTION WELD ---
+  // Logic: Filters the inventory based on the specific sector selected
+  if (assetType === "RAW_MATERIALS") {
+    query = query.eq('is_raw_material', true);
+  } else if (assetType === "FINISHED_DESIGNS") {
+    query = query.eq('is_composite', true);
+  } else if (assetType === "RETAIL_PRODUCTS") {
+    query = query.eq('is_raw_material', false).eq('is_composite', false);
   }
 
   // 3. Jurisdictional Location Filter
@@ -191,6 +216,7 @@ export default function InventoryDataTable({
   const [rowSelection, setRowSelection] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState<string>("ALL_BRANCHES");
+  const [selectedAssetType, setSelectedAssetType] = useState<string>("ALL"); // Logic: Type Switcher State
   const [locations, setLocations] = useState<Location[]>([]);
   
   // Modal states
@@ -220,18 +246,17 @@ export default function InventoryDataTable({
   }, [businessEntityId, supabase]);
 
   // --- IDENTITY GUARD QUERY ---
-  // We use 'enabled: !!businessEntityId' to ensure that when the user refreshes,
-  // the table waits for the Auth session to provide the ID before fetching.
   const { data, isLoading } = useQuery({
-    queryKey: ['inventoryProducts', pagination, debouncedSearchTerm, businessEntityId, selectedLocationId],
+    queryKey: ['inventoryProducts', pagination, debouncedSearchTerm, businessEntityId, selectedLocationId, selectedAssetType],
     queryFn: () => fetchProducts(
       pagination,
       debouncedSearchTerm,
       businessEntityId,
-      selectedLocationId === "ALL_BRANCHES" ? undefined : selectedLocationId
+      selectedLocationId === "ALL_BRANCHES" ? undefined : selectedLocationId,
+      selectedAssetType
     ),
     enabled: !!businessEntityId && businessEntityId !== "", // LOCK: Wait for ID
-    initialData: initialData.length > 0 ? { products: initialData, total_count: totalCount } : undefined,
+    initialData: initialData.length > 0 && selectedAssetType === "ALL" ? { products: initialData, total_count: totalCount } : undefined,
     placeholderData: keepPreviousData,
   });
 
@@ -355,27 +380,61 @@ export default function InventoryDataTable({
   return (
     <div className="container mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       
-      {/* Search & Location Filter */}
+      {/* Search & Multi-Level Filters */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
-            <div className="relative w-full sm:w-80">
+        <div className="flex flex-wrap w-full lg:w-auto gap-3">
+            
+            {/* 1. Forensic Search */}
+            <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                     placeholder="Search name or SKU..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10 border-slate-200 bg-white"
+                    className="pl-10 h-10 border-slate-200 bg-white rounded-xl shadow-sm focus:ring-blue-600"
                 />
             </div>
 
-            <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
-                <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200">
+            {/* 2. Industrial Type Switcher (NEW) */}
+            <Select value={selectedAssetType} onValueChange={setSelectedAssetType}>
+                <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200 rounded-xl shadow-sm">
                     <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-blue-600" />
+                        <Filter size={14} className="text-slate-400" />
+                        <SelectValue placeholder="Registry Sector" />
+                    </div>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                    <SelectItem value="ALL" className="font-bold">Full Inventory Ledger</SelectItem>
+                    <SelectItem value="RETAIL_PRODUCTS">
+                        <div className="flex items-center gap-2">
+                            <ShoppingBag size={14} className="text-emerald-500" />
+                            <span>Retail Products</span>
+                        </div>
+                    </SelectItem>
+                    <SelectItem value="RAW_MATERIALS">
+                        <div className="flex items-center gap-2">
+                            <FlaskConical size={14} className="text-blue-500" />
+                            <span>Raw Materials</span>
+                        </div>
+                    </SelectItem>
+                    <SelectItem value="FINISHED_DESIGNS">
+                        <div className="flex items-center gap-2">
+                            <Factory size={14} className="text-purple-500" />
+                            <span>Finished Good Designs</span>
+                        </div>
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+            {/* 3. Jurisdictional Location */}
+            <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white border-slate-200 rounded-xl shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-blue-600" />
                         <SelectValue placeholder="Branch" />
                     </div>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
                     <SelectItem value="ALL_BRANCHES" className="font-semibold">All Branches</SelectItem>
                     {locations.map(loc => (
                         <SelectItem key={loc.id} value={loc.id}>
@@ -393,12 +452,12 @@ export default function InventoryDataTable({
       </div>
 
       {/* Bulk Action Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 md:items-center bg-slate-900 text-white p-4 px-6 rounded-xl shadow-lg border-none">
+      <div className="flex flex-col md:flex-row gap-4 md:items-center bg-slate-900 text-white p-4 px-6 rounded-2xl shadow-xl border-none">
         <div className="flex items-center gap-3 shrink-0">
-            <div className="p-1.5 bg-blue-600 rounded-md">
+            <div className="p-1.5 bg-blue-600 rounded-lg shadow-inner">
                 <Box size={16} className="text-white" />
             </div>
-            <span className="text-sm font-semibold tracking-tight">
+            <span className="text-sm font-bold tracking-tight">
                 {Object.keys(rowSelection).length} Items Selected
             </span>
         </div>
@@ -411,7 +470,7 @@ export default function InventoryDataTable({
                 size="sm" 
                 disabled={Object.keys(rowSelection).length === 0}
                 onClick={() => setIsBulkDeleting(true)}
-                className="h-8 px-4 text-xs font-bold"
+                className="h-8 px-4 text-[10px] font-black uppercase tracking-widest"
             >
                 <Trash className="w-3.5 h-3.5 mr-2" /> Delete
             </Button>
@@ -420,7 +479,7 @@ export default function InventoryDataTable({
                 size="sm" 
                 disabled={Object.keys(rowSelection).length === 0}
                 onClick={() => setIsBulkAdjustOpen(true)}
-                className="h-8 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="h-8 px-4 text-[10px] font-black uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white border-none"
             >
                 <Calculator className="w-3.5 h-3.5 mr-2" /> Adjust Stock
             </Button>
@@ -428,7 +487,7 @@ export default function InventoryDataTable({
                 variant="ghost" 
                 size="sm" 
                 onClick={handleExportCSV}
-                className="h-8 px-4 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10"
+                className="h-8 px-4 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white hover:bg-white/10"
             >
                 <Download className="w-3.5 h-3.5 mr-2" /> Export CSV
             </Button>
@@ -436,19 +495,19 @@ export default function InventoryDataTable({
 
         <div className="ml-auto hidden xl:flex items-center gap-2 opacity-60">
             <CheckCircle2 size={14} className="text-blue-400" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Secure Sync Active</span>
+            <span className="text-[9px] font-black uppercase tracking-widest">Sovereign Sync Active</span>
         </div>
       </div>
 
-      {/* Table Container - Enabled Horizontal Scroll for visibility */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Table Container */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <ScrollArea className="w-full">
             <Table>
-            <TableHeader className="bg-slate-50/50">
+            <TableHeader className="bg-slate-50/50 border-b border-slate-100">
                 {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                <TableRow key={headerGroup.id} className="hover:bg-transparent h-12">
                     {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="h-12 text-[11px] font-bold uppercase text-slate-500 tracking-wider whitespace-nowrap">
+                    <TableHead key={header.id} className="text-[10px] font-black uppercase text-slate-500 tracking-[0.1em] whitespace-nowrap px-6">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                     ))}
@@ -461,7 +520,7 @@ export default function InventoryDataTable({
                     <TableCell colSpan={columns.length} className="h-64 text-center">
                         <div className="flex flex-col items-center gap-2">
                             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                            <span className="text-sm font-medium text-slate-500">Updating inventory...</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Updating forensic ledger...</span>
                         </div>
                     </TableCell>
                 </TableRow>
@@ -470,10 +529,10 @@ export default function InventoryDataTable({
                     <TableRow 
                         key={row.id} 
                         data-state={row.getIsSelected() && "selected"} 
-                        className="hover:bg-slate-50/50 transition-colors border-b border-slate-100"
+                        className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 h-16"
                     >
                     {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="py-3 text-sm text-slate-700 whitespace-nowrap">
+                        <TableCell key={cell.id} className="px-6 py-2 text-sm text-slate-700 font-medium whitespace-nowrap">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                     ))}
@@ -483,8 +542,8 @@ export default function InventoryDataTable({
                 <TableRow>
                     <TableCell colSpan={columns.length} className="h-64 text-center">
                         <div className="flex flex-col items-center text-slate-300">
-                            <Package size={48} className="mb-2" />
-                            <p className="text-sm font-semibold">No products found</p>
+                            <Package size={48} className="mb-2 opacity-20" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">No entries discovered in this sector</p>
                         </div>
                     </TableCell>
                 </TableRow>
@@ -497,18 +556,18 @@ export default function InventoryDataTable({
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-        <div className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-            Total Items: {data?.total_count ?? 0}
+        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+            Ledger Count: {data?.total_count ?? 0}
         </div>
         <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="h-9 px-4">
-                <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="h-9 px-4 rounded-xl border-slate-200">
+                <ChevronLeft className="w-4 h-4" />
             </Button>
-            <div className="bg-slate-100 px-3 py-1.5 rounded-md text-xs font-bold text-slate-600">
+            <div className="bg-slate-100 px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-600 uppercase">
                 Page {pagination.pageIndex + 1} of {table.getPageCount()}
             </div>
-            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="h-9 px-4">
-                Next <ChevronRight className="w-4 h-4 ml-1" />
+            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="h-9 px-4 rounded-xl border-slate-200">
+                <ChevronRight className="w-4 h-4" />
             </Button>
         </div>
       </div>
@@ -517,25 +576,25 @@ export default function InventoryDataTable({
 
       {/* Bulk Delete Confirmation */}
       <AlertDialog open={isBulkDeleting} onOpenChange={setIsBulkDeleting}>
-        <AlertDialogContent className="rounded-xl p-8">
+        <AlertDialogContent className="rounded-[2rem] p-10 border-none shadow-3xl bg-white">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-bold flex items-center gap-2">
-                <AlertTriangle className="text-red-500" /> Delete {Object.keys(rowSelection).length} Products?
+            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+                <AlertTriangle className="text-red-500 h-8 w-8" /> Authorize Purge?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-600 leading-relaxed pt-2">
-                This will permanently remove the selected products and their associated variants from your inventory. This action cannot be undone.
+            <AlertDialogDescription className="text-slate-500 font-medium leading-relaxed pt-2">
+                This will permanently remove {Object.keys(rowSelection).length} master records from the industrial registry. This action is recorded in the audit logs and cannot be reversed.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogCancel className="font-semibold border-none">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="font-bold rounded-2xl border-none bg-slate-100 uppercase text-[10px] px-8">Discard</AlertDialogCancel>
             <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700 font-bold px-8"
+                className="bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl shadow-xl shadow-red-200 uppercase text-[10px] px-12"
                 onClick={() => {
                     const ids = Object.keys(rowSelection).map(Number);
                     bulkDeleteMutation.mutate(ids);
                 }}
             >
-                {bulkDeleteMutation.isPending ? "Processing..." : "Delete Products"}
+                {bulkDeleteMutation.isPending ? "Executing..." : "Execute Purge"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -543,20 +602,20 @@ export default function InventoryDataTable({
 
       {/* Single Delete Confirmation */}
       <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>
-        <AlertDialogContent className="rounded-xl">
+        <AlertDialogContent className="rounded-3xl p-10">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-bold">Delete Product?</AlertDialogTitle>
-            <AlertDialogDescription>
-                Are you sure you want to delete "{deletingProduct?.name}"?
+            <AlertDialogTitle className="text-xl font-black uppercase">Purge Material Identity?</AlertDialogTitle>
+            <AlertDialogDescription className="font-medium">
+                Are you sure you want to remove "{deletingProduct?.name}" from the sector registry?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="font-semibold">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="font-bold rounded-xl border-none">Cancel</AlertDialogCancel>
             <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700 font-bold"
+                className="bg-red-600 hover:bg-red-700 font-bold rounded-xl"
                 onClick={() => deletingProduct && singleDeleteMutation.mutate(deletingProduct.id)}
             >
-                {singleDeleteMutation.isPending ? "Deleting..." : "Delete"}
+                {singleDeleteMutation.isPending ? "Purging..." : "Execute"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -564,49 +623,44 @@ export default function InventoryDataTable({
 
       {/* Bulk Stock Adjustment */}
       <Dialog open={isBulkAdjustOpen} onOpenChange={setIsBulkAdjustOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-xl p-8">
+        <DialogContent className="sm:max-w-[400px] rounded-[2rem] p-10 border-none shadow-3xl bg-white">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-3 text-lg font-bold">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <Calculator className="w-5 h-5 text-emerald-600"/>
-                  </div>
-                  Adjust Stock Levels
+                <DialogTitle className="flex items-center justify-center gap-3 text-xl font-black uppercase tracking-tight">
+                  Industrial Sync
                 </DialogTitle>
-                <DialogDescription className="text-slate-500 pt-1">
-                    Apply adjustment to {Object.keys(rowSelection).length} items.
+                <DialogDescription className="text-slate-400 text-center font-medium uppercase text-[10px] tracking-widest pt-2">
+                    Applying balance correction to {Object.keys(rowSelection).length} nodes.
                 </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6 py-6">
+            <div className="grid gap-8 py-8">
                 <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-600 uppercase">Quantity Change</Label>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Quantity Correction</Label>
                     <Input 
                         type="number" 
                         step="0.01" 
-                        placeholder="e.g. +10 or -5" 
-                        className="h-11 font-semibold bg-slate-50 border-slate-200"
+                        placeholder="+0.00" 
+                        className="h-14 font-black text-3xl bg-slate-50 border-slate-100 rounded-2xl text-center shadow-inner focus:ring-blue-600"
                         value={bulkAdjustValue}
                         onChange={(e) => setBulkAdjustValue(e.target.value)}
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-600 uppercase">Reason</Label>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Identify Purpose</Label>
                     <Input 
-                        placeholder="e.g. Stock Count Correction" 
-                        className="h-11 bg-slate-50 border-slate-200 text-sm"
+                        placeholder="e.g. Physical Count Verification" 
+                        className="h-12 border-slate-100 bg-slate-50 rounded-xl text-sm font-bold placeholder:font-medium"
                         value={bulkAdjustReason}
                         onChange={(e) => setBulkAdjustReason(e.target.value)}
                     />
                 </div>
             </div>
-            <DialogFooter className="pt-4">
-                <Button variant="ghost" onClick={() => setIsBulkAdjustOpen(false)} className="font-semibold">Cancel</Button>
+            <DialogFooter>
                 <Button 
                     onClick={handleBulkAdjustSubmit} 
                     disabled={bulkAdjustMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 h-11"
+                    className="w-full bg-slate-900 hover:bg-black text-white font-black h-14 rounded-2xl shadow-2xl shadow-slate-200 uppercase tracking-widest text-[10px] active:scale-95 transition-all"
                 >
-                    {bulkAdjustMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    Confirm Adjustment
+                    {bulkAdjustMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Authorize Synchronization"}
                 </Button>
             </DialogFooter>
         </DialogContent>
