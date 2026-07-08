@@ -24,7 +24,7 @@ import {
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewsletterPopup from '@/components/NewsletterPopup';
-import SiteFooter from '@/components/Footer';
+import SiteFooter from '@/components/SiteFooter';
 // --- Constants ---
 const COOKIE_CONSENT_NAME = 'bbu1_cookie_consent';
 const COOKIE_EXPIRY_DAYS = 365;

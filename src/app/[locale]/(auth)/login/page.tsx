@@ -180,7 +180,7 @@ export default function LoginPage() {
                     <div className="flex justify-center mb-2">
                         <motion.img
                             /* src="/logo.png" — swap back to the production logo once hosted */
-                            src="/bbu1-logo-dummy.png"
+                            src="/logo.png"
                             alt="Company Logo"
                             className="h-16 w-auto object-contain"
                             animate={{ scale: [1, 1.05, 1] }}

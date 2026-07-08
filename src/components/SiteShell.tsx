@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import SiteFooter from '@/components/Footer';
+import SiteFooter from '@/components/SiteFooter';
 
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
