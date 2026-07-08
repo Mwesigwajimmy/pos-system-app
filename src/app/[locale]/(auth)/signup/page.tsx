@@ -459,9 +459,9 @@ export default function SignupPage() {
     const [step, setStep] = useState<number>(0);
     const [direction, setDirection] = useState<number>(1);
     const stepFields: Array<Array<keyof SignupFormInput>> = [
-        ['fullName', 'businessName', 'role'],
+        ['fullName', 'businessName'],
         ['country', 'state', 'currency', 'taxNumber', 'manualTaxRate', 'phone', 'address'],
-        ['businessType', 'industry'],
+        ['businessType', 'industry', 'role'],
         ['email', 'password', 'confirmPassword', 'acceptTerms'],
     ];
 
@@ -560,29 +560,7 @@ export default function SignupPage() {
                                                 </FormItem>
                                             )} />
                                         </div>
-                                        <FormField control={form.control} name="role" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-xs font-semibold text-slate-700">Your Role</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger className="h-11 border-slate-200">
-                                                            <SelectValue placeholder="Select your role in the business" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {roleOptions.map(group => (
-                                                            <SelectGroup key={group.group}>
-                                                                <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{group.group}</div>
-                                                                {group.roles.map(r => (
-                                                                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                                                                ))}
-                                                            </SelectGroup>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
+                                        {/* role removed from Personal step -- moved to Classification step */}
                                     </motion.div>
                                 )}
 
@@ -701,6 +679,29 @@ export default function SignupPage() {
                                                             </ScrollArea>
                                                         </SelectContent>
                                                     </Select>
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="role" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs font-semibold text-slate-700">Your Role</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="h-11 border-slate-200">
+                                                                <SelectValue placeholder="Select your role in the business" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {roleOptions.map(group => (
+                                                                <SelectGroup key={group.group}>
+                                                                    <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{group.group}</div>
+                                                                    {group.roles.map(r => (
+                                                                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                                                    ))}
+                                                                </SelectGroup>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
                                                 </FormItem>
                                             )} />
                                         </div>
@@ -839,15 +840,14 @@ export default function SignupPage() {
                     </div>
 
                     <p className="text-blue-100 text-sm leading-relaxed font-medium text-center">
-                        Signup to experience a platform or system with everything in one place for your organisation.
-                        Built for modern organizations operating in a complex global market.
+                        Signup to experience a platform with everything in one place for your Business.
                     </p>
 
                     {/* ANIMATED, SWIPEABLE FEATURE CAROUSEL */}
                     <FeatureCarousel />
                 </div>
 
-                <div className="relative z-10">
+                <div className="relative z-0">
                     <Link
                         href="/"
                         className="text-xs font-semibold text-blue-200 hover:text-white transition-colors inline-flex items-center gap-1.5"
