@@ -120,32 +120,11 @@ const industryMapping: Record<string, string[]> = {
     ]
 };
 
-const roleOptions = [
-    { group: "Management", roles: [
-        { value: 'owner', label: 'Owner / Founder' },
-        { value: 'admin', label: 'Administrator' },
-        { value: 'manager', label: 'Manager' },
-    ]},
-    { group: "Finance & Operations", roles: [
-        { value: 'accountant', label: 'Accountant' },
-        { value: 'auditor', label: 'Auditor' },
-        { value: 'cashier', label: 'Cashier' },
-        { value: 'loan_officer', label: 'Loan Officer' },
-        { value: 'hr_manager', label: 'HR Manager' },
-    ]},
-    { group: "Medical & Healthcare", roles: [
-        { value: 'doctor', label: 'Doctor / Physician' },
-        { value: 'nurse', label: 'Nurse' },
-        { value: 'pharmacist', label: 'Pharmacist' },
-        { value: 'lab_technician', label: 'Lab Technician' },
-        { value: 'receptionist', label: 'Receptionist' },
-    ]},
-];
+
 
 const signupSchema = z.object({
     fullName: z.string().min(2, "Full name required."),
     businessName: z.string().min(2, "Business name required."),
-    role: z.string().min(1, "Select your role."),
     businessType: z.string().min(1, "Select business category."),
     industry: z.string().min(1, "Select specific industry."),
     country: z.string().min(2),
@@ -432,7 +411,6 @@ export default function SignupPage() {
             manualTaxRate: 18.0,
             fullName: '',
             businessName: '',
-            role: '',
             businessType: '',
             industry: '',
             address: '',
@@ -499,7 +477,7 @@ export default function SignupPage() {
     const stepFields: Array<Array<keyof SignupFormInput>> = [
         ['fullName', 'businessName'],
         ['country', 'state', 'currency', 'taxNumber', 'manualTaxRate', 'phone', 'address'],
-        ['businessType', 'industry', 'role'],
+        ['businessType', 'industry'],
         ['email', 'password', 'confirmPassword', 'acceptTerms'],
     ];
 
@@ -598,7 +576,7 @@ export default function SignupPage() {
                                                 </FormItem>
                                             )} />
                                         </div>
-                                        {/* role removed from Personal step -- moved to Classification step */}
+                                        
                                     </motion.div>
                                 )}
 
@@ -738,29 +716,6 @@ export default function SignupPage() {
                                                             </ScrollArea>
                                                         </SelectContent>
                                                     </Select>
-                                                </FormItem>
-                                            )} />
-                                            <FormField control={form.control} name="role" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs font-semibold text-slate-700">Your Role</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger className="h-11 border-slate-200">
-                                                                <SelectValue placeholder="Select your role in the business" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {roleOptions.map(group => (
-                                                                <SelectGroup key={group.group}>
-                                                                    <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{group.group}</div>
-                                                                    {group.roles.map(r => (
-                                                                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                                                                    ))}
-                                                                </SelectGroup>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
                                                 </FormItem>
                                             )} />
                                         </div>

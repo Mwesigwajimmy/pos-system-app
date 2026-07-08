@@ -120,13 +120,20 @@ export default function CompositeRegistry() {
 
   // --- 2. REGISTRY MUTATIONS ---
 
+  /** 
+   * ✅ DEEP WELD UPDATE: 
+   * Switched from direct table delete to bulk_delete_products_v2 RPC call.
+   * This ensures lot_numbers and industrial links are cleared first.
+   */
   const deleteDesignMutation = useMutation({
     mutationFn: async (productId: number) => {
-        const { error } = await supabase.from('products').delete().eq('id', productId);
+        const { error } = await supabase.rpc('bulk_delete_products_v2', {
+            p_product_ids: [productId]
+        });
         if (error) throw error;
     },
     onSuccess: () => {
-        toast.success("Industrial design purged from registry.");
+        toast.success("Industrial design and associated links purged.");
         queryClient.invalidateQueries({ queryKey: ['composite_design_ledger'] });
     },
     onError: (e: any) => toast.error(`Purge Failed: ${e.message}`)

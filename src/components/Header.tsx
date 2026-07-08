@@ -19,11 +19,11 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from './ui/button';
-import { 
+import {
     Bell, ShieldAlert, Zap, Activity, Trash2, CheckCircle2,
-    Building2, Globe, ShieldCheck, Search as SearchIcon,
-    Loader2
-} from 'lucide-react'; 
+    Globe, ShieldCheck, Search as SearchIcon,
+    Loader2, LogOut, ExternalLink
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from './ui/badge';
 import { 
@@ -62,7 +62,7 @@ export default function Header() {
     
     if (data) {
         setNotifications(data);
-        const pending = data.filter(n => n.priority === 'URGENT').length;
+        const pending = data.filter((n: any) => n.priority === 'URGENT').length;
         setUrgentCount(pending);
     }
     setLoading(false);
@@ -77,7 +77,7 @@ export default function Header() {
         event: 'INSERT', 
         schema: 'public', 
         table: 'system_tactical_comms'
-      }, (payload) => {
+      }, (payload: any) => {
         if (payload.new.priority === 'URGENT') {
             toast.error("Urgent System Alert", {
               description: payload.new.body,
@@ -105,52 +105,47 @@ export default function Header() {
   };
 
   return (
-    /* 
-       FIX: Locked to h-full with tight mobile padding (px-1) and md:px-6.
-       This ensures the content stays INSIDE the layout bar vertically.
-    */
-    <div className="flex-1 flex justify-between items-center px-1 sm:px-4 md:px-6 h-full bg-transparent min-w-0">
-      
-      {/* --- LEFT: OPERATOR IDENTITY (MOBILE ANCHORED) --- */}
-      <div className="flex items-center gap-1.5 md:gap-8 min-w-0">
-        {/* 
-            FIX: Added 'hidden md:flex' to the identity container. 
-            This hides the Name/Role on mobile so the header doesn't choke and overlap. 
-        */}
-        <div className="hidden md:flex flex-col justify-center min-w-0">
-            <div className="flex items-center gap-1 flex-nowrap">
-                <h1 className="text-[9px] xs:text-[10px] sm:text-xs md:text-lg font-black tracking-tighter text-slate-900 truncate max-w-[70px] xs:max-w-[100px] sm:max-w-[180px] md:max-w-none leading-none">
-                    {profile?.full_name || "Authorized Operator"}
-                </h1>
-                <div className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Link Active" />
+    <div className="flex-1 flex justify-between items-center gap-2 px-3 sm:px-4 md:px-6 h-full bg-transparent min-w-0">
+
+      {/* --- LEFT: COMPANY IDENTITY — always visible, truncates instead of hiding --- */}
+      <div className="flex items-center gap-2 sm:gap-3 md:gap-8 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm shadow-blue-600/30">
+                {businessName.charAt(0).toUpperCase()}
             </div>
-            
-            <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 overflow-hidden leading-none">
-                <span className="text-[6px] xs:text-[7px] md:text-[10px] font-black uppercase tracking-widest text-blue-600 whitespace-nowrap opacity-90">
-                    {profile?.role || "Admin"}
-                </span>
-                <span className="h-2 w-[1px] bg-slate-200 shrink-0 hidden xs:block" />
-                <span className="hidden xs:flex items-center gap-1 text-[7px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate opacity-70">
-                    <Building2 size={8} className="shrink-0 md:size-[10px]" /> 
-                    <span className="truncate max-w-[50px] sm:max-w-[150px]">{businessName}</span>
-                </span>
+            <div className="flex flex-col justify-center min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <h1 className="text-xs sm:text-sm md:text-lg font-black tracking-tight text-slate-900 truncate leading-tight">
+                        {businessName}
+                    </h1>
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Link Active" />
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 mt-0.5 overflow-hidden leading-none">
+                    <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-blue-600 whitespace-nowrap opacity-90">
+                        {profile?.full_name || "Authorized Operator"}
+                    </span>
+                    <span className="h-2 w-[1px] bg-slate-200 shrink-0" />
+                    <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate opacity-70">
+                        {profile?.role || "Admin"}
+                    </span>
+                </div>
             </div>
         </div>
 
         {/* --- SEARCH TERMINAL (Desktop Only) --- */}
-        <div className="relative hidden xl:block group">
+        <div className="relative hidden xl:block group shrink-0">
             <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-            <input 
-                type="text" 
+            <input
+                type="text"
                 placeholder="Search OS records..."
                 className="pl-11 pr-6 py-2.5 w-[280px] 2xl:w-[400px] text-xs bg-slate-50 border border-slate-200/60 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:bg-white focus:border-blue-200 transition-all font-bold shadow-sm"
             />
         </div>
       </div>
 
-      {/* --- RIGHT: ACTIONS & METRICS --- */}
-      <div className="flex items-center gap-1 md:gap-6 shrink-0 h-full">
-        
+      {/* --- RIGHT: ACTIONS & METRICS — never hidden, only shrinks --- */}
+      <div className="flex items-center gap-1.5 md:gap-6 shrink-0 h-full">
+
         {/* Currency Node Display (Hidden on smaller screens to blend better) */}
         <div className="hidden lg:flex items-center gap-3 pr-4 md:pr-6 border-r border-slate-100 h-1/2">
             <div className="text-right">
@@ -164,29 +159,42 @@ export default function Header() {
             </div>
         </div>
 
-        {/* --- ACTION ROW --- */}
-        <div className="flex items-center gap-1 sm:gap-1.5 md:gap-3">
+        {/* --- ACTION ROW — Bell + Logout, always shown --- */}
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
             <Sheet>
                 <SheetTrigger asChild>
                     <button className="relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/30 transition-all group active:scale-95 shadow-sm">
-                        <Bell className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 transition-transform group-hover:rotate-12", urgentCount > 0 ? "text-blue-600" : "text-slate-400")} />
+                        <Bell className={cn("w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 transition-transform group-hover:rotate-12", urgentCount > 0 ? "text-blue-600" : "text-slate-400")} />
                         {urgentCount > 0 && (
-                            <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white shadow-sm animate-bounce" />
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 rounded-full border-2 border-white shadow-sm text-[9px] text-white font-black flex items-center justify-center px-0.5 leading-none animate-bounce">
+                                {urgentCount > 99 ? '99+' : urgentCount}
+                            </span>
                         )}
                     </button>
                 </SheetTrigger>
                 <SheetContent className="w-full sm:w-[420px] p-0 flex flex-col shadow-2xl border-l border-slate-100 bg-white">
-                    <SheetHeader className="p-8 border-b border-slate-50">
-                        <div className="flex justify-between items-center">
+                    <SheetHeader className="p-6 border-b border-slate-50">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <SheetTitle className="text-xl font-black text-slate-900 uppercase tracking-tighter">Tactical Comms</SheetTitle>
+                                <SheetTitle className="text-xl font-black text-slate-900 uppercase tracking-tighter">Notifications</SheetTitle>
                                 <SheetDescription className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">
                                     Forensic Activity Stream
                                 </SheetDescription>
+                                {/* Link to full notifications tab */}
+                                <a href="/activities/notifications" className="inline-flex items-center gap-1 mt-2 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors">
+                                    View All <ExternalLink size={10} />
+                                </a>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={clearNotifications} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
-                                <Trash2 size={18} />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                {urgentCount > 0 && (
+                                    <span className="text-[10px] font-black text-red-500 bg-red-50 border border-red-100 px-2 py-1 rounded-lg uppercase tracking-wide">
+                                        {urgentCount} Urgent
+                                    </span>
+                                )}
+                                <Button variant="ghost" size="icon" onClick={clearNotifications} className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                                    <Trash2 size={18} />
+                                </Button>
+                            </div>
                         </div>
                     </SheetHeader>
 
@@ -225,17 +233,13 @@ export default function Header() {
                 </SheetContent>
             </Sheet>
 
-            {/* --- ACTION: LOGOUT (NO-WRAP LOCK) --- */}
-            <Button 
-                onClick={handleLogout} 
-                className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-[0.1em] px-1.5 xs:px-2.5 md:px-5 h-7 sm:h-9 md:h-10 rounded-lg sm:rounded-xl flex items-center gap-1 md:gap-2.5 text-[7px] xs:text-[8px] md:text-[10px] shadow-lg transition-all active:scale-95 group shrink-0 border-none"
+            {/* Logout — icon only on very small screens, icon+text on sm+ */}
+            <Button
+                onClick={handleLogout}
+                className="bg-slate-900 hover:bg-red-600 text-white font-black uppercase tracking-widest px-2 sm:px-3 md:px-5 h-8 sm:h-9 md:h-10 rounded-lg sm:rounded-xl flex items-center gap-1.5 text-[10px] shadow-lg transition-all active:scale-95 group shrink-0 border-none"
             >
-                <Zap size={10} className="fill-white group-hover:scale-125 transition-transform shrink-0 md:size-[12px]" />
-                {/* 
-                    FIX: Added 'hidden sm:inline-block'.
-                    On mobile, "Logout" text is hidden to keep the header icons perfectly inside the bar.
-                */}
-                <span className="hidden sm:inline-block whitespace-nowrap">Logout</span>
+                <LogOut size={14} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                <span className="hidden sm:inline-block whitespace-nowrap text-[10px]">Sign Out</span>
             </Button>
         </div>
       </div>

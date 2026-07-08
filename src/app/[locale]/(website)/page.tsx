@@ -24,7 +24,6 @@ import {
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import NewsletterPopup from '@/components/NewsletterPopup';
-import SiteFooter from '@/components/SiteFooter';
 // --- Constants ---
 const COOKIE_CONSENT_NAME = 'bbu1_cookie_consent';
 const COOKIE_EXPIRY_DAYS = 365;
@@ -761,7 +760,7 @@ const MegaMenuHeader = () => {
     return (
         <>
         <header className={cn(
-            "fixed top-0 z-40 w-full h-16 overflow-hidden transition-all duration-300",
+            "fixed top-0 z-40 w-full h-16 transition-all duration-300",
             scrolled
                 ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/70 dark:border-slate-800/70 shadow-sm"
                 : "bg-transparent border-b border-transparent"
@@ -790,7 +789,7 @@ const MegaMenuHeader = () => {
                 </motion.div>
 
                 {/* Desktop Nav */}
-                <nav ref={navRef} className="hidden lg:flex items-center gap-0.5 relative">
+                <nav ref={navRef} className="hidden lg:flex flex-1 items-center gap-0.5 relative">
 
                     {/* Home */}
                     <Link href="/" className={navLinkClass}>
@@ -1275,9 +1274,9 @@ const DynamicPricingSection = () => {
                     {loading && <p className="text-xs text-muted-foreground animate-pulse">Detecting your local currency...</p>}
                 </div>
 
-                {/* --- PRICING GRID --- */}
+                {/* --- PRICING GRID (desktop/tablet only — mobile gets a single CTA below) --- */}
                 <motion.div
-                    className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto"
+                    className="hidden md:grid md:grid-cols-3 gap-8 max-w-7xl mx-auto"
                     initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.05 }}
                     variants={staggerContainer}
                 >
@@ -1417,6 +1416,42 @@ const DynamicPricingSection = () => {
                     </div>
                 </motion.div>
 
+                {/* --- MOBILE: single CTA, full plan grid opens in a dialog --- */}
+                <div className="md:hidden text-center">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button size="lg" className="w-full max-w-sm mx-auto h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold">
+                                Explore Plans <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Choose Your Plan</DialogTitle>
+                                <DialogDescription>Simple, transparent pricing for every stage of your business.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-3 mt-2">
+                                {PLANS.map((plan, i) => (
+                                    <div key={i} className={cn("p-4 rounded-xl border", plan.highlight ? "border-blue-600 bg-blue-50/50 dark:bg-blue-900/10" : "border-border")}>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="font-bold text-sm">{plan.name}</p>
+                                                <p className="text-xs text-muted-foreground">{plan.idealFor}</p>
+                                            </div>
+                                            <p className="font-extrabold text-right shrink-0">
+                                                {currency.symbol} {formatPrice(plan.basePrice)}
+                                                <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                                            </p>
+                                        </div>
+                                        <Button asChild size="sm" className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white">
+                                            <Link href="/signup">{plan.btnText}</Link>
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
                 {/* The Trust Banner is now removed to let the Partner Section sit closer */}
                 <div className="mt-12 text-center text-xs text-muted-foreground">
                     PLEASE NOTE: Prices exclude local VAT/GST where applicable. 
@@ -1473,6 +1508,130 @@ const PartnerWithUsSection = () => {
         window.open(`https://wa.me/256703572503?text=${encodeURIComponent(text)}`, '_blank');
     };
 
+    // Dialog bodies extracted so the same content can be reused by both the
+    // full desktop cards and the compact mobile buttons below.
+    const affiliateDialogContent = (
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+            <div className="bg-blue-600 p-6 text-white text-center">
+                <Megaphone className="h-12 w-12 mx-auto mb-2 opacity-90" />
+                <DialogTitle className="text-2xl font-bold text-white">Affiliate Program</DialogTitle>
+                <DialogDescription className="text-blue-100">Join the fastest growing B2B affiliate network.</DialogDescription>
+            </div>
+            <div className="p-6 space-y-6">
+                <div className="bg-muted/50 p-4 rounded-lg border space-y-2">
+                    <h4 className="font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-green-600"/> How it works:</h4>
+                    <p className="text-sm text-muted-foreground">1. You get a unique referral code.</p>
+                    <p className="text-sm text-muted-foreground">2. A business signs up using your code.</p>
+                    <p className="text-sm text-muted-foreground">3. You receive a commission payout every month they remain a subscriber.</p>
+                </div>
+                <div className="text-center space-y-4">
+                    <p className="text-sm text-muted-foreground">Click below to chat with our Affiliate Manager on WhatsApp to get your code immediately.</p>
+                    <Button size="lg" className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold" onClick={handleWhatsAppSubmit}>
+                        <MessageSquareText className="mr-2 h-5 w-5" /> Chat on WhatsApp (+256 703 572 503)
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
+    );
+
+    const investorDialogContent = (
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+            <div className="bg-green-600 p-6 text-white text-center">
+                <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-90" />
+                <DialogTitle className="text-2xl font-bold text-white">Investor Inquiry</DialogTitle>
+                <DialogDescription className="text-green-100">Connect with our founders directly.</DialogDescription>
+            </div>
+            <div className="p-6 space-y-4 bg-background">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Full Name</label>
+                        <Input name="name" value={formData.name} placeholder="John Doe" onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Firm / Entity</label>
+                        <Input name="org" value={formData.org} placeholder="Capital Partners Ltd" onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Email Address</label>
+                        <Input type="email" value={formData.email} name="email" placeholder="john@example.com" onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Phone / WhatsApp</label>
+                        <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Investment Interest / Details</label>
+                    <textarea
+                        className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                        name="details"
+                        value={formData.details}
+                        placeholder="We are interested in Series A opportunities..."
+                        onChange={handleInputChange}
+                    />
+                </div>
+                <Button
+                    type="button"
+                    onClick={() => handleEmailTrigger('Investor')}
+                    className="w-full h-11 text-lg bg-green-600 hover:bg-green-700 font-semibold shadow-md active:scale-[0.98] transition-all"
+                >
+                    Send Inquiry via Email
+                </Button>
+            </div>
+        </DialogContent>
+    );
+
+    const solutionDialogContent = (
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+            <div className="bg-purple-600 p-6 text-white text-center">
+                <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-90" />
+                <DialogTitle className="text-2xl font-bold text-white">Solution Partnership</DialogTitle>
+                <DialogDescription className="text-purple-100">Integrate, Resell, or Build.</DialogDescription>
+            </div>
+            <div className="p-6 space-y-4 bg-background">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Contact Name</label>
+                        <Input name="name" value={formData.name} placeholder="Jane Smith" onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Agency / Company</label>
+                        <Input name="org" value={formData.org} placeholder="Tech Solutions Ltd" onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Email Address</label>
+                        <Input type="email" value={formData.email} name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Phone</label>
+                        <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Technical Capabilities / Proposal</label>
+                    <textarea
+                        className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                        name="details"
+                        value={formData.details}
+                        placeholder="We want to integrate BBU1 for our retail clients..."
+                        onChange={handleInputChange}
+                    />
+                </div>
+                <Button
+                    type="button"
+                    onClick={() => handleEmailTrigger('Solution Partner')}
+                    className="w-full h-11 text-lg bg-purple-600 hover:bg-purple-700 font-semibold shadow-md active:scale-[0.98] transition-all"
+                >
+                    Submit Proposal via Email
+                </Button>
+            </div>
+        </DialogContent>
+    );
+
     return (
         <AnimatedSection id="partner" className="bg-slate-50 dark:bg-slate-900/50 border-y relative overflow-hidden">
             {/* Background Decoration */}
@@ -1492,7 +1651,7 @@ const PartnerWithUsSection = () => {
                 </div>
 
                 <motion.div
-                    className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto"
+                    className="hidden md:grid md:grid-cols-3 gap-6 max-w-6xl mx-auto"
                     initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}
                     variants={staggerContainer}
                 >
@@ -1522,27 +1681,7 @@ const PartnerWithUsSection = () => {
                                         Start Earning <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-                                    <div className="bg-blue-600 p-6 text-white text-center">
-                                        <Megaphone className="h-12 w-12 mx-auto mb-2 opacity-90" />
-                                        <DialogTitle className="text-2xl font-bold text-white">Affiliate Program</DialogTitle>
-                                        <DialogDescription className="text-blue-100">Join the fastest growing B2B affiliate network.</DialogDescription>
-                                    </div>
-                                    <div className="p-6 space-y-6">
-                                        <div className="bg-muted/50 p-4 rounded-lg border space-y-2">
-                                            <h4 className="font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-green-600"/> How it works:</h4>
-                                            <p className="text-sm text-muted-foreground">1. You get a unique referral code.</p>
-                                            <p className="text-sm text-muted-foreground">2. A business signs up using your code.</p>
-                                            <p className="text-sm text-muted-foreground">3. You receive a commission payout every month they remain a subscriber.</p>
-                                        </div>
-                                        <div className="text-center space-y-4">
-                                            <p className="text-sm text-muted-foreground">Click below to chat with our Affiliate Manager on WhatsApp to get your code immediately.</p>
-                                            <Button size="lg" className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold" onClick={handleWhatsAppSubmit}>
-                                                <MessageSquareText className="mr-2 h-5 w-5" /> Chat on WhatsApp (+256 703 572 503)
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </DialogContent>
+                                {affiliateDialogContent}
                             </Dialog>
                         </CardContent>
                     </Card>
@@ -1578,54 +1717,7 @@ const PartnerWithUsSection = () => {
                                         Investor Relations <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-                                    <div className="bg-green-600 p-6 text-white text-center">
-                                        <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-90" />
-                                        <DialogTitle className="text-2xl font-bold text-white">Investor Inquiry</DialogTitle>
-                                        <DialogDescription className="text-green-100">Connect with our founders directly.</DialogDescription>
-                                    </div>
-                                    {/* CHANGED: Removed form tag to prevent submit blocking, using simple div container */}
-                                    <div className="p-6 space-y-4 bg-background">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Full Name</label>
-                                                <Input name="name" value={formData.name} placeholder="John Doe" onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Firm / Entity</label>
-                                                <Input name="org" value={formData.org} placeholder="Capital Partners Ltd" onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Email Address</label>
-                                                <Input type="email" value={formData.email} name="email" placeholder="john@example.com" onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Phone / WhatsApp</label>
-                                                <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Investment Interest / Details</label>
-                                            <textarea 
-                                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                                                name="details"
-                                                value={formData.details}
-                                                placeholder="We are interested in Series A opportunities..." 
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                        {/* CHANGED: Button type="button" and onClick={handleEmailTrigger} */}
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => handleEmailTrigger('Investor')} 
-                                            className="w-full h-11 text-lg bg-green-600 hover:bg-green-700 font-semibold shadow-md active:scale-[0.98] transition-all"
-                                        >
-                                            Send Inquiry via Email
-                                        </Button>
-                                    </div>
-                                </DialogContent>
+                                {investorDialogContent}
                             </Dialog>
                         </CardContent>
                     </Card>
@@ -1658,60 +1750,44 @@ const PartnerWithUsSection = () => {
                                         Build With Us <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-                                    <div className="bg-purple-600 p-6 text-white text-center">
-                                        <GitBranch className="h-12 w-12 mx-auto mb-2 opacity-90" />
-                                        <DialogTitle className="text-2xl font-bold text-white">Solution Partnership</DialogTitle>
-                                        <DialogDescription className="text-purple-100">Integrate, Resell, or Build.</DialogDescription>
-                                    </div>
-                                    {/* CHANGED: Removed form tag to prevent submit blocking, using simple div container */}
-                                    <div className="p-6 space-y-4 bg-background">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Contact Name</label>
-                                                <Input name="name" value={formData.name} placeholder="Jane Smith" onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Agency / Company</label>
-                                                <Input name="org" value={formData.org} placeholder="Tech Solutions Ltd" onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Email Address</label>
-                                                <Input type="email" value={formData.email} name="email" placeholder="jane@techsolutions.com" onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Phone</label>
-                                                <Input name="phone" value={formData.phone} placeholder="+256..." onChange={handleInputChange} className="bg-background border-input" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Technical Capabilities / Proposal</label>
-                                            <textarea 
-                                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                                                name="details" 
-                                                value={formData.details}
-                                                placeholder="We want to integrate BBU1 for our retail clients..." 
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                        {/* CHANGED: Button type="button" and onClick={handleEmailTrigger} */}
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => handleEmailTrigger('Solution Partner')} 
-                                            className="w-full h-11 text-lg bg-purple-600 hover:bg-purple-700 font-semibold shadow-md active:scale-[0.98] transition-all"
-                                        >
-                                            Submit Proposal via Email
-                                        </Button>
-                                    </div>
-                                </DialogContent>
+                                {solutionDialogContent}
                             </Dialog>
                         </CardContent>
                     </Card>
                     </motion.div>
 
                 </motion.div>
+
+                {/* --- MOBILE: single CTA per partner type, same dialogs as desktop --- */}
+                <div className="md:hidden max-w-sm mx-auto space-y-3">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 justify-between hover:border-blue-600 hover:text-blue-600">
+                                <span className="flex items-center gap-2"><Megaphone className="h-4 w-4" /> Become an Affiliate</span>
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        {affiliateDialogContent}
+                    </Dialog>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 justify-between hover:border-green-600 hover:text-green-600" onClick={() => setFormData({ name: '', org: '', email: '', phone: '', details: '' })}>
+                                <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Investor Relations</span>
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        {investorDialogContent}
+                    </Dialog>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 justify-between hover:border-purple-600 hover:text-purple-600" onClick={() => setFormData({ name: '', org: '', email: '', phone: '', details: '' })}>
+                                <span className="flex items-center gap-2"><GitBranch className="h-4 w-4" /> Partner Now</span>
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        {solutionDialogContent}
+                    </Dialog>
+                </div>
             </div>
         </AnimatedSection>
     );
@@ -2348,7 +2424,6 @@ export default function HomePage({ params: { locale } }: { params: { locale: str
             </main>
 
             {mounted && <AdvancedChatWidget />}
-            <SiteFooter />
             <Toast message={toastState.message} isVisible={toastState.visible} />
 
             {/* COOKIE CONSENT BANNER */}
