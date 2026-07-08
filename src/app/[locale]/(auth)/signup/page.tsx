@@ -30,7 +30,7 @@ import {
     Loader2, Eye, EyeOff, Layers, MapPin,
     ShieldCheck, Calculator, ScrollText,
     CheckCircle2, Globe, FileCheck, Database,
-    FileText, UserCircle, Target, Rocket, Sparkles
+    FileText, UserCircle, Target, Rocket, Sparkles, Search
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -301,6 +301,26 @@ function HRMockup() {
     );
 }
 
+function SelectSearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+    return (
+        <div className="sticky top-0 z-10 bg-popover p-2 border-b border-slate-100">
+            <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                    type="text"
+                    autoFocus
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    placeholder={placeholder}
+                    className="w-full h-8 pl-8 pr-2 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+            </div>
+        </div>
+    );
+}
+
 const brandFeatures = [
     { icon: FileCheck, title: "Internal & External Auditing", accent: "from-sky-400 to-blue-600", description: "Every transaction, edit, and approval is logged automatically, giving auditors a tamper-proof trail without manual paperwork.", Mockup: AuditMockup },
     { icon: Layers, title: "Tax Book Records & Compliance", accent: "from-emerald-400 to-teal-600", description: "Tax rates and filings adapt to your country automatically, so every invoice and return stays compliant by default.", Mockup: TaxMockup },
@@ -431,6 +451,24 @@ export default function SignupPage() {
     const allCountries = useMemo(() => Country.getAllCountries(), []);
     const availableStates = useMemo(() => State.getStatesOfCountry(selectedCountryCode) || [], [selectedCountryCode]);
     const countryDetails = useMemo(() => Country.getCountryByCode(selectedCountryCode), [selectedCountryCode]);
+
+    // Search filters for the long dropdown lists (country / state / industry)
+    const [countrySearch, setCountrySearch] = useState('');
+    const [stateSearch, setStateSearch] = useState('');
+    const [industrySearch, setIndustrySearch] = useState('');
+
+    const filteredCountries = useMemo(
+        () => allCountries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())),
+        [allCountries, countrySearch]
+    );
+    const filteredStates = useMemo(
+        () => availableStates.filter(s => s.name.toLowerCase().includes(stateSearch.toLowerCase())),
+        [availableStates, stateSearch]
+    );
+    const filteredIndustries = useMemo(
+        () => (industryMapping[selectedType] || []).filter(s => s.toLowerCase().includes(industrySearch.toLowerCase())),
+        [selectedType, industrySearch]
+    );
 
     // Update phone logic to fix "+undefined"
     useEffect(() => {
@@ -575,9 +613,16 @@ export default function SignupPage() {
                                                     <FormLabel className="text-xs font-semibold text-slate-700">Country</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue/></SelectTrigger></FormControl>
-                                                        <SelectContent className="max-h-[300px]">
+                                                        <SelectContent
+                                                            className="max-h-[300px]"
+                                                            header={<SelectSearchBox value={countrySearch} onChange={setCountrySearch} placeholder="Search countries..." />}
+                                                        >
                                                             <ScrollArea className="h-64">
-                                                                {allCountries.map(c => <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>)}
+                                                                {filteredCountries.length > 0 ? (
+                                                                    filteredCountries.map(c => <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>)
+                                                                ) : (
+                                                                    <div className="p-3 text-xs text-slate-400 text-center">No matches</div>
+                                                                )}
                                                             </ScrollArea>
                                                         </SelectContent>
                                                     </Select>
@@ -589,10 +634,17 @@ export default function SignupPage() {
                                                     <FormLabel className="text-xs font-semibold text-slate-700">State / Region</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Region"/></SelectTrigger></FormControl>
-                                                        <SelectContent className="max-h-[300px]">
+                                                        <SelectContent
+                                                            className="max-h-[300px]"
+                                                            header={availableStates.length > 0 ? <SelectSearchBox value={stateSearch} onChange={setStateSearch} placeholder="Search regions..." /> : undefined}
+                                                        >
                                                             <ScrollArea className="h-64">
                                                                 {availableStates.length > 0 ? (
-                                                                    availableStates.map(s => <SelectItem key={s.isoCode || s.name} value={s.name}>{s.name}</SelectItem>)
+                                                                    filteredStates.length > 0 ? (
+                                                                        filteredStates.map(s => <SelectItem key={s.isoCode || s.name} value={s.name}>{s.name}</SelectItem>)
+                                                                    ) : (
+                                                                        <div className="p-3 text-xs text-slate-400 text-center">No matches</div>
+                                                                    )
                                                                 ) : (
                                                                     <SelectItem value="N/A">General</SelectItem>
                                                                 )}
@@ -671,11 +723,18 @@ export default function SignupPage() {
                                                     <FormLabel className="text-xs font-semibold text-slate-700">Specific Industry</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value} disabled={!selectedType}>
                                                         <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Industry" /></SelectTrigger></FormControl>
-                                                        <SelectContent className="max-h-[300px]">
+                                                        <SelectContent
+                                                            className="max-h-[300px]"
+                                                            header={<SelectSearchBox value={industrySearch} onChange={setIndustrySearch} placeholder="Search industries..." />}
+                                                        >
                                                             <ScrollArea className="h-64">
-                                                                {(industryMapping[selectedType] || []).map(s => (
-                                                                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                                                                ))}
+                                                                {filteredIndustries.length > 0 ? (
+                                                                    filteredIndustries.map(s => (
+                                                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="p-3 text-xs text-slate-400 text-center">No matches</div>
+                                                                )}
                                                             </ScrollArea>
                                                         </SelectContent>
                                                     </Select>
@@ -777,28 +836,25 @@ export default function SignupPage() {
                             </AnimatePresence>
 
                             {/* Navigation controls */}
-                            <div className="flex items-center justify-between gap-4 mt-6">
-                                <div>
-                                    {step > 0 ? (
-                                        <button type="button" onClick={() => { setDirection(-1); setStep(s => Math.max(0, s - 1)); }} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-md text-sm font-medium">
-                                            ← Back
-                                        </button>
-                                    ) : (
-                                        <div />
-                                    )}
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <button type="button" onClick={async () => {
-                                        const fieldsForStep = stepFields[step] || [];
-                                        const ok = await form.trigger(fieldsForStep as any);
-                                        if (!ok) return;
-                                        if (step < steps.length - 1) { setDirection(1); setStep(s => s + 1); }
-                                        else { /* final submit */ form.handleSubmit(handleSignup)(); }
-                                    }} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-md text-sm font-bold">
-                                        {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : (step < steps.length - 1 ? 'Next' : 'Create Account')}
+                            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 mt-6">
+                                {step > 0 && (
+                                    <button type="button" onClick={() => { setDirection(-1); setStep(s => Math.max(0, s - 1)); }} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                                        ← Back
                                     </button>
-                                </div>
+                                )}
+
+                                <button type="button" onClick={async () => {
+                                    const fieldsForStep = stepFields[step] || [];
+                                    const ok = await form.trigger(fieldsForStep as any);
+                                    if (!ok) return;
+                                    if (step < steps.length - 1) { setDirection(1); setStep(s => s + 1); }
+                                    else { /* final submit */ form.handleSubmit(handleSignup)(); }
+                                }} className={cn(
+                                    "w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-bold transition-colors",
+                                    step === 0 && "sm:ml-auto"
+                                )}>
+                                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : (step < steps.length - 1 ? 'Next' : 'Create Account')}
+                                </button>
                             </div>
 
                             <div className="flex justify-center items-center gap-2 text-center mt-3">

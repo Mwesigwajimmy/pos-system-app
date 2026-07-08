@@ -5,11 +5,11 @@ import SiteFooter from '@/components/Footer';
 
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isHome = pathname === '/';
+  const hideFooter = pathname === '/signup';
   return (
     <>
       {children}
-      {!isHome && <SiteFooter />}
+      {!hideFooter && <SiteFooter />}
     </>
   );
 }

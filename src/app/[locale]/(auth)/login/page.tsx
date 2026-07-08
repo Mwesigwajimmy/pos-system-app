@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, memo, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation'; 
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 // UI Components & Icons
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
-import { FaGoogle, FaMicrosoft } from 'react-icons/fa';
+// Google/Microsoft SSO hidden for now — uncomment when ready to re-enable.
+// import { FaGoogle, FaMicrosoft } from 'react-icons/fa';
 
 // --- Schema ---
 const loginSchema = z.object({
@@ -130,57 +132,87 @@ const PasswordInput = memo(({ control }: { control: Control<LoginFormInput> }) =
 PasswordInput.displayName = 'PasswordInput';
 
 // --- SSO Button Component ---
-const SsoButton = memo(({ provider, icon: Icon, label, onClick, isSubmitting }: { provider: SsoProvider; icon: React.ElementType; label: string; onClick: (p: SsoProvider) => void; isSubmitting: string | null; }) => (
-    <Button 
-        variant="outline" 
-        className="h-11 border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium rounded-lg transition-colors flex-1" 
-        onClick={() => onClick(provider)} 
-        disabled={!!isSubmitting}
-    >
-        {isSubmitting === provider ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4 text-slate-500" />}
-        {label}
-    </Button>
-));
-SsoButton.displayName = 'SsoButton';
+// Hidden for now (Google/Microsoft not ready) — uncomment alongside the
+// react-icons/fa import above and the usage below to bring SSO back.
+// const SsoButton = memo(({ provider, icon: Icon, label, onClick, isSubmitting }: { provider: SsoProvider; icon: React.ElementType; label: string; onClick: (p: SsoProvider) => void; isSubmitting: string | null; }) => (
+//     <Button
+//         variant="outline"
+//         className="h-11 border-slate-200 bg-white hover:bg-slate-50 text-sm font-medium rounded-lg transition-colors flex-1"
+//         onClick={() => onClick(provider)}
+//         disabled={!!isSubmitting}
+//     >
+//         {isSubmitting === provider ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4 text-slate-500" />}
+//         {label}
+//     </Button>
+// ));
+// SsoButton.displayName = 'SsoButton';
 
 // --- Main Login Page ---
 export default function LoginPage() {
-    const { form, isSubmitting, handleEmailLogin, handleSsoLogin } = useLogin();
+    const { form, isSubmitting, handleEmailLogin } = useLogin();
     const params = useParams();
     const locale = params?.locale || 'en';
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans antialiased">
-            
-            <Card className="w-full max-w-md shadow-2xl border border-slate-200 bg-white rounded-2xl overflow-hidden">
+        <div className="relative min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans antialiased overflow-hidden">
+            {/* Animated gradient backdrop */}
+            <div className="absolute inset-0 -z-10 overflow-hidden">
+                <motion.div
+                    className="absolute -top-40 -left-32 w-[28rem] h-[28rem] rounded-full bg-blue-400/20 blur-3xl"
+                    animate={{ x: [0, 40, 0], y: [0, 30, 0] }}
+                    transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.div
+                    className="absolute -bottom-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-blue-600/15 blur-3xl"
+                    animate={{ x: [0, -30, 0], y: [0, -40, 0] }}
+                    transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+                />
+            </div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 24, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-md"
+            >
+            <Card className="w-full shadow-2xl border border-slate-200 bg-white rounded-2xl overflow-hidden">
                 <CardHeader className="pt-10 pb-6 text-center space-y-4">
                     <div className="flex justify-center mb-2">
-                        <img 
-                            src="/logo.png" 
-                            alt="Company Logo" 
-                            className="h-16 w-auto object-contain" 
+                        <motion.img
+                            /* src="/logo.png" — swap back to the production logo once hosted */
+                            src="/bbu1-logo-dummy.png"
+                            alt="Company Logo"
+                            className="h-16 w-auto object-contain"
+                            animate={{ scale: [1, 1.05, 1] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", repeatDelay: 1 }}
                         />
                     </div>
                     <div className="space-y-1">
-                        <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Sign In</CardTitle>
-                        <CardDescription className="text-slate-500 text-sm font-medium italic">
-                            bold business solutions
+                        <CardTitle className="text-2xl font-bold text-slate-900 tracking-tight">Welcome back</CardTitle>
+                        <CardDescription className="text-slate-500 text-sm font-medium">
+                            Bold Business Solutions
                         </CardDescription>
                     </div>
                 </CardHeader>
-                
+
                 <CardContent className="px-8 pb-10 space-y-6">
-                    <div className="flex gap-4">
-                        <SsoButton provider="google" label="Google" icon={FaGoogle} onClick={handleSsoLogin} isSubmitting={isSubmitting} />
-                        <SsoButton provider="azure" label="Microsoft" icon={FaMicrosoft} onClick={handleSsoLogin} isSubmitting={isSubmitting} />
-                    </div>
-                    
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
-                        <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                            <span className="bg-white px-3 text-slate-400 font-medium">Or continue with</span>
+                    {/*
+                        Google / Microsoft SSO — hidden for now, not ready yet.
+                        Uncomment this block, the SsoButton component above, and the
+                        react-icons/fa import at the top of the file to bring it back.
+
+                        <div className="flex gap-4">
+                            <SsoButton provider="google" label="Google" icon={FaGoogle} onClick={handleSsoLogin} isSubmitting={isSubmitting} />
+                            <SsoButton provider="azure" label="Microsoft" icon={FaMicrosoft} onClick={handleSsoLogin} isSubmitting={isSubmitting} />
                         </div>
-                    </div>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
+                            <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                                <span className="bg-white px-3 text-slate-400 font-medium">Or continue with</span>
+                            </div>
+                        </div>
+                    */}
 
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleEmailLogin)} className="space-y-5">
@@ -229,6 +261,7 @@ export default function LoginPage() {
                     </div>
                 </CardContent>
             </Card>
+            </motion.div>
         </div>
     );
 }
