@@ -120,8 +120,6 @@ const industryMapping: Record<string, string[]> = {
     ]
 };
 
-
-
 const signupSchema = z.object({
     fullName: z.string().min(2, "Full name required."),
     businessName: z.string().min(2, "Business name required."),
@@ -292,6 +290,7 @@ function SelectSearchBox({ value, onChange, placeholder }: { value: string; onCh
                     onChange={(e) => onChange(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()} // FIX: Prevent mobile touch from closing select
                     placeholder={placeholder}
                     className="w-full h-8 pl-8 pr-2 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -576,7 +575,6 @@ export default function SignupPage() {
                                                 </FormItem>
                                             )} />
                                         </div>
-                                        
                                     </motion.div>
                                 )}
 
@@ -586,16 +584,28 @@ export default function SignupPage() {
                                             <MapPin size={18} /> Business Location & Tax
                                         </h3>
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                            
+                                            {/* FIX: Set `value`, enforce truncation on trigger, ensure selected item stays in DOM */}
                                             <FormField control={form.control} name="country" render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel className="text-xs font-semibold text-slate-700">Country</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue/></SelectTrigger></FormControl>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="w-full h-11 border-slate-200 [&>span]:truncate [&>span]:text-left [&>span]:block">
+                                                                <SelectValue placeholder="Select Country" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
                                                         <SelectContent
                                                             className="max-h-[300px]"
                                                             header={<SelectSearchBox value={countrySearch} onChange={setCountrySearch} placeholder="Search countries..." />}
                                                         >
                                                             <ScrollArea className="h-64">
+                                                                {/* Fallback to render active item if search hides it (fixes empty value bug) */}
+                                                                {field.value && !filteredCountries.some(c => c.isoCode === field.value) && (
+                                                                    <SelectItem value={field.value} className="hidden">
+                                                                        {allCountries.find(c => c.isoCode === field.value)?.name || field.value}
+                                                                    </SelectItem>
+                                                                )}
                                                                 {filteredCountries.length > 0 ? (
                                                                     filteredCountries.map(c => <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>)
                                                                 ) : (
@@ -611,12 +621,21 @@ export default function SignupPage() {
                                                 <FormItem>
                                                     <FormLabel className="text-xs font-semibold text-slate-700">State / Region</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Region"/></SelectTrigger></FormControl>
+                                                        <FormControl>
+                                                            <SelectTrigger className="w-full h-11 border-slate-200 [&>span]:truncate [&>span]:text-left [&>span]:block">
+                                                                <SelectValue placeholder="Select Region"/>
+                                                            </SelectTrigger>
+                                                        </FormControl>
                                                         <SelectContent
                                                             className="max-h-[300px]"
                                                             header={availableStates.length > 0 ? <SelectSearchBox value={stateSearch} onChange={setStateSearch} placeholder="Search regions..." /> : undefined}
                                                         >
                                                             <ScrollArea className="h-64">
+                                                                {field.value && field.value !== 'N/A' && !filteredStates.some(s => s.name === field.value) && (
+                                                                    <SelectItem value={field.value} className="hidden">
+                                                                        {field.value}
+                                                                    </SelectItem>
+                                                                )}
                                                                 {availableStates.length > 0 ? (
                                                                     filteredStates.length > 0 ? (
                                                                         filteredStates.map(s => <SelectItem key={s.isoCode || s.name} value={s.name}>{s.name}</SelectItem>)
@@ -680,11 +699,17 @@ export default function SignupPage() {
                                             <Layers size={18} /> Business Classification
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            
+                                            {/* FIX: Bind `value`, force truncation on mobile trigger */}
                                             <FormField control={form.control} name="businessType" render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel className="text-xs font-semibold text-slate-700">Category</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="w-full h-11 border-slate-200 [&>span]:truncate [&>span]:text-left [&>span]:block">
+                                                                <SelectValue placeholder="Select Category" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
                                                         <SelectContent>
                                                             <SelectGroup>
                                                                 {Object.keys(industryMapping).map(k => (
@@ -700,12 +725,21 @@ export default function SignupPage() {
                                                 <FormItem>
                                                     <FormLabel className="text-xs font-semibold text-slate-700">Specific Industry</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value} disabled={!selectedType}>
-                                                        <FormControl><SelectTrigger className="h-11 border-slate-200"><SelectValue placeholder="Select Industry" /></SelectTrigger></FormControl>
+                                                        <FormControl>
+                                                            <SelectTrigger className="w-full h-11 border-slate-200 [&>span]:truncate [&>span]:text-left [&>span]:block">
+                                                                <SelectValue placeholder="Select Industry" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
                                                         <SelectContent
                                                             className="max-h-[300px]"
                                                             header={<SelectSearchBox value={industrySearch} onChange={setIndustrySearch} placeholder="Search industries..." />}
                                                         >
                                                             <ScrollArea className="h-64">
+                                                                {field.value && !filteredIndustries.includes(field.value) && (
+                                                                     <SelectItem value={field.value} className="hidden">
+                                                                         {field.value}
+                                                                     </SelectItem>
+                                                                )}
                                                                 {filteredIndustries.length > 0 ? (
                                                                     filteredIndustries.map(s => (
                                                                         <SelectItem key={s} value={s}>{s}</SelectItem>

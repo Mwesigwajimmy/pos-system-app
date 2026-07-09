@@ -7,9 +7,7 @@ import { useSidebar } from '@/context/SidebarContext';
 import { useCopilot } from '@/context/CopilotContext'; 
 
 import { Button } from '@/components/ui/button';
-import { useBranding } from '@/components/core/BrandingProvider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import BusinessSwitcher from '@/components/layout/BusinessSwitcher';
 
 // --- MASTER ICON REGISTRY ---
 import {
@@ -180,7 +178,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'accountant', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
@@ -573,12 +571,12 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href:
 
   if (!isSidebarOpen) {
     return (
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delay={0}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Link href={href} onClick={onClick}>
-              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-50 text-blue-600 shadow-sm")} aria-label={label}>
-                <Icon className="h-5 w-5" />
+              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("group w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600 shadow-sm")} aria-label={label}>
+                <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
               </Button>
             </Link>
           </TooltipTrigger>
@@ -590,8 +588,8 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href:
 
   return (
     <Link href={href} onClick={onClick}>
-      <Button variant={isActive ? "secondary" : "ghost"} className={cn("w-full justify-start font-bold text-xs uppercase tracking-tight transition-all h-11 px-4 rounded-xl", isActive ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600 rounded-l-none" : "text-slate-500 hover:text-slate-900")}>
-        <Icon className="mr-3 h-5 w-5 shrink-0" />{label}
+      <Button variant={isActive ? "secondary" : "ghost"} className={cn("group w-full justify-start font-bold text-xs uppercase tracking-tight transition-all h-11 px-4 rounded-xl", isActive ? "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600" : "text-slate-500 hover:text-slate-900")}>
+        <Icon className="mr-3 h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />{label}
       </Button>
     </Link>
   );
@@ -606,7 +604,6 @@ export default function Sidebar() {
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
     const enabledModules = rawModules || [];
     const { data: tenant, isLoading: isLoadingTenant } = useTenant();
-    const { branding } = useBranding(); 
     const { data: profile } = useUserProfile();
 
     const activeRole = tenant?.user_role || rawRole || profile?.role || "guest";
@@ -621,10 +618,7 @@ export default function Sidebar() {
 
     const isSovereign = ['architect', 'commander'].includes(userRole);
     const isAdminOrOwner = ['admin', 'owner'].includes(userRole);
-    const businessName = branding?.company_name_display || tenant?.business_display_name || tenant?.name || profile?.business_name || "AUTHORIZED NODE";
-    const operatorName = profile?.full_name || "Authorized Operator"; 
-    const bizLogo = branding?.logo_url || tenant?.logo_url;
-    const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules; 
+    const isLoading = isLoadingRole || isLoadingTenant || isLoadingModules;
 
     const [isMobileView, setIsMobileView] = useState(false);
 
@@ -659,7 +653,7 @@ export default function Sidebar() {
             if (isSovereign) return true;
             if (isNimPaints) {
                 if (['activities', 'ecommerce'].includes(item.module || '')) return false;
-                if (item.label === 'Kitchen Display (KDS)') return false;
+                if (item.type === 'link' && item.label === 'Kitchen Display (KDS)') return false;
                 if (['manager', 'admin'].includes(userRole)) {
                     if (['hcm', 'accountant', 'procurement'].includes(item.module || '')) return false;
                 }
@@ -690,7 +684,7 @@ export default function Sidebar() {
     }, [pathname]);
 
     const renderAccordionNav = (items: NavItem[]) => (
-        <Accordion type="single" collapsible defaultValue={activeAccordionValue} className="w-full space-y-1">
+        <Accordion defaultValue={activeAccordionValue ? [activeAccordionValue] : []} className="w-full space-y-1">
             {items.map((item) => {
                 if (item.type === 'link') {
                     return (
@@ -723,20 +717,23 @@ export default function Sidebar() {
                     const isModuleActive = activeAccordionValue === item.module;
 
                     return (
-                        <AccordionItem key={item.module} value={item.module} className="border-none">
-                            <AccordionTrigger className={cn("px-4 py-3 text-xs font-bold uppercase tracking-tight rounded-xl hover:bg-slate-50 hover:no-underline transition-colors", isModuleActive && "text-blue-600 bg-blue-50/50")}>
-                                <div className="flex items-center flex-1"><item.icon className="mr-3 h-5 w-5" /><span>{item.title}</span></div>
+                        <AccordionItem key={item.module} value={item.module} className="not-last:border-b-0">
+                            <AccordionTrigger className={cn("group px-4 py-3 text-xs font-bold uppercase tracking-tight rounded-xl hover:bg-slate-50 hover:no-underline transition-colors", isModuleActive && "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40")}>
+                                <div className="flex items-center flex-1">
+                                    <item.icon className="mr-3 h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
+                                    <span>{item.title}</span>
+                                </div>
                             </AccordionTrigger>
                             <AccordionContent className="pl-6 pt-1 space-y-1 pb-2">
                                 {filteredSubItems.map(subItem => {
                                     const isSubItemActive = pathname.startsWith(subItem.href);
                                     return (
-                                        <Link 
-                                            key={subItem.href} 
-                                            href={subItem.href} 
-                                            className={cn("flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl transition-all", isSubItemActive ? "text-blue-600 bg-blue-50/80 shadow-inner" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
+                                        <Link
+                                            key={subItem.href}
+                                            href={subItem.href}
+                                            className={cn("group flex items-center py-2.5 px-4 text-[11px] font-bold uppercase tracking-wide rounded-xl no-underline hover:no-underline transition-all", isSubItemActive ? "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
                                         >
-                                            <subItem.icon className="mr-3 h-4 w-4" /><span>{subItem.label}</span>
+                                            <subItem.icon className="mr-3 h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" /><span>{subItem.label}</span>
                                         </Link>
                                     );
                                 })}
@@ -759,44 +756,26 @@ export default function Sidebar() {
                 />
             )}
 
-            <aside 
+            <aside
                 onClick={handleRailExpandClick}
                 className={cn(
-                    "h-full lg:h-[100dvh] bg-white border-r border-slate-200/60 flex flex-col transition-all duration-500 ease-in-out z-[150] shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]",
+                    "m-3 h-[calc(100%-1.5rem)] lg:h-[calc(100dvh-1.5rem)] bg-white rounded-3xl ring-1 ring-black/5 flex flex-col overflow-hidden transition-all duration-500 ease-in-out z-[150] shrink-0 shadow-2xl shadow-slate-900/20",
                     "fixed lg:sticky top-0 left-0",
-                    !isSidebarOpen 
-                        ? "-translate-x-full lg:translate-x-0 lg:w-20" 
-                        : "translate-x-0 w-full lg:w-72",
+                    !isSidebarOpen
+                        ? "-translate-x-full lg:translate-x-0 lg:w-20"
+                        : "translate-x-0 w-[calc(100%-1.5rem)] sm:w-80 lg:w-72",
 
-                    !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:bg-slate-50"
+                    !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:shadow-slate-900/30"
                 )}
             >
-                <div className={cn("flex items-center justify-between border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110]", isSidebarOpen ? "h-24" : "h-20")}>
-                    {/* 
-                        ✅ IDENTITY LOCK: 
-                        The BusinessSwitcher and Operator Identity are now explicitly tied to the Sidebar's Open state.
-                        When Sidebar closes, these details are removed, ensuring zero overlap with the header/dashboard.
-                    */}
-                    {isSidebarOpen ? (
-                        <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden">
-                            <div className="relative z-[120]"><BusinessSwitcher /></div>
-                            {/* User identity — visible when sidebar is open */}
-                            <div className="flex items-center gap-2.5 mt-3 px-1">
-                                <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm shadow-blue-600/30">
-                                    {operatorName.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-[11px] font-black text-slate-900 truncate leading-tight">{operatorName}</span>
-                                    <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest truncate opacity-80 leading-tight mt-0.5">{businessName} · {activeRole}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex justify-center animate-in zoom-in duration-300">
-                            {bizLogo ? (<img src={bizLogo} className="h-10 w-10 object-contain rounded-xl shadow-sm border border-slate-100 p-1 bg-white" alt="Logo" />) : (<div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-sm font-black text-xs">{businessName.charAt(0).toUpperCase()}</div>)}
-                        </div>
+                <div className={cn("flex items-center border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110] h-16", isSidebarOpen ? "justify-between" : "justify-center")}>
+                    {/* Full identity card lives in the top Header bar — the sidebar just names whose account this is. */}
+                    {isSidebarOpen && (
+                        <span className="text-xs font-black text-slate-900 truncate min-w-0">
+                            {profile?.full_name || "Authorized Operator"}
+                        </span>
                     )}
-                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl ml-2 shrink-0", !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm")}>
+                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl shrink-0", !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm")}>
                         {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </Button>
                 </div>
@@ -807,20 +786,25 @@ export default function Sidebar() {
 
                 <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 bg-white", !isSidebarOpen && "flex flex-col items-center")}>
                     {(['cashier', 'accountant', 'admin', 'owner'].includes(userRole)) && isSidebarOpen && (
-                        <Button variant="secondary" className="w-full justify-start bg-blue-50 text-blue-700 font-bold border border-blue-100 h-11 rounded-xl shadow-sm group" asChild>
-                            <Link href="/accounting/daily-ledger">
-                                <Unlock size={14} className="mr-3 text-blue-400 group-hover:text-blue-600" /> 
-                                <span className="text-[10px] uppercase tracking-tight">Open/Seal Daily Register</span>
+                        <Button variant="secondary" className="group w-full h-auto py-2.5 px-3 justify-start bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold border border-blue-100 rounded-xl shadow-sm" asChild>
+                            <Link href="/accounting/daily-ledger" className="flex items-center gap-3 no-underline hover:no-underline">
+                                <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-white text-blue-500 shadow-sm shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6">
+                                    <Unlock size={15} />
+                                </span>
+                                <span className="flex flex-col items-start leading-tight text-left min-w-0">
+                                    <span className="text-[11px] font-black uppercase tracking-wide">Open / Seal</span>
+                                    <span className="text-[9px] font-semibold text-blue-500/80 normal-case truncate">Daily Register</span>
+                                </span>
                             </Link>
                         </Button>
                     )}
-                    <Button variant="default" className={cn("w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); }}>
-                        <Sparkles className={cn("h-5 w-5", isSidebarOpen && "mr-3")} />
+                    <Button variant="default" className={cn("group w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); }}>
+                        <Sparkles className={cn("h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6", isSidebarOpen && "mr-3")} />
                         {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
                     </Button>
                     <Link href="/settings" className="w-full">
                         <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", !isSidebarOpen && "justify-center px-0 w-11 mx-auto")}>
-                            <Settings className={cn("h-5 w-5 transition-transform group-hover:rotate-45", isSidebarOpen && "mr-3")} />
+                            <Settings className={cn("h-5 w-5 transition-transform duration-200 group-hover:rotate-45", isSidebarOpen && "mr-3")} />
                             {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Settings</span>}
                         </Button>
                     </Link>

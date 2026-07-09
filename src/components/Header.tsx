@@ -31,10 +31,11 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from 'date-fns';
-import { useBusiness } from '@/context/BusinessContext'; 
-import { useBranding } from '@/components/core/BrandingProvider'; 
+import { useBusiness } from '@/context/BusinessContext';
+import { useBranding } from '@/components/core/BrandingProvider';
 import { useTenant } from '@/hooks/useTenant';
 import { cn } from '@/lib/utils';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 
 export default function Header() {
   const router = useRouter();
@@ -159,8 +160,9 @@ export default function Header() {
             </div>
         </div>
 
-        {/* --- ACTION ROW — Bell + Logout, always shown --- */}
+        {/* --- ACTION ROW — Theme toggle + Bell + Logout, always shown --- */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+            <ModeToggle />
             <Sheet>
                 <SheetTrigger asChild>
                     <button className="relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white border border-slate-200/80 hover:border-blue-200 hover:bg-blue-50/30 transition-all group active:scale-95 shadow-sm">
