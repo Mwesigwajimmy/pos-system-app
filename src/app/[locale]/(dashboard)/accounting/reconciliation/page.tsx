@@ -23,13 +23,17 @@ export default async function ReconciliationPage({ params: { locale } }: { param
         return <div className="p-8">Access Denied: No business profile found.</div>;
     }
 
-    // 3. Fetch Bank Accounts (Required for bankAccountId prop)
+    /**
+     * DEEP WELD FIX: 
+     * Look for 'Asset' type with 'bank' or 'cash' subtype. 
+     * Removed strict 'type=Bank' filter which was causing the 0-row result.
+     */
     const { data: accounts } = await supabase
         .from('accounting_accounts')
-        .select('id, name')
+        .select('id, name, subtype, type')
         .eq('business_id', profile.business_id)
-        .eq('type', 'Bank')
-        .eq('is_reconcilable', true) 
+        .eq('type', 'Asset') // Banks are Assets
+        .in('subtype', ['bank', 'Bank', 'cash', 'Cash']) // Case-insensitive safety
         .eq('is_active', true)
         .order('name');
 
