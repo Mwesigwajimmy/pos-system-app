@@ -73,13 +73,19 @@ async function fetchExpenseAccounts(businessId: string) {
   return data || [];
 }
 
+/**
+ * DEEP FIX: fetchPaymentAccounts
+ * Corrected to filter by parent 'Asset' type and use the 'subtype' column 
+ * with lowercase values ('bank', 'cash') found in the database.
+ */
 async function fetchPaymentAccounts(businessId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('accounting_accounts')
-    .select('id, name, current_balance, currency') // Changed 'balance' to 'current_balance' to match your schema results
+    .select('id, name, current_balance, currency') 
     .eq('business_id', businessId)
-    .in('type', ['Bank', 'Cash']) 
+    .eq('type', 'Asset')             // Parent Type is Asset
+    .in('subtype', ['bank', 'cash']) // Lowercase subtype from DB truth
     .eq('is_active', true)
     .order('name');
 
@@ -90,8 +96,7 @@ async function fetchPaymentAccounts(businessId: string) {
 /**
  * ENTERPRISE INTERCONNECT:
  * This function calls the record_enterprise_expense PostgreSQL function.
- * It ensures the expense is linked to the General Ledger, updates account balances,
- * and populates the reports system autonomously.
+ * DEEP FIX: Added missing p_country_code and p_exchange_rate to match function signature.
  */
 async function createEnterpriseExpense(vars: { values: ExpenseFormValues; businessId: string; userId: string }) {
   const supabase = createClient();
@@ -105,7 +110,9 @@ async function createEnterpriseExpense(vars: { values: ExpenseFormValues; busine
     p_expense_account_id: vars.values.category_id,
     p_payment_account_id: vars.values.payment_account_id,
     p_vendor_name: vars.values.vendor || null,
-    p_currency: 'UGX' // Adjust currency logic here if multi-currency is enabled in UI
+    p_currency: 'UGX',            // Multi-tenant currency context
+    p_country_code: 'UG',         // REQUIRED WELD ADDED
+    p_exchange_rate: 1.0          // REQUIRED WELD ADDED
   });
 
   if (error) throw new Error(error.message);

@@ -45,6 +45,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 interface RevolutionaryCreateExpenseModalProps {
   businessId: string;
   userId: string;
+  countryCode?: string; // Added optional prop for multi-country support
 }
 
 // --- Enterprise Validation Schema ---
@@ -59,7 +60,11 @@ const expenseSchema = z.object({
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
-export function RevolutionaryCreateExpenseModal({ businessId, userId }: RevolutionaryCreateExpenseModalProps) {
+export function RevolutionaryCreateExpenseModal({ 
+  businessId, 
+  userId,
+  countryCode = 'UG' // Defaulting to UG based on NIM UGANDA context
+}: RevolutionaryCreateExpenseModalProps) {
   const [open, setOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -81,6 +86,7 @@ export function RevolutionaryCreateExpenseModal({ businessId, userId }: Revoluti
   });
 
   // --- 2. Fetch Tenant-Specific Payment Accounts (Bank/Cash) ---
+  // DEEP FIX: Corrected column to 'subtype' and values to lowercase to match DB truth
   const { data: paymentAccounts, isLoading: loadingPay } = useQuery({
     queryKey: ['accounts', 'payment', businessId],
     queryFn: async () => {
@@ -88,7 +94,8 @@ export function RevolutionaryCreateExpenseModal({ businessId, userId }: Revoluti
         .from('accounting_accounts')
         .select('id, name, current_balance, currency')
         .eq('business_id', businessId)
-        .in('type', ['Bank', 'Cash']) 
+        .eq('type', 'Asset') // Parent is Asset
+        .in('subtype', ['bank', 'cash']) // Lowercase subtype check
         .eq('is_active', true);
       if (error) throw error;
       return data;
@@ -110,6 +117,7 @@ export function RevolutionaryCreateExpenseModal({ businessId, userId }: Revoluti
   });
 
   // --- 3. Enterprise Atomic Posting Mutation ---
+  // DEEP FIX: Added missing p_country_code and p_exchange_rate to match the SQL Function signature
   const mutation = useMutation({
     mutationFn: async (values: ExpenseFormValues) => {
       const { data, error } = await supabase.rpc('record_enterprise_expense', {
@@ -121,7 +129,9 @@ export function RevolutionaryCreateExpenseModal({ businessId, userId }: Revoluti
         p_expense_account_id: values.category_id,
         p_payment_account_id: values.payment_account_id,
         p_vendor_name: values.vendor || null,
-        p_currency: 'UGX' 
+        p_currency: 'UGX', // For multi-currency, this can be mapped to paymentAccounts selection
+        p_country_code: countryCode, // REQUIRED WELD
+        p_exchange_rate: 1.0         // REQUIRED WELD
       });
       if (error) throw error;
       return data;
