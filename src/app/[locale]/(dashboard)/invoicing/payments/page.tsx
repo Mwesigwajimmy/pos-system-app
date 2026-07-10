@@ -12,7 +12,7 @@ import {
     AlertCircle, 
     Wrench, 
     ShieldCheck, 
-    Loader2, // FIXED: Added missing comma
+    Loader2, 
     Activity,
     FileWarning,
     RefreshCw
@@ -65,14 +65,18 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
   }
 
   // 4. INFRASTRUCTURE AUDIT (GEN & 1210 Check)
+  // DEEP WELD FIX: Handled duplicate GEN journals by removing .maybeSingle() and checking existence
   const [arRes, journalRes] = await Promise.all([
     supabase.from("accounting_accounts").select("id").eq("business_id", bizId).eq("code", "1210").maybeSingle(),
-    supabase.from("accounting_journals").select("id").eq("business_id", bizId).eq("code", "GEN").maybeSingle()
+    supabase.from("accounting_journals").select("id").eq("business_id", bizId).eq("code", "GEN").limit(1)
   ]);
 
-  const isLedgerSynchronized = !!(arRes.data && journalRes.data);
+  // If at least one row exists for both, the ledger is synchronized
+  const isLedgerSynchronized = !!(arRes.data && journalRes.data && journalRes.data.length > 0);
 
   // 5. TRANSACTIONAL DATA ACQUISITION
+  // DEEP WELD FIX: Expanded accounts search to include all liquidity assets (Subtype Bank/Cash) 
+  // This allows Centenary Bank (1001) to appear in the registry destination.
   const [invoicesRes, accountsRes] = await Promise.all([
     supabase
       .from("invoices")
@@ -83,9 +87,10 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
       
     supabase
       .from("accounting_accounts")
-      .select("id, name, code")
+      .select("id, name, code, subtype")
       .eq("business_id", bizId)
-      .eq("code", "1000") 
+      .eq("type", "Asset")
+      .in("subtype", ["bank", "Bank", "cash", "Cash"]) // Match DB truth from forensic audit
       .eq("is_active", true)
   ]);
 
@@ -101,9 +106,6 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
             <span className="block mt-6 font-mono text-[10px] p-3 bg-red-700/50 rounded-xl uppercase tracking-widest">
               Technical Root: {invoicesRes.error?.message || accountsRes.error?.message}
             </span>
-            <Button variant="outline" className="mt-8 bg-transparent border-white/20 text-white hover:bg-white/10" onClick={() => window.location.reload()}>
-               <RefreshCw className="mr-2 h-4 w-4" /> Attempt Resync
-            </Button>
           </AlertDescription>
         </Alert>
       </div>
@@ -201,7 +203,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
                <div className="space-y-1">
                  <p className="text-[11px] text-amber-900 font-black uppercase tracking-widest leading-none">Liquidity Warning</p>
                  <p className="text-[10px] text-amber-700 font-medium leading-relaxed mt-1 uppercase tracking-tight">
-                   No active recipient account found with **Code 1000**. Please register Bank or Cash assets to finalize settlements.
+                   No active recipient account found. Please register Bank or Cash assets to finalize settlements.
                  </p>
                </div>
              </div>

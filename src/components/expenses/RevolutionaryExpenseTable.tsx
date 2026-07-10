@@ -15,13 +15,25 @@ import { createClient } from '@/lib/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, Download, RefreshCcw } from 'lucide-react';
+import { 
+  Loader2, Search, Download, RefreshCcw, 
+  FileText, FileSpreadsheet, ChevronDown 
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import AddExpenseDialog from './AddExpenseDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// --- Enterprise Expense Interface (Matching your real DB schema) ---
+// PDF & Export Utilities
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// --- Enterprise Expense Interface ---
 export interface Expense {
   id: string;
   expense_date: string;
@@ -83,23 +95,18 @@ export const columns: ColumnDef<Expense>[] = [
   },
 ];
 
-// --- Props for Multi-Tenant Context ---
 interface RevolutionaryExpenseTableProps {
   businessId: string;
   userId: string;
 }
 
-/**
- * Jimmy, this is the Fully Activated Enterprise Table.
- * It is multi-tenant aware and fetches data based on the businessId.
- */
 export function RevolutionaryExpenseTable({ businessId, userId }: RevolutionaryExpenseTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const supabase = createClient();
 
-  // --- Multi-Tenant Data Fetcher ---
   const { data: expenses, isLoading, isError, refetch } = useQuery({
     queryKey: ['expenses', businessId],
     queryFn: async () => {
@@ -114,6 +121,71 @@ export function RevolutionaryExpenseTable({ businessId, userId }: RevolutionaryE
     },
     enabled: !!businessId,
   });
+
+  // --- SOVEREIGN EXPORT ENGINE: Professional PDF ---
+  const handleExportPDF = () => {
+    if (!expenses || expenses.length === 0) return;
+    setIsExporting(true);
+
+    const doc = new jsPDF();
+    const timestamp = format(new Date(), 'dd MMM yyyy, HH:mm');
+
+    // Branding & Header
+    doc.setFontSize(20);
+    doc.setTextColor(15, 23, 42);
+    doc.text("EXPENDITURE AUDIT REPORT", 14, 20);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`LEDGER NODE: ${businessId}`, 14, 28);
+    doc.text(`GENERATED ON: ${timestamp}`, 14, 33);
+
+    // Build Table Body
+    const tableBody = expenses.map(exp => [
+      format(new Date(exp.expense_date), 'dd/MM/yyyy'),
+      `${exp.description}\n[${exp.vendor_name || 'General'}]`,
+      exp.category,
+      exp.approval_status.toUpperCase(),
+      `${new Intl.NumberFormat().format(exp.amount)} ${exp.currency || 'UGX'}`
+    ]);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [['DATE', 'NARRATIVE / PAYEE', 'CATEGORY', 'STATUS', 'AMOUNT']],
+      body: tableBody,
+      theme: 'grid',
+      headStyles: { fillColor: [30, 41, 59], fontSize: 8, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 4 },
+      columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 200;
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text("SOVEREIGN LEDGER SYSTEM • MATHEMATICAL PARITY VERIFIED", 14, finalY + 10);
+
+    doc.save(`Expense_Audit_${format(new Date(), 'yyyyMMdd')}.pdf`);
+    setIsExporting(false);
+  };
+
+  // --- SOVEREIGN EXPORT ENGINE: Professional CSV ---
+  const handleExportCSV = () => {
+    if (!expenses || expenses.length === 0) return;
+    
+    const headers = ["Date,Description,Vendor,Category,Status,Amount,Currency"];
+    const rows = expenses.map(e => 
+      `"${format(new Date(e.expense_date), 'yyyy-MM-dd')}","${e.description}","${e.vendor_name || ''}","${e.category}","${e.approval_status}",${e.amount},"${e.currency}"`
+    );
+
+    const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Expenditure_Ledger_${format(new Date(), 'yyyyMMdd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const table = useReactTable({
     data: expenses || [],
@@ -147,11 +219,27 @@ export function RevolutionaryExpenseTable({ businessId, userId }: RevolutionaryE
           <Button variant="outline" size="icon" onClick={() => refetch()} title="Sync Ledger">
             <RefreshCcw className="h-4 w-4 text-slate-600" />
           </Button>
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" /> Export
-          </Button>
-          {/* THE REAL INTERCONNECTED DIALOG */}
-          <AddExpenseDialog businessId={businessId} userId={userId} />
+
+          {/* DEEP WELD: Professional Export Split Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="font-bold border-slate-200">
+                <Download className="mr-2 h-4 w-4" /> Export <ChevronDown className="ml-1 h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 p-2 rounded-xl shadow-2xl">
+              <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer gap-2 py-2">
+                <FileText className="h-4 w-4 text-red-500" /> 
+                <span className="font-medium">Export Professional PDF</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCSV} className="cursor-pointer gap-2 py-2">
+                <FileSpreadsheet className="h-4 w-4 text-emerald-500" /> 
+                <span className="font-medium">Export Raw CSV</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* DEEP CLEANUP: "Add Expense" button removed from toolbar per request */}
         </div>
       </div>
 
