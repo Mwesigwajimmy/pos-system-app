@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, AlertTriangle, Search, Lock } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2, Loader2, AlertTriangle, Search, Lock, Zap, ArrowRightLeft } from 'lucide-react';
 
 // --- Types ---
 export interface Account {
@@ -80,6 +80,29 @@ const deleteAccount = async (accountId: string) => {
     
   if (error) throw new Error(error.message);
 };
+
+/**
+ * DEEP WELD: RPC call to the Smart Transfer SQL Engine
+ */
+const smartTransferToBank = async (params: { 
+    businessId: string; 
+    userId: string; 
+    targetAccountId: string; 
+    amount: number; 
+    currency: string; 
+}) => {
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('fn_smart_transfer_clearing_to_bank', {
+        p_business_id: params.businessId,
+        p_user_id: params.userId,
+        p_target_account_id: params.targetAccountId,
+        p_amount: params.amount,
+        p_currency: params.currency
+    });
+
+    if (error) throw new Error(error.message);
+    return data;
+}
 
 // --- Sub-Component: Account Form ---
 const AccountFormDialog = ({
@@ -209,12 +232,115 @@ const AccountFormDialog = ({
   )
 };
 
+// --- Sub-Component: Smart Transfer Dialog ---
+const SmartTransferDialog = ({
+    isOpen,
+    onClose,
+    targetAccount,
+    clearingAccount,
+    businessId,
+    userId
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    targetAccount: Account;
+    clearingAccount: Account | null;
+    businessId: string;
+    userId: string;
+}) => {
+    const queryClient = useQueryClient();
+    const [amount, setAmount] = useState(clearingAccount?.balance.toString() || '0');
+
+    const { mutate, isPending } = useMutation({
+        mutationFn: smartTransferToBank,
+        onSuccess: () => {
+            toast.success("Sovereign Allocation Successful: Funds moved to Bank Account.");
+            queryClient.invalidateQueries({ queryKey: ['accounts'] });
+            onClose();
+        },
+        onError: (error) => toast.error(`Accounting Block: ${error.message}`),
+    });
+
+    const handleTransfer = () => {
+        mutate({
+            businessId,
+            userId,
+            targetAccountId: targetAccount.id,
+            amount: parseFloat(amount),
+            currency: targetAccount.currency
+        });
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Zap className="h-5 w-5 text-emerald-500 fill-emerald-500" />
+                        Smart Settle to Bank
+                    </DialogTitle>
+                    <DialogDescription>
+                        Allocate accumulated funds from the Bank & Cash Clearing account to your operational bank account.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Source: Clearing</span>
+                            <span className="text-sm font-semibold">{clearingAccount?.name}</span>
+                        </div>
+                        <ArrowRightLeft className="h-4 w-4 text-slate-300" />
+                        <div className="flex flex-col text-right">
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Target: Bank</span>
+                            <span className="text-sm font-semibold">{targetAccount.name}</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Available to Settle ({targetAccount.currency})</Label>
+                        <div className="text-2xl font-mono font-bold text-emerald-600">
+                             {new Intl.NumberFormat('en-US', { style: 'currency', currency: targetAccount.currency }).format(clearingAccount?.balance || 0)}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="amount">Amount to Transfer</Label>
+                        <Input 
+                            id="amount" 
+                            type="number" 
+                            value={amount} 
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="font-mono text-lg"
+                        />
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white" 
+                        onClick={handleTransfer} 
+                        disabled={isPending || parseFloat(amount) <= 0}
+                    >
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Execute Settlement
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 // --- Main Component ---
 export default function ChartOfAccounts({ businessId }: { businessId: string }) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState('');
-  const [action, setAction] = useState<{ type: 'add' | 'edit' | 'delete', data?: Account } | null>(null);
+  const [action, setAction] = useState<{ type: 'add' | 'edit' | 'delete' | 'transfer', data?: Account } | null>(null);
   
+  // NOTE: In a real app, user ID would come from an Auth Context. Replacing with businessId placeholder for structure.
+  const userId = businessId; 
+
   const { data: accounts, isLoading, isError, error } = useQuery({ 
     queryKey: ['accounts', businessId], 
     queryFn: () => fetchAccounts(businessId)
@@ -237,6 +363,10 @@ export default function ChartOfAccounts({ businessId }: { businessId: string }) 
         acc.code.includes(filter)
     );
   }, [accounts, filter]);
+
+  const clearingAccount = useMemo(() => {
+      return accounts?.find(acc => acc.code === '1000') || null;
+  }, [accounts]);
 
   return (
     <>
@@ -304,10 +434,17 @@ export default function ChartOfAccounts({ businessId }: { businessId: string }) 
                                 <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                {/* DEEP WELD: Smart Transfer Button for Bank/Cash Subtypes */}
+                                {(acc.subtype === 'Bank' || acc.subtype === 'Cash') && acc.code !== '1000' && (
+                                    <DropdownMenuItem onClick={() => setAction({ type: 'transfer', data: acc })} className="text-emerald-600 font-semibold">
+                                        <Zap className="mr-2 h-4 w-4 fill-emerald-600"/> Smart Settle (from Clearing)
+                                    </DropdownMenuItem>
+                                )}
+
                                 <DropdownMenuItem onClick={() => setAction({ type: 'edit', data: acc })}>
                                     <Edit className="mr-2 h-4 w-4"/> Edit
                                 </DropdownMenuItem>
-                                {acc.is_system || acc.balance !== 0 ? (
+                                {acc.is_system || (acc.balance !== 0 && acc.code !== '1000') ? (
                                     <DropdownMenuItem disabled className="text-muted-foreground">
                                         <Lock className="mr-2 h-4 w-4"/> Cannot Delete
                                     </DropdownMenuItem>
@@ -334,6 +471,17 @@ export default function ChartOfAccounts({ businessId }: { businessId: string }) 
             account={action.data}
             businessId={businessId}
         />
+      )}
+
+      {action?.type === 'transfer' && action.data && (
+          <SmartTransferDialog 
+            isOpen={true}
+            onClose={() => setAction(null)}
+            targetAccount={action.data}
+            clearingAccount={clearingAccount}
+            businessId={businessId}
+            userId={userId}
+          />
       )}
 
       <AlertDialog open={action?.type === 'delete'} onOpenChange={() => setAction(null)}>
