@@ -435,7 +435,7 @@ export default function ChartOfAccounts({ businessId }: { businessId: string }) 
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 {/* DEEP WELD: Smart Transfer Button for Bank/Cash Subtypes */}
-                                {(acc.subtype === 'Bank' || acc.subtype === 'Cash') && acc.code !== '1000' && (
+                                {(acc.subtype === 'bank' || acc.subtype === 'cash') && acc.code !== '1000' && (
                                     <DropdownMenuItem onClick={() => setAction({ type: 'transfer', data: acc })} className="text-emerald-600 font-semibold">
                                         <Zap className="mr-2 h-4 w-4 fill-emerald-600"/> Smart Settle (from Clearing)
                                     </DropdownMenuItem>
