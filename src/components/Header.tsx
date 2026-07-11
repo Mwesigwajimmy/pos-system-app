@@ -106,7 +106,7 @@ export default function Header() {
   };
 
   return (
-    <div className="flex-1 flex justify-between items-center gap-2 px-3 sm:px-4 md:px-6 h-full bg-transparent min-w-0">
+    <div className="flex-1 flex justify-between items-center gap-2 pl-16 pr-3 sm:pr-4 md:pr-6 lg:pl-6 lg:pr-6 h-full bg-transparent min-w-0">
 
       {/* --- LEFT: COMPANY IDENTITY — always visible, truncates instead of hiding --- */}
       <div className="flex items-center gap-2 sm:gap-3 md:gap-8 min-w-0 flex-1">
