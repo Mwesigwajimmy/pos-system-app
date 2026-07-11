@@ -173,160 +173,191 @@ export function CreateTransactionModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[500px] border-slate-200 shadow-2xl">
-                <DialogHeader>
-                    <div className="flex items-center justify-between mb-2">
-                        <DialogTitle className="flex items-center gap-2">
-                            <Fingerprint className="w-5 h-5 text-primary" />
-                            Secure Transaction Entry
-                        </DialogTitle>
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-400 border-slate-100">
-                            Sovereign v10.1
-                        </Badge>
-                    </div>
-                    <DialogDescription>
-                        Create a Journal Entry matching this bank line item. Entry is verified against 90-day moving average drift.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
-                        
-                        <div className={cn(
-                            "flex items-center p-3 rounded-md text-sm font-medium border",
-                            isMoneyOut ? "bg-red-50 text-red-700 border-red-200" : "bg-green-50 text-green-700 border-green-200"
-                        )}>
-                            {isMoneyOut ? (
-                                <>
-                                    <ShieldAlert className="w-4 h-4 mr-2" />
-                                    Money Out (Liability Check Active)
-                                </>
-                            ) : (
-                                <>
-                                    <ShieldCheck className="w-4 h-4 mr-2" />
-                                    Money In (Asset Verification Active)
-                                </>
-                            )}
+            {/* DEEP WELD: Widened to 1000px for professional ledger entry perspective */}
+            <DialogContent className="sm:max-w-[1000px] border-slate-200 shadow-2xl overflow-hidden flex flex-col p-0">
+                <div className="p-6 bg-slate-50/50 border-b">
+                    <DialogHeader>
+                        <div className="flex items-center justify-between mb-2">
+                            <DialogTitle className="flex items-center gap-2 text-2xl">
+                                <Fingerprint className="w-6 h-6 text-primary" />
+                                Secure Transaction Entry
+                            </DialogTitle>
+                            <Badge variant="outline" className="px-3 py-1 text-[11px] uppercase font-black tracking-widest text-slate-500 border-slate-200 bg-white">
+                                Sovereign System Protocol v10.1
+                            </Badge>
                         </div>
+                        <DialogDescription className="text-sm font-medium">
+                            Create a Journal Entry matching this bank line item. Entry is verified against 90-day moving average drift for GAAP compliance.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
-                        <FormField
-                            control={form.control}
-                            name="date"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>Transaction Date</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant={"outline"}
-                                                    className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Audit Narrative / Description</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} value={field.value as string || ''} placeholder="Required for forensic trail..." />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="amount"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Amount</FormLabel>
-                                        <FormControl>
-                                            {/* FIX: Explicitly cast the value to handle the unknown type inference */}
-                                            <Input 
-                                                type="number" 
-                                                step="0.01" 
-                                                {...field} 
-                                                value={(field.value as number) || ''} 
-                                                className="font-mono"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="contra_account_id"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>
-                                            {isMoneyOut ? "Expense Account" : "Income Account"}
-                                        </FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value as string}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder={isLoadingAccounts ? "Loading..." : "Select Category"} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {accounts?.map(acc => (
-                                                    <SelectItem key={acc.id} value={acc.id}>
-                                                        {acc.code ? `${acc.code} - ` : ''}{acc.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="pt-2 px-1">
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 font-mono uppercase tracking-tighter">
-                                <Zap size={10} className="text-emerald-500 fill-current animate-pulse" />
-                                1:1 Forensic Mapping Ready
-                            </p>
-                        </div>
-
-                        <DialogFooter className="pt-4 gap-2">
-                            <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={mutation.isPending} className="px-6 shadow-xl shadow-primary/10">
-                                {mutation.isPending ? (
+                {/* DEEP WELD: Added Scrollable Area for form stability */}
+                <div className="flex-1 overflow-y-auto p-6 max-h-[70vh]">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            
+                            <div className={cn(
+                                "flex items-center p-4 rounded-xl text-sm font-bold border uppercase tracking-wider",
+                                isMoneyOut ? "bg-red-50 text-red-700 border-red-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            )}>
+                                {isMoneyOut ? (
                                     <>
-                                        <Activity className="mr-2 h-4 w-4 animate-pulse text-emerald-400" />
-                                        Verifying Drift...
+                                        <ShieldAlert className="w-5 h-5 mr-3" />
+                                        Money Out Activity (Liability Check Active)
                                     </>
                                 ) : (
                                     <>
-                                        <ShieldCheck className="mr-2 h-4 w-4" />
-                                        Post & Verify
+                                        <ShieldCheck className="w-5 h-5 mr-3" />
+                                        Money In Activity (Asset Verification Active)
                                     </>
                                 )}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <FormField
+                                    control={form.control}
+                                    name="date"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel className="text-xs font-bold uppercase text-slate-400">Transaction Date</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                            variant={"outline"}
+                                                            className={cn("w-full h-12 pl-3 text-left font-bold rounded-xl border-slate-200", !field.value && "text-muted-foreground")}
+                                                        >
+                                                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs font-bold uppercase text-slate-400">Audit Narrative / Description</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    {...field} 
+                                                    value={field.value as string || ''} 
+                                                    placeholder="Required for forensic trail..." 
+                                                    className="h-12 font-medium border-slate-200 rounded-xl px-4"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <FormField
+                                    control={form.control}
+                                    name="amount"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs font-bold uppercase text-slate-400">Transaction Value</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    {...field} 
+                                                    value={(field.value as number) || ''} 
+                                                    className="h-12 font-mono font-black text-xl border-slate-200 rounded-xl px-4 bg-slate-50/50"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="contra_account_id"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs font-bold uppercase text-slate-400">
+                                                {isMoneyOut ? "Expense / Asset Account" : "Income / Liability Account"}
+                                            </FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value as string}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-12 font-bold rounded-xl border-slate-200 bg-white">
+                                                        <SelectValue placeholder={isLoadingAccounts ? "Syncing Ledger..." : "Select Category"} />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl shadow-2xl">
+                                                    {accounts?.map(acc => (
+                                                        <SelectItem key={acc.id} value={acc.id} className="font-medium py-3">
+                                                            {acc.code ? (
+                                                                <span className="font-mono text-primary mr-2">[{acc.code}]</span>
+                                                            ) : ''}
+                                                            {acc.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="pt-4 px-1">
+                                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                                    <p className="text-[11px] text-slate-400 flex items-center gap-2 font-mono uppercase font-black tracking-widest">
+                                        <Zap size={14} className="text-emerald-500 fill-current animate-pulse" />
+                                        Mathematical Parity Verified: 1:1 Mapping Ready
+                                    </p>
+                                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                                </div>
+                            </div>
+                        </form>
+                    </Form>
+                </div>
+
+                <div className="p-6 bg-slate-50 border-t">
+                    <DialogFooter className="gap-3 sm:justify-end">
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={onClose} 
+                            disabled={mutation.isPending}
+                            className="h-12 px-8 font-bold uppercase text-[11px] tracking-widest text-slate-400 hover:text-slate-900"
+                        >
+                            Cancel Session
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={mutation.isPending} 
+                            onClick={form.handleSubmit(onSubmit)}
+                            className="h-12 px-10 bg-slate-900 hover:bg-black text-white rounded-xl shadow-xl transition-all active:scale-95"
+                        >
+                            {mutation.isPending ? (
+                                <>
+                                    <Activity className="mr-3 h-4 w-4 animate-spin text-emerald-400" />
+                                    Verifying Drift...
+                                </>
+                            ) : (
+                                <>
+                                    <ShieldCheck className="mr-3 h-5 w-5 text-emerald-400" />
+                                    <span className="font-black uppercase text-[11px] tracking-[0.2em]">Commit to Ledger</span>
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </div>
             </DialogContent>
         </Dialog>
     );

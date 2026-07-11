@@ -71,7 +71,7 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
   });
 
   // 4. INFRASTRUCTURE AUDIT (GEN & 1210 Check)
-  // FIXED: Handling your 3 duplicate 'GEN' journals safely by using limit(1)
+  // FIXED: Handling your 3 duplicate 'GEN' journals safely by using limit(1) and array length check
   const [arRes, journalRes] = await Promise.all([
     supabase.from("accounting_accounts").select("id").eq("business_id", bizId).eq("code", "1210").maybeSingle(),
     supabase.from("accounting_journals").select("id").eq("business_id", bizId).eq("code", "GEN").limit(1)
@@ -101,21 +101,21 @@ export default async function PaymentsPage({ params: { locale } }: PageProps) {
   if (invoicesRes.error || accountsRes.error) {
     return (
       <div className="p-8 max-w-3xl mx-auto flex h-[80vh] items-center justify-center">
-        <Alert variant="destructive" className="border-none shadow-2xl bg-red-600 text-white rounded-[32px] p-10">
+        <div className="bg-red-600 text-white rounded-[32px] p-10 shadow-2xl w-full">
           <FileWarning className="h-10 w-10 text-white mb-4" />
-          <AlertTitle className="text-3xl font-black tracking-tighter uppercase mb-2">Ledger Desync Error</AlertTitle>
-          <AlertDescription className="text-red-100 font-medium leading-relaxed">
+          <h2 className="text-3xl font-black tracking-tighter uppercase mb-2">Ledger Desync Error</h2>
+          <p className="text-red-100 font-medium leading-relaxed">
             The autonomous engine encountered a logic gap while synchronizing with the General Ledger.
-            <span className="block mt-6 font-mono text-[10px] p-3 bg-red-700/50 rounded-xl uppercase tracking-widest">
-              Technical Root: {invoicesRes.error?.message || accountsRes.error?.message}
-            </span>
-            <div className="mt-8">
-                <Link href={`/${locale}/invoicing/payments`} className="px-6 py-3 bg-white text-red-600 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all">
-                    <RefreshCw className="inline-block mr-2 h-3 w-3" /> Attempt Resync
-                </Link>
-            </div>
-          </AlertDescription>
-        </Alert>
+          </p>
+          <div className="mt-6 font-mono text-[10px] p-3 bg-red-700/50 rounded-xl uppercase tracking-widest overflow-hidden truncate">
+            Technical Root: {invoicesRes.error?.message || accountsRes.error?.message}
+          </div>
+          <div className="mt-8">
+              <Link href={`/${locale}/invoicing/payments`} className="px-8 h-12 inline-flex items-center justify-center bg-white text-red-600 rounded-2xl font-bold uppercase text-[10px] tracking-widest hover:bg-slate-100 transition-all">
+                  <RefreshCw className="mr-2 h-4 w-4" /> Refresh Registry
+              </Link>
+          </div>
+        </div>
       </div>
     );
   }
