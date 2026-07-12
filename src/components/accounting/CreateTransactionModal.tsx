@@ -10,7 +10,8 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { 
   Loader2, CalendarIcon, AlertTriangle, 
-  ShieldCheck, Fingerprint, Activity, Zap, ShieldAlert // Upgrade: Added Forensic Icons
+  ShieldCheck, Fingerprint, Activity, Zap, ShieldAlert,
+  Maximize2, Minimize2, Minus, X // Added for Window Controls
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { Badge } from '../ui/badge'; // Upgrade: For status parity
+import { Badge } from '../ui/badge'; 
 
 // --- TYPES ---
 interface BankTransaction { 
@@ -50,9 +51,7 @@ export interface CreateTransactionModalProps {
 // --- SCHEMA ---
 const transactionSchema = z.object({
   description: z.string().min(1, "Description is required."),
-  // z.coerce allows string inputs (from HTML forms) to be parsed as numbers
   amount: z.coerce.number().positive("Amount must be positive."),
-  // Using z.date() without arguments to avoid type conflicts
   date: z.date(),
   contra_account_id: z.string().min(1, "Please select an account."),
   is_money_out: z.boolean(),
@@ -61,7 +60,6 @@ const transactionSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 // --- API CALLS ---
-
 async function fetchChartOfAccounts(businessId: string): Promise<ChartOfAccount[]> {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -84,8 +82,6 @@ async function createSystemTransaction(vars: {
     bankTxId?: string 
 }) {
     const supabase = createClient();
-    
-    // Upgrade Note: This call now triggers 'trg_ledger_forensics' on the backend
     const { data, error } = await supabase.rpc('create_reconciliation_transaction', {
         p_business_id: vars.businessId,
         p_user_id: vars.userId,
@@ -112,6 +108,7 @@ export function CreateTransactionModal({
     userId
 }: CreateTransactionModalProps) {
     const queryClient = useQueryClient();
+    const [isMaximized, setIsMaximized] = useState(false); // State for Full Screen
 
     const { data: accounts, isLoading: isLoadingAccounts } = useQuery({ 
         queryKey: ['chartOfAccounts', businessId], 
@@ -133,7 +130,6 @@ export function CreateTransactionModal({
     useEffect(() => {
         if (bankTransaction && isOpen) {
             const isMoneyOut = bankTransaction.amount < 0;
-            
             form.reset({
                 description: bankTransaction.description,
                 amount: Math.abs(bankTransaction.amount),
@@ -147,7 +143,6 @@ export function CreateTransactionModal({
     const mutation = useMutation({
         mutationFn: createSystemTransaction,
         onSuccess: () => {
-            // Upgrade: Updated message to reflect Autonomous Guard parity
             toast.success('Journal Entry Saved. Sovereign Forensic Guard established 1:1 parity.', {
                 duration: 5000,
                 icon: <ShieldCheck className="text-emerald-500" />
@@ -173,8 +168,33 @@ export function CreateTransactionModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            {/* DEEP WELD: Widened to 1000px for professional ledger entry perspective */}
-            <DialogContent className="sm:max-w-[1000px] border-slate-200 shadow-2xl overflow-hidden flex flex-col p-0">
+            <DialogContent 
+                className={cn(
+                    "border-slate-200 shadow-2xl overflow-hidden flex flex-col p-0 transition-all duration-300 ease-in-out",
+                    isMaximized 
+                        ? "fixed inset-0 m-0 w-screen h-screen max-w-none rounded-none z-[9999]" 
+                        : "sm:max-w-[1000px] h-[90vh] rounded-3xl"
+                )}
+            >
+                {/* WINDOW CONTROL BAR (The three buttons) */}
+                <div className="flex items-center justify-end gap-1 px-4 py-2 bg-slate-100/50 border-b">
+                    <button className="p-1.5 hover:bg-slate-200 rounded text-slate-500 transition-colors">
+                        <Minus size={14} />
+                    </button>
+                    <button 
+                        onClick={() => setIsMaximized(!isMaximized)}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-500 transition-colors"
+                    >
+                        {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    </button>
+                    <button 
+                        onClick={onClose}
+                        className="p-1.5 hover:bg-red-100 hover:text-red-600 rounded text-slate-500 transition-colors"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+
                 <div className="p-6 bg-slate-50/50 border-b">
                     <DialogHeader>
                         <div className="flex items-center justify-between mb-2">
@@ -192,10 +212,10 @@ export function CreateTransactionModal({
                     </DialogHeader>
                 </div>
 
-                {/* DEEP WELD: Added Scrollable Area for form stability */}
-                <div className="flex-1 overflow-y-auto p-6 max-h-[70vh]">
+                {/* SCROLLABLE AREA - Keeps form content visible */}
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                             
                             <div className={cn(
                                 "flex items-center p-4 rounded-xl text-sm font-bold border uppercase tracking-wider",
@@ -226,7 +246,7 @@ export function CreateTransactionModal({
                                                     <FormControl>
                                                         <Button
                                                             variant={"outline"}
-                                                            className={cn("w-full h-12 pl-3 text-left font-bold rounded-xl border-slate-200", !field.value && "text-muted-foreground")}
+                                                            className={cn("w-full h-14 pl-3 text-left font-bold rounded-xl border-slate-200", !field.value && "text-muted-foreground")}
                                                         >
                                                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -253,7 +273,7 @@ export function CreateTransactionModal({
                                                     {...field} 
                                                     value={field.value as string || ''} 
                                                     placeholder="Required for forensic trail..." 
-                                                    className="h-12 font-medium border-slate-200 rounded-xl px-4"
+                                                    className="h-14 font-medium border-slate-200 rounded-xl px-4"
                                                 />
                                             </FormControl>
                                             <FormMessage />
@@ -270,13 +290,16 @@ export function CreateTransactionModal({
                                         <FormItem>
                                             <FormLabel className="text-xs font-bold uppercase text-slate-400">Transaction Value</FormLabel>
                                             <FormControl>
-                                                <Input 
-                                                    type="number" 
-                                                    step="0.01" 
-                                                    {...field} 
-                                                    value={(field.value as number) || ''} 
-                                                    className="h-12 font-mono font-black text-xl border-slate-200 rounded-xl px-4 bg-slate-50/50"
-                                                />
+                                                <div className="relative">
+                                                    <Input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        {...field} 
+                                                        value={(field.value as number) || ''} 
+                                                        // Increased height and padding to ensure long numbers show clearly
+                                                        className="h-14 font-mono font-black text-2xl border-slate-200 rounded-xl px-6 bg-slate-50/50 w-full"
+                                                    />
+                                                </div>
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -293,11 +316,11 @@ export function CreateTransactionModal({
                                             </FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value as string}>
                                                 <FormControl>
-                                                    <SelectTrigger className="h-12 font-bold rounded-xl border-slate-200 bg-white">
+                                                    <SelectTrigger className="h-14 font-bold rounded-xl border-slate-200 bg-white">
                                                         <SelectValue placeholder={isLoadingAccounts ? "Syncing Ledger..." : "Select Category"} />
                                                     </SelectTrigger>
                                                 </FormControl>
-                                                <SelectContent className="rounded-xl shadow-2xl">
+                                                <SelectContent className="rounded-xl shadow-2xl max-h-[300px]">
                                                     {accounts?.map(acc => (
                                                         <SelectItem key={acc.id} value={acc.id} className="font-medium py-3">
                                                             {acc.code ? (
@@ -327,8 +350,9 @@ export function CreateTransactionModal({
                     </Form>
                 </div>
 
-                <div className="p-6 bg-slate-50 border-t">
-                    <DialogFooter className="gap-3 sm:justify-end">
+                {/* STICKY FOOTER - Always visible at the bottom */}
+                <div className="p-6 bg-slate-50 border-t mt-auto">
+                    <DialogFooter className="gap-3 sm:justify-end flex-row items-center">
                         <Button 
                             type="button" 
                             variant="ghost" 
@@ -342,7 +366,7 @@ export function CreateTransactionModal({
                             type="submit" 
                             disabled={mutation.isPending} 
                             onClick={form.handleSubmit(onSubmit)}
-                            className="h-12 px-10 bg-slate-900 hover:bg-black text-white rounded-xl shadow-xl transition-all active:scale-95"
+                            className="h-12 px-10 bg-slate-900 hover:bg-black text-white rounded-xl shadow-xl transition-all active:scale-95 flex items-center"
                         >
                             {mutation.isPending ? (
                                 <>
