@@ -1,21 +1,21 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { format } from "date-fns";
 import { toast } from 'sonner';
-import { 
-  Card, CardContent, CardHeader, CardTitle, CardDescription 
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription
 } from '@/components/ui/card';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Loader2, Search, Plus, Trash2, BookOpen, ShieldCheck, Fingerprint, Activity,
-  Maximize2, Minimize2, Minus, X, Zap 
+  Maximize2, Minimize2, X, Zap, ChevronLeft, ChevronRight, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from '@/components/ui/badge';
@@ -122,167 +122,271 @@ export const CreateEntryDialog = ({ businessId, isOpen, onClose }: { businessId:
         setLines([{ account_id: '', description: '', debit: 0, credit: 0 }, { account_id: '', description: '', debit: 0, credit: 0 }]);
     };
 
+    // Base UI's Dialog portals its content, so the scrollable body div
+    // doesn't exist in the DOM on the very first render — a plain useRef
+    // would stay null forever. A state-backed callback ref re-fires (and
+    // re-runs the effect below) once the real node actually mounts.
+    const [bodyEl, setBodyEl] = useState<HTMLDivElement | null>(null);
+    const [bodyAtStart, setBodyAtStart] = useState(true);
+    const [bodyAtEnd, setBodyAtEnd] = useState(true);
+    const updateBodyScroll = useCallback(() => {
+        if (!bodyEl) return;
+        setBodyAtStart(bodyEl.scrollTop <= 1);
+        setBodyAtEnd(bodyEl.scrollTop >= bodyEl.scrollHeight - bodyEl.clientHeight - 1);
+    }, [bodyEl]);
+    useEffect(() => {
+        if (!bodyEl) return;
+        updateBodyScroll();
+        const ro = new ResizeObserver(updateBodyScroll);
+        ro.observe(bodyEl);
+        return () => ro.disconnect();
+    }, [bodyEl, updateBodyScroll]);
+
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className={cn(
-                "border-slate-200 shadow-2xl overflow-hidden flex flex-col p-0 transition-all duration-300",
-                isMaximized ? "fixed inset-0 m-0 w-screen h-screen max-w-none rounded-none z-[9999]" : "max-w-6xl w-[95vw] rounded-3xl"
+            <DialogContent showCloseButton={false} className={cn(
+                "border-slate-200 shadow-2xl overflow-hidden flex flex-col p-0 gap-0 transition-all duration-300 ease-out",
+                isMaximized
+                    ? "fixed inset-0 top-0 left-0 translate-x-0 translate-y-0 m-0 w-screen h-screen max-w-none sm:max-w-none max-h-none rounded-none z-[9999]"
+                    : "w-full h-full sm:h-auto sm:max-h-[92vh] sm:w-[95vw] sm:max-w-6xl rounded-none sm:rounded-3xl"
             )}>
-                {/* Windows style header matching "New Product" */}
-                <div className="p-8 bg-white border-b relative">
-                    <div className="flex items-start gap-6">
-                        <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
-                            <BookOpen className="w-8 h-8 text-blue-600" />
+                {/* Page-style header */}
+                <div className="p-5 sm:p-8 bg-white border-b relative shrink-0">
+                    <div className="flex items-start gap-4 sm:gap-6 pr-16 sm:pr-24">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
+                            <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
                         </div>
-                        <div className="flex-1">
-                            <DialogTitle className="text-3xl font-bold text-slate-900 mb-1">
+                        <div className="flex-1 min-w-0">
+                            <DialogTitle className="text-lg sm:text-3xl font-bold text-slate-900 mb-1 truncate">
                                 Record Enterprise Journal Entry
                             </DialogTitle>
-                            <DialogDescription className="text-base text-slate-500 font-medium">
+                            <DialogDescription className="text-xs sm:text-base text-slate-500 font-medium">
                                 Setup double-entry ledger information and mapping.
                             </DialogDescription>
                         </div>
                     </div>
 
                     {/* Window Controls */}
-                    <div className="absolute top-6 right-6 flex items-center gap-2">
-                        <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Minus size={18} /></button>
-                        <button onClick={() => setIsMaximized(!isMaximized)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400">
+                    <div className="absolute top-3 right-3 sm:top-6 sm:right-6 flex items-center gap-1 sm:gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsMaximized(!isMaximized)}
+                            className="hidden sm:inline-flex p-2 hover:bg-slate-100 rounded-lg text-slate-400"
+                            aria-label={isMaximized ? "Restore" : "Maximize"}
+                        >
                             {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                         </button>
-                        <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg text-slate-400 transition-colors"><X size={18} /></button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg text-slate-400 transition-colors"
+                            aria-label="Close"
+                        >
+                            <X size={18} />
+                        </button>
                     </div>
                 </div>
-                
+
                 {/* Main Form Body */}
-                <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-slate-50/20">
+                <div
+                    ref={setBodyEl}
+                    onScroll={updateBodyScroll}
+                    className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-10 custom-scrollbar bg-slate-50/20"
+                >
+                    {!bodyAtStart && (
+                        <div className="sticky top-0 z-10 h-0 flex justify-center overflow-visible pointer-events-none">
+                            <div className="h-7 w-7 translate-y-1 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
+                                <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                            </div>
+                        </div>
+                    )}
                     {/* Header Inputs Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
-                        <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6 md:gap-10 mb-6 sm:mb-10">
+                        <div className="space-y-2 sm:space-y-3">
                             <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">Posting Date</Label>
-                            <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-14 font-bold border-slate-200 rounded-xl px-6 bg-white shadow-sm text-lg" />
+                            <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-12 sm:h-14 font-bold border-slate-200 rounded-xl px-4 sm:px-6 bg-white shadow-sm text-base sm:text-lg" />
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-2 sm:space-y-3">
                             <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">Reference #</Label>
-                            <Input placeholder="JE-2024-001" value={reference} onChange={e => setReference(e.target.value)} className="h-14 font-bold border-slate-200 rounded-xl px-6 bg-white shadow-sm text-lg" />
+                            <Input placeholder="JE-2024-001" value={reference} onChange={e => setReference(e.target.value)} className="h-12 sm:h-14 font-bold border-slate-200 rounded-xl px-4 sm:px-6 bg-white shadow-sm text-base sm:text-lg" />
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-2 sm:space-y-3 sm:col-span-2 md:col-span-1">
                             <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">Master Narrative</Label>
-                            <Input placeholder="Reason for entry..." value={description} onChange={e => setDescription(e.target.value)} className="h-14 font-bold border-slate-200 rounded-xl px-6 bg-white shadow-sm text-lg" />
+                            <Input placeholder="Reason for entry..." value={description} onChange={e => setDescription(e.target.value)} className="h-12 sm:h-14 font-bold border-slate-200 rounded-xl px-4 sm:px-6 bg-white shadow-sm text-base sm:text-lg" />
                         </div>
                     </div>
 
-                    {/* Ledger Table Section */}
-                    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl mb-10">
-                        <Table>
-                            <TableHeader className="bg-slate-50/50 border-b border-slate-100">
-                                <TableRow className="h-16">
-                                    <TableHead className="w-[350px] pl-8 text-[11px] font-black uppercase text-slate-400 tracking-widest">Account Ledger</TableHead>
-                                    <TableHead className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Line Label</TableHead>
-                                    <TableHead className="text-right w-[200px] text-[11px] font-black uppercase text-slate-400 tracking-widest">Debit (DR)</TableHead>
-                                    <TableHead className="text-right w-[200px] text-[11px] font-black uppercase text-slate-400 tracking-widest pr-8">Credit (CR)</TableHead>
-                                    <TableHead className="w-[80px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {lines.map((line, i) => (
-                                    <TableRow key={i} className="group border-b border-slate-50 last:border-0">
-                                        <TableCell className="pl-8 py-5">
-                                            <Select value={line.account_id} onValueChange={(v) => { const n = [...lines]; n[i].account_id = v; setLines(n); }}>
-                                                <SelectTrigger className="h-12 border-slate-200 rounded-xl font-semibold shadow-sm">
-                                                    <SelectValue placeholder="Select account..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl shadow-2xl">
-                                                    {accounts?.map(a => <SelectItem key={a.id} value={a.id} className="py-2 px-4 font-medium"><span className="text-blue-600 font-mono mr-2">[{a.code}]</span> {a.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input 
-                                                value={line.description} 
-                                                onChange={e => { const n = [...lines]; n[i].description = e.target.value; setLines(n); }} 
-                                                placeholder={description || "Enter line narrative..."} 
-                                                className="h-12 border-slate-200 rounded-xl font-medium shadow-sm"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input 
-                                                type="number" 
-                                                className="h-12 text-right font-mono font-black text-blue-700 border-slate-200 rounded-xl text-lg shadow-sm bg-slate-50/30" 
-                                                value={line.debit || ''} 
-                                                onChange={e => { const n = [...lines]; n[i].debit = parseFloat(e.target.value) || 0; n[i].credit = 0; setLines(n); }} 
-                                            />
-                                        </TableCell>
-                                        <TableCell className="pr-8">
-                                            <Input 
-                                                type="number" 
-                                                className="h-12 text-right font-mono font-black text-red-700 border-slate-200 rounded-xl text-lg shadow-sm bg-slate-50/30" 
-                                                value={line.credit || ''} 
-                                                onChange={e => { const n = [...lines]; n[i].credit = parseFloat(e.target.value) || 0; n[i].debit = 0; setLines(n); }} 
-                                            />
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Button variant="ghost" size="icon" onClick={() => setLines(lines.filter((_, idx) => idx !== i))} disabled={lines.length <= 2} className="hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg">
-                                                <Trash2 size={18} />
-                                            </Button>
-                                        </TableCell>
+                    {/* Ledger Section */}
+                    <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl mb-6 sm:mb-10">
+                        {/* Desktop/tablet: full table */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-slate-50/50 border-b border-slate-100">
+                                    <TableRow className="h-16">
+                                        <TableHead className="w-[280px] pl-8 text-[11px] font-black uppercase text-slate-400 tracking-widest">Account Ledger</TableHead>
+                                        <TableHead className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Line Label</TableHead>
+                                        <TableHead className="text-right w-[160px] text-[11px] font-black uppercase text-slate-400 tracking-widest">Debit (DR)</TableHead>
+                                        <TableHead className="text-right w-[160px] text-[11px] font-black uppercase text-slate-400 tracking-widest pr-8">Credit (CR)</TableHead>
+                                        <TableHead className="w-[64px]"></TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                        <div className="p-6 bg-slate-50/30 border-t border-slate-100">
-                            <Button variant="outline" onClick={() => setLines([...lines, { account_id: '', description: '', debit: 0, credit: 0 }])} className="h-11 px-6 rounded-xl border-slate-200 font-bold hover:bg-white shadow-sm">
+                                </TableHeader>
+                                <TableBody>
+                                    {lines.map((line, i) => (
+                                        <TableRow key={i} className="group border-b border-slate-50 last:border-0">
+                                            <TableCell className="pl-8 py-5">
+                                                <Select value={line.account_id} onValueChange={(v) => { const n = [...lines]; n[i].account_id = v; setLines(n); }}>
+                                                    <SelectTrigger className="h-12 border-slate-200 rounded-xl font-semibold shadow-sm">
+                                                        <SelectValue placeholder="Select account..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl shadow-2xl">
+                                                        {accounts?.map(a => <SelectItem key={a.id} value={a.id} className="py-2 px-4 font-medium"><span className="text-blue-600 font-mono mr-2">[{a.code}]</span> {a.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    value={line.description}
+                                                    onChange={e => { const n = [...lines]; n[i].description = e.target.value; setLines(n); }}
+                                                    placeholder={description || "Enter line narrative..."}
+                                                    className="h-12 border-slate-200 rounded-xl font-medium shadow-sm"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    type="number"
+                                                    className="h-12 text-right font-mono font-black text-blue-700 border-slate-200 rounded-xl text-lg shadow-sm bg-slate-50/30"
+                                                    value={line.debit || ''}
+                                                    onChange={e => { const n = [...lines]; n[i].debit = parseFloat(e.target.value) || 0; n[i].credit = 0; setLines(n); }}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="pr-8">
+                                                <Input
+                                                    type="number"
+                                                    className="h-12 text-right font-mono font-black text-red-700 border-slate-200 rounded-xl text-lg shadow-sm bg-slate-50/30"
+                                                    value={line.credit || ''}
+                                                    onChange={e => { const n = [...lines]; n[i].credit = parseFloat(e.target.value) || 0; n[i].debit = 0; setLines(n); }}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Button variant="ghost" size="icon" onClick={() => setLines(lines.filter((_, idx) => idx !== i))} disabled={lines.length <= 2} className="hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg">
+                                                    <Trash2 size={18} />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Mobile: stacked line cards */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {lines.map((line, i) => (
+                                <div key={i} className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Line {i + 1}</span>
+                                        <Button variant="ghost" size="icon" onClick={() => setLines(lines.filter((_, idx) => idx !== i))} disabled={lines.length <= 2} className="h-8 w-8 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg">
+                                            <Trash2 size={16} />
+                                        </Button>
+                                    </div>
+                                    <Select value={line.account_id} onValueChange={(v) => { const n = [...lines]; n[i].account_id = v; setLines(n); }}>
+                                        <SelectTrigger className="h-12 w-full border-slate-200 rounded-xl font-semibold shadow-sm">
+                                            <SelectValue placeholder="Select account..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl shadow-2xl">
+                                            {accounts?.map(a => <SelectItem key={a.id} value={a.id} className="py-2 px-4 font-medium"><span className="text-blue-600 font-mono mr-2">[{a.code}]</span> {a.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <Input
+                                        value={line.description}
+                                        onChange={e => { const n = [...lines]; n[i].description = e.target.value; setLines(n); }}
+                                        placeholder={description || "Enter line narrative..."}
+                                        className="h-12 border-slate-200 rounded-xl font-medium shadow-sm"
+                                    />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Debit</Label>
+                                            <Input
+                                                type="number"
+                                                className="h-12 text-right font-mono font-black text-blue-700 border-slate-200 rounded-xl shadow-sm bg-slate-50/30"
+                                                value={line.debit || ''}
+                                                onChange={e => { const n = [...lines]; n[i].debit = parseFloat(e.target.value) || 0; n[i].credit = 0; setLines(n); }}
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Credit</Label>
+                                            <Input
+                                                type="number"
+                                                className="h-12 text-right font-mono font-black text-red-700 border-slate-200 rounded-xl shadow-sm bg-slate-50/30"
+                                                value={line.credit || ''}
+                                                onChange={e => { const n = [...lines]; n[i].credit = parseFloat(e.target.value) || 0; n[i].debit = 0; setLines(n); }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-4 sm:p-6 bg-slate-50/30 border-t border-slate-100">
+                            <Button variant="outline" onClick={() => setLines([...lines, { account_id: '', description: '', debit: 0, credit: 0 }])} className="w-full sm:w-auto h-11 px-6 rounded-xl border-slate-200 font-bold hover:bg-white shadow-sm">
                                 <Plus className="w-4 h-4 mr-2 text-blue-600" /> Add Journal Line
                             </Button>
                         </div>
                     </div>
 
                     {/* Enhanced Balance Bar */}
-                    <div className="flex items-center justify-between p-8 bg-slate-900 rounded-3xl shadow-2xl border border-slate-800">
-                        <div className="flex gap-16 font-mono">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-5 sm:gap-6 p-5 sm:p-8 bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-800">
+                        <div className="flex justify-between sm:justify-start gap-6 sm:gap-16 font-mono">
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Total Debits</span>
-                                <span className="text-3xl text-blue-400 font-black">{totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                <span className="text-xl sm:text-3xl text-blue-400 font-black">{totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-800 pl-16">
+                            <div className="flex flex-col border-l border-slate-800 pl-6 sm:pl-16">
                                 <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Total Credits</span>
-                                <span className="text-3xl text-red-400 font-black">{totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                <span className="text-xl sm:text-3xl text-red-400 font-black">{totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                             </div>
                         </div>
                         <div className={cn(
-                            "flex items-center gap-4 px-8 py-4 rounded-2xl border-2 transition-all shadow-inner",
+                            "flex items-center justify-center gap-3 sm:gap-4 px-5 sm:px-8 py-3 sm:py-4 rounded-2xl border-2 transition-all shadow-inner",
                             isBalanced ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-red-500/10 border-red-500 text-red-400 animate-pulse"
                         )}>
                             <div className="flex-shrink-0">
-                                {isBalanced ? <ShieldCheck size={32} /> : <Zap size={32} className="animate-pulse" />}
+                                {isBalanced ? <ShieldCheck size={28} className="sm:w-8 sm:h-8" /> : <Zap size={28} className="animate-pulse sm:w-8 sm:h-8" />}
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-sm font-black uppercase tracking-widest">{isBalanced ? "MATH PARITY VERIFIED" : "UNBALANCED LEDGER"}</span>
+                                <span className="text-xs sm:text-sm font-black uppercase tracking-widest">{isBalanced ? "MATH PARITY VERIFIED" : "UNBALANCED LEDGER"}</span>
                                 {!isBalanced && <span className="text-xs font-mono font-bold">Diff: {difference.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
                             </div>
                         </div>
                     </div>
+
+                    {!bodyAtEnd && (
+                        <div className="sticky bottom-0 z-10 h-0 flex justify-center overflow-visible pointer-events-none">
+                            <div className="h-7 w-7 -translate-y-1 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
+                                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Wide Footer matching "New Product" */}
-                <div className="p-8 bg-slate-50/50 border-t flex items-center justify-between">
-                    <Button type="button" variant="ghost" onClick={onClose} disabled={mutation.isPending} className="h-12 px-8 font-black uppercase text-xs tracking-widest text-slate-400 hover:text-slate-900">
+                {/* Footer */}
+                <div className="p-4 sm:p-8 bg-slate-50/50 border-t flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 shrink-0">
+                    <Button type="button" variant="ghost" onClick={onClose} disabled={mutation.isPending} className="w-full sm:w-auto h-11 sm:h-12 px-6 sm:px-8 font-black uppercase text-xs tracking-widest text-slate-400 hover:text-slate-900">
                         Cancel Entry
                     </Button>
-                    <Button 
-                        onClick={() => mutation.mutate({ businessId, date, description, reference, lines })} 
+                    <Button
+                        onClick={() => mutation.mutate({ businessId, date, description, reference, lines })}
                         disabled={!isBalanced || mutation.isPending}
-                        className="h-14 px-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all active:scale-95 flex items-center"
+                        className="w-full sm:w-auto h-12 sm:h-14 px-8 sm:px-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all active:scale-95 flex items-center justify-center"
                     >
                         {mutation.isPending ? (
                             <>
-                                <Activity className="mr-3 h-5 w-5 animate-spin" />
-                                <span className="font-black uppercase text-xs tracking-[0.2em]">Posting to Ledger...</span>
+                                <Activity className="mr-2 sm:mr-3 h-5 w-5 animate-spin shrink-0" />
+                                <span className="font-black uppercase text-xs tracking-wide sm:tracking-[0.2em] whitespace-nowrap">Posting to Ledger...</span>
                             </>
                         ) : (
                             <>
-                                <ShieldCheck className="mr-3 h-5 w-5" />
-                                <span className="font-black uppercase text-xs tracking-[0.2em]">Authorize & Post Journal</span>
+                                <ShieldCheck className="mr-2 sm:mr-3 h-5 w-5 shrink-0" />
+                                <span className="font-black uppercase text-xs tracking-wide sm:tracking-[0.2em] whitespace-nowrap">Authorize & Post Journal</span>
                             </>
                         )}
                     </Button>
@@ -296,16 +400,35 @@ export const CreateEntryDialog = ({ businessId, isOpen, onClose }: { businessId:
 export default function GeneralJournalTable({ initialEntries, businessId, userId }: { initialEntries: JournalTransaction[], businessId: string, userId: string }) {
     const [filter, setFilter] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    const tableRef = useRef<HTMLDivElement>(null);
+    const [tableAtStart, setTableAtStart] = useState(true);
+    const [tableAtEnd, setTableAtEnd] = useState(true);
+    const updateTableScroll = useCallback(() => {
+        const el = tableRef.current;
+        if (!el) return;
+        setTableAtStart(el.scrollLeft <= 1);
+        setTableAtEnd(el.scrollLeft >= el.scrollWidth - el.clientWidth - 1);
+    }, []);
+    useEffect(() => {
+        updateTableScroll();
+        const el = tableRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(updateTableScroll);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [updateTableScroll]);
 
-    const { data: entries, isLoading } = useQuery({ 
-        queryKey: ['journal_entries', businessId], 
-        queryFn: () => fetchJournalEntries(businessId), 
-        initialData: initialEntries 
+    const { data: entries, isLoading } = useQuery({
+        queryKey: ['journal_entries', businessId],
+        queryFn: () => fetchJournalEntries(businessId),
+        initialData: initialEntries
     });
 
     return (
         <div className="space-y-6 relative">
-            <div className="flex justify-between items-center px-2">
+            {/* Desktop toolbar */}
+            <div className="hidden sm:flex justify-between items-center px-2">
                 <div className="relative max-w-sm w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input placeholder="Search narratives or references..." value={filter} onChange={e => setFilter(e.target.value)} className="h-12 pl-12 bg-white shadow-sm rounded-2xl border-slate-200" />
@@ -318,8 +441,52 @@ export default function GeneralJournalTable({ initialEntries, businessId, userId
                 </div>
             </div>
 
+            {/* Mobile toolbar: search collapses to an icon button so it can't
+                overlap the action buttons; tapping it reveals the full bar. */}
+            <div className="sm:hidden px-2">
+                {mobileSearchOpen ? (
+                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="relative flex-1 min-w-0">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                autoFocus
+                                placeholder="Search narratives or references..."
+                                value={filter}
+                                onChange={e => setFilter(e.target.value)}
+                                className="h-11 pl-10 bg-white shadow-sm rounded-2xl border-slate-200 w-full"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => { setMobileSearchOpen(false); setFilter(''); }}
+                            className="shrink-0 h-11 px-3 text-xs font-bold text-slate-500 hover:text-slate-900"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                        <button
+                            type="button"
+                            onClick={() => setMobileSearchOpen(true)}
+                            aria-label="Search"
+                            className="h-11 w-11 shrink-0 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-center"
+                        >
+                            <Search className="h-4 w-4 text-slate-400" />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" className="h-11 w-11 rounded-2xl border-slate-200 p-0 shrink-0"><Fingerprint className="w-5 h-5 text-slate-400" /></Button>
+                            <Button onClick={() => setIsOpen(true)} className="h-11 px-4 shadow-lg rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shrink-0">
+                                <Plus className="w-4 h-4 mr-1.5" /> New Entry
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <Card className="border-slate-200 shadow-2xl overflow-hidden rounded-[2rem]">
-                <Table>
+                <div className="relative">
+                <Table containerRef={tableRef} onScroll={updateTableScroll} containerClassName="custom-scrollbar">
                     <TableHeader className="bg-slate-50/50 border-b border-slate-100">
                         <TableRow className="h-16">
                             <TableHead className="w-[180px] pl-8 text-[11px] font-black uppercase text-slate-400 tracking-widest">Posting Date</TableHead>
@@ -368,6 +535,17 @@ export default function GeneralJournalTable({ initialEntries, businessId, userId
                         ))}
                     </TableBody>
                 </Table>
+                {!tableAtStart && (
+                    <div className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center">
+                        <ChevronLeft className="h-4 w-4 text-slate-500" />
+                    </div>
+                )}
+                {!tableAtEnd && (
+                    <div className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center">
+                        <ChevronRight className="h-4 w-4 text-slate-500" />
+                    </div>
+                )}
+                </div>
                 <div className="p-5 bg-slate-50/50 border-t flex items-center justify-between text-[10px] text-slate-400 font-black uppercase tracking-widest">
                     <div className="flex items-center gap-2 pl-3"><Activity className="w-3.5 h-3.5 text-emerald-500" /> Live Ledger Sync Active</div>
                     <div className="pr-3">Immutable Records | Auth: {userId.substring(0,8)}...</div>
