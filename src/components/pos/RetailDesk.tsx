@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useLiveQuery } from 'dexie-react-hooks';
 import html2canvas from 'html2canvas'; // THE APEX IMAGE ENGINE
@@ -43,8 +43,11 @@ import {
     CheckCircle2,
     Share2, // NEW FOR DIGITAL HANDSHAKE
     LayoutGrid,
+    Rows3,
     ReceiptText,
-    CreditCard // ICON FOR MOBILE PAY ACTION
+    CreditCard, // ICON FOR MOBILE PAY ACTION
+    ChevronUp,
+    ChevronDown
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -72,7 +75,24 @@ interface Discount {
  */
 const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, onSKUScan: (sku: string) => void, disabled: boolean }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
+    const [gridAtTop, setGridAtTop] = useState(true);
+    const [gridAtBottom, setGridAtBottom] = useState(true);
+    const updateGridScroll = useCallback(() => {
+        if (!gridEl) return;
+        setGridAtTop(gridEl.scrollTop <= 1);
+        setGridAtBottom(gridEl.scrollTop >= gridEl.scrollHeight - gridEl.clientHeight - 1);
+    }, [gridEl]);
+    useEffect(() => {
+        if (!gridEl) return;
+        updateGridScroll();
+        const ro = new ResizeObserver(updateGridScroll);
+        ro.observe(gridEl);
+        return () => ro.disconnect();
+    }, [gridEl, updateGridScroll]);
 
     const filteredProducts = useMemo(() =>
         products.filter(p =>
@@ -108,38 +128,89 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
 
     return (
         <div className={cn('flex flex-col h-full bg-white rounded-2xl lg:shadow-sm border border-slate-100 overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
-            <div className="p-4 border-b relative bg-slate-50/30 shrink-0">
-                <Barcode className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500" />
-                <Input 
-                    ref={inputRef}
-                    placeholder="Scan or Search Inventory..." 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)} 
-                    className="pl-10 h-12 rounded-xl border-slate-200 focus:ring-blue-500 font-medium" 
-                />
+            <div className="p-4 border-b relative bg-slate-50/30 shrink-0 flex items-center gap-2">
+                <div className="relative flex-1">
+                    <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500" />
+                    <Input
+                        ref={inputRef}
+                        placeholder="Scan or Search Inventory..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="pl-10 h-12 rounded-xl border-slate-200 focus:ring-blue-500 font-medium"
+                    />
+                </div>
+                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('grid')}
+                        aria-label="Grid view"
+                        className={cn('h-9 w-9 rounded-lg flex items-center justify-center transition-colors', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50')}
+                    >
+                        <LayoutGrid className="h-4 w-4" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode('list')}
+                        aria-label="List view"
+                        className={cn('h-9 w-9 rounded-lg flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50')}
+                    >
+                        <Rows3 className="h-4 w-4" />
+                    </button>
+                </div>
             </div>
             {/* DEEP SCROLLING: This section scrolls while the search bar stays fixed */}
-            <ScrollArea className="flex-1 w-full">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-40">
-                    {filteredProducts.map(product => (
-                        <Card 
-                            key={product.variant_id} 
-                            onClick={() => onProductSelect(product)} 
-                            className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden group border-slate-100 rounded-xl"
-                        >
-                            <CardContent className="p-3 lg:p-4 flex flex-col items-center justify-center text-center space-y-2">
-                                <div className="h-10 flex items-center justify-center">
-                                    <p className="font-bold text-[12px] lg:text-[13px] leading-tight text-slate-800 line-clamp-2">{product.product_name}</p>
-                                </div>
-                                <Badge variant="secondary" className="text-[8px] lg:text-[9px] uppercase tracking-tighter bg-slate-100 text-slate-500 border-none">
-                                    {product.variant_name}
-                                </Badge>
-                                <p className="font-black text-blue-600 text-[12px] lg:text-sm mt-1">UGX {product.price.toLocaleString()}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </ScrollArea>
+            <div className="relative flex-1 min-h-0">
+                <ScrollArea viewportRef={setGridEl} onScroll={updateGridScroll} className="h-full w-full">
+                    {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4 p-4 lg:p-6 pb-40">
+                            {filteredProducts.map(product => (
+                                <Card
+                                    key={product.variant_id}
+                                    onClick={() => onProductSelect(product)}
+                                    className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden group border-slate-100 rounded-xl"
+                                >
+                                    <CardContent className="p-3 lg:p-4 flex flex-col items-center justify-center text-center space-y-2">
+                                        <div className="h-10 flex items-center justify-center">
+                                            <p className="font-bold text-[12px] lg:text-[13px] leading-tight text-slate-800 line-clamp-2">{product.product_name}</p>
+                                        </div>
+                                        <Badge variant="secondary" className="text-[8px] lg:text-[9px] uppercase tracking-tighter bg-slate-100 text-slate-500 border-none">
+                                            {product.variant_name}
+                                        </Badge>
+                                        <p className="font-black text-blue-600 text-[12px] lg:text-sm mt-1">UGX {product.price.toLocaleString()}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100 pb-40">
+                            {filteredProducts.map(product => (
+                                <button
+                                    key={product.variant_id}
+                                    type="button"
+                                    onClick={() => onProductSelect(product)}
+                                    className="w-full flex items-center justify-between gap-4 px-4 lg:px-6 py-3.5 hover:bg-blue-50/50 transition-colors text-left"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm text-slate-800 truncate">{product.product_name}</p>
+                                        <p className="text-[10px] text-slate-400 font-semibold uppercase">{product.variant_name} · {product.sku}</p>
+                                    </div>
+                                    <span className="font-black text-blue-600 text-sm shrink-0">UGX {product.price.toLocaleString()}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+                {!gridAtTop && (
+                    <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
+                        <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                    </div>
+                )}
+                {!gridAtBottom && (
+                    <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -149,14 +220,25 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
  * MASTER FIX: Sovereign Sticky Footer logic implemented.
  */
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency }: { cart: CartItem[], onUpdateQuantity: (id: number, newQty: number) => void, onRemoveItem: (id: number) => void, selectedCustomer: Customer | null, onSetCustomer: () => void, onCharge: () => void, isProcessing: boolean, discount: Discount, setDiscount: (d: Discount) => void, currency: string }) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    
+    const [itemsEl, setItemsEl] = useState<HTMLDivElement | null>(null);
+    const [itemsAtTop, setItemsAtTop] = useState(true);
+    const [itemsAtBottom, setItemsAtBottom] = useState(true);
+    const updateItemsScroll = useCallback(() => {
+        if (!itemsEl) return;
+        setItemsAtTop(itemsEl.scrollTop <= 1);
+        setItemsAtBottom(itemsEl.scrollTop >= itemsEl.scrollHeight - itemsEl.clientHeight - 1);
+    }, [itemsEl]);
     useEffect(() => {
-        if (scrollRef.current) {
-            const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (scrollContainer) scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
-        }
-    }, [cart.length]);
+        if (!itemsEl) return;
+        updateItemsScroll();
+        const ro = new ResizeObserver(updateItemsScroll);
+        ro.observe(itemsEl);
+        return () => ro.disconnect();
+    }, [itemsEl, updateItemsScroll]);
+
+    useEffect(() => {
+        if (itemsEl) itemsEl.scrollTo({ top: itemsEl.scrollHeight, behavior: 'smooth' });
+    }, [cart.length, itemsEl]);
 
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
     const discountAmount = useMemo(() => {
@@ -182,13 +264,15 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                         <span className="text-[8px] lg:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Standard Retail</span>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={onSetCustomer} className="bg-transparent border-slate-700 text-white hover:bg-slate-800 font-bold text-[9px] lg:text-[10px] uppercase h-8">
+                <Button variant="outline" size="sm" onClick={onSetCustomer} className="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white hover:border-slate-600 font-bold text-[9px] lg:text-[10px] uppercase h-8">
                     Change (F2)
                 </Button>
             </div>
-            
-            {/* DEEP INTERNAL SCROLL AREA: Only this middle section moves. */}
-            <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/30">
+
+            {/* DEEP INTERNAL SCROLL AREA: Only this middle section moves. The
+                footer below stays pinned via shrink-0 regardless of list length. */}
+            <div className="relative flex-1 min-h-0">
+            <ScrollArea viewportRef={setItemsEl} onScroll={updateItemsScroll} className="h-full bg-slate-50/30">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full py-20 text-slate-300">
                         <ShoppingCart className="h-12 w-12 opacity-20" />
@@ -227,8 +311,19 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     </div>
                 )}
             </ScrollArea>
-            
-            {/* PINNED FOOTER: shrink-0 ensures the Pay Now button stays visible. */}
+            {!itemsAtTop && (
+                <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
+                    <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                </div>
+            )}
+            {!itemsAtBottom && (
+                <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                </div>
+            )}
+            </div>
+
+            {/* PINNED FOOTER: shrink-0 ensures the Pay Now button stays visible regardless of item-list length. */}
             <div className="p-4 lg:p-6 border-t bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.05)] space-y-4 lg:space-y-5 shrink-0 z-20 pb-20 lg:pb-6">
                 <div className="space-y-2 lg:space-y-3">
                     <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
@@ -236,10 +331,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     </div>
                     <div className="flex justify-between items-center">
                         <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="link" className="p-0 h-auto text-blue-600 font-black uppercase text-[9px] lg:text-[10px] tracking-widest gap-1">
-                                    <Tag className="h-3 w-3" /> Adjust Discount
-                                </Button>
+                            <PopoverTrigger render={<Button variant="link" className="p-0 h-auto text-blue-600 font-black uppercase text-[9px] lg:text-[10px] tracking-widest gap-1" />}>
+                                <Tag className="h-3 w-3" /> Adjust Discount
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-4 rounded-2xl border-none shadow-2xl space-y-4">
                                 <div className="space-y-2">

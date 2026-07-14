@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, OfflineSale } from '@/lib/db';
@@ -14,10 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-    X, User, Plus, Minus, Printer as PrinterIcon, RefreshCw, 
+    X, User, Plus, Minus, Printer as PrinterIcon, RefreshCw,
     FileText, Loader2, Tag, Calculator, CheckCircle2,
     ShieldAlert, Lock, Zap, KeyRound, CheckCircle, Barcode,
-    Search, ShoppingCart, CreditCard, LayoutGrid, ReceiptText
+    Search, ShoppingCart, CreditCard, LayoutGrid, Rows3, ReceiptText,
+    ChevronUp, ChevronDown
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -51,7 +52,24 @@ type SearchResultProduct = {
 
 // --- PRODUCT GRID (DEEP UPGRADE: INTERNAL SCROLLING) ---
 const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { products: SellableProduct[], onProductSelect: (product: SellableProduct) => void, disabled: boolean, onSKUScan: (sku: string) => void }) => {
-    
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
+    const [gridAtTop, setGridAtTop] = useState(true);
+    const [gridAtBottom, setGridAtBottom] = useState(true);
+    const updateGridScroll = useCallback(() => {
+        if (!gridEl) return;
+        setGridAtTop(gridEl.scrollTop <= 1);
+        setGridAtBottom(gridEl.scrollTop >= gridEl.scrollHeight - gridEl.clientHeight - 1);
+    }, [gridEl]);
+    useEffect(() => {
+        if (!gridEl) return;
+        updateGridScroll();
+        const ro = new ResizeObserver(updateGridScroll);
+        ro.observe(gridEl);
+        return () => ro.disconnect();
+    }, [gridEl, updateGridScroll]);
+
     useEffect(() => {
         let barcode = '';
         let lastKeyTime = new Date(0);
@@ -76,37 +94,102 @@ const ProductGrid = ({ products, onProductSelect, disabled, onSKUScan }: { produ
         <div className={cn('flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
             <div className="p-4 border-b bg-slate-50 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Quick Selection</h3>
-                <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600">
-                    <Barcode size={14} /> SCANNER READY
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('grid')}
+                            aria-label="Grid view"
+                            className={cn('h-7 w-7 rounded-md flex items-center justify-center transition-colors', viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50')}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('list')}
+                            aria-label="List view"
+                            className={cn('h-7 w-7 rounded-md flex items-center justify-center transition-colors', viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-50')}
+                        >
+                            <Rows3 className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600">
+                        <Barcode size={14} /> SCANNER READY
+                    </div>
                 </div>
             </div>
             {/* DEEP SCROLL AREA: flex-1 allows this middle section to grow and scroll independently */}
-            <ScrollArea className="flex-1 w-full">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pb-40 lg:pb-10">
-                    {products.map(product => (
-                        <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                                {(product as any).units_per_pack > 1 && (
-                                    <div className="absolute top-0 right-0 p-1 bg-blue-600 text-white rounded-bl-lg">
-                                        <Calculator className="w-3 h-3" />
+            <div className="relative flex-1 min-h-0">
+                <ScrollArea viewportRef={setGridEl} onScroll={updateGridScroll} className="h-full w-full">
+                    {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pb-40 lg:pb-10">
+                            {products.map(product => (
+                                <Card key={product.variant_id} onClick={() => onProductSelect(product)} className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden bg-white border-slate-100 min-h-[140px]">
+                                    <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                        {(product as any).units_per_pack > 1 && (
+                                            <div className="absolute top-0 right-0 p-1 bg-blue-600 text-white rounded-bl-lg">
+                                                <Calculator className="w-3 h-3" />
+                                            </div>
+                                        )}
+                                        <p className="font-bold text-sm text-slate-800 line-clamp-2">{product.product_name}</p>
+                                        <p className="text-[10px] text-slate-400 font-semibold uppercase mt-1">{product.variant_name}</p>
+                                        <p className="mt-3 font-bold text-blue-600">{(product.price || 0).toLocaleString()}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100 pb-40 lg:pb-10">
+                            {products.map(product => (
+                                <button
+                                    key={product.variant_id}
+                                    type="button"
+                                    onClick={() => onProductSelect(product)}
+                                    className="w-full flex items-center justify-between gap-4 px-4 py-3.5 hover:bg-blue-50/50 transition-colors text-left"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm text-slate-800 truncate">{product.product_name}</p>
+                                        <p className="text-[10px] text-slate-400 font-semibold uppercase">{product.variant_name}</p>
                                     </div>
-                                )}
-                                <p className="font-bold text-sm text-slate-800 line-clamp-2">{product.product_name}</p>
-                                <p className="text-[10px] text-slate-400 font-semibold uppercase mt-1">{product.variant_name}</p>
-                                <p className="mt-3 font-bold text-blue-600">{(product.price || 0).toLocaleString()}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </ScrollArea>
+                                    <span className="font-bold text-blue-600 shrink-0">{(product.price || 0).toLocaleString()}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+                {!gridAtTop && (
+                    <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
+                        <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                    </div>
+                )}
+                {!gridAtBottom && (
+                    <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
 
 // --- CART DISPLAY (DEEP UPGRADE: SOVEREIGN STICKY FOOTER) ---
 const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, onSetCustomer, onCharge, isProcessing, discount, setDiscount, currency = 'UGX' }: any) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    
+    const [itemsEl, setItemsEl] = useState<HTMLDivElement | null>(null);
+    const [itemsAtTop, setItemsAtTop] = useState(true);
+    const [itemsAtBottom, setItemsAtBottom] = useState(true);
+    const updateItemsScroll = useCallback(() => {
+        if (!itemsEl) return;
+        setItemsAtTop(itemsEl.scrollTop <= 1);
+        setItemsAtBottom(itemsEl.scrollTop >= itemsEl.scrollHeight - itemsEl.clientHeight - 1);
+    }, [itemsEl]);
+    useEffect(() => {
+        if (!itemsEl) return;
+        updateItemsScroll();
+        const ro = new ResizeObserver(updateItemsScroll);
+        ro.observe(itemsEl);
+        return () => ro.disconnect();
+    }, [itemsEl, updateItemsScroll]);
+
     const subtotal = useMemo(() => cart.reduce((acc: any, item: any) => acc + item.price * item.quantity, 0), [cart]);
     const discountAmount = useMemo(() => {
         if (discount.type === 'percentage') return (subtotal * discount.value) / 100;
@@ -115,12 +198,9 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     const total = subtotal - discountAmount;
 
     useEffect(() => {
-        if (scrollRef.current) {
-            const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-        }
-    }, [cart.length]);
-    
+        if (itemsEl) itemsEl.scrollTo({ top: itemsEl.scrollHeight, behavior: 'smooth' });
+    }, [cart.length, itemsEl]);
+
     return (
         /* MASTER FIX: h-full and flex-col locks the cart container. Header/Footer shrink-0, Middle flex-1. */
         <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
@@ -137,11 +217,13 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                         </span>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" className="font-bold text-[10px] h-8 bg-transparent border-slate-700 text-white" onClick={onSetCustomer}>Change (F2)</Button>
+                <Button variant="outline" size="sm" className="font-bold text-[10px] h-8 bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white hover:border-slate-600" onClick={onSetCustomer}>Change (F2)</Button>
             </div>
 
-            {/* SCROLLABLE ITEMS MIDDLE (Deep internal scroll) */}
-            <ScrollArea ref={scrollRef} className="flex-1 bg-slate-50/20">
+            {/* SCROLLABLE ITEMS MIDDLE (Deep internal scroll). Footer below
+                stays pinned via shrink-0 regardless of list length. */}
+            <div className="relative flex-1 min-h-0">
+            <ScrollArea viewportRef={setItemsEl} onScroll={updateItemsScroll} className="h-full bg-slate-50/20">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-300 p-8 gap-4">
                         <ShoppingCart size={40} className="opacity-20" />
@@ -173,6 +255,17 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     </div>
                 )}
             </ScrollArea>
+            {!itemsAtTop && (
+                <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
+                    <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                </div>
+            )}
+            {!itemsAtBottom && (
+                <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                </div>
+            )}
+            </div>
 
             {/* PINNED FOOTER (FIXED POSITION: Pay Now Button never moves) */}
             <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-20 pb-24 lg:pb-6">
@@ -183,10 +276,8 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     </div>
                     <div className="flex justify-between items-center">
                         <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="link" className="p-0 h-auto text-blue-600 font-bold text-[11px] gap-1">
-                                    <Tag className="h-3 w-3" /> Adjust Discount
-                                </Button>
+                            <PopoverTrigger render={<Button variant="link" className="p-0 h-auto text-blue-600 font-bold text-[11px] gap-1" />}>
+                                <Tag className="h-3 w-3" /> Adjust Discount
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-5 rounded-xl shadow-xl border-none">
                                 <Label className="text-[10px] font-bold uppercase text-slate-400">Value</Label>
