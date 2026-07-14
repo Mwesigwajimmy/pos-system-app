@@ -516,36 +516,36 @@ export default function ManufacturingOrderManager() {
             <DialogContent showCloseButton={false} className="max-w-[1650px] sm:max-w-[1650px] w-[98vw] max-h-[96vh] h-[96vh] flex flex-col p-0 overflow-hidden border-none shadow-3xl rounded-[2.5rem] bg-white">
 
                 {/* 1. PROFESSIONAL HEADER - Pinned at Top */}
-                <div className="shrink-0 bg-slate-900 p-5 sm:p-8 md:p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5 sm:gap-8 text-white">
-                    <div className="flex items-center gap-4 sm:gap-8 min-w-0">
-                        <div className="h-12 w-12 sm:h-20 sm:w-20 bg-white/10 backdrop-blur-xl rounded-2xl sm:rounded-[2rem] flex items-center justify-center border border-white/20 shrink-0">
-                            <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
+                <div className="shrink-0 bg-slate-900 p-3 sm:p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-2.5 sm:gap-3 text-white">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                        <div className="h-8 w-8 sm:h-10 sm:w-10 bg-white/10 backdrop-blur-xl rounded-lg sm:rounded-xl flex items-center justify-center border border-white/20 shrink-0">
+                            <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                         </div>
-                        <div className="space-y-1 min-w-0">
-                            <DialogTitle className="text-lg sm:text-2xl md:text-4xl font-black tracking-tight truncate">Finalize Batch Statistics</DialogTitle>
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">Active Lot:</span>
-                                <Badge variant="secondary" className="bg-blue-600 text-white font-mono px-3 py-1 sm:px-5 sm:py-2 rounded-xl text-xs sm:text-sm border-none shadow-lg">
+                        <div className="space-y-0.5 min-w-0">
+                            <DialogTitle className="text-sm sm:text-base md:text-lg font-black tracking-tight truncate">Finalize Batch Statistics</DialogTitle>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Active Lot:</span>
+                                <Badge variant="secondary" className="bg-blue-600 text-white font-mono px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs border-none shadow-lg">
                                     {selectedOrder?.batch_number}
                                 </Badge>
                             </div>
                         </div>
                     </div>
 
-                    <div className="w-full md:w-auto flex items-start gap-3">
-                        <div className="flex-1 md:flex-none bg-white/5 backdrop-blur-2xl px-6 py-4 sm:px-12 sm:py-6 rounded-2xl sm:rounded-[2.5rem] text-right sm:min-w-[350px] border border-white/10 shadow-inner">
-                            <p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase tracking-[0.3em] mb-1">Forecasted Item Unit Cost</p>
-                            <p className="text-2xl sm:text-3xl md:text-5xl font-black tabular-nums tracking-tighter">
-                                {costSummary.unitCost.toLocaleString()} <span className="text-xs sm:text-sm text-slate-400 font-bold ml-1 uppercase">{currency}</span>
+                    <div className="w-full md:w-auto flex items-start gap-2">
+                        <div className="flex-1 md:flex-none bg-white/5 backdrop-blur-2xl px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-xl text-right sm:min-w-[160px] border border-white/10 shadow-inner">
+                            <p className="text-[8px] sm:text-[9px] text-blue-400 font-black uppercase tracking-[0.3em] mb-0.5">Forecasted Item Unit Cost</p>
+                            <p className="text-base sm:text-lg md:text-xl font-black tabular-nums tracking-tighter">
+                                {costSummary.unitCost.toLocaleString()} <span className="text-[10px] sm:text-xs text-slate-400 font-bold ml-1 uppercase">{currency}</span>
                             </p>
                         </div>
                         <button
                             type="button"
                             onClick={() => setSelectedOrder(null)}
                             aria-label="Close"
-                            className="shrink-0 h-9 w-9 sm:h-11 sm:w-11 flex items-center justify-center rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 text-white/70 hover:text-white hover:bg-white/20 hover:border-white/30 transition-all active:scale-95"
+                            className="shrink-0 h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-white/10 backdrop-blur-xl border border-white/20 text-white/70 hover:text-white hover:bg-white/20 hover:border-white/30 transition-all active:scale-95"
                         >
-                            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         </button>
                     </div>
                 </div>

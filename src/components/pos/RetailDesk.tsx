@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useLiveQuery } from 'dexie-react-hooks';
-import html2canvas from 'html2canvas'; // THE APEX IMAGE ENGINE
+import { buildReceiptPdf } from '@/lib/receiptPdf';
 import { db, OfflineSale, Printer } from '@/lib/db';
 import { createClient } from '@/lib/supabase/client';
 import { SellableProduct, CartItem, Customer } from '@/types/dashboard';
@@ -251,20 +251,21 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
         /* MASTER CONTAINER: h-full and flex-col locks the cart to the screen. */
         <div className="flex flex-col h-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
             
-            {/* PINNED HEADER: shrink-0 keeps it at the top */}
-            <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
-                <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
-                    <div className="bg-blue-600 p-2 rounded-lg">
-                        <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+            {/* PINNED HEADER: shrink-0 keeps it at the top. Compact on mobile
+                so the scrollable item list below gets more room. */}
+            <div className="p-2.5 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
+                <div className="flex items-center gap-2 lg:gap-3 cursor-pointer min-w-0" onClick={onSetCustomer}>
+                    <div className="bg-blue-600 p-1.5 lg:p-2 rounded-lg shrink-0">
+                        <User className="h-3.5 w-3.5 lg:h-5 lg:w-5 text-white" />
                     </div>
-                    <div className="flex flex-col">
-                        <span className="font-black text-xs lg:text-sm uppercase tracking-wider truncate max-w-[120px] lg:max-w-none">
+                    <div className="flex flex-col min-w-0">
+                        <span className="font-black text-[11px] lg:text-sm uppercase tracking-wider truncate max-w-[120px] lg:max-w-none">
                             {selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}
                         </span>
-                        <span className="text-[8px] lg:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Standard Retail</span>
+                        <span className="hidden lg:block text-[9px] text-slate-400 font-bold uppercase tracking-widest">Standard Retail</span>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={onSetCustomer} className="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white hover:border-slate-600 font-bold text-[9px] lg:text-[10px] uppercase h-8">
+                <Button variant="outline" size="sm" onClick={onSetCustomer} className="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white hover:border-slate-600 font-bold text-[9px] lg:text-[10px] uppercase h-7 lg:h-8 px-2.5 lg:px-3 shrink-0">
                     Change (F2)
                 </Button>
             </div>
@@ -323,9 +324,12 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
             )}
             </div>
 
-            {/* PINNED FOOTER: shrink-0 ensures the Pay Now button stays visible regardless of item-list length. */}
-            <div className="p-4 lg:p-6 border-t bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.05)] space-y-4 lg:space-y-5 shrink-0 z-20 pb-20 lg:pb-6">
-                <div className="space-y-2 lg:space-y-3">
+            {/* PINNED FOOTER: shrink-0. Compact summary-only on mobile — the
+                fixed bottom nav already has a Pay button, so the big charge
+                button here only renders at lg+ (avoids the redundant button
+                that was getting visually covered by the fixed mobile nav). */}
+            <div className="p-2.5 lg:p-6 border-t bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.05)] space-y-1.5 lg:space-y-5 shrink-0 z-20">
+                <div className="space-y-1 lg:space-y-3">
                     <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>Subtotal</span><span>{currency} {subtotal.toLocaleString()}</span>
                     </div>
@@ -355,17 +359,17 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     </div>
                 </div>
 
-                <div className="flex justify-between items-baseline pt-4 border-t border-slate-100">
+                <div className="flex justify-between items-baseline pt-1.5 lg:pt-4 border-t border-slate-100">
                     <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-slate-400">Balance Due</span>
-                    <span className="text-2xl lg:text-4xl font-black text-slate-900 tracking-tighter">
+                    <span className="text-lg lg:text-4xl font-black text-slate-900 tracking-tighter">
                         <span className="text-xs lg:sm mr-1">{currency}</span>
                         {total.toLocaleString()}
                     </span>
                 </div>
-                
-                <Button 
-                    className="w-full h-14 lg:h-16 text-lg lg:text-xl font-black uppercase tracking-[0.2em] bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 rounded-2xl transition-all active:scale-95" 
-                    onClick={onCharge} 
+
+                <Button
+                    className="hidden lg:flex w-full h-14 lg:h-16 text-lg lg:text-xl font-black uppercase tracking-[0.2em] bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 rounded-2xl transition-all active:scale-95"
+                    onClick={onCharge}
                     disabled={cart.length === 0 || isProcessing}
                 >
                     {isProcessing ? <Loader2 className="animate-spin h-6 w-6"/> : "Finalize Charge"}
@@ -394,7 +398,9 @@ export default function RetailDesk() {
     const products = useLiveQuery(() => db.products.toArray(), []);
     const supabase = createClient();
     
-    const handleWebPrint = useReactToPrint({ 
+    const handleWebPrint = useReactToPrint({
+        contentRef: receiptRef,
+        documentTitle: `Receipt-${lastCompletedSale?.receiptData.saleInfo.id ?? ''}`,
         onAfterPrint: () => toast.success('Print Job Completed Successfully')
     });
 
@@ -410,32 +416,39 @@ export default function RetailDesk() {
         fetchDevices();
     }, [userProfile?.tenant_id, supabase]);
 
-    const handleShareReceipt = async () => {
-        if (!navigator.canShare) {
-            toast.error("Sharing not supported on this device/browser");
-            return;
-        }
-
+    // Builds the receipt as a PDF straight from the sale data and either
+    // shares it (mobile / supporting browsers) or downloads it directly.
+    // The original approach rendered the on-screen <Receipt> to a PNG via
+    // html2canvas, but html2canvas can't parse the oklch() colors Tailwind
+    // v4's palette uses — it hangs indefinitely instead of ever producing an
+    // image, so downloads never actually completed. jsPDF draws straight
+    // into the PDF and never touches computed CSS, so it isn't affected.
+    const handleDownloadReceipt = async () => {
+        if (!lastCompletedSale) return;
         const promise = async () => {
-            const element = receiptRef.current;
-            if (!element) throw new Error("Receipt template not detected");
-            const canvas = await html2canvas(element, { scale: 3, useCORS: true, backgroundColor: "#ffffff" });
-            return new Promise<string>((resolve, reject) => {
-                canvas.toBlob(async (blob) => {
-                    if (!blob) return reject("File generation failed");
-                    const file = new File([blob], `Receipt-${lastCompletedSale?.receiptData.saleInfo.id}.png`, { type: 'image/png' });
-                    try {
-                        await navigator.share({
-                            title: `Receipt: ${businessDNA?.name}`,
-                            text: `Thank you for shopping at ${businessDNA?.name}. Transaction: #${lastCompletedSale?.receiptData.saleInfo.id}`,
-                            files: [file],
-                        });
-                        resolve("Share Protocol Initialized");
-                    } catch (e) { reject("Share Cancelled"); }
-                }, 'image/png');
-            });
+            const doc = buildReceiptPdf(lastCompletedSale.receiptData);
+            const fileName = `Receipt-${lastCompletedSale.receiptData.saleInfo.id}.pdf`;
+            const blob = doc.output('blob');
+            const file = new File([blob], fileName, { type: 'application/pdf' });
+
+            if (navigator.canShare?.({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: `Receipt: ${businessDNA?.name}`,
+                        text: `Thank you for shopping at ${businessDNA?.name}. Transaction: #${lastCompletedSale.receiptData.saleInfo.id}`,
+                        files: [file],
+                    });
+                    return "Share Protocol Initialized";
+                } catch (e) {
+                    if ((e as Error)?.name === 'AbortError') return "Share Cancelled";
+                    // Fall through to direct download if sharing failed for any other reason.
+                }
+            }
+
+            doc.save(fileName);
+            return "Receipt downloaded";
         };
-        toast.promise(promise(), { loading: 'Generating...', success: (m: any) => m, error: (e: any) => e });
+        toast.promise(promise(), { loading: 'Generating receipt...', success: (m: string) => m, error: (e: Error) => e.message });
     };
 
     useEffect(() => {
@@ -532,6 +545,14 @@ export default function RetailDesk() {
                         <div className="border-2 border-dashed border-slate-100 p-2 rounded-2xl overflow-hidden">
                            <div ref={receiptRef}><Receipt receiptData={lastCompletedSale.receiptData} /></div>
                         </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button variant="outline" className="h-14 font-black uppercase rounded-2xl border-slate-200" onClick={() => handleWebPrint()}>
+                                <PrinterIcon className="mr-2 h-4 w-4" /> Print
+                            </Button>
+                            <Button variant="outline" className="h-14 font-black uppercase rounded-2xl border-slate-200" onClick={handleDownloadReceipt}>
+                                <Share2 className="mr-2 h-4 w-4" /> Download
+                            </Button>
+                        </div>
                         <Button className="w-full h-14 bg-blue-600 font-black uppercase rounded-2xl" onClick={() => setLastCompletedSale(null)}>NEW SALE</Button>
                     </CardContent>
                 </Card>
@@ -567,9 +588,11 @@ export default function RetailDesk() {
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
 
-                {/* CART DISPLAY SECTION */}
+                {/* CART DISPLAY SECTION. pb-16 on mobile clears the fixed
+                    bottom nav (h-16) so the footer's Balance Due line never
+                    sits underneath it. */}
                 <div className={cn(
-                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 pb-16 lg:pb-6 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
                 )}>
                     <CartDisplay 
