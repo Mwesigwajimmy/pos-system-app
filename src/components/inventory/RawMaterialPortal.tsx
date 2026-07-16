@@ -2,9 +2,9 @@
 
 /**
  * --- RAW MATERIAL REGISTRY ---
- * VERSION: v4.7 PROFESSIONAL (TOTAL INTEGRATION)
+ * VERSION: v4.8 PROFESSIONAL (MEDIA INTEGRATED)
  * Use: Enterprise management for raw material inventory and supplier tracking.
- * Logic: Restock/Waste + Price Adj + Bulk Delete + Identity & Supplier Editing.
+ * Logic: Restock/Waste + Price Adj + Bulk Delete + Identity & Supplier Editing + Optional Media.
  */
 
 import React, { useState, useMemo } from "react";
@@ -16,7 +16,8 @@ import {
   AlertTriangle, CheckCircle2, Loader2, Database, 
   Table as TableIcon, Layers, FileText, X, Globe,
   ArrowDownToLine, Filter, Settings, Calculator, Plus, Download,
-  Ruler, Activity, DollarSign, Warehouse, Edit3, UserCheck
+  Ruler, Activity, DollarSign, Warehouse, Edit3, UserCheck,
+  ImagePlus, Camera, Video, FileWarning
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { jsPDF } from "jspdf";
@@ -38,13 +39,15 @@ const supabase = createClient();
 export default function RawMaterialPortal() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   
   const [form, setForm] = useState({
     name: '', sku: '', type: 'Solid', quality: 'Standard', 
     price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '',
-    color: ''
+    color: '',
+    imageUrl: '' // Logic: Media URL storage
   });
 
   // Modal States
@@ -52,16 +55,9 @@ export default function RawMaterialPortal() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [newUnit, setNewUnit] = useState({ name: '', abbreviation: '' });
   const [adjustData, setAdjustData] = useState({ variant_id: '', qty: 0, reason: 'Restock', price: 0 });
-  
-  // Logic: Extended editData to include supplier_id for linkage correction
-  const [editData, setEditData] = useState({ 
-    variant_id: '', 
-    name: '', 
-    product_id: '', 
-    supplier_id: '' 
-  });
+  const [editData, setEditData] = useState({ variant_id: '', name: '', product_id: '', supplier_id: '' });
 
-  // 1. DATA: Identity Handshake (Determines dynamic currency)
+  // 1. DATA: Identity Handshake
   const { data: profile } = useQuery({
     queryKey: ['active_profile_context'],
     queryFn: async () => {
@@ -74,7 +70,7 @@ export default function RawMaterialPortal() {
   const businessCurrency = profile?.currency || '---';
   const businessName = profile?.business_name || 'Business Registry';
 
-  // 2. DATA: Pull Materials (Registry View)
+  // 2. DATA: Pull Materials
   const { data: materials, isLoading } = useQuery({
     queryKey: ['raw_materials_ledger'],
     queryFn: async () => {
@@ -108,6 +104,35 @@ export default function RawMaterialPortal() {
     const totalValuation = materials.reduce((acc, m) => acc + (Number(m.current_stock) * Number(m.buying_price)), 0);
     return { totalValuation, count: materials.length };
   }, [materials]);
+
+  // HANDLER: Media Upload
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${profile?.business_id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('inventory-assets')
+            .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('inventory-assets')
+            .getPublicUrl(fileName);
+
+        setForm(prev => ({ ...prev, imageUrl: publicUrl }));
+        toast.success("Industrial asset media captured.");
+    } catch (error: any) {
+        toast.error(`Media Error: ${error.message}`);
+    } finally {
+        setUploading(false);
+    }
+  };
 
   // HANDLER: Create Unit
   const handleCreateUnit = async () => {
@@ -143,11 +168,12 @@ export default function RawMaterialPortal() {
         p_uom_id: form.uom_id, 
         p_vendor_id: form.supplier_id ? parseInt(form.supplier_id) : null, 
         p_currency: businessCurrency, 
-        p_color: form.color
+        p_color: form.color,
+        p_media_url: form.imageUrl || null // Logic: Passing the media URL
       });
       if (error) throw error;
       toast.success("Material authorized.");
-      setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '', color: '' });
+      setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '', color: '', imageUrl: '' });
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     } catch (e: any) {
       toast.error(e.message);
@@ -156,7 +182,7 @@ export default function RawMaterialPortal() {
     }
   };
 
-  // MUTATION: Delete Selected
+  // MUTATION: Delete
   const deleteSelectedMutation = useMutation({
     mutationFn: async () => {
       if (selectedItems.length === 0) return;
@@ -170,10 +196,9 @@ export default function RawMaterialPortal() {
     }
   });
 
-  // MUTATION: Update Identity (Includes Supplier Link Correction)
+  // MUTATION: Update Identity
   const updateMaterialMutation = useMutation({
     mutationFn: async () => {
-      // Logic: Update both name and vendor link in products table
       const { error } = await supabase
         .from('products')
         .update({ 
@@ -185,41 +210,33 @@ export default function RawMaterialPortal() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Material master updated.");
+      toast.success("Identity updated.");
       setIsEditModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     },
     onError: (e: any) => toast.error(e.message)
   });
 
-  // MUTATION: Stock & Price Adjustment
+  // MUTATION: Adjustment
   const logAdjustment = useMutation({
     mutationFn: async () => {
-      // Logic: Deep calculation of quantity change
       const direction = adjustData.reason === 'Restock' ? 1 : -1;
-      const signedQty = Number(adjustData.qty) * direction;
-
-      // 1. Sync Stock Level via RPC
       const { error: stockError } = await supabase.rpc('process_stock_adjustment_v2', {
-        p_variant_id: parseInt(adjustData.variant_id),
-        p_qty_change: signedQty,
-        p_reason: `Registry Manual Sync: ${adjustData.reason}`
+        p_variant_id: adjustData.variant_id,
+        p_qty_change: Math.abs(adjustData.qty) * direction,
+        p_reason: `Sync: ${adjustData.reason}`
       });
       if (stockError) throw stockError;
 
-      // 2. Sync Valuation per Unit
       const { error: priceError } = await supabase.from('product_variants').update({ 
-        cost_price: adjustData.price, 
-        price: adjustData.price 
+        cost_price: adjustData.price, price: adjustData.price 
       }).eq('id', adjustData.variant_id);
-      
       if (priceError) throw priceError;
     },
     onSuccess: () => {
-      toast.success("Quantity and Valuation synchronized.");
+      toast.success("Ledger synchronized.");
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
-    },
-    onError: (e: any) => toast.error(`Sync Failure: ${e.message}`)
+    }
   });
 
   const downloadReport = (format: 'PDF' | 'EXCEL') => {
@@ -237,13 +254,13 @@ export default function RawMaterialPortal() {
     doc.text("RAW MATERIAL REGISTRY REPORT", 14, 22);
     (doc as any).autoTable({
         startY: 40,
-        head: [['Description', 'SKU', 'Stock', 'Rate', 'Value']],
+        head: [['Description', 'SKU', 'Stock', 'Price', 'Total']],
         body: materials?.map(m => [m.product_name, m.sku, `${m.current_stock} ${m.unit}`, m.buying_price, (m.current_stock * m.buying_price)])
     });
     doc.save(`Material_Audit_${Date.now()}.pdf`);
   };
 
-  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Syncing Ledger...</p></div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
@@ -284,15 +301,10 @@ export default function RawMaterialPortal() {
           </div>
       </header>
 
-      {/* 2. ENROLLMENT FORM (Fully Unified) */}
+      {/* 2. ENROLLMENT FORM */}
       <Card className="border border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
         <CardHeader className="px-8 py-6 border-b border-slate-100 bg-slate-50/30">
-          <div className="flex items-center gap-3">
-             <div className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-blue-600">
-               <Package size={20} />
-             </div>
-             <CardTitle className="text-md font-bold text-slate-900 uppercase tracking-wider">Material Enrollment</CardTitle>
-          </div>
+          <CardTitle className="text-md font-bold text-slate-900 uppercase tracking-wider">Material Enrollment</CardTitle>
         </CardHeader>
         <CardContent className="p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -311,7 +323,6 @@ export default function RawMaterialPortal() {
                 <SelectContent>
                   <SelectItem value="Solid">Solid / Powder</SelectItem>
                   <SelectItem value="Liquid">Liquid / Fluid</SelectItem>
-                  <SelectItem value="Gas">Gas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -337,9 +348,7 @@ export default function RawMaterialPortal() {
                     {uoms?.map(u => <SelectItem key={u.id} value={u.id}>{u.abbreviation}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button variant="outline" onClick={() => setIsUnitModalOpen(true)} className="h-11 w-11 rounded-xl text-slate-400 border-slate-200">
-                  <Plus size={20} />
-                </Button>
+                <Button variant="outline" onClick={() => setIsUnitModalOpen(true)} className="h-11 w-11 rounded-xl"><Plus size={16} /></Button>
               </div>
             </div>
 
@@ -363,12 +372,38 @@ export default function RawMaterialPortal() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Material Color / Tone</Label>
-              <Input placeholder="e.g. RAL 9010" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
+              <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Material Color</Label>
+              <Input placeholder="e.g. White" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
+            </div>
+
+            {/* UI NODE: ASSET MEDIA UPLOAD */}
+            <div className="space-y-2">
+                <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Asset Media (Optional)</Label>
+                <div className="relative group">
+                    <Input 
+                        type="file" 
+                        accept="image/*,video/*" 
+                        onChange={handleMediaUpload}
+                        className="hidden" 
+                        id="media-upload"
+                    />
+                    <label 
+                        htmlFor="media-upload" 
+                        className={cn(
+                            "flex items-center justify-center gap-3 h-11 px-4 border-2 border-dashed rounded-xl cursor-pointer transition-all",
+                            form.imageUrl ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 hover:border-blue-400 text-slate-400 hover:text-blue-600"
+                        )}
+                    >
+                        {uploading ? <Loader2 className="animate-spin h-4 w-4" /> : form.imageUrl ? <CheckCircle2 size={16} /> : <Camera size={16} />}
+                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                            {uploading ? "Uploading..." : form.imageUrl ? "Media Captured" : "Attach Photo/Video"}
+                        </span>
+                    </label>
+                </div>
             </div>
 
             <div className="flex items-end">
-              <Button onClick={handleOnboard} disabled={loading} className="w-full h-11 bg-slate-900 hover:bg-black text-white font-bold rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] active:scale-95">
+              <Button onClick={handleOnboard} disabled={loading || uploading} className="w-full h-11 bg-slate-900 text-white font-bold rounded-xl shadow-lg uppercase text-[10px] active:scale-95 transition-all">
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Authorize Entry"}
               </Button>
             </div>
@@ -391,11 +426,7 @@ export default function RawMaterialPortal() {
               )}
               <div className="relative w-full md:w-[400px]">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input 
-                    placeholder="Search by name or SKU..." 
-                    onChange={e => setSearchTerm(e.target.value)} 
-                    className="h-11 pl-11 border-slate-200 bg-white rounded-xl text-sm focus:ring-blue-600 shadow-sm" 
-                  />
+                  <Input placeholder="Search narratives or SKUs..." onChange={e => setSearchTerm(e.target.value)} className="h-11 pl-11 rounded-xl shadow-sm" />
               </div>
           </div>
         </CardHeader>
@@ -427,43 +458,36 @@ export default function RawMaterialPortal() {
                         </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 text-[15px] tracking-tight">{m.product_name}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">{m.sku}</span>
-                            {m.color && <Badge variant="outline" className="h-4 px-1.5 text-[8px] border-slate-200 text-slate-500 font-bold uppercase">{m.color}</Badge>}
+                      <div className="flex items-center gap-4">
+                        {/* THUMBNAIL: Display if media exists */}
+                        {m.primary_media_url && (
+                            <div className="h-10 w-10 rounded-lg overflow-hidden border border-slate-100 shadow-sm shrink-0">
+                                <img src={m.primary_media_url} className="h-full w-full object-cover" alt="asset" />
+                            </div>
+                        )}
+                        <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 text-[15px]">{m.product_name}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{m.sku}</span>
+                                {m.color && <Badge variant="outline" className="h-4 px-1.5 text-[8px] text-slate-500 uppercase">{m.color}</Badge>}
+                            </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-bold text-slate-800 text-sm tabular-nums">{m.buying_price.toLocaleString()}</span>
-                      <span className="text-[9px] text-slate-400 ml-1.5 font-bold uppercase">{businessCurrency}</span>
-                    </TableCell>
+                    <TableCell className="text-right font-bold text-sm tabular-nums">{m.buying_price.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end">
-                        <span className={`text-base font-bold tabular-nums ${m.current_stock < 20 ? 'text-rose-600' : 'text-slate-900'}`}>{m.current_stock?.toLocaleString()}</span>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.unit}</span>
+                        <span className={cn("text-base font-bold tabular-nums", m.current_stock < 20 ? 'text-rose-600' : 'text-slate-900')}>{m.current_stock?.toLocaleString()}</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">{m.unit}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-10 text-right font-bold text-slate-900 text-sm tabular-nums">
-                      {(m.current_stock * m.buying_price).toLocaleString()}
-                    </TableCell>
+                    <TableCell className="px-10 text-right font-bold text-slate-900 text-sm tabular-nums">{(m.current_stock * m.buying_price).toLocaleString()}</TableCell>
                     <TableCell className="pr-6">
                         <div className="flex items-center justify-center gap-2">
-                             {/* ACTION: Edit Name & Supplier Link */}
-                            <button onClick={() => { 
-                                setEditData({ 
-                                    variant_id: m.variant_id, 
-                                    name: m.product_name, 
-                                    product_id: m.product_id,
-                                    supplier_id: m.preferred_vendor_id 
-                                }); 
-                                setIsEditModalOpen(true); 
-                            }} className="h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full flex items-center justify-center transition-all">
+                            <button onClick={() => { setEditData({ variant_id: m.variant_id, name: m.product_name, product_id: m.product_id, supplier_id: m.preferred_vendor_id }); setIsEditModalOpen(true); }} className="h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full flex items-center justify-center transition-all">
                                 <Edit3 size={18} />
                             </button>
 
-                             {/* ACTION: Stock/Price Adjustment */}
                             <Dialog>
                                 <DialogTrigger asChild>
                                 <button onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id, price: m.buying_price})} className="h-9 w-9 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all">
@@ -483,7 +507,6 @@ export default function RawMaterialPortal() {
                                                 <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[11px]">{m.unit}</span>
                                             </div>
                                         </div>
-
                                         <div className="space-y-4">
                                             <Label className="text-[11px] font-bold text-slate-400 uppercase text-center block tracking-widest">Correction: Price per Unit</Label>
                                             <div className="relative">
@@ -491,7 +514,6 @@ export default function RawMaterialPortal() {
                                                 <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[11px]">{businessCurrency}</span>
                                             </div>
                                         </div>
-
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Identify Purpose</Label>
                                             <Select value={adjustData.reason} onValueChange={v => setAdjustData({...adjustData, reason: v})}>
@@ -530,9 +552,8 @@ export default function RawMaterialPortal() {
               <div className="p-8 space-y-6">
                   <div className="space-y-2">
                       <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">New Material Name</Label>
-                      <Input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-11 border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-blue-600" />
+                      <Input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-11 border-slate-200 rounded-xl font-bold text-slate-900" />
                   </div>
-                  
                   <div className="space-y-2">
                       <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Primary Supplier Link</Label>
                       <Select value={editData.supplier_id || "none"} onValueChange={v => setEditData({...editData, supplier_id: v === "none" ? "" : v})}>
@@ -542,12 +563,11 @@ export default function RawMaterialPortal() {
                           {suppliers?.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <p className="text-[9px] text-slate-400 font-medium px-1">Allows fixing accidental supplier linkages across the registry.</p>
                   </div>
               </div>
               <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex gap-4">
                   <Button variant="ghost" onClick={() => setIsEditModalOpen(false)} className="h-11 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Cancel</Button>
-                  <Button onClick={() => updateMaterialMutation.mutate()} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-lg uppercase tracking-widest text-[10px] flex-1 active:scale-95 transition-all">Authorize Changes</Button>
+                  <Button onClick={() => updateMaterialMutation.mutate()} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-lg uppercase text-[10px] flex-1">Authorize Changes</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -558,19 +578,13 @@ export default function RawMaterialPortal() {
               <div className="bg-slate-900 p-8 text-white text-center">
                   <DialogTitle className="text-sm font-bold uppercase tracking-widest">Add Metric</DialogTitle>
               </div>
-              <div className="p-8 space-y-6">
-                  <div className="space-y-2">
-                      <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Unit Name</Label>
-                      <Input placeholder="e.g. Kilogram" value={newUnit.name} onChange={e => setNewUnit({...newUnit, name: e.target.value})} className="h-11 rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                      <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Abbreviation</Label>
-                      <Input placeholder="e.g. KG" value={newUnit.abbreviation} onChange={e => setNewUnit({...newUnit, abbreviation: e.target.value})} className="h-11 rounded-xl text-center font-bold uppercase" />
-                  </div>
+              <div className="p-8 space-y-6 bg-white">
+                  <div className="space-y-2"><Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Name</Label><Input value={newUnit.name} onChange={e => setNewUnit({...newUnit, name: e.target.value})} className="h-12 border-slate-200 font-bold rounded-2xl" /></div>
+                  <div className="space-y-2"><Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Abbr</Label><Input value={newUnit.abbreviation} onChange={e => setNewUnit({...newUnit, abbreviation: e.target.value})} className="h-12 border-slate-200 font-black text-xl rounded-2xl" /></div>
               </div>
-              <DialogFooter className="px-8 py-6 bg-slate-50 border-t flex gap-4">
-                  <Button variant="ghost" onClick={() => setIsUnitModalOpen(false)} className="h-11 font-bold text-slate-400 uppercase text-[10px] tracking-widest">Cancel</Button>
-                  <Button onClick={handleCreateUnit} className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 rounded-xl shadow-lg uppercase tracking-widest text-[10px] flex-1">Authorize Unit</Button>
+              <DialogFooter className="bg-slate-50 p-6 border-t flex gap-3">
+                  <Button variant="ghost" onClick={() => setIsUnitModalOpen(false)} className="font-bold text-slate-400 uppercase text-[10px]">Discard</Button>
+                  <Button onClick={handleCreateUnit} className="bg-blue-600 hover:bg-blue-700 text-white font-black px-8 rounded-2xl shadow-xl uppercase text-[10px] flex-1">Authorize Unit</Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -579,14 +593,14 @@ export default function RawMaterialPortal() {
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-3">
                 <ShieldCheck size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.7 • Material Integrity Node</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.8 • Material Integrity Node</span>
              </div>
              <div className="h-4 w-px bg-slate-200 hidden md:block" />
              <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Registry Synchronized</span>
           </div>
           <div className="flex items-center gap-3 mt-6 md:mt-0">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Connected Unit: {profile?.business_name}</span>
+             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Link Active: {profile?.business_name}</span>
           </div>
       </footer>
     </div>

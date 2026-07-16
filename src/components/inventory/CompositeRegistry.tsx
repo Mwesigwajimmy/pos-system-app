@@ -2,9 +2,9 @@
 
 /**
  * --- FINISHED GOOD DESIGNER ---
- * VERSION: v6.0 ENTERPRISE (FULL CRUD)
+ * VERSION: v6.3 ENTERPRISE (MEDIA & FORENSIC DELETE)
  * Use: Establishing master identities for manufactured goods with cost-unit tracking.
- * Logic: Composite Asset Birth + Identity Management + Industrial Metric Alignment.
+ * Logic: Composite Asset Birth + Optional Media Weld + Industrial Purge.
  */
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -15,7 +15,7 @@ import {
   Settings2, Loader2, Package, Beaker, Zap, Ruler,
   ArrowRight, CheckCircle2, AlertCircle, Scale, X, Tags, FolderPlus,
   Search, ClipboardList, Info, Trash2, Edit3, MoreHorizontal, DollarSign,
-  Calculator, Target
+  Calculator, Target, Camera, ImagePlus, Video
 } from "lucide-react";
 import toast from 'react-hot-toast';
 
@@ -52,6 +52,7 @@ const supabase = createClient();
 export default function CompositeRegistry() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   
   // Modal States
@@ -65,9 +66,10 @@ export default function CompositeRegistry() {
     sku: '',
     category_id: '',
     uom_id: '',
-    measurement_value: '', // Unit Size (e.g. 5)
-    cost_estimate: '',      // Cost per Unit
-    base_price: ''          // Total Retail Valuation
+    measurement_value: '', 
+    cost_estimate: '',      
+    base_price: '',
+    media_url: '' // Logic: Added media URL to state
   });
 
   const [editData, setEditData] = useState<any>(null);
@@ -83,7 +85,7 @@ export default function CompositeRegistry() {
     }
   });
 
-  // Fetch Existing Designs (Using updated forensic view)
+  // Fetch Existing Designs
   const { data: designs, isLoading: isDesignsLoading } = useQuery({
     queryKey: ['composite_design_ledger', profile?.business_id],
     queryFn: async () => {
@@ -120,11 +122,6 @@ export default function CompositeRegistry() {
 
   // --- 2. REGISTRY MUTATIONS ---
 
-  /** 
-   * ✅ DEEP WELD UPDATE: 
-   * Switched from direct table delete to bulk_delete_products_v2 RPC call.
-   * This ensures lot_numbers and industrial links are cleared first.
-   */
   const deleteDesignMutation = useMutation({
     mutationFn: async (productId: number) => {
         const { error } = await supabase.rpc('bulk_delete_products_v2', {
@@ -141,13 +138,11 @@ export default function CompositeRegistry() {
 
   const updateDesignMutation = useMutation({
     mutationFn: async (payload: any) => {
-        // Update Master Product
         const { error: pErr } = await supabase.from('products')
             .update({ name: payload.name, category_id: parseInt(payload.category_id) })
             .eq('id', payload.product_id);
         if (pErr) throw pErr;
 
-        // Update Industrial Variant
         const { error: vErr } = await supabase.from('product_variants')
             .update({
                 sku: payload.sku,
@@ -160,7 +155,7 @@ export default function CompositeRegistry() {
         if (vErr) throw vErr;
     },
     onSuccess: () => {
-        toast.success("Master identity updated successfully.");
+        toast.success("Master design identity updated.");
         setIsEditModalOpen(false);
         queryClient.invalidateQueries({ queryKey: ['composite_design_ledger'] });
     },
@@ -177,12 +172,41 @@ export default function CompositeRegistry() {
     );
   }, [designs, searchTerm]);
 
+  // Logic: Forensic Media Upload Handler
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.business_id) return;
+
+    setUploadingMedia(true);
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${profile.business_id}/designs/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('inventory-assets')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('inventory-assets')
+            .getPublicUrl(filePath);
+
+        setForm(prev => ({ ...prev, media_url: publicUrl }));
+        toast.success("Industrial design media captured.");
+    } catch (error: any) {
+        toast.error(`Media Sync Error: ${error.message}`);
+    } finally {
+        setUploadingMedia(false);
+    }
+  };
+
   const generateForensicSKU = (name: string) => {
     if (!name || name.length < 2) return '';
     const prefix = "MFG-";
     const initials = name.replace(/\s+/g, '').substring(0, 3).toUpperCase();
     const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-    return `${prefix}${initials}-${timestamp}`;
+    return `MFG-${initials}-${timestamp}`;
   };
 
   useEffect(() => {
@@ -216,31 +240,25 @@ export default function CompositeRegistry() {
     }
     setLoading(true);
     try {
-      const { data: product, error: pErr } = await supabase.from('products').insert([{
-          name: form.name,
-          business_id: profile?.business_id,
-          category_id: parseInt(form.category_id),
-          is_active: true
-      }]).select().single();
-      if (pErr) throw pErr;
+      // Logic: Using upgraded v1 onboarding function that supports p_media_url
+      const { error } = await supabase.rpc('fn_industrial_material_onboard_v1', {
+          p_name: form.name,
+          p_sku: form.sku || generateForensicSKU(form.name),
+          p_type: 'Liquid', // Default for Finished Goods
+          p_quality: 'Standard',
+          p_price: parseFloat(form.base_price) || 0,
+          p_initial_qty: 0, // Designs start with 0 stock
+          p_uom_id: form.uom_id,
+          p_vendor_id: null,
+          p_currency: profile?.currency,
+          p_color: null,
+          p_media_url: form.media_url || null // Media is optional
+      });
 
-      const { error: vErr } = await supabase.from('product_variants').insert([{
-          product_id: product.id,
-          business_id: profile?.business_id,
-          name: 'Standard Batch',
-          sku: form.sku || generateForensicSKU(form.name),
-          price: parseFloat(form.base_price) || 0,
-          cost_price: parseFloat(form.cost_estimate) || 0,
-          measurement_value: parseFloat(form.measurement_value),
-          is_composite: true, 
-          is_raw_material: false,
-          uom_id: form.uom_id,
-          status: 'active'
-      }]);
-      if (vErr) throw vErr;
+      if (error) throw error;
 
-      toast.success(`${form.name} design committed to registry.`);
-      setForm({ name: '', sku: '', category_id: '', uom_id: '', base_price: '', cost_estimate: '', measurement_value: '' });
+      toast.success(`${form.name} design committed.`);
+      setForm({ name: '', sku: '', category_id: '', uom_id: '', base_price: '', cost_estimate: '', measurement_value: '', media_url: '' });
       queryClient.invalidateQueries({ queryKey: ['composite_design_ledger'] });
     } catch (e: any) {
       toast.error(e.message);
@@ -252,7 +270,7 @@ export default function CompositeRegistry() {
   return (
     <div className="space-y-12 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700">
       
-      {/* --- FORM SECTION: THE DESIGNER --- */}
+      {/* --- FORM SECTION --- */}
       <Card className="border-slate-200 shadow-sm overflow-hidden bg-white rounded-3xl">
         <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -276,17 +294,14 @@ export default function CompositeRegistry() {
 
         <CardContent className="p-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            
             <div className="space-y-3">
               <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Finished Asset Identity</Label>
               <Input placeholder="e.g. NIM Gloss White Paint 5L" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-12 border-slate-200 focus:ring-blue-500 font-bold rounded-2xl shadow-sm" />
             </div>
-
             <div className="space-y-3">
               <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Global SKU / Lot Serial</Label>
               <Input placeholder="Auto-generated" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="h-12 border-slate-200 font-mono text-sm rounded-2xl shadow-sm" />
             </div>
-
             <div className="space-y-3">
               <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Asset Classification</Label>
               <Select value={form.category_id} onValueChange={v => setForm({...form, category_id: v})}>
@@ -294,7 +309,6 @@ export default function CompositeRegistry() {
                 <SelectContent className="rounded-2xl">{categories?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
                     <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Unit Size</Label>
@@ -311,19 +325,43 @@ export default function CompositeRegistry() {
                     </Select>
                 </div>
             </div>
-
             <div className="space-y-3">
               <Label className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-1">Cost per Unit ({profile?.currency})</Label>
               <Input type="number" value={form.cost_estimate} onChange={e => setForm({...form, cost_estimate: e.target.value})} className="h-12 border-blue-100 bg-blue-50/30 font-black text-lg text-blue-700 rounded-2xl shadow-sm text-center" />
             </div>
-
             <div className="space-y-3">
               <Label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Retail Valuation ({profile?.currency})</Label>
               <Input type="number" value={form.base_price} onChange={e => setForm({...form, base_price: e.target.value})} className="h-12 border-emerald-100 bg-emerald-50/30 font-black text-lg text-emerald-700 rounded-2xl shadow-sm text-center" />
             </div>
 
-            <div className="lg:col-span-3 flex justify-end">
-              <Button onClick={handleRegisterDesign} disabled={loading} className="px-12 bg-slate-900 hover:bg-blue-700 text-white font-black h-14 shadow-2xl rounded-2xl transition-all uppercase tracking-widest text-xs group">
+            {/* UI NODE: ASSET MEDIA UPLOAD (RESTORED) */}
+            <div className="space-y-3">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Visual Reference (Optional)</Label>
+                <div className="relative group">
+                    <Input 
+                        type="file" 
+                        accept="image/*,video/*" 
+                        onChange={handleMediaUpload}
+                        className="hidden" 
+                        id="design-media-upload"
+                    />
+                    <label 
+                        htmlFor="design-media-upload" 
+                        className={cn(
+                            "flex items-center justify-center gap-3 h-12 px-4 border-2 border-dashed rounded-2xl cursor-pointer transition-all",
+                            form.media_url ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 hover:border-blue-400 text-slate-400 hover:text-blue-600"
+                        )}
+                    >
+                        {uploadingMedia ? <Loader2 className="animate-spin h-5 w-5" /> : form.media_url ? <CheckCircle2 size={18} /> : <Camera size={18} />}
+                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                            {uploadingMedia ? "Uploading..." : form.media_url ? "Media Captured" : "Attach Photo/Video"}
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div className="lg:col-span-2 flex justify-end items-end">
+              <Button onClick={handleRegisterDesign} disabled={loading || uploadingMedia} className="px-12 bg-slate-900 hover:bg-blue-700 text-white font-black h-14 shadow-2xl rounded-2xl transition-all uppercase tracking-widest text-xs group">
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform"/>} 
                 Authorize Design
               </Button>
@@ -332,7 +370,7 @@ export default function CompositeRegistry() {
         </CardContent>
       </Card>
 
-      {/* --- DESIGNED ASSET LEDGER (CRUD LIST) --- */}
+      {/* --- LEDGER SECTION --- */}
       <Card className="border-slate-200 shadow-sm overflow-hidden bg-white rounded-[2.5rem] animate-in slide-in-from-bottom duration-700">
         <CardHeader className="p-10 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
@@ -376,9 +414,17 @@ export default function CompositeRegistry() {
                             filteredDesigns.map((design) => (
                                 <TableRow key={design.variant_id} className="group hover:bg-slate-50/50 border-b border-slate-50 transition-colors">
                                     <TableCell className="pl-10 py-6">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-black text-slate-900 uppercase tracking-tight">{design.product_name}</span>
-                                            <span className="text-[10px] font-mono text-slate-400 mt-1 uppercase">{design.sku}</span>
+                                        <div className="flex items-center gap-4">
+                                            {/* THUMBNAIL Logic */}
+                                            {design.primary_media_url && (
+                                                <div className="h-12 w-12 rounded-xl overflow-hidden border border-slate-100 shadow-sm shrink-0">
+                                                    <img src={design.primary_media_url} className="h-full w-full object-cover" alt="design" />
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-black text-slate-900 uppercase tracking-tight">{design.product_name}</span>
+                                                <span className="text-[10px] font-mono text-slate-400 mt-1 uppercase">{design.sku}</span>
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center font-black text-slate-700">

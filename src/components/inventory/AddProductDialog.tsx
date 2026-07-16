@@ -51,10 +51,14 @@ import {
   X,
   PlusCircle,
   CheckCircle2,
-  MapPin
+  MapPin,
+  Camera,
+  ImagePlus,
+  Video
 } from 'lucide-react';
 
 import { Category } from '@/types/dashboard';
+import { cn } from "@/lib/utils";
 
 interface Unit {
   id: string;
@@ -118,6 +122,10 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     { name: 'Color', inputValue: '', values: [] }
   ]);
 
+  // Logic: Media Handling State
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   // Profile and Currency Queries
   const { data: profile } = useQuery({
     queryKey: ['active_profile_currency'],
@@ -175,6 +183,35 @@ export default function ProductManagementConsole({ categories }: ProductManageme
       u.abbreviation.toLowerCase().includes(uomSearchQuery.toLowerCase())
     );
   }, [units, uomSearchQuery]);
+
+  // Logic: Forensic Media Upload Handler
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.business_id) return;
+
+    setIsUploading(true);
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${profile.business_id}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('inventory-assets')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('inventory-assets')
+            .getPublicUrl(filePath);
+
+        setMediaUrl(publicUrl);
+        toast.success("Asset media captured successfully.");
+    } catch (error: any) {
+        toast.error(`Upload failed: ${error.message}`);
+    } finally {
+        setIsUploading(false);
+    }
+  };
 
   const generateReport = () => {
     const doc = new jsPDF();
@@ -250,7 +287,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
   // --- HEALED MUTATION LOGIC ---
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      // 1. CAPTURE IDENTITY: Verify business ID exists before any DB action
       const safeBusinessId = profile?.business_id;
       if (!safeBusinessId) {
         toast.error("Business identity not verified. Please wait.");
@@ -259,7 +295,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
       if (!productName.trim()) throw new Error("Please enter a product name");
 
-      // 2. UPSERT PRODUCT: Trigger-Aware logic to handle auto-setup triggers
       const { data: product, error: prodError } = await supabase.from('products').upsert({
           name: productName,
           category_id: categoryId ? parseInt(categoryId) : null,
@@ -274,7 +309,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
       if (prodError) throw prodError;
 
-      // 3. PREPARE VARIANTS: Only save what is relevant
       const variantsToSave = isMultiVariant ? variants : [{...variants[0], name: 'Standard'}];
 
       const variantsPayload = variantsToSave.map(v => ({
@@ -286,15 +320,14 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         cost_price: Number(v.cost_price),
         stock_quantity: Number(v.stock_quantity),
         status: 'active', 
-        business_id: safeBusinessId, // Explicitly stamp the tenant ID
+        business_id: safeBusinessId, 
         location_id: locationId, 
         tax_category_code: taxCategoryCode.toUpperCase(),
         units_per_pack: Number(v.units_per_pack) || 1,
-        attributes: v.attributes || {}
+        attributes: v.attributes || {},
+        primary_media_url: mediaUrl // Logic: Welded the media URL into the payload
       }));
 
-      // 4. THE UPSERT SYNC: Prevents duplicates if the DB trigger fires simultaneously
-      // and ensures 'business_id' is never NULL on variants.
       const { error: varError } = await supabase
         .from('product_variants')
         .upsert(variantsPayload, { onConflict: 'product_id, name' });
@@ -316,6 +349,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     setProductName(''); setCategoryId(null); setUomId(null); setTaxCategoryCode('STANDARD'); setLocationId(null); setUomSearchQuery("");
     setIsMultiVariant(false); setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Color', inputValue: '', values: [] }]); setActiveTab("configuration");
+    setMediaUrl(null); // Reset media
   };
 
   return (
@@ -326,10 +360,8 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </Button>
       </DialogTrigger>
       
-      {/* PROFESSIONAL MODAL CONTAINER - Updated for mobile flexibility */}
       <DialogContent className="sm:max-w-5xl w-[95vw] sm:w-full flex flex-col p-0 border-none rounded-xl shadow-2xl bg-white overflow-hidden max-h-[95vh] sm:max-h-[90vh]">
         
-        {/* CLEAN HEADER - shrink-0 ensures it stays at the top */}
         <div className="px-8 py-7 border-b shrink-0 bg-white">
           <div className="flex items-center gap-4">
              <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
@@ -342,13 +374,12 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </div>
 
-        {/* FORM BODY - flex-1 and overflow-y-auto enables scrolling on mobile */}
         <ScrollArea className="flex-1 w-full overflow-y-auto">
           <div className="p-6 sm:p-8 space-y-8">
             
-            {/* Row 1: Product Basics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
+            {/* Row 1: Product Basics + Media Capture */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="md:col-span-2 space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Product Name</Label>
                     <Input value={productName} onChange={e => setProductName(e.target.value)} placeholder="e.g. Wireless Headphones" className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4" />
                 </div>
@@ -365,7 +396,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                     </Select>
                 </div>
 
-                {/* TARGET BRANCH */}
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Target Branch</Label>
                     <Select value={locationId || ''} onValueChange={setLocationId}>
@@ -382,25 +412,37 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                     </Select>
                 </div>
 
+                {/* Logic: Media Upload Node (Optional) */}
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Tax Rate</Label>
-                    <Select value={taxCategoryCode} onValueChange={setTaxCategoryCode}>
-                      <SelectTrigger className="h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="z-[10000]">
-                          <SelectItem value="STANDARD" className="font-semibold">Standard Rate</SelectItem>
-                          <SelectItem value="EXEMPT" className="font-semibold">Tax Exempt</SelectItem>
-                          <SelectItem value="REDUCED" className="font-semibold">Reduced Rate</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Asset Media</Label>
+                    <div className="relative group">
+                        <Input 
+                            type="file" 
+                            accept="image/*,video/*" 
+                            onChange={handleMediaUpload}
+                            className="hidden" 
+                            id="product-media-upload"
+                        />
+                        <label 
+                            htmlFor="product-media-upload" 
+                            className={cn(
+                                "flex items-center justify-center gap-2 h-11 px-3 border-2 border-dashed rounded-xl cursor-pointer transition-all",
+                                mediaUrl ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 hover:border-blue-400 text-slate-400 hover:text-blue-600"
+                            )}
+                        >
+                            {isUploading ? <Loader2 className="animate-spin h-4 w-4" /> : mediaUrl ? <CheckCircle2 size={16} /> : <Camera size={16} />}
+                            <span className="text-[9px] font-bold uppercase whitespace-nowrap">
+                                {isUploading ? "Syncing..." : mediaUrl ? "Media Linked" : "Attach"}
+                            </span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
             {/* Row 2: Units and Variation Switch */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                 <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Base Unit</Label>
+                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Base Unit & Tax</Label>
                     <div className="flex gap-2">
                       <Select value={uomId || ''} onValueChange={setUomId}>
                           <SelectTrigger className="flex-1 h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
@@ -436,6 +478,16 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                 )}
                               </ScrollArea>
                           </SelectContent>
+                      </Select>
+                      <Select value={taxCategoryCode} onValueChange={setTaxCategoryCode}>
+                        <SelectTrigger className="w-[140px] h-11 border-slate-200 bg-white rounded-lg font-semibold px-4">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="z-[10000]">
+                            <SelectItem value="STANDARD" className="font-semibold text-xs">Standard Tax</SelectItem>
+                            <SelectItem value="EXEMPT" className="font-semibold text-xs">Exempt</SelectItem>
+                            <SelectItem value="REDUCED" className="font-semibold text-xs">Reduced</SelectItem>
+                        </SelectContent>
                       </Select>
                       <Button variant="outline" type="button" onClick={() => setIsUnitModalOpen(true)} className="h-11 w-11 rounded-lg border-slate-200 bg-white text-blue-600 hover:bg-blue-50">
                         <Plus size={20} />
@@ -541,7 +593,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
           </div>
         </ScrollArea>
 
-        {/* FIXED FOOTER - shrink-0 ensures it stays at the bottom */}
         <div className="px-8 py-6 bg-slate-50 border-t flex items-center justify-between shrink-0">
           <Button variant="ghost" onClick={() => setOpen(false)} className="h-10 px-6 font-bold text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-lg">Cancel</Button>
           <Button onClick={() => mutate()} disabled={isPending} className="h-10 px-12 bg-blue-600 hover:bg-blue-700 text-white font-black text-[10px] uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95 border-none">
@@ -550,7 +601,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
         </div>
       </DialogContent>
 
-      {/* CUSTOM UNIT MODAL */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="max-w-md rounded-xl p-0 overflow-hidden border-none shadow-2xl bg-white z-[12000]">
           <DialogHeader className="px-8 py-6 bg-slate-900 text-white">

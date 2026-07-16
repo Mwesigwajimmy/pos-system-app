@@ -343,6 +343,7 @@ const navSections: NavItem[] = [
         module: 'finance',
         subItems: [ 
             { href: '/finance/banking', label: 'Banking', icon: Landmark },
+            { href: '/accounting/reconciliation', label: 'Bank Reconciliation', icon: RefreshCcw },
             { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
             { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
             { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
