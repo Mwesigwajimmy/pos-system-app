@@ -31,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Badge } from '../ui/badge'; 
 import { ScrollArea } from '../ui/scroll-area';
+import { Label } from "@/components/ui/label";
 
 // --- SCHEMA: WORLD CLASS SPLIT LOGIC ---
 const transactionSchema = z.object({
