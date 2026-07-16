@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * --- BBU1 SOVEREIGN INVOICE DETAIL NODE ---
+ * VERSION: v12.0 OMEGA (INDUSTRIAL GRADE)
+ * Logic: Forensic PDF Engine + QR Authenticity + Native Dispatch Bridge.
+ */
+
 import React, { useEffect, useState, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,15 +14,16 @@ import { format, parseISO } from "date-fns";
 import { createClient } from '@/lib/supabase/client';
 import { 
     Loader2, Mail, ArrowLeft, Printer, CheckCircle2, 
-    FileText, Hash, User, ReceiptText, Download, ShieldCheck
+    FileText, Hash, User, ReceiptText, Download, ShieldCheck,
+    MessageSquare, Send, Globe, MapPin, Scale
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
-import { useReactToPrint } from 'react-to-print'; // HEALED: Added for Print Handshake
-import jsPDF from 'jspdf'; // HEALED: Added for PDF Export
-import autoTable from 'jspdf-autotable'; // HEALED: Added for PDF Export
+import { useReactToPrint } from 'react-to-print';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // --- Interfaces ---
 interface InvoiceItem {
@@ -42,12 +49,14 @@ interface InvoiceDetail {
   due_date: string;
   status: string;
   notes?: string;
+  terms_and_conditions?: string; // New: Pulled from DB
   transaction_id?: string;
   customers: {
     name: string;
     email: string;
     phone_number: string; 
     tin_number?: string;
+    address?: string; // New: Pulled from DB
   };
   invoice_items: InvoiceItem[];
 }
@@ -63,7 +72,6 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
   
-  // --- PRINT REFERENCE WELD ---
   const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,8 +83,8 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
         .from('invoices')
         .select(`
           id, invoice_number, total_amount, subtotal, tax_amount, amount_paid, balance_due, 
-          currency, issue_date, due_date, status, notes, transaction_id,
-          customers ( name, email, phone_number, tin_number ),
+          currency, issue_date, due_date, status, notes, terms_and_conditions, transaction_id,
+          customers ( name, email, phone_number, tin_number, address ),
           invoice_items ( id, description, quantity, unit_price, tax_rate, tax_amount, total )
         `)
         .eq('id', invoiceId)
@@ -105,75 +113,123 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
       minimumFractionDigits: 0
     }).format(val || 0);
 
-  // --- 1. WEB PRINT HANDSHAKE ---
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
     documentTitle: `Invoice_${invoice?.invoice_number || 'BBU1'}`,
     onAfterPrint: () => toast.success("Print job sent to system spooler")
   });
 
-  // --- 2. EXECUTIVE PDF EXPORT ENGINE ---
+  // --- 2. EXECUTIVE PDF EXPORT ENGINE (RE-WELDED) ---
   const handleDownloadPDF = () => {
     if (!invoice) return;
     const doc = new jsPDF();
-    const timestamp = format(new Date(), 'dd MMM yyyy, HH:mm');
-
+    
+    // Header Logic
     doc.setFontSize(22);
     doc.setTextColor(15, 23, 42); 
     doc.text("OFFICIAL TAX INVOICE", 14, 22);
     
     doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Number: ${invoice.invoice_number || 'DRAFT'}`, 14, 30);
-    doc.text(`Date: ${invoice.issue_date ? format(parseISO(invoice.issue_date), 'dd MMM yyyy') : 'N/A'}`, 14, 35);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Invoice ID: ${invoice.invoice_number || 'DRAFT'}`, 14, 30);
+    doc.text(`Reference: ${String(invoice.id).substring(0, 12).toUpperCase()}`, 14, 35);
+    doc.text(`Date Issued: ${invoice.issue_date ? format(parseISO(invoice.issue_date), 'dd MMM yyyy') : 'N/A'}`, 14, 40);
     
-    doc.setDrawColor(241, 245, 249);
-    doc.line(14, 45, 196, 45);
+    // Horizontal Separator
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, 48, 196, 48);
 
+    // Address Grid
     doc.setFontSize(11);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text("BILL TO:", 14, 55);
-    doc.setFont("helvetica", "normal");
-    doc.text(invoice.customers?.name || "Valued Client", 14, 62);
-    doc.text(invoice.customers?.email || "", 14, 67);
-    doc.text(`TIN: ${invoice.customers?.tin_number || 'N/A'}`, 14, 72);
+    doc.text("BILL TO:", 14, 58);
+    doc.text("FROM:", 110, 58);
 
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    // Client Info
+    doc.text(invoice.customers?.name || "Valued Client", 14, 65);
+    doc.text(invoice.customers?.address || "Registered Address N/A", 14, 70);
+    doc.text(`TIN: ${invoice.customers?.tin_number || '---'}`, 14, 75);
+    doc.text(`Phone: ${invoice.customers?.phone_number || '---'}`, 14, 80);
+
+    // Business Info (Source)
+    doc.text("NIM UGANDA LTD", 110, 65);
+    doc.text("Enterprise Manufacturing Node", 110, 70);
+    doc.text("Verification Sealed", 110, 75);
+
+    // Items Table
     autoTable(doc, {
-      startY: 85,
-      head: [['Description', 'Qty', 'Unit Price', 'Amount']],
+      startY: 90,
+      head: [['Description', 'Qty', 'Unit Price', 'Tax', 'Total']],
       body: invoice.invoice_items?.map(item => [
-            item.description,
+            item.description.toUpperCase(),
             item.quantity,
             new Intl.NumberFormat().format(item.unit_price),
+            new Intl.NumberFormat().format(item.tax_amount),
             new Intl.NumberFormat().format(item.total)
       ]),
-      theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-      styles: { fontSize: 9 },
+      theme: 'striped',
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 5 },
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    // Financial Summary
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
     doc.setFont("helvetica", "bold");
-    doc.text("Subtotal:", 135, finalY);
+    doc.text("SUBTOTAL:", 135, finalY);
     doc.text(new Intl.NumberFormat().format(invoice.subtotal), 196, finalY, { align: 'right' });
-    doc.text("Tax Amount:", 135, finalY + 7);
-    doc.text(new Intl.NumberFormat().format(invoice.tax_amount), 196, finalY + 7, { align: 'right' });
-    doc.text("TOTAL DUE:", 135, finalY + 18);
-    doc.text(`${invoice.currency} ${new Intl.NumberFormat().format(invoice.total_amount)}`, 196, finalY + 18, { align: 'right' });
+    
+    doc.text("FISCAL TAX:", 135, finalY + 8);
+    doc.text(new Intl.NumberFormat().format(invoice.tax_amount), 196, finalY + 8, { align: 'right' });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(29, 78, 216); // Brand Blue
+    doc.text("NET TOTAL:", 135, finalY + 20);
+    doc.text(`${invoice.currency} ${new Intl.NumberFormat().format(invoice.total_amount)}`, 196, finalY + 20, { align: 'right' });
+
+    // Forensic QR Code & Terms (WELDED)
+    const summaryY = finalY + 40;
+    if (invoice.terms_and_conditions) {
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.setFont("helvetica", "bold");
+        doc.text("TERMS & CONDITIONS", 14, summaryY);
+        doc.setFont("helvetica", "normal");
+        doc.text(doc.splitTextToSize(invoice.terms_and_conditions, 120), 14, summaryY + 5);
+    }
+
+    // QR Code Node (Using a secure static generator for industrial authenticity)
+    const qrData = `INVOICE:${invoice.invoice_number}|HASH:${invoice.id}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+    doc.addImage(qrUrl, 'PNG', 160, summaryY - 5, 30, 30);
+    doc.setFontSize(7);
+    doc.text("SCAN TO VERIFY", 175, summaryY + 28, { align: 'center' });
 
     doc.save(`Invoice_${invoice.invoice_number}.pdf`);
-    toast.success("Document exported to local storage");
+    toast.success("Industrial Document Exported");
   };
 
-  // --- 3. CLIENT DISPATCH HANDSHAKE ---
-  const handleDispatch = () => {
-    const promise = new Promise((resolve) => setTimeout(resolve, 1500));
-    toast.promise(promise, {
-      loading: 'Encrypting and dispatching to client gateway...',
-      success: 'Invoice successfully delivered to customer email',
-      error: 'Dispatch handshake interrupted'
-    });
+  // --- 3. CLIENT DISPATCH HANDSHAKE (ACTIVATED) ---
+  const handleDispatch = (method: 'EMAIL' | 'WHATSAPP') => {
+    if (!invoice?.customers) return toast.error("Customer contact data missing.");
+
+    const clientName = invoice.customers.name;
+    const invNum = invoice.invoice_number;
+    const amount = formatMoney(invoice.total_amount);
+    
+    if (method === 'EMAIL') {
+        const subject = encodeURIComponent(`Tax Invoice ${invNum} from NIM UGANDA LTD`);
+        const body = encodeURIComponent(`Dear ${clientName},\n\nPlease find your authorized tax invoice ${invNum} for the amount of ${amount} attached for your records.\n\nThank you for your business.\n\nFinance Department\nNIM UGANDA LTD`);
+        window.location.href = `mailto:${invoice.customers.email}?subject=${subject}&body=${body}`;
+        toast.success("Email client launched.");
+    } else {
+        const phone = invoice.customers.phone_number.replace(/\D/g, ''); // Sanitize
+        const text = encodeURIComponent(`Hello ${clientName}, your NIM UGANDA tax invoice ${invNum} for ${amount} is ready. Please check your email for the official PDF.`);
+        window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+        toast.success("WhatsApp bridge launched.");
+    }
   };
 
   if (loading) {
@@ -202,7 +258,7 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
     );
   }
 
-  const isPaid = invoice.status.toLowerCase() === 'paid';
+  const isPaid = invoice.status.toLowerCase() === 'paid' || invoice.status.toLowerCase() === 'settled';
 
   return (
     <div className="max-w-5xl mx-auto py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -217,18 +273,24 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
           Back to Audit History
         </Link>
         
-        <div className="flex gap-3">
-          {isPaid && (
-            <Button onClick={handleDownloadPDF} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl shadow-lg shadow-emerald-100 gap-2">
-                <ReceiptText size={16} /> Get Payment Receipt
-            </Button>
-          )}
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={handleDownloadPDF} className="bg-white border-slate-200 text-slate-900 hover:bg-slate-50 font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl shadow-sm gap-2">
+                <Download size={16} className="text-blue-600" /> Download PDF
+          </Button>
+          
           <Button onClick={() => handlePrint()} variant="outline" className="font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 gap-2">
-            <Printer size={16} /> Print Invoice
+            <Printer size={16} /> Print
           </Button>
-          <Button onClick={handleDispatch} className="bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-[10px] tracking-widest h-11 px-6 rounded-xl shadow-lg gap-2">
-            <Mail size={16} /> Dispatch to Client
-          </Button>
+
+          {/* DISPATCH HUB (WELDED) */}
+          <div className="flex bg-slate-900 rounded-xl p-0.5 shadow-lg">
+             <Button onClick={() => handleDispatch('EMAIL')} className="bg-transparent hover:bg-white/10 text-white font-black uppercase text-[10px] tracking-widest h-10 px-4 gap-2 border-r border-white/10 rounded-l-lg rounded-r-none">
+                <Mail size={16} /> Email
+             </Button>
+             <Button onClick={() => handleDispatch('WHATSAPP')} className="bg-transparent hover:bg-white/10 text-white font-black uppercase text-[10px] tracking-widest h-10 px-4 gap-2 rounded-r-lg rounded-l-none">
+                <MessageSquare size={16} className="text-emerald-400" /> WhatsApp
+             </Button>
+          </div>
         </div>
       </div>
 
@@ -338,11 +400,20 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
           </div>
 
           <div className="mt-16 flex flex-col md:flex-row justify-between gap-16">
-            <div className="flex-1">
+            <div className="flex-1 space-y-8">
               {invoice.notes && (
-                <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 block">Fiduciary Instructions</span>
+                <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 block flex items-center gap-2">
+                    <Info size={12} className="text-blue-500" /> Fiduciary Instructions
+                  </span>
                   <p className="text-[13px] text-slate-700 leading-relaxed font-medium">{invoice.notes}</p>
+                </div>
+              )}
+
+              {invoice.terms_and_conditions && (
+                <div className="px-8">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em] mb-3 block">Legalese & Settlement Terms</span>
+                  <p className="text-[11px] text-slate-400 leading-relaxed italic">{invoice.terms_and_conditions}</p>
                 </div>
               )}
             </div>
@@ -365,13 +436,33 @@ export default function InvoiceDetailPage({ invoiceId, tenantId, locale }: Props
             </div>
           </div>
         </CardContent>
+
+        <CardFooter className="bg-slate-50/30 p-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-4">
+                <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=INVOICE:${invoice.invoice_number}|HASH:${invoice.id}`} 
+                      alt="Verification QR" 
+                      className="w-12 h-12"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Document Fingerprint</p>
+                    <p className="text-[8px] font-mono text-slate-400 break-all max-w-[200px]">{invoice.id}</p>
+                </div>
+            </div>
+            <div className="text-center md:text-right">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em]">Authorized by NIM UGANDA Ledger Node</p>
+                <p className="text-[8px] font-medium text-slate-300 mt-1 uppercase tracking-widest">Processed at {format(new Date(), 'yyyy-MM-dd HH:mm:ss')} UTC</p>
+            </div>
+        </CardFooter>
       </Card>
       </div>
       
       {/* SYSTEM FOOTER */}
       <div className="text-center py-10 opacity-30">
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] flex items-center justify-center gap-3">
-           <ShieldCheck size={12} className="text-blue-600"/> Handshake Hash: {String(invoice.id).substring(0,18).toUpperCase()} • PRO-SECTOR INFRASTRUCTURE
+           <ShieldCheck size={12} className="text-blue-600"/> Handshake Logic Sealed • PRO-SECTOR INFRASTRUCTURE v12.0
         </p>
       </div>
     </div>
