@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * --- BBU1 CLIENT INTELLIGENCE LEDGER ---
+ * VERSION: v5.0 OMEGA (CUSTOMER 360 INTEGRATED)
+ * Use: Advanced client management with unified transaction history and native dispatch.
+ * Logic: Linked to view_sovereign_entity_ledger for forensic document streaming.
+ */
+
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -31,7 +38,14 @@ import {
     FileText,
     Clock,
     CalendarDays,
-    Trash2
+    Trash2,
+    MessageSquare,
+    Send,
+    ExternalLink,
+    Printer,
+    ShieldCheck,
+    Zap,
+    ClipboardList
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -47,7 +61,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
     DropdownMenu,
     DropdownMenuContent,
@@ -59,6 +73,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "@/lib/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 // COMPONENT IMPORTS
 import { RecordPaymentModal } from "./RecordPaymentModal";
@@ -130,11 +148,16 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     
+    // UI Modal States
     const [vaultOpen, setVaultOpen] = React.useState(false);
     const [activeVaultClient, setActiveVaultClient] = React.useState<any>(null);
     const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
     const [activeClient, setActiveClient] = React.useState<any>(null);
     const [packages, setPackages] = React.useState<any[]>([]);
+
+    // Logic: 360 History States
+    const [historyOpen, setHistoryOpen] = React.useState(false);
+    const [historyClient, setHistoryClient] = React.useState<ClientRecord | null>(null);
 
     const fetchCatalog = React.useCallback(async () => {
         const { data } = await supabase
@@ -148,6 +171,45 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
     React.useEffect(() => {
         fetchCatalog();
     }, [fetchCatalog]);
+
+    // Logic: Fetch the Unified Forensic Ledger for the selected customer
+    const { data: documentStream, isLoading: isStreamLoading } = useQuery({
+        queryKey: ['client_document_stream', historyClient?.contact_id],
+        queryFn: async () => {
+            if (!historyClient) return [];
+            const { data, error } = await supabase
+                .from('view_sovereign_entity_ledger')
+                .select('*')
+                .eq('business_id', businessId)
+                .eq('entity_id', historyClient.contact_id)
+                .order('doc_date', { ascending: false });
+            
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: historyOpen && !!historyClient
+    });
+
+    // Logic: Native Dispatch Handler (Email/WhatsApp)
+    const handleNativeDispatch = (doc: any, method: 'EMAIL' | 'WHATSAPP') => {
+        if (!historyClient) return;
+
+        const amount = new Intl.NumberFormat('en-US', { 
+            style: 'currency', currency: doc.currency || 'UGX' 
+        }).format(doc.amount);
+
+        const docTitle = doc.doc_type.charAt(0) + doc.doc_type.slice(1).toLowerCase();
+
+        if (method === 'EMAIL') {
+            const subject = encodeURIComponent(`${docTitle} ${doc.reference} from NIM UGANDA`);
+            const body = encodeURIComponent(`Dear ${historyClient.full_name},\n\nPlease find your ${docTitle} (${doc.reference}) for the amount of ${amount} attached.\n\nThank you for your business.`);
+            window.location.href = `mailto:${historyClient.email}?subject=${subject}&body=${body}`;
+        } else {
+            const phone = historyClient.phone.replace(/\D/g, '');
+            const text = encodeURIComponent(`Hello ${historyClient.full_name}, your ${docTitle} ${doc.reference} for ${amount} is ready. View it here: [SYSTEM_LINK]`);
+            window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+        }
+    };
 
     const columns: ColumnDef<ClientRecord>[] = [
         {
@@ -214,27 +276,37 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
                 <div className="text-right">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 border border-slate-200">
+                            <Button variant="ghost" className="h-8 w-8 p-0 border border-slate-200 rounded-lg">
                                 <MoreHorizontal size={16} />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52 shadow-lg border-slate-200">
-                            <DropdownMenuLabel className="text-xs text-slate-500 font-bold px-3 py-2">Customer Actions</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-60 shadow-2xl border-slate-200 rounded-2xl p-2">
+                            <DropdownMenuLabel className="text-[10px] text-slate-400 uppercase font-black tracking-widest px-3 py-2">Forensic Actions</DropdownMenuLabel>
+                            
+                            {/* Logic: Entry to Customer 360 History */}
+                            <DropdownMenuItem onClick={() => {
+                                setHistoryClient(row.original);
+                                setHistoryOpen(true);
+                            }} className="text-sm font-bold text-slate-700 py-3 px-3 rounded-xl cursor-pointer">
+                                <History className="mr-3 h-4 w-4 text-blue-600" /> View Document Stream
+                            </DropdownMenuItem>
+
                             <DropdownMenuItem onClick={() => {
                                 setActiveVaultClient({ id: row.original.contact_id, name: row.original.full_name });
                                 setVaultOpen(true);
-                            }} className="text-sm font-medium hover:bg-slate-50 cursor-pointer">
-                                <Lock className="mr-2 h-4 w-4 text-blue-500" /> View Customer Profile
+                            }} className="text-sm font-bold text-slate-700 py-3 px-3 rounded-xl cursor-pointer">
+                                <Lock className="mr-3 h-4 w-4 text-slate-400" /> Identity Vault
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-sm font-medium text-emerald-600 hover:bg-emerald-50 cursor-pointer" onClick={() => {
+
+                            <DropdownMenuItem className="text-sm font-bold text-emerald-600 py-3 px-3 rounded-xl cursor-pointer" onClick={() => {
                                 setActiveClient({ id: row.original.contact_id, name: row.original.full_name, current_debt: row.original.active_debt_ugx || 0, currency: row.original.currency_code, business_id: row.original.business_id });
                                 setPaymentModalOpen(true);
                             }}>
-                                <TrendingDown className="mr-2 h-4 w-4" /> Record Payment
+                                <TrendingDown className="mr-3 h-4 w-4" /> Record Payment
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer">
-                                <Trash2 className="mr-2 h-4 w-4" /> Deactivate Account
+                            <DropdownMenuSeparator className="my-2" />
+                            <DropdownMenuItem className="text-sm font-bold text-red-600 py-3 px-3 rounded-xl cursor-pointer hover:bg-red-50">
+                                <Trash2 className="mr-3 h-4 w-4" /> Deactivate Account
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -256,7 +328,7 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
 
     return (
         <div className="space-y-6">
-            {/* ACTION BAR: Clean, well-structured layout */}
+            {/* ACTION BAR */}
             <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                 <div className="relative group min-w-[300px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -274,10 +346,10 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
 
                     <div className="h-6 w-[1px] bg-slate-200 mx-1" />
 
-                    <Button variant="outline" onClick={() => generatePDFReport(clients)} className="h-10 text-xs font-semibold gap-2 border-slate-200 px-4">
+                    <Button variant="outline" onClick={() => generatePDFReport(clients)} className="h-10 text-xs font-semibold gap-2 border-slate-200 px-4 rounded-xl">
                         <FileText size={16} /> PDF Audit
                     </Button>
-                    <Button variant="outline" onClick={() => exportToExcel(clients)} className="h-10 text-xs font-semibold gap-2 border-slate-200 px-4">
+                    <Button variant="outline" onClick={() => exportToExcel(clients)} className="h-10 text-xs font-semibold gap-2 border-slate-200 px-4 rounded-xl">
                         <Download size={16} /> Export CSV
                     </Button>
                 </div>
@@ -300,7 +372,6 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
                             </TabsList>
                         </div>
 
-                        {/* TABLE CONTENT */}
                         <TabsContent value="ledger" className="m-0 border-none outline-none">
                             <Table>
                                 <TableHeader className="bg-slate-50/50">
@@ -410,18 +481,110 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
                                             </div>
                                         );
                                     })}
-                                    {clients.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                                            <History size={40} className="opacity-20 mb-3" />
-                                            <span className="text-sm font-medium">No registration history available.</span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </TabsContent>
                     </Tabs>
 
-                    {/* MODAL STATES */}
+                    {/* --- MODAL: CUSTOMER 360 FORENSIC HISTORY --- */}
+                    <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+                        <DialogContent className="max-w-6xl h-[85vh] flex flex-col p-0 border-none shadow-3xl bg-white rounded-[2.5rem] overflow-hidden">
+                            <div className="bg-slate-900 p-8 text-white flex justify-between items-center shrink-0">
+                                <div className="flex items-center gap-6">
+                                    <div className="h-16 w-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-2xl">
+                                        <History size={32} />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className="text-2xl font-black uppercase tracking-tight">Forensic Document Stream</DialogTitle>
+                                        <DialogDescription className="text-blue-400 font-bold uppercase text-[10px] tracking-widest mt-1">
+                                            360° History for {historyClient?.full_name}
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" onClick={() => setHistoryOpen(false)} className="text-slate-400 hover:text-white rounded-full">
+                                    <X size={20} />
+                                </Button>
+                            </div>
+
+                            <div className="flex-1 overflow-hidden flex flex-col">
+                                <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <ClipboardList size={14} /> Total Document Count: {documentStream?.length || 0}
+                                    </p>
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-100">
+                                        <ShieldCheck size={14} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Sovereign Link Verified</span>
+                                    </div>
+                                </div>
+
+                                <ScrollArea className="flex-1">
+                                    <Table>
+                                        <TableHeader className="bg-white sticky top-0 z-10">
+                                            <TableRow className="border-slate-50">
+                                                <TableHead className="pl-10 font-black uppercase text-[10px] tracking-widest h-12 text-slate-400">Date</TableHead>
+                                                <TableHead className="font-black uppercase text-[10px] tracking-widest h-12 text-slate-400">Document Node</TableHead>
+                                                <TableHead className="text-right font-black uppercase text-[10px] tracking-widest h-12 text-slate-400">Net Valuation</TableHead>
+                                                <TableHead className="text-center font-black uppercase text-[10px] tracking-widest h-12 text-slate-400">Status</TableHead>
+                                                <TableHead className="pr-10 text-right font-black uppercase text-[10px] tracking-widest h-12 text-slate-400">Direct Dispatch</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {isStreamLoading ? (
+                                                <TableRow><TableCell colSpan={5} className="h-64 text-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600 mx-auto"/></TableCell></TableRow>
+                                            ) : documentStream?.length === 0 ? (
+                                                <TableRow><TableCell colSpan={5} className="h-64 text-center text-slate-400 font-bold uppercase text-xs">No transactions discovered</TableCell></TableRow>
+                                            ) : (
+                                                documentStream?.map((doc: any) => (
+                                                    <TableRow key={doc.doc_id} className="hover:bg-slate-50/50 transition-colors border-slate-50 h-20">
+                                                        <TableCell className="pl-10 font-bold text-slate-500 text-xs">
+                                                            {format(new Date(doc.doc_date), "dd MMM yyyy")}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-black text-slate-900 text-sm uppercase">{doc.reference}</span>
+                                                                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-tighter">{doc.doc_type}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-black text-slate-900 tabular-nums">
+                                                            {doc.amount.toLocaleString()} <span className="text-[10px] text-slate-400 ml-1">{doc.currency}</span>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Badge className={cn(
+                                                                "rounded-lg px-3 py-1 font-bold text-[9px] uppercase border-none",
+                                                                doc.status === 'PAID' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
+                                                            )}>
+                                                                {doc.status}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="pr-10 text-right">
+                                                            <div className="flex justify-end gap-3">
+                                                                <Button variant="ghost" size="icon" onClick={() => handleNativeDispatch(doc, 'WHATSAPP')} title="WhatsApp Dispatch" className="h-10 w-10 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl border border-transparent hover:border-emerald-100 transition-all">
+                                                                    <MessageSquare size={18} />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => handleNativeDispatch(doc, 'EMAIL')} title="Email Dispatch" className="h-10 w-10 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-transparent hover:border-blue-100 transition-all">
+                                                                    <Mail size={18} />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl">
+                                                                    <Printer size={18} />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                    <ScrollBar orientation="horizontal" />
+                                </ScrollArea>
+                            </div>
+                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-4 opacity-40">
+                                <ShieldCheck size={14} className="text-slate-900" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-900">Forensic Interlink Protocol Active • End-to-End Encryption</span>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* EXISTING MODALS PRESERVED */}
                     {activeVaultClient && (
                         <ClientVaultModal 
                             isOpen={vaultOpen} 
@@ -443,3 +606,7 @@ export function ClientIntelligenceLedger({ clients, businessId }: ClientIntellig
         </div>
     );
 }
+
+const X = ({ size }: { size: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+);

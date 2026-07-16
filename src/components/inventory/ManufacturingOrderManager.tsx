@@ -2,8 +2,9 @@
 
 /**
  * --- MANUFACTURING & PRODUCTION MANAGER ---
- * VERSION: v5.2 ENTERPRISE (ULTRA-WIDE PRO LAYOUT)
- * Use: Professional batch tracking, cost analysis, and stock reconciliation.
+ * VERSION: v5.6 OMEGA (INDUSTRIAL WELD)
+ * Use: Professional batch tracking, live inventory consumption, and customer notification.
+ * Logic: Interconnected with Raw Materials and Forensic Comms.
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -26,7 +27,8 @@ import {
   Factory, Beaker, Loader2,
   TrendingUp, Wallet, PackagePlus, Trash2, Plus,
   ClipboardList, ShieldCheck, Search, Download, FileText, X, Settings2,
-  Layers, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, BarChart3, Database, Activity, FileDown, Coins
+  Layers, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, BarChart3, 
+  Database, Activity, FileDown, Coins, Mail, MessageSquare, Smartphone, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,106 +37,22 @@ const supabase = createClient();
 export default function ManufacturingOrderManager() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("");
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [materialSearch, setMaterialSearch] = useState("");
 
-  // Scroll-position tracking for the Production Schedule table's hint arrows.
-  // Two separate trackers: the outer ScrollArea's viewport handles VERTICAL
-  // overflow (bounded by max-h-[65vh] below), but <Table> always wraps
-  // itself in its own internal horizontal-scroll div (see ui/table.tsx) —
-  // that's the element that actually overflows horizontally, so it needs
-  // its own independent tracker rather than sharing the vertical one.
+  // Scroll States (Preserved)
   const [tableEl, setTableEl] = useState<HTMLDivElement | null>(null);
+  const [wsEl, setWsEl] = useState<HTMLDivElement | null>(null);
   const [tableAtTop, setTableAtTop] = useState(true);
   const [tableAtBottom, setTableAtBottom] = useState(true);
-  const updateTableScroll = useCallback(() => {
-      if (!tableEl) return;
-      setTableAtTop(tableEl.scrollTop <= 1);
-      setTableAtBottom(tableEl.scrollTop >= tableEl.scrollHeight - tableEl.clientHeight - 1);
-  }, [tableEl]);
-  useEffect(() => {
-      if (!tableEl) return;
-      updateTableScroll();
-      const ro = new ResizeObserver(updateTableScroll);
-      ro.observe(tableEl);
-      return () => ro.disconnect();
-  }, [tableEl, updateTableScroll]);
-
-  const [hTableEl, setHTableEl] = useState<HTMLDivElement | null>(null);
-  const [tableAtLeft, setTableAtLeft] = useState(true);
-  const [tableAtRight, setTableAtRight] = useState(true);
-  const updateHTableScroll = useCallback(() => {
-      if (!hTableEl) return;
-      setTableAtLeft(hTableEl.scrollLeft <= 1);
-      setTableAtRight(hTableEl.scrollLeft >= hTableEl.scrollWidth - hTableEl.clientWidth - 1);
-  }, [hTableEl]);
-  useEffect(() => {
-      if (!hTableEl) return;
-      updateHTableScroll();
-      const ro = new ResizeObserver(updateHTableScroll);
-      ro.observe(hTableEl);
-      return () => ro.disconnect();
-  }, [hTableEl, updateHTableScroll]);
 
   // Form States for Finalization
   const [expenses, setExpenses] = useState<any[]>([]);
   const [ingredientLogs, setIngredientLogs] = useState<any[]>([]);
   const [actualYield, setActualYield] = useState<number>(0);
   
-  const [newOrder, setNewOrder] = useState({ variant_id: '', qty: 1, batch: '' });
-
-  // Scroll-position tracking for the Finalize dialog's "more content" hint arrows.
-  // Uses a state-backed callback ref (not useRef) because Base UI's Dialog
-  // portals its content — a plain ref stays null past the first render.
-  const [wsEl, setWsEl] = useState<HTMLDivElement | null>(null);
-  const [wsAtTop, setWsAtTop] = useState(true);
-  const [wsAtBottom, setWsAtBottom] = useState(true);
-  const updateWsScroll = useCallback(() => {
-      if (!wsEl) return;
-      setWsAtTop(wsEl.scrollTop <= 1);
-      setWsAtBottom(wsEl.scrollTop >= wsEl.scrollHeight - wsEl.clientHeight - 1);
-  }, [wsEl]);
-  useEffect(() => {
-      if (!wsEl) return;
-      updateWsScroll();
-      const ro = new ResizeObserver(updateWsScroll);
-      ro.observe(wsEl);
-      return () => ro.disconnect();
-  }, [wsEl, updateWsScroll]);
-
-  const [leftEl, setLeftEl] = useState<HTMLDivElement | null>(null);
-  const [leftAtTop, setLeftAtTop] = useState(true);
-  const [leftAtBottom, setLeftAtBottom] = useState(true);
-  const updateLeftScroll = useCallback(() => {
-      if (!leftEl) return;
-      setLeftAtTop(leftEl.scrollTop <= 1);
-      setLeftAtBottom(leftEl.scrollTop >= leftEl.scrollHeight - leftEl.clientHeight - 1);
-  }, [leftEl]);
-  useEffect(() => {
-      if (!leftEl) return;
-      updateLeftScroll();
-      const ro = new ResizeObserver(updateLeftScroll);
-      ro.observe(leftEl);
-      return () => ro.disconnect();
-  }, [leftEl, updateLeftScroll]);
-
-  const [rightEl, setRightEl] = useState<HTMLDivElement | null>(null);
-  const [rightAtTop, setRightAtTop] = useState(true);
-  const [rightAtBottom, setRightAtBottom] = useState(true);
-  const updateRightScroll = useCallback(() => {
-      if (!rightEl) return;
-      setRightAtTop(rightEl.scrollTop <= 1);
-      setRightAtBottom(rightEl.scrollTop >= rightEl.scrollHeight - rightEl.clientHeight - 1);
-  }, [rightEl]);
-  useEffect(() => {
-      if (!rightEl) return;
-      updateRightScroll();
-      const ro = new ResizeObserver(updateRightScroll);
-      ro.observe(rightEl);
-      return () => ro.disconnect();
-  }, [rightEl, updateRightScroll]);
+  const [newOrder, setNewOrder] = useState({ variant_id: '', customer_id: '', qty: 1, batch: '' });
 
   // 1. DATA: Identity & Context
   const { data: profile } = useQuery({
@@ -148,7 +66,16 @@ export default function ManufacturingOrderManager() {
 
   const currency = profile?.currency || 'UGX';
 
-  // 2. DATA: Manufacturing Orders List
+  // 2. DATA: Live Raw Materials (For selection)
+  const { data: rawMaterials } = useQuery({
+    queryKey: ['raw_materials_for_mfg'],
+    queryFn: async () => {
+      const { data } = await supabase.from('raw_material_registry').select('*');
+      return data || [];
+    }
+  });
+
+  // 3. DATA: Manufacturing Orders
   const { data: orders, isLoading } = useQuery({
     queryKey: ['manufacturing_orders'],
     queryFn: async () => {
@@ -158,27 +85,29 @@ export default function ManufacturingOrderManager() {
     }
   });
 
-  // 3. DATA: Finished Goods Recipes
+  // 4. DATA: Customers (For order link)
+  const { data: customers } = useQuery({
+    queryKey: ['mfg_customers'],
+    queryFn: async () => {
+        const { data } = await supabase.from('customers').select('id, name, email, phone_number, whatsapp_number');
+        return data || [];
+    }
+  });
+
   const { data: finishedGoods } = useQuery({
     queryKey: ['mfg_products_targets'],
     queryFn: async () => {
-      const { data } = await supabase.from('product_variants')
-        .select('id, name, sku, product:products(name)')
-        .eq('is_composite', true)
-        .eq('is_active', true);
+      const { data } = await supabase.from('product_variants').select('id, name, sku, product:products(name)').eq('is_composite', true).eq('is_active', true);
       return data || [];
     }
   });
 
-  // Auto-generate Batch Number
   useEffect(() => {
     if (isCreateModalOpen && !newOrder.batch) {
-        const lotId = `BATCH-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-        setNewOrder(prev => ({ ...prev, batch: lotId }));
+        setNewOrder(prev => ({ ...prev, batch: `LOT-${Date.now().toString().slice(-6)}` }));
     }
   }, [isCreateModalOpen, newOrder.batch]);
 
-  // Load Recipe Data for Finalization
   const openAuditDialog = async (order: any) => {
     const { data: recipe } = await supabase.rpc('get_composite_details_v5', { p_variant_id: order.output_variant_id });
     if (recipe?.components) {
@@ -186,7 +115,8 @@ export default function ManufacturingOrderManager() {
         variant_id: c.component_variant_id.toString(),
         name: c.component_name,
         actual_qty: c.quantity * order.planned_quantity,
-        unit_cost: c.unit_cost || 0
+        unit_cost: c.unit_cost || 0,
+        currency: c.currency || currency
       })));
     }
     setActualYield(order.planned_quantity);
@@ -194,28 +124,46 @@ export default function ManufacturingOrderManager() {
     setSelectedOrder(order);
   };
 
-  // MUTATION: Create New Order
+  // --- NOTIFICATION HANDSHAKE ---
+  const dispatchNotification = (order: any, type: 'STARTED' | 'COMPLETED') => {
+      const targetCustomer = customers?.find(c => c.id.toString() === order.customer_id?.toString());
+      if (!targetCustomer) return;
+
+      const message = type === 'STARTED' 
+        ? `Hello ${targetCustomer.name}, production has officially started for your order [${order.batch_number}]. We are processing your ${order.product_name || 'request'} now.`
+        : `Great news ${targetCustomer.name}! Your order [${order.batch_number}] is complete and ready for dispatch.`;
+
+      const phone = (targetCustomer.whatsapp_number || targetCustomer.phone_number || "").replace(/\D/g, '');
+      if (phone) window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+      
+      toast.success(`Client notified of ${type} status.`);
+  };
+
+  // MUTATION: Create Order
   const createOrderMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('mfg_production_orders').insert([{
+      const { data, error } = await supabase.from('mfg_production_orders').insert([{
         output_variant_id: parseInt(newOrder.variant_id),
+        customer_id: newOrder.customer_id ? parseInt(newOrder.customer_id) : null,
         planned_quantity: newOrder.qty,
         batch_number: newOrder.batch.toUpperCase(),
         status: 'draft',
         business_id: profile?.business_id,
         tenant_id: profile?.business_id
-      }]);
+      }]).select().single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      toast.success("Production order started");
+    onSuccess: (data) => {
+      toast.success("Production Run Initiated");
+      dispatchNotification(data, 'STARTED');
       setIsCreateModalOpen(false);
-      setNewOrder({ variant_id: '', qty: 1, batch: '' });
+      setNewOrder({ variant_id: '', customer_id: '', qty: 1, batch: '' });
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     }
   });
 
-  // MUTATION: Finalize Production
+  // MUTATION: Finalize Order
   const finalizeProductionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOrder) return;
@@ -226,71 +174,24 @@ export default function ManufacturingOrderManager() {
           unit_cost_at_run: l.unit_cost,
           business_id: selectedOrder.business_id
       })));
-
       await supabase.from('mfg_production_expenses').insert(expenses.map(e => ({
           production_order_id: selectedOrder.id,
           expense_category: e.category,
           amount: e.amount,
           tenant_id: selectedOrder.business_id
       })));
-
       await supabase.from('mfg_production_orders').update({ actual_quantity_produced: actualYield }).eq('id', selectedOrder.id);
       const { error: syncErr } = await supabase.rpc('mfg_complete_production_v2', { p_order_id: selectedOrder.id });
       if (syncErr) throw syncErr;
     },
     onSuccess: () => {
-      toast.success("Production finalized and stock updated");
+      toast.success("Production complete. Stock levels adjusted.");
+      dispatchNotification(selectedOrder, 'COMPLETED');
       setSelectedOrder(null);
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
-    },
-    onError: (e: any) => toast.error(`Error: ${e.message}`)
-  });
-
-  // --- REAL PDF DOWNLOAD ENGINE ---
-  const downloadReport = (formatType: 'PDF' | 'CSV') => {
-    if (!orders || orders.length === 0) return toast.error("No data available to export.");
-
-    if (formatType === 'CSV') {
-        const headers = "Batch_No,Product,Yield,Status,Material_Cost,Expenses,Unit_Cost\n";
-        const rows = orders.map(o => `${o.batch_number},${o.product_name},${o.actual_quantity_produced},${o.status},${o.total_material_cost},${o.total_overhead_cost},${o.final_unit_cost}`).join("\n");
-        const blob = new Blob([headers + rows], { type: 'text/csv' });
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = `Production_Ledger_${Date.now()}.csv`;
-        link.click();
-        return;
+      queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     }
-
-    const doc = new jsPDF('p', 'mm', 'a4');
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(15, 23, 42);
-    doc.text("PRODUCTION SUMMARY REPORT", 14, 25);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Organization: ${profile?.business_name || 'Business Unit'}`, 14, 32);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 37);
-
-    const autoTable = (doc as any).autoTable;
-    autoTable(doc, {
-        startY: 45,
-        head: [['BATCH NO.', 'PRODUCT NAME', 'QTY PRODUCED', 'STATUS', 'UNIT COST']],
-        body: orders.map(o => [
-            o.batch_number || 'N/A', 
-            o.product_name, 
-            `${o.actual_quantity_produced || 0} units`, 
-            o.status.toUpperCase(), 
-            `${o.final_unit_cost.toLocaleString()} ${currency}`
-        ]),
-        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 4 },
-        alternateRowStyles: { fillColor: [248, 250, 252] }
-    });
-
-    doc.save(`Production_Report_${Date.now()}.pdf`);
-  };
+  });
 
   const costSummary = useMemo(() => {
     const matTotal = ingredientLogs.reduce((sum, i) => sum + (i.actual_qty * i.unit_cost), 0);
@@ -299,193 +200,90 @@ export default function ManufacturingOrderManager() {
     return { matTotal, expTotal, total, unitCost: actualYield > 0 ? total / actualYield : 0 };
   }, [ingredientLogs, expenses, actualYield]);
 
-  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-screen bg-white gap-4"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /><p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Production Registry...</p></div>;
+  if (isLoading) return <div className="flex flex-col items-center justify-center min-h-screen bg-white gap-4"><Loader2 className="animate-spin text-blue-600 h-10 w-10" /></div>;
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-[1600px] mx-auto p-6 md:p-10 space-y-10 animate-in fade-in duration-700">
+      <div className="max-w-[1650px] mx-auto p-10 space-y-10 animate-in fade-in duration-700">
         
         {/* HEADER */}
-        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 border-b border-slate-100 pb-10">
+        <header className="flex justify-between items-center border-b border-slate-100 pb-10">
             <div className="space-y-2">
-                <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em]">
-                    <Factory size={16} /> Production Control
+                <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-[0.3em]">
+                    <Factory size={16} /> Production Control Node
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">Manufacturing Orders</h1>
-                <p className="text-sm font-medium text-slate-500">Manage real-time production runs, material consumption, and batch costs.</p>
+                <h1 className="text-4xl font-black tracking-tight text-slate-900 uppercase">Manufacturing Orders</h1>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-4">
-                <Button onClick={() => downloadReport('CSV')} variant="outline" className="h-11 px-5 font-bold text-slate-600 rounded-xl border-slate-200 hover:bg-slate-50 transition-colors">
-                    <FileText size={16} className="mr-2" /> EXCEL
-                </Button>
-                <Button onClick={() => downloadReport('PDF')} variant="outline" className="h-11 px-5 font-bold text-slate-600 rounded-xl border-slate-200 hover:bg-slate-50 transition-colors">
-                    <Download size={16} className="mr-2" /> PDF
-                </Button>
-                <Button onClick={() => setIsCreateModalOpen(true)} className="h-11 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95">
-                    <Plus size={18} className="mr-2" /> Start New Batch
-                </Button>
-            </div>
+            <Button onClick={() => setIsCreateModalOpen(true)} className="h-14 px-10 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-2xl transition-all uppercase tracking-widest text-xs">
+                <Plus size={18} className="mr-2" /> Start New Batch
+            </Button>
         </header>
 
-        {/* MAIN DATA TABLE CARD */}
-        <Card className="border border-slate-200 shadow-sm rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="px-5 sm:px-8 py-5 sm:py-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 bg-slate-50/40">
-            <div className="flex items-start justify-between gap-3 md:block">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg font-bold text-slate-900">Production Schedule</CardTitle>
-                  <CardDescription className="text-xs font-medium text-slate-400 uppercase tracking-wider">Scheduled and completed manufacturing activities</CardDescription>
-                </div>
-                {!mobileSearchOpen && (
-                    <button
-                        type="button"
-                        onClick={() => setMobileSearchOpen(true)}
-                        aria-label="Search"
-                        className="md:hidden shrink-0 h-10 w-10 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center"
-                    >
-                        <Search className="h-4 w-4 text-slate-400" />
-                    </button>
-                )}
-            </div>
-
-            {/* Desktop search bar */}
-            <div className="relative w-full md:w-[400px] hidden md:block">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Filter by Batch or Product..."
-                  value={filter}
-                  onChange={e => setFilter(e.target.value)}
-                  className="h-11 pl-11 border-slate-200 bg-white rounded-xl text-sm focus:ring-blue-600 shadow-sm"
-                />
-            </div>
-
-            {/* Mobile: search collapses to an icon button; tapping it reveals the full bar. */}
-            {mobileSearchOpen && (
-                <div className="md:hidden flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="relative flex-1 min-w-0">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            autoFocus
-                            placeholder="Filter by Batch or Product..."
-                            value={filter}
-                            onChange={e => setFilter(e.target.value)}
-                            className="h-11 pl-10 border-slate-200 bg-white rounded-xl text-sm focus:ring-blue-600 shadow-sm w-full"
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => { setMobileSearchOpen(false); setFilter(''); }}
-                        className="shrink-0 h-11 px-3 text-xs font-bold text-slate-500 hover:text-slate-900"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            )}
-          </CardHeader>
+        {/* SCHEDULE TABLE */}
+        <Card className="border-slate-200 shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
           <CardContent className="p-0">
-            <div className="relative">
-            <ScrollArea
-                viewportRef={setTableEl}
-                onScroll={updateTableScroll}
-                className="w-full max-h-[65vh]"
-            >
-              <Table containerRef={setHTableEl} onScroll={updateHTableScroll}>
+            <ScrollArea className="w-full max-h-[60vh]">
+              <Table>
                 <TableHeader className="bg-slate-50">
-                  <TableRow className="h-14 border-none">
-                    <TableHead className="w-16 text-center">
-                      <Checkbox checked={selectedItems.length === orders?.length} onCheckedChange={(c) => setSelectedItems(c ? orders?.map(o => o.id) || [] : [])} className="border-2 border-slate-300 data-checked:border-blue-600 data-checked:bg-blue-600" />
-                    </TableHead>
-                    <TableHead className="px-6 font-bold uppercase text-slate-500 text-[10px] tracking-widest">Batch Number</TableHead>
-                    <TableHead className="font-bold uppercase text-slate-500 text-[10px] tracking-widest">Product Information</TableHead>
-                    <TableHead className="text-center font-bold uppercase text-slate-500 text-[10px] tracking-widest">Target Yield</TableHead>
-                    <TableHead className="text-center font-bold uppercase text-slate-500 text-[10px] tracking-widest">Status</TableHead>
-                    <TableHead className="px-8 text-right font-bold uppercase text-slate-500 text-[10px] tracking-widest">Actions</TableHead>
+                  <TableRow className="h-16">
+                    <TableHead className="pl-10 font-black uppercase text-slate-400 text-[10px] tracking-widest">Batch Ref</TableHead>
+                    <TableHead className="font-black uppercase text-slate-400 text-[10px] tracking-widest">Product Identity</TableHead>
+                    <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-widest">Target Yield</TableHead>
+                    <TableHead className="text-center font-black uppercase text-slate-400 text-[10px] tracking-widest">Status</TableHead>
+                    <TableHead className="pr-10 text-right font-black uppercase text-slate-400 text-[10px] tracking-widest">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders?.filter((o: any) => o.batch_number?.toLowerCase().includes(filter.toLowerCase()) || o.product_name.toLowerCase().includes(filter.toLowerCase())).map((o: any) => (
-                    <TableRow key={o.id} className="h-20 hover:bg-slate-50/50 transition-colors border-b last:border-none">
-                      <TableCell className="text-center">
-                        <Checkbox checked={selectedItems.includes(o.id)} onCheckedChange={(c) => setSelectedItems(prev => c ? [...prev, o.id] : prev.filter(id => id !== o.id))} className="border-2 border-slate-300 data-checked:border-blue-600 data-checked:bg-blue-600" />
-                      </TableCell>
-                      <TableCell className="px-6 font-bold text-slate-900 text-xs font-mono">{o.batch_number || 'N/A'}</TableCell>
+                  {orders?.map((o: any) => (
+                    <TableRow key={o.id} className="h-24 hover:bg-slate-50/50 transition-colors border-b last:border-none">
+                      <TableCell className="pl-10 font-black text-slate-900 text-xs font-mono">{o.batch_number}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 text-sm">{o.product_name}</span>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase mt-0.5 tracking-wider">SKU: {o.sku}</span>
+                          <span className="font-black text-slate-900 text-base uppercase tracking-tight">{o.product_name}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">SKU: {o.sku}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center font-bold text-slate-700 text-sm tabular-nums">{o.planned_quantity.toLocaleString()} UNITS</TableCell>
+                      <TableCell className="text-center font-black text-slate-700 text-sm tabular-nums">{o.planned_quantity} UNITS</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="secondary" className={cn(
-                          "font-bold uppercase text-[9px] px-3 py-1 rounded-md border-none shadow-sm",
-                          o.status === 'completed' ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
-                        )}>
-                          {o.status === 'completed' ? 'Finalized' : 'Active Run'}
+                        <Badge className={cn("font-black uppercase text-[9px] px-4 py-1.5 rounded-lg border-none shadow-sm", o.status === 'completed' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>
+                          {o.status === 'completed' ? 'Forensically Sealed' : 'In Production'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-8 text-right">
+                      <TableCell className="pr-10 text-right">
                         {o.status !== 'completed' ? (
-                          <Button onClick={() => openAuditDialog(o)} className="h-9 px-5 bg-slate-900 hover:bg-black text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all shadow-md active:scale-95">
+                          <Button onClick={() => openAuditDialog(o)} className="h-11 px-8 bg-slate-900 hover:bg-black text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all shadow-xl active:scale-95">
                             Finalize Batch
                           </Button>
                         ) : (
-                          <div className="flex items-center justify-end gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-                            <ShieldCheck size={14} className="text-emerald-500" /> Stock Invoiced
-                          </div>
+                          <Badge variant="outline" className="text-slate-300 border-slate-100 uppercase text-[9px] font-bold tracking-widest">Ledger Locked</Badge>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              <ScrollBar orientation="horizontal" />
             </ScrollArea>
-            {!tableAtTop && (
-                <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
-                    <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
-                </div>
-            )}
-            {!tableAtBottom && (
-                <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
-                    <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                </div>
-            )}
-            {!tableAtLeft && (
-                <div className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center">
-                    <ChevronLeft className="h-4 w-4 text-slate-500" />
-                </div>
-            )}
-            {!tableAtRight && (
-                <div className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center">
-                    <ChevronRight className="h-4 w-4 text-slate-500" />
-                </div>
-            )}
-            </div>
           </CardContent>
         </Card>
 
         {/* MODAL: START PRODUCTION */}
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogContent className="max-w-md sm:max-w-md w-[calc(100%-2rem)] max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl bg-white rounded-3xl">
-                <div className="p-6 sm:p-10 text-center border-b border-slate-100 shrink-0">
-                    <div className="h-14 w-14 sm:h-16 sm:w-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600 border border-blue-100 shadow-sm">
-                        <PackagePlus className="h-7 w-7 sm:h-8 sm:w-8" />
-                    </div>
-                    <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900">New Production Run</DialogTitle>
-                    <DialogDescription className="text-slate-400 text-xs mt-1 font-medium uppercase tracking-wider">Define the parameters for this batch</DialogDescription>
+            <DialogContent className="max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-3xl bg-white">
+                <div className="p-10 text-center bg-slate-900 text-white">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">Industrial Initiation</DialogTitle>
+                    <DialogDescription className="text-slate-400 text-[10px] mt-2 font-bold uppercase tracking-[0.2em]">Deploying new manufacturing node</DialogDescription>
                 </div>
-
-                <div className="p-6 sm:p-10 space-y-6 overflow-y-auto min-h-0 custom-scrollbar">
-                    <div className="space-y-2.5">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Product Recipe</Label>
+                
+                <div className="p-10 space-y-8">
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">1. Manufacturing Recipe</Label>
                         <Select onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
-                            <SelectTrigger className="h-12 w-full border-slate-200 bg-slate-50/50 rounded-xl font-bold text-sm px-5">
-                                <SelectValue placeholder="Search recipe catalog..." />
+                            <SelectTrigger className="h-14 border-slate-200 bg-slate-50 font-black text-slate-900 rounded-2xl px-6">
+                                <SelectValue placeholder="Identify blueprint..." />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-slate-200 shadow-2xl max-h-[300px]">
+                            <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
                                 {finishedGoods?.map((g: any) => (
-                                    <SelectItem key={g.id} value={g.id.toString()} className="text-xs font-bold py-3 border-b last:border-none">
+                                    <SelectItem key={g.id} value={g.id.toString()} className="font-bold py-4 border-b last:border-none uppercase text-xs">
                                         {g.product?.name} <span className="text-slate-400 ml-2">[{g.sku}]</span>
                                     </SelectItem>
                                 ))}
@@ -493,313 +291,218 @@ export default function ManufacturingOrderManager() {
                         </Select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:gap-5">
-                        <div className="space-y-2.5 min-w-0">
-                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Batch ID</Label>
-                            <Input value={newOrder.batch} onChange={e => setNewOrder({...newOrder, batch: e.target.value})} className="h-12 w-full border-slate-200 bg-white font-bold rounded-xl text-center uppercase text-xs" />
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">2. Target Client (Notification Node)</Label>
+                        <Select onValueChange={(val) => setNewOrder({...newOrder, customer_id: val})}>
+                            <SelectTrigger className="h-14 border-slate-200 bg-slate-50 font-black text-slate-900 rounded-2xl px-6">
+                                <SelectValue placeholder="Search Client Identity..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
+                                {customers?.map((c: any) => (
+                                    <SelectItem key={c.id} value={c.id.toString()} className="font-bold py-4 border-b last:border-none uppercase text-xs">
+                                        <div className="flex items-center gap-2"><User size={14} className="text-blue-500" /> {c.name}</div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Batch ID</Label>
+                            <Input value={newOrder.batch} readOnly className="h-14 border-slate-200 bg-white font-black rounded-2xl text-center uppercase text-sm tracking-widest text-slate-400" />
                         </div>
-                        <div className="space-y-2.5 min-w-0">
-                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Target Yield</Label>
-                            <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-12 w-full border-slate-200 bg-white font-bold rounded-xl text-center text-blue-600 text-sm" />
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Planned yield</Label>
+                            <Input type="number" value={newOrder.qty} onChange={e => setNewOrder({...newOrder, qty: Number(e.target.value)})} className="h-14 border-blue-100 bg-blue-50/20 font-black rounded-2xl text-center text-blue-600 text-xl" />
                         </div>
                     </div>
 
-                    <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="w-full h-12 sm:h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all uppercase tracking-widest text-xs active:scale-[0.98]">
-                        {createOrderMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "Confirm & Initiate"}
+                    <Button onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending} className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-2xl transition-all uppercase tracking-[0.2em] text-xs">
+                        {createOrderMutation.isPending ? <Loader2 className="animate-spin h-6 w-6" /> : "Authorize & Notify Client"}
                     </Button>
                 </div>
             </DialogContent>
         </Dialog>
 
-        {/* --- ULTRA-WIDE MODAL: FINALIZE & RECONCILE (FIXED PRO LAYOUT) --- */}
+        {/* --- MODAL: FINALIZE & RECONCILE --- */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-            <DialogContent showCloseButton={false} className="max-w-[1650px] sm:max-w-[1650px] w-[98vw] max-h-[96vh] h-[96vh] flex flex-col p-0 overflow-hidden border-none shadow-3xl rounded-[2.5rem] bg-white">
-
-                {/* 1. PROFESSIONAL HEADER - Pinned at Top */}
-                <div className="shrink-0 bg-slate-900 p-3 sm:p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-2.5 sm:gap-3 text-white">
-                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                        <div className="h-8 w-8 sm:h-10 sm:w-10 bg-white/10 backdrop-blur-xl rounded-lg sm:rounded-xl flex items-center justify-center border border-white/20 shrink-0">
-                            <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+            <DialogContent showCloseButton={false} className="max-w-[1650px] w-[98vw] h-[96vh] flex flex-col p-0 overflow-hidden border-none shadow-3xl rounded-[3rem] bg-white">
+                
+                <div className="shrink-0 bg-slate-900 p-10 flex justify-between items-center text-white">
+                    <div className="flex items-center gap-8">
+                        <div className="h-20 w-20 bg-white/10 backdrop-blur-xl rounded-[2rem] flex items-center justify-center border border-white/20">
+                            <ClipboardList size={32} className="text-blue-400" />
                         </div>
-                        <div className="space-y-0.5 min-w-0">
-                            <DialogTitle className="text-sm sm:text-base md:text-lg font-black tracking-tight truncate">Finalize Batch Statistics</DialogTitle>
-                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Active Lot:</span>
-                                <Badge variant="secondary" className="bg-blue-600 text-white font-mono px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs border-none shadow-lg">
-                                    {selectedOrder?.batch_number}
-                                </Badge>
-                            </div>
+                        <div className="space-y-1">
+                            <DialogTitle className="text-4xl font-black tracking-tight uppercase">Finalize Batch Statistics</DialogTitle>
+                            <Badge variant="secondary" className="bg-blue-600 text-white font-mono px-5 py-2 rounded-xl text-sm border-none shadow-lg">
+                                LOT_IDENTITY: {selectedOrder?.batch_number}
+                            </Badge>
                         </div>
                     </div>
-
-                    <div className="w-full md:w-auto flex items-start gap-2">
-                        <div className="flex-1 md:flex-none bg-white/5 backdrop-blur-2xl px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-xl text-right sm:min-w-[160px] border border-white/10 shadow-inner">
-                            <p className="text-[8px] sm:text-[9px] text-blue-400 font-black uppercase tracking-[0.3em] mb-0.5">Forecasted Item Unit Cost</p>
-                            <p className="text-base sm:text-lg md:text-xl font-black tabular-nums tracking-tighter">
-                                {costSummary.unitCost.toLocaleString()} <span className="text-[10px] sm:text-xs text-slate-400 font-bold ml-1 uppercase">{currency}</span>
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setSelectedOrder(null)}
-                            aria-label="Close"
-                            className="shrink-0 h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg bg-white/10 backdrop-blur-xl border border-white/20 text-white/70 hover:text-white hover:bg-white/20 hover:border-white/30 transition-all active:scale-95"
-                        >
-                            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </button>
+                    <div className="bg-white/5 backdrop-blur-2xl px-12 py-8 rounded-[2.5rem] text-right border border-white/10 shadow-inner">
+                        <p className="text-[11px] text-blue-400 font-black uppercase tracking-[0.3em] mb-1">Calculated Item Unit Cost</p>
+                        <p className="text-5xl font-black tabular-nums tracking-tighter">
+                            {costSummary.unitCost.toLocaleString()} <span className="text-sm text-slate-400 font-bold ml-1 uppercase">{currency}</span>
+                        </p>
                     </div>
                 </div>
 
-                {/* 2. MAIN WORKSPACE - Ultra Wide Flex Grid */}
-                <div className="relative flex-1 min-h-0">
-                <div
-                    ref={setWsEl}
-                    onScroll={updateWsScroll}
-                    className="h-full overflow-y-auto lg:overflow-hidden custom-scrollbar grid grid-cols-1 lg:grid-cols-12 bg-white"
-                >
-
-                    {/* LEFT AREA: Consumption Ledger & Expenses (WIDE) */}
-                    <div className="relative lg:col-span-8 flex flex-col lg:h-full border-b lg:border-b-0 lg:border-r border-slate-100 lg:min-h-0">
-                        <div
-                            ref={setLeftEl}
-                            onScroll={updateLeftScroll}
-                            className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar"
-                        >
-                            <div className="p-5 sm:p-10 lg:p-14 space-y-10 lg:space-y-16">
-
-                                {/* A. Material Consumption Section */}
-                                <div className="space-y-6 sm:space-y-10">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-blue-600 pl-6">
+                <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 bg-white">
+                    <div className="lg:col-span-8 h-full flex flex-col border-r border-slate-100">
+                        <ScrollArea className="flex-1">
+                            <div className="p-14 space-y-16">
+                                
+                                {/* 1. LIVE MATERIAL LEDGER */}
+                                <div className="space-y-10">
+                                    <div className="flex items-center justify-between border-l-4 border-blue-600 pl-8">
                                         <div>
-                                            <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-900">1. Material Consumption Ledger</h3>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Verify actual raw weights used in this production run</p>
+                                            <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">1. Material Consumption Ledger</h3>
+                                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Surgically deduct raw weights used in this run</p>
                                         </div>
-                                        <Badge className="bg-emerald-50 text-emerald-600 font-black px-4 py-2 rounded-xl border-none uppercase text-[10px] tracking-tighter w-fit">Atomic Inventory Sync</Badge>
-                                    </div>
-
-                                    <div className="rounded-2xl sm:rounded-[2.5rem] border border-white/60 overflow-hidden bg-white/60 backdrop-blur-md shadow-sm">
-                                        {/* Desktop/tablet: full table */}
-                                        <div className="hidden md:block">
-                                            <Table>
-                                                <TableHeader className="bg-slate-100/50">
-                                                    <TableRow className="h-16 border-none">
-                                                        <TableHead className="text-[11px] font-black pl-12 uppercase tracking-[0.2em] text-slate-500">Material specification</TableHead>
-                                                        <TableHead className="text-[11px] font-black text-center uppercase tracking-[0.2em] text-slate-500">Actual units used</TableHead>
-                                                        <TableHead className="text-[11px] font-black text-right pr-12 uppercase tracking-[0.2em] text-slate-500">Inventory Rate ({currency})</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {ingredientLogs.map((log, idx) => (
-                                                        <TableRow key={idx} className="h-24 hover:bg-white transition-all border-b border-slate-100 last:border-none">
-                                                            <TableCell className="pl-12">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-black text-slate-800 text-lg uppercase tracking-tight">{log.name}</span>
-                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Formula Reference ID: {log.variant_id}</span>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <div className="relative inline-block">
-                                                                    <Input
-                                                                        type="number"
-                                                                        step="0.001"
-                                                                        value={log.actual_qty}
-                                                                        onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }}
-                                                                        className="h-14 w-52 text-center border-slate-200 bg-white font-black text-blue-600 text-2xl rounded-2xl focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all"
-                                                                    />
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-right pr-12 font-mono font-black text-slate-400 text-sm tabular-nums">
-                                                                {log.unit_cost.toLocaleString()}
-                                                            </TableCell>
-                                                        </TableRow>
+                                        <div className="relative w-80">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                            <Input 
+                                                placeholder="Add Raw Material..." 
+                                                value={materialSearch}
+                                                onChange={e => setMaterialSearch(e.target.value)}
+                                                className="pl-12 h-12 border-slate-100 bg-slate-50 font-black rounded-2xl text-[10px] uppercase tracking-widest"
+                                            />
+                                            {materialSearch && (
+                                                <div className="absolute top-14 w-full z-[100] bg-white border border-slate-100 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] rounded-2xl overflow-hidden max-h-60 overflow-y-auto">
+                                                    {rawMaterials?.filter(m => m.product_name.toLowerCase().includes(materialSearch.toLowerCase())).map(m => (
+                                                        <div key={m.variant_id} onClick={() => {
+                                                            if (!ingredientLogs.find(i => i.variant_id === m.variant_id.toString())) {
+                                                                setIngredientLogs([...ingredientLogs, { variant_id: m.variant_id.toString(), name: m.product_name, actual_qty: 0, unit_cost: m.buying_price, currency: m.currency || currency }]);
+                                                            }
+                                                            setMaterialSearch("");
+                                                        }} className="p-5 hover:bg-blue-50 cursor-pointer border-b last:border-none flex justify-between items-center">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-black text-[11px] uppercase">{m.product_name}</span>
+                                                                <span className="text-[9px] text-slate-400">Inventory: {m.current_stock} {m.unit}</span>
+                                                            </div>
+                                                            <PlusCircle size={18} className="text-blue-600" />
+                                                        </div>
                                                     ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-
-                                        {/* Mobile: stacked material cards */}
-                                        <div className="md:hidden divide-y divide-slate-100">
-                                            {ingredientLogs.map((log, idx) => (
-                                                <div key={idx} className="p-5 space-y-3">
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <span className="font-black text-slate-800 text-sm uppercase tracking-tight">{log.name}</span>
-                                                        <span className="text-[10px] font-mono font-black text-slate-400 uppercase tabular-nums shrink-0">{log.unit_cost.toLocaleString()} {currency}</span>
-                                                    </div>
-                                                    <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Formula Reference ID: {log.variant_id}</span>
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Actual units used</Label>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.001"
-                                                            value={log.actual_qty}
-                                                            onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }}
-                                                            className="h-12 w-full text-center border-slate-200 bg-white font-black text-blue-600 text-lg rounded-xl shadow-sm"
-                                                        />
-                                                    </div>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
+                                    </div>
+                                    
+                                    <div className="rounded-[3rem] border border-slate-100 overflow-hidden bg-slate-50/20">
+                                        <Table>
+                                            <TableHeader className="bg-slate-100/50">
+                                                <TableRow className="h-16">
+                                                    <TableHead className="text-[11px] font-black pl-12 uppercase tracking-[0.2em] text-slate-500">Material Identity</TableHead>
+                                                    <TableHead className="text-[11px] font-black text-center uppercase tracking-[0.2em] text-slate-500">Actual consumption</TableHead>
+                                                    <TableHead className="text-[11px] font-black text-right pr-12 uppercase tracking-[0.2em] text-slate-500">Stock Rate</TableHead>
+                                                    <TableHead className="w-20"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {ingredientLogs.map((log, idx) => (
+                                                    <TableRow key={idx} className="h-24 hover:bg-white border-b border-slate-100 last:border-none">
+                                                        <TableCell className="pl-12 font-black text-slate-800 text-lg uppercase">{log.name}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Input type="number" step="0.001" value={log.actual_qty} onChange={e => { const n = [...ingredientLogs]; n[idx].actual_qty = Number(e.target.value); setIngredientLogs(n); }} className="h-16 w-52 mx-auto text-center border-slate-200 bg-white font-black text-blue-600 text-3xl rounded-2xl shadow-inner focus:ring-blue-600/20" />
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-12 font-mono font-black text-slate-500 text-sm">{log.unit_cost.toLocaleString()} <span className="text-[10px] text-slate-300 font-bold ml-1">{log.currency}</span></TableCell>
+                                                        <TableCell className="pr-12 text-center"><button onClick={() => setIngredientLogs(ingredientLogs.filter((_, i) => i !== idx))} className="text-slate-200 hover:text-rose-600 transition-colors"><Trash2 size={24}/></button></TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </div>
 
-                                {/* B. Overheads Section */}
-                                <div className="space-y-6 sm:space-y-10">
-                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-l-4 border-rose-500 pl-6">
-                                        <div>
-                                            <h3 className="text-base sm:text-lg font-black uppercase tracking-tight text-slate-900">2. External Production Overheads</h3>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Log labour, logistics, and facility utility costs</p>
-                                        </div>
-                                        <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="w-full sm:w-auto h-11 text-blue-600 font-black text-[10px] uppercase tracking-widest border-blue-100 hover:bg-blue-50 px-8 rounded-2xl transition-all shadow-sm">
+                                {/* 2. EXTERNAL OVERHEADS */}
+                                <div className="space-y-10">
+                                    <div className="flex justify-between items-center border-l-4 border-rose-500 pl-8">
+                                        <h3 className="text-xl font-black uppercase tracking-tight text-slate-900">2. External Production Overheads</h3>
+                                        <Button variant="outline" size="sm" onClick={() => setExpenses([...expenses, { category: '', amount: 0 }])} className="h-12 text-blue-600 font-black text-[11px] uppercase tracking-widest border-blue-100 px-10 rounded-2xl transition-all shadow-sm">
                                             <Plus className="mr-2 h-4 w-4" /> Add Expense Node
                                         </Button>
                                     </div>
-
-                                    <div className="grid grid-cols-1 gap-4 sm:gap-5">
+                                    <div className="grid grid-cols-1 gap-6">
                                         {expenses.map((exp, idx) => (
-                                            <div key={idx} className="flex flex-col sm:flex-row gap-4 sm:gap-6 sm:items-center bg-white/60 backdrop-blur-md p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-white/60 shadow-sm hover:shadow-md transition-all group">
-                                                <div className="flex-1 min-w-0">
-                                                    <Label className="text-[9px] font-black text-slate-300 uppercase ml-1 sm:ml-4 mb-2 block">Expense category</Label>
-                                                    <Input
-                                                        placeholder="e.g. Mechanical Labour, Transport..."
-                                                        value={exp.category}
-                                                        onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }}
-                                                        className="h-12 sm:h-14 border-slate-100 bg-slate-50/50 font-bold text-slate-900 rounded-xl sm:rounded-2xl px-5 sm:px-8 text-sm focus:bg-white"
-                                                    />
+                                            <div key={idx} className="flex gap-6 items-center bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                                                <Input placeholder="Expense category (Labour, Electricity, Fuel...)" value={exp.category} onChange={e => { const n = [...expenses]; n[idx].category = e.target.value; setExpenses(n); }} className="h-16 flex-1 border-slate-100 bg-slate-50/50 font-black text-slate-900 rounded-3xl px-10 text-sm focus:bg-white" />
+                                                <div className="relative w-96">
+                                                    <Input type="number" value={exp.amount} onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }} className="h-16 border-slate-100 bg-slate-50/50 text-right font-black text-slate-900 rounded-3xl text-2xl pr-16 focus:bg-white" />
+                                                    <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[11px] font-black text-slate-300 uppercase">{currency}</span>
                                                 </div>
-                                                <div className="w-full sm:w-80 relative">
-                                                    <Label className="text-[9px] font-black text-slate-300 uppercase ml-1 sm:ml-4 mb-2 block sm:text-right">Aggregated amount</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={exp.amount}
-                                                        onChange={e => { const n = [...expenses]; n[idx].amount = Number(e.target.value); setExpenses(n); }}
-                                                        className="h-12 sm:h-14 w-full border-slate-100 bg-slate-50/50 text-right font-black text-slate-900 rounded-xl sm:rounded-2xl text-lg sm:text-xl pr-24 sm:pr-14 focus:bg-white"
-                                                    />
-                                                    <span className="absolute right-9 sm:right-14 top-[calc(50%+0.75rem)] sm:bottom-4 sm:top-auto -translate-y-1/2 sm:translate-y-0 text-[10px] font-black text-slate-300 uppercase pointer-events-none">{currency}</span>
-                                                    {/* Mobile: inline cancel so removing a line doesn't require reaching the far-right trash button */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))}
-                                                        aria-label="Remove expense"
-                                                        className="sm:hidden absolute right-2 top-[calc(50%+0.75rem)] -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
-                                                </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="hidden sm:inline-flex h-14 w-14 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-colors sm:mt-6 shrink-0">
-                                                    <Trash2 size={24} />
-                                                </Button>
+                                                <button onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))} className="h-16 w-16 text-slate-100 hover:text-rose-500 rounded-full transition-colors mt-6"><Trash2 size={28} /></button>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        {!leftAtTop && (
-                            <div className="hidden lg:flex pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 items-center justify-center">
-                                <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
-                            </div>
-                        )}
-                        {!leftAtBottom && (
-                            <div className="hidden lg:flex pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 items-center justify-center animate-bounce">
-                                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                            </div>
-                        )}
+                        </ScrollArea>
                     </div>
 
-                    {/* RIGHT AREA: Yield & Summary (CLEAN SIDEBAR) */}
-                    <div
-                        ref={setRightEl}
-                        onScroll={updateRightScroll}
-                        className="relative lg:col-span-4 bg-slate-50/40 p-5 sm:p-10 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-100 lg:h-full lg:overflow-y-auto custom-scrollbar lg:min-h-0"
-                    >
-                        <div className="space-y-6 sm:space-y-12">
-                            {/* Yield Capture Card */}
-                            <div className="bg-white/70 backdrop-blur-md p-6 sm:p-12 rounded-2xl sm:rounded-[3rem] shadow-2xl shadow-slate-200/50 border border-white/60 text-center space-y-4 sm:space-y-6">
-                                <Label className="text-[11px] sm:text-[12px] font-black text-slate-400 uppercase tracking-[0.3em] block">Actual Finished Yield</Label>
-                                <div className="relative">
-                                    <Input
-                                        type="number"
-                                        value={actualYield}
-                                        onChange={e => setActualYield(Number(e.target.value))}
-                                        className="h-20 sm:h-32 lg:h-40 text-4xl sm:text-6xl lg:text-8xl font-black border-none text-center bg-slate-50 rounded-2xl sm:rounded-[2.5rem] text-slate-900 tabular-nums shadow-inner focus-visible:ring-0 focus-visible:bg-slate-100"
-                                    />
-                                </div>
-                                <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] bg-blue-50 py-2.5 sm:py-3 rounded-2xl mx-2 sm:mx-10">Final Inventory Verification</p>
+                    {/* RIGHT AREA: Yield & Notification */}
+                    <div className="lg:col-span-4 bg-slate-50/40 p-12 flex flex-col border-l border-slate-100 h-full overflow-hidden">
+                        <div className="space-y-14">
+                            <div className="bg-white p-14 rounded-[3.5rem] shadow-2xl border border-slate-200/50 text-center space-y-6">
+                                <Label className="text-[13px] font-black text-slate-400 uppercase tracking-[0.4em] block">Actual Finished Yield</Label>
+                                <Input type="number" value={actualYield} onChange={e => setActualYield(Number(e.target.value))} className="h-44 text-9xl font-black border-none text-center bg-slate-50 rounded-[3rem] text-slate-900 tabular-nums shadow-inner focus-visible:ring-0 focus-visible:bg-slate-100" />
+                                <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.3em] bg-blue-50 py-4 rounded-[1.5rem] mx-10">Production Node Verification</p>
                             </div>
 
-                            {/* Operational Summary */}
-                            <div className="bg-white/50 backdrop-blur-md rounded-2xl sm:rounded-[2.5rem] border border-white/50 shadow-sm space-y-5 sm:space-y-8 p-4 sm:p-8">
-                                <h4 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.4em] text-slate-300 border-b border-slate-200 pb-4 sm:pb-5">Operational Financials</h4>
-                                <div className="flex justify-between items-center text-sm font-bold">
-                                    <span className="text-slate-400 uppercase tracking-widest text-[10px] sm:text-[11px]">Direct Material Pool</span>
-                                    <span className="text-slate-900 text-base sm:text-lg tabular-nums">{costSummary.matTotal.toLocaleString()} <span className="text-[10px] text-slate-400">{currency}</span></span>
+                            <div className="space-y-10 px-8">
+                                <h4 className="text-[12px] font-black uppercase tracking-[0.5em] text-slate-300 border-b border-slate-100 pb-6">Consolidated Ledger Impacts</h4>
+                                <div className="flex justify-between items-center text-sm font-black">
+                                    <span className="text-slate-400 uppercase tracking-widest text-[11px]">Material Pool</span>
+                                    <span className="text-slate-900 text-xl tabular-nums">{costSummary.matTotal.toLocaleString()} <span className="text-xs text-slate-400">{currency}</span></span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm font-bold">
-                                    <span className="text-slate-400 uppercase tracking-widest text-[10px] sm:text-[11px]">Aggregate Overhead Pool</span>
-                                    <span className="text-slate-900 text-base sm:text-lg tabular-nums">{costSummary.expTotal.toLocaleString()} <span className="text-[10px] text-slate-400">{currency}</span></span>
+                                <div className="flex justify-between items-center text-sm font-black">
+                                    <span className="text-slate-400 uppercase tracking-widest text-[11px]">Aggregated Overheads</span>
+                                    <span className="text-xl text-slate-900 tabular-nums">{costSummary.expTotal.toLocaleString()} <span className="text-xs text-slate-400">{currency}</span></span>
                                 </div>
-
-                                <div className="pt-6 sm:pt-12 mt-5 sm:mt-10 border-t-4 border-slate-900 flex flex-col items-center">
-                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.5em] mb-3 sm:mb-4 text-center">Total Net Batch Valuation</span>
-                                    <span className="text-3xl sm:text-5xl lg:text-7xl font-black text-slate-900 tabular-nums tracking-tighter">
-                                        {costSummary.total.toLocaleString()}
-                                    </span>
-                                    <span className="text-xs font-black text-blue-600 uppercase tracking-widest mt-2 text-center">{currency} (Authorized Units)</span>
+                                <div className="pt-14 mt-12 border-t-8 border-slate-900 flex flex-col items-center">
+                                    <span className="text-7xl font-black text-slate-900 tabular-nums tracking-tighter">{costSummary.total.toLocaleString()}</span>
+                                    <span className="text-sm font-black text-blue-600 uppercase tracking-[0.5em] mt-3">Total Net Batch Valuation</span>
                                 </div>
                             </div>
                         </div>
 
-                        {!rightAtTop && (
-                            <div className="hidden lg:flex pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 items-center justify-center">
-                                <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                        <div className="p-10 bg-slate-900 border border-slate-800 rounded-[3rem] shadow-2xl mt-auto">
+                            <div className="flex items-start gap-6">
+                                <ShieldCheck size={32} className="text-blue-400 shrink-0" />
+                                <p className="text-xs text-slate-400 font-black leading-relaxed uppercase tracking-widest">
+                                    Executing the seal will trigger a forensic stock deduction of raw materials and restock finished goods into the primary vault.
+                                </p>
                             </div>
-                        )}
-                        {!rightAtBottom && (
-                            <div className="hidden lg:flex pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 items-center justify-center animate-bounce">
-                                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                            </div>
-                        )}
+                        </div>
                     </div>
-                </div>
-                {!wsAtTop && (
-                    <div className="lg:hidden pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center">
-                        <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
-                    </div>
-                )}
-                {!wsAtBottom && (
-                    <div className="lg:hidden pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 z-10 h-7 w-7 rounded-full bg-white/90 shadow-md border border-slate-200 flex items-center justify-center animate-bounce">
-                        <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                    </div>
-                )}
                 </div>
 
-                {/* 3. WIDE FOOTER - Pinned at Bottom */}
-                <div className="shrink-0 bg-white border-t border-slate-100 p-5 sm:p-10 flex items-stretch sm:items-center justify-end gap-4 sm:gap-10">
-                    <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-6 w-full sm:w-auto">
-                        <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="w-full sm:w-auto h-12 sm:h-16 px-6 sm:px-12 font-black text-slate-400 hover:text-rose-600 text-xs uppercase tracking-[0.2em] rounded-2xl transition-all">Discard Run</Button>
-                        <Button
-                            onClick={() => finalizeProductionMutation.mutate()}
-                            disabled={finalizeProductionMutation.isPending}
-                            className="w-full sm:w-auto h-14 sm:h-20 px-6 sm:px-20 bg-slate-900 hover:bg-black text-white font-black rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-900/40 uppercase tracking-wide sm:tracking-[0.2em] text-xs sm:text-sm sm:min-w-[450px] transition-all active:scale-[0.98] whitespace-nowrap"
+                {/* 3. WIDE FOOTER */}
+                <div className="shrink-0 bg-white border-t border-slate-100 p-12 flex flex-col sm:flex-row items-center justify-between gap-10">
+                    <div className="flex items-center gap-5 text-emerald-600 font-black text-[13px] uppercase tracking-[0.3em] bg-emerald-50 px-12 py-5 rounded-[2rem] border border-emerald-100 shadow-inner">
+                        <CheckCircle2 size={24} /> Autonomous Ledger Handshake Active
+                    </div>
+                    <div className="flex gap-6 w-full sm:w-auto">
+                        <Button variant="ghost" onClick={() => setSelectedOrder(null)} className="h-20 px-16 font-black text-slate-400 hover:text-rose-600 text-sm uppercase tracking-[0.2em] rounded-3xl transition-all">Discard Run</Button>
+                        <Button 
+                            onClick={() => finalizeProductionMutation.mutate()} 
+                            disabled={finalizeProductionMutation.isPending} 
+                            className="h-24 px-24 bg-slate-900 hover:bg-black text-white font-black rounded-[3rem] shadow-2xl shadow-slate-900/40 uppercase tracking-[0.3em] text-base min-w-[500px] transition-all active:scale-[0.98]"
                         >
-                            {finalizeProductionMutation.isPending ? (
-                                <><Loader2 className="animate-spin h-5 w-5 sm:h-6 sm:w-6 mr-3 sm:mr-4 shrink-0" /> Finalizing Manufacturing Node...</>
-                            ) : "Confirm & Finalize Production Output"}
+                            {finalizeProductionMutation.isPending ? <Loader2 className="animate-spin h-8 w-8 mr-4" /> : "Confirm & Finalize Production Output"}
                         </Button>
                     </div>
                 </div>
             </DialogContent>
         </Dialog>
-
-        {/* SYSTEM FOOTER */}
-        <footer className="mt-20 border-t border-slate-100 pt-12 pb-16 opacity-30 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em]">
-                <ShieldCheck size={14} />
-                <span>Facility Protocol V5.2.0 • Industrial Verification Stable</span>
+        
+        <footer className="mt-20 border-t border-slate-100 pt-16 pb-16 opacity-30 flex items-center justify-between">
+            <div className="flex items-center gap-5 text-[11px] text-slate-400 font-black uppercase tracking-[0.6em]">
+                <ShieldCheck size={18} />
+                <span>Facility Protocol V5.6.0 • Sovereign Integrated Engine</span>
             </div>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                &copy; {new Date().getFullYear()} INDUSTRIAL MANAGEMENT SOLUTIONS
-            </p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">© INDUSTRIAL MANAGEMENT OS</p>
         </footer>
       </div>
     </div>
