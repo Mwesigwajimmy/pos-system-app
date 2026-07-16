@@ -28,7 +28,7 @@ import {
   TrendingUp, Wallet, PackagePlus, Trash2, Plus,
   ClipboardList, ShieldCheck, Search, Download, FileText, X, Settings2,
   Layers, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, BarChart3, 
-  Database, Activity, FileDown, Coins, Mail, MessageSquare, Smartphone, User
+  Database, Activity, FileDown, Coins, Mail, MessageSquare, Smartphone, CheckCircle2, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

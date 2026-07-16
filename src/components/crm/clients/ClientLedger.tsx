@@ -45,7 +45,9 @@ import {
     Printer,
     ShieldCheck,
     Zap,
-    ClipboardList
+    ClipboardList,
+    Loader2,
+    X 
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";

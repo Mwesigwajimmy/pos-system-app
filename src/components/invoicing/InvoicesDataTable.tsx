@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   FileSpreadsheet,
   Banknote,
+  Loader2,
   Trash2,
   MoreVertical,
   History
