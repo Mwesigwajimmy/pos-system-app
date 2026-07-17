@@ -30,6 +30,9 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from "@/components/ui/checkbox"; 
 import { cn } from "@/lib/utils";
 
+// --- IMPORT PROFESSIONAL MODAL ---
+import CreateDirectIncomeModal from './CreateDirectIncomeModal';
+
 // --- Enterprise Types ---
 
 export type InvoiceStatus = 'draft' | 'awaiting_approval' | 'approved' | 'partially_paid' | 'paid' | 'overdue';
@@ -108,150 +111,6 @@ const receivePayment = async (payload: { invoice_id: string; account_id: string;
     });
     if (error) throw new Error(error.message);
     return data;
-};
-
-// Enterprise Action: Record Direct Income (THE NEW SOVEREIGN ENGINE)
-const recordDirectIncome = async (payload: { 
-    business_id: string, 
-    customer_name: string, 
-    amount: number, 
-    bank_account_id: string, 
-    description: string,
-    currency: string 
-}) => {
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc('record_direct_income_enterprise', {
-        p_business_id: payload.business_id,
-        p_customer_name: payload.customer_name,
-        p_amount: payload.amount,
-        p_bank_account_id: payload.bank_account_id,
-        p_description: payload.description,
-        p_currency: payload.currency
-    });
-    if (error) throw new Error(error.message);
-    return data;
-};
-
-// Enterprise Action: Bulk Approval
-const bulkApproveInvoices = async (payload: { invoice_ids: string[], business_id: string }) => {
-    const supabase = createClient();
-    const { error } = await supabase
-        .from('accounting_invoices')
-        .update({ status: 'approved' })
-        .in('id', payload.invoice_ids)
-        .eq('business_id', payload.business_id);
-    
-    if (error) throw new Error(error.message);
-    return true;
-};
-
-// --- Sub-Component: Direct Income Modal ---
-
-const DirectIncomeModal = ({ businessId, isOpen, onClose }: { businessId: string, isOpen: boolean, onClose: () => void }) => {
-    const queryClient = useQueryClient();
-    const [customerName, setCustomerName] = useState('');
-    const [amount, setAmount] = useState('');
-    const [accountId, setAccountId] = useState('');
-    const [description, setDescription] = useState('');
-
-    const { data: accounts, isLoading: loadingAccounts } = useQuery({
-        queryKey: ['deposit_accounts', businessId],
-        queryFn: () => fetchDepositAccounts(businessId),
-        enabled: isOpen
-    });
-
-    const mutation = useMutation({
-        mutationFn: recordDirectIncome,
-        onSuccess: () => {
-            toast.success("Direct Income Recorded: Invoice Generated & Ledger Synchronized");
-            queryClient.invalidateQueries({ queryKey: ['invoices', businessId] });
-            onClose();
-            // Reset form
-            setCustomerName(''); setAmount(''); setAccountId(''); setDescription('');
-        },
-        onError: (err: any) => toast.error(err.message)
-    });
-
-    const handleSubmit = () => {
-        if (!amount || !accountId || !description) {
-            toast.error("Please fill in all required financial fields");
-            return;
-        }
-        mutation.mutate({
-            business_id: businessId,
-            customer_name: customerName || 'Walk-in Customer',
-            amount: parseFloat(amount),
-            bank_account_id: accountId,
-            description: description,
-            currency: 'UGX'
-        });
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[450px]">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-green-600" />
-                        Record Direct Income
-                    </DialogTitle>
-                    <DialogDescription>
-                        Generate a paid invoice and post directly to the General Ledger.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Customer</Label>
-                        <Input 
-                            placeholder="Optional Name" 
-                            className="col-span-3"
-                            value={customerName}
-                            onChange={(e) => setCustomerName(e.target.value)}
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Amount (UGX)</Label>
-                        <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            className="col-span-3 font-mono font-bold text-primary"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Deposit To</Label>
-                        <Select onValueChange={setAccountId} value={accountId}>
-                            <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder={loadingAccounts ? "Loading accounts..." : "Select Target Account"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {accounts?.map((acc: any) => (
-                                    <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label className="text-right">Description</Label>
-                        <Input 
-                            placeholder="Service/Reason for income" 
-                            className="col-span-3"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                        />
-                    </div>
-                </div>
-                <DialogFooter className="bg-slate-50/50 p-4 -m-6 mt-2 border-t">
-                    <Button variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={mutation.isPending} className="bg-green-700 hover:bg-green-800">
-                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Record & Synchronize
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
 };
 
 // --- Sub-Component: Receive Payment Dialog ---
@@ -426,16 +285,6 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
     }).format(amount);
   };
 
-  // Bulk Action Mutation
-  const bulkApproveMutation = useMutation({
-      mutationFn: bulkApproveInvoices,
-      onSuccess: () => {
-          toast.success(`Successfully approved ${selectedInvoiceIds.length} invoices`);
-          queryClient.invalidateQueries({ queryKey: ['invoices', businessId] });
-          setSelectedInvoiceIds([]);
-      }
-  });
-
   const toggleSelectRow = (ids: string[]) => {
       setSelectedInvoiceIds(prev => {
           const allSelected = ids.every(id => prev.includes(id));
@@ -471,7 +320,6 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
                 </div>
             </div>
             <div className="flex gap-2">
-                {/* --- ADDED RECORD DIRECT INCOME BUTTON --- */}
                 <Button onClick={() => setIsDirectIncomeOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-md">
                     <Plus className="mr-2 h-4 w-4" /> Record Direct Income
                 </Button>
@@ -598,16 +446,6 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
                     <span className="text-sm font-bold">{selectedInvoiceIds.length} Items Selected</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-white hover:bg-slate-800 hover:text-green-400"
-                        onClick={() => bulkApproveMutation.mutate({ invoice_ids: selectedInvoiceIds, business_id: businessId })}
-                        disabled={bulkApproveMutation.isPending}
-                    >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Bulk Approve
-                    </Button>
                     <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white font-bold">
                         Process Batch Payments
                         <ArrowRight className="ml-2 w-4 h-4" />
@@ -630,7 +468,8 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
             }}
         />
 
-        <DirectIncomeModal 
+        {/* --- PROFESSIONAL ENTERPRISE MODAL --- */}
+        <CreateDirectIncomeModal 
             businessId={businessId}
             isOpen={isDirectIncomeOpen}
             onClose={() => setIsDirectIncomeOpen(false)}

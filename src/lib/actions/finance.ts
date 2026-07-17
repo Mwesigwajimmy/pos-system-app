@@ -1,11 +1,11 @@
-// src/lib/actions/finance.ts
+"use server"; // CRITICAL: This allows Client Components to call these functions safely.
+
 import { cookies } from 'next/headers'; 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache'; // ADDED: Required to refresh the UI after posting
+import { revalidatePath } from 'next/cache';
 
 /**
  * Enterprise Financial Data Fetcher
- * Aggregates Ledger, P&L, and Trends for a specific tenant context.
  */
 export async function getFinanceData(
     fromDate: string, 
@@ -23,23 +23,21 @@ export async function getFinanceData(
       p_project_id: projectId || null
   });
 
-  if (error) {
-    console.error("Ledger Sync Failure:", error.message);
-    throw new Error("Financial Synchronization Failed: Ensure tenant ledger is active.");
-  }
-
+  if (error) throw new Error("Financial Synchronization Failed");
   return data;
 }
 
 /**
  * ENTERPRISE HANDSHAKE: Record Direct Income
- * Connects the UI to the Sovereign SQL Engine to create Invoices and Ledger Entries.
+ * Connects the UI to the Sovereign SQL Engine.
  */
 export async function postDirectIncomeAction(payload: {
     businessId: string;
     customerId?: string;
+    agentId: string;        // ADDED: Needed for Sales attribution
     locationId: string;
     bankAccountId: string;
+    revenueAccountId: string; // ADDED: Needed for P&L categorization
     currency: string;
     date: string;
     items: any[];
@@ -49,15 +47,16 @@ export async function postDirectIncomeAction(payload: {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
-    // Call the Sovereign Engine RPC v2 we just created
     const { data, error } = await supabase.rpc('record_direct_income_enterprise_v2', {
         p_business_id: payload.businessId,
         p_customer_id: payload.customerId || null,
+        p_agent_id: payload.agentId,
         p_location_id: payload.locationId,
         p_bank_account_id: payload.bankAccountId,
+        p_revenue_account_id: payload.revenueAccountId,
         p_currency: payload.currency,
         p_date: payload.date,
-        p_items: payload.items, // JSON array of line items (Products + Taxes)
+        p_items: payload.items,
         p_total_amount: payload.totalAmount,
         p_tax_amount: payload.taxAmount
     });
@@ -67,7 +66,7 @@ export async function postDirectIncomeAction(payload: {
         return { success: false, message: error.message };
     }
 
-    // This ensures that the 'All Invoices' list and 'Receivables' update immediately
+    // Refresh UI paths
     revalidatePath('/finance/receivables');
     revalidatePath('/invoicing/all-invoices');
     
