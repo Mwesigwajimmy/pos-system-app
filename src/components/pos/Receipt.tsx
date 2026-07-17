@@ -12,12 +12,6 @@ import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
 /**
  * --- BBU1 SOVEREIGN RECEIPT ENGINE ---
  * VERSION: v22.3 OMEGA-PRIME (HYBRID HARDWARE ALIGNMENT)
- * 
- * CORE ARCHITECTURAL ALIGNMENT:
- * 1. VIEW DEFINITION SYNC: Dynamically maps data strictly from view_bbu1_corporate_identity schema.
- * 2. IDENTITY AGGREGATION: Resolves Tax Identity using the (tin_number || tax_number) logic found in SQL audit.
- * 3. REACT 19 STABILITY: Hard-wrapped forwardRef container to ensure contentRef never returns null.
- * 4. NATIVE WELD: Injected Capacitor detection to bypass browser print dialogs in the mobile app.
  */
 
 export interface ReceiptData {
@@ -38,7 +32,6 @@ export interface ReceiptData {
         invoice_number?: string;
         related_deal_id?: string | null;
     };
-    // Maps to view_bbu1_corporate_identity
     identity?: {
         business_id?: string;
         legal_name?: string;
@@ -63,6 +56,18 @@ export interface ReceiptData {
     saleItems?: any[];
 }
 
+// --- NEW EXPORT: DATA NORMALIZATION (THE MASTER WELD) ---
+// This function allows the PDF generator to "see" the data exactly like the UI does.
+export const normalizeReceiptData = (receiptData: ReceiptData) => {
+    const saleInfo = receiptData?.saleInfo || {} as any;
+    const store = receiptData?.identity || receiptData?.storeInfo || {};
+    const customer = receiptData?.customer || receiptData?.customerInfo;
+    const lines = receiptData?.items || receiptData?.saleItems || [];
+    const currency = store.currency_code || saleInfo?.currency_code || 'UGX';
+
+    return { saleInfo, store, customer, lines, currency };
+};
+
 interface BridgePayload {
     printerName: string;
     data: ReceiptData;
@@ -73,11 +78,8 @@ const useHardwarePrint = () => {
     const sendPrintJob = async (payload: BridgePayload) => {
         const isNative = Capacitor.isNativePlatform();
 
-        // 1. NATIVE APP HANDSHAKE (Canva Way)
         if (isNative) {
             try {
-                // We resolve the printer from the name or ID provided
-                // This talks to the Thermal Head directly via Bluetooth/BLE
                 await DeepHardwareBridge.silentPrint({ 
                     type: 'BLUETOOTH', 
                     deviceId: payload.printerName 
@@ -99,7 +101,6 @@ const useHardwarePrint = () => {
             }
         }
 
-        // 2. LEGACY WEB BRIDGE (Desktop)
         const bridgeUrl = 'http://localhost:54321/print'; 
         try {
             const response = await fetch(bridgeUrl, {
@@ -130,31 +131,14 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     
     const { sendPrintJob } = useHardwarePrint();
 
-    // --- DEEP DATA EXTRACTION (THE UNIVERSAL WELD) ---
-    const saleInfo = receiptData?.saleInfo;
-    
-    // Resolve Identity object (prioritizing the identity key which holds the View data)
-    const idnt = receiptData?.identity || receiptData?.storeInfo || {};
-    const customer = receiptData?.customer || receiptData?.customerInfo;
-    const items = receiptData?.items || receiptData?.saleItems || [];
+    // Uses the Master Weld function for consistent UI data
+    const { saleInfo, store: idnt, customer, lines: items, currency } = normalizeReceiptData(receiptData);
 
-    // --- STRICT MAPPING TO VERIFIED DATABASE COLUMNS ---
     const businessName = idnt.legal_name || idnt.name || 'Business Entity';
-    
-    // Physical Address: Pulls the resolved address from view (loc.address || plot_number)
     const businessAddress = idnt.physical_address || idnt.address || idnt.plot_number || 'Main HQ';
     const city = idnt.city ? `, ${idnt.city}` : '';
-    
-    // Official Phone: Pulls from t.phone per view definition
     const businessPhone = idnt.official_phone || idnt.phone || idnt.phone_number || 'N/A';
-    
-    // Tax ID: Uses the Coalesced tin_number or fallback to tax_number column
     const businessTaxId = idnt.tin_number || idnt.tax_number || idnt.identity_tax_id || null;
-    
-    // Currency: Prioritizes identity view setting
-    const currency = idnt.currency_code || saleInfo?.currency_code || 'UGX';
-    
-    // Footer: Dynamic pulling from tenant settings
     const footerMessage = idnt.receipt_footer || 'Thank you for your business';
 
     useEffect(() => {
@@ -172,41 +156,22 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
     }).format(value || 0);
 
     return (
-      <div 
-        ref={ref} 
-        className="w-full bg-white overflow-hidden"
-      >
+      <div ref={ref} className="w-full bg-white overflow-hidden">
         {!saleInfo || !idnt || !businessName ? (
            <div className="p-6 text-center border-2 border-dashed border-red-100 rounded-2xl bg-red-50 mx-auto max-w-[300px] my-4">
-                <p className="text-xs text-red-600 font-black uppercase tracking-widest">
-                    Initializing Receipt...
-                </p>
-                <p className="text-[10px] text-red-400 mt-1 uppercase font-bold">
-                    Awaiting Transaction Data Serialization
-                </p>
+                <p className="text-xs text-red-600 font-black uppercase tracking-widest">Initializing Receipt...</p>
             </div>
         ) : (
           <div className="p-5 bg-white text-black text-[11px] font-mono w-full max-w-[300px] mx-auto leading-tight overflow-hidden select-none print:p-0 print:w-[80mm] print:max-w-none shadow-sm border border-slate-50">
             
-            {/* 1. CORPORATE IDENTITY HEADER (DYNAMICALLY RESOLVED) */}
             <div className="text-center mb-5 space-y-1">
               {idnt.logo_url && (
-                <img 
-                    src={idnt.logo_url} 
-                    alt="Logo" 
-                    className="h-12 mx-auto mb-2 object-contain grayscale contrast-125" 
-                />
+                <img src={idnt.logo_url} alt="Logo" className="h-12 mx-auto mb-2 object-contain grayscale contrast-125" />
               )}
-              <h1 className="text-[14px] font-black uppercase tracking-tighter leading-none">
-                {businessName}
-              </h1>
-              <p className="text-[9px] font-bold opacity-80 uppercase">
-                {businessAddress}{city}
-              </p>
-              
+              <h1 className="text-[14px] font-black uppercase tracking-tighter leading-none">{businessName}</h1>
+              <p className="text-[9px] font-bold opacity-80 uppercase">{businessAddress}{city}</p>
               <div className="flex flex-col items-center pt-1">
                  <span className="font-bold">TEL: {businessPhone}</span>
-                 
                  {businessTaxId && (
                     <span className="font-black text-[9px] bg-slate-100 px-2 py-0.5 rounded mt-1 border border-slate-200 uppercase">
                         TAX ID: {businessTaxId}
@@ -219,7 +184,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 <p className="text-center font-black uppercase tracking-widest text-[9px]">Official Fiscal Receipt</p>
             </div>
             
-            {/* 2. TRANSACTION METADATA */}
             <div className="mb-4 space-y-1.5 pb-3 border-b border-dashed border-slate-300">
               <div className="flex justify-between">
                 <span className="font-bold uppercase text-[9px]">Receipt #:</span> 
@@ -229,7 +193,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 <span className="font-bold uppercase text-[9px]">Date:</span> 
                 <span>{formatDate(new Date(saleInfo.created_at), 'dd/MM/yyyy HH:mm')}</span>
               </div>
-              
               <div className="pt-1">
                 <div className="flex justify-between border-t border-slate-100 mt-1 pt-1 italic">
                     <span className="font-bold text-slate-500 uppercase text-[9px]">Customer:</span> 
@@ -238,7 +201,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
               </div>
             </div>
 
-            {/* 3. ITEMIZATION TABLE */}
             <table className="w-full mb-4">
               <thead>
                 <tr className="border-b-2 border-black">
@@ -248,7 +210,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {items.map((item, index) => (
+                {items.map((item: any, index: number) => (
                   <tr key={index}>
                     <td className="text-left py-2 pr-1 align-top">
                         <div className="font-black uppercase leading-tight text-[10px]">{item.name || item.product_name}</div>
@@ -263,25 +225,21 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
               </tbody>
             </table>
             
-            {/* 4. TOTALS & SETTLEMENT */}
             <div className="space-y-1 border-t-2 border-black pt-3">
                 <div className="flex justify-between font-bold uppercase text-[9px]">
                     <span>Subtotal:</span>
                     <span>{formatCurrency(saleInfo.subtotal)}</span>
                 </div>
-                
                 {(saleInfo.discount || 0) > 0 && (
                     <div className="flex justify-between font-bold text-slate-500 italic uppercase text-[9px]">
                         <span>Discount:</span>
                         <span>- {formatCurrency(saleInfo.discount)}</span>
                     </div>
                 )}
-                
                 <div className="flex justify-between font-black text-[13px] border-t border-black mt-2 pt-2 uppercase">
                     <span>Grand Total ({currency}):</span>
                     <span>{formatCurrency(saleInfo.total_amount)}</span>
                 </div>
-
                 <div className="flex justify-between mt-3 text-slate-600 font-black uppercase text-[9px]">
                     <span>{saleInfo.payment_method || 'CASH'} Tendered:</span>
                     <span>{formatCurrency(saleInfo.amount_tendered)}</span>
@@ -290,7 +248,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                     <span>Change Returned:</span>
                     <span>{formatCurrency(saleInfo.change_due)}</span>
                 </div>
-
                 {(saleInfo.amount_due || 0) > 0 && (
                     <div className="p-2 mt-4 text-center bg-slate-900 text-white rounded-lg">
                         <span className="block text-[8px] font-black uppercase tracking-[0.2em] mb-1">Balance Remaining</span>
@@ -299,7 +256,6 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                 )}
             </div>
             
-            {/* 5. SOVEREIGN SEAL & FOOTER */}
             <div className="mt-8 pt-4 border-t border-slate-200 border-double">
                 <div className="flex flex-col items-center justify-center">
                     <div className="flex items-center gap-1.5 mb-1.5">
@@ -310,19 +266,15 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(
                         Seal ID: {saleInfo.kernel_seal_id || `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`}
                     </div>
                 </div>
-                
                 <div className="text-center text-[9px] text-slate-800 font-black leading-tight mt-6 px-1 uppercase tracking-tight">
                     {footerMessage}
                 </div>
             </div>
 
-            {/* Global Hub Identifier */}
             <div className="mt-8 opacity-20 print:hidden group">
                 <div className="h-4 w-full bg-slate-200 rounded-sm overflow-hidden flex items-center justify-center">
                     <div className="flex gap-1 animate-pulse">
-                        {[...Array(20)].map((_, i) => (
-                            <div key={i} className="w-[1px] h-3 bg-black" />
-                        ))}
+                        {[...Array(20)].map((_, i) => (<div key={i} className="w-[1px] h-3 bg-black" />))}
                     </div>
                 </div>
                 <p className="text-[6px] text-center font-black mt-1 uppercase tracking-[0.5em]">BBU1 Enterprise OS - Global Hub Node</p>
