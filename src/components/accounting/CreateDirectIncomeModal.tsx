@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar } from "@/components/ui/calendar"; // Professional UI Calendar
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
 
@@ -36,12 +36,12 @@ import { cn } from "@/lib/utils";
 
 interface LineItem {
   id: string;
-  variantId: string;   -- UUID from view_bbu1_scanner_master
-  productId: number;   -- BigInt from view_bbu1_scanner_master
+  variantId: string;   // UUID from view_bbu1_scanner_master
+  productId: number;   // BigInt from view_bbu1_scanner_master
   description: string;
   quantity: number;
   unitPrice: number;
-  taxRate: number;     -- Custom override
+  taxRate: number;     // Custom override allowed
   taxAmount: number;
   total: number;
   taxMode: 'Standard' | 'Reduced' | 'Exempt';
@@ -96,7 +96,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
-  // 4. Pull Accounts (Separated by Asset vs Revenue)
+  // 4. Pull Accounts (Payment Sources vs Accounting Categories)
   const { data: accounts } = useQuery({
     queryKey: ['ledger_accounts', businessId],
     queryFn: async () => {
@@ -149,13 +149,14 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
         }
       }
 
-      // Automated Tax Logic
+      // Automated Tax Presets (Still allows manual typing in taxRate field)
       if (field === 'taxMode') {
         if (value === 'Standard') updated.taxRate = 18;
         else if (value === 'Reduced') updated.taxRate = 5;
         else updated.taxRate = 0;
       }
 
+      // Recalculate Totals
       const sub = updated.quantity * updated.unitPrice;
       updated.taxAmount = (sub * updated.taxRate) / 100;
       updated.total = sub + updated.taxAmount;
@@ -180,7 +181,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
         toast.success("Enterprise Ledger Synchronized: Cash Inflow & Inventory Adjusted");
         queryClient.invalidateQueries();
         onClose();
-        setItems([]);
+        setItems([]); setCustomerId(''); setAgentId(''); setLocationId('');
       } else {
         toast.error(`Sovereign Failure: ${result.message}`);
       }
@@ -192,7 +193,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     if (!agentId || !locationId || !paymentSourceId || !incomeCategoryId) {
         return toast.error("Compliant recording requires Agent, Location, Payment Source, and Category.");
     }
-    if (items.length === 0) return toast.error("Transaction must contain at least one element.");
+    if (items.length === 0) return toast.error("Transaction must contain at least one item.");
 
     mutation.mutate({
       businessId,
@@ -310,7 +311,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
 
              <div className="space-y-3">
                 <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Globe size={16} className="text-emerald-500"/> Currency
+                    <Globe size={16} className="text-emerald-500"/> Reporting Currency
                 </Label>
                 <Select onValueChange={setCurrencyCode} value={currencyCode}>
                     <SelectTrigger className="rounded-2xl h-12 border-slate-100 bg-slate-50/50 font-black"><SelectValue /></SelectTrigger>
@@ -328,7 +329,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
               <Table>
                 <TableHeader className="bg-slate-50/50 sticky top-0 z-20 border-b">
                   <TableRow>
-                    <TableHead className="px-12 h-24 text-[12px] font-black uppercase tracking-widest text-slate-500">Product / Stock Sync</TableHead>
+                    <TableHead className="px-12 h-24 text-[12px] font-black uppercase tracking-widest text-slate-500">Product / Service Configuration</TableHead>
                     <TableHead className="w-40 text-center text-[12px] font-black uppercase tracking-widest text-slate-500">Quantity</TableHead>
                     <TableHead className="w-56 text-center text-[12px] font-black uppercase tracking-widest text-slate-500">Unit Price</TableHead>
                     <TableHead className="w-72 text-center text-[12px] font-black uppercase tracking-widest text-slate-500">Fiscal Profile</TableHead>
@@ -341,7 +342,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                     <TableRow key={item.id} className="border-b border-slate-50 group hover:bg-blue-50/10 transition-all">
                       <TableCell className="px-12 py-8">
                         <Select value={item.variantId} onValueChange={val => updateItem(item.id, 'variantId', val)}>
-                          <SelectTrigger className="border-none shadow-none text-base font-black p-0 h-auto focus:ring-0 uppercase tracking-tighter"><SelectValue placeholder="Search SKU..." /></SelectTrigger>
+                          <SelectTrigger className="border-none shadow-none text-base font-black p-0 h-auto focus:ring-0 uppercase tracking-tighter"><SelectValue placeholder="Search SKU Registry..." /></SelectTrigger>
                           <SelectContent className="max-h-[400px] rounded-3xl">{inventory?.map(v => <SelectItem key={v.variant_id} value={v.variant_id}>{v.product_name} • {v.variant_name}</SelectItem>)}</SelectContent>
                         </Select>
                       </TableCell>
@@ -357,7 +358,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                                  <SelectItem value="Exempt">Tax Exempt</SelectItem>
                               </SelectContent>
                            </Select>
-                           <Input type="number" className="w-24 h-14 text-center font-black rounded-2xl border-slate-100" value={item.taxRate} onChange={e => updateItem(item.id, 'taxRate', parseFloat(e.target.value))} />
+                           <Input type="number" className="w-24 h-14 text-center font-black rounded-2xl border-slate-100" value={item.taxRate} onChange={e => updateItem(item.id, 'taxRate', parseFloat(e.target.value))} placeholder="%" />
                         </div>
                       </TableCell>
                       <TableCell className="text-right px-12 font-mono font-black text-blue-600 text-2xl tracking-tighter">
@@ -371,7 +372,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                   <TableRow>
                     <TableCell colSpan={6} className="p-0">
                       <Button variant="ghost" className="w-full h-28 rounded-none border-t border-dashed border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-blue-600 font-black tracking-[0.4em] text-xs uppercase transition-all" onClick={addLineItem}>
-                        <Plus className="mr-4" size={20} /> Append New Transaction Node (F5)
+                        <Plus className="mr-4" size={20} /> Append New Transaction Element (F5)
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -388,14 +389,14 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                 <p className="text-5xl font-mono tracking-tighter">{new Intl.NumberFormat().format(totals.subtotal)}</p>
              </div>
              <div className="space-y-2 text-amber-400">
-                <p className="text-[11px] font-black uppercase tracking-[0.4em] opacity-50">Consolidated Tax</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.4em] opacity-50">Consolidated Tax Impact</p>
                 <div className="flex items-center gap-4">
                     <Percent size={30} className="opacity-40"/>
                     <p className="text-5xl font-mono tracking-tighter">+{new Intl.NumberFormat().format(totals.tax)}</p>
                 </div>
              </div>
              <div className="text-right border-l border-white/10 pl-14">
-                <p className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500">Net Capital Settlement</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500">Net Ledger Settlement</p>
                 <div className="flex items-baseline justify-end gap-6 mt-4">
                     <span className="text-3xl font-bold opacity-20 tracking-[0.3em]">{currencyCode}</span>
                     <p className="text-9xl font-black tracking-tighter leading-none">{new Intl.NumberFormat().format(totals.grandTotal)}</p>
@@ -404,7 +405,6 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
           </div>
         </div>
 
-        {/* DIALOG FOOTER: COMMAND ACTIONS */}
         <DialogFooter className="p-12 bg-white border-t border-slate-100 flex items-center justify-between shrink-0">
            <Button variant="ghost" onClick={onClose} className="font-black text-slate-300 uppercase tracking-widest hover:text-red-600 h-20 px-14 text-sm">Abort Operation</Button>
            <Button 
@@ -413,7 +413,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                 className="bg-blue-600 hover:bg-blue-700 h-24 px-32 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.3em] shadow-[0_20px_60px_rgba(37,99,235,0.3)] transition-all active:scale-95"
            >
               {mutation.isPending ? <Loader2 className="animate-spin mr-6" size={32} /> : <ShieldCheck className="mr-6" size={32} />}
-              Commit to Ledger
+              Commit to General Ledger
            </Button>
         </DialogFooter>
       </DialogContent>
