@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { buildReceiptPdf } from '@/lib/receiptPdf';
 import { db, OfflineSale } from '@/lib/db';
 import { SellableProduct, CartItem, Customer } from '@/types/dashboard'; 
 import toast from 'react-hot-toast';
@@ -18,13 +19,12 @@ import {
     FileText, Loader2, Tag, Calculator, CheckCircle2,
     ShieldAlert, Lock, Zap, KeyRound, CheckCircle, Barcode,
     Search, ShoppingCart, CreditCard, LayoutGrid, Rows3, ReceiptText,
-    ChevronUp, ChevronDown
+    ChevronUp, ChevronDown, Share2
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import CustomerSearchModal from '@/components/customers/CustomerSearchModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import { Receipt, ReceiptData } from '@/components/pos/Receipt';
@@ -204,20 +204,21 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
     return (
         /* MASTER FIX: h-full and flex-col locks the cart container. Header/Footer shrink-0, Middle flex-1. */
         <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-            {/* PINNED HEADER (Does not move) */}
-            <div className="p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
-                <div className="flex items-center gap-3 cursor-pointer" onClick={onSetCustomer}>
-                    <div className="p-2 bg-blue-600 rounded-lg">
-                        <User className="h-5 w-5 text-white" />
+            {/* PINNED HEADER (Does not move). Compact on mobile so the item
+                list below gets more room. */}
+            <div className="p-2.5 lg:p-5 border-b flex justify-between items-center bg-slate-900 text-white shrink-0 z-10">
+                <div className="flex items-center gap-2 lg:gap-3 cursor-pointer min-w-0" onClick={onSetCustomer}>
+                    <div className="p-1.5 lg:p-2 bg-blue-600 rounded-lg shrink-0">
+                        <User className="h-3.5 w-3.5 lg:h-5 lg:w-5 text-white" />
                     </div>
-                    <div className="flex flex-col">
-                        <span className="font-bold text-sm truncate max-w-[150px]">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
-                        <span className="text-[10px] text-slate-400 font-semibold uppercase">
+                    <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-[11px] lg:text-sm truncate max-w-[150px]">{selectedCustomer ? selectedCustomer.name : 'Walk-in Customer'}</span>
+                        <span className="hidden lg:block text-[10px] text-slate-400 font-semibold uppercase">
                             {selectedCustomer ? `ID: ${selectedCustomer.id}` : 'Guest Sale'}
                         </span>
                     </div>
                 </div>
-                <Button variant="outline" size="sm" className="font-bold text-[10px] h-8 bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white hover:border-slate-600" onClick={onSetCustomer}>Change (F2)</Button>
+                <Button variant="outline" size="sm" className="font-bold text-[10px] h-7 lg:h-8 px-2.5 lg:px-3 bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white hover:border-slate-600 shrink-0" onClick={onSetCustomer}>Change (F2)</Button>
             </div>
 
             {/* SCROLLABLE ITEMS MIDDLE (Deep internal scroll). Footer below
@@ -238,7 +239,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                                         <p className="text-sm font-bold text-slate-900 truncate">{item.product_name}</p>
                                         <p className="text-[10px] text-slate-400 font-semibold uppercase">{item.variant_name}</p>
                                     </div>
-                                    <div className="w-24 text-right shrink-0">
+                                    <div className="text-right shrink-0">
                                         <p className="font-bold text-sm text-slate-900">{(item.price * item.quantity).toLocaleString()}</p>
                                     </div>
                                 </div>
@@ -267,10 +268,12 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
             )}
             </div>
 
-            {/* PINNED FOOTER (FIXED POSITION: Pay Now Button never moves) */}
-            <div className="p-6 border-t bg-white space-y-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-20 pb-24 lg:pb-6">
-                <div className="space-y-2">
-                    <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase">
+            {/* PINNED FOOTER. Compact summary-only on mobile — the fixed
+                bottom nav already has a Pay button, so the big button here
+                only renders at lg+. */}
+            <div className="p-2.5 lg:p-6 border-t bg-white space-y-1.5 lg:space-y-4 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-20">
+                <div className="space-y-1 lg:space-y-2">
+                    <div className="flex justify-between text-[10px] lg:text-[11px] font-bold text-slate-400 uppercase">
                         <span>Subtotal</span>
                         <span>{currency} {subtotal.toLocaleString()}</span>
                     </div>
@@ -288,16 +291,16 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     </div>
                 </div>
 
-                <div className="flex justify-between items-baseline pt-2 border-t border-slate-100">
+                <div className="flex justify-between items-baseline pt-1.5 lg:pt-2 border-t border-slate-100">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Balance Due</span>
-                    <span className="font-bold text-3xl text-slate-900 tracking-tighter">
+                    <span className="text-lg lg:text-3xl font-bold text-slate-900 tracking-tighter">
                         {currency} {total.toLocaleString()}
                     </span>
                 </div>
 
-                <Button 
-                    className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all active:scale-95" 
-                    onClick={onCharge} 
+                <Button
+                    className="hidden lg:flex w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl transition-all active:scale-95"
+                    onClick={onCharge}
                     disabled={cart.length === 0 || isProcessing}
                 >
                     {isProcessing ? <Loader2 className="animate-spin" /> : "PAY NOW (F1)"}
@@ -325,7 +328,25 @@ export default function POSPage() {
     const products = useLiveQuery(() => db.products.toArray(), []);
     const supabase = createClient();
 
-    const handleWebPrint = useReactToPrint({ content: () => receiptRef.current });
+    const handleWebPrint = useReactToPrint({
+        contentRef: receiptRef,
+        documentTitle: `Receipt-${lastCompletedSale?.receiptData.saleInfo.id ?? ''}`,
+    });
+
+    // Builds the receipt as a PDF straight from the sale data and downloads
+    // it. Originally this rendered the on-screen <Receipt> to a PNG via
+    // html2canvas, but html2canvas can't parse the oklch() colors Tailwind
+    // v4's palette uses — it hangs indefinitely instead of ever producing an
+    // image, so downloads never actually completed. jsPDF draws straight
+    // into the PDF and never touches computed CSS, so it isn't affected.
+    const handleDownloadReceipt = async () => {
+        if (!lastCompletedSale) return;
+        const promise = async () => {
+            buildReceiptPdf(lastCompletedSale.receiptData).save(`Receipt-${lastCompletedSale.receiptData.saleInfo.id}.pdf`);
+            return "Receipt downloaded";
+        };
+        toast.promise(promise(), { loading: 'Generating receipt...', success: (m: string) => m, error: (e: Error) => e.message });
+    };
 
     const handleAddToCart = (product: SellableProduct | SearchResultProduct) => {
         setCart(currentCart => { 
@@ -396,10 +417,11 @@ export default function POSPage() {
                         <div className="border border-dashed p-4 rounded-2xl scale-90 lg:scale-100">
                             <Receipt ref={receiptRef} receiptData={lastCompletedSale.receiptData} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4 pb-4">
-                            <Button variant="outline" className="h-14 font-black rounded-2xl border-slate-200" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
-                            <Button className="h-14 bg-blue-600 hover:bg-blue-700 font-black rounded-2xl shadow-lg" onClick={() => handleWebPrint()}><PrinterIcon className="mr-2 h-4 w-4" /> Print</Button>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Button variant="outline" className="h-14 font-black rounded-2xl border-slate-200" onClick={() => handleWebPrint()}><PrinterIcon className="mr-2 h-4 w-4" /> Print</Button>
+                            <Button variant="outline" className="h-14 font-black rounded-2xl border-slate-200" onClick={handleDownloadReceipt}><Share2 className="mr-2 h-4 w-4" /> Download</Button>
                         </div>
+                        <Button className="w-full h-14 bg-blue-600 hover:bg-blue-700 font-black rounded-2xl shadow-lg" onClick={() => setLastCompletedSale(null)}>New Sale</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -425,16 +447,20 @@ export default function POSPage() {
 
             {/* Layout Main: Locked Height columns */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
-                {/* Inventory View */}
-                <div className={cn("h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300", activeTab !== 'products' && 'hidden lg:flex')}>
-                    <div className="mb-4 shrink-0"><ProductSearch onProductSelect={handleAddToCart} /></div>
+                {/* Inventory View. pb-28 on mobile gives the frame some
+                    breathing room above the floating bottom nav (h-16,
+                    floated bottom-5). */}
+                <div className={cn("h-full lg:col-span-7 xl:col-span-7 p-3 pb-28 lg:p-5 overflow-hidden flex flex-col transition-all duration-300", activeTab !== 'products' && 'hidden lg:flex')}>
+                    <div className="mb-3 shrink-0"><ProductSearch onProductSelect={handleAddToCart} /></div>
                     <div className="flex-1 overflow-hidden min-h-0">
                         <ProductGrid products={products || []} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                     </div>
                 </div>
 
-                {/* Receipt View */}
-                <div className={cn("h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300", activeTab !== 'cart' && 'hidden lg:flex')}>
+                {/* Receipt View. pb-28 on mobile clears the floating bottom
+                    nav (h-16, floated bottom-5) so the footer's Balance Due
+                    line isn't covered. */}
+                <div className={cn("h-full lg:col-span-5 xl:col-span-5 p-3 pb-28 lg:p-5 lg:pb-5 overflow-hidden flex flex-col transition-all duration-300", activeTab !== 'cart' && 'hidden lg:flex')}>
                     <CartDisplay 
                         cart={cart} 
                         onUpdateQuantity={(id: number, q: number) => q <= 0 ? setCart(cart.filter(i => i.variant_id !== id)) : setCart(cart.map(i => i.variant_id === id ? { ...i, quantity: q } : i))} 
@@ -449,28 +475,13 @@ export default function POSPage() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING PAY SUMMARY (Uber-Style Quick Bar) */}
-            {cart.length > 0 && activeTab === 'products' && (
-                <div className="lg:hidden fixed bottom-20 left-4 right-4 z-[100] animate-in slide-in-from-bottom-5">
-                    <Button 
-                        onClick={() => setActiveTab('cart')}
-                        className="w-full h-16 bg-blue-600 shadow-[0_10px_30px_rgba(37,99,235,0.4)] rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
-                    >
-                        <div className="flex items-center gap-3">
-                            <Badge className="bg-white text-blue-600 font-black h-7 w-7 flex items-center justify-center p-0 rounded-full border-none shadow-md">{cart.length}</Badge>
-                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Receipt</span>
-                        </div>
-                        <span className="font-black text-white text-lg">
-                            {userProfile?.currency_symbol} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}
-                        </span>
-                    </Button>
-                </div>
-            )}
-
-            {/* MOBILE BOTTOM NAVIGATION TABS (UPGRADED TO TRIPLE ACTION) */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around z-[110] px-4">
-                <button 
-                    onClick={() => setActiveTab('products')} 
+            {/* MOBILE BOTTOM NAVIGATION — floating rounded pill with a soft
+                blue glassmorphic tint, inset from the screen edges. The
+                center Pay button is the only mobile pay action and always
+                renders here. */}
+            <div className="lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-gradient-to-br from-blue-50/90 via-white/80 to-blue-100/70 backdrop-blur-2xl border border-blue-200/60 rounded-full shadow-2xl shadow-blue-900/10 flex items-center justify-around z-[110] px-4">
+                <button
+                    onClick={() => setActiveTab('products')}
                     className={cn("flex flex-col items-center flex-1 py-2 transition-all", activeTab === 'products' ? "text-blue-600 scale-105" : "text-slate-400")}
                 >
                     <LayoutGrid className="h-5 w-5" />
@@ -478,11 +489,11 @@ export default function POSPage() {
                 </button>
 
                 {/* THE NEW CENTER PAY BUTTON FOR MOBILE */}
-                <button 
+                <button
                     disabled={cart.length === 0}
                     onClick={() => setPaymentModalOpen(true)}
                     className={cn(
-                        "flex flex-col items-center justify-center bg-blue-600 text-white rounded-xl h-12 w-20 shadow-lg active:scale-95 transition-all mb-2",
+                        "flex flex-col items-center justify-center bg-blue-600 text-white rounded-full h-12 w-20 shadow-lg active:scale-95 transition-all",
                         cart.length === 0 && "opacity-20 grayscale pointer-events-none"
                     )}
                 >
@@ -490,8 +501,8 @@ export default function POSPage() {
                     <span className="text-[8px] font-black uppercase mt-0.5">Pay</span>
                 </button>
 
-                <button 
-                    onClick={() => setActiveTab('cart')} 
+                <button
+                    onClick={() => setActiveTab('cart')}
                     className={cn("flex flex-col items-center flex-1 py-2 transition-all", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}
                 >
                     <div className="relative">

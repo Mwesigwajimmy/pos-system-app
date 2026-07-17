@@ -128,7 +128,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
 
     return (
         <div className={cn('flex flex-col h-full bg-white rounded-2xl lg:shadow-sm border border-slate-100 overflow-hidden', disabled && 'opacity-50 pointer-events-none')}>
-            <div className="p-4 border-b relative bg-slate-50/30 shrink-0 flex items-center gap-2">
+            <div className="p-3 border-b relative bg-slate-50/30 shrink-0 flex items-center gap-2">
                 <div className="relative flex-1">
                     <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-500" />
                     <Input
@@ -136,7 +136,7 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                         placeholder="Scan or Search Inventory..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-10 h-12 rounded-xl border-slate-200 focus:ring-blue-500 font-medium"
+                        className="pl-10 h-11 rounded-xl border-slate-200 focus:ring-blue-500 font-medium"
                     />
                 </div>
                 <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shrink-0">
@@ -167,9 +167,9 @@ const ProductGrid = ({ products, onProductSelect, onSKUScan, disabled }: { produ
                                 <Card
                                     key={product.variant_id}
                                     onClick={() => onProductSelect(product)}
-                                    className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden group border-slate-100 rounded-xl"
+                                    className="cursor-pointer hover:border-blue-400 hover:shadow-md active:scale-95 transition-all relative overflow-hidden group border-slate-100 rounded-xl min-h-[128px] lg:min-h-[150px]"
                                 >
-                                    <CardContent className="p-3 lg:p-4 flex flex-col items-center justify-center text-center space-y-2">
+                                    <CardContent className="p-3 lg:p-4 h-full flex flex-col items-center justify-center text-center space-y-2">
                                         <div className="h-10 flex items-center justify-center">
                                             <p className="font-bold text-[12px] lg:text-[13px] leading-tight text-slate-800 line-clamp-2">{product.product_name}</p>
                                         </div>
@@ -283,7 +283,7 @@ const CartDisplay = ({ cart, onUpdateQuantity, onRemoveItem, selectedCustomer, o
                     <div className="divide-y divide-slate-100 pb-20 lg:pb-10">
                         {cart.map(item => (
                             <div key={item.variant_id} className="p-3 lg:p-4 bg-white hover:bg-blue-50/30 transition-colors">
-                                <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-start justify-between gap-3">
                                     <div className="flex-1 space-y-1">
                                         <p className="text-[13px] lg:text-sm font-black text-slate-800 leading-tight">{item.product_name}</p>
                                         <p className="text-[9px] lg:text-[10px] text-slate-400 font-bold uppercase">{item.variant_name}</p>
@@ -564,7 +564,7 @@ export default function RetailDesk() {
         /* MASTER FIX: Lock the app height to the viewport. No overall page scrolling. */
         <div className="h-[100dvh] bg-slate-50 flex flex-col overflow-hidden relative touch-auto overscroll-none">
             {/* TOP BAR */}
-            <div className="h-16 border-b bg-white flex items-center justify-between px-4 lg:px-8 shrink-0 z-20">
+            <div className="h-14 border-b bg-white flex items-center justify-between px-4 lg:px-8 shrink-0 z-20">
                 <div className="flex items-center gap-4">
                     <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">
@@ -580,19 +580,21 @@ export default function RetailDesk() {
             {/* MAIN CONTENT AREA: Columns handle internal scrolling. */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
                 
-                {/* PRODUCT GRID SECTION */}
+                {/* PRODUCT GRID SECTION. pb-28 on mobile gives the frame some
+                    breathing room above the floating bottom nav (h-16,
+                    floated bottom-5). */}
                 <div className={cn(
-                    "h-full lg:col-span-7 xl:col-span-8 p-4 lg:p-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-7 xl:col-span-7 p-3 pb-28 lg:p-5 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'products' && 'hidden lg:flex'
                 )}>
                     <ProductGrid products={products} onProductSelect={handleAddToCart} onSKUScan={handleSKUScan} disabled={isSyncing} />
                 </div>
 
-                {/* CART DISPLAY SECTION. pb-16 on mobile clears the fixed
-                    bottom nav (h-16) so the footer's Balance Due line never
-                    sits underneath it. */}
+                {/* CART DISPLAY SECTION. pb-28 on mobile clears the floating
+                    bottom nav (h-16, floated bottom-5) so the footer's
+                    Balance Due line never sits underneath it. */}
                 <div className={cn(
-                    "h-full lg:col-span-5 xl:col-span-4 p-4 lg:p-6 pb-16 lg:pb-6 overflow-hidden flex flex-col transition-all duration-300",
+                    "h-full lg:col-span-5 xl:col-span-5 p-3 pb-28 lg:p-5 lg:pb-5 overflow-hidden flex flex-col transition-all duration-300",
                     activeTab !== 'cart' && 'hidden lg:flex'
                 )}>
                     <CartDisplay 
@@ -607,26 +609,13 @@ export default function RetailDesk() {
                 </div>
             </div>
 
-            {/* MOBILE FLOATING SUMMARY (Sits above bottom nav) */}
-            {cart.length > 0 && activeTab === 'products' && (
-                <div className="lg:hidden absolute bottom-20 left-4 right-4 animate-in fade-in slide-in-from-bottom-5 z-[100]">
-                    <Button 
-                        onClick={() => setActiveTab('cart')}
-                        className="w-full h-16 bg-blue-600 shadow-2xl rounded-2xl flex items-center justify-between px-6 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all"
-                    >
-                        <div className="flex items-center gap-3">
-                            <Badge className="bg-white text-blue-600 font-black h-7 w-7 flex items-center justify-center p-0 rounded-full border-none shadow-md">{cart.length}</Badge>
-                            <span className="font-black uppercase text-[10px] tracking-widest text-white">Review Receipt</span>
-                        </div>
-                        <span className="font-black text-white text-lg">{businessDNA?.currency} {cart.reduce((a,b)=>a+(b.price*b.quantity),0).toLocaleString()}</span>
-                    </Button>
-                </div>
-            )}
-
-            {/* MOBILE TRIPLE-BUTTON NAVIGATION (UPGRADED) */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t flex items-center justify-around px-4 z-[110]">
-                <button 
-                    onClick={() => setActiveTab('products')} 
+            {/* MOBILE TRIPLE-BUTTON NAVIGATION — floating rounded pill with a
+                soft blue glassmorphic tint, inset from the screen edges. The
+                center Pay button is the only mobile pay action and always
+                renders here. */}
+            <div className="lg:hidden fixed bottom-5 left-4 right-4 h-16 bg-gradient-to-br from-blue-50/90 via-white/80 to-blue-100/70 backdrop-blur-2xl border border-blue-200/60 rounded-full shadow-2xl shadow-blue-900/10 flex items-center justify-around px-4 z-[110]">
+                <button
+                    onClick={() => setActiveTab('products')}
                     className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'products' ? "text-blue-600 scale-105" : "text-slate-400")}
                 >
                     <LayoutGrid className="h-5 w-5" />
@@ -634,11 +623,11 @@ export default function RetailDesk() {
                 </button>
 
                 {/* THE NEW "PAY NOW" CENTER BUTTON */}
-                <button 
+                <button
                     disabled={cart.length === 0}
                     onClick={() => setPaymentModalOpen(true)}
                     className={cn(
-                        "flex flex-col items-center justify-center bg-blue-600 text-white rounded-xl h-12 w-20 shadow-lg active:scale-95 transition-all",
+                        "flex flex-col items-center justify-center bg-blue-600 text-white rounded-full h-12 w-20 shadow-lg active:scale-95 transition-all",
                         cart.length === 0 && "opacity-20 grayscale pointer-events-none"
                     )}
                 >
@@ -646,8 +635,8 @@ export default function RetailDesk() {
                     <span className="text-[8px] font-black uppercase mt-0.5">Pay</span>
                 </button>
 
-                <button 
-                    onClick={() => setActiveTab('cart')} 
+                <button
+                    onClick={() => setActiveTab('cart')}
                     className={cn("flex flex-col items-center flex-1 py-2", activeTab === 'cart' ? "text-blue-600 scale-105" : "text-slate-400")}
                 >
                     <div className="relative">
