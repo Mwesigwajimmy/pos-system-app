@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { 
   Plus, Trash2, Loader2, Calendar as CalendarIcon,
-  UserCheck, Landmark, MapPin, CheckCircle2, X, Info, Calculator
+  UserCheck, Landmark, MapPin, CheckCircle2, X, Info, Calculator, User
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -53,6 +53,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
   const supabase = createClient();
 
   // --- FORM STATE ---
+  const [customerId, setCustomerId] = useState<string>(''); // NEW: Customer ID
   const [agentId, setAgentId] = useState<string>('');
   const [locationId, setLocationId] = useState<string>('');
   const [currencyCode, setCurrencyCode] = useState<string>('UGX');
@@ -69,6 +70,17 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
   }, [isOpen]);
 
   // --- DATA FETCHING ---
+  
+  // Fetch Customers
+  const { data: customers } = useQuery({
+    queryKey: ['crm_customers', businessId],
+    queryFn: async () => {
+      const { data } = await supabase.from('customers').select('id, name').eq('business_id', businessId);
+      return data || [];
+    }
+  });
+
+  // Fetch Staff/Agents
   const { data: staff } = useQuery({
     queryKey: ['staff_profiles', businessId],
     queryFn: async () => {
@@ -77,6 +89,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
+  // Fetch Locations
   const { data: locations } = useQuery({
     queryKey: ['ops_locations', businessId],
     queryFn: async () => {
@@ -85,6 +98,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
+  // Fetch Ledger Accounts
   const { data: accounts } = useQuery({
     queryKey: ['ledger_accounts', businessId],
     queryFn: async () => {
@@ -93,6 +107,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
+  // Fetch Inventory
   const { data: inventory } = useQuery({
     queryKey: ['scanner_master_view'],
     queryFn: async () => {
@@ -162,6 +177,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
         queryClient.invalidateQueries();
         onClose();
         setItems([]);
+        setCustomerId(''); // Reset
       } else {
         toast.error(result.message);
       }
@@ -174,6 +190,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
     mutation.mutate({
       businessId,
+      customerId: customerId || undefined, // SENDING CUSTOMER
       agentId,
       locationId,
       bankAccountId: paymentSourceId,
@@ -188,7 +205,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[1400px] w-[96vw] max-h-[95vh] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+      <DialogContent className="sm:max-w-[1400px] w-[96vw] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
         
         {/* CLEAN PROFESSIONAL HEADER */}
         <div className="px-10 py-8 border-b bg-white flex justify-between items-center shrink-0">
@@ -204,12 +221,24 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
           </Button>
         </div>
 
-        {/* SCROLLABLE FORM BODY - Fixed min-h-0 to enable scrolling in flex container */}
+        {/* SCROLLABLE FORM BODY */}
         <ScrollArea className="flex-1 min-h-0 w-full bg-[#F8FAFC]">
           <div className="p-10 flex flex-col gap-10">
             
             {/* TOP HEADER GRID */}
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-3 gap-x-12 gap-y-10">
+               
+               {/* CUSTOMER SELECTION */}
+               <div className="space-y-3">
+                  <Label className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <User className="w-4 h-4 text-emerald-500" /> Customer / Client
+                  </Label>
+                  <Select onValueChange={setCustomerId} value={customerId}>
+                      <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl"><SelectValue placeholder="Select Customer (Optional)" /></SelectTrigger>
+                      <SelectContent>{customers?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+               </div>
+
                <div className="space-y-3">
                   <Label className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
                       <UserCheck className="w-4 h-4 text-blue-600" /> Staff / Sales Agent
@@ -231,7 +260,6 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                               {format(incomeDate, "PPP")}
                           </Button>
                       </PopoverTrigger>
-                      {/* FIX: Increased z-index to 9999 so calendar stays on top of the form and footer */}
                       <PopoverContent className="w-auto p-0 z-[9999]" align="start" sideOffset={4}>
                         <Calendar mode="single" selected={incomeDate} onSelect={(d) => d && setIncomeDate(d)} initialFocus />
                       </PopoverContent>
