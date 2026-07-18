@@ -204,8 +204,8 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
           </Button>
         </div>
 
-        {/* SCROLLABLE FORM BODY - Fixed to allow scrolling of entire content */}
-        <ScrollArea className="flex-1 w-full bg-[#F8FAFC]">
+        {/* SCROLLABLE FORM BODY - Fixed min-h-0 to enable scrolling in flex container */}
+        <ScrollArea className="flex-1 min-h-0 w-full bg-[#F8FAFC]">
           <div className="p-10 flex flex-col gap-10">
             
             {/* TOP HEADER GRID */}
@@ -231,8 +231,8 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                               {format(incomeDate, "PPP")}
                           </Button>
                       </PopoverTrigger>
-                      {/* FIX: Added higher Z-index and ensure PopoverContent handles layering correctly */}
-                      <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
+                      {/* FIX: Increased z-index to 9999 so calendar stays on top of the form and footer */}
+                      <PopoverContent className="w-auto p-0 z-[9999]" align="start" sideOffset={4}>
                         <Calendar mode="single" selected={incomeDate} onSelect={(d) => d && setIncomeDate(d)} initialFocus />
                       </PopoverContent>
                   </Popover>
