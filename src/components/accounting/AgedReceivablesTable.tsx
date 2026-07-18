@@ -35,7 +35,7 @@ import CreateDirectIncomeModal from './CreateDirectIncomeModal';
 
 // --- Enterprise Types ---
 
-export type InvoiceStatus = 'draft' | 'awaiting_approval' | 'approved' | 'partially_paid' | 'paid' | 'overdue';
+export type InvoiceStatus = 'draft' | 'awaiting_approval' | 'approved' | 'partially_paid' | 'paid' | 'overdue' | 'ISSUED' | 'Paid' | 'Draft';
 
 export interface Invoice {
   id: string;
@@ -71,18 +71,22 @@ interface Props {
 
 const fetchInvoicesClient = async (businessId: string) => {
     const supabase = createClient();
+    
+    // WELDING FIX: We pull based on balance > 0 to ensure all unpaid 'ISSUED' invoices show up
+    // regardless of whether the status string is uppercase or lowercase.
     const { data, error } = await supabase
         .from('accounting_invoices')
         .select('*')
         .eq('business_id', businessId)
-        .neq('status', 'paid')
+        .gt('amount_due', 0) // Pull everything with an outstanding balance
         .order('due_date', { ascending: true });
 
     if (error) throw new Error(error.message);
     
     return data.map((inv: any) => ({
         ...inv,
-        amount_due: inv.total_amount - inv.amount_paid
+        // Ensure amount_due is strictly calculated from the audited columns
+        amount_due: Number(inv.amount_due || (inv.total_amount - inv.amount_paid))
     })) as Invoice[];
 };
 
@@ -162,7 +166,7 @@ const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoic
                     <DialogTitle>Receive Payment</DialogTitle>
                     <DialogDescription>
                         Confirm payment for <strong>{invoice.invoice_number}</strong>.
-                        {invoice.status !== 'approved' && (
+                        {(invoice.status !== 'approved' && invoice.status !== 'ISSUED') && (
                             <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-xs flex items-center gap-2">
                                 <ShieldAlert className="w-4 h-4" />
                                 Note: This invoice is pending approval but payment can be forced by authorized users.
@@ -174,7 +178,7 @@ const ReceivePaymentDialog = ({ invoice, businessId, isOpen, onClose }: { invoic
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label className="text-right">Amount Due</Label>
                         <div className="col-span-3 font-mono font-bold">
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency }).format(invoice.amount_due)}
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency || 'UGX' }).format(invoice.amount_due)}
                         </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
@@ -240,7 +244,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
 
     invoices.forEach((inv) => {
         const customer = inv.customer_name || 'Unknown';
-        const currency = inv.currency || 'USD';
+        const currency = inv.currency || 'UGX';
         const key = `${customer}-${currency}`;
 
         if (!aggregation[key]) {
@@ -256,9 +260,11 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
             };
         }
 
-        const dueDate = parseISO(inv.due_date);
+        // CRASH PROTECTION: Ensure due_date exists before parsing to prevent client-side exception
+        const dueDateString = inv.due_date || new Date().toISOString();
+        const dueDate = parseISO(dueDateString);
         const daysOverdue = differenceInDays(today, dueDate);
-        const amount = inv.amount_due;
+        const amount = Number(inv.amount_due || 0);
 
         if (daysOverdue <= 30) aggregation[key].due_0_30 += amount;
         else if (daysOverdue <= 60) aggregation[key].due_31_60 += amount;
@@ -344,7 +350,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
                 <div className="text-right">
                     <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total Outstanding</p>
                     <p className="text-2xl font-black text-primary">
-                        {formatCurrency(receivables.reduce((acc, r) => acc + r.total, 0), 'USD')}
+                        {formatCurrency(receivables.reduce((acc, r) => acc + r.total, 0), 'UGX')}
                     </p>
                 </div>
             </div>
@@ -356,7 +362,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
                 <TableRow>
                     <TableHead className="w-[50px]">
                         <Checkbox 
-                            checked={selectedInvoiceIds.length > 0 && selectedInvoiceIds.length === invoices?.length}
+                            checked={selectedInvoiceIds.length > 0 && selectedInvoiceIds.length === (invoices?.length || 0)}
                             onCheckedChange={() => toggleSelectAll(invoices || [])}
                         />
                     </TableHead>
@@ -395,7 +401,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    {r.invoices.some(i => i.status === 'awaiting_approval') ? (
+                                    {r.invoices.some(i => i.status === 'awaiting_approval' || i.status === 'Draft') ? (
                                         <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 gap-1">
                                             <ShieldAlert className="w-3 h-3" /> Approval Req.
                                         </Badge>
