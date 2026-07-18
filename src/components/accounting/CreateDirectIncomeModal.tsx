@@ -21,8 +21,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { 
-  Plus, Trash2, Loader2, Calculator, Calendar as CalendarIcon,
-  UserCheck, Landmark, MapPin, CheckCircle2, X
+  Plus, Trash2, Loader2, Calendar as CalendarIcon,
+  UserCheck, Landmark, MapPin, CheckCircle2, X, Info
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -52,6 +52,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
   const queryClient = useQueryClient();
   const supabase = createClient();
 
+  // --- FORM STATE ---
   const [agentId, setAgentId] = useState<string>('');
   const [locationId, setLocationId] = useState<string>('');
   const [currencyCode, setCurrencyCode] = useState<string>('UGX');
@@ -59,6 +60,13 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
   const [incomeCategoryId, setIncomeCategoryId] = useState<string>('');
   const [incomeDate, setIncomeDate] = useState<Date>(new Date());
   const [items, setItems] = useState<LineItem[]>([]);
+
+  // --- INITIALIZATION: Ensure at least one row exists ---
+  useEffect(() => {
+    if (isOpen && items.length === 0) {
+      addLineItem();
+    }
+  }, [isOpen]);
 
   // --- DATA FETCHING ---
   const { data: staff } = useQuery({
@@ -97,7 +105,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
   const incomeCategories = useMemo(() => accounts?.filter(a => ['Revenue', 'Income'].includes(a.type)) || [], [accounts]);
 
   const addLineItem = () => {
-    setItems([...items, { 
+    setItems(prev => [...prev, { 
         id: Math.random().toString(36).substr(2, 9), 
         variantId: '', productId: 0, description: '', 
         quantity: 1, unitPrice: 0, taxRate: 18, taxAmount: 0, total: 0, 
@@ -123,6 +131,13 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
         }
       }
 
+      // Logic for Tax Presets
+      if (field === 'taxMode') {
+        if (value === 'Standard') updated.taxRate = 18;
+        else if (value === 'Reduced') updated.taxRate = 5;
+        else updated.taxRate = 0;
+      }
+
       const sub = updated.quantity * updated.unitPrice;
       updated.taxAmount = (sub * updated.taxRate) / 100;
       updated.total = sub + updated.taxAmount;
@@ -142,7 +157,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     mutationFn: (data: any) => postDirectIncomeAction(data),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success("Income recorded and ledger updated.");
+        toast.success("Transaction recorded successfully.");
         queryClient.invalidateQueries();
         onClose();
         setItems([]);
@@ -154,8 +169,10 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
 
   const handleCommit = () => {
     if (!agentId || !locationId || !paymentSourceId || !incomeCategoryId) {
-        return toast.error("Please fill in all required fields.");
+        return toast.error("Please complete the required fields in the header.");
     }
+    if (items.some(i => !i.variantId)) return toast.error("Please select a product for all rows.");
+
     mutation.mutate({
       businessId,
       agentId,
@@ -172,37 +189,44 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[1200px] h-[92vh] flex flex-col p-0 overflow-hidden border-slate-200 rounded-xl">
+      <DialogContent className="sm:max-w-[1300px] w-[95vw] h-[94vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
         
-        {/* CLEAN HEADER */}
-        <div className="px-8 py-6 border-b bg-white flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Record Direct Income</h2>
-            <p className="text-sm text-slate-500 mt-1">Post immediate income directly to the general ledger.</p>
+        {/* PROFESSIONAL HEADER */}
+        <div className="px-10 py-8 border-b bg-white flex justify-between items-center">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Generate Direct Income</h2>
+            <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
+              <Info className="w-4 h-4 text-blue-500" />
+              This will record immediate payment and adjust your general ledger balances.
+            </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-            <X className="w-5 h-5" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-12 w-12 hover:bg-slate-100">
+            <X className="w-6 h-6 text-slate-400" />
           </Button>
         </div>
 
-        <div className="flex-1 bg-slate-50/30 p-8 flex flex-col gap-6 overflow-hidden">
+        <div className="flex-1 bg-[#F8FAFC] p-10 flex flex-col gap-8 overflow-hidden">
           
-          {/* INFO GRID */}
-          <div className="grid grid-cols-4 gap-6 p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
-             <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Staff / Agent</Label>
+          {/* HEADER INFORMATION SECTION */}
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-3 gap-x-10 gap-y-8">
+             <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 tracking-[0.1em] flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-blue-600" /> Staff / Sales Agent
+                </Label>
                 <Select onValueChange={setAgentId} value={agentId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Staff" /></SelectTrigger>
+                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl focus:ring-blue-500"><SelectValue placeholder="Select Staff Member" /></SelectTrigger>
                     <SelectContent>{staff?.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}</SelectContent>
                 </Select>
              </div>
 
-             <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Date of Income</Label>
+             <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 tracking-[0.1em] flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-purple-600" /> Date of Receipt
+                </Label>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left bg-slate-50 border-slate-200">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
+                        <Button variant="outline" className="w-full h-12 justify-start text-left bg-slate-50/50 border-slate-200 rounded-xl font-medium">
+                            <CalendarIcon className="mr-3 h-4 w-4 opacity-50" />
                             {format(incomeDate, "PPP")}
                         </Button>
                     </PopoverTrigger>
@@ -210,71 +234,99 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                 </Popover>
              </div>
 
-             <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Branch / Node</Label>
+             <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 tracking-[0.1em] flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-red-600" /> Branch / Inventory Node
+                </Label>
                 <Select onValueChange={setLocationId} value={locationId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Location" /></SelectTrigger>
+                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl focus:ring-blue-500"><SelectValue placeholder="Select Location" /></SelectTrigger>
                     <SelectContent>{locations?.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
                 </Select>
              </div>
 
-             <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Currency</Label>
-                <Select onValueChange={setCurrencyCode} value={currencyCode}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="UGX">UGX (Shilling)</SelectItem><SelectItem value="USD">USD (Dollar)</SelectItem></SelectContent>
-                </Select>
-             </div>
-
-             <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Deposit Bank Account</Label>
+             <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 tracking-[0.1em] flex items-center gap-2">
+                    <Landmark className="w-4 h-4 text-amber-600" /> Deposit Bank Account
+                </Label>
                 <Select onValueChange={setPaymentSourceId} value={paymentSourceId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Target Account" /></SelectTrigger>
-                    <SelectContent>{paymentSources?.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl focus:ring-blue-500"><SelectValue placeholder="Select Receiving Bank" /></SelectTrigger>
+                    <SelectContent>{paymentSources?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.currency})</SelectItem>)}</SelectContent>
                 </Select>
              </div>
 
-             <div className="space-y-2 col-span-2">
-                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Accounting Category</Label>
+             <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 tracking-[0.1em] flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Accounting Category
+                </Label>
                 <Select onValueChange={setIncomeCategoryId} value={incomeCategoryId}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Revenue/Income Account" /></SelectTrigger>
+                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl focus:ring-blue-500"><SelectValue placeholder="Inflow/Revenue Type" /></SelectTrigger>
                     <SelectContent>{incomeCategories?.map(c => <SelectItem key={c.id} value={c.id}>{c.code} - {c.name}</SelectItem>)}</SelectContent>
+                </Select>
+             </div>
+
+             <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase text-slate-400 tracking-[0.1em] flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-slate-600" /> Reporting Currency
+                </Label>
+                <Select onValueChange={setCurrencyCode} value={currencyCode}>
+                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="UGX">UGX (Shilling)</SelectItem><SelectItem value="USD">USD (Dollar)</SelectItem></SelectContent>
                 </Select>
              </div>
           </div>
 
-          {/* TABLE AREA */}
-          <div className="flex-1 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
+          {/* ITEMIZATION TERMINAL (TABLE) */}
+          <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
             <ScrollArea className="flex-1">
               <Table>
-                <TableHeader className="bg-slate-50 sticky top-0 z-20 border-b">
-                  <TableRow>
-                    <TableHead className="px-6 text-xs font-bold uppercase text-slate-500">Service / Product</TableHead>
-                    <TableHead className="w-32 text-center text-xs font-bold uppercase text-slate-500">Qty</TableHead>
-                    <TableHead className="w-44 text-center text-xs font-bold uppercase text-slate-500">Unit Price</TableHead>
-                    <TableHead className="w-48 text-right px-6 text-xs font-bold uppercase text-slate-500">Subtotal</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                <TableHeader className="bg-slate-50/80 sticky top-0 z-20 border-b backdrop-blur-md">
+                  <TableRow className="h-16">
+                    <TableHead className="px-8 text-xs font-bold uppercase text-slate-500 tracking-wider">Product / SKU Configuration</TableHead>
+                    <TableHead className="w-32 text-center text-xs font-bold uppercase text-slate-500 tracking-wider">Quantity</TableHead>
+                    <TableHead className="w-44 text-center text-xs font-bold uppercase text-slate-500 tracking-wider">Unit Price</TableHead>
+                    <TableHead className="w-60 text-center text-xs font-bold uppercase text-slate-500 tracking-wider">Tax Setting</TableHead>
+                    <TableHead className="w-52 text-right px-8 text-xs font-bold uppercase text-slate-500 tracking-wider">Line Total</TableHead>
+                    <TableHead className="w-20"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
-                    <TableRow key={item.id} className="border-b last:border-0">
-                      <TableCell className="px-6 py-4">
+                    <TableRow key={item.id} className="border-b h-24 hover:bg-slate-50/50 transition-colors">
+                      <TableCell className="px-8">
                         <Select value={item.variantId} onValueChange={val => updateItem(item.id, 'variantId', val)}>
-                          <SelectTrigger className="border-slate-200 h-9 text-sm"><SelectValue placeholder="Select item from inventory" /></SelectTrigger>
-                          <SelectContent>{inventory?.map(v => <SelectItem key={v.variant_id} value={v.variant_id}>{v.product_name}</SelectItem>)}</SelectContent>
+                          <SelectTrigger className="border-slate-200 h-11 bg-white rounded-xl focus:ring-blue-500"><SelectValue placeholder="Search SKU Registry..." /></SelectTrigger>
+                          <SelectContent className="max-h-[300px]">{inventory?.map(v => <SelectItem key={v.variant_id} value={v.variant_id}>{v.product_name} • {v.variant_name}</SelectItem>)}</SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell><Input type="number" className="h-9 text-center" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))} /></TableCell>
-                      <TableCell><Input type="number" className="h-9 text-center" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value))} /></TableCell>
-                      <TableCell className="text-right px-6 font-medium text-slate-900">{new Intl.NumberFormat().format(item.total)}</TableCell>
-                      <TableCell className="pr-4 text-center"><Button variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-slate-400 hover:text-red-500 h-8 w-8"><Trash2 size={16}/></Button></TableCell>
+                      <TableCell><Input type="number" className="h-11 text-center bg-white border-slate-200 rounded-xl" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))} /></TableCell>
+                      <TableCell><Input type="number" className="h-11 text-center font-mono bg-white border-slate-200 rounded-xl" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value))} /></TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                           <Select value={item.taxMode} onValueChange={val => updateItem(item.id, 'taxMode', val)}>
+                              <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl font-medium"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                 <SelectItem value="Standard">Standard (18%)</SelectItem>
+                                 <SelectItem value="Reduced">Reduced (5%)</SelectItem>
+                                 <SelectItem value="Exempt">Zero Rated</SelectItem>
+                              </SelectContent>
+                           </Select>
+                           <Input type="number" className="w-20 h-11 text-center font-bold bg-slate-50 border-slate-200 rounded-xl" value={item.taxRate} onChange={e => updateItem(item.id, 'taxRate', parseFloat(e.target.value))} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right px-8 font-mono font-bold text-slate-900 text-lg">
+                        {new Intl.NumberFormat().format(item.total)}
+                      </TableCell>
+                      <TableCell className="pr-6">
+                        <Button variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                            <Trash2 size={18}/>
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={5} className="p-0">
-                      <Button variant="ghost" className="w-full h-14 text-slate-500 hover:text-blue-600 font-medium" onClick={addLineItem}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Another Line
+                    <TableCell colSpan={6} className="p-0">
+                      <Button variant="ghost" className="w-full h-20 text-slate-400 hover:text-blue-600 hover:bg-blue-50 font-semibold uppercase tracking-widest text-[10px] rounded-none border-t border-dashed" onClick={addLineItem}>
+                        <Plus className="mr-3 w-4 h-4" /> Add New Transaction Element
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -283,32 +335,38 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
             </ScrollArea>
           </div>
 
-          {/* CLEAN SUMMARY */}
-          <div className="grid grid-cols-3 gap-6 p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
-             <div className="flex justify-between items-center border-r pr-6">
-                <span className="text-sm font-medium text-slate-500">Subtotal</span>
-                <span className="text-lg font-semibold">{new Intl.NumberFormat().format(totals.subtotal)}</span>
+          {/* FINANCIAL SUMMARY BOX */}
+          <div className="bg-slate-900 px-10 py-8 rounded-2xl text-white shadow-xl flex justify-between items-center">
+             <div className="flex gap-12">
+                <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Aggregate Gross</p>
+                    <p className="text-3xl font-mono">{new Intl.NumberFormat().format(totals.subtotal)}</p>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em]">Tax Impact</p>
+                    <p className="text-3xl font-mono text-amber-400">+{new Intl.NumberFormat().format(totals.tax)}</p>
+                </div>
              </div>
-             <div className="flex justify-between items-center border-r px-6">
-                <span className="text-sm font-medium text-slate-500">Total Tax</span>
-                <span className="text-lg font-semibold">{new Intl.NumberFormat().format(totals.tax)}</span>
-             </div>
-             <div className="flex justify-between items-center pl-6">
-                <span className="text-sm font-bold text-slate-900 uppercase tracking-wider">Grand Total ({currencyCode})</span>
-                <span className="text-2xl font-bold text-blue-600">{new Intl.NumberFormat().format(totals.grandTotal)}</span>
+             <div className="text-right space-y-1">
+                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Net Settlement</p>
+                <div className="flex items-baseline gap-4 justify-end">
+                    <span className="text-xl font-bold opacity-30 tracking-widest">{currencyCode}</span>
+                    <p className="text-6xl font-black tracking-tight">{new Intl.NumberFormat().format(totals.grandTotal)}</p>
+                </div>
              </div>
           </div>
         </div>
 
-        <div className="p-6 bg-white border-t flex justify-end gap-3">
-           <Button variant="outline" onClick={onClose} className="px-8 h-11 text-slate-600 font-medium">Discard Draft</Button>
+        {/* CLEAN FOOTER */}
+        <div className="p-10 bg-white border-t flex justify-end gap-6 items-center">
+           <Button variant="ghost" onClick={onClose} className="px-10 h-14 font-bold text-slate-400 uppercase tracking-widest hover:text-red-500">Cancel Draft</Button>
            <Button 
                 onClick={handleCommit} 
                 disabled={mutation.isPending || items.length === 0} 
-                className="bg-blue-600 hover:bg-blue-700 px-10 h-11 text-white font-semibold shadow-sm"
+                className="bg-blue-600 hover:bg-blue-700 px-16 h-14 rounded-xl text-white font-bold text-lg uppercase tracking-wider shadow-lg active:scale-95 transition-all"
            >
-              {mutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-              Post to General Ledger
+              {mutation.isPending ? <Loader2 className="animate-spin mr-3 h-5 w-5" /> : <CheckCircle2 className="mr-3 h-5 w-5" />}
+              Commit to Ledger
            </Button>
         </div>
       </DialogContent>
