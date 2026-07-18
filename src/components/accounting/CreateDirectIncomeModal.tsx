@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { 
   Plus, Trash2, Loader2, Calendar as CalendarIcon,
-  UserCheck, Landmark, MapPin, CheckCircle2, X, Info
+  UserCheck, Landmark, MapPin, CheckCircle2, Calculator, X, Info
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
