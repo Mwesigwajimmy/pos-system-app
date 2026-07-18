@@ -188,8 +188,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* Increased max-width and fixed height to ensure scrolling works */}
-      <DialogContent className="sm:max-w-[1400px] w-[96vw] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+      <DialogContent className="sm:max-w-[1400px] w-[96vw] max-h-[95vh] h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
         
         {/* CLEAN PROFESSIONAL HEADER */}
         <div className="px-10 py-8 border-b bg-white flex justify-between items-center shrink-0">
@@ -205,11 +204,11 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
           </Button>
         </div>
 
-        {/* SCROLLABLE FORM BODY */}
-        <ScrollArea className="flex-1 bg-[#F8FAFC]">
-          <div className="p-10 flex flex-col gap-10 min-h-full">
+        {/* SCROLLABLE FORM BODY - Fixed to allow scrolling of entire content */}
+        <ScrollArea className="flex-1 w-full bg-[#F8FAFC]">
+          <div className="p-10 flex flex-col gap-10">
             
-            {/* TOP HEADER GRID (SPACIOUS) */}
+            {/* TOP HEADER GRID */}
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-3 gap-x-12 gap-y-10">
                <div className="space-y-3">
                   <Label className="text-xs font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -232,8 +231,8 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                               {format(incomeDate, "PPP")}
                           </Button>
                       </PopoverTrigger>
-                      {/* Fixed Z-Index for Calendar to appear on top */}
-                      <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+                      {/* FIX: Added higher Z-index and ensure PopoverContent handles layering correctly */}
+                      <PopoverContent className="w-auto p-0 z-[100]" align="start" sideOffset={4}>
                         <Calendar mode="single" selected={incomeDate} onSelect={(d) => d && setIncomeDate(d)} initialFocus />
                       </PopoverContent>
                   </Popover>
@@ -280,7 +279,7 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
                </div>
             </div>
 
-            {/* ITEMIZATION / PRODUCT TABLE (DEEP CONFIG) */}
+            {/* ITEMIZATION / PRODUCT TABLE */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
               <Table>
                 <TableHeader className="bg-slate-50/80 sticky top-0 z-10 border-b">
