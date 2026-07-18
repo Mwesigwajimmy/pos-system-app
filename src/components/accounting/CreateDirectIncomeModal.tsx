@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { format } from "date-fns";
 
-// Server Action Import (The Handshake)
 import { postDirectIncomeAction } from '@/lib/actions/finance';
 
 import {
@@ -22,26 +21,22 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { 
-  Plus, Trash2, Loader2, DollarSign, Globe, MapPin, 
-  User, Package, Calculator, FileText, Calendar as CalendarIcon,
-  UserCheck, Landmark, Layers, Percent, ShieldCheck, Box
+  Plus, Trash2, Loader2, Calculator, Calendar as CalendarIcon,
+  UserCheck, Landmark, MapPin, CheckCircle2, X
 } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar"; // Professional UI Calendar
-import { Badge } from '@/components/ui/badge';
+import { Calendar } from "@/components/ui/calendar"; 
 import { cn } from "@/lib/utils";
-
-// --- Enterprise Types ---
 
 interface LineItem {
   id: string;
-  variantId: string;   // UUID from view_bbu1_scanner_master
-  productId: number;   // BigInt from view_bbu1_scanner_master
+  variantId: string;
+  productId: number;
   description: string;
   quantity: number;
   unitPrice: number;
-  taxRate: number;     // Custom override allowed
+  taxRate: number;
   taxAmount: number;
   total: number;
   taxMode: 'Standard' | 'Reduced' | 'Exempt';
@@ -57,28 +52,15 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // --- SOVEREIGN FORM STATE ---
-  const [customerId, setCustomerId] = useState<string>('');
-  const [agentId, setAgentId] = useState<string>('');        // Sales Agent (Profiles)
-  const [locationId, setLocationId] = useState<string>('');  // Inventory Node (Locations)
+  const [agentId, setAgentId] = useState<string>('');
+  const [locationId, setLocationId] = useState<string>('');
   const [currencyCode, setCurrencyCode] = useState<string>('UGX');
-  const [paymentSourceId, setPaymentSourceId] = useState<string>(''); // Asset Account (Bank/Cash)
-  const [incomeCategoryId, setIncomeCategoryId] = useState<string>(''); // Revenue Account (4000 series)
+  const [paymentSourceId, setPaymentSourceId] = useState<string>('');
+  const [incomeCategoryId, setIncomeCategoryId] = useState<string>('');
   const [incomeDate, setIncomeDate] = useState<Date>(new Date());
   const [items, setItems] = useState<LineItem[]>([]);
 
-  // --- DEEP INTERCONNECTION DATA FETCHING ---
-  
-  // 1. Pull Real Customers
-  const { data: customers } = useQuery({
-    queryKey: ['crm_customers', businessId],
-    queryFn: async () => {
-      const { data } = await supabase.from('customers').select('id, name').eq('business_id', businessId);
-      return data || [];
-    }
-  });
-
-  // 2. Pull Sales Agents (Profiles)
+  // --- DATA FETCHING ---
   const { data: staff } = useQuery({
     queryKey: ['staff_profiles', businessId],
     queryFn: async () => {
@@ -87,7 +69,6 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
-  // 3. Pull Multi-Tenant Locations
   const { data: locations } = useQuery({
     queryKey: ['ops_locations', businessId],
     queryFn: async () => {
@@ -96,21 +77,14 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
-  // 4. Pull Accounts (Payment Sources vs Accounting Categories)
   const { data: accounts } = useQuery({
     queryKey: ['ledger_accounts', businessId],
     queryFn: async () => {
-      const { data } = await supabase.from('accounting_accounts')
-        .select('id, name, code, type, subtype, current_balance, currency')
-        .eq('business_id', businessId);
+      const { data } = await supabase.from('accounting_accounts').select('*').eq('business_id', businessId);
       return data || [];
     }
   });
 
-  const paymentSources = useMemo(() => accounts?.filter(a => ['bank', 'cash'].includes(a.subtype?.toLowerCase())) || [], [accounts]);
-  const incomeCategories = useMemo(() => accounts?.filter(a => ['Revenue', 'Income'].includes(a.type)) || [], [accounts]);
-
-  // 5. Pull Inventory Master (Verified View)
   const { data: inventory } = useQuery({
     queryKey: ['scanner_master_view'],
     queryFn: async () => {
@@ -119,8 +93,9 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }
   });
 
-  // --- Dynamic Business Logic ---
-  
+  const paymentSources = useMemo(() => accounts?.filter(a => ['bank', 'cash'].includes(a.subtype?.toLowerCase())) || [], [accounts]);
+  const incomeCategories = useMemo(() => accounts?.filter(a => ['Revenue', 'Income'].includes(a.type)) || [], [accounts]);
+
   const addLineItem = () => {
     setItems([...items, { 
         id: Math.random().toString(36).substr(2, 9), 
@@ -139,7 +114,6 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
       if (item.id !== id) return item;
       const updated = { ...item, [field]: value };
 
-      // Auto-populate from stock registry
       if (field === 'variantId') {
         const variant = inventory?.find(v => v.variant_id === value);
         if (variant) {
@@ -149,18 +123,9 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
         }
       }
 
-      // Automated Tax Presets (Still allows manual typing in taxRate field)
-      if (field === 'taxMode') {
-        if (value === 'Standard') updated.taxRate = 18;
-        else if (value === 'Reduced') updated.taxRate = 5;
-        else updated.taxRate = 0;
-      }
-
-      // Recalculate Totals
       const sub = updated.quantity * updated.unitPrice;
       updated.taxAmount = (sub * updated.taxRate) / 100;
       updated.total = sub + updated.taxAmount;
-
       return updated;
     }));
   };
@@ -173,34 +138,29 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
     }), { subtotal: 0, tax: 0, grandTotal: 0 });
   }, [items]);
 
-  // --- THE MASTER COMMIT ENGINE ---
   const mutation = useMutation({
     mutationFn: (data: any) => postDirectIncomeAction(data),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success("Enterprise Ledger Synchronized: Cash Inflow & Inventory Adjusted");
+        toast.success("Income recorded and ledger updated.");
         queryClient.invalidateQueries();
         onClose();
-        setItems([]); setCustomerId(''); setAgentId(''); setLocationId('');
+        setItems([]);
       } else {
-        toast.error(`Sovereign Failure: ${result.message}`);
+        toast.error(result.message);
       }
-    },
-    onError: (err: any) => toast.error(`Critical Handshake Error: ${err.message}`)
+    }
   });
 
   const handleCommit = () => {
     if (!agentId || !locationId || !paymentSourceId || !incomeCategoryId) {
-        return toast.error("Compliant recording requires Agent, Location, Payment Source, and Category.");
+        return toast.error("Please fill in all required fields.");
     }
-    if (items.length === 0) return toast.error("Transaction must contain at least one item.");
-
     mutation.mutate({
       businessId,
-      customerId: customerId || undefined,
       agentId,
       locationId,
-      paymentSourceId,
+      bankAccountId: paymentSourceId,
       revenueAccountId: incomeCategoryId,
       currency: currencyCode,
       date: format(incomeDate, 'yyyy-MM-dd'),
@@ -212,167 +172,109 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[1500px] h-[96vh] flex flex-col p-0 overflow-hidden shadow-2xl border-none rounded-[2.5rem]">
+      <DialogContent className="max-w-[1200px] h-[92vh] flex flex-col p-0 overflow-hidden border-slate-200 rounded-xl">
         
-        {/* SOVEREIGN HEADER */}
-        <DialogHeader className="p-12 bg-slate-950 text-white flex flex-row justify-between items-center shrink-0 border-b border-white/5">
-          <div className="space-y-2">
-            <DialogTitle className="text-5xl font-black tracking-tighter flex items-center gap-6 uppercase italic">
-              <div className="bg-blue-600 p-4 rounded-3xl shadow-[0_0_50px_rgba(37,99,235,0.4)]">
-                <Calculator size={45} />
-              </div>
-              Direct Income Terminal
-            </DialogTitle>
-            <p className="text-slate-500 text-xs font-black tracking-[0.5em] uppercase pl-2">
-                BBU1 Financial Protocol v5.2 • Multi-Tenant Logic
-            </p>
+        {/* CLEAN HEADER */}
+        <div className="px-8 py-6 border-b bg-white flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-900">Record Direct Income</h2>
+            <p className="text-sm text-slate-500 mt-1">Post immediate income directly to the general ledger.</p>
           </div>
-          <div className="flex gap-6 items-center">
-             <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 px-8 py-3 rounded-full font-black text-xs">
-                STOCKS: SYNC_READY
-             </Badge>
-             <div className="h-12 w-px bg-white/10" />
-             <div className="text-right">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Node Instance</p>
-                <p className="font-mono text-sm text-blue-400 font-bold tracking-widest">{businessId.slice(0,18)}</p>
-             </div>
-          </div>
-        </DialogHeader>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
 
-        <div className="flex-1 bg-slate-50/50 p-12 flex flex-col gap-10 overflow-hidden">
+        <div className="flex-1 bg-slate-50/30 p-8 flex flex-col gap-6 overflow-hidden">
           
-          {/* CONTROL INFRASTRUCTURE GRID */}
-          <div className="grid grid-cols-6 gap-8 p-10 bg-white rounded-[3.5rem] shadow-xl shadow-slate-200/40 border border-slate-100">
-             <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <UserCheck size={16} className="text-blue-500"/> Sales Agent
-                </Label>
+          {/* INFO GRID */}
+          <div className="grid grid-cols-4 gap-6 p-6 bg-white rounded-xl border border-slate-200 shadow-sm">
+             <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Staff / Agent</Label>
                 <Select onValueChange={setAgentId} value={agentId}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-100 bg-slate-50/50 font-bold"><SelectValue placeholder="Select Staff" /></SelectTrigger>
+                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Staff" /></SelectTrigger>
                     <SelectContent>{staff?.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}</SelectContent>
                 </Select>
              </div>
 
-             <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <CalendarIcon size={16} className="text-purple-500"/> Value Date
-                </Label>
+             <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Date of Income</Label>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full h-12 justify-start text-left font-black rounded-2xl border-slate-100 bg-slate-50/50">
-                            <CalendarIcon className="mr-3 h-4 w-4" />
+                        <Button variant="outline" className="w-full justify-start text-left bg-slate-50 border-slate-200">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
                             {format(incomeDate, "PPP")}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
-                        <Calendar mode="single" selected={incomeDate} onSelect={(d) => d && setIncomeDate(d)} initialFocus />
-                    </PopoverContent>
+                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={incomeDate} onSelect={(d) => d && setIncomeDate(d)} initialFocus /></PopoverContent>
                 </Popover>
              </div>
 
-             <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <MapPin size={16} className="text-red-500"/> Inventory Node
-                </Label>
+             <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Branch / Node</Label>
                 <Select onValueChange={setLocationId} value={locationId}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-100 bg-slate-50/50 font-bold"><SelectValue placeholder="Branch" /></SelectTrigger>
+                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Location" /></SelectTrigger>
                     <SelectContent>{locations?.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent>
                 </Select>
              </div>
 
-             <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Landmark size={16} className="text-amber-500"/> Payment Source
-                </Label>
-                <Select onValueChange={setPaymentSourceId} value={paymentSourceId}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-100 bg-slate-50/50 font-bold"><SelectValue placeholder="Select Bank" /></SelectTrigger>
-                    <SelectContent>
-                        {paymentSources?.map(a => (
-                            <SelectItem key={a.id} value={a.id}>
-                                <div className="flex justify-between w-[280px]">
-                                    <span className="font-black">{a.name}</span>
-                                    <span className="font-mono text-blue-600 font-black">{a.currency} {new Intl.NumberFormat().format(a.current_balance)}</span>
-                                </div>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-             </div>
-
-             <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Layers size={16} className="text-indigo-500"/> Accounting Category
-                </Label>
-                <Select onValueChange={setIncomeCategoryId} value={incomeCategoryId}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-100 bg-slate-50/50 font-bold"><SelectValue placeholder="Inflow Type" /></SelectTrigger>
-                    <SelectContent>{incomeCategories?.map(c => <SelectItem key={c.id} value={c.id}>{c.code} - {c.name}</SelectItem>)}</SelectContent>
-                </Select>
-             </div>
-
-             <div className="space-y-3">
-                <Label className="text-[11px] font-black uppercase text-slate-400 flex items-center gap-2">
-                    <Globe size={16} className="text-emerald-500"/> Reporting Currency
-                </Label>
+             <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Currency</Label>
                 <Select onValueChange={setCurrencyCode} value={currencyCode}>
-                    <SelectTrigger className="rounded-2xl h-12 border-slate-100 bg-slate-50/50 font-black"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="UGX">UGX - Shilling</SelectItem>
-                        <SelectItem value="USD">USD - Dollar</SelectItem>
-                    </SelectContent>
+                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="UGX">UGX (Shilling)</SelectItem><SelectItem value="USD">USD (Dollar)</SelectItem></SelectContent>
+                </Select>
+             </div>
+
+             <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Deposit Bank Account</Label>
+                <Select onValueChange={setPaymentSourceId} value={paymentSourceId}>
+                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Target Account" /></SelectTrigger>
+                    <SelectContent>{paymentSources?.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                </Select>
+             </div>
+
+             <div className="space-y-2 col-span-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Accounting Category</Label>
+                <Select onValueChange={setIncomeCategoryId} value={incomeCategoryId}>
+                    <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Select Revenue/Income Account" /></SelectTrigger>
+                    <SelectContent>{incomeCategories?.map(c => <SelectItem key={c.id} value={c.id}>{c.code} - {c.name}</SelectItem>)}</SelectContent>
                 </Select>
              </div>
           </div>
 
-          {/* ITEMIZATION TERMINAL */}
-          <div className="flex-1 border border-slate-200 rounded-[4rem] bg-white shadow-2xl shadow-slate-300/40 overflow-hidden flex flex-col">
+          {/* TABLE AREA */}
+          <div className="flex-1 border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col">
             <ScrollArea className="flex-1">
               <Table>
-                <TableHeader className="bg-slate-50/50 sticky top-0 z-20 border-b">
+                <TableHeader className="bg-slate-50 sticky top-0 z-20 border-b">
                   <TableRow>
-                    <TableHead className="px-12 h-24 text-[12px] font-black uppercase tracking-widest text-slate-500">Product / Service Configuration</TableHead>
-                    <TableHead className="w-40 text-center text-[12px] font-black uppercase tracking-widest text-slate-500">Quantity</TableHead>
-                    <TableHead className="w-56 text-center text-[12px] font-black uppercase tracking-widest text-slate-500">Unit Price</TableHead>
-                    <TableHead className="w-72 text-center text-[12px] font-black uppercase tracking-widest text-slate-500">Fiscal Profile</TableHead>
-                    <TableHead className="w-64 text-right px-12 text-[12px] font-black uppercase tracking-widest text-slate-500">Line Total</TableHead>
-                    <TableHead className="w-20"></TableHead>
+                    <TableHead className="px-6 text-xs font-bold uppercase text-slate-500">Service / Product</TableHead>
+                    <TableHead className="w-32 text-center text-xs font-bold uppercase text-slate-500">Qty</TableHead>
+                    <TableHead className="w-44 text-center text-xs font-bold uppercase text-slate-500">Unit Price</TableHead>
+                    <TableHead className="w-48 text-right px-6 text-xs font-bold uppercase text-slate-500">Subtotal</TableHead>
+                    <TableHead className="w-16"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
-                    <TableRow key={item.id} className="border-b border-slate-50 group hover:bg-blue-50/10 transition-all">
-                      <TableCell className="px-12 py-8">
+                    <TableRow key={item.id} className="border-b last:border-0">
+                      <TableCell className="px-6 py-4">
                         <Select value={item.variantId} onValueChange={val => updateItem(item.id, 'variantId', val)}>
-                          <SelectTrigger className="border-none shadow-none text-base font-black p-0 h-auto focus:ring-0 uppercase tracking-tighter"><SelectValue placeholder="Search SKU Registry..." /></SelectTrigger>
-                          <SelectContent className="max-h-[400px] rounded-3xl">{inventory?.map(v => <SelectItem key={v.variant_id} value={v.variant_id}>{v.product_name} • {v.variant_name}</SelectItem>)}</SelectContent>
+                          <SelectTrigger className="border-slate-200 h-9 text-sm"><SelectValue placeholder="Select item from inventory" /></SelectTrigger>
+                          <SelectContent>{inventory?.map(v => <SelectItem key={v.variant_id} value={v.variant_id}>{v.product_name}</SelectItem>)}</SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell><Input type="number" className="h-14 text-center font-black rounded-2xl border-slate-100 text-lg shadow-none" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))} /></TableCell>
-                      <TableCell><Input type="number" className="h-14 text-center font-mono font-bold rounded-2xl border-slate-100 text-lg shadow-none" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value))} /></TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                           <Select value={item.taxMode} onValueChange={val => updateItem(item.id, 'taxMode', val)}>
-                              <SelectTrigger className="rounded-2xl h-14 border-slate-100 bg-slate-50/50 font-bold"><SelectValue /></SelectTrigger>
-                              <SelectContent className="rounded-2xl">
-                                 <SelectItem value="Standard">Standard Tax</SelectItem>
-                                 <SelectItem value="Reduced">Reduced Rate</SelectItem>
-                                 <SelectItem value="Exempt">Tax Exempt</SelectItem>
-                              </SelectContent>
-                           </Select>
-                           <Input type="number" className="w-24 h-14 text-center font-black rounded-2xl border-slate-100" value={item.taxRate} onChange={e => updateItem(item.id, 'taxRate', parseFloat(e.target.value))} placeholder="%" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right px-12 font-mono font-black text-blue-600 text-2xl tracking-tighter">
-                        {new Intl.NumberFormat().format(item.total)}
-                      </TableCell>
-                      <TableCell className="pr-12 text-center opacity-0 group-hover:opacity-100 transition-all">
-                        <Button variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-2xl w-12 h-12"><Trash2 size={24}/></Button>
-                      </TableCell>
+                      <TableCell><Input type="number" className="h-9 text-center" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', parseFloat(e.target.value))} /></TableCell>
+                      <TableCell><Input type="number" className="h-9 text-center" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value))} /></TableCell>
+                      <TableCell className="text-right px-6 font-medium text-slate-900">{new Intl.NumberFormat().format(item.total)}</TableCell>
+                      <TableCell className="pr-4 text-center"><Button variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-slate-400 hover:text-red-500 h-8 w-8"><Trash2 size={16}/></Button></TableCell>
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={6} className="p-0">
-                      <Button variant="ghost" className="w-full h-28 rounded-none border-t border-dashed border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-blue-600 font-black tracking-[0.4em] text-xs uppercase transition-all" onClick={addLineItem}>
-                        <Plus className="mr-4" size={20} /> Append New Transaction Element (F5)
+                    <TableCell colSpan={5} className="p-0">
+                      <Button variant="ghost" className="w-full h-14 text-slate-500 hover:text-blue-600 font-medium" onClick={addLineItem}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Another Line
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -381,41 +283,34 @@ export default function CreateDirectIncomeModal({ isOpen, onClose, businessId }:
             </ScrollArea>
           </div>
 
-          {/* FINANCIAL CONSOLIDATION SUMMARY */}
-          <div className="grid grid-cols-3 gap-12 bg-slate-950 p-14 rounded-[4.5rem] text-white shadow-[0_40px_100px_rgba(0,0,0,0.3)] relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-12 opacity-5"><Box size={300}/></div>
-             <div className="space-y-2 opacity-50">
-                <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500">Aggregate Gross</p>
-                <p className="text-5xl font-mono tracking-tighter">{new Intl.NumberFormat().format(totals.subtotal)}</p>
+          {/* CLEAN SUMMARY */}
+          <div className="grid grid-cols-3 gap-6 p-6 bg-white border border-slate-200 rounded-xl shadow-sm">
+             <div className="flex justify-between items-center border-r pr-6">
+                <span className="text-sm font-medium text-slate-500">Subtotal</span>
+                <span className="text-lg font-semibold">{new Intl.NumberFormat().format(totals.subtotal)}</span>
              </div>
-             <div className="space-y-2 text-amber-400">
-                <p className="text-[11px] font-black uppercase tracking-[0.4em] opacity-50">Consolidated Tax Impact</p>
-                <div className="flex items-center gap-4">
-                    <Percent size={30} className="opacity-40"/>
-                    <p className="text-5xl font-mono tracking-tighter">+{new Intl.NumberFormat().format(totals.tax)}</p>
-                </div>
+             <div className="flex justify-between items-center border-r px-6">
+                <span className="text-sm font-medium text-slate-500">Total Tax</span>
+                <span className="text-lg font-semibold">{new Intl.NumberFormat().format(totals.tax)}</span>
              </div>
-             <div className="text-right border-l border-white/10 pl-14">
-                <p className="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500">Net Ledger Settlement</p>
-                <div className="flex items-baseline justify-end gap-6 mt-4">
-                    <span className="text-3xl font-bold opacity-20 tracking-[0.3em]">{currencyCode}</span>
-                    <p className="text-9xl font-black tracking-tighter leading-none">{new Intl.NumberFormat().format(totals.grandTotal)}</p>
-                </div>
+             <div className="flex justify-between items-center pl-6">
+                <span className="text-sm font-bold text-slate-900 uppercase tracking-wider">Grand Total ({currencyCode})</span>
+                <span className="text-2xl font-bold text-blue-600">{new Intl.NumberFormat().format(totals.grandTotal)}</span>
              </div>
           </div>
         </div>
 
-        <DialogFooter className="p-12 bg-white border-t border-slate-100 flex items-center justify-between shrink-0">
-           <Button variant="ghost" onClick={onClose} className="font-black text-slate-300 uppercase tracking-widest hover:text-red-600 h-20 px-14 text-sm">Abort Operation</Button>
+        <div className="p-6 bg-white border-t flex justify-end gap-3">
+           <Button variant="outline" onClick={onClose} className="px-8 h-11 text-slate-600 font-medium">Discard Draft</Button>
            <Button 
                 onClick={handleCommit} 
                 disabled={mutation.isPending || items.length === 0} 
-                className="bg-blue-600 hover:bg-blue-700 h-24 px-32 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.3em] shadow-[0_20px_60px_rgba(37,99,235,0.3)] transition-all active:scale-95"
+                className="bg-blue-600 hover:bg-blue-700 px-10 h-11 text-white font-semibold shadow-sm"
            >
-              {mutation.isPending ? <Loader2 className="animate-spin mr-6" size={32} /> : <ShieldCheck className="mr-6" size={32} />}
-              Commit to General Ledger
+              {mutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+              Post to General Ledger
            </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
