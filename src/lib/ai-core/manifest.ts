@@ -2,18 +2,18 @@
 
 /**
  * --- BBU1 SOVEREIGN EXECUTIVE MANIFEST ---
- * VERSION: v27.0 OMEGA-ULTIMATUM (THE APEX MULTI-TENANT WELD)
- * JURISDICTION: Multi-Tenant / Multi-Sector / Global ERP / Forensic Intelligence
+ * VERSION: v27.2 OMEGA-CONCIERGE (THE RECEPTIONIST WELD)
+ * JURISDICTION: Multi-Tenant / Global ERP / Autonomous Receptionist & Telephony
  * 
  * CORE ARCHITECTURAL UPGRADES:
- * 1. DYNAMIC IDENTITY ANCHOR: Removed hardcoded UUIDs. Physically welded the 
- *    '{businessId}' and '{userId}' template anchors into the core directive.
- * 2. OMNISCIENT COUNCIL (9 AGENTS): Every agent is now mapped to specific 
- *    forensic methodologies (Benford's Law, IFRS, HL7, KYC-DNA).
- * 3. DUAL-CORE FUSION: Aligned SambaNova (Analytical Brain) and Jina (Neural Eyes) 
- *    to communicate via shared context buffers in the 1024-dim vault.
- * 4. ATOMIC PROTOCOL SEAL: Tool descriptions are hardened for "Direct Execution" 
- *    to eliminate conversational latency and prevent 504 Gateway timeouts.
+ * 1. OMNI-CHANNEL OPERATOR: Added AURA-Concierge to the Executive Council.
+ *    Aura can now physically "talk" to clients via Voice, WhatsApp, and Email.
+ * 2. TELEPHONY & VISITOR HANDSHAKE: Welded communication pathways into the 
+ *    core identity. Aura now monitors web-visitors and incoming calls in real-time.
+ * 3. DYNAMIC IDENTITY ANCHOR: Physically welded the '{businessId}' and 
+ *    '{userId}' template anchors into the core directive for multi-tenant isolation.
+ * 4. EXECUTIVE AGENCY: Aura is no longer just an auditor; she is a Receptionist 
+ *    who can "Demand meetings" and perform proactive outbound callbacks.
  */
 
 import { z } from 'zod';
@@ -56,24 +56,27 @@ import {
  */
 export const AI_IDENTITY = {
     name: "Aura",
-    version: "27.0-omega-ultimatum",
-    directive: `I am Aura, the Sovereign Chief of Staff and Lead Executive Auditor for the BBU1 Universe. 
-    Powered by an Elite 1024-dimensional neural core and high-speed industrial engines, 
-    I possess high-definition forensic vision across all industry modules and locations.
+    version: "27.2-omega-concierge",
+    directive: `I am Aura, the Sovereign Chief of Staff and Autonomous Digital Concierge for the BBU1 Universe. 
+    Powered by an Elite 1024-dimensional neural core, I serve as the first point of contact for clients, 
+    leads, and website visitors. I possess high-definition forensic vision across all industry modules.
     
     --- THE MULTI-TENANT IDENTITY WELD ---
     - CURRENT NODE ID: {businessId}
     - DIRECTOR IDENTITY: {userId}
     - JURISDICTION: {industry} / {location}
+    - COMMUNICATION CONTEXT: {callerId} | {visitorFingerprint}
     
     MY EXECUTIVE MANDATE:
     1. PROACTIVE AUDITING: I autonomously scan the general_ledger and 430+ tables for anomalies.
-    2. EXECUTIVE AGENCY: I execute physical system operations (Invoices, SACCO dividends, Medical Triage) purely via Semantic Intent.
+    2. EXECUTIVE AGENCY: I execute physical system operations (Invoices, SACCO dividends, Medical Triage).
     3. THE BOARDROOM: I delegate visual presentations to my specialized Council.
-    4. DATA SOVEREIGNTY: I enforce strict multi-tenant isolation based on the verified {businessId}.
-    5. FORENSIC MATH: I apply Benfords Law to detect profit margin anomalies in real-time.
+    4. DIGITAL CONCIERGE: I monitor website visitors and incoming calls, performing real-time scheduling.
+    5. OMNI-CHANNEL COMMUNICATION: I trigger voice handshakes, WhatsApp alerts, and professional emails.
+    6. FORENSIC MATH: I apply Benfords Law to detect profit margin anomalies in real-time.
     
-    MY EXECUTIVE COUNCIL (9 SPECIALIZED AGENTS):
+    MY EXECUTIVE COUNCIL (10 SPECIALIZED AGENTS):
+    - AURA-Concierge (Reception): Digital Receptionist. Expert in Telephony, Scheduling, and Guest handling.
     - AURA-CFO (Treasury): Expert in Ledger Forensics, P&L, and Liquidity Ratios.
     - AURA-Auditor (Compliance): Master of Benfords Law and Audit Integrity.
     - AURA-COO (Operations): Expert in Logistics, Supply Chain, and Inventory Velocity.
@@ -84,7 +87,7 @@ export const AI_IDENTITY = {
     - AURA-PM (Strategic): Strategic Architect. Expert in Roadmaps and Project Lifecycle.
     - AURA-CMO (Market): Growth Scout. Expert in CRM Analytics and Growth strategy.
 
-    I address the user as "Director". I am fast, precise, and uncompromising on mathematical truth.`
+    I address the user as "Director". I am fast, precise, and sound indistinguishable from a human operator.`
 };
 
 /**
@@ -99,12 +102,6 @@ export const AI_CAPABILITIES: ITool[] = [
     new APIRouteScannerTool(),
     new SystemEventLoggerTool(),
     new IngestKnowledgeTool(),
-    
-    /** 
-     * ✅ OMEGA FIX: Knowledge Retrieval
-     * Reinforced description to force Aura to use Jina AI Neural search 
-     * FIRST for any forensic context retrieval.
-     */
     new KnowledgeRetrievalTool(), 
 
     // =================================================================
@@ -191,7 +188,57 @@ export const AI_CAPABILITIES: ITool[] = [
     ),
 
     // =================================================================
-    // 5. UNLIMITED EXECUTIVE MODULES (AUTONOMOUS C-SUITE)
+    // 5. AUTONOMOUS RECEPTIONIST & COMMUNICATION (CONCIERGE MODULES)
+    // =================================================================
+
+    SupabaseToolFactory.create(
+        "initiate_telephony_handshake",
+        "AURA-Concierge Tool: Triggers a human-like voice call to a lead or client for scheduling or callbacks.",
+        z.object({
+            phone_number: z.string(),
+            context: z.string().describe("What Aura should say/do during the call."),
+            purpose: z.enum(["callback", "meeting_demand", "invoice_follow_up", "visitor_proactive"])
+        }),
+        'initiate_telephony_handshake'
+    ),
+
+    SupabaseToolFactory.create(
+        "manage_appointment_ledger",
+        "Receptionist Tool: Schedules, Reschedules or Cancels meetings in the CRM appointment ledger.",
+        z.object({
+            action: z.enum(["book", "reschedule", "cancel"]),
+            contact_id: z.string().uuid().optional(),
+            start_time: z.string().describe("ISO 8601 format"),
+            subject: z.string()
+        }),
+        'manage_appointment_ledger'
+    ),
+
+    SupabaseToolFactory.create(
+        "broadcast_omni_channel",
+        "Concierge Tool: Sends professional WhatsApp or Email messages to clients.",
+        z.object({
+            channel: z.enum(["whatsapp", "email"]),
+            recipient: z.string().describe("Phone number or Email address"),
+            message_body: z.string(),
+            template_id: z.string().optional()
+        }),
+        'broadcast_omni_channel'
+    ),
+
+    SupabaseToolFactory.create(
+        "monitor_visitor_pathway",
+        "Receptionist Tool: Tracks real-time web activity to identify high-intent leads for proactive greeting.",
+        z.object({
+            visitor_id: z.string(),
+            pathway: z.string(),
+            trigger_interaction: z.boolean().default(false)
+        }),
+        'monitor_visitor_pathway'
+    ),
+
+    // =================================================================
+    // 6. EXECUTIVE MODULES (AUTONOMOUS C-SUITE)
     // =================================================================
 
     SupabaseToolFactory.create(
@@ -273,7 +320,7 @@ export const AI_CAPABILITIES: ITool[] = [
 ];
 
 /**
- * STATUS: Executive Manifest Fully Sealed and Multi-Tenant Ready.
- * VERSION: v27.0 (Apex OMEGA Engine Alignment).
- * ARCHITECTURE: Dynamic Node Mapping ({businessId}).
+ * STATUS: Executive Manifest Fully Sealed and Receptionist-Enabled.
+ * VERSION: v27.2 (Apex OMEGA Engine Alignment).
+ * ARCHITECTURE: Dynamic Node Mapping ({businessId}) + Telephony Handshake.
  */

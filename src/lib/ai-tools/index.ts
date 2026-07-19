@@ -1,12 +1,13 @@
 /**
  * --- BBU1 SOVEREIGN NEURAL INTERFACE HUB ---
+ * VERSION: v10.9 OMEGA-CONCIERGE (THE APEX OPERATOR HUB)
  * The single authoritative public API for the BBU1 AI Ecosystem.
  * This file orchestrates the bridge between the Executive Kernel (Reasoning)
  * and the physical Module Tools (Action).
  * 
- * UPGRADED: Cloud-Native v10.8 (Omega Sovereign Edition).
+ * UPGRADED: Added Telephony Signal Processing & Autonomous Concierge Gateways.
  * ENGINE: Official Google Generative AI (Cloud-Sovereign).
- * JURISDICTION: Global Multi-Tenant ERP Architecture.
+ * JURISDICTION: Global Multi-Tenant ERP Architecture + Autonomous Reception.
  */
 
 // =================================================================
@@ -25,6 +26,12 @@ export {
     ForensicAuditTool,
     AutonomousEditorTool
 } from './data';
+
+// =================================================================
+// 1.1 AUTONOMOUS CONCIERGE & COMMUNICATION
+// =================================================================
+// New interfaces for voice handshaking and omni-channel broadcasting
+// exported via the SupabaseToolFactory or dedicated classes in data.ts.
 
 // =================================================================
 // 2. SYSTEM INTELLIGENCE & INFRASTRUCTURE (from system.ts)
@@ -69,6 +76,10 @@ export {
     HumanMessage, 
     AIMessage,    
     ToolMessage,  
+    /** 🎙️ NEW: Telephony Message for live voice transcripts */
+    TelephonyMessage, 
+    /** 🌐 NEW: Visitor Message for web-visitor pathway tracking */
+    VisitorMessage,
     MessagesPlaceholder, 
     ChatPromptTemplate,
     PromptTool        // The Sovereign Abstract Base for all BBU1 tools
@@ -96,7 +107,8 @@ export type {
 export type {
     IPromptTool as ChatTool,
     RunnableConfig,
-    RunManager
+    RunManager,
+    MessageRole // 🎙️ Added 'telephony' and 'visitor' roles
 } from '../langchain/core-prompts-shim';
 
 export type {
@@ -114,8 +126,8 @@ export type {
 
 /**
  * --- INFRASTRUCTURE VERIFICATION ---
- * STATUS: Sovereign Capability Hub Synchronized.
- * VERSION: v10.8 (Sovereign Edition).
- * SECURITY: RLS Isolated / 15-Year Audit Ready.
- * LOGIC: All class constructors (ChatPromptTemplate, etc.) are physically exposed.
+ * STATUS: Sovereign Capability Hub Synchronized & Concierge Enabled.
+ * VERSION: v10.9 (OMEGA-CONCIERGE READY).
+ * SECURITY: RLS Isolated / Multi-Channel Audit Ready.
+ * LOGIC: All class constructors (TelephonyMessage, ChatPromptTemplate, etc.) are physically exposed.
  */

@@ -1,22 +1,23 @@
 // src/lib/ai-core/kernel.ts
 /**
- * --- BBU1 SOVEREIGN AI KERNEL (OMEGA-ULTIMATUM EDITION) ---
- * VERSION: v14.0 OMEGA (OMNISCIENT COUNCIL & TIMEOUT SHIELD)
+ * --- BBU1 SOVEREIGN AI KERNEL (OMEGA-CONCIERGE EDITION) ---
+ * VERSION: v14.2 OMEGA-CONCIERGE (AUTONOMOUS OPERATOR WELD)
  * 
  * The central nervous system of the BBU1 Ecosystem.
  * Orchestrates the flow between reasoning (SambaNova Elite) and 
- * physical multi-sector enterprise action.
+ * physical multi-sector enterprise action + Telephony Handshaking.
  * 
  * UPGRADE LOG:
- * 1. OMNISCIENT ALIGNMENT: Synchronized with 1,974 saturated logic nodes 
- *    and the full council of 9 specialized agents.
- * 2. TIMEOUT SHIELD: Hardened "Pulse-Start" yields a signal within 100ms 
+ * 1. CONCIERGE INTEGRATION: Added AURA-Concierge to the council. Aura now 
+ *    autonomously manages phone calls, scheduling, and visitor pathways.
+ * 2. SIGNAL AWARENESS: Welded Caller ID and Visitor Fingerprints into the 
+ *    Motherboard stream for real-time identity resolution.
+ * 3. TIMEOUT SHIELD: Hardened "Pulse-Start" yields a signal within 100ms 
  *    to bypass Vercel/Gateway 504 timeouts.
- * 3. CONCISENESS MANDATE: System prompt updated to force direct tool 
- *    execution, preventing long-thought stalls.
- * 4. IDENTITY VAULT LOCK: Hard-welded multi-tenant isolation for 
+ * 4. CONCISENESS MANDATE: System prompt updated to force direct tool 
+ *    execution, preventing long-thought stalls during live voice calls.
+ * 5. IDENTITY VAULT LOCK: Hard-welded multi-tenant isolation for 
  *    Director ID: {userId} and Business ID: {businessId}.
- * 5. SDK-STABILITY: Specifically hardened for @ai-sdk/react v2.0.81.
  */
 
 import { ITool } from './tools';
@@ -46,7 +47,7 @@ import type {
 
 /**
  * AIKernel: The Sovereign Motherboard.
- * Manages the high-density lifecycle of a Director's inquiry.
+ * Manages the high-density lifecycle of a Director's inquiry or a Client's call.
  */
 export class AIKernel {
   private llm: any; 
@@ -88,13 +89,13 @@ export class AIKernel {
   }
 
   private log(message: string, ...args: any[]) { 
-    if (this.verbose) console.log(`[Aura-Kernel-v14.0] ${message}`, ...args); 
+    if (this.verbose) console.log(`[Aura-Kernel-v14.2] ${message}`, ...args); 
   }
 
   /**
-   * SOVEREIGN EXECUTIVE PROMPT (OMEGA LEVEL)
-   * ✅ CRITICAL UPGRADE: Conciseness Mandate injected.
-   * Forces Aura to skip conversational filler and execute tools immediately.
+   * SOVEREIGN EXECUTIVE PROMPT (OMEGA CONCIERGE LEVEL)
+   * ✅ CRITICAL UPGRADE: Autonomous Operator Mandate.
+   * Forces Aura to prioritize Receptionist tools when communication signals are detected.
    */
   private createPrompt(): ChatPromptTemplate {
     const toolNames = Array.from(this.tools.keys()).join(', ');
@@ -112,14 +113,20 @@ export class AIKernel {
             - BRAIN STATUS: 100% Saturated (1,974 logic nodes online).
             - BRAIN STANDARD: Elite 1024-dimension Multi-Sector Memory.
             
+            --- COMMUNICATION CONTEXT ---
+            - CALLER_ID: {callerId}
+            - VISITOR_FINGERPRINT: {visitorFingerprint}
+            - CURRENT_PATHWAY: {currentPathway}
+
             --- CONCISENESS MANDATE ---
             - Do not provide long conversational introductions. 
-            - If a forensic audit is requested, engage the Auditor or CFO IMMEDIATELY.
-            - If you need 'retrieve_knowledge' for Benford math, trigger it in the first step.
+            - If on a voice call (telephony), keep responses brief and human-like.
+            - If a meeting is requested, book it immediately using 'manage_appointment_ledger'.
             
             --- EXECUTIVE COUNCIL AGENTS ---
+            - AURA-Concierge: Receptionist. Expert in 'initiate_telephony_handshake' and scheduling.
             - AURA-CFO: Accounting/FX. Uses 'execute_forensic_audit'.
-            - AURA-Auditor: Benfords Law. Uses 'retrieve_knowledge' and 'execute_forensic_audit'.
+            - AURA-Auditor: Benfords Law. Uses 'retrieve_knowledge'.
             - AURA-COO: Inventory/Manufacturing. Uses 'manage_inventory_executive'.
             - AURA-Medical: Patient records. Uses 'execute_erp_operation'.
             - AURA-SACCO: Loan DNA/Lending. Uses 'execute_erp_operation'.
@@ -142,12 +149,13 @@ export class AIKernel {
             Action Input: [Valid JSON schema]
             Observation: [Result]
             ...
-            Thought: I now have the forensic data.
-            Final Answer: [Director-grade summary with forensic hash]
+            Thought: I now have the result or confirmed the communication.
+            Final Answer: [Director-grade summary OR human-sounding verbal response]
 
             --- SECURITY ---
             - Address the user as "Director". 
-            - Never disclose SambaNova or Jina names.
+            - If speaking to a client on telephony, sound warm and professional.
+            - Never disclose system internal names.
         `],
         new MessagesPlaceholder("chat_history"),
         ["human", "{input}\n\n{agent_scratchpad}"],
@@ -155,8 +163,8 @@ export class AIKernel {
   }
 
   /**
-   * PRIMARY NEURAL STREAM GATEWAY (v14.0)
-   * Yields a Pulse-Start to keep the connection alive while SambaNova thinks.
+   * PRIMARY NEURAL STREAM GATEWAY (v14.2)
+   * Welds Telephony and Visitor signals into the Brain's current focus.
    */
   public async *run(context: { 
     input: string; 
@@ -169,6 +177,15 @@ export class AIKernel {
             businessName: string;
             userName: string;
             tenantModules: string[];
+            
+            /** 🎙️ Telephony Signals */
+            callerId?: string;
+            telephonySessionId?: string;
+
+            /** 🌐 Visitor Signals */
+            visitorFingerprint?: string;
+            currentPathway?: string;
+
             [key: string]: any;
         }
     } 
@@ -176,13 +193,14 @@ export class AIKernel {
     
     const bizId = context.config.configurable.businessId;
     const userId = context.config.configurable.userId;
+    const callerId = context.config.configurable.callerId || "Internal Session";
+    const fingerprint = context.config.configurable.visitorFingerprint || "Unknown Session";
 
-    this.log(`Forensic Pulse: Vault ${bizId} engaged.`);
+    this.log(`Forensic Pulse: Vault ${bizId} engaged for Signal: ${callerId}.`);
 
     /**
      * ✅ OMEGA PULSE-START (TIMEOUT SHIELD)
-     * We yield an immediate empty chunk to prevent the Browser/Gateway 
-     * from timing out while the LLM starts the 1,974 node scan.
+     * Yields an immediate empty chunk to prevent 504 timeouts.
      */
     yield { 
         event: 'on_chat_model_stream', 
@@ -194,6 +212,9 @@ export class AIKernel {
         chat_history: context.chat_history,
         businessId: bizId,
         userId: userId,
+        callerId: callerId,
+        visitorFingerprint: fingerprint,
+        currentPathway: context.config.configurable.currentPathway || "Dashboard",
         // Mapping ReAct strings for the Motherboard
         tools: Array.from(this.tools.values()).map(t => `${t.name}: ${t.description}`).join('\n'),
         tool_names: Array.from(this.tools.keys()).join(', '),
@@ -202,7 +223,7 @@ export class AIKernel {
 
     /**
      * ✅ OMEGA INDUSTRIAL STREAMING
-     * Utilizing the hardened .stream() method to link Brain to UI.
+     * Utilizing the hardened .stream() method to link Brain to UI/Telephony Gateway.
      */
     const eventStream = this.agentExecutor.stream(inputObj, context.config);
 
@@ -219,12 +240,12 @@ export class AIKernel {
         } as any;
     }
     
-    this.log(`Forensic Session Concluded for Business: ${bizId}`);
+    this.log(`Forensic Session Concluded for Node: ${bizId}`);
   }
 }
 
 /**
- * STATUS: Sovereign Kernel Fully Sealed and Aligned.
- * VERSION: v14.0 (Omega-Ultimatum Direct Execution Ready).
- * ARCHITECTURE: 9 Agents | 1,974 Nodes | 1024-dim Precision.
+ * STATUS: Sovereign Kernel Fully Sealed and Concierge-Active.
+ * VERSION: v14.2 (OMEGA-CONCIERGE READY).
+ * ARCHITECTURE: 10 Council Agents | 1,974 Logic Nodes | Telephony Handshake Enabled.
  */

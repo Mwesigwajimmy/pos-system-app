@@ -1,15 +1,27 @@
 /**
  * --- BBU1 SOVEREIGN PROMPT & MESSAGE ENGINE ---
+ * VERSION: v10.3 OMEGA-CONCIERGE (THE RECEPTIONIST UPGRADE)
  * The definitive orchestration layer for linguistic business intelligence.
  * This engine handles the translation of C-Suite directives into model-ready structures.
  * 
  * Capability: Multi-Lingual Templating, Forensic Metadata, ReAct Scratchpad Support.
+ * UPGRADED: Added Telephony Signal Processing & Web-Visitor Pathway Context.
  * Integrity Grade: OMEGA-LEVEL / Executive Audit Ready.
  */
 
 // --- 1. SOVEREIGN MESSAGE ARCHITECTURE ---
 
-export type MessageRole = 'system' | 'human' | 'ai' | 'tool' | 'executive';
+/**
+ * MESSAGE ROLES
+ * system: Core Directive
+ * human: Director inquiry (Text)
+ * telephony: Inbound/Outbound voice transcript 🎙️
+ * visitor: Web-visitor event (Pathway tracking) 🌐
+ * ai: Aura Reasoning/Response
+ * tool: Database/API Observation
+ * executive: C-Suite High-Level Protocol
+ */
+export type MessageRole = 'system' | 'human' | 'ai' | 'tool' | 'executive' | 'telephony' | 'visitor';
 
 /**
  * AUTHORITATIVE BASE MESSAGE
@@ -19,13 +31,16 @@ export class BaseMessage {
   constructor(
     public content: string,
     public role: string,
-    public metadata: Record<string, any> = { timestamp: new Date().toISOString() }
+    public metadata: Record<string, any> = { 
+      timestamp: new Date().toISOString(),
+      forensic_seal: Math.random().toString(36).substring(7) 
+    }
   ) {}
 }
 
 /**
  * HUMAN MESSAGE (DIRECTOR)
- * Represents commands or inquiries from the Director or Business Owner.
+ * Represents commands or inquiries from the Director or Business Owner via text.
  */
 export class HumanMessage extends BaseMessage {
   constructor(content: string) {
@@ -34,17 +49,51 @@ export class HumanMessage extends BaseMessage {
 }
 
 /**
+ * TELEPHONY MESSAGE (VOICE)
+ * 🎙️ Represent transcripts from incoming or outgoing phone calls.
+ * Includes Caller ID and Telephony Session metadata for Forensic logging.
+ */
+export class TelephonyMessage extends BaseMessage {
+  constructor(content: string, callerId: string, sessionId: string) {
+    super(content, 'telephony');
+    this.metadata.caller_id = callerId;
+    this.metadata.telephony_session = sessionId;
+  }
+}
+
+/**
+ * VISITOR PATHWAY MESSAGE
+ * 🌐 Represents real-time website visitor activity.
+ * Allows Aura to proactively "speak" to users based on the page they are viewing.
+ */
+export class VisitorMessage extends BaseMessage {
+  constructor(pathway: string, fingerprint: string) {
+    super(`Visitor is currently viewing: ${pathway}`, 'visitor');
+    this.metadata.visitor_fingerprint = fingerprint;
+    this.metadata.current_pathway = pathway;
+  }
+}
+
+/**
  * AI MESSAGE (AURA / AGENTS)
  * Represents thoughts, reasoning, or final conclusions from the Executive Council.
- * UPGRADED: Includes tool_calls for autonomous CFO/COO agency.
+ * UPGRADED: Now handles voice synthesis parameters for the Receptionist identity.
  */
 export class AIMessage extends BaseMessage {
   public tool_calls?: any[];
+  public voice_settings?: {
+    accent?: string;
+    speed?: number;
+    tonality?: 'professional' | 'warm' | 'urgent' | 'executive';
+  };
 
-  constructor(content: string, fields?: { tool_calls?: any[] }) {
+  constructor(content: string, fields?: { tool_calls?: any[], voice_settings?: any }) {
     super(content, 'ai');
     if (fields?.tool_calls) {
       this.tool_calls = fields.tool_calls;
+    }
+    if (fields?.voice_settings) {
+      this.voice_settings = fields.voice_settings;
     }
   }
 }
@@ -111,10 +160,12 @@ class MessageTemplate {
     });
 
     switch (this.role) {
-      case 'system': return new SystemMessage(content);
-      case 'human':  return new HumanMessage(content);
-      case 'ai':     return new AIMessage(content);
-      default:       return new BaseMessage(content, this.role);
+      case 'system':    return new SystemMessage(content);
+      case 'human':     return new HumanMessage(content);
+      case 'telephony': return new TelephonyMessage(content, values.caller_id, values.session_id);
+      case 'visitor':   return new VisitorMessage(values.pathway, values.fingerprint);
+      case 'ai':        return new AIMessage(content);
+      default:          return new BaseMessage(content, this.role);
     }
   }
 }
@@ -184,6 +235,6 @@ export class ChatPromptTemplate {
 
 /**
  * STATUS: Sovereign Prompt Engine Online.
- * VERSION: v10.2 (Omega Ready)
- * TARGET: Google Gemini 1.5 Pro / Multi-Agent C-Suite.
+ * VERSION: v10.3 (Omega Concierge Ready)
+ * TARGET: Multi-Agent C-Suite + Telephony Gateway (Vapi/Retell).
  */

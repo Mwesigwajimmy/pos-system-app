@@ -5,19 +5,18 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * --- BBU1 SOVEREIGN AI GATEWAY ---
- * VERSION: v69.9 OMEGA-ULTIMATUM (THE INDESTRUCTIBLE FULL-WELD)
- * STATUS: FORENSICALLY STABILIZED & HANDSHAKE ALIGNED
+ * VERSION: v70.0 OMEGA-CONCIERGE (THE AUTONOMOUS OPERATOR WELD)
+ * STATUS: FORENSICALLY STABILIZED & CONCIERGE ENABLED
  * 
  * CORE UPGRADES:
- * 1. TIMEOUT SHIELD: Specifically fixed for the 34.5s Vercel crash. Emits a 
+ * 1. CONCIERGE HANDSHAKE: Hardened extraction for callerId, telephonySessionId, 
+ *    and visitorFingerprint. Aura now anchors her logic to real-time signals.
+ * 2. TIMEOUT SHIELD: Specifically fixed for the 34.5s Vercel crash. Emits a 
  *    "Neural Heartbeat" every 5s to physically block Gateway timeouts.
- * 2. "G/H" CRASH TERMINATOR: Returns a valid SSE stream for ALL responses. 
- *    If an error occurs, it is streamed as a 'data' chunk to prevent the 
- *    minified SDK 'g is not a function' crash.
- * 3. REDIRECT SHIELD: Hardened extraction for body.data and root body to 
- *    handle metadata regardless of middleware 307 diversions.
+ * 3. "G/H" CRASH TERMINATOR: Returns a valid SSE stream for ALL responses. 
+ *    If an error occurs, it is streamed as a 'data' chunk to prevent crashes.
  * 4. IDENTITY READINESS: Physically traps 'loading' strings to prevent DB errors.
- * 5. FULL LOGIC RESTORATION: 100% of the activation and saturation engine preserved.
+ * 5. PATHWAY TRACKING: Welded 'currentPathway' context for web-visitor monitoring.
  */
 
 // --- PRODUCTION BUILD STABILIZATION ---
@@ -32,6 +31,8 @@ import { AI_CAPABILITIES } from '@/lib/ai-core/manifest';
 import { 
     AIMessage, 
     HumanMessage, 
+    TelephonyMessage, // 🎙️ Welded
+    VisitorMessage,   // 🌐 Welded
     BaseMessage,
     ChatPromptTemplate,
     MessagesPlaceholder 
@@ -121,26 +122,36 @@ export async function POST(req: NextRequest) {
         const { messages, tenantModules } = body;
 
         /** 
-         * 🛡️ FORENSIC ID EXTRACTION (v69.9 OMEGA FIX)
-         * Hardened to handle 307 redirects and SDK v2.0.81 variations.
+         * 🛡️ FORENSIC ID EXTRACTION (v70.0 OMEGA WELD)
+         * Hardened to handle multi-tenant isolation and Telephony signals.
          */
         const businessId = body.data?.businessId || body.businessId || body.options?.body?.businessId;
         const userId = body.data?.userId || body.userId || body.options?.body?.userId;
 
+        // 🎙️ TELEPHONY DNA
+        const callerId = body.data?.callerId || body.callerId;
+        const telSessionId = body.data?.telephonySessionId || body.telephonySessionId;
+        
+        // 🌐 VISITOR DNA
+        const visitorFingerprint = body.data?.visitorFingerprint || body.visitorFingerprint;
+        const currentPathway = body.data?.currentPathway || body.currentPathway;
+
         /**
          * ✅ THE "G/H" CRASH TERMINATOR:
          * Always return a stream. If IDs are missing, stream the error.
-         * This stops the 'g is not a function' crash immediately.
          */
         if (!userId || !businessId || userId === 'loading' || businessId === 'loading' || userId === '' || businessId === '') {
-            const errorStream = new ReadableStream({
-                start(controller) {
-                    const payload = { event: 'on_error', data: { error: "Aura is aligning neural pathways... please try again." } };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-                    controller.close();
-                }
-            });
-            return new Response(errorStream, { headers: { 'Content-Type': 'text/event-stream' } });
+            // Special exception for Telephony-only handshakes if businessId can be resolved later
+            if (!callerId) {
+                const errorStream = new ReadableStream({
+                    start(controller) {
+                        const payload = { event: 'on_error', data: { error: "Aura is aligning neural pathways... please try again." } };
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+                        controller.close();
+                    }
+                });
+                return new Response(errorStream, { headers: { 'Content-Type': 'text/event-stream' } });
+            }
         }
 
         const supabaseAdmin = createSupabaseClient(
@@ -154,14 +165,17 @@ export async function POST(req: NextRequest) {
         });
 
         if (auraError || !auraData) {
-            const errStream = new ReadableStream({
-                start(controller) {
-                    const payload = { event: 'on_error', data: { error: "Forensic Identity Vault Refused Access." } };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-                    controller.close();
-                }
-            });
-            return new Response(errStream, { headers: { 'Content-Type': 'text/event-stream' } });
+            // If callerId exists, we proceed with a generic handshake for Receptionist mode
+            if (!callerId) {
+                const errStream = new ReadableStream({
+                    start(controller) {
+                        const payload = { event: 'on_error', data: { error: "Forensic Identity Vault Refused Access." } };
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+                        controller.close();
+                    }
+                });
+                return new Response(errStream, { headers: { 'Content-Type': 'text/event-stream' } });
+            }
         }
 
         const aura = (Array.isArray(auraData) ? auraData[0] : auraData) || {};
@@ -173,14 +187,14 @@ export async function POST(req: NextRequest) {
         }
 
         const businessName = aura.businessName || 'Sovereign Entity';
-        const userRole = aura.role || 'Director';
         const industryName = aura.industry || 'General';
 
         const isNewSession = messages.length === 1;
         let userInput = extractTextFromContent(messages[messages.length - 1].content);
 
         if (isNewSession) {
-            userInput = `--- Aura Omega Directive --- \nSTATUS: Online. \nENTITY: ${businessName} | SECTOR: ${industryName} \nCommand: ${userInput}`;
+            const contextPrefix = callerId ? `[VOICE CALL ACTIVE: ${callerId}]` : `[VISITOR ON: ${currentPathway || 'Home'}]`;
+            userInput = `--- Aura Omega Directive --- \nSTATUS: Online. \nSIGNAL: ${contextPrefix} \nENTITY: ${businessName} \nCommand: ${userInput}`;
         }
 
         const llm = new ChatOpenAI({
@@ -195,6 +209,8 @@ export async function POST(req: NextRequest) {
         const kernel = new AIKernel(llm as any, AI_CAPABILITIES, true);
         const chat_history: BaseMessage[] = messages.slice(0, -1).map((m: any): BaseMessage => {
             const textContent = extractTextFromContent(m.content);
+            if (m.role === 'telephony') return new TelephonyMessage(textContent, m.callerId, m.sessionId);
+            if (m.role === 'visitor') return new VisitorMessage(m.pathway, m.fingerprint);
             return m.role === 'user' ? new HumanMessage(textContent) : new AIMessage(textContent);
         });
 
@@ -205,6 +221,8 @@ export async function POST(req: NextRequest) {
                 configurable: {
                     businessId, userId, industry: industryName,
                     businessName, userName: "Director", tenantModules: tenantModules || [],
+                    callerId, telephonySessionId: telSessionId,
+                    visitorFingerprint, currentPathway,
                     masterBrainId: '00000000-0000-0000-0000-000000000000'
                 }
             },
@@ -217,7 +235,6 @@ export async function POST(req: NextRequest) {
          */
         const transformStream = new ReadableStream({
             async start(controller) {
-                // Heartbeat every 5s - keeps the connection warm
                 const heartbeat = setInterval(() => {
                     try { controller.enqueue(encoder.encode(': heartbeat\n\n')); } 
                     catch (e) { clearInterval(heartbeat); }
@@ -248,7 +265,6 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (e: any) {
-        // Final JSON fallback for initialization errors
         return new Response(JSON.stringify({ error: { message: `Aura Neural Crash: ${e.message}` } }), { 
             status: 200, 
             headers: { 'Content-Type': 'application/json' } 
