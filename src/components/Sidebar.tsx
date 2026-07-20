@@ -24,7 +24,7 @@ import {
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock
+    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Sprout, Unlock
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
