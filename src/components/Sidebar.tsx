@@ -22,7 +22,7 @@ import {
     Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Mic2, Megaphone, 
     CreditCard, Repeat, FileStack, Loader2, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
-    Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
+    Bus, RefreshCcw, Beaker, User, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
     ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Sprout, Unlock
 } from 'lucide-react';
