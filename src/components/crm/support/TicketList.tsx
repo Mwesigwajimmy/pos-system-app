@@ -2,9 +2,9 @@
 
 /**
  * --- BBU1 SOVEREIGN SUPPORT & INTELLIGENCE HUB ---
- * VERSION: v6.0 OMEGA (AI CONCIERGE INTEGRATED)
+ * VERSION: v6.2 OMEGA (VOICE COMMAND & SETTINGS INTEGRATED)
  * Use: Dual-mode command center for Support Tickets and Autonomous Receptionist logs.
- * Logic: Linked to crm_visitor_logs for real-time signal pulsing.
+ * Logic: Linked to crm_visitor_logs for real-time signal pulsing and manual dial-pad gateway.
  */
 
 import * as React from "react";
@@ -40,7 +40,10 @@ import {
     Zap,
     BrainCircuit,
     ShieldCheck,
-    ArrowLeftRight
+    ArrowLeftRight,
+    Mic2,
+    Settings,
+    PhoneCall
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -61,9 +64,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTableFacetedFilter } from "@/components/ui/data-table-faceted-filter";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 // --- CONCIERGE COMPONENT IMPORTS ---
 import ConciergeDashboard from "./ConciergeDashboard";
+import { AuraDialPad } from "./AuraDialPad"; // WELDED: Physical Dialer Interface
 
 // --- TYPES & CONSTANTS ---
 interface Customer { id: string; name: string; }
@@ -246,8 +251,9 @@ export function TicketList({ tickets, businessId }: { tickets: Ticket[], busines
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [rowSelection, setRowSelection] = React.useState({});
     
-    // --- MODE TOGGLE STATE ---
+    // --- MODE TOGGLE & MODAL STATES ---
     const [viewMode, setViewMode] = React.useState<'TICKETS' | 'AI_CONCIERGE'>('TICKETS');
+    const [isDialPadOpen, setIsDialPadOpen] = React.useState(false);
 
     // --- LIVE INTELLIGENCE PULSE (WEB VISITORS) ---
     const { data: activeVisitorCount } = useQuery({
@@ -287,14 +293,29 @@ export function TicketList({ tickets, businessId }: { tickets: Ticket[], busines
                         </div>
                         <span className="text-white font-bold text-sm tracking-tight">Autonomous Receptionist Activated</span>
                     </div>
-                    <Button 
-                        onClick={() => setViewMode('TICKETS')} 
-                        className="bg-white hover:bg-slate-100 text-slate-900 font-bold h-9 rounded-xl gap-2 text-xs"
-                    >
-                        <ArrowLeftRight size={14} /> Back to Ticket Ledger
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            onClick={() => setIsDialPadOpen(true)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold h-9 rounded-xl gap-2 text-xs shadow-lg shadow-blue-500/20"
+                        >
+                            <PhoneCall size={14} /> Voice Command
+                        </Button>
+                        <Button 
+                            onClick={() => setViewMode('TICKETS')} 
+                            className="bg-white hover:bg-slate-100 text-slate-900 font-bold h-9 rounded-xl gap-2 text-xs"
+                        >
+                            <ArrowLeftRight size={14} /> Back to Ticket Ledger
+                        </Button>
+                    </div>
                 </div>
                 <ConciergeDashboard businessId={businessId} />
+
+                {/* VOIP DIAL PAD MODAL */}
+                <Dialog open={isDialPadOpen} onOpenChange={setIsDialPadOpen}>
+                    <DialogContent className="p-0 border-none bg-transparent shadow-none max-w-md">
+                        <AuraDialPad />
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     }
@@ -302,7 +323,7 @@ export function TicketList({ tickets, businessId }: { tickets: Ticket[], busines
     // --- STANDARD TICKET LEDGER MODE ---
     return (
         <div className="space-y-6">
-            {/* --- INTELLIGENCE ACTION BAR (THE WELD) --- */}
+            {/* --- INTELLIGENCE ACTION BAR --- */}
             <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl border border-blue-100">
@@ -313,15 +334,36 @@ export function TicketList({ tickets, businessId }: { tickets: Ticket[], busines
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Support Operations Center</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                    {/* WELDED: QUICK DIAL TRIGGER */}
+                    <Button 
+                        onClick={() => setIsDialPadOpen(true)} 
+                        variant="outline" 
+                        className="h-11 px-5 rounded-2xl border-slate-200 gap-3 hover:bg-blue-600 hover:text-white transition-all group"
+                    >
+                        <Mic2 size={18} className="text-blue-500 group-hover:text-white" />
+                        <span className="font-bold text-xs uppercase tracking-wider">Voice Command</span>
+                    </Button>
+
                     <Button 
                         onClick={() => setViewMode('AI_CONCIERGE')} 
                         variant="outline" 
-                        className="h-11 px-6 rounded-2xl border-slate-200 gap-3 hover:bg-slate-900 hover:text-white transition-all group"
+                        className="h-11 px-5 rounded-2xl border-slate-200 gap-3 hover:bg-slate-900 hover:text-white transition-all group"
                     >
                         <LayoutDashboard size={18} className="text-blue-500 group-hover:text-white" />
                         <span className="font-bold text-xs uppercase tracking-wider">AI Receptionist Hub</span>
                     </Button>
+
+                    {/* WELDED: VOICE SETTINGS GATEWAY */}
+                    <Link href="/crm/settings/voice">
+                        <Button 
+                            variant="outline" 
+                            className="h-11 w-11 p-0 rounded-2xl border-slate-200 hover:bg-slate-50 transition-all shadow-sm group"
+                            title="Aura Voice Settings"
+                        >
+                            <Settings size={18} className="text-slate-500 group-hover:text-blue-600 group-hover:rotate-90 transition-all" />
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
@@ -428,6 +470,13 @@ export function TicketList({ tickets, businessId }: { tickets: Ticket[], busines
                     </div>
                 </CardContent>
             </Card>
+
+            {/* VOIP DIAL PAD MODAL (GATEWAY TO VOICE COMMAND) */}
+            <Dialog open={isDialPadOpen} onOpenChange={setIsDialPadOpen}>
+                <DialogContent className="p-0 border-none bg-transparent shadow-none max-w-md">
+                    <AuraDialPad />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

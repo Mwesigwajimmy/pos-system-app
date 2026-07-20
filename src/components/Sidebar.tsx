@@ -19,7 +19,7 @@ import {
     UserCheck as UserCheckIcon, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, 
     UploadCloud, Plug, Scale, Wallet, FileWarning, Construction, Wrench, FolderKanban, 
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
-    Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
+    Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Mic2, Megaphone, 
     CreditCard, Repeat, FileStack, Loader2, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
     Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
@@ -98,7 +98,8 @@ const navSections: NavItem[] = [
             { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 },
             { href: '/crm/clients', label: 'Clients & Billing', icon: Landmark }, 
             { href: '/crm/marketing', label: 'Marketing', icon: Megaphone }, 
-            { href: '/crm/support', label: 'Support', icon: Users }, 
+            { href: '/crm/support', label: 'Support', icon: Users },
+            { href: '/crm/settings/voice', label: 'Aura Voice Settings', icon: Mic2 }, 
         ]
     },
 

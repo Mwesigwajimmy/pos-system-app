@@ -2,9 +2,9 @@
 
 /**
  * --- BBU1 CONCIERGE INTELLIGENCE DASHBOARD ---
- * VERSION: v1.2 OMEGA (TOTAL SIGNAL SYNC)
+ * VERSION: v1.3 OMEGA-COMMAND (DIAL-PAD INTEGRATED)
  * Use: Sovereign command center for voice, neural gaps, and live web pathways.
- * Logic: Orchestrates three deep forensic streams into a unified executive view.
+ * Logic: Orchestrates three deep forensic streams + Manual Telephony Command.
  */
 
 import * as React from "react";
@@ -12,7 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { TelephonyLogs } from "./TelephonyLogs";
 import { KnowledgeGapLedger } from "./KnowledgeGapLedger";
-import { VisitorPathwayTracker } from "./VisitorPathwayTracker"; // WELDED
+import { VisitorPathwayTracker } from "./VisitorPathwayTracker";
+import { AuraDialPad } from "./AuraDialPad"; // WELDED: New physical dialer
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -22,7 +23,8 @@ import {
     Activity, 
     LayoutDashboard, 
     ShieldCheck, 
-    Zap 
+    Zap,
+    Mic2
 } from "lucide-react";
 
 export default function ConciergeDashboard({ businessId }: { businessId: string }) {
@@ -96,9 +98,31 @@ export default function ConciergeDashboard({ businessId }: { businessId: string 
                     </TabsTrigger>
                 </TabsList>
 
-                {/* --- SIGNAL STREAM: VOICE --- */}
+                {/* --- SIGNAL STREAM: VOICE & DIAL-PAD WELD --- */}
                 <TabsContent value="voice" className="mt-8 outline-none ring-0">
-                    <TelephonyLogs businessId={businessId} />
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                        {/* LEFT: DIAL COMMAND CENTER */}
+                        <div className="xl:col-span-4 space-y-6">
+                            <AuraDialPad />
+                            
+                            <div className="p-6 bg-blue-600 rounded-[2.5rem] text-white shadow-2xl shadow-blue-100 relative overflow-hidden group">
+                                <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
+                                    <Mic2 size={120} />
+                                </div>
+                                <h4 className="font-black uppercase text-xs tracking-widest mb-3 flex items-center gap-2">
+                                    <Zap size={14} className="fill-white" /> Operator Pro-Tip
+                                </h4>
+                                <p className="text-sm font-medium opacity-90 leading-relaxed relative z-10">
+                                    Aura can intelligently navigate IVR menus (e.g., "Press 1 for Sales") if you specify the pathway in the Context Seal before dialing.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* RIGHT: REGISTRY LEDGER */}
+                        <div className="xl:col-span-8">
+                            <TelephonyLogs businessId={businessId} />
+                        </div>
+                    </div>
                 </TabsContent>
 
                 {/* --- SIGNAL STREAM: NEURAL GAPS --- */}
@@ -124,16 +148,15 @@ export default function ConciergeDashboard({ businessId }: { businessId: string 
                             </div>
                         </div>
                         
-                        {/* WELDED: Proactive intent monitor */}
                         <VisitorPathwayTracker businessId={businessId} />
                     </div>
                 </TabsContent>
             </Tabs>
 
             {/* --- FORENSIC FOOTER --- */}
-            <div className="pt-8 opacity-40 flex items-center justify-center gap-4">
-                 <ShieldCheck size={14} className="text-slate-900" />
-                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-900">
+            <div className="pt-8 opacity-40 flex items-center justify-center gap-4 text-slate-900">
+                 <ShieldCheck size={14} />
+                 <span className="text-[9px] font-black uppercase tracking-[0.4em]">
                     Aura Receptionist Engine v2.0 • Real-Time Comm-Audit Active
                  </span>
             </div>
