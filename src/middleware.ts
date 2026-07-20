@@ -53,6 +53,7 @@ const rolePermissions: Record<string, string[]> = {
     '/finance': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'auditor', 'sacco_manager'],
     '/ledger': ['admin', 'manager', 'accountant', 'architect', 'commander', 'auditor'],
     '/expenses': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'fleet_manager', 'procurement_officer'],
+    '/settings/profile': ['admin', 'manager', 'owner', 'architect', 'commander'], 
     '/accountant': ['admin', 'accountant', 'architect', 'commander', 'owner', 'auditor'],
     '/compliance/sales-tax': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],
     '/compliance/income-tax': ['admin', 'manager', 'accountant', 'auditor', 'owner', 'architect', 'commander'],

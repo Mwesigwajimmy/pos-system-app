@@ -581,6 +581,7 @@ const navSections: NavItem[] = [
         module: 'management',
         subItems: [
             { href: '/management/employees', label: 'Employees', icon: UsersRound, roles: ['admin', 'owner', 'architect'] },
+            { href: '/settings/profile', label: 'My Identity', icon: User },
             { href: '/settings/memberships', label: 'Linked Businesses', icon: Building2 },
             { href: '/payroll', label: 'Payroll', icon: Banknote, roles: ['admin', 'manager', 'owner', 'architect', 'accountant'] },
             { href: '/settings/locations', label: 'Branch Locations', icon: Building2, roles: ['admin', 'owner', 'architect'] },
