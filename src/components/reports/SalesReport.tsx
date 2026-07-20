@@ -30,6 +30,7 @@ import {
     ShieldCheck, 
     Box, 
     Fingerprint,
+    CheckCircle2,
     Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
