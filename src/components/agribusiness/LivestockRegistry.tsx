@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 // --- IMPORT THE REGISTRATION MODAL (THE WELD) ---
 import { RegisterLivestockModal } from "./RegisterLivestockModal";

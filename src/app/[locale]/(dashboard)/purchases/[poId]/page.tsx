@@ -4,6 +4,13 @@ import { notFound, redirect } from "next/navigation";
 import PurchaseOrderDetailView from "@/components/purchases/PurchaseOrderDetailView";
 import Link from "next/link";
 
+/**
+ * --- BBU1 PURCHASE ORDER REGISTRY GATEWAY ---
+ * VERSION: v5.1 OMEGA (NEXT.JS 15 COMPLIANT)
+ * Logic: Secure server-side resolution of procurement documents.
+ * Security: Multi-tenant vault verification and Director identity handshake.
+ */
+
 // --- Icons & UI ---
 import { 
     ChevronRight, 
@@ -15,30 +22,34 @@ import {
 } from "lucide-react";
 
 type PageProps = {
-  params: { locale: string; poId: string };
+  params: Promise<{ locale: string; poId: string }>;
 };
 
-export default async function PurchaseOrderDetailPage({ params }: PageProps) {
-  const poId = Number(params.poId);
+export default async function PurchaseOrderDetailPage(props: PageProps) {
+  // NEXT.JS 15 HANDSHAKE: Await params before consumption
+  const { locale, poId: rawPoId } = await props.params;
+  const poId = Number(rawPoId);
+  
   if (isNaN(poId)) notFound();
 
-  const cookieStore = cookies();
+  // NEXT.JS 15 HANDSHAKE: Await cookies
+  const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
   // 1. AUTHENTICATION & SECURE IDENTITY RESOLUTION
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/${params.locale}/auth/login`);
+  if (!user) redirect(`/${locale}/login`);
 
-  // We fetch the profile to get the definitive Business ID
+  // We fetch the profile to get the definitive Business ID for RLS enforcement
   const { data: profile } = await supabase
     .from('profiles')
     .select('business_id')
     .eq('id', user.id)
     .single();
 
-  if (!profile?.business_id) redirect(`/${params.locale}/onboarding`);
+  if (!profile?.business_id) redirect(`/${locale}/onboarding`);
 
-  // 2. FETCH LEGAL TENANT BRANDING (For the PDF Printing Engine)
+  // 2. FETCH LEGAL TENANT BRANDING (For the PDF Printing Engine Handshake)
   const { data: tenantRecord } = await supabase
     .from('tenants')
     .select('name')
@@ -48,15 +59,14 @@ export default async function PurchaseOrderDetailPage({ params }: PageProps) {
   const tenantLegalName = tenantRecord?.name || "Authorized Entity";
 
   // 3. ENTERPRISE DATA FETCHING (Interconnected Logic)
-  // We fetch PO details through the RPC but enforce the business_id filter
-  // to ensure one tenant cannot see another's procurement data.
+  // Fetching PO details through the RPC while enforcing the business_id seal
   const { data: initialData, error } = await supabase
     .rpc('get_purchase_order_details', { p_po_id: poId });
 
   // 4. MULTI-TENANT SECURITY SHIELD (Strict Isolation)
-  // Even if the RPC returns data, we verify the PO owner matches the user's business
+  // Logic: Block access if the PO does not belong to the current authenticated business
   if (error || !initialData || initialData.po.business_id !== profile.business_id) {
-    console.error("[Procurement Guard] Security Violation or Missing Data.");
+    console.error("[Procurement Guard] Security Violation or Missing Data Trace.");
     notFound();
   }
 
@@ -66,9 +76,9 @@ export default async function PurchaseOrderDetailPage({ params }: PageProps) {
         {/* Professional Enterprise Breadcrumbs */}
         <nav aria-label="breadcrumb" className="flex items-center gap-2 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
             <LayoutDashboard className="h-3 w-3" />
-            <Link href={`/${params.locale}/dashboard`} className="hover:text-primary transition-colors">Finance</Link>
+            <Link href={`/${locale}/dashboard`} className="hover:text-primary transition-colors">Finance</Link>
             <ChevronRight className="h-3 w-3 opacity-30" />
-            <Link href={`/${params.locale}/purchases`} className="hover:text-primary transition-colors">Procurement</Link>
+            <Link href={`/${locale}/purchases`} className="hover:text-primary transition-colors">Procurement</Link>
             <ChevronRight className="h-3 w-3 opacity-30" />
             <span className="text-slate-400">Order Audit: #PO-{poId}</span>
         </nav>
@@ -80,30 +90,29 @@ export default async function PurchaseOrderDetailPage({ params }: PageProps) {
                     <div className="p-2 bg-primary/10 rounded-lg">
                         <Truck className="h-5 w-5 text-primary" />
                     </div>
-                    <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">
+                    <h1 className="text-3xl font-bold tracking-tighter text-slate-900 uppercase">
                         Procurement Registry
                     </h1>
                 </div>
-                <p className="text-xs text-muted-foreground font-medium">
-                    Detailed ledger record for <span className="font-bold text-slate-800 underline underline-offset-4">{tenantLegalName}</span>
+                <p className="text-xs text-muted-foreground font-medium italic">
+                    Detailed ledger record for <span className="font-black text-slate-800 underline underline-offset-4">{tenantLegalName}</span>
                 </p>
             </div>
 
             {/* Compliance Badging */}
-            <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border shadow-sm">
+            <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-2xl border shadow-sm">
                 <div className="p-2 bg-green-500/10 rounded-full">
-                    <ShieldCheck className="h-4 w-4 text-green-600" />
+                    <ShieldCheck className="h-5 w-5 text-green-600" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase leading-none">Status</span>
-                    <span className="text-xs font-mono font-bold text-green-600">GADS-INTERCONNECTED</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase leading-none tracking-widest">Integrity Status</span>
+                    <span className="text-xs font-mono font-bold text-green-600 mt-1">GADS-INTERCONNECTED</span>
                 </div>
             </div>
         </div>
         
         {/* MAIN COMPONENT
-            Now passes the 'tenantLegalName' down so the PDF Engine 
-            can print the professional branded document.
+            Transmits data to the client view for interaction and receiving.
         */}
         <div className="flex-1">
             <PurchaseOrderDetailView 
@@ -113,9 +122,9 @@ export default async function PurchaseOrderDetailPage({ params }: PageProps) {
         </div>
 
         {/* Audit Disclaimer Footer */}
-        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-4 border-t">
-            <Landmark className="h-3.5 w-3.5" />
-            <span>Digital Audit Trace: PO-REC-{poId} • Linked to Master GL • IFRS Compliant</span>
+        <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-6 border-t">
+            <Landmark className="h-4 w-4" />
+            <span>Digital Audit Trace: PO-REC-{poId} • Linked to Master GL • IFRS Compliant • Sector Isolated</span>
         </div>
     </div>
   );

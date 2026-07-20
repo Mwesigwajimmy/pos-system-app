@@ -23,6 +23,7 @@ import {
     ShieldAlert,
     ExternalLink,
     Volume2,
+    Loader2,
     Download
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

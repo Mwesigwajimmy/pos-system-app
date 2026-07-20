@@ -26,7 +26,7 @@ import autoTable from 'jspdf-autotable';
 // --- Types ---
 interface POItem { variant_id: number; product_name: string; sku?: string; quantity_ordered: number; quantity_received: number; unit_cost: number; }
 interface PODetails { po: any; supplier: any; items: POItem[]; }
-interface Location { id: number; name: string; }
+interface Location { id: string; name: string; }
 
 const statusStyles: Record<string, string> = {
     Draft: "bg-slate-200 text-slate-800", 
@@ -52,12 +52,20 @@ async function updatePOStatus(vars: { poId: number; status: string; }) {
     const { error } = await supabase.rpc('update_po_status', { p_po_id: vars.poId, p_new_status: vars.status }); 
     if (error) throw error; 
 }
-async function receiveStock(vars: { poId: number; locationId: number; items: any[]; }) { 
-    const { error } = await supabase.rpc('receive_po_stock', { p_po_id: vars.poId, p_location_id: vars.locationId, p_received_items: vars.items }); 
+
+/**
+ * SOVEREIGN STOCK RECEIPT HANDSHAKE
+ * WELDED: Changed to match audited function name 'receive_purchase_order_stock'
+ */
+async function receiveStock(vars: { poId: number; locationId: string; }) { 
+    const { error } = await supabase.rpc('receive_purchase_order_stock', { 
+        p_po_id: vars.poId, 
+        p_location_id: vars.locationId 
+    }); 
     if (error) throw error; 
 }
 
-// --- Receive Stock Dialog Component ---
+// --- Sub-Component: Receive Stock Dialog Component ---
 const ReceiveStockDialog = ({ po, items, onClose }: { po: any; items: POItem[]; onClose: () => void; }) => {
     const queryClient = useQueryClient();
     const [locationId, setLocationId] = useState<string | undefined>();
@@ -72,6 +80,7 @@ const ReceiveStockDialog = ({ po, items, onClose }: { po: any; items: POItem[]; 
         onSuccess: () => {
             toast.success("Inventory updated and ledger entry posted to Account 1200.");
             queryClient.invalidateQueries({ queryKey: ['poDetails', po.id] });
+            queryClient.invalidateQueries({ queryKey: ['purchase_orders'] });
             onClose();
         },
         onError: (err: Error) => toast.error(`Receiving failed: ${err.message}`),
@@ -86,12 +95,7 @@ const ReceiveStockDialog = ({ po, items, onClose }: { po: any; items: POItem[]; 
 
     const handleSubmit = () => {
         if (!locationId) return toast.error("Please select a destination warehouse.");
-        const itemsToReceive = Object.entries(receivedQuantities)
-            .map(([variant_id, quantity]) => ({ variant_id: Number(variant_id), quantity_received: quantity }))
-            .filter(item => item.quantity_received > 0);
-        
-        if(itemsToReceive.length === 0) return toast.error("Enter a valid quantity.");
-        mutation.mutate({ poId: po.id, locationId: Number(locationId), items: itemsToReceive });
+        mutation.mutate({ poId: po.id, locationId: locationId });
     };
 
     return (

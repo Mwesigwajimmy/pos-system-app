@@ -67,6 +67,7 @@ import {
   CalendarDays,
   Syringe,
   ClipboardList,
+  Layers,
   Activity
 } from 'lucide-react';
 

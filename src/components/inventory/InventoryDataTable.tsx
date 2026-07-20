@@ -77,6 +77,7 @@ import {
   FlaskConical,
   Factory,
   ShoppingBag,
+  Layers,
   Sprout // Added for Agri-Weld
 } from 'lucide-react';
 
