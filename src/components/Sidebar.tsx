@@ -203,6 +203,43 @@ const navSections: NavItem[] = [
         ]
     },
 
+{
+        type: 'accordion', 
+        title: 'Agribusiness', 
+        icon: Sprout, 
+        // Accordion-level roles: Who can see the section at all
+        roles: ['admin', 'manager', 'owner', 'architect', 'accountant', 'auditor', 'farm_manager', 'veterinary_officer'], 
+        module: 'agri',
+        // Business Type Lock: Only visible to Farmers or Conglomerates
+        businessTypes: ['Agriculture / Farming', 'Mixed/Conglomerate'], 
+        subItems: [
+            { 
+                href: '/agri', 
+                label: 'Executive Hub', 
+                icon: LayoutDashboard,
+                roles: ['admin', 'manager', 'owner', 'architect', 'accountant', 'auditor'] // High-level financial oversight
+            },
+            { 
+                href: '/agri/plots', 
+                label: 'Land Plot Registry', 
+                icon: MapPin,
+                roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager'] // Physical land management
+            },
+            { 
+                href: '/agri/livestock', 
+                label: 'Biological Assets', 
+                icon: Fingerprint,
+                roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager', 'veterinary_officer'] // Includes Vet for health tracking
+            },
+            { 
+                href: '/agri/growth', 
+                label: 'Growth Cycles', 
+                icon: Activity,
+                roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager', 'accountant'] // Includes Accountant for WIP valuation
+            },
+        ]
+    },
+
     {
         type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager', 'owner', 'architect', 'procurement_officer'], 
         module: 'procurement',

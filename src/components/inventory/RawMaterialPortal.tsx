@@ -2,9 +2,9 @@
 
 /**
  * --- RAW MATERIAL REGISTRY ---
- * VERSION: v4.8 PROFESSIONAL (MEDIA INTEGRATED)
+ * VERSION: v4.9 OMEGA (AGRI-INPUT WELDED)
  * Use: Enterprise management for raw material inventory and supplier tracking.
- * Logic: Restock/Waste + Price Adj + Bulk Delete + Identity & Supplier Editing + Optional Media.
+ * Logic: Restock/Waste + Price Adj + Bulk Delete + Identity & Supplier Editing + Optional Agri-Input DNA.
  */
 
 import React, { useState, useMemo } from "react";
@@ -17,7 +17,10 @@ import {
   Table as TableIcon, Layers, FileText, X, Globe,
   ArrowDownToLine, Filter, Settings, Calculator, Plus, Download,
   Ruler, Activity, DollarSign, Warehouse, Edit3, UserCheck,
-  ImagePlus, Camera, Video, FileWarning
+  ImagePlus, Camera, Video, FileWarning,
+  Sprout, // Added for Agri-Weld
+  Syringe, // Added for Agri-Weld
+  Milk // Added for Agri-Weld
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { jsPDF } from "jspdf";
@@ -30,6 +33,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch"; // Added for Agri Toggle
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -47,8 +51,12 @@ export default function RawMaterialPortal() {
     name: '', sku: '', type: 'Solid', quality: 'Standard', 
     price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '',
     color: '',
-    imageUrl: '' // Logic: Media URL storage
+    imageUrl: '' 
   });
+
+  // --- AGRI-DNA STATE (OPTIONAL) ---
+  const [isAgriInput, setIsAgriInput] = useState(false);
+  const [agriCategory, setAgriCategory] = useState('General');
 
   // Modal States
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
@@ -138,7 +146,7 @@ export default function RawMaterialPortal() {
   const handleCreateUnit = async () => {
     if (!newUnit.name || !newUnit.abbreviation) return toast.error("Required fields missing.");
     try {
-        const { data, error } = await supabase.from('units_of_measure').insert([{ 
+        const { data: newUnit, error } = await supabase.from('units_of_measure').insert([{ 
             name: newUnit.name, 
             abbreviation: newUnit.abbreviation.toUpperCase() 
         }]).select().single();
@@ -153,15 +161,18 @@ export default function RawMaterialPortal() {
     }
   };
 
-  // HANDLER: Onboard
+  // HANDLER: Onboard (Updated with Agri Weld)
   const handleOnboard = async () => {
     if (!form.name || !form.uom_id) return toast.error("Please provide material name and unit.");
     setLoading(true);
     try {
+      // Logic: Mapping Agri Category into the Type for forensic tracking
+      const finalType = isAgriInput ? `Agri-${agriCategory}` : form.type;
+
       const { error } = await supabase.rpc('fn_industrial_material_onboard_v1', {
         p_name: form.name, 
         p_sku: form.sku, 
-        p_type: form.type, 
+        p_type: finalType, 
         p_quality: form.quality,
         p_price: form.price, 
         p_initial_qty: form.qty, 
@@ -169,11 +180,12 @@ export default function RawMaterialPortal() {
         p_vendor_id: form.supplier_id ? parseInt(form.supplier_id) : null, 
         p_currency: businessCurrency, 
         p_color: form.color,
-        p_media_url: form.imageUrl || null // Logic: Passing the media URL
+        p_media_url: form.imageUrl || null 
       });
       if (error) throw error;
       toast.success("Material authorized.");
       setForm({ name: '', sku: '', type: 'Solid', quality: 'Standard', price: 0, qty: 0, uom_id: '', supplier_id: '', currency_code: '', color: '', imageUrl: '' });
+      setIsAgriInput(false);
       queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
     } catch (e: any) {
       toast.error(e.message);
@@ -316,16 +328,43 @@ export default function RawMaterialPortal() {
               <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">SKU / Registry ID</Label>
               <Input value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="h-11 rounded-xl font-mono text-xs uppercase" />
             </div>
-            <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Physical State</Label>
-              <Select onValueChange={v => setForm({...form, type: v})} defaultValue="Solid">
-                <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Solid">Solid / Powder</SelectItem>
-                  <SelectItem value="Liquid">Liquid / Fluid</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* THE AGRI-INPUT WELD (OPTIONAL) */}
+            <div className="space-y-2 flex flex-col justify-end">
+                <div className="flex items-center space-x-3 p-3 rounded-xl bg-emerald-50/30 border border-emerald-100 h-11">
+                    <Sprout className={cn("h-4 w-4", isAgriInput ? "text-emerald-600" : "text-slate-300")} />
+                    <Label className="text-[11px] font-bold text-slate-500 flex-1 cursor-pointer">Agricultural Input</Label>
+                    <Switch checked={isAgriInput} onCheckedChange={setIsAgriInput} />
+                </div>
             </div>
+
+            {isAgriInput ? (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                    <Label className="text-[11px] font-bold text-emerald-700 uppercase ml-1">Agri Category</Label>
+                    <Select onValueChange={setAgriCategory} defaultValue="Seed">
+                        <SelectTrigger className="h-11 rounded-xl border-emerald-200 bg-emerald-50/50 text-emerald-900 font-bold">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Seed">Seed / Seedling</SelectItem>
+                            <SelectItem value="Fertilizer">Fertilizer / Soil Input</SelectItem>
+                            <SelectItem value="Medicine">Medicine / Vaccine</SelectItem>
+                            <SelectItem value="Feed">Animal Feed / Nutrition</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Physical State</Label>
+                    <Select onValueChange={v => setForm({...form, type: v})} defaultValue="Solid">
+                        <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="Solid">Solid / Powder</SelectItem>
+                        <SelectItem value="Liquid">Liquid / Fluid</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Quality Standard</Label>
@@ -376,24 +415,14 @@ export default function RawMaterialPortal() {
               <Input placeholder="e.g. White" value={form.color} onChange={e => setForm({...form, color: e.target.value})} className="h-11 rounded-xl border-slate-200 shadow-sm" />
             </div>
 
-            {/* UI NODE: ASSET MEDIA UPLOAD */}
             <div className="space-y-2">
                 <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1">Asset Media (Optional)</Label>
                 <div className="relative group">
-                    <Input 
-                        type="file" 
-                        accept="image/*,video/*" 
-                        onChange={handleMediaUpload}
-                        className="hidden" 
-                        id="media-upload"
-                    />
-                    <label 
-                        htmlFor="media-upload" 
-                        className={cn(
+                    <Input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" id="media-upload" />
+                    <label htmlFor="media-upload" className={cn(
                             "flex items-center justify-center gap-3 h-11 px-4 border-2 border-dashed rounded-xl cursor-pointer transition-all",
                             form.imageUrl ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 hover:border-blue-400 text-slate-400 hover:text-blue-600"
-                        )}
-                    >
+                        )}>
                         {uploading ? <Loader2 className="animate-spin h-4 w-4" /> : form.imageUrl ? <CheckCircle2 size={16} /> : <Camera size={16} />}
                         <span className="text-[10px] font-bold uppercase tracking-wider">
                             {uploading ? "Uploading..." : form.imageUrl ? "Media Captured" : "Attach Photo/Video"}
@@ -459,17 +488,21 @@ export default function RawMaterialPortal() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-4">
-                        {/* THUMBNAIL: Display if media exists */}
                         {m.primary_media_url && (
                             <div className="h-10 w-10 rounded-lg overflow-hidden border border-slate-100 shadow-sm shrink-0">
                                 <img src={m.primary_media_url} className="h-full w-full object-cover" alt="asset" />
                             </div>
                         )}
                         <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 text-[15px]">{m.product_name}</span>
+                            <div className="flex items-center gap-2">
+                                {/* AGRI ICON HANDSHAKE IN TABLE */}
+                                {String(m.type).startsWith('Agri-') && <Sprout size={12} className="text-emerald-500" />}
+                                <span className="font-bold text-slate-900 text-[15px]">{m.product_name}</span>
+                            </div>
                             <div className="flex items-center gap-2 mt-0.5">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{m.sku}</span>
                                 {m.color && <Badge variant="outline" className="h-4 px-1.5 text-[8px] text-slate-500 uppercase">{m.color}</Badge>}
+                                <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter bg-blue-50 px-1.5 rounded">{m.type}</span>
                             </div>
                         </div>
                       </div>
@@ -520,7 +553,7 @@ export default function RawMaterialPortal() {
                                             <SelectTrigger className="h-12 border-slate-200 bg-white font-semibold rounded-xl text-sm"><SelectValue placeholder="Reason for change" /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="Restock">Restock / Incoming Shipment</SelectItem>
-                                                <SelectItem value="Waste">Production Waste</SelectItem>
+                                                <SelectItem value="Waste">Production Waste / Spoiled Crop</SelectItem>
                                                 <SelectItem value="Damage">Material Damage</SelectItem>
                                                 <SelectItem value="Audit">Audit Correction</SelectItem>
                                             </SelectContent>
@@ -593,10 +626,10 @@ export default function RawMaterialPortal() {
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-3">
                 <ShieldCheck size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.8 • Material Integrity Node</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Business Standard V4.9 • Material Integrity Node</span>
              </div>
              <div className="h-4 w-px bg-slate-200 hidden md:block" />
-             <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Registry Synchronized</span>
+             <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Agri-Input Support Active</span>
           </div>
           <div className="flex items-center gap-3 mt-6 md:mt-0">
              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />

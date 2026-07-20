@@ -2,8 +2,9 @@
 
 /**
  * --- MANUFACTURING & PRODUCTION MANAGER ---
- * Professional batch tracking, live material consumption, cost analysis,
- * customer-linked orders, and WhatsApp production notifications.
+ * VERSION: v5.3 OMEGA (AGRI-GROWTH WELDED)
+ * Use: Professional batch tracking, live material consumption, cost analysis,
+ * customer-linked orders, and optional Agricultural Growth Cycle anchoring.
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -22,12 +23,13 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch"; // Added for Agri Toggle
 import { 
   Factory, Beaker, Loader2,
   TrendingUp, Wallet, PackagePlus, Trash2, Plus,
   ClipboardList, ShieldCheck, Search, Download, FileText, X, Settings2,
   Layers, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, BarChart3, Database, Activity, FileDown, Coins,
-  Maximize2, Minimize2, User
+  Maximize2, Minimize2, User, Sprout, MapIcon, Navigation
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,12 +45,10 @@ export default function ManufacturingOrderManager() {
   const [isFinalizeMaximized, setIsFinalizeMaximized] = useState(false);
   const [materialSearch, setMaterialSearch] = useState("");
 
-  // Scroll-position tracking for the Production Schedule table's hint arrows.
-  // Two separate trackers: the outer ScrollArea's viewport handles VERTICAL
-  // overflow (bounded by max-h-[65vh] below), but <Table> always wraps
-  // itself in its own internal horizontal-scroll div (see ui/table.tsx) —
-  // that's the element that actually overflows horizontally, so it needs
-  // its own independent tracker rather than sharing the vertical one.
+  // --- AGRI-DNA STATE (OPTIONAL) ---
+  const [isAgriCycle, setIsAgriCycle] = useState(false);
+
+  // Scroll-position tracking for the Production Schedule table
   const [tableEl, setTableEl] = useState<HTMLDivElement | null>(null);
   const [tableAtTop, setTableAtTop] = useState(true);
   const [tableAtBottom, setTableAtBottom] = useState(true);
@@ -76,7 +76,7 @@ export default function ManufacturingOrderManager() {
   useEffect(() => {
       if (!hTableEl) return;
       updateHTableScroll();
-      const ro = new ResizeObserver(updateHTableScroll);
+      const ro = new ResizeObserver(hTableEl);
       ro.observe(hTableEl);
       return () => ro.disconnect();
   }, [hTableEl, updateHTableScroll]);
@@ -86,11 +86,8 @@ export default function ManufacturingOrderManager() {
   const [ingredientLogs, setIngredientLogs] = useState<any[]>([]);
   const [actualYield, setActualYield] = useState<number>(0);
   
-  const [newOrder, setNewOrder] = useState({ variant_id: '', customer_id: '', qty: 1, batch: '' });
+  const [newOrder, setNewOrder] = useState({ variant_id: '', customer_id: '', qty: 1, batch: '', agri_plot_id: '' });
 
-  // Scroll-position tracking for the Finalize dialog's "more content" hint arrows.
-  // Uses a state-backed callback ref (not useRef) because Base UI's Dialog
-  // portals its content — a plain ref stays null past the first render.
   const [bodyEl, setBodyEl] = useState<HTMLDivElement | null>(null);
   const [bodyAtStart, setBodyAtStart] = useState(true);
   const [bodyAtEnd, setBodyAtEnd] = useState(true);
@@ -141,7 +138,7 @@ export default function ManufacturingOrderManager() {
     }
   });
 
-  // 4. DATA: Raw Materials (for the searchable "add material" flow in Finalize)
+  // 4. DATA: Raw Materials
   const { data: rawMaterials } = useQuery({
     queryKey: ['raw_materials_for_mfg'],
     queryFn: async () => {
@@ -150,11 +147,25 @@ export default function ManufacturingOrderManager() {
     }
   });
 
-  // 5. DATA: Customers (order link + WhatsApp notification target)
+  // 5. DATA: Customers
   const { data: customers } = useQuery({
     queryKey: ['mfg_customers'],
     queryFn: async () => {
       const { data } = await supabase.from('customers').select('id, name, email, phone_number, whatsapp_number');
+      return data || [];
+    }
+  });
+
+  // --- AGRI-WELD: Data Fetching for Farm Plots ---
+  const { data: agriPlots } = useQuery({
+    queryKey: ['agri_plots_list', profile?.business_id],
+    enabled: !!profile?.business_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('agri_land_plots')
+        .select('id, name, acreage')
+        .eq('business_id', profile?.business_id)
+        .eq('current_status', 'active');
       return data || [];
     }
   });
@@ -184,7 +195,7 @@ export default function ManufacturingOrderManager() {
     setSelectedOrder(order);
   };
 
-  // Client WhatsApp handshake — fires when a run starts and again when it's finalized.
+  // Client WhatsApp handshake
   const dispatchNotification = (order: any, type: 'STARTED' | 'COMPLETED') => {
       const targetCustomer = customers?.find((c: any) => c.id.toString() === order.customer_id?.toString());
       if (!targetCustomer) return;
@@ -199,7 +210,7 @@ export default function ManufacturingOrderManager() {
       toast.success(`Client notified of ${type.toLowerCase()} status.`);
   };
 
-  // MUTATION: Create New Order
+  // MUTATION: Create New Order (With Agri Weld)
   const createOrderMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.from('mfg_production_orders').insert([{
@@ -209,7 +220,9 @@ export default function ManufacturingOrderManager() {
         batch_number: newOrder.batch.toUpperCase(),
         status: 'draft',
         business_id: profile?.business_id,
-        tenant_id: profile?.business_id
+        tenant_id: profile?.business_id,
+        // AGRI-WELD: Map the plot ID if cycle is active
+        agri_plot_id: isAgriCycle ? newOrder.agri_plot_id : null 
       }]).select().single();
       if (error) throw error;
       return data;
@@ -218,7 +231,8 @@ export default function ManufacturingOrderManager() {
       toast.success("Production order started");
       dispatchNotification(data, 'STARTED');
       setIsCreateModalOpen(false);
-      setNewOrder({ variant_id: '', customer_id: '', qty: 1, batch: '' });
+      setNewOrder({ variant_id: '', customer_id: '', qty: 1, batch: '', agri_plot_id: '' });
+      setIsAgriCycle(false);
       queryClient.invalidateQueries({ queryKey: ['manufacturing_orders'] });
     }
   });
@@ -255,7 +269,6 @@ export default function ManufacturingOrderManager() {
     onError: (e: any) => toast.error(`Error: ${e.message}`)
   });
 
-  // --- REAL PDF DOWNLOAD ENGINE ---
   const downloadReport = (formatType: 'PDF' | 'CSV') => {
     if (!orders || orders.length === 0) return toast.error("No data available to export.");
 
@@ -357,7 +370,6 @@ export default function ManufacturingOrderManager() {
                 )}
             </div>
 
-            {/* Desktop search bar */}
             <div className="relative w-full md:w-[400px] hidden md:block">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
@@ -368,7 +380,6 @@ export default function ManufacturingOrderManager() {
                 />
             </div>
 
-            {/* Mobile: search collapses to an icon button; tapping it reveals the full bar. */}
             {mobileSearchOpen && (
                 <div className="md:hidden flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
                     <div className="relative flex-1 min-w-0">
@@ -474,9 +485,9 @@ export default function ManufacturingOrderManager() {
           </CardContent>
         </Card>
 
-        {/* MODAL: START PRODUCTION */}
+        {/* MODAL: START PRODUCTION (WITH AGRI CYCLE WELD) */}
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogContent className="max-w-md sm:max-w-md w-[calc(100%-2rem)] max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl bg-white rounded-3xl">
+            <DialogContent className="max-w-md sm:max-w-md w-[calc(100%-2rem)] max-h-[95vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl bg-white rounded-3xl">
                 <div className="p-6 sm:p-10 text-center border-b border-slate-100 shrink-0">
                     <div className="h-14 w-14 sm:h-16 sm:w-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600 border border-blue-100 shadow-sm">
                         <PackagePlus className="h-7 w-7 sm:h-8 sm:w-8" />
@@ -485,7 +496,8 @@ export default function ManufacturingOrderManager() {
                     <DialogDescription className="text-slate-400 text-xs mt-1 font-medium uppercase tracking-wider">Define the parameters for this batch</DialogDescription>
                 </div>
 
-                <div className="p-6 sm:p-10 space-y-6 overflow-y-auto min-h-0 custom-scrollbar">
+                <ScrollArea className="flex-1 overflow-y-auto">
+                <div className="p-6 sm:p-10 space-y-6">
                     <div className="space-y-2.5">
                         <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Product Recipe</Label>
                         <Select onValueChange={(val) => setNewOrder({...newOrder, variant_id: val})}>
@@ -500,6 +512,38 @@ export default function ManufacturingOrderManager() {
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    {/* --- AGRI-GROWTH CYCLE WELD (OPTIONAL) --- */}
+                    <div className="bg-emerald-50/30 p-5 rounded-2xl border border-emerald-100 space-y-4 transition-all">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Sprout size={16} className={cn("transition-colors", isAgriCycle ? "text-emerald-600" : "text-slate-300")} />
+                                <Label className="text-[10px] font-black uppercase text-emerald-800 tracking-tighter">Agricultural Growth Cycle</Label>
+                            </div>
+                            <Switch checked={isAgriCycle} onCheckedChange={setIsAgriCycle} className="data-[state=checked]:bg-emerald-600" />
+                        </div>
+
+                        {isAgriCycle && (
+                            <div className="space-y-2.5 animate-in slide-in-from-top-2 duration-200">
+                                <Label className="text-[9px] font-bold text-emerald-700 uppercase tracking-widest ml-1">Anchor to Farm Plot</Label>
+                                <Select onValueChange={(val) => setNewOrder({...newOrder, agri_plot_id: val})}>
+                                    <SelectTrigger className="h-11 w-full border-emerald-100 bg-white rounded-xl font-bold text-xs px-4">
+                                        <div className="flex items-center gap-2">
+                                            <MapIcon size={14} className="text-emerald-500" />
+                                            <SelectValue placeholder="Select target acreage..." />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-emerald-100 shadow-2xl">
+                                        {agriPlots?.map((p: any) => (
+                                            <SelectItem key={p.id} value={p.id} className="text-xs font-bold py-2.5">
+                                                {p.name} <span className="text-emerald-500 ml-2">({p.acreage} Acres)</span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-2.5">
@@ -533,10 +577,11 @@ export default function ManufacturingOrderManager() {
                         {createOrderMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "Confirm & Initiate"}
                     </Button>
                 </div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
 
-        {/* --- ULTRA-WIDE MODAL: FINALIZE & RECONCILE (FIXED PRO LAYOUT) --- */}
+        {/* --- ULTRA-WIDE MODAL: FINALIZE & RECONCILE --- */}
         <Dialog open={!!selectedOrder} onOpenChange={(open) => { if (!open) { setSelectedOrder(null); setIsFinalizeMaximized(false); } }}>
             <DialogContent showCloseButton={false} className={cn(
                 "border-slate-200 shadow-2xl overflow-hidden flex flex-col p-0 gap-0 bg-white transition-all duration-300 ease-out",
@@ -545,7 +590,6 @@ export default function ManufacturingOrderManager() {
                     : "w-full h-full sm:h-auto sm:max-h-[90vh] sm:w-[95vw] sm:max-w-4xl rounded-none sm:rounded-3xl"
             )}>
 
-                {/* Page-style header */}
                 <div className="p-4 sm:p-6 bg-white border-b relative shrink-0">
                     <div className="flex items-start gap-3 sm:gap-4 pr-20 sm:pr-24">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
@@ -566,7 +610,6 @@ export default function ManufacturingOrderManager() {
                         </div>
                     </div>
 
-                    {/* Window Controls */}
                     <div className="absolute top-3 right-3 sm:top-5 sm:right-5 flex items-center gap-1 sm:gap-2">
                         <button
                             type="button"
@@ -587,7 +630,6 @@ export default function ManufacturingOrderManager() {
                     </div>
                 </div>
 
-                {/* Main Form Body */}
                 <div
                     ref={setBodyEl}
                     onScroll={updateBodyScroll}
@@ -601,7 +643,6 @@ export default function ManufacturingOrderManager() {
                         </div>
                     )}
 
-                    {/* A. Material Consumption Section */}
                     <div className="space-y-3 mb-6">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-l-4 border-blue-600 pl-4">
                             <div>
@@ -611,7 +652,6 @@ export default function ManufacturingOrderManager() {
                             <Badge className="bg-emerald-50 text-emerald-600 font-black px-3 py-1 rounded-lg border-none uppercase text-[9px] tracking-tighter w-fit">Atomic Inventory Sync</Badge>
                         </div>
 
-                        {/* Search-to-add: pull in a raw material not already on the recipe */}
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                             <Input
@@ -645,7 +685,6 @@ export default function ManufacturingOrderManager() {
                         </div>
 
                         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                            {/* Desktop/tablet: full table */}
                             <div className="hidden md:block">
                                 <Table>
                                     <TableHeader className="bg-slate-50/50 border-b border-slate-100">
@@ -688,7 +727,6 @@ export default function ManufacturingOrderManager() {
                                 </Table>
                             </div>
 
-                            {/* Mobile: stacked material cards */}
                             <div className="md:hidden divide-y divide-slate-100">
                                 {ingredientLogs.map((log, idx) => (
                                     <div key={idx} className="p-4 space-y-2">
@@ -718,7 +756,6 @@ export default function ManufacturingOrderManager() {
                         </div>
                     </div>
 
-                    {/* B. Overheads Section */}
                     <div className="space-y-3 mb-6">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 border-l-4 border-rose-500 pl-4">
                             <div>
@@ -751,7 +788,6 @@ export default function ManufacturingOrderManager() {
                                             className="h-10 w-full border-slate-200 bg-slate-50/50 text-right font-bold text-slate-900 rounded-lg text-sm pr-16"
                                         />
                                         <span className="absolute right-9 top-[calc(50%+0.5rem)] -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase pointer-events-none">{currency}</span>
-                                        {/* Mobile: inline cancel so removing a line doesn't require reaching the far-right trash button */}
                                         <button
                                             type="button"
                                             onClick={() => setExpenses(expenses.filter((_, i) => i !== idx))}
@@ -769,7 +805,6 @@ export default function ManufacturingOrderManager() {
                         </div>
                     </div>
 
-                    {/* C. Yield + Financials — balance-bar summary */}
                     <div className="flex flex-col sm:flex-row items-stretch gap-3 sm:gap-4 p-4 sm:p-6 bg-slate-900 rounded-2xl shadow-xl border border-slate-800">
                         <div className="flex-1 flex flex-col justify-center">
                             <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1.5">Actual Finished Yield</span>
@@ -805,7 +840,6 @@ export default function ManufacturingOrderManager() {
                     )}
                 </div>
 
-                {/* Footer */}
                 <div className="p-3 sm:p-5 bg-slate-50/50 border-t flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 shrink-0">
                     <Button type="button" variant="ghost" onClick={() => setSelectedOrder(null)} disabled={finalizeProductionMutation.isPending} className="w-full sm:w-auto h-10 px-5 font-black uppercase text-xs tracking-widest text-slate-400 hover:text-rose-600">
                         Discard Run
@@ -825,7 +859,6 @@ export default function ManufacturingOrderManager() {
             </DialogContent>
         </Dialog>
 
-        {/* SYSTEM FOOTER */}
         <footer className="mt-20 border-t border-slate-100 pt-12 pb-16 opacity-30 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em]">
                 <ShieldCheck size={14} />

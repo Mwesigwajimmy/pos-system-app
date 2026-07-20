@@ -2,8 +2,9 @@
 
 /**
  * --- INVENTORY DATA TABLE ---
- * VERSION: v6.0 PROFESSIONAL (INDUSTRIAL SEPARATION)
- * Logic: Multi-tenant asset distinction (Retail vs Raw vs Composite)
+ * VERSION: v6.1 OMEGA (AGRI-WELDED)
+ * Logic: Multi-tenant asset distinction (Retail vs Raw vs Composite vs Biological)
+ * Weld: Optional Agribusiness integration for Livestock and Crop tracking.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -75,7 +76,8 @@ import {
   Filter,
   FlaskConical,
   Factory,
-  ShoppingBag
+  ShoppingBag,
+  Sprout // Added for Agri-Weld
 } from 'lucide-react';
 
 // Custom Inventory Components
@@ -114,7 +116,7 @@ async function fetchProducts(
     searchTerm: string, 
     businessEntityId?: string, 
     locationId?: string,
-    assetType?: string // Logic: New filter parameter
+    assetType?: string 
 ) {
   const supabase = createClient();
   
@@ -130,14 +132,16 @@ async function fetchProducts(
     return { products: [], total_count: 0 };
   }
 
-  // --- THE INDUSTRIAL DISTINCTION WELD ---
-  // Logic: Filters the inventory based on the specific sector selected
+  // --- THE INDUSTRIAL DISTINCTION WELD (Updated for Agribusiness) ---
   if (assetType === "RAW_MATERIALS") {
     query = query.eq('is_raw_material', true);
   } else if (assetType === "FINISHED_DESIGNS") {
     query = query.eq('is_composite', true);
+  } else if (assetType === "BIOLOGICAL_ASSETS") {
+    // AGRI-WELD: Filter for livestock and crops
+    query = query.eq('is_biological', true);
   } else if (assetType === "RETAIL_PRODUCTS") {
-    query = query.eq('is_raw_material', false).eq('is_composite', false);
+    query = query.eq('is_raw_material', false).eq('is_composite', false).eq('is_biological', false);
   }
 
   // 3. Jurisdictional Location Filter
@@ -213,13 +217,12 @@ export default function InventoryDataTable({
   businessEntityId,
 }: DataTableProps) {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 });
-  const [rowSelection, setRowSelection] = useState({});
+  const [rowSelection, setRowSelection] = React.useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState<string>("ALL_BRANCHES");
-  const [selectedAssetType, setSelectedAssetType] = useState<string>("ALL"); // Logic: Type Switcher State
+  const [selectedAssetType, setSelectedAssetType] = useState<string>("ALL"); 
   const [locations, setLocations] = useState<Location[]>([]);
   
-  // Modal states
   const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -233,7 +236,6 @@ export default function InventoryDataTable({
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // Load locations
   useEffect(() => {
     const fetchLocations = async () => {
       const { data } = await supabase
@@ -245,7 +247,6 @@ export default function InventoryDataTable({
     if (businessEntityId) fetchLocations();
   }, [businessEntityId, supabase]);
 
-  // --- IDENTITY GUARD QUERY ---
   const { data, isLoading } = useQuery({
     queryKey: ['inventoryProducts', pagination, debouncedSearchTerm, businessEntityId, selectedLocationId, selectedAssetType],
     queryFn: () => fetchProducts(
@@ -255,12 +256,11 @@ export default function InventoryDataTable({
       selectedLocationId === "ALL_BRANCHES" ? undefined : selectedLocationId,
       selectedAssetType
     ),
-    enabled: !!businessEntityId && businessEntityId !== "", // LOCK: Wait for ID
+    enabled: !!businessEntityId && businessEntityId !== "", 
     initialData: initialData.length > 0 && selectedAssetType === "ALL" ? { products: initialData, total_count: totalCount } : undefined,
     placeholderData: keepPreviousData,
   });
 
-  // --- Mutations ---
   const bulkDeleteMutation = useMutation({
     mutationFn: bulkDeleteProducts,
     onSuccess: () => {
@@ -295,7 +295,6 @@ export default function InventoryDataTable({
     onError: (err: any) => toast.error(err.message)
   });
 
-  // --- Table Setup ---
   const table = useReactTable({
     data: (data?.products as ProductRow[]) ?? [],
     columns,
@@ -316,7 +315,6 @@ export default function InventoryDataTable({
     },
   });
 
-  // --- Handlers ---
   const handleExportCSV = () => {
     const selectedRows = table.getSelectedRowModel().rows.map(r => r.original);
     const dataToExport = selectedRows.length > 0 ? selectedRows : (data?.products || []);
@@ -326,7 +324,8 @@ export default function InventoryDataTable({
         return;
     }
 
-    const headers = ["ID", "Name", "SKU", "Total Stock", "Category", "Tax Category", "Units/Pack", "Entity"];
+    // AGRI-WELD: Added optional columns for mortality and plot
+    const headers = ["ID", "Name", "SKU", "Total Stock", "Category", "Plot/Location", "Mortality Rate %", "Entity"];
     const csvContent = [
       headers.join(","),
       ...dataToExport.map((row: any) => {
@@ -337,8 +336,8 @@ export default function InventoryDataTable({
               escape(row.sku),
               row.total_stock, 
               escape(row.category_name),
-              escape(row.tax_category_code || 'STANDARD'), 
-              row.units_per_pack || 1,                     
+              escape(row.agri_plot_name || row.location_name || 'N/A'),
+              row.mortality_rate || 0,
               escape(row.business_entity_name)
           ].join(",");
       })
@@ -384,7 +383,6 @@ export default function InventoryDataTable({
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div className="flex flex-wrap w-full lg:w-auto gap-3">
             
-            {/* 1. Forensic Search */}
             <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
@@ -395,7 +393,7 @@ export default function InventoryDataTable({
                 />
             </div>
 
-            {/* 2. Industrial Type Switcher (NEW) */}
+            {/* INDUSTRIAL TYPE SWITCHER (Updated for Agribusiness) */}
             <Select value={selectedAssetType} onValueChange={setSelectedAssetType}>
                 <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200 rounded-xl shadow-sm">
                     <div className="flex items-center gap-2">
@@ -423,10 +421,16 @@ export default function InventoryDataTable({
                             <span>Finished Good Designs</span>
                         </div>
                     </SelectItem>
+                    {/* THE OPTIONAL AGRI WELD ENTRY */}
+                    <SelectItem value="BIOLOGICAL_ASSETS">
+                        <div className="flex items-center gap-2">
+                            <Sprout size={14} className="text-emerald-600" />
+                            <span>Biological Assets (Livestock/Crops)</span>
+                        </div>
+                    </SelectItem>
                 </SelectContent>
             </Select>
 
-            {/* 3. Jurisdictional Location */}
             <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
                 <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white border-slate-200 rounded-xl shadow-sm">
                     <div className="flex items-center gap-2">
@@ -554,7 +558,6 @@ export default function InventoryDataTable({
         </ScrollArea>
       </div>
 
-      {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
             Ledger Count: {data?.total_count ?? 0}
@@ -571,8 +574,6 @@ export default function InventoryDataTable({
             </Button>
         </div>
       </div>
-
-      {/* --- MODALS & DIALOGS --- */}
 
       {/* Bulk Delete Confirmation */}
       <AlertDialog open={isBulkDeleting} onOpenChange={setIsBulkDeleting}>
@@ -666,7 +667,6 @@ export default function InventoryDataTable({
         </DialogContent>
       </Dialog>
 
-      {/* Sub-modals for Edit/Audit/Adjust */}
       <EditProductModal product={editingProduct} isOpen={!!editingProduct} onClose={() => setEditingProduct(null)} categories={categories} />
       <AuditLogDialog product={auditingProduct} isOpen={!!auditingProduct} onClose={() => setAuditingProduct(null)} />
       <CreateAdjustmentForm product={adjustingProduct} isOpen={!!adjustingProduct} onClose={() => setAdjustingProduct(null)} categories={categories} />
