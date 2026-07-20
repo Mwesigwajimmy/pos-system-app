@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * --- BBU1 PURCHASE ORDER COLUMN DEFINITIONS ---
+ * VERSION: v6.3 OMEGA (ROUTING WELDED)
+ * Use: Master schema for procurement registry interaction.
+ * Logic: Linked to dynamic [poId] routes with full locale support.
+ */
+
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MoreHorizontal, ArrowUpDown, Eye, CheckCircle, Truck } from "lucide-react";
@@ -15,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useParams, useRouter } from "next/navigation";
 
 export type PurchaseOrderRow = {
   id: number;
@@ -29,7 +37,7 @@ export type PurchaseOrderRow = {
 const formatMoney = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', { 
         style: 'currency', 
-        currency: currency || 'USD' 
+        currency: currency || 'UGX' 
     }).format(amount);
 }
 
@@ -115,6 +123,17 @@ export const poColumns: ColumnDef<PurchaseOrderRow>[] = [
     id: "actions",
     cell: ({ row }) => {
       const po = row.original;
+      
+      // --- WELDING: IDENTITY & ROUTER HOOKS ---
+      const params = useParams();
+      const router = useRouter();
+      const locale = params.locale as string;
+
+      const handleNavigation = () => {
+        // Correcting the path to include locale and target the poId
+        router.push(`/${locale}/purchases/${po.id}`);
+      };
+
       return (
         <div className="text-right">
           <DropdownMenu>
@@ -126,17 +145,23 @@ export const poColumns: ColumnDef<PurchaseOrderRow>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => window.location.href = `/purchases/${po.id}`}>
-                <Eye className="mr-2 h-4 w-4"/> View Details
+              
+              {/* WELDED: FIXED NAVIGATION LINK */}
+              <DropdownMenuItem onClick={handleNavigation} className="cursor-pointer">
+                <Eye className="mr-2 h-4 w-4 text-blue-600"/> View Details
               </DropdownMenuItem>
+              
               <DropdownMenuSeparator />
+              
               {po.status === 'Draft' && ( 
-                  <DropdownMenuItem className="text-blue-600">
+                  <DropdownMenuItem className="text-blue-600 cursor-pointer">
                       <CheckCircle className="mr-2 h-4 w-4"/> Confirm Order
                   </DropdownMenuItem> 
               )}
+              
+              {/* WELDED: REDIRECTS TO DETAIL VIEW TO FINALIZE RECEIPT */}
               {['Ordered', 'Partially Received'].includes(po.status) && ( 
-                  <DropdownMenuItem className="text-green-600">
+                  <DropdownMenuItem onClick={handleNavigation} className="text-green-600 font-bold cursor-pointer">
                       <Truck className="mr-2 h-4 w-4"/> Receive Stock
                   </DropdownMenuItem> 
               )}
