@@ -37,8 +37,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 
-// --- IMPORT PROFESSIONAL MODAL ---
+// --- IMPORT COMPONENTS ---
 import CreateDirectIncomeModal from './CreateDirectIncomeModal';
+import DirectIncomeLedger from './DirectIncomeLedger'; // Added this import
 
 // --- Enterprise Types ---
 
@@ -226,6 +227,7 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
   const [filter, setFilter] = useState('');
   
   // --- ACTIVATION STATES ---
+  const [currentView, setCurrentView] = useState<'aging' | 'ledger'>('aging'); // Added view state
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 90),
     to: new Date(),
@@ -329,6 +331,16 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
       }
   };
 
+  // --- LOGIC SWITCH FOR DIRECT INCOME LEDGER ---
+  if (currentView === 'ledger') {
+      return (
+        <DirectIncomeLedger 
+            businessId={businessId} 
+            onBack={() => setCurrentView('aging')} 
+        />
+      );
+  }
+
   return (
     <div className="relative space-y-4">
         {/* Top Controls - ACTIVATED */}
@@ -406,7 +418,18 @@ export default function AgedReceivablesTable({ initialInvoices, businessId }: Pr
         <CardHeader className="bg-slate-50/50 border-b py-6 px-8">
             <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                    <CardTitle className="text-2xl font-bold text-slate-900">Receivables Aging Analysis</CardTitle>
+                    <div className="flex items-center gap-3">
+                        <CardTitle className="text-2xl font-bold text-slate-900">Receivables Aging Analysis</CardTitle>
+                        {/* THE REQUESTED BUTTON ADDED HERE WITHOUT OVERCROWDING THE TOP */}
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setCurrentView('ledger')}
+                            className="h-7 px-3 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 font-black text-[10px] uppercase tracking-widest transition-all shadow-sm"
+                        >
+                            <FileText className="mr-1.5 h-3.5 w-3.5" /> View Registry
+                        </Button>
+                    </div>
                     <CardDescription className="text-slate-500 font-medium">
                         Monitoring liquid assets and customer credit risk exposure.
                     </CardDescription>
