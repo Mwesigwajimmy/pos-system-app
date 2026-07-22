@@ -723,6 +723,14 @@ export default function Sidebar() {
         router.push('/login');
     };
 
+    // Selecting a destination inside the flyout should close it — the module
+    // rail icon stays highlighted blue afterwards because that's driven by
+    // the current route (isModuleActive), not by whether the flyout is open.
+    const closeFlyout = () => {
+        setActiveFlyoutModule(null);
+        setIsFlyoutMinimized(false);
+    };
+
     const finalNavItems = useMemo(() => {
         if (isLoading) return [];
         return navSections.filter((item) => {
@@ -987,8 +995,10 @@ export default function Sidebar() {
                         className={cn(
                             // Flush against the rail/expanded sidebar, same as the
                             // sidebar itself now — no rounding, no floating shadow,
-                            // just a border to read as a distinct panel.
-                            "fixed top-0 h-dvh bg-white border-r border-slate-200 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
+                            // just a border to read as a distinct panel. Starts below
+                            // the top header bar (mt-3/mt-4 + h-16 ≈ 5rem) instead of
+                            // top-0, so it no longer covers the company name there.
+                            "fixed top-20 h-[calc(100dvh-5rem)] bg-white border-r border-slate-200 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
                             isSidebarOpen ? "left-72" : "left-20",
                             isFlyoutMinimized ? "w-20" : "w-72"
                         )}
@@ -1033,7 +1043,7 @@ export default function Sidebar() {
                                             <Tooltip>
                                                 <TooltipTrigger
                                                     render={
-                                                        <Link href={subItem.href}>
+                                                        <Link href={subItem.href} onClick={closeFlyout}>
                                                             <Button variant={isSubItemActive ? "secondary" : "ghost"} size="icon" className={cn("w-full h-10 mx-auto rounded-xl", isSubItemActive && "bg-blue-500/10 ring-1 ring-blue-500/40 text-blue-600")} aria-label={subItem.label}>
                                                                 <subItem.icon className="h-4.5 w-4.5" />
                                                             </Button>
@@ -1049,6 +1059,7 @@ export default function Sidebar() {
                                     <Link
                                         key={subItem.href}
                                         href={subItem.href}
+                                        onClick={closeFlyout}
                                         className={cn("group flex items-center py-2.5 px-3 text-[11px] font-bold uppercase tracking-wide rounded-xl no-underline hover:no-underline transition-all", isSubItemActive ? "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
                                     >
                                         <subItem.icon className="mr-3 h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" /><span>{subItem.label}</span>

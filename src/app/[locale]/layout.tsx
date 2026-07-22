@@ -14,8 +14,6 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from '@/components/theme-provider';
 import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
-import { BusinessProvider } from '@/context/BusinessContext';
-import { SidebarProvider } from '@/context/SidebarContext';
 import type { Session } from '@supabase/supabase-js';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import Script from 'next/script';
@@ -184,12 +182,15 @@ export default async function RootLayout({
               enableSystem={false}
               disableTransitionOnChange
             >
-              <BusinessProvider>
-                <SidebarProvider>
-                  <SiteShell>{children}</SiteShell>
-                  <Toaster position="top-center" richColors />
-                </SidebarProvider>
-              </BusinessProvider>
+              {/* BusinessProvider/SidebarProvider are NOT here on purpose —
+                  they're dashboard-specific and already scoped inside
+                  app/(dashboard)/layout.tsx. Adding them again at the root
+                  would run business-data fetching on public marketing pages
+                  that don't need it. SiteShell decides for itself (by
+                  pathname) whether the current page gets the marketing
+                  footer — see components/SiteShell.tsx. */}
+              <SiteShell>{children}</SiteShell>
+              <Toaster position="top-center" richColors />
             </ThemeProvider>
           </TanstackProvider>
         </SupabaseProvider>
