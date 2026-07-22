@@ -366,6 +366,7 @@ const navSections: NavItem[] = [
             { href: '/hr/org-chart', label: 'Org Chart', icon: Route },
             { href: '/hr/leave', label: 'Leave Management', icon: CalendarDays }, 
             { href: '/hr/time-attendance', label: 'Attendance', icon: Clock },
+            { href: '/hr/salary', label: 'Salary Management', icon: DollarSign },
             { href: '/hr/recruitment', label: 'Recruitment', icon: UserCheckIcon }, 
             { href: '/hr/onboarding', label: 'Onboarding', icon: ClipboardCheck }, 
             { href: '/hr/offboarding', label: 'Offboarding', icon: Archive }, 

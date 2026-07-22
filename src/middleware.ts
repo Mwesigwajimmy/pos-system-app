@@ -63,6 +63,7 @@ const rolePermissions: Record<string, string[]> = {
     '/purchases': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'warehouse_manager'],
     '/procurement': ['admin', 'manager', 'owner', 'architect', 'commander', 'procurement_officer', 'grant_officer'],
     '/hr': ['admin', 'manager', 'owner', 'architect', 'commander', 'hr_manager', 'teacher_principal'],
+    '/hr/salary': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'hr_manager'],
     '/payroll': ['admin', 'manager', 'accountant', 'owner', 'architect', 'commander', 'hr_manager'],
     '/employees': ['admin', 'owner', 'architect', 'commander', 'hr_manager', 'site_manager'],
     '/sacco': ['admin', 'manager', 'owner', 'architect', 'commander', 'sacco_manager', 'teller', 'loan_officer'],
