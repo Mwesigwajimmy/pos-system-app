@@ -7,7 +7,7 @@
  * Weld: Optional Agribusiness integration for Livestock and Crop tracking.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -20,6 +20,15 @@ import { toast } from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Category, ProductRow } from '@/types/dashboard';
+import { cn } from '@/lib/utils';
+
+// Module-level, not per-render: creating this inside the component body
+// made it a new reference on every render, which sat in the useEffect
+// dependency array below and could re-trigger that effect (and its
+// setState) on every render against a real backend (this specific mock
+// happens not to loop, since it returns the same array reference for
+// `locations`, but that's incidental, not a fix).
+const supabase = createClient();
 
 // UI Components
 import { Input } from '@/components/ui/input';
@@ -70,7 +79,7 @@ import {
   Box, 
   CheckCircle2, 
   Package, 
-  ChevronLeft, 
+  ChevronLeft,
   ChevronRight,
   AlertTriangle,
   Filter,
@@ -235,7 +244,22 @@ export default function InventoryDataTable({
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const queryClient = useQueryClient();
-  const supabase = createClient();
+
+  // Horizontal scroll-hint arrows for the products table
+  const tableViewportRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTableScroll = useCallback(() => {
+    const el = tableViewportRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
+
+  const scrollTableBy = (amount: number) => {
+    tableViewportRef.current?.scrollBy({ left: amount, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -246,7 +270,7 @@ export default function InventoryDataTable({
       if (data) setLocations(data);
     };
     if (businessEntityId) fetchLocations();
-  }, [businessEntityId, supabase]);
+  }, [businessEntityId]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['inventoryProducts', pagination, debouncedSearchTerm, businessEntityId, selectedLocationId, selectedAssetType],
@@ -261,6 +285,15 @@ export default function InventoryDataTable({
     initialData: initialData.length > 0 && selectedAssetType === "ALL" ? { products: initialData, total_count: totalCount } : undefined,
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    checkTableScroll();
+    const el = tableViewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(checkTableScroll);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [checkTableScroll, data]);
 
   const bulkDeleteMutation = useMutation({
     mutationFn: bulkDeleteProducts,
@@ -505,14 +538,20 @@ export default function InventoryDataTable({
       </div>
 
       {/* Table Container */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <ScrollArea className="w-full">
+      <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <ScrollArea className="w-full" viewportRef={tableViewportRef} onScroll={checkTableScroll}>
             <Table>
             <TableHeader className="bg-slate-50/50 border-b border-slate-100">
                 {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="hover:bg-transparent h-12">
                     {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className="text-[10px] font-black uppercase text-slate-500 tracking-[0.1em] whitespace-nowrap px-6">
+                    <TableHead
+                        key={header.id}
+                        className={cn(
+                            "text-[10px] font-black uppercase text-slate-500 tracking-[0.1em] whitespace-nowrap px-6",
+                            header.column.id === "actions" && "sticky right-0 z-20 bg-slate-50/50 border-l border-slate-100 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.08)]"
+                        )}
+                    >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                     ))}
@@ -531,13 +570,19 @@ export default function InventoryDataTable({
                 </TableRow>
                 ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                    <TableRow 
-                        key={row.id} 
-                        data-state={row.getIsSelected() && "selected"} 
+                    <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
                         className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 h-16"
                     >
                     {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="px-6 py-2 text-sm text-slate-700 font-medium whitespace-nowrap">
+                        <TableCell
+                            key={cell.id}
+                            className={cn(
+                                "px-6 py-2 text-sm text-slate-700 font-medium whitespace-nowrap",
+                                cell.column.id === "actions" && "sticky right-0 z-10 bg-white border-l border-slate-100 shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.08)]"
+                            )}
+                        >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                     ))}
@@ -557,6 +602,29 @@ export default function InventoryDataTable({
             </Table>
             <ScrollBar orientation="horizontal" />
         </ScrollArea>
+
+        {/* Scroll-hint arrows — the actions column stays pinned via sticky above, these
+            just make it obvious the rest of the row can be scrolled sideways to see it. */}
+        {canScrollLeft && (
+            <button
+                type="button"
+                onClick={() => scrollTableBy(-240)}
+                aria-label="Scroll table left"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-30 h-8 w-8 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all active:scale-90"
+            >
+                <ChevronLeft className="h-4 w-4" />
+            </button>
+        )}
+        {canScrollRight && (
+            <button
+                type="button"
+                onClick={() => scrollTableBy(240)}
+                aria-label="Scroll table right"
+                className="absolute right-14 top-1/2 -translate-y-1/2 z-30 h-8 w-8 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all active:scale-90"
+            >
+                <ChevronRight className="h-4 w-4" />
+            </button>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">

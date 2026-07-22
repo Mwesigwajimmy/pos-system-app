@@ -2,9 +2,9 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
-import { useCopilot } from '@/context/CopilotContext'; 
+import { createClient } from '@/lib/supabase/client';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,12 +19,12 @@ import {
     UserCheck as UserCheckIcon, Smartphone, Zap, SlidersHorizontal, FileSpreadsheet, 
     UploadCloud, Plug, Scale, Wallet, FileWarning, Construction, Wrench, FolderKanban, 
     Library, ScrollText, PieChart, Gavel, FileCheck, Calculator, HardHat, Signal, HeartHandshake,
-    Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Mic2, Megaphone, 
+    Thermometer, MapPin, AlertTriangle, FilePlus, FileMinus, Archive, Megaphone, 
     CreditCard, Repeat, FileStack, Loader2, BadgeAlert, Contact, CheckSquare, UserPlus, Package, Utensils,
     Bell, MessageSquare, TrendingUp, ListChecks, GitGraph, Eye, FileClock, Globe, Stethoscope, Pill, 
-    Bus, RefreshCcw, Beaker, User, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle, 
+    Bus, RefreshCcw, Beaker, FlaskConical, Anchor, ArrowUpRight, ArrowDownRight, DollarSign, PlusCircle,
     Send, Factory, FileDigit, PenTool, ListFilter, Hash, Signature, Layers, ChevronDown, Download, Check, Fingerprint,
-    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Sprout, Unlock
+    ChevronLeft, ChevronRight, Menu, ScanLine, Navigation, ArrowLeftRight, Unlock, Sprout, X, LogOut, Minimize2, Maximize2, User
 } from 'lucide-react';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -40,6 +40,8 @@ interface NavLink { type: 'link'; href: string; label: string; icon: LucideIcon;
 interface SubItem { href:string; label: string; icon: LucideIcon; roles?: string[]; businessTypes?: string[]; }
 interface NavAccordion { type: 'accordion'; title: string; icon: LucideIcon; roles: string[]; module: string; businessTypes?: string[]; subItems: SubItem[]; }
 type NavItem = NavLink | NavAccordion;
+
+const supabase = createClient();
 
 // --- MASTER NAVIGATION CONFIGURATION ---
 const navSections: NavItem[] = [
@@ -98,8 +100,7 @@ const navSections: NavItem[] = [
             { href: '/crm/leads', label: 'Leads & Pipeline', icon: BarChart3 },
             { href: '/crm/clients', label: 'Clients & Billing', icon: Landmark }, 
             { href: '/crm/marketing', label: 'Marketing', icon: Megaphone }, 
-            { href: '/crm/support', label: 'Support', icon: Users },
-            { href: '/crm/settings/voice', label: 'Aura Voice Settings', icon: Mic2 }, 
+            { href: '/crm/support', label: 'Support', icon: Users }, 
         ]
     },
 
@@ -179,7 +180,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'accountant', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
@@ -203,45 +204,23 @@ const navSections: NavItem[] = [
         ]
     },
 
-{
-        type: 'accordion', 
-        title: 'Agribusiness', 
-        icon: Sprout, 
-        // Accordion-level roles: Who can see the section at all
-        roles: ['admin', 'manager', 'owner', 'architect', 'accountant', 'auditor', 'farm_manager', 'veterinary_officer'], 
+    {
+        type: 'accordion',
+        title: 'Agribusiness',
+        icon: Sprout,
+        roles: ['admin', 'manager', 'owner', 'architect', 'accountant', 'auditor', 'farm_manager', 'veterinary_officer'],
         module: 'agri',
-        // Business Type Lock: Only visible to Farmers or Conglomerates
-        businessTypes: ['Agriculture / Farming', 'Mixed/Conglomerate'], 
+        businessTypes: ['Agriculture / Farming', 'Mixed/Conglomerate'],
         subItems: [
-            { 
-                href: '/agri', 
-                label: 'Executive Hub', 
-                icon: LayoutDashboard,
-                roles: ['admin', 'manager', 'owner', 'architect', 'accountant', 'auditor'] // High-level financial oversight
-            },
-            { 
-                href: '/agri/plots', 
-                label: 'Land Plot Registry', 
-                icon: MapPin,
-                roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager'] // Physical land management
-            },
-            { 
-                href: '/agri/livestock', 
-                label: 'Biological Assets', 
-                icon: Fingerprint,
-                roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager', 'veterinary_officer'] // Includes Vet for health tracking
-            },
-            { 
-                href: '/agri/growth', 
-                label: 'Growth Cycles', 
-                icon: Activity,
-                roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager', 'accountant'] // Includes Accountant for WIP valuation
-            },
+            { href: '/agri', label: 'Executive Hub', icon: LayoutDashboard, roles: ['admin', 'manager', 'owner', 'architect', 'accountant', 'auditor'] },
+            { href: '/agri/plots', label: 'Land Plot Registry', icon: MapPin, roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager'] },
+            { href: '/agri/livestock', label: 'Biological Assets', icon: Fingerprint, roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager', 'veterinary_officer'] },
+            { href: '/agri/growth', label: 'Growth Cycles', icon: Activity, roles: ['admin', 'manager', 'owner', 'architect', 'farm_manager', 'accountant'] },
         ]
     },
 
     {
-        type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager', 'owner', 'architect', 'procurement_officer'], 
+        type: 'accordion', title: 'Procurement', icon: ScrollText, roles: ['admin', 'manager', 'owner', 'architect', 'procurement_officer'],
         module: 'procurement',
         subItems: [
             { href: '/procurement', label: 'Overview', icon: LayoutDashboard },
@@ -366,7 +345,6 @@ const navSections: NavItem[] = [
             { href: '/hr/org-chart', label: 'Org Chart', icon: Route },
             { href: '/hr/leave', label: 'Leave Management', icon: CalendarDays }, 
             { href: '/hr/time-attendance', label: 'Attendance', icon: Clock },
-            { href: '/hr/salary', label: 'Salary Management', icon: DollarSign },
             { href: '/hr/recruitment', label: 'Recruitment', icon: UserCheckIcon }, 
             { href: '/hr/onboarding', label: 'Onboarding', icon: ClipboardCheck }, 
             { href: '/hr/offboarding', label: 'Offboarding', icon: Archive }, 
@@ -382,7 +360,6 @@ const navSections: NavItem[] = [
         module: 'finance',
         subItems: [ 
             { href: '/finance/banking', label: 'Banking', icon: Landmark },
-            { href: '/accounting/reconciliation', label: 'Bank Reconciliation', icon: RefreshCcw },
             { href: '/accounting/daily-ledger', label: 'Daily Ledger', icon: Banknote },
             { href: '/finance/bills', label: 'Bills & Payables', icon: FileText },
             { href: '/finance/payables', label: 'Accounts Payable', icon: UploadCloud, roles: ['admin', 'accountant', 'owner', 'architect'] },
@@ -614,13 +591,18 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href:
     return (
       <TooltipProvider delay={0}>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href={href} onClick={onClick}>
-              <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("group w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600 shadow-sm")} aria-label={label}>
-                <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
-              </Button>
-            </Link>
-          </TooltipTrigger>
+          {/* base-ui's Trigger doesn't support Radix-style `asChild` — passing it
+              silently no-ops, which left the hover tooltip mis-anchored and
+              rendering underneath the sidebar. `render` is the correct prop. */}
+          <TooltipTrigger
+            render={
+              <Link href={href} onClick={onClick}>
+                <Button variant={isActive ? "secondary" : "ghost"} size="icon" className={cn("group w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl", isActive && "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600 shadow-sm")} aria-label={label}>
+                  <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
+                </Button>
+              </Link>
+            }
+          />
           <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{label}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -636,10 +618,38 @@ const NavLinkComponent = ({ href, label, Icon, isSidebarOpen, onClick }: { href:
   );
 };
 
+// Icon-rail representation of an accordion module — clicking it opens the
+// flyout submenu next to the rail instead of expanding the whole sidebar.
+const ModuleRailIcon = ({ title, Icon, isActive, isOpen, onClick }: { title: string; Icon: React.ElementType; isActive: boolean; isOpen: boolean; onClick: (e: React.MouseEvent) => void; }) => {
+  return (
+    <TooltipProvider delay={0}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              onClick={onClick}
+              variant={isActive || isOpen ? "secondary" : "ghost"}
+              size="icon"
+              className={cn(
+                "group w-full justify-center transition-all h-10 w-10 mx-auto rounded-xl",
+                (isActive || isOpen) && "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600 shadow-sm"
+              )}
+              aria-label={title}
+            >
+              <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
+            </Button>
+          }
+        />
+        <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{title}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 export default function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const { isSidebarOpen, toggleSidebar, setIsSidebarOpen } = useSidebar();
-    const { openCopilot } = useCopilot();
 
     const { role: rawRole, isLoading: isLoadingRole } = useUserRole();
     const { data: rawModules, isLoading: isLoadingModules } = useTenantModules();
@@ -663,6 +673,11 @@ export default function Sidebar() {
 
     const [isMobileView, setIsMobileView] = useState(false);
 
+    // Which module's submenu flyout is open next to the icon rail, and whether
+    // that flyout itself has been collapsed down to an icon-only strip.
+    const [activeFlyoutModule, setActiveFlyoutModule] = useState<string | null>(null);
+    const [isFlyoutMinimized, setIsFlyoutMinimized] = useState(false);
+
     // 🛡️ MOBILE STATE INITIALIZATION
     useEffect(() => {
         const checkMobile = () => {
@@ -677,15 +692,35 @@ export default function Sidebar() {
     // ✅ UNIVERSAL AUTO-CLOSE ON SELECTION
     useEffect(() => {
         if (isSidebarOpen) {
-            setIsSidebarOpen(false); 
+            setIsSidebarOpen(false);
         }
     }, [pathname]);
+
+    // The flyout is desktop-only — mobile always uses the inline accordion
+    // instead, so drop any open flyout the moment we land in mobile view.
+    useEffect(() => {
+        if (isMobileView) {
+            setActiveFlyoutModule(null);
+            setIsFlyoutMinimized(false);
+        }
+    }, [isMobileView]);
 
     // ✅ SMART EXPANSION LOGIC
     const handleRailExpandClick = (e: React.MouseEvent) => {
         if (!isSidebarOpen && !isMobileView) {
             toggleSidebar();
         }
+    };
+
+    const handleModuleRailClick = (e: React.MouseEvent, moduleKey: string) => {
+        e.stopPropagation();
+        setActiveFlyoutModule(prev => (prev === moduleKey ? null : moduleKey));
+        setIsFlyoutMinimized(false);
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
     };
 
     const finalNavItems = useMemo(() => {
@@ -724,37 +759,107 @@ export default function Sidebar() {
         return undefined;
     }, [pathname]);
 
+    // Shared by both the inline accordion (expanded mode) and the rail flyout
+    // (collapsed mode) so role/business-type visibility rules stay in one place.
+    const getFilteredSubItems = (item: NavAccordion) => item.subItems.filter(sub => {
+        if (isSovereign) return true;
+        if (userRole === 'cashier') {
+            if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
+            const cashierInventoryLinks = ['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'];
+            if (item.module === 'inventory' && !cashierInventoryLinks.includes(sub.href)) return false;
+            const cashierReportLinks = ['/reports/sales', '/reports/sales-history'];
+            if (item.module === 'reports' && !cashierReportLinks.includes(sub.href)) return false;
+            if (item.module === 'management' && sub.href !== '/shifts') return false;
+        }
+        const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
+        const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
+        return roleOk && bizOk;
+    });
+
+    const flyoutModuleItem = useMemo(
+        () => finalNavItems.find((item): item is NavAccordion => item.type === 'accordion' && item.module === activeFlyoutModule),
+        [finalNavItems, activeFlyoutModule]
+    );
+    const flyoutSubItems = useMemo(
+        () => (flyoutModuleItem ? getFilteredSubItems(flyoutModuleItem) : []),
+        [flyoutModuleItem, isSovereign, userRole, rawBizType, bizType]
+    );
+
+    // Desktop rendering — module submenus never expand inline here, they
+    // always open as a flyout next to the sidebar. `expanded` only changes
+    // whether each row shows a label alongside its icon.
+    const renderDesktopNav = (items: NavItem[], expanded: boolean) => (
+        <div className="space-y-1.5">
+            {items.map((item) => {
+                if (item.type === 'link') {
+                    return (
+                        <NavLinkComponent
+                            key={item.href}
+                            href={item.href}
+                            label={item.label}
+                            Icon={item.icon}
+                            isSidebarOpen={expanded}
+                        />
+                    );
+                }
+                const filteredSubItems = getFilteredSubItems(item);
+                if (filteredSubItems.length === 0) return null;
+                const isModuleActive = activeAccordionValue === item.module;
+                const isFlyoutOpenForThis = activeFlyoutModule === item.module;
+
+                if (!expanded) {
+                    return (
+                        <ModuleRailIcon
+                            key={item.module}
+                            title={item.title}
+                            Icon={item.icon}
+                            isActive={isModuleActive}
+                            isOpen={isFlyoutOpenForThis}
+                            onClick={(e) => handleModuleRailClick(e, item.module)}
+                        />
+                    );
+                }
+
+                return (
+                    <button
+                        key={item.module}
+                        type="button"
+                        onClick={(e) => handleModuleRailClick(e, item.module)}
+                        className={cn(
+                            "group w-full flex items-center gap-3 h-11 px-4 rounded-xl font-bold text-xs uppercase tracking-tight transition-all",
+                            (isModuleActive || isFlyoutOpenForThis) ? "bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40 text-blue-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                        )}
+                    >
+                        <item.icon className="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" />
+                        <span className="flex-1 text-left truncate">{item.title}</span>
+                        {/* Points sideways — this opens a flyout beside the sidebar, it never expands in place. */}
+                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 group-hover:text-slate-400" />
+                    </button>
+                );
+            })}
+        </div>
+    );
+
+    // Mobile only — inline accordion expand-in-place. Desktop always uses the
+    // flyout (renderDesktopNav) regardless of whether the rail is expanded.
     const renderAccordionNav = (items: NavItem[]) => (
         <Accordion defaultValue={activeAccordionValue ? [activeAccordionValue] : []} className="w-full space-y-1">
             {items.map((item) => {
                 if (item.type === 'link') {
                     return (
-                        <NavLinkComponent 
-                            key={item.href} 
-                            href={item.href} 
-                            label={item.label} 
-                            Icon={item.icon} 
-                            isSidebarOpen={isSidebarOpen} 
+                        <NavLinkComponent
+                            key={item.href}
+                            href={item.href}
+                            label={item.label}
+                            Icon={item.icon}
+                            isSidebarOpen={isSidebarOpen}
                         />
                     );
                 }
                 if (item.type === 'accordion') {
-                    const filteredSubItems = item.subItems.filter(sub => {
-                        if (isSovereign) return true;
-                        if (userRole === 'cashier') {
-                            if (item.module === 'sales' && !['/customers', '/returns'].includes(sub.href)) return false;
-                            const cashierInventoryLinks = ['/inventory', '/inventory/categories', '/inventory/adjustments', '/purchases'];
-                            if (item.module === 'inventory' && !cashierInventoryLinks.includes(sub.href)) return false;
-                            const cashierReportLinks = ['/reports/sales', '/reports/sales-history'];
-                            if (item.module === 'reports' && !cashierReportLinks.includes(sub.href)) return false;
-                            if (item.module === 'management' && sub.href !== '/shifts') return false;
-                        }
-                        const roleOk = !sub.roles || sub.roles.map(r => r.toLowerCase()).includes(userRole);
-                        const bizOk = !sub.businessTypes || (sub.businessTypes.includes(rawBizType) || sub.businessTypes.includes(bizType));
-                        return roleOk && bizOk;
-                    });
+                    const filteredSubItems = getFilteredSubItems(item);
 
-                    if (filteredSubItems.length === 0 || (!isSidebarOpen && !isMobileView)) return null;
+                    if (filteredSubItems.length === 0) return null;
                     const isModuleActive = activeAccordionValue === item.module;
 
                     return (
@@ -800,21 +905,26 @@ export default function Sidebar() {
             <aside
                 onClick={handleRailExpandClick}
                 className={cn(
-                    "m-3 h-[calc(100%-1.5rem)] lg:h-[calc(100dvh-1.5rem)] bg-white rounded-3xl ring-1 ring-black/5 flex flex-col overflow-hidden transition-all duration-500 ease-in-out z-[150] shrink-0 shadow-2xl shadow-slate-900/20",
+                    "m-3 h-[calc(100%-1.5rem)] lg:h-[calc(100dvh-1.5rem)] bg-white rounded-3xl ring-1 ring-black/5 flex flex-col overflow-hidden transition-[transform,opacity,width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] z-[150] shrink-0 shadow-2xl shadow-slate-900/20",
                     "fixed lg:sticky top-0 left-0",
                     !isSidebarOpen
-                        ? "-translate-x-full lg:translate-x-0 lg:w-20"
-                        : "translate-x-0 w-[calc(100%-1.5rem)] sm:w-80 lg:w-72",
+                        ? "-translate-x-[calc(100%+4rem)] opacity-0 pointer-events-none lg:translate-x-0 lg:opacity-100 lg:pointer-events-auto lg:w-20"
+                        : "translate-x-0 opacity-100 pointer-events-auto w-[calc(100%-1.5rem)] sm:w-80 lg:w-72",
 
                     !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:shadow-slate-900/30"
                 )}
             >
                 <div className={cn("flex items-center border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110] h-16", isSidebarOpen ? "justify-between" : "justify-center")}>
-                    {/* Full identity card lives in the top Header bar — the sidebar just names whose account this is. */}
+                    {/* Mirrors the identity shown in the top Header bar, so it's still visible while the mobile drawer covers the header. */}
                     {isSidebarOpen && (
-                        <span className="text-xs font-black text-slate-900 truncate min-w-0">
-                            {profile?.full_name || "Authorized Operator"}
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-[10px] shrink-0 shadow-sm shadow-blue-600/30">
+                                {(profile?.full_name || "A").charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-xs font-black text-slate-900 truncate min-w-0">
+                                {profile?.full_name || "Authorized Operator"}
+                            </span>
+                        </div>
                     )}
                     <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl shrink-0", !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm")}>
                         {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -822,7 +932,13 @@ export default function Sidebar() {
                 </div>
 
                 <nav className="flex-1 min-h-0 px-4 space-y-1 overflow-y-auto pt-6 scrollbar-hide">
-                    {isLoading ? (<div className="py-20 flex flex-col items-center gap-4 opacity-40"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>) : (<div className="animate-in fade-in duration-700">{renderAccordionNav(finalNavItems)}</div>)}
+                    {isLoading ? (
+                        <div className="py-20 flex flex-col items-center gap-4 opacity-40"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
+                    ) : (
+                        <div className="animate-in fade-in duration-700">
+                            {isMobileView ? renderAccordionNav(finalNavItems) : renderDesktopNav(finalNavItems, isSidebarOpen)}
+                        </div>
+                    )}
                 </nav>
 
                 <div className={cn("p-4 mt-auto border-t border-slate-100 space-y-3 bg-white", !isSidebarOpen && "flex flex-col items-center")}>
@@ -839,9 +955,9 @@ export default function Sidebar() {
                             </Link>
                         </Button>
                     )}
-                    <Button variant="default" className={cn("group w-full justify-start bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-600/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); openCopilot(); }}>
-                        <Sparkles className={cn("h-5 w-5 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6", isSidebarOpen && "mr-3")} />
-                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">AI Assistant</span>}
+                    <Button variant="default" className={cn("group w-full justify-start bg-slate-900 hover:bg-red-600 text-white font-bold shadow-lg shadow-slate-900/10 transition-all active:scale-95 h-12 rounded-xl", !isSidebarOpen && "justify-center px-0 w-12")} onClick={(e) => { e.stopPropagation(); handleLogout(); }}>
+                        <LogOut className={cn("h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5", isSidebarOpen && "mr-3")} />
+                        {isSidebarOpen && <span className="text-xs uppercase tracking-tight">Sign Out</span>}
                     </Button>
                     <Link href="/settings" className="w-full">
                         <Button variant="ghost" className={cn("w-full justify-start text-slate-500 font-bold hover:bg-slate-50 hover:text-blue-600 transition-all group h-11 rounded-xl", !isSidebarOpen && "justify-center px-0 w-11 mx-auto")}>
@@ -851,6 +967,89 @@ export default function Sidebar() {
                     </Link>
                 </div>
             </aside>
+
+            {/* SUBMENU FLYOUT — opens next to the collapsed icon rail when a module
+                icon is clicked, instead of expanding the whole sidebar. Can be
+                shrunk to an icon-only strip or closed independently. */}
+            {activeFlyoutModule && flyoutModuleItem && !isMobileView && (
+                <>
+                    <div
+                        className="fixed inset-0 z-[145]"
+                        onClick={() => { setActiveFlyoutModule(null); setIsFlyoutMinimized(false); }}
+                    />
+                    <div
+                        className={cn(
+                            "fixed top-3 h-[calc(100dvh-1.5rem)] bg-white rounded-3xl ring-1 ring-black/5 shadow-2xl shadow-slate-900/20 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
+                            isSidebarOpen ? "left-[18.75rem]" : "left-[5.75rem]",
+                            isFlyoutMinimized ? "w-20" : "w-72"
+                        )}
+                    >
+                        <div className={cn("flex items-center border-b border-slate-100 px-4 flex-shrink-0 h-16", isFlyoutMinimized ? "justify-center" : "justify-between")}>
+                            {!isFlyoutMinimized && (
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <flyoutModuleItem.icon className="h-5 w-5 text-blue-600 shrink-0" />
+                                    <span className="text-xs font-black uppercase tracking-tight text-slate-900 truncate">{flyoutModuleItem.title}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                    onClick={() => setIsFlyoutMinimized(prev => !prev)}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                    aria-label={isFlyoutMinimized ? "Expand submenu" : "Minimize submenu"}
+                                >
+                                    {isFlyoutMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+                                </Button>
+                                {!isFlyoutMinimized && (
+                                    <Button
+                                        onClick={() => { setActiveFlyoutModule(null); setIsFlyoutMinimized(false); }}
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                        aria-label="Close submenu"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-3 py-4 space-y-1">
+                            {flyoutSubItems.map(subItem => {
+                                const isSubItemActive = pathname.startsWith(subItem.href);
+                                if (isFlyoutMinimized) {
+                                    return (
+                                        <TooltipProvider key={subItem.href} delay={0}>
+                                            <Tooltip>
+                                                <TooltipTrigger
+                                                    render={
+                                                        <Link href={subItem.href}>
+                                                            <Button variant={isSubItemActive ? "secondary" : "ghost"} size="icon" className={cn("w-full h-10 mx-auto rounded-xl", isSubItemActive && "bg-blue-500/10 ring-1 ring-blue-500/40 text-blue-600")} aria-label={subItem.label}>
+                                                                <subItem.icon className="h-4.5 w-4.5" />
+                                                            </Button>
+                                                        </Link>
+                                                    }
+                                                />
+                                                <TooltipContent side="right" className="font-bold text-[10px] uppercase tracking-widest">{subItem.label}</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    );
+                                }
+                                return (
+                                    <Link
+                                        key={subItem.href}
+                                        href={subItem.href}
+                                        className={cn("group flex items-center py-2.5 px-3 text-[11px] font-bold uppercase tracking-wide rounded-xl no-underline hover:no-underline transition-all", isSubItemActive ? "text-blue-600 bg-blue-500/10 backdrop-blur-md ring-1 ring-blue-500/40" : "text-slate-400 hover:text-blue-600 hover:bg-blue-50/20")}
+                                    >
+                                        <subItem.icon className="mr-3 h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6" /><span>{subItem.label}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </>
+            )}
         </>
     );
 }

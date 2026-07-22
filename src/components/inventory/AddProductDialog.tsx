@@ -74,6 +74,13 @@ import {
 import { Category } from '@/types/dashboard';
 import { cn } from "@/lib/utils";
 
+// Module-level, not per-render: a client created inside the component body
+// is a new object reference on every render, which was going into a
+// useEffect's dependency array below and re-firing that effect (and its
+// setState) on every single render — an infinite loop that hard-froze the
+// tab as soon as this dialog opened.
+const supabase = createClient();
+
 interface Unit {
   id: string;
   name: string;
@@ -114,9 +121,8 @@ const DEFAULT_VARIANT: VariantDraft = {
 
 export default function ProductManagementConsole({ categories }: ProductManagementProps) {
   const [open, setOpen] = useState(false);
-  const [uomSearchQuery, setUomSearchQuery] = useState(""); 
+  const [uomSearchQuery, setUomSearchQuery] = useState("");
   const queryClient = useQueryClient();
-  const supabase = createClient();
 
   const [units, setUnits] = useState<Unit[]>([]);
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
@@ -195,7 +201,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
       };
       fetchUnits();
     }
-  }, [open, supabase]);
+  }, [open]);
 
   const filteredUnits = useMemo(() => {
     return units.filter(u => 
@@ -493,6 +499,9 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                               </ScrollArea>
                           </SelectContent>
                       </Select>
+                      <Button variant="outline" type="button" onClick={() => setIsUnitModalOpen(true)} className="h-12 w-12 rounded-xl border-slate-200 bg-white text-blue-600 hover:bg-blue-600 hover:text-white transition-all shrink-0">
+                        <Plus size={24} />
+                      </Button>
                       <Select value={taxCategoryCode} onValueChange={setTaxCategoryCode}>
                         <SelectTrigger className="w-[160px] h-12 border-slate-200 bg-slate-50 rounded-xl font-bold px-5">
                             <SelectValue />
@@ -503,9 +512,6 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                             <SelectItem value="REDUCED" className="font-bold text-xs py-2.5">Reduced (5%)</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Button variant="outline" type="button" onClick={() => setIsUnitModalOpen(true)} className="h-12 w-12 rounded-xl border-slate-200 bg-white text-blue-600 hover:bg-blue-600 hover:text-white transition-all">
-                        <Plus size={24} />
-                      </Button>
                     </div>
                 </div>
 
@@ -640,12 +646,16 @@ export default function ProductManagementConsole({ categories }: ProductManageme
 
                         <TabsContent value="preview">
                             <div className="rounded-[1.5rem] border border-slate-100 overflow-hidden shadow-2xl bg-white">
-                              <ScrollArea className="w-full">
+                              {/* ScrollArea's viewport is height:100% internally — without an
+                                  explicit height here it has nothing to size against, so the
+                                  variant rows never actually become visible. */}
+                              <ScrollArea className="w-full max-h-[420px]">
                                 <Table>
                                     <TableHeader className="bg-slate-50 border-b border-slate-100">
                                         <TableRow className="h-14">
                                             <TableHead className="px-8 font-black uppercase text-slate-400 text-[9px] tracking-widest">Variant Identity</TableHead>
                                             <TableHead className="text-center font-black uppercase text-slate-400 text-[9px] tracking-widest">Retail Price</TableHead>
+                                            <TableHead className="text-center font-black uppercase text-slate-400 text-[9px] tracking-widest">Acquisition Price</TableHead>
                                             <TableHead className="text-center font-black uppercase text-slate-400 text-[9px] tracking-widest">Opening Stock</TableHead>
                                             <TableHead className="px-8 text-right font-black uppercase text-slate-400 text-[9px] tracking-widest">Registry SKU</TableHead>
                                         </TableRow>
@@ -655,6 +665,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
                                             <TableRow key={idx} className="h-16 border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                 <TableCell className="px-8 text-xs font-black text-slate-900 uppercase tracking-tight">{v.name}</TableCell>
                                                 <TableCell className="text-center"><input type="number" step="0.01" className="h-9 w-32 border border-slate-100 bg-white text-slate-900 font-black text-center mx-auto rounded-lg px-2 shadow-sm focus:ring-1 focus:ring-blue-500" value={v.price} onChange={e => updateVariant(idx, 'price', Number(e.target.value))} /></TableCell>
+                                                <TableCell className="text-center"><input type="number" step="0.01" className="h-9 w-32 border border-slate-100 bg-white text-slate-500 font-bold text-center mx-auto rounded-lg px-2 shadow-sm focus:ring-1 focus:ring-blue-500" value={v.cost_price} onChange={e => updateVariant(idx, 'cost_price', Number(e.target.value))} /></TableCell>
                                                 <TableCell className="text-center"><input type="number" className="h-9 w-32 border border-slate-100 bg-white text-blue-700 font-black text-center mx-auto rounded-lg px-2 shadow-sm focus:ring-1 focus:ring-blue-500" value={v.stock_quantity} onChange={e => updateVariant(idx, 'stock_quantity', Number(e.target.value))} /></TableCell>
                                                 <TableCell className="px-8"><input className="h-9 w-40 border border-slate-100 rounded-lg uppercase text-[10px] font-black text-right ml-auto bg-slate-50/50 px-3 text-slate-400" value={v.sku} onChange={e => updateVariant(idx, 'sku', e.target.value)} placeholder="AUTO" /></TableCell>
                                             </TableRow>

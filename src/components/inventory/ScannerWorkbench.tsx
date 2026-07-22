@@ -47,12 +47,17 @@ interface BusinessDNA {
     location_name: string;
 }
 
+// Module-level, not per-render: creating this inside the component body
+// made it a new reference on every render, which sat in the useEffect
+// dependency array below and could re-trigger that effect on every render
+// against a real backend.
+const supabase = createClient();
+
 export default function ScannerWorkbench({ businessId }: { businessId: string }) {
     // --- STATE MANAGEMENT ---
     const [isScanning, setIsScanning] = useState(false);
     const [sessionLog, setSessionLog] = useState<ScannedSessionItem[]>([]);
     const [dna, setDna] = useState<BusinessDNA | null>(null);
-    const supabase = createClient();
 
     // --- IDENTITY ANCHOR: Fetch Dynamic Business Details ---
     useEffect(() => {
@@ -72,7 +77,7 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
             }
         };
         fetchNodeIdentity();
-    }, [businessId, supabase]);
+    }, [businessId]);
 
     // --- HARDWARE SCANNER BRIDGE ---
     useEffect(() => {
