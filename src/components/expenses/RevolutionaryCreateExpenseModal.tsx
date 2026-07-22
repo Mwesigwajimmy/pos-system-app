@@ -189,33 +189,30 @@ export function RevolutionaryCreateExpenseModal({
                         <Popover>
                         <PopoverTrigger asChild>
                             <FormControl>
-                            <Button variant={"outline"} className={cn("w-full text-left font-normal", !field.value && "text-muted-foreground")}>
+                            <Button 
+                                type="button" 
+                                variant={"outline"} 
+                                className={cn("w-full text-left font-normal", !field.value && "text-muted-foreground")}
+                                onClick={(e) => e.stopPropagation()}
+                            >
                                 {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                             </FormControl>
                         </PopoverTrigger>
-                        {/* 
-                            FIXED BLINKING & DOUBLE-CLICK ISSUE: 
-                            Adding these two handlers prevents the Dialog from fighting the 
-                            Popover for focus, allowing it to open on a single click.
-                        */}
                         <PopoverContent 
-                            className="w-auto p-0 z-[1000]" 
+                            className="w-auto p-0 z-[1001]" 
                             align="start"
-                            onOpenAutoFocus={(e) => e.preventDefault()}
-                            onCloseAutoFocus={(e) => e.preventDefault()}
                         >
                             <Calendar 
                                 mode="single" 
                                 selected={field.value} 
                                 onSelect={field.onChange} 
-                                // UNLOCKED: Navigation enabled and future dates only disabled
                                 disabled={(date) => date > new Date()} 
                                 captionLayout="dropdown-buttons"
                                 fromYear={2010}
                                 toYear={new Date().getFullYear()}
-                                initialFocus 
+                                initialFocus={false} 
                             />
                         </PopoverContent>
                         </Popover>
