@@ -196,7 +196,18 @@ export function RevolutionaryCreateExpenseModal({
                             </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                            <Calendar 
+                                mode="single" 
+                                selected={field.value} 
+                                onSelect={field.onChange} 
+                                // REMOVED THE LOCK: Only future dates are disabled to prevent projection errors
+                                disabled={(date) => date > new Date()} 
+                                // UPDATED: Added navigation so backdating is easy and fast
+                                captionLayout="dropdown-buttons"
+                                fromYear={2000}
+                                toYear={new Date().getFullYear()}
+                                initialFocus 
+                            />
                         </PopoverContent>
                         </Popover>
                         <FormMessage />
