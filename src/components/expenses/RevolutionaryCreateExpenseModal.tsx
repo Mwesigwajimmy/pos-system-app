@@ -86,7 +86,6 @@ export function RevolutionaryCreateExpenseModal({
   });
 
   // --- 2. Fetch Tenant-Specific Payment Accounts (Bank/Cash) ---
-  // DEEP FIX: Corrected column to 'subtype' and values to lowercase to match DB truth
   const { data: paymentAccounts, isLoading: loadingPay } = useQuery({
     queryKey: ['accounts', 'payment', businessId],
     queryFn: async () => {
@@ -103,7 +102,6 @@ export function RevolutionaryCreateExpenseModal({
     enabled: open,
   });
 
-  // FIX: Removed strict generic <ExpenseFormValues> to let Zod Resolver handle the 'unknown' vs 'number' type inference
   const form = useForm({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -117,7 +115,6 @@ export function RevolutionaryCreateExpenseModal({
   });
 
   // --- 3. Enterprise Atomic Posting Mutation ---
-  // DEEP FIX: Added missing p_country_code and p_exchange_rate to match the SQL Function signature
   const mutation = useMutation({
     mutationFn: async (values: ExpenseFormValues) => {
       const { data, error } = await supabase.rpc('record_enterprise_expense', {
@@ -129,9 +126,9 @@ export function RevolutionaryCreateExpenseModal({
         p_expense_account_id: values.category_id,
         p_payment_account_id: values.payment_account_id,
         p_vendor_name: values.vendor || null,
-        p_currency: 'UGX', // For multi-currency, this can be mapped to paymentAccounts selection
-        p_country_code: countryCode, // REQUIRED WELD
-        p_exchange_rate: 1.0         // REQUIRED WELD
+        p_currency: 'UGX', 
+        p_country_code: countryCode, 
+        p_exchange_rate: 1.0         
       });
       if (error) throw error;
       return data;
@@ -190,10 +187,10 @@ export function RevolutionaryCreateExpenseModal({
                         <PopoverTrigger asChild>
                             <FormControl>
                             <Button 
-                                type="button" 
+                                type="button" // CRITICAL: Stops form validation/blinking
                                 variant={"outline"} 
                                 className={cn("w-full text-left font-normal", !field.value && "text-muted-foreground")}
-                                onClick={(e) => e.stopPropagation()}
+                                // REMOVED stopPropagation here to let the Popover open
                             >
                                 {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -212,7 +209,7 @@ export function RevolutionaryCreateExpenseModal({
                                 captionLayout="dropdown-buttons"
                                 fromYear={2010}
                                 toYear={new Date().getFullYear()}
-                                initialFocus={false} 
+                                initialFocus={false} // Prevents focus-trap interference
                             />
                         </PopoverContent>
                         </Popover>
@@ -233,7 +230,6 @@ export function RevolutionaryCreateExpenseModal({
                             step="0.01" 
                             placeholder="0.00" 
                             {...field} 
-                            // FIX: Handle string vs number casting for TypeScript compatibility
                             onChange={(e) => field.onChange(e.target.value)}
                             value={field.value as string | number}
                         />
