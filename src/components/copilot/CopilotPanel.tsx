@@ -203,7 +203,11 @@ export default function CopilotPanel() {
       </header>
 
       {/* CONTENT AREA */}
-      <ScrollArea className="flex-grow bg-slate-50/60">
+      {/* min-h-0 is load-bearing here: a flex item's default min-height is
+          "auto", so without it this ScrollArea would grow to fit all the
+          chat content instead of scrolling, pushing the composer footer
+          below the visible viewport (only reachable by zooming out). */}
+      <ScrollArea className="flex-1 min-h-0 bg-slate-50/60">
         <div className="space-y-5 max-w-2xl mx-auto p-4 sm:p-6">
 
             {isReady && messages.length === 0 && (

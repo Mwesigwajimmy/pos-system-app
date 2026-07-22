@@ -67,10 +67,19 @@ export default function GlobalCopilot() {
   const StatusIcon = status.icon;
 
   return (
-    <div className="fixed bottom-5 right-4 sm:bottom-8 sm:right-8 z-[100] group">
+    <div
+      className={cn(
+        "fixed bottom-5 right-4 sm:bottom-8 sm:right-8 z-[100] group transition-all duration-300",
+        // The chat panel already has its own close (X) in its header — leaving
+        // this trigger visible/interactive while open gave the chat two
+        // different "close chat" controls stacked in the same corner.
+        isOpen && "opacity-0 scale-75 pointer-events-none"
+      )}
+    >
       <TooltipProvider delayDuration={100}>
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger
+            render={
             <div className="relative">
 
               {/* 1. NEURAL LINK STATUS PING */}
@@ -137,7 +146,8 @@ export default function GlobalCopilot() {
                 </div>
               </Button>
             </div>
-          </TooltipTrigger>
+            }
+          />
 
           {/* 3. FORENSIC IDENTITY TOOLTIP */}
           <TooltipContent
