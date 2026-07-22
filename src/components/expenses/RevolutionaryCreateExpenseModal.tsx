@@ -196,19 +196,21 @@ export function RevolutionaryCreateExpenseModal({
                             </FormControl>
                         </PopoverTrigger>
                         {/* 
-                          FIXED BLINKING: Added onOpenAutoFocus to prevent the Dialog from 
-                          stealing focus and closing the calendar immediately.
+                            FIXED BLINKING & DOUBLE-CLICK ISSUE: 
+                            Adding these two handlers prevents the Dialog from fighting the 
+                            Popover for focus, allowing it to open on a single click.
                         */}
                         <PopoverContent 
-                          className="w-auto p-0" 
-                          align="start" 
-                          onOpenAutoFocus={(e) => e.preventDefault()}
+                            className="w-auto p-0 z-[1000]" 
+                            align="start"
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                            onCloseAutoFocus={(e) => e.preventDefault()}
                         >
                             <Calendar 
                                 mode="single" 
                                 selected={field.value} 
                                 onSelect={field.onChange} 
-                                // UNLOCKED: Removed the old date limit and added dropdown navigation
+                                // UNLOCKED: Navigation enabled and future dates only disabled
                                 disabled={(date) => date > new Date()} 
                                 captionLayout="dropdown-buttons"
                                 fromYear={2010}
