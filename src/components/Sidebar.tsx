@@ -905,13 +905,16 @@ export default function Sidebar() {
             <aside
                 onClick={handleRailExpandClick}
                 className={cn(
-                    "m-3 h-[calc(100%-1.5rem)] lg:h-[calc(100dvh-1.5rem)] bg-white rounded-3xl ring-1 ring-black/5 flex flex-col overflow-hidden transition-[transform,opacity,width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] z-[150] shrink-0 shadow-2xl shadow-slate-900/20",
+                    // Flush, edge-to-edge panel — no floating card margin, no
+                    // rounded corners, no drop shadow. A right border does the
+                    // job of separating it from the main content instead.
+                    "h-full lg:h-dvh bg-white border-r border-slate-200 flex flex-col overflow-hidden transition-[transform,opacity,width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] z-[150] shrink-0",
                     "fixed lg:sticky top-0 left-0",
                     !isSidebarOpen
-                        ? "-translate-x-[calc(100%+4rem)] opacity-0 pointer-events-none lg:translate-x-0 lg:opacity-100 lg:pointer-events-auto lg:w-20"
-                        : "translate-x-0 opacity-100 pointer-events-auto w-[calc(100%-1.5rem)] sm:w-80 lg:w-72",
+                        ? "-translate-x-full opacity-0 pointer-events-none lg:translate-x-0 lg:opacity-100 lg:pointer-events-auto lg:w-20"
+                        : "translate-x-0 opacity-100 pointer-events-auto w-full sm:w-80 lg:w-72",
 
-                    !isSidebarOpen && !isMobileView && "lg:cursor-pointer hover:shadow-slate-900/30"
+                    !isSidebarOpen && !isMobileView && "lg:cursor-pointer"
                 )}
             >
                 <div className={cn("flex items-center border-b border-slate-100 px-4 flex-shrink-0 bg-white relative z-[110] h-16", isSidebarOpen ? "justify-between" : "justify-center")}>
@@ -926,7 +929,10 @@ export default function Sidebar() {
                             </span>
                         </div>
                     )}
-                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all rounded-xl shrink-0", !isSidebarOpen && "bg-blue-50 text-blue-600 shadow-sm")}>
+                    {/* The only close/collapse control now — bigger and higher-contrast
+                        than before (it used to be barely visible, especially on mobile
+                        where it was the sole way to dismiss the drawer). */}
+                    <Button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} variant="ghost" size="icon" className={cn("h-11 w-11 text-slate-600 border border-slate-200 bg-slate-50 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all rounded-xl shrink-0 shadow-sm", !isSidebarOpen && "bg-blue-50 text-blue-600 border-blue-100 shadow-sm")}>
                         {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </Button>
                 </div>
@@ -979,8 +985,11 @@ export default function Sidebar() {
                     />
                     <div
                         className={cn(
-                            "fixed top-3 h-[calc(100dvh-1.5rem)] bg-white rounded-3xl ring-1 ring-black/5 shadow-2xl shadow-slate-900/20 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
-                            isSidebarOpen ? "left-[18.75rem]" : "left-[5.75rem]",
+                            // Flush against the rail/expanded sidebar, same as the
+                            // sidebar itself now — no rounding, no floating shadow,
+                            // just a border to read as a distinct panel.
+                            "fixed top-0 h-dvh bg-white border-r border-slate-200 z-[148] flex flex-col overflow-hidden transition-[left,width] duration-200",
+                            isSidebarOpen ? "left-72" : "left-20",
                             isFlyoutMinimized ? "w-20" : "w-72"
                         )}
                     >

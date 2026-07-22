@@ -1,38 +1,26 @@
 import { ReactNode } from 'react';
-import { Metadata } from 'next'; 
+import type { Metadata } from "next";
 import { Inter as FontSans } from 'next/font/google';
 import { cookies } from 'next/headers';
+// NOTE: these next few imports (server Supabase client, the three
+// providers, ServiceWorkerRegistrar) don't exist in this local copy of the
+// repo — they live in the actual hosting/deploy repo. Left in place as-is
+// per instruction: do not delete imports just because they can't be
+// resolved here.
 import { createClient } from '@/lib/supabase/server';
-import './globals.css';
+import "./globals.css";
 import { cn } from '@/lib/utils';
-import { Toaster } from 'sonner';
+import { Toaster } from "sonner";
 import { ThemeProvider } from '@/components/theme-provider';
 import TanstackProvider from '@/providers/TanstackProvider';
 import SupabaseProvider from '@/providers/SupabaseProvider';
+import { BusinessProvider } from '@/context/BusinessContext';
 import { SidebarProvider } from '@/context/SidebarContext';
-// ✅ DEEP WELD: BusinessProvider remains at global scope for context stability
-import { BusinessProvider } from '@/context/BusinessContext'; 
 import type { Session } from '@supabase/supabase-js';
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar';
 import Script from 'next/script';
-import React from 'react';
+import SiteShell from "@/components/SiteShell";
 
-/**
- * --- BBU1 SOVEREIGN GLOBAL LAYOUT ---
- * VERSION: v18.9 OMEGA (CLEAN ROOT ARCHITECTURE)
- * JURISDICTION: Global Multi-Tenant Infrastructure
- * 
- * CORE ARCHITECTURAL CLEANUP:
- * 1. REMOVED REDUNDANT FETCH: Extracted the branding listener to allow 
- *    the DashboardGatekeeper and Loading nodes to handle Identity DNA.
- * 2. PERFORMANCE OPTIMIZATION: Reduced server-side blocking time by 
- *    simplifying the root handshake.
- * 3. NETWORK GUARD PRESERVATION: Maintained the professional 
- *    offline.html trigger logic.
- * 4. CONTEXT STABILITY: BusinessProvider is locked at the top level.
- */
-
-// --- PROFESSIONAL GLOBAL METADATA ---
 export const metadata: Metadata = {
   title: {
     default: 'BBU1 Global | Enterprise Business Operating System',
@@ -43,7 +31,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'BBU1 Enterprise' }],
   creator: 'BBU1',
   publisher: 'BBU1 Global',
-  metadataBase: new URL('https://www.bbu1.com'), 
+  metadataBase: new URL('https://www.bbu1.com'),
   robots: {
     index: true,
     follow: true,
@@ -51,7 +39,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://www.bbu1.com', 
+    url: 'https://www.bbu1.com',
     title: 'BBU1 Global | Enterprise Business Operating System',
     description: 'BBU1 is the standard for global business management.',
     siteName: 'BBU1 ERP',
@@ -68,28 +56,31 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
+// Vestigial here on purpose: next.config.ts handles /en, /fr, etc. via a
+// rewrite (locale prefix -> same route, no [locale] dynamic segment), so
+// Next.js never actually populates params.locale for app/layout.tsx — this
+// always resolves to 'en'. Kept (not deleted) since the real repo may rely
+// on it; harmless either way.
 const SUPPORTED_LOCALES = ['de', 'en', 'fr', 'lg', 'nl', 'no', 'nyn', 'pt-BR', 'ru', 'rw', 'sw', 'zh'];
 
-export default async function LocaleRootLayout({
+export default async function RootLayout({
   children,
-  params: { locale },
-}: {
+  params,
+}: Readonly<{
   children: ReactNode;
-  params: { locale: string };
-}) {
-  const safeLocale = SUPPORTED_LOCALES.includes(locale) ? locale : 'en';
+  params?: { locale?: string };
+}>) {
+  const safeLocale = params?.locale && SUPPORTED_LOCALES.includes(params.locale) ? params.locale : 'en';
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  
+
   let session: Session | null = null;
-  
-  // Standard BBU1 Identity Defaults
-  const brandColor = '#1D4ED8'; 
-  const companyLogo = '/logo.png'; 
+
+  const brandColor = '#1D4ED8';
+  const companyLogo = '/logo.png';
 
   try {
-    // Only fetch session at the root to satisfy Provider requirements
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     session = currentSession;
   } catch (e) {
@@ -97,7 +88,6 @@ export default async function LocaleRootLayout({
     session = null;
   }
 
-  // --- PROFESSIONAL APPLICATION SCHEMA ---
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -120,16 +110,15 @@ export default async function LocaleRootLayout({
   };
 
   return (
-    <html lang={safeLocale} suppressHydrationWarning>
+    <html lang={safeLocale} className="h-full antialiased" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/site.webmanifest" />
-        
-        {/* Standard Identity Anchors */}
+
         <link rel="icon" href={companyLogo} />
         <link rel="apple-touch-icon" href={companyLogo} />
-        
+
         <meta name="theme-color" content={brandColor} />
-        
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -140,7 +129,7 @@ export default async function LocaleRootLayout({
           {`
             (function() {
               const guardId = 'bbu1-offline-overlay';
-              
+
               function showOfflineScreen() {
                 if (document.getElementById(guardId)) return;
                 const overlay = document.createElement('div');
@@ -183,22 +172,22 @@ export default async function LocaleRootLayout({
           `}
         </Script>
       </head>
-      <body 
-        className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}
+      <body
+        className={cn('min-h-full flex flex-col bg-background font-sans antialiased', fontSans.variable)}
         style={{ '--brand-primary': brandColor } as React.CSSProperties}
       >
         <SupabaseProvider session={session}>
           <TanstackProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="light" 
+              defaultTheme="light"
               enableSystem={false}
               disableTransitionOnChange
             >
               <BusinessProvider>
                 <SidebarProvider>
-                  {children}
-                  <Toaster richColors position="bottom-right" />
+                  <SiteShell>{children}</SiteShell>
+                  <Toaster position="top-center" richColors />
                 </SidebarProvider>
               </BusinessProvider>
             </ThemeProvider>
