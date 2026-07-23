@@ -3,13 +3,9 @@
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { revalidatePath } from 'next/cache';
-import { calculateUgandaPayroll } from '../localization/ug/calculator';
-import { EmployeeWithContract, PayrollElement } from '@/types/payroll';
-
-/**
- * LITONU BUSINESS BASE UNIVERSE LTD - SOVEREIGN PAYROLL ENGINE
- * VERSION: 11.0 | AUTHORITATIVE MULTI-TENANT FLUX WELD
- */
+import { calculateUniversalPayroll } from './engine';
+import { EmployeeWithContract } from '@/types/payroll';
+import { format } from 'date-fns';
 
 const getSovereignClient = (cookieStore: ReturnType<typeof cookies>) => {
     return createServerClient(
@@ -18,12 +14,8 @@ const getSovereignClient = (cookieStore: ReturnType<typeof cookies>) => {
         {
             cookies: {
                 get(name: string) { return cookieStore.get(name)?.value },
-                set(name: string, value: string, options: CookieOptions) {
-                    cookieStore.set({ name, value, ...options })
-                },
-                remove(name: string, options: CookieOptions) {
-                    cookieStore.set({ name, value: '', ...options })
-                },
+                set(name: string, value: string, options: CookieOptions) { cookieStore.set({ name, value, ...options }) },
+                remove(name: string, options: CookieOptions) { cookieStore.set({ name, value: '', ...options }) },
             },
         }
     );
@@ -33,31 +25,25 @@ export async function runPayrollCalculation(
     tenantId: string, 
     periodStart: string, 
     periodEnd: string,
-    dynamicElements?: any[]
+    dynamicElements?: any[] // User-defined overrides (PAYE/NSSF)
 ) {
   const cookieStore = cookies();
   const supabase = getSovereignClient(cookieStore);
 
-  // 1. AUTHORITATIVE INFRASTRUCTURE FETCH
+  // 1. FORENSIC INFRASTRUCTURE FETCH
   const [
-    { data: tenant, error: tenantError },
     { data: employees, error: employeesError },
-    { data: elements, error: elementsError },
     { data: fluxInputs, error: fluxError }
   ] = await Promise.all([
-    supabase.from('tenants').select('*').eq('id', tenantId).single(),
-    // Joins with Base Salary Contract
+    // Fetch personnel and their unique salary contract
     supabase.from('employees').select(`
-      *,
-      salaries:hr_employee_salaries (
-        base_amount,
-        currency_code,
-        pay_frequency
-      )
+      id, 
+      full_name, 
+      business_id,
+      salary:hr_employee_salaries(*)
     `).eq('business_id', tenantId).eq('is_active', true),
-    // Standard Tax Elements
-    supabase.from('hr_payroll_elements').select('*').eq('business_id', tenantId).eq('is_active', true),
-    // NEW: Fetch Weekly Commissions/Bonuses (Operational Flux)
+    
+    // Fetch commissions/bonuses for this specific window
     supabase.from('hr_payroll_inputs')
       .select('*')
       .eq('business_id', tenantId)
@@ -65,91 +51,93 @@ export async function runPayrollCalculation(
       .lte('effective_date', periodEnd)
   ]);
 
-  if (tenantError || employeesError || elementsError || fluxError) {
-    console.error("LITONU_FINANCIAL_HANDSHAKE_FAULT:", { tenantError, employeesError, elementsError, fluxError });
-    return { error: 'Authoritative Handshake Refused: Connection to labor registry failed.' };
+  if (employeesError || fluxError) {
+    return { error: 'Authoritative Handshake Refused: Infrastructure registry offline.' };
   }
 
-  // 2. DATA TRANSLATION & FLUX WELDING
-  const typedEmployees = employees
-    .filter(emp => {
-        // SAFETY: Filter out people with 0.00 or missing salaries
-        const salary = (emp as any).salaries;
-        const amount = Array.isArray(salary) ? salary[0]?.base_amount : salary?.base_amount;
-        return amount > 0;
-    })
-    .map(emp => {
-      const salary = (emp as any).salaries;
-      
-      // FIX: Handle both Array and Object returns from Supabase (The Weld)
-      const baseSalaryRecord = Array.isArray(salary) ? salary[0] : salary;
-      
-      // Calculate total flux (Commissions/Bonuses) for this specific person
-      const personnelFlux = fluxInputs
-        ?.filter(f => f.employee_id === emp.id)
-        .reduce((sum, f) => sum + Number(f.amount), 0) || 0;
+  // 2. DATA TRANSLATION (Mapping DB to your specific Types)
+  const typedEmployees: EmployeeWithContract[] = (employees || []).map(emp => {
+      // UNIQUE Constraint fix: emp.salary is now a single object, not an array
+      const dbSalary = emp.salary as any;
+      const basePay = Number(dbSalary?.base_amount || 0);
 
+      // Aggregating Weekly Commissions
+      const fluxTotal = (fluxInputs || [])
+        .filter(f => f.employee_id === emp.id)
+        .reduce((sum, f) => sum + Number(f.amount || 0), 0);
+
+      // Construct the object following your src/types/payroll.ts interface
       return {
-          ...emp,
-          contracts: [{
-              amount: Number(baseSalaryRecord?.base_amount || 0) + personnelFlux,
-              currency_code: baseSalaryRecord?.currency_code || 'UGX'
-          }]
-      };
-  }) as unknown as EmployeeWithContract[];
+        id: emp.id,
+        full_name: emp.full_name,
+        business_id: emp.business_id,
+        contracts: {
+          contract_elements: [
+            // Element 1: The Base Contract (Fixed Salary)
+            {
+              amount: basePay,
+              currency_code: dbSalary?.currency_code || 'UGX',
+              payroll_elements: { id: 101, name: 'Basic Salary', type: 'EARNING', is_system_defined: true }
+            },
+            // Element 2: Operational Flux (Commissions)
+            {
+              amount: fluxTotal,
+              currency_code: dbSalary?.currency_code || 'UGX',
+              payroll_elements: { id: 102, name: 'Commissions', type: 'EARNING', is_system_defined: false }
+            },
+            // Dynamic Statutory Elements (PAYE/NSSF from the Form)
+            ...(dynamicElements || []).map((de, idx) => ({
+              amount: (basePay + fluxTotal) * (Number(de.value) / 100),
+              currency_code: 'UGX',
+              payroll_elements: { id: 200 + idx, name: de.name, type: de.type, is_system_defined: true }
+            }))
+          ]
+        }
+      } as EmployeeWithContract;
+  }).filter(emp => {
+      // Only include employees who actually have earnings this cycle
+      const total = emp.contracts.contract_elements.reduce((s, el) => s + el.amount, 0);
+      return total > 0;
+  });
 
-  if (!tenant || typedEmployees.length === 0) {
-    return { error: 'Node Integrity Error: No authorized personnel with active salaries found for this cycle.' };
+  if (typedEmployees.length === 0) {
+    return { error: 'Node Integrity Error: No personnel with authorized labor value found.' };
   }
 
-  const activeElements = (dynamicElements && dynamicElements.length > 0) ? dynamicElements : elements;
-  const elementMap = activeElements.reduce((acc, el) => {
-    acc[el.name] = el as PayrollElement;
-    return acc;
-  }, {} as Record<string, PayrollElement>);
+  // 3. EXECUTE SOVEREIGN MATH
+  try {
+      const results = calculateUniversalPayroll(typedEmployees);
+      
+      // 4. ATOMIC LEDGER GENERATION
+      const { data: run, error: runError } = await supabase.from('hr_payroll_runs').insert({
+        business_id: tenantId,
+        period_name: `${format(new Date(periodStart), 'dd MMM')} - ${format(new Date(periodEnd), 'dd MMM yyyy')}`,
+        status: 'DRAFT',
+        total_net_pay: results.reduce((sum, r) => sum + r.netPay, 0),
+        total_tax_paye: results.reduce((sum, r) => sum + r.totalDeductions, 0)
+      }).select().single();
 
-  // 3. JURISDICTIONAL MATH EXECUTION
-  let calculationResults;
-  const countryCode = tenant.country_code || 'UG';
-  
-  if (countryCode === 'UG') {
-      calculationResults = calculateUgandaPayroll(typedEmployees, elementMap);
-  } else {
-      return { error: `Logic for country ${countryCode} not yet birthed.` };
+      if (runError) throw runError;
+
+      // 5. SEAL INDIVIDUAL PAYSLIPS
+      const payslips = results.map(r => ({
+          payroll_run_id: run.id,
+          employee_id: r.employeeId,
+          business_id: tenantId,
+          gross_earnings: r.grossEarnings,
+          net_pay: r.netPay,
+          total_deductions: r.totalDeductions,
+          status: 'DRAFT'
+      }));
+
+      const { error: pError } = await supabase.from('hr_payslips').insert(payslips);
+      if (pError) throw pError;
+
+      revalidatePath('/payroll');
+      return { success: true, runId: run.id };
+
+  } catch (err: any) {
+      console.error("SOVEREIGN_ENGINE_FAULT:", err);
+      return { error: `Forensic Calculation Error: ${err.message}` };
   }
-  
-  // 4. ATOMIC LEDGER GENERATION
-  const { data: run, error: runError } = await supabase.from('hr_payroll_runs').insert({
-    business_id: tenantId,
-    period_name: `${format(new Date(periodStart), 'MMM d')} to ${format(new Date(periodEnd), 'MMM d, yyyy')}`,
-    status: 'DRAFT',
-    total_net_pay: calculationResults.reduce((sum, res) => sum + res.netPay, 0),
-    total_tax_paye: calculationResults.reduce((sum, res) => sum + res.totalDeductions, 0) 
-  }).select().single();
-  
-  if (runError) return { error: 'Failed to initialize the labor ledger for this cycle.' };
-
-  // 5. SEAL INDIVIDUAL PAYSLIPS
-  const payslipInserts = calculationResults.map(res => ({
-    payroll_run_id: run.id,
-    employee_id: res.employeeId,
-    business_id: tenantId,
-    currency_code: tenant.currency_code || 'UGX',
-    gross_earnings: res.grossEarnings,
-    net_pay: res.netPay,
-    total_deductions: res.totalDeductions,
-    status: 'DRAFT'
-  }));
-  
-  const { error: payslipsError } = await supabase.from('hr_payslips').insert(payslipInserts);
-
-  if(payslipsError) {
-      await supabase.from('hr_payroll_runs').delete().eq('id', run.id);
-      return { error: 'Identity Collision: Could not seal individual payslips.' };
-  }
-
-  revalidatePath('/payroll');
-  return { success: true, runId: run.id };
 }
-
-// ... approvePayrollRun remains the same ...
