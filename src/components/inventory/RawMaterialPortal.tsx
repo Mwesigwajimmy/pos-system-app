@@ -61,6 +61,7 @@ export default function RawMaterialPortal() {
   // Modal States
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeAdjustVariantId, setActiveAdjustVariantId] = useState<string | null>(null);
   const [newUnit, setNewUnit] = useState({ name: '', abbreviation: '' });
   const [adjustData, setAdjustData] = useState({ variant_id: '', qty: 0, reason: 'Restock', price: 0 });
   const [editData, setEditData] = useState({ variant_id: '', name: '', product_id: '', supplier_id: '' });
@@ -146,7 +147,7 @@ export default function RawMaterialPortal() {
   const handleCreateUnit = async () => {
     if (!newUnit.name || !newUnit.abbreviation) return toast.error("Required fields missing.");
     try {
-        const { data: newUnit, error } = await supabase.from('units_of_measure').insert([{ 
+        const { data, error } = await supabase.from('units_of_measure').insert([{ 
             name: newUnit.name, 
             abbreviation: newUnit.abbreviation.toUpperCase() 
         }]).select().single();
@@ -229,25 +230,28 @@ export default function RawMaterialPortal() {
     onError: (e: any) => toast.error(e.message)
   });
 
-  // MUTATION: Adjustment
+  // MUTATION: Adjustment (Updated with Spinner Loading & Automatic Close)
   const logAdjustment = useMutation({
     mutationFn: async () => {
-      const direction = adjustData.reason === 'Restock' ? 1 : -1;
+      const isDeduction = ['Waste', 'Damage'].includes(adjustData.reason);
+      const direction = isDeduction ? -1 : 1;
+
+      // Call RPC function only - RPC updates stock_levels, inventory, and product_variants atomically
       const { error: stockError } = await supabase.rpc('process_stock_adjustment_v2', {
         p_variant_id: adjustData.variant_id,
         p_qty_change: Math.abs(adjustData.qty) * direction,
         p_reason: `Sync: ${adjustData.reason}`
       });
-      if (stockError) throw stockError;
 
-      const { error: priceError } = await supabase.from('product_variants').update({ 
-        cost_price: adjustData.price, price: adjustData.price 
-      }).eq('id', adjustData.variant_id);
-      if (priceError) throw priceError;
+      if (stockError) throw stockError;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Ledger synchronized.");
-      queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
+      setActiveAdjustVariantId(null); // Closes the modal cleanly so user sees updated balance
+      await queryClient.invalidateQueries({ queryKey: ['raw_materials_ledger'] });
+    },
+    onError: (e: any) => {
+      toast.error(`Sync Error: ${e.message}`);
     }
   });
 
@@ -521,9 +525,19 @@ export default function RawMaterialPortal() {
                                 <Edit3 size={18} />
                             </button>
 
-                            <Dialog>
+                            <Dialog 
+                              open={activeAdjustVariantId === m.variant_id} 
+                              onOpenChange={(open) => {
+                                if (open) {
+                                  setActiveAdjustVariantId(m.variant_id);
+                                  setAdjustData({ variant_id: m.variant_id, qty: 0, reason: 'Restock', price: m.buying_price });
+                                } else {
+                                  setActiveAdjustVariantId(null);
+                                }
+                              }}
+                            >
                                 <DialogTrigger asChild>
-                                <button onClick={() => setAdjustData({...adjustData, variant_id: m.variant_id, price: m.buying_price})} className="h-9 w-9 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all">
+                                <button className="h-9 w-9 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all">
                                     <BadgeAlert size={20} />
                                 </button>
                                 </DialogTrigger>
@@ -536,20 +550,20 @@ export default function RawMaterialPortal() {
                                         <div className="space-y-4">
                                             <Label className="text-[11px] font-bold text-slate-400 uppercase text-center block tracking-widest">Adjustment Quantity</Label>
                                             <div className="relative">
-                                                <Input type="number" className="h-16 border-slate-100 bg-slate-50 font-black text-3xl text-center rounded-2xl shadow-inner" onChange={e => setAdjustData({...adjustData, qty: Number(e.target.value)})} />
+                                                <Input type="number" className="h-16 border-slate-100 bg-slate-50 font-black text-3xl text-center rounded-2xl shadow-inner" onChange={e => setAdjustData(prev => ({ ...prev, qty: Number(e.target.value) }))} />
                                                 <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[11px]">{m.unit}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-4">
                                             <Label className="text-[11px] font-bold text-slate-400 uppercase text-center block tracking-widest">Correction: Price per Unit</Label>
                                             <div className="relative">
-                                                <Input type="number" value={adjustData.price} className="h-16 border-slate-100 bg-white font-bold text-2xl text-center rounded-2xl text-blue-600 shadow-sm" onChange={e => setAdjustData({...adjustData, price: Number(e.target.value)})} />
+                                                <Input type="number" value={adjustData.price} className="h-16 border-slate-100 bg-white font-bold text-2xl text-center rounded-2xl text-blue-600 shadow-sm" onChange={e => setAdjustData(prev => ({ ...prev, price: Number(e.target.value) }))} />
                                                 <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-300 uppercase text-[11px]">{businessCurrency}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-[11px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Identify Purpose</Label>
-                                            <Select value={adjustData.reason} onValueChange={v => setAdjustData({...adjustData, reason: v})}>
+                                            <Select value={adjustData.reason} onValueChange={v => setAdjustData(prev => ({ ...prev, reason: v }))}>
                                             <SelectTrigger className="h-12 border-slate-200 bg-white font-semibold rounded-xl text-sm"><SelectValue placeholder="Reason for change" /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="Restock">Restock / Incoming Shipment</SelectItem>
@@ -561,7 +575,20 @@ export default function RawMaterialPortal() {
                                         </div>
                                     </div>
                                     <DialogFooter className="p-8 bg-slate-50 border-t">
-                                        <Button onClick={() => logAdjustment.mutate()} className="w-full h-14 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-xl uppercase tracking-widest text-xs">Confirm Synchronization</Button>
+                                        <Button 
+                                          onClick={() => logAdjustment.mutate()} 
+                                          disabled={logAdjustment.isPending}
+                                          className="w-full h-14 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-xl uppercase tracking-widest text-xs flex items-center justify-center gap-2"
+                                        >
+                                            {logAdjustment.isPending ? (
+                                              <>
+                                                <Loader2 className="animate-spin h-5 w-5" />
+                                                <span>Synchronizing...</span>
+                                              </>
+                                            ) : (
+                                              "Confirm Synchronization"
+                                            )}
+                                        </Button>
                                     </DialogFooter>
                                 </DialogContent>
                             </Dialog>
