@@ -46,13 +46,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 /**
- * ENTERPRISE VALIDATION SCHEMA - V10.8
- * UPGRADE: Now supports dynamic tax and earning elements for any jurisdiction.
+ * BBU1 SOVEREIGN PAYROLL CONFIGURATION - V12.0
+ * Deeply dynamic logic to support global jurisdictional compliance.
  */
 const formSchema = z.object({
   dateRange: z.object({
-    from: z.date({ message: "Start date is required." }),
-    to: z.date({ message: "End date is required." }),
+    from: z.date({ required_error: "Start date is mandatory." }),
+    to: z.date({ required_error: "End date is mandatory." }),
   }).refine((data) => {
     if (!data.from || !data.to) return true;
     return !isBefore(data.to, data.from);
@@ -60,10 +60,10 @@ const formSchema = z.object({
     message: "End date cannot be before start date.",
     path: ["to"],
   }),
-  // --- NEW: DYNAMIC FINANCIAL ELEMENTS ---
+  // JURISDICTIONAL DYNAMIC ELEMENTS (Taxes, Pensions, Levies)
   customElements: z.array(z.object({
     name: z.string().min(1, "Label is required"),
-    type: z.enum(['EARNING', 'DEDUCTION']),
+    type: z.enum(['EARNING', 'DEDUCTION', 'CONTRIBUTION']),
     method: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']),
     value: z.coerce.number().min(0, "Value must be positive")
   }))
@@ -80,10 +80,10 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
             from: undefined as any,
             to: undefined as any
         },
-        // DEFAULT INSTITUTIONAL TEMPLATE: Can be edited by the user
+        // DEFAULT SOVEREIGN TEMPLATE (Adjustable by User)
         customElements: [
-            { name: 'PAYE Tax', type: 'DEDUCTION', method: 'PERCENTAGE', value: 30 },
-            { name: 'NSSF Employee', type: 'DEDUCTION', method: 'PERCENTAGE', value: 5 }
+            { name: 'Income Tax (PAYE)', type: 'DEDUCTION', method: 'PERCENTAGE', value: 30 },
+            { name: 'Social Security', type: 'DEDUCTION', method: 'PERCENTAGE', value: 5 }
         ]
     }
   });
@@ -95,32 +95,33 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     const loadingToastId = "payroll-calculation-toast";
-    toast.loading("Executing Global Payroll Engine...", { id: loadingToastId });
+    toast.loading("Executing Global Sovereign Math Engine...", { id: loadingToastId });
 
     startTransition(async () => {
       try {
+        // PASSING DYNAMIC LOGIC TO SERVER ACTION
         const result = await runPayrollCalculation(
           tenantId,
           format(values.dateRange.from, 'yyyy-MM-dd'),
           format(values.dateRange.to, 'yyyy-MM-dd'),
-          values.customElements // Passing dynamic tax/earning data to server actions
+          values.customElements 
         );
 
         if (result.error) {
-          toast.error("Payroll Execution Failed", { 
+          toast.error("Authoritative Handshake Refused", { 
             description: result.error,
             id: loadingToastId 
           });
         } else {
-          toast.success("Payroll Run Calculated", {
-            description: "Ledger-ready draft generated. Redirecting to audit review...",
+          toast.success("Payroll Draft Generated", {
+            description: "Redirecting to forensic audit review...",
             id: loadingToastId
           });
           router.push(`/payroll/${result.runId}/review`);
         }
       } catch (err: any) {
-        toast.error("System Error", { 
-            description: err.message || "An unexpected error occurred during calculation.", 
+        toast.error("Forensic Fault Detected", { 
+            description: err.message || "An unexpected error occurred during execution.", 
             id: loadingToastId 
         });
       }
@@ -142,7 +143,7 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
             </div>
             <div className="flex flex-col items-end gap-2">
                 <Badge variant="outline" className="bg-white text-[10px] font-bold py-1">
-                    <Globe className="h-3 w-3 mr-1 text-blue-500" /> MULTI-TAX COMPLIANT
+                    <Globe className="h-3 w-3 mr-1 text-blue-500" /> JURISDICTIONAL DYNAMIC
                 </Badge>
                 <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">Tenant Ref: {tenantId.substring(0,8)}</span>
             </div>
@@ -159,11 +160,12 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                         name="dateRange"
                         render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel className="text-xs font-bold uppercase text-slate-500">Service Period / Pay Cycle</FormLabel>
+                            <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-widest">Service Period / Pay Cycle</FormLabel>
                             <Popover>
                             <PopoverTrigger asChild>
                                 <FormControl>
                                 <Button
+                                    type="button"
                                     variant={"outline"}
                                     className={cn(
                                     "w-full h-12 justify-start text-left font-mono text-base shadow-sm border-primary/20 hover:bg-white transition-all",
@@ -175,7 +177,7 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                                     field.value.to ? (
                                         <>{format(field.value.from, "dd MMM yyyy")} — {format(field.value.to, "dd MMM yyyy")}</>
                                     ) : (format(field.value.from, "dd MMM yyyy"))
-                                    ) : (<span>Select Pay Period Date Range</span>)}
+                                    ) : (<span>Define Disbursement window...</span>)}
                                 </Button>
                                 </FormControl>
                             </PopoverTrigger>
@@ -199,7 +201,7 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                     {/* 2. DYNAMIC STATUTORY ELEMENTS */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <FormLabel className="text-xs font-bold uppercase text-slate-500">Cycle-Specific Tax & Earnings</FormLabel>
+                            <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-widest">Jurisdictional Tax & Earnings</FormLabel>
                             <Button 
                                 type="button" 
                                 variant="outline" 
@@ -207,7 +209,7 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                                 className="h-7 text-[10px] font-bold uppercase border-dashed"
                                 onClick={() => append({ name: '', type: 'DEDUCTION', method: 'PERCENTAGE', value: 0 })}
                             >
-                                <Plus className="h-3 w-3 mr-1" /> Add Adjustment
+                                <Plus className="h-3 w-3 mr-1" /> Add Statutory Rule
                             </Button>
                         </div>
                         
@@ -220,38 +222,62 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                                             name={`customElements.${index}.name`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormControl><Input placeholder="Label (e.g. PAYE)" className="h-10 text-xs font-bold uppercase bg-white" {...field} /></FormControl>
+                                                    <FormLabel className="text-[9px] uppercase font-bold text-slate-400">Element Label</FormLabel>
+                                                    <FormControl><Input placeholder="e.g. Income Tax" className="h-10 text-xs font-bold uppercase bg-white border-slate-200" {...field} /></FormControl>
                                                 </FormItem>
                                             )}
                                         />
                                     </div>
-                                    <div className="w-[110px]">
+                                    <div className="w-[120px]">
                                         <FormField
                                             control={form.control}
                                             name={`customElements.${index}.type`}
                                             render={({ field }) => (
                                                 <FormItem>
+                                                    <FormLabel className="text-[9px] uppercase font-bold text-slate-400">Type</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="h-10 text-[10px] font-bold bg-white"><SelectValue /></SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            <SelectItem value="EARNING" className="text-xs font-bold text-green-600">EARNING</SelectItem>
-                                                            <SelectItem value="DEDUCTION" className="text-xs font-bold text-red-600">DEDUCTION</SelectItem>
+                                                            <SelectItem value="EARNING" className="text-xs font-bold text-green-600 uppercase">EARNING</SelectItem>
+                                                            <SelectItem value="DEDUCTION" className="text-xs font-bold text-red-600 uppercase">DEDUCTION</SelectItem>
+                                                            <SelectItem value="CONTRIBUTION" className="text-xs font-bold text-blue-600 uppercase">CONTRIBUTION</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </FormItem>
                                             )}
                                         />
                                     </div>
-                                    <div className="w-[80px]">
+                                    <div className="w-[100px]">
+                                        <FormField
+                                            control={form.control}
+                                            name={`customElements.${index}.method`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-[9px] uppercase font-bold text-slate-400">Method</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger className="h-10 text-[10px] font-bold bg-white"><SelectValue /></SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="PERCENTAGE" className="text-xs font-bold uppercase">PERCENT (%)</SelectItem>
+                                                            <SelectItem value="FIXED_AMOUNT" className="text-xs font-bold uppercase">FIXED (UGX)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="w-[85px]">
                                         <FormField
                                             control={form.control}
                                             name={`customElements.${index}.value`}
                                             render={({ field }) => (
                                                 <FormItem>
+                                                    <FormLabel className="text-[9px] uppercase font-bold text-slate-400">Value</FormLabel>
                                                     <div className="relative">
-                                                        <FormControl><Input type="number" className="h-10 pl-2 pr-6 text-xs font-mono font-bold bg-white" {...field} /></FormControl>
+                                                        <FormControl><Input type="number" className="h-10 pl-2 pr-6 text-xs font-mono font-bold bg-white border-slate-200" {...field} /></FormControl>
                                                         <div className="absolute right-2 top-1/2 -translate-y-1/2">
                                                             {form.watch(`customElements.${index}.method`) === 'PERCENTAGE' ? <Percent className="h-3 w-3 text-slate-400"/> : <Banknote className="h-3 w-3 text-slate-400"/>}
                                                         </div>
@@ -264,7 +290,7 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                                         type="button" 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="h-10 w-10 text-slate-300 hover:text-red-500"
+                                        className="h-10 w-10 text-slate-300 hover:text-red-500 transition-colors"
                                         onClick={() => remove(index)}
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -278,12 +304,12 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
                         <Button 
                             type="submit" 
                             disabled={isPending}
-                            className="h-12 px-10 bg-primary hover:bg-primary/90 text-white font-bold shadow-lg transition-all"
+                            className="h-14 px-12 bg-primary hover:bg-primary/90 text-white font-black text-lg shadow-2xl transition-all uppercase tracking-tight"
                         >
                             {isPending ? (
-                                <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Executing Math Engine...</>
+                                <><Loader2 className="mr-3 h-6 w-6 animate-spin" />Executing Math Engine...</>
                             ) : (
-                                <><ShieldCheck className="mr-2 h-5 w-5" />Generate Payroll Draft</>
+                                <><ShieldCheck className="mr-3 h-6 w-6" />Generate Sovereign Draft</>
                             )}
                         </Button>
                     </div>
@@ -291,42 +317,42 @@ export function StartPayrollRunForm({ tenantId, tenantName = "Entity" }: { tenan
             </Form>
 
             <div className="space-y-4">
-                <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4 shadow-inner">
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4 shadow-inner">
                     <div className="flex items-center gap-2 text-primary">
                         <Landmark className="h-4 w-4" />
-                        <h4 className="text-xs font-bold uppercase">Institutional Context</h4>
+                        <h4 className="text-xs font-bold uppercase tracking-widest leading-none">Institutional Context</h4>
                     </div>
-                    <ul className="space-y-3">
-                        <li className="flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-                            <div className="h-1.5 w-1.5 rounded-full bg-green-500 mt-1.5 shrink-0" />
-                            <span>This engine adaptively calculates net liabilities for your specific jurisdiction.</span>
+                    <ul className="space-y-4">
+                        <li className="flex items-start gap-3 text-[11px] text-slate-600 leading-relaxed">
+                            <div className="h-2 w-2 rounded-full bg-green-500 mt-1.5 shrink-0" />
+                            <span>This engine calculates net liabilities based on the <strong>statutory elements</strong> defined in the active buffer.</span>
                         </li>
-                        <li className="flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-                            <div className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
-                            <span>Manual overrides enabled: define custom tax labels and percentages in the active buffer.</span>
+                        <li className="flex items-start gap-3 text-[11px] text-slate-600 leading-relaxed">
+                            <div className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                            <span>Calculations are jurisdiction-neutral; use the <strong>Method</strong> selector to toggle between Percentage and Fixed amounts.</span>
                         </li>
-                        <li className="flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-                            <div className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                            <span>System auto-reconciles against Account 6100 (Wages) and 2100 (Statutory Liability).</span>
+                        <li className="flex items-start gap-3 text-[11px] text-slate-600 leading-relaxed">
+                            <div className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                            <span>Real-time reconciliation against Account <strong>6100</strong> and <strong>2100</strong> is performed upon ledger commit.</span>
                         </li>
                     </ul>
                 </div>
 
-                <div className="px-4 py-3 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-3">
-                    <Info className="h-4 w-4 text-amber-600 mt-0.5" />
-                    <p className="text-[10px] text-amber-800 leading-tight">
-                        <strong>Architect Notice:</strong> You are currently operating on the BBU1 Global Sovereign Kernel. All calculations are logged for forensic audit.
+                <div className="px-5 py-4 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-4 shadow-sm">
+                    <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <p className="text-[10px] text-blue-900 leading-normal font-medium">
+                        <strong>Architect Notice:</strong> You are operating on the BBU1 Global Sovereign Kernel. All operational adjustments and statutory overrides are logged for forensic audit.
                     </p>
                 </div>
             </div>
         </div>
       </CardContent>
 
-      <div className="p-4 bg-slate-50 border-t flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-        <span>Sovereign Identity Sealed: {tenantName}</span>
-        <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-green-500"/> GADS Interconnect Active</span>
-            <span>{format(new Date(), 'yyyy')}</span>
+      <div className="p-5 bg-slate-50 border-t flex items-center justify-between text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">
+        <span>Identity Sealed: {tenantName}</span>
+        <div className="flex items-center gap-6">
+            <span className="flex items-center gap-2 text-green-600 font-bold"><ShieldCheck className="h-3 w-3 animate-pulse"/> GADS Interconnect Active</span>
+            <span className="tracking-tighter">{format(new Date(), 'yyyy')} BBU1 KERNEL</span>
         </div>
       </div>
     </Card>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { 
     ChevronDown, ChevronRight, FileDown, ShieldCheck, 
     Landmark, UserCircle, Receipt, Fingerprint, Printer,
-    Scale, AlertCircle
+    Scale, AlertCircle, Coins, FileText, BadgeCheck
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -14,15 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-// PDF Printing Engines
+// Authoritative Printing Engines
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// --- ENTERPRISE IDENTITY SCHEMA ---
-// UPGRADE: Aligned with the Dynamic Element Registry (V10.8)
+// --- ENTERPRISE GLOBAL SCHEMA ---
 type PayrollElement = { 
     name: string; 
-    type: string; 
+    type: 'EARNING' | 'DEDUCTION' | 'CONTRIBUTION'; 
     calculation_method?: string;
     is_statutory?: boolean;
 };
@@ -43,6 +42,7 @@ type Payslip = {
   id: string;
   business_id: string;
   currency_code: string;
+  basic_salary: string | number;
   gross_earnings: string | number;
   total_deductions: string | number;
   net_pay: string | number;
@@ -52,220 +52,254 @@ type Payslip = {
 };
 
 /**
- * LITONU BUSINESS BASE UNIVERSE LTD - COMPENSATION AUDIT INTERFACE
+ * BBU1 GLOBAL COMPENSATION AUDIT INTERFACE - V12.5
  * 
- * UPGRADE: Deeply integrated with the Sovereign Multi-Tax Engine.
- * This component resolves dynamic labels and provides institutional-grade PDF outputs.
+ * DESIGN PHILOSOPHY: High-legibility, professional monochrome, 
+ * jurisdiction-neutral data resolution.
  */
-export function ReviewPayslipTable({ payslips, tenantName = "LITONU BBU1 Entity" }: { payslips: Payslip[], tenantName?: string }) {
+export function ReviewPayslipTable({ 
+    payslips, 
+    tenantName = "Global BBU1 Node" 
+}: { 
+    payslips: Payslip[], 
+    tenantName?: string 
+}) {
   const [openPayslipId, setOpenPayslipId] = useState<string | null>(null);
 
+  /**
+   * SOVEREIGN LABEL RESOLUTION
+   * Maps dynamic tax types to professional UI variants.
+   */
   const getElementTypeVariant = (type: string): "default" | "secondary" | "destructive" | "outline" => {
-    const t = type.toUpperCase();
-    if (t.includes('EARNING')) return 'default';
-    if (t.includes('DEDUCTION')) return 'destructive';
-    if (t.includes('TAX') || t.includes('STATUTORY')) return 'destructive';
+    const t = (type || '').toUpperCase();
+    if (t === 'EARNING') return 'default';
+    if (t === 'DEDUCTION') return 'destructive';
+    if (t === 'CONTRIBUTION') return 'outline';
     return 'secondary';
   }
 
-  // --- AUTHORITATIVE PAYSLIP GENERATION ENGINE ---
+  // --- JURISDICTION-NEUTRAL PDF GENERATION ENGINE ---
   const handleDownloadPDF = (p: Payslip) => {
     const doc = new jsPDF();
     const periodName = format(new Date(), 'MMMM yyyy'); 
 
-    // 1. Institutional Branding & Forensic Header
-    doc.setFontSize(20);
+    // 1. Institutional Header & Forensic Seal
+    doc.setFontSize(22);
     doc.setTextColor(15, 23, 42);
-    doc.text("CONFIDENTIAL REMUNERATION STATEMENT", 14, 22);
+    doc.setFont("helvetica", "bold");
+    doc.text("REMUNERATION STATEMENT", 14, 22);
     
     doc.setFontSize(8);
     doc.setTextColor(100);
-    doc.text(`Sovereign Audit Ref: #AUTH-${p.id.substring(0,8).toUpperCase()}`, 14, 28);
-    doc.text(`Database Authority: LITONU BUSINESS BASE UNIVERSE LTD`, 14, 32);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Authoritative Fingerprint: ${p.id.toUpperCase()}`, 14, 28);
+    doc.text(`Issuing Node: ${tenantName} | Sovereign Kernel v12.5`, 14, 32);
 
-    // 2. Multi-Tenant Entity Context
-    doc.setDrawColor(241, 245, 249);
+    // 2. Structural Separation
+    doc.setDrawColor(226, 232, 240);
     doc.line(14, 38, 196, 38);
 
+    // 3. Personnel Identity Context
     doc.setFontSize(10);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text("ESTABLISHMENT DETAILS", 14, 48);
+    doc.text("PERSONNEL IDENTITY", 14, 48);
     doc.setFont("helvetica", "normal");
-    doc.text(tenantName, 14, 54);
-    doc.text(`Node ID: ${p.business_id}`, 14, 59);
+    doc.text(`Official Name: ${p.employees?.full_name || "Authorized Staff"}`, 14, 54);
+    doc.text(`Designation: ${p.employees?.job_title || "Unassigned"}`, 14, 59);
+    doc.text(`Contract Node: ${p.id.substring(0,8)}`, 14, 64);
 
     doc.setFont("helvetica", "bold");
-    doc.text("IDENTITY CONTEXT", 110, 48);
+    doc.text("PERIOD CONTEXT", 130, 48);
     doc.setFont("helvetica", "normal");
-    doc.text(`Operator: ${p.employees?.full_name || "Authorized Staff"}`, 110, 54);
-    doc.text(`Designation: ${p.employees?.job_title || "General Operations"}`, 110, 59);
-    doc.text(`Cycle: ${periodName} (${p.currency_code})`, 110, 64);
+    doc.text(`Statement Cycle: ${periodName}`, 130, 54);
+    doc.text(`Currency Node: ${p.currency_code}`, 130, 59);
+    doc.text(`Status: ${p.status.toUpperCase()}`, 130, 64);
 
-    // 3. Dynamic Breakdown Table (Resolves User-Defined Tax Labels)
+    // 4. Authoritative Itemization (Resolves Global Tax Labels)
     autoTable(doc, {
       startY: 75,
-      head: [['Remuneration Element', 'Classification', 'Net Impact']],
+      head: [['Financial Element', 'Classification', 'Net Impact']],
       body: p.payslip_details.map(d => [
-          d.payroll_elements?.name || 'Manual Adjustment',
-          d.payroll_elements?.type.replace('_', ' ') || 'General',
+          d.payroll_elements?.name || 'Administrative Adjustment',
+          d.payroll_elements?.type || 'Operational',
           formatCurrency(d.calculated_amount, p.currency_code)
       ]),
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42], fontStyle: 'bold' },
-      styles: { fontSize: 9 },
-      columnStyles: { 2: { halign: 'right' } }
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 9, cellPadding: 4 },
+      columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }
     });
 
-    // 4. Financial Truth Summary
+    // 5. Final Reconciliation Summary
     const finalY = (doc as any).lastAutoTable.finalY + 15;
     
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("GROSS EARNINGS:", 130, finalY);
+    doc.text("TOTAL GROSS ACCRUAL:", 120, finalY);
     doc.text(formatCurrency(p.gross_earnings, p.currency_code), 196, finalY, { align: 'right' });
     
-    doc.text("TOTAL DEDUCTIONS:", 130, finalY + 7);
+    doc.text("TOTAL DISBURSEMENTS:", 120, finalY + 7);
     doc.setTextColor(220, 38, 38);
     doc.text(`(${formatCurrency(p.total_deductions, p.currency_code)})`, 196, finalY + 7, { align: 'right' });
 
-    // The Sovereign Seal (Net Pay)
+    // The Ledger Seal (Final Net Pay)
     doc.setDrawColor(15, 23, 42);
     doc.setFillColor(248, 250, 252);
-    doc.rect(125, finalY + 12, 71, 15, 'FD');
+    doc.rect(115, finalY + 12, 81, 15, 'FD');
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
-    doc.text("NET DISBURSEMENT:", 130, finalY + 22);
+    doc.text("NET SETTLEMENT:", 120, finalY + 22);
     doc.text(formatCurrency(p.net_pay, p.currency_code), 196, finalY + 22, { align: 'right' });
 
-    // 5. Compliance Footer
+    // 6. Forensic Footer
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
-    doc.text("This document is an authoritative record of BBU1 Global. Calculations comply with the specific tax jurisdiction defined by the node administrator.", 14, finalY + 45);
-    doc.text(`Forensic Fingerprint: ${p.id} | Timestamp: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`, 14, finalY + 50);
+    doc.text("This document is an automated electronic record generated by the BBU1 Global Sovereign Kernel.", 14, finalY + 45);
+    doc.text(`Compliance Check: Verified Against Node [${p.business_id}] | Timestamp: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`, 14, finalY + 50);
 
-    doc.save(`Payslip_${p.employees?.full_name?.replace(/\s/g, '_')}_${periodName}.pdf`);
+    doc.save(`Statement_${p.employees?.full_name?.replace(/\s/g, '_')}_${periodName}.pdf`);
     toast.success("Identity Statement Generated Successfully");
   };
 
   return (
-    <div className="border-none shadow-2xl shadow-slate-200/50 rounded-[2rem] overflow-hidden bg-white">
-      <div className="p-6 bg-slate-50/50 border-b flex items-center justify-between">
-         <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center text-primary">
-                <Landmark className="h-5 w-5" />
+    <div className="border-none shadow-2xl shadow-slate-200/40 rounded-[2.5rem] overflow-hidden bg-white ring-1 ring-slate-100">
+      {/* COMPONENT HEADER */}
+      <div className="p-8 bg-slate-50/50 border-b flex flex-col md:flex-row items-center justify-between gap-6">
+         <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center text-slate-900">
+                <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-                <h3 className="font-black text-slate-900 uppercase tracking-tighter">Identity Compensation Registry</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audit Trail: {tenantName}</p>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter leading-none">Compensation Audit Trail</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                    <Fingerprint className="h-3 w-3" /> SECURE REGISTRY: {tenantName}
+                </p>
             </div>
          </div>
-         <Badge variant="outline" className="bg-white font-black text-[9px] uppercase tracking-widest text-emerald-600 border-emerald-100">
-            <ShieldCheck className="h-3 w-3 mr-1" /> Ledger Synchronized
-         </Badge>
+         <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-white px-4 py-1.5 font-black text-[9px] uppercase tracking-[0.2em] text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-50">
+                <BadgeCheck className="h-3 w-3 mr-2" /> GADS SYNCHRONIZED
+            </Badge>
+         </div>
       </div>
       
+      {/* THE AUTHORITATIVE TABLE */}
       <Table>
-        <TableHeader className="bg-white border-b-2">
-          <TableRow className="hover:bg-transparent border-slate-50">
-            <TableHead className="w-[60px]"></TableHead>
-            <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Authorized Personnel</TableHead>
-            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest text-slate-500">Gross Intake</TableHead>
-            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest text-slate-500">Tax Liabilities</TableHead>
-            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest text-primary">Net Settlement</TableHead>
-            <TableHead className="text-right pr-8 font-black text-[10px] uppercase tracking-widest text-slate-500">Protocol</TableHead>
+        <TableHeader className="bg-white border-b-2 border-slate-50">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-[80px]"></TableHead>
+            <TableHead className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500 py-6">Authorized Personnel</TableHead>
+            <TableHead className="text-right font-black text-[10px] uppercase tracking-[0.2em] text-slate-500">Gross Accrual</TableHead>
+            <TableHead className="text-right font-black text-[10px] uppercase tracking-[0.2em] text-slate-500">Liabilities</TableHead>
+            <TableHead className="text-right font-black text-[10px] uppercase tracking-[0.2em] text-slate-900">Net Settlement</TableHead>
+            <TableHead className="text-right pr-12 font-black text-[10px] uppercase tracking-[0.2em] text-slate-500">Protocol</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {payslips.map((payslip) => (
-            <Collapsible asChild key={payslip.id} open={openPayslipId === payslip.id} onOpenChange={() => setOpenPayslipId(openPayslipId === payslip.id ? null : payslip.id)}>
+            <Collapsible 
+                asChild 
+                key={payslip.id} 
+                open={openPayslipId === payslip.id} 
+                onOpenChange={() => setOpenPayslipId(openPayslipId === payslip.id ? null : payslip.id)}
+            >
               <>
-                <TableRow className="group cursor-pointer hover:bg-slate-50/80 transition-all border-slate-50">
-                  <TableCell className="pl-6">
+                <TableRow className="group cursor-pointer hover:bg-slate-50/50 transition-all border-slate-50 h-24">
+                  <TableCell className="pl-8">
                     <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-8 h-8 p-0 rounded-full hover:bg-white shadow-sm border border-transparent hover:border-slate-100">
-                        {openPayslipId === payslip.id ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+                      <Button variant="ghost" size="sm" className="w-10 h-10 p-0 rounded-full bg-slate-50 group-hover:bg-white transition-colors border border-transparent group-hover:border-slate-100">
+                        {openPayslipId === payslip.id ? <ChevronDown className="h-4 w-4 text-slate-900" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
                       </Button>
                     </CollapsibleTrigger>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-4 py-2">
-                        <div className="h-10 w-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/10">
-                            <span className="font-black text-xs uppercase">{payslip.employees?.full_name?.charAt(0)}</span>
+                    <div className="flex items-center gap-5">
+                        <div className="h-12 w-12 rounded-[1.2rem] bg-slate-900 flex items-center justify-center text-white shadow-xl shadow-slate-900/10 group-hover:scale-105 transition-transform">
+                            <span className="font-black text-sm uppercase">{payslip.employees?.full_name?.charAt(0)}</span>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 tracking-tight">{payslip.employees?.full_name || 'System User'}</span>
-                            <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest opacity-60">
-                                {payslip.employees?.job_title || "OPERATOR"}
+                        <div className="flex flex-col gap-0.5">
+                            <span className="font-black text-slate-900 tracking-tight uppercase text-xs">{payslip.employees?.full_name || 'Authorized Staff'}</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                {payslip.employees?.job_title || "NODE OPERATOR"}
                             </span>
                         </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono font-bold text-slate-500">
+                  <TableCell className="text-right font-mono font-bold text-slate-500 text-sm">
                     {formatCurrency(payslip.gross_earnings, payslip.currency_code)}
                   </TableCell>
-                  <TableCell className="text-right text-red-500 font-mono font-bold">
-                    {formatCurrency(payslip.total_deductions, payslip.currency_code)}
+                  <TableCell className="text-right text-red-500 font-mono font-bold text-sm">
+                    ({formatCurrency(payslip.total_deductions, payslip.currency_code)})
                   </TableCell>
-                  <TableCell className="text-right font-black font-mono text-slate-900 text-lg tracking-tighter">
+                  <TableCell className="text-right font-black font-mono text-slate-900 text-xl tracking-tighter">
                     {formatCurrency(payslip.net_pay, payslip.currency_code)}
                   </TableCell>
-                  <TableCell className="text-right pr-8">
-                    <div className="flex justify-end gap-3">
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="h-10 px-4 rounded-xl border-slate-200 font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-sm group/btn"
-                            onClick={(e) => { e.stopPropagation(); handleDownloadPDF(payslip); }}
-                        >
-                            <Printer className="h-3.5 w-3.5 mr-2 group-hover/btn:rotate-12 transition-transform" /> Generate PDF
-                        </Button>
-                    </div>
+                  <TableCell className="text-right pr-12">
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-11 px-6 rounded-2xl border-slate-200 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white transition-all shadow-sm hover:shadow-xl hover:shadow-slate-900/10 group/btn"
+                        onClick={(e) => { e.stopPropagation(); handleDownloadPDF(payslip); }}
+                    >
+                        <Printer className="h-4 w-4 mr-3 group-hover/btn:rotate-12 transition-transform" /> Print Record
+                    </Button>
                   </TableCell>
                 </TableRow>
+                
+                {/* ITEMIZED BREAKDOWN CONTENT */}
                 <CollapsibleContent asChild>
-                  <TableRow className="bg-slate-50/30">
+                  <TableRow className="bg-slate-50/20">
                     <TableCell colSpan={6} className="p-0">
-                      <div className="p-8 border-l-4 border-l-primary m-6 bg-white rounded-3xl shadow-xl border border-slate-100">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-50 rounded-lg">
-                                    <Receipt className="h-5 w-5 text-blue-600" />
+                      <div className="p-10 border-l-4 border-l-slate-900 m-8 bg-white rounded-[2.5rem] shadow-2xl ring-1 ring-slate-100 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-slate-900 rounded-2xl text-white">
+                                    <Receipt className="h-5 w-5" />
                                 </div>
-                                <h4 className="font-black text-sm text-slate-900 uppercase tracking-tighter">Itemized Settlement Breakdown</h4>
+                                <div>
+                                    <h4 className="font-black text-sm text-slate-900 uppercase tracking-tighter leading-none">Financial Element Decomposition</h4>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Audit Log Reference: {payslip.id.substring(0,12)}</p>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100">
-                                <Scale className="h-3 w-3 text-slate-400" />
-                                <span className="text-[9px] font-black uppercase text-slate-500">Verified Balanced Statement</span>
+                            <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase leading-none">Net Intitial</p>
+                                    <p className="text-sm font-mono font-black text-slate-900">{formatCurrency(payslip.basic_salary, payslip.currency_code)}</p>
+                                </div>
+                                <div className="h-8 w-[1px] bg-slate-100" />
+                                <Scale className="h-5 w-5 text-slate-300" />
                             </div>
                         </div>
                         
-                        <div className='rounded-2xl border border-slate-100 overflow-hidden shadow-sm'>
+                        <div className='rounded-[1.5rem] border border-slate-100 overflow-hidden shadow-inner bg-slate-50/30'>
                         <Table>
-                          <TableHeader className="bg-slate-50/50">
+                          <TableHeader className="bg-slate-50/80">
                             <TableRow className="border-none">
-                              <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Financial Element</TableHead>
-                              <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Classification</TableHead>
-                              <TableHead className="text-right text-[10px] font-black uppercase tracking-widest h-10 pr-6">Calculated Amount</TableHead>
+                              <TableHead className="text-[9px] font-black uppercase tracking-[0.2em] h-12 pl-6">Statutory Element</TableHead>
+                              <TableHead className="text-[9px] font-black uppercase tracking-[0.2em] h-12">Registry Class</TableHead>
+                              <TableHead className="text-right text-[9px] font-black uppercase tracking-[0.2em] h-12 pr-8">Calculation Result</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {payslip.payslip_details.map((detail, index) => (
-                              <TableRow key={index} className="border-slate-50">
-                                <TableCell className="font-bold text-slate-700 text-sm">{detail.payroll_elements?.name || 'Manual Adjustment'}</TableCell>
+                              <TableRow key={index} className="border-slate-50 hover:bg-white transition-colors h-14">
+                                <TableCell className="font-black text-slate-700 text-xs pl-6 uppercase tracking-tight">
+                                    {detail.payroll_elements?.name || 'Operational Adjustment'}
+                                </TableCell>
                                 <TableCell>
                                   <Badge 
-                                    className="text-[9px] font-black border-none px-2 py-0.5 rounded-md"
+                                    className="text-[8px] font-black border-none px-3 py-1 rounded-full uppercase tracking-widest"
                                     variant={getElementTypeVariant(detail.payroll_elements?.type || '')}
                                   >
-                                    {detail.payroll_elements?.type.replace('_', ' ')}
+                                    {detail.payroll_elements?.type?.replace('_', ' ') || 'General'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className={cn(
-                                    "text-right font-mono font-bold pr-6",
+                                    "text-right font-mono font-bold pr-8 text-sm",
                                     Number(detail.calculated_amount) < 0 ? "text-red-500" : "text-slate-900"
                                 )}>
-                                  {formatCurrency(detail.calculated_amount, payslip.currency_code)}
+                                  {Number(detail.calculated_amount) < 0 ? `(${formatCurrency(Math.abs(Number(detail.calculated_amount)), payslip.currency_code)})` : formatCurrency(detail.calculated_amount, payslip.currency_code)}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -273,14 +307,19 @@ export function ReviewPayslipTable({ payslips, tenantName = "LITONU BBU1 Entity"
                         </Table>
                         </div>
                         
-                        <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                                <Fingerprint className="h-3.5 w-3.5" />
-                                <span>Ledger Lock: GADS-PAYROLL-{payslip.id.substring(0,8).toUpperCase()}</span>
+                        <div className="mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-6 border-t border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400">
+                                    <Coins className="h-4 w-4" />
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                                    Total Operational Flux Reconciled Successfully
+                                </p>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] text-amber-600 font-bold uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                <span>Subject to Statutory Reconciliation</span>
+                            <div className="flex items-center gap-3 px-4 py-2 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                                <Badge variant="outline" className="bg-white border-blue-200 text-blue-600 font-black text-[8px] uppercase tracking-tighter">
+                                    SOVEREIGN HANDSHAKE VERIFIED
+                                </Badge>
                             </div>
                         </div>
                       </div>
@@ -292,6 +331,19 @@ export function ReviewPayslipTable({ payslips, tenantName = "LITONU BBU1 Entity"
           ))}
         </TableBody>
       </Table>
+      
+      {/* EMPTY STATE LOGIC */}
+      {payslips.length === 0 && (
+          <div className="p-24 flex flex-col items-center justify-center text-center space-y-6">
+              <div className="h-20 w-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center text-slate-200 border-2 border-dashed border-slate-100">
+                <FileText className="h-10 w-10" />
+              </div>
+              <div>
+                  <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Registry Void Detected</h4>
+                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest mt-2">No calculated labor records found in this cycle node.</p>
+              </div>
+          </div>
+      )}
     </div>
   );
 }
