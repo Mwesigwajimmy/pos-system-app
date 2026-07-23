@@ -25,7 +25,7 @@ export async function runPayrollCalculation(
     tenantId: string, 
     periodStart: string, 
     periodEnd: string,
-    dynamicElements?: any[] // User-defined overrides (PAYE/NSSF)
+    dynamicElements?: any[]
 ) {
   const cookieStore = cookies();
   const supabase = getSovereignClient(cookieStore);
@@ -33,61 +33,49 @@ export async function runPayrollCalculation(
   // 1. FORENSIC INFRASTRUCTURE FETCH
   const [
     { data: employees, error: employeesError },
-    { data: fluxInputs, error: fluxError }
+    { data: fluxInputs, error: fluxError },
+    { data: tenant }
   ] = await Promise.all([
-    // Fetch personnel and their unique salary contract
-    supabase.from('employees').select(`
-      id, 
-      full_name, 
-      business_id,
-      salary:hr_employee_salaries(*)
-    `).eq('business_id', tenantId).eq('is_active', true),
-    
-    // Fetch commissions/bonuses for this specific window
-    supabase.from('hr_payroll_inputs')
-      .select('*')
-      .eq('business_id', tenantId)
-      .gte('effective_date', periodStart)
-      .lte('effective_date', periodEnd)
+    supabase.from('employees').select(`id, full_name, business_id, salary:hr_employee_salaries(*)`).eq('business_id', tenantId).eq('is_active', true),
+    supabase.from('hr_payroll_inputs').select('*').eq('business_id', tenantId).gte('effective_date', periodStart).lte('effective_date', periodEnd),
+    supabase.from('tenants').select('currency_code').eq('id', tenantId).single()
   ]);
 
   if (employeesError || fluxError) {
     return { error: 'Authoritative Handshake Refused: Infrastructure registry offline.' };
   }
 
-  // 2. DATA TRANSLATION (Mapping DB to your specific Types)
-  const typedEmployees: EmployeeWithContract[] = (employees || []).map(emp => {
-      // UNIQUE Constraint fix: emp.salary is now a single object, not an array
-      const dbSalary = emp.salary as any;
-      const basePay = Number(dbSalary?.base_amount || 0);
+  // 2. DATA TRANSLATION & ARCHITECTURAL MAPPING
+  // We store a local map of 'basic_salary' to satisfy the DB constraint later
+  const employeeBaseSalaries: Record<string, number> = {};
 
-      // Aggregating Weekly Commissions
+  const typedEmployees: EmployeeWithContract[] = (employees || []).map(emp => {
+      const dbSalary = emp.salary as any;
+      const baseAmount = Number(dbSalary?.base_amount || 0);
+      employeeBaseSalaries[emp.id] = baseAmount; // SELLING THE BASE VALUE FOR THE SEAL
+
       const fluxTotal = (fluxInputs || [])
         .filter(f => f.employee_id === emp.id)
         .reduce((sum, f) => sum + Number(f.amount || 0), 0);
 
-      // Construct the object following your src/types/payroll.ts interface
       return {
         id: emp.id,
         full_name: emp.full_name,
         business_id: emp.business_id,
         contracts: {
           contract_elements: [
-            // Element 1: The Base Contract (Fixed Salary)
             {
-              amount: basePay,
+              amount: baseAmount,
               currency_code: dbSalary?.currency_code || 'UGX',
               payroll_elements: { id: 101, name: 'Basic Salary', type: 'EARNING', is_system_defined: true }
             },
-            // Element 2: Operational Flux (Commissions)
             {
               amount: fluxTotal,
               currency_code: dbSalary?.currency_code || 'UGX',
-              payroll_elements: { id: 102, name: 'Commissions', type: 'EARNING', is_system_defined: false }
+              payroll_elements: { id: 102, name: 'Operational Flux', type: 'EARNING', is_system_defined: false }
             },
-            // Dynamic Statutory Elements (PAYE/NSSF from the Form)
             ...(dynamicElements || []).map((de, idx) => ({
-              amount: (basePay + fluxTotal) * (Number(de.value) / 100),
+              amount: (baseAmount + fluxTotal) * (Number(de.value) / 100),
               currency_code: 'UGX',
               payroll_elements: { id: 200 + idx, name: de.name, type: de.type, is_system_defined: true }
             }))
@@ -95,23 +83,22 @@ export async function runPayrollCalculation(
         }
       } as EmployeeWithContract;
   }).filter(emp => {
-      // Only include employees who actually have earnings this cycle
-      const total = emp.contracts.contract_elements.reduce((s, el) => s + el.amount, 0);
-      return total > 0;
+      const earnings = emp.contracts.contract_elements.filter(e => e.payroll_elements.type === 'EARNING').reduce((s, el) => s + el.amount, 0);
+      return earnings > 0;
   });
 
   if (typedEmployees.length === 0) {
-    return { error: 'Node Integrity Error: No personnel with authorized labor value found.' };
+    return { error: 'Node Integrity Error: No personnel with authorized salary detected.' };
   }
 
-  // 3. EXECUTE SOVEREIGN MATH
+  // 3. EXECUTE CALCULATION ENGINE
   try {
       const results = calculateUniversalPayroll(typedEmployees);
       
-      // 4. ATOMIC LEDGER GENERATION
+      // 4. ATOMIC RUN GENERATION
       const { data: run, error: runError } = await supabase.from('hr_payroll_runs').insert({
         business_id: tenantId,
-        period_name: `${format(new Date(periodStart), 'dd MMM')} - ${format(new Date(periodEnd), 'dd MMM yyyy')}`,
+        period_name: `${format(periodStart, 'MMM d')} - ${format(periodEnd, 'MMM d, yyyy')}`,
         status: 'DRAFT',
         total_net_pay: results.reduce((sum, r) => sum + r.netPay, 0),
         total_tax_paye: results.reduce((sum, r) => sum + r.totalDeductions, 0)
@@ -119,14 +106,19 @@ export async function runPayrollCalculation(
 
       if (runError) throw runError;
 
-      // 5. SEAL INDIVIDUAL PAYSLIPS
+      // 5. SEAL INDIVIDUAL PAYSLIPS (MANDATORY SCHEMA WELD)
       const payslips = results.map(r => ({
           payroll_run_id: run.id,
           employee_id: r.employeeId,
           business_id: tenantId,
+          // --- THE ENTERPRISE FIX ---
+          basic_salary: employeeBaseSalaries[r.employeeId], // Satisfies NOT NULL
+          net_pay: r.netPay,                                // Satisfies NOT NULL
+          // --- ADDITIONAL AUDIT DATA ---
           gross_earnings: r.grossEarnings,
-          net_pay: r.netPay,
           total_deductions: r.totalDeductions,
+          tax_amount: r.details.filter(d => d.amount < 0).reduce((s, d) => s + Math.abs(d.amount), 0),
+          currency_code: tenant?.currency_code || 'UGX',
           status: 'DRAFT'
       }));
 
