@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,13 +12,8 @@ import {
     Trash2, 
     History, 
     Loader2, 
-    Info,
-    UserCheck,
-    Briefcase,
-    CalendarDays,
-    ArrowRight,
     CheckCircle2,
-    FileText
+    Briefcase
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,8 +31,7 @@ import {
     FormField, 
     FormItem, 
     FormLabel, 
-    FormMessage,
-    FormDescription 
+    FormMessage 
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { createClient } from '@/lib/supabase/client';
@@ -45,24 +39,24 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 /**
- * BBU1 SOVEREIGN LABOR COMPENSATION MANAGER
- * VERSION: 11.2 | ENTERPRISE REGISTRY WELD
+ * BBU1 SOVEREIGN LABOR REGISTRY - V11.5
+ * Authoritative dual-engine registry for contractual and operational labor value.
  */
 
 const contractSchema = z.object({
-  employee_id: z.string().uuid("Please select a person from the registry"),
+  employee_id: z.string().uuid("Selection required"),
   contract_type: z.enum(['PERMANENT', 'RETAINER', 'EXTERNAL_PROVIDER']),
   pay_frequency: z.enum(['MONTHLY', 'BI-WEEKLY', 'WEEKLY']),
-  base_amount: z.coerce.number().min(1, "Base amount must be greater than zero"),
+  base_amount: z.coerce.number().min(1, "Value required"),
   currency_code: z.string().default('UGX'),
 });
 
 const variablePaySchema = z.object({
-  employee_id: z.string().uuid("Please select a person from the registry"),
+  employee_id: z.string().uuid("Selection required"),
   input_type: z.enum(['COMMISSION', 'BONUS', 'OVERTIME', 'DEDUCTION']),
-  amount: z.coerce.number().min(1, "Amount must be greater than zero"),
-  effective_date: z.string().min(1, "Date is required"),
-  description: z.string().min(3, "Please provide a reason for this payment"),
+  amount: z.coerce.number().min(1, "Value required"),
+  effective_date: z.string().min(1, "Date required"),
+  description: z.string().min(3, "Narrative required"),
 });
 
 interface SalaryManagerProps {
@@ -75,55 +69,52 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
   const [isSavingContract, setIsSavingContract] = useState(false);
   const [isSavingVariable, setIsSavingVariable] = useState(false);
   
-  // REGISTRY DATA STATES
+  // UNIFIED REGISTRY STATE
   const [recentInputs, setRecentInputs] = useState<any[]>([]);
   const [activeContracts, setActiveContracts] = useState<any[]>([]);
 
   /**
-   * AUTHORITATIVE DATA REFRESH
-   * Pulls both base contracts and variable flux from the BBU1 node.
+   * AUTHORITATIVE REFRESH LOGIC
+   * Performs a parallel forensic fetch of base and flux registries.
    */
-  const refreshRegistryData = async () => {
-    // 1. Fetch Variable Flux (Commissions/Bonuses)
-    const { data: inputs } = await supabase
-      .from('hr_payroll_inputs')
-      .select('*, employees(full_name)')
-      .eq('business_id', businessId)
-      .order('created_at', { ascending: false })
-      .limit(8);
-    
-    // 2. Fetch Base Personnel Contracts (Sealed Salaries)
-    const { data: contracts } = await supabase
-      .from('hr_employee_salaries')
-      .select('*, employees(full_name)')
-      .eq('business_id', businessId)
-      .order('effective_date', { ascending: false });
-    
-    if (inputs) setRecentInputs(inputs);
-    if (contracts) setActiveContracts(contracts);
-  };
+  const refreshRegistryData = useCallback(async () => {
+    try {
+      const [contractsResponse, fluxResponse] = await Promise.all([
+        supabase
+          .from('hr_employee_salaries')
+          .select('*, employees(full_name)')
+          .eq('business_id', businessId)
+          .order('effective_date', { ascending: false }),
+        supabase
+          .from('hr_payroll_inputs')
+          .select('*, employees(full_name)')
+          .eq('business_id', businessId)
+          .order('created_at', { ascending: false })
+          .limit(8)
+      ]);
+
+      if (contractsResponse.data) setActiveContracts(contractsResponse.data);
+      if (fluxResponse.data) setRecentInputs(fluxResponse.data);
+      
+    } catch (err) {
+      console.error("REGISTRY_FETCH_FAULT:", err);
+    }
+  }, [businessId, supabase]);
 
   useEffect(() => {
     refreshRegistryData();
-  }, [businessId]);
+  }, [refreshRegistryData]);
 
-  // 1. Form: Base Contracts
+  // 1. Fixed Salary Form
   const contractForm = useForm<z.infer<typeof contractSchema>>({
     resolver: zodResolver(contractSchema),
-    defaultValues: {
-      contract_type: 'PERMANENT',
-      pay_frequency: 'MONTHLY',
-      currency_code: 'UGX'
-    }
+    defaultValues: { contract_type: 'PERMANENT', pay_frequency: 'MONTHLY', currency_code: 'UGX' }
   });
 
-  // 2. Form: Variable Pay
+  // 2. Commissions / Bonuses Form
   const variableForm = useForm<z.infer<typeof variablePaySchema>>({
     resolver: zodResolver(variablePaySchema),
-    defaultValues: {
-      input_type: 'COMMISSION',
-      effective_date: format(new Date(), 'yyyy-MM-dd')
-    }
+    defaultValues: { input_type: 'COMMISSION', effective_date: format(new Date(), 'yyyy-MM-dd') }
   });
 
   const onContractSubmit = async (values: z.infer<typeof contractSchema>) => {
@@ -142,7 +133,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
     setIsSavingContract(false);
     if (error) return toast.error("Handshake Refused", { description: error.message });
     
-    toast.success("Identity Sealed", { description: "Personnel compensation registry updated." });
+    toast.success("Identity Sealed", { description: "Contract recorded." });
     contractForm.reset({ ...contractForm.getValues(), base_amount: 0 });
     refreshRegistryData();
   };
@@ -161,7 +152,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
     setIsSavingVariable(false);
     if (error) return toast.error("Registry Error", { description: error.message });
     
-    toast.success("Entry Recorded", { description: "Flux entry successfully committed to ledger." });
+    toast.success("Entry Recorded", { description: "Flux entry committed." });
     variableForm.reset({ ...variableForm.getValues(), amount: 0, description: '' });
     refreshRegistryData();
   };
@@ -174,23 +165,21 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
   return (
     <div className="flex flex-col gap-16 p-8 max-w-[1400px] mx-auto bg-white min-h-screen">
       
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b-2 border-slate-100">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b-2 border-slate-100">
         <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Labor Compensation Registry</h1>
-            <p className="text-slate-500 text-sm font-medium">Registry administration for contractual base and operational flux.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase leading-none">Labor Compensation Control</h1>
+            <p className="text-slate-500 text-sm font-medium">Authoritative management of contractual base and operational flux.</p>
         </div>
         <div className="text-right flex flex-col items-end">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Authoritative Node</p>
-            <div className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-                <p className="text-[11px] font-mono font-bold text-slate-600 tracking-tighter">{businessId}</p>
-            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Node</p>
+            <p className="text-xs font-mono font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border">{businessId}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         
-        {/* SECTION 1: BASE COMPENSATION (CONTRACTS) */}
+        {/* FORM 1: BASE REGISTRY */}
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-red-600 rounded-full" />
@@ -283,7 +272,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                   <Button 
                       type="submit" 
                       disabled={isSavingContract} 
-                      className="w-full h-12 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-widest transition-all rounded-lg"
+                      className="w-full h-12 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-widest rounded-lg"
                   >
                     {isSavingContract ? <Loader2 className="animate-spin h-4 w-4" /> : "Commit Contract"}
                   </Button>
@@ -293,7 +282,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
           </Card>
         </div>
 
-        {/* SECTION 2: VARIABLE FLUX (COMMISSIONS/BONUSES) */}
+        {/* FORM 2: OPERATIONAL FLUX */}
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-amber-500 rounded-full" />
@@ -380,11 +369,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                       <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Registry Narrative</FormLabel>
                         <FormControl>
-                          <Input 
-                              placeholder="Reason for disbursement..." 
-                              className="h-11 bg-slate-50 border-slate-200 shadow-none text-sm font-medium" 
-                              {...field} 
-                          />
+                          <Input placeholder="Reason for disbursement..." className="h-11 bg-slate-50 border-slate-200 shadow-none text-sm font-medium" {...field} />
                         </FormControl>
                       </FormItem>
                     )}
@@ -404,7 +389,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
         </div>
       </div>
 
-      {/* SECTION 3: PERSONNEL CONTRACT REGISTRY (FIXED) */}
+      {/* TABLE 1: BASE CONTRACT REGISTRY */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -415,39 +400,32 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">{activeContracts.length} SEALED CONTRACTS</span>
             </div>
         </div>
-
         <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
             <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Official Name</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Contract Class</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Cycle</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-right">Base Value (UGX)</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Effective Date</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Seal</th>
+                <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Personnel Name</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Designation</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Cycle</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-right">Base (UGX)</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Seal Date</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Identity</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                     {activeContracts.length === 0 && (
-                        <tr>
-                            <td colSpan={6} className="p-12 text-center text-slate-300 text-xs italic font-medium">Awaiting contractual labor inputs for this node...</td>
-                        </tr>
+                        <tr><td colSpan={6} className="p-12 text-center text-slate-300 text-xs italic">Awaiting base contracts for this node...</td></tr>
                     )}
                     {activeContracts.map(contract => (
                         <tr key={contract.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-4 text-xs font-bold text-slate-800 uppercase tracking-tight">{contract.employees?.full_name}</td>
+                            <td className="p-4 text-xs font-bold text-slate-800 uppercase">{contract.employees?.full_name}</td>
                             <td className="p-4 text-[11px] font-medium text-slate-500">{contract.contract_type}</td>
                             <td className="p-4 text-center">
-                                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] font-black uppercase border border-blue-100">
-                                    {contract.pay_frequency}
-                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] font-black uppercase border border-blue-100">{contract.pay_frequency}</span>
                             </td>
                             <td className="p-4 text-xs font-mono font-black text-slate-900 text-right">{Number(contract.base_amount).toLocaleString()}</td>
                             <td className="p-4 text-center text-[11px] text-slate-400 font-semibold">{format(new Date(contract.effective_date), 'dd MMM yyyy')}</td>
-                            <td className="p-4 text-center">
-                                <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
-                            </td>
+                            <td className="p-4 text-center"><CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /></td>
                         </tr>
                     ))}
                 </tbody>
@@ -455,43 +433,38 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
         </div>
       </div>
 
-      {/* SECTION 4: RECENT LABOR LOGS (VARIABLE FLUX) */}
+      {/* TABLE 2: OPERATIONAL FLUX AUDIT TRAIL */}
       <div className="space-y-6">
         <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-slate-900 rounded-full" />
             <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Operational Flux Audit Trail (Last 8 Entries)</h2>
         </div>
-
-        <div className="border border-slate-100 rounded-2xl overflow-hidden">
+        <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
             <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100">
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Beneficiary</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Flux Type</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Date</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Registry Narrative</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-right">Amount (UGX)</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Action</th>
+                <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Beneficiary</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Type</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Date</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Narrative</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-right">Value (UGX)</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                     {recentInputs.length === 0 && (
-                        <tr>
-                            <td colSpan={6} className="p-12 text-center text-slate-400 text-xs italic">Awaiting operational flux records...</td>
-                        </tr>
+                        <tr><td colSpan={6} className="p-12 text-center text-slate-400 text-xs italic">Awaiting operational records...</td></tr>
                     )}
                     {recentInputs.map(input => (
                         <tr key={input.id} className="hover:bg-slate-50/50 transition-colors group">
-                            <td className="p-4 text-xs font-bold text-slate-700 uppercase tracking-tight">{input.employees?.full_name}</td>
+                            <td className="p-4 text-xs font-bold text-slate-700 uppercase">{input.employees?.full_name}</td>
                             <td className="p-4">
                                 <span className={cn(
                                     "px-2 py-0.5 rounded-full text-[9px] font-black uppercase border",
                                     input.input_type === 'COMMISSION' ? 'bg-green-50 text-green-700 border-green-100' :
                                     input.input_type === 'BONUS' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                     'bg-slate-50 text-slate-700 border-slate-100'
-                                )}>
-                                    {input.input_type}
-                                </span>
+                                )}>{input.input_type}</span>
                             </td>
                             <td className="p-4 text-center text-xs text-slate-400 font-medium">{format(new Date(input.effective_date), 'dd MMM yyyy')}</td>
                             <td className="p-4 text-xs text-slate-500 italic max-w-xs truncate font-medium">{input.description}</td>
@@ -508,20 +481,18 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
         </div>
       </div>
 
-      {/* SYSTEM SEAL: PROFESSIONAL FOOTER */}
-      <div className="mt-8 pt-10 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* FOOTER */}
+      <div className="mt-8 pt-10 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6 opacity-80 hover:opacity-100 transition-opacity">
         <div className="flex items-center gap-4">
-            <div className="p-2 bg-slate-50 rounded-lg">
-                <ShieldCheck className="h-5 w-5 text-slate-400" />
-            </div>
+            <div className="p-2 bg-slate-50 rounded-lg"><ShieldCheck className="h-5 w-5 text-slate-400" /></div>
             <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">BBU1 Global Sovereign Kernel v11.2</p>
-                <p className="text-[9px] font-medium text-slate-500 uppercase tracking-tighter mt-0.5 leading-none">Authoritative Handshake and Secure Ledger Tunnel Active.</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">BBU1 Global Sovereign Kernel v11.5</p>
+                <p className="text-[9px] font-medium text-slate-500 uppercase tracking-tighter mt-1 leading-none">Identity Reconciled and Secure Ledger Tunnel Active.</p>
             </div>
         </div>
-        <div className="flex items-center gap-2 px-5 py-2 bg-slate-50 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2 px-5 py-2 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic">Identity Reconciled and Sealed</span>
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic leading-none">System Sync Active</span>
         </div>
       </div>
     </div>
