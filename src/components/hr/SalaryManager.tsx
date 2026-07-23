@@ -13,7 +13,9 @@ import {
     History, 
     Loader2, 
     CheckCircle2,
-    Briefcase
+    Briefcase,
+    AlertCircle,
+    Info
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +33,8 @@ import {
     FormField, 
     FormItem, 
     FormLabel, 
-    FormMessage 
+    FormMessage,
+    FormDescription 
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { createClient } from '@/lib/supabase/client';
@@ -39,24 +42,26 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 /**
- * BBU1 SOVEREIGN LABOR REGISTRY - V11.5
- * Authoritative dual-engine registry for contractual and operational labor value.
+ * BBU1 SOVEREIGN LABOR REGISTRY - V11.8
+ * VERSION: AUTHORITATIVE INFRASTRUCTURE ALIGNMENT
+ * 
+ * DEEP FIX: Removed join-hints (!) now that DB constraints are de-duplicated.
  */
 
 const contractSchema = z.object({
-  employee_id: z.string().uuid("Selection required"),
+  employee_id: z.string().uuid("Please select a person from the registry"),
   contract_type: z.enum(['PERMANENT', 'RETAINER', 'EXTERNAL_PROVIDER']),
   pay_frequency: z.enum(['MONTHLY', 'BI-WEEKLY', 'WEEKLY']),
-  base_amount: z.coerce.number().min(1, "Value required"),
+  base_amount: z.coerce.number().min(0, "Base amount required"),
   currency_code: z.string().default('UGX'),
 });
 
 const variablePaySchema = z.object({
-  employee_id: z.string().uuid("Selection required"),
+  employee_id: z.string().uuid("Please select a person from the registry"),
   input_type: z.enum(['COMMISSION', 'BONUS', 'OVERTIME', 'DEDUCTION']),
-  amount: z.coerce.number().min(1, "Value required"),
-  effective_date: z.string().min(1, "Date required"),
-  description: z.string().min(3, "Narrative required"),
+  amount: z.coerce.number().min(1, "Amount must be greater than zero"),
+  effective_date: z.string().min(1, "Date is required"),
+  description: z.string().min(3, "Please provide a reason for this payment"),
 });
 
 interface SalaryManagerProps {
@@ -75,29 +80,36 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
 
   /**
    * AUTHORITATIVE REFRESH LOGIC
-   * Performs a parallel forensic fetch of base and flux registries.
+   * Fetches data using the cleaned database pipes.
    */
   const refreshRegistryData = useCallback(async () => {
     try {
       const [contractsResponse, fluxResponse] = await Promise.all([
+        // 1. Fetch Base Salaries
         supabase
           .from('hr_employee_salaries')
           .select('*, employees(full_name)')
           .eq('business_id', businessId)
           .order('effective_date', { ascending: false }),
+        
+        // 2. Fetch Operational Flux (Variable Pay)
         supabase
           .from('hr_payroll_inputs')
           .select('*, employees(full_name)')
           .eq('business_id', businessId)
           .order('created_at', { ascending: false })
-          .limit(8)
+          .limit(10)
       ]);
+
+      if (contractsResponse.error) throw contractsResponse.error;
+      if (fluxResponse.error) throw fluxResponse.error;
 
       if (contractsResponse.data) setActiveContracts(contractsResponse.data);
       if (fluxResponse.data) setRecentInputs(fluxResponse.data);
       
-    } catch (err) {
-      console.error("REGISTRY_FETCH_FAULT:", err);
+    } catch (err: any) {
+      console.error("REGISTRY_HANDSHAKE_FAULT:", err);
+      toast.error("Registry Sync Failed", { description: err.message });
     }
   }, [businessId, supabase]);
 
@@ -105,16 +117,23 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
     refreshRegistryData();
   }, [refreshRegistryData]);
 
-  // 1. Fixed Salary Form
+  // 1. Fixed Salary Form Logic
   const contractForm = useForm<z.infer<typeof contractSchema>>({
     resolver: zodResolver(contractSchema),
-    defaultValues: { contract_type: 'PERMANENT', pay_frequency: 'MONTHLY', currency_code: 'UGX' }
+    defaultValues: {
+      contract_type: 'PERMANENT',
+      pay_frequency: 'MONTHLY',
+      currency_code: 'UGX'
+    }
   });
 
-  // 2. Commissions / Bonuses Form
+  // 2. Variable Pay Form Logic
   const variableForm = useForm<z.infer<typeof variablePaySchema>>({
     resolver: zodResolver(variablePaySchema),
-    defaultValues: { input_type: 'COMMISSION', effective_date: format(new Date(), 'yyyy-MM-dd') }
+    defaultValues: {
+      input_type: 'COMMISSION',
+      effective_date: format(new Date(), 'yyyy-MM-dd')
+    }
   });
 
   const onContractSubmit = async (values: z.infer<typeof contractSchema>) => {
@@ -133,7 +152,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
     setIsSavingContract(false);
     if (error) return toast.error("Handshake Refused", { description: error.message });
     
-    toast.success("Identity Sealed", { description: "Contract recorded." });
+    toast.success("Identity Sealed", { description: "Personnel compensation registry updated." });
     contractForm.reset({ ...contractForm.getValues(), base_amount: 0 });
     refreshRegistryData();
   };
@@ -152,7 +171,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
     setIsSavingVariable(false);
     if (error) return toast.error("Registry Error", { description: error.message });
     
-    toast.success("Entry Recorded", { description: "Flux entry committed." });
+    toast.success("Entry Recorded", { description: "Flux entry successfully committed." });
     variableForm.reset({ ...variableForm.getValues(), amount: 0, description: '' });
     refreshRegistryData();
   };
@@ -165,21 +184,23 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
   return (
     <div className="flex flex-col gap-16 p-8 max-w-[1400px] mx-auto bg-white min-h-screen">
       
-      {/* HEADER */}
+      {/* HEADER SECTION: CLEAN ENTERPRISE STYLE */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2 border-b-2 border-slate-100">
         <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase leading-none">Labor Compensation Control</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase">Labor Compensation Control</h1>
             <p className="text-slate-500 text-sm font-medium">Authoritative management of contractual base and operational flux.</p>
         </div>
         <div className="text-right flex flex-col items-end">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Node</p>
-            <p className="text-xs font-mono font-semibold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border">{businessId}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" /> Secure Node Sync
+            </p>
+            <p className="text-[11px] font-mono font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border">{businessId}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         
-        {/* FORM 1: BASE REGISTRY */}
+        {/* SECTION 1: BASE COMPENSATION (CONTRACTS) */}
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-red-600 rounded-full" />
@@ -204,7 +225,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                           </FormControl>
                           <SelectContent>
                             {employees.map(e => (
-                              <SelectItem key={e.id} value={e.id} className="text-xs">{e.full_name}</SelectItem>
+                              <SelectItem key={e.id} value={e.id} className="text-xs font-bold uppercase tracking-tight">{e.full_name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -272,7 +293,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                   <Button 
                       type="submit" 
                       disabled={isSavingContract} 
-                      className="w-full h-12 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-widest rounded-lg"
+                      className="w-full h-12 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-widest transition-all rounded-lg"
                   >
                     {isSavingContract ? <Loader2 className="animate-spin h-4 w-4" /> : "Commit Contract"}
                   </Button>
@@ -282,7 +303,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
           </Card>
         </div>
 
-        {/* FORM 2: OPERATIONAL FLUX */}
+        {/* SECTION 2: VARIABLE FLUX (COMMISSIONS/BONUSES) */}
         <div className="space-y-6">
           <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-amber-500 rounded-full" />
@@ -308,7 +329,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                             </FormControl>
                             <SelectContent>
                               {employees.map(e => (
-                                  <SelectItem key={e.id} value={e.id} className="text-xs">{e.full_name}</SelectItem>
+                                  <SelectItem key={e.id} value={e.id} className="text-xs uppercase font-bold">{e.full_name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -324,10 +345,10 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="h-11 bg-slate-50 border-slate-200 shadow-none text-sm font-medium"><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent>
-                              <SelectItem value="COMMISSION" className="text-xs">Commission</SelectItem>
-                              <SelectItem value="BONUS" className="text-xs">Bonus</SelectItem>
-                              <SelectItem value="OVERTIME" className="text-xs">Overtime</SelectItem>
-                              <SelectItem value="DEDUCTION" className="text-xs">Penalty</SelectItem>
+                              <SelectItem value="COMMISSION" className="text-xs font-bold text-green-600">Commission</SelectItem>
+                              <SelectItem value="BONUS" className="text-xs font-bold text-blue-600">Bonus</SelectItem>
+                              <SelectItem value="OVERTIME" className="text-xs font-bold text-amber-600">Overtime</SelectItem>
+                              <SelectItem value="DEDUCTION" className="text-xs font-bold text-red-600">Penalty</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormItem>
@@ -369,7 +390,11 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                       <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Registry Narrative</FormLabel>
                         <FormControl>
-                          <Input placeholder="Reason for disbursement..." className="h-11 bg-slate-50 border-slate-200 shadow-none text-sm font-medium" {...field} />
+                          <Input 
+                              placeholder="Reason for disbursement..." 
+                              className="h-11 bg-slate-50 border-slate-200 shadow-none text-sm font-medium" 
+                              {...field} 
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -389,7 +414,7 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
         </div>
       </div>
 
-      {/* TABLE 1: BASE CONTRACT REGISTRY */}
+      {/* SECTION 3: PERSONNEL CONTRACT REGISTRY (FIXED) */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -400,32 +425,39 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
                 <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">{activeContracts.length} SEALED CONTRACTS</span>
             </div>
         </div>
+
         <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
             <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Personnel Name</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Designation</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Cycle</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-right">Base (UGX)</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Seal Date</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Identity</th>
+                <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Official Name</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Contract Class</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Cycle</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-right">Base Value (UGX)</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Effective Date</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Seal</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                     {activeContracts.length === 0 && (
-                        <tr><td colSpan={6} className="p-12 text-center text-slate-300 text-xs italic">Awaiting base contracts for this node...</td></tr>
+                        <tr>
+                            <td colSpan={6} className="p-12 text-center text-slate-300 text-xs italic font-medium">Awaiting contractual labor inputs...</td>
+                        </tr>
                     )}
                     {activeContracts.map(contract => (
                         <tr key={contract.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-4 text-xs font-bold text-slate-800 uppercase">{contract.employees?.full_name}</td>
-                            <td className="p-4 text-[11px] font-medium text-slate-500">{contract.contract_type}</td>
+                            <td className="p-4 text-xs font-bold text-slate-800 uppercase tracking-tight leading-none">{contract.employees?.full_name}</td>
+                            <td className="p-4 text-[10px] font-medium text-slate-500 uppercase tracking-tight">{contract.contract_type}</td>
                             <td className="p-4 text-center">
-                                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] font-black uppercase border border-blue-100">{contract.pay_frequency}</span>
+                                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[9px] font-black uppercase border border-blue-100">
+                                    {contract.pay_frequency}
+                                </span>
                             </td>
                             <td className="p-4 text-xs font-mono font-black text-slate-900 text-right">{Number(contract.base_amount).toLocaleString()}</td>
-                            <td className="p-4 text-center text-[11px] text-slate-400 font-semibold">{format(new Date(contract.effective_date), 'dd MMM yyyy')}</td>
-                            <td className="p-4 text-center"><CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" /></td>
+                            <td className="p-4 text-center text-[10px] text-slate-400 font-bold uppercase">{format(new Date(contract.effective_date), 'dd MMM yyyy')}</td>
+                            <td className="p-4 text-center">
+                                <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -433,40 +465,45 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
         </div>
       </div>
 
-      {/* TABLE 2: OPERATIONAL FLUX AUDIT TRAIL */}
+      {/* SECTION 4: OPERATIONAL FLUX AUDIT TRAIL */}
       <div className="space-y-6">
         <div className="flex items-center gap-2">
             <div className="w-1 h-6 bg-slate-900 rounded-full" />
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Operational Flux Audit Trail (Last 8 Entries)</h2>
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Operational Flux Audit Trail (Last 10 Entries)</h2>
         </div>
+
         <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
             <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Beneficiary</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Type</th>
+                <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Beneficiary</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-center">Flux Type</th>
                         <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Date</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Narrative</th>
-                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-right">Value (UGX)</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400">Registry Narrative</th>
+                        <th className="p-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider text-right">Value (UGX)</th>
                         <th className="p-4 text-[10px] font-bold uppercase text-slate-400 text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                     {recentInputs.length === 0 && (
-                        <tr><td colSpan={6} className="p-12 text-center text-slate-400 text-xs italic">Awaiting operational records...</td></tr>
+                        <tr>
+                            <td colSpan={6} className="p-12 text-center text-slate-400 text-xs italic font-medium">Awaiting operational flux records...</td>
+                        </tr>
                     )}
                     {recentInputs.map(input => (
                         <tr key={input.id} className="hover:bg-slate-50/50 transition-colors group">
-                            <td className="p-4 text-xs font-bold text-slate-700 uppercase">{input.employees?.full_name}</td>
-                            <td className="p-4">
+                            <td className="p-4 text-xs font-bold text-slate-700 uppercase tracking-tight leading-none">{input.employees?.full_name}</td>
+                            <td className="p-4 text-center">
                                 <span className={cn(
                                     "px-2 py-0.5 rounded-full text-[9px] font-black uppercase border",
                                     input.input_type === 'COMMISSION' ? 'bg-green-50 text-green-700 border-green-100' :
                                     input.input_type === 'BONUS' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                     'bg-slate-50 text-slate-700 border-slate-100'
-                                )}>{input.input_type}</span>
+                                )}>
+                                    {input.input_type}
+                                </span>
                             </td>
-                            <td className="p-4 text-center text-xs text-slate-400 font-medium">{format(new Date(input.effective_date), 'dd MMM yyyy')}</td>
+                            <td className="p-4 text-center text-[10px] text-slate-400 font-bold uppercase">{format(new Date(input.effective_date), 'dd MMM yyyy')}</td>
                             <td className="p-4 text-xs text-slate-500 italic max-w-xs truncate font-medium">{input.description}</td>
                             <td className="p-4 text-xs font-mono font-black text-slate-900 text-right">{Number(input.amount).toLocaleString()}</td>
                             <td className="p-4 text-center">
@@ -481,18 +518,20 @@ export function SalaryManager({ businessId, employees }: SalaryManagerProps) {
         </div>
       </div>
 
-      {/* FOOTER */}
-      <div className="mt-8 pt-10 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6 opacity-80 hover:opacity-100 transition-opacity">
+      {/* SYSTEM SEAL: PROFESSIONAL FOOTER */}
+      <div className="mt-8 pt-10 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6 opacity-60">
         <div className="flex items-center gap-4">
-            <div className="p-2 bg-slate-50 rounded-lg"><ShieldCheck className="h-5 w-5 text-slate-400" /></div>
+            <div className="p-2 bg-slate-50 rounded-lg">
+                <ShieldCheck className="h-5 w-5 text-slate-400" />
+            </div>
             <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">BBU1 Global Sovereign Kernel v11.5</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">BBU1 Global Sovereign Kernel v11.8</p>
                 <p className="text-[9px] font-medium text-slate-500 uppercase tracking-tighter mt-1 leading-none">Identity Reconciled and Secure Ledger Tunnel Active.</p>
             </div>
         </div>
         <div className="flex items-center gap-2 px-5 py-2 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic leading-none">System Sync Active</span>
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic leading-none">System Identity Sealed and Reconciled</span>
         </div>
       </div>
     </div>
