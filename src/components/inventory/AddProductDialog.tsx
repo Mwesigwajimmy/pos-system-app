@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN PRODUCT MANAGEMENT CONSOLE ---
- * VERSION: v15.7 OMEGA (CAMERA SCANNER WELDED)
+ * VERSION: v15.8 OMEGA (CAMERA SCANNER & GLOBAL PRICING WELDED)
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -99,7 +99,13 @@ interface AttributeBuilder {
 
 interface ProductManagementProps {
   categories: Category[];
-  initialScanData?: { barcode: string; name: string; isGlobal: boolean } | null;
+  initialScanData?: { 
+    barcode: string; 
+    name: string; 
+    price?: number; 
+    costPrice?: number; 
+    isGlobal: boolean 
+  } | null;
   onClose?: () => void;
 }
 
@@ -154,6 +160,8 @@ export default function ProductManagementConsole({ categories, initialScanData, 
       setVariants([{
         ...DEFAULT_VARIANT,
         sku: initialScanData.barcode,
+        price: Number(initialScanData.price) || 0,
+        cost_price: Number(initialScanData.costPrice) || 0,
         stock_quantity: 1
       }]);
       setOpen(true); // Automatically opens the registry modal when scan completes
@@ -322,7 +330,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
         product_id: product.id,
         name: v.name || 'Standard',
         sku: v.sku || `SKU-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-        barcode: v.sku || initialScanData?.barcode || null, // Auto-sets barcode
+        barcode: v.sku || initialScanData?.barcode || null,
         price: Number(v.price),
         selling_price: Number(v.price), 
         cost_price: Number(v.cost_price),

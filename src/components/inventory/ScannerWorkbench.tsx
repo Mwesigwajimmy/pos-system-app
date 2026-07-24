@@ -2,14 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN SCANNER WORKBENCH ---
- * VERSION: v4.0 OMEGA (ULTIMATE SMART ADAPTIVE CAMERA ENGINE)
+ * VERSION: v4.2 OMEGA (ENTERPRISE AUTO-RESUME & GLOBAL PRICING WELD)
  * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Logistics
  * 
  * FEATURES:
  * 1. 3-TIER SMART FALLBACK: Auto-adapts across phones, tablets, laptops, & webcams.
  * 2. CAMERA FLIP / SWITCHER: 1-Tap toggle between front & rear cameras.
- * 3. HIGH-PRECISION 1D/2D DECODER: EAN-13, Code-128, UPC-A, QR Codes.
- * 4. AUTO-ONBOARDING BRIDGE: Pre-fills AddProductDialog on scan.
+ * 3. AUTO-RESUME ENGINE: Unpauses camera immediately when onboarding modal closes.
+ * 4. GLOBAL PRICING PIPELINE: Auto-fills scanned retail price & acquisition cost.
+ * 5. HIGH-PRECISION 1D/2D DECODER: EAN-13, Code-128, UPC-A, QR Codes.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -56,6 +57,14 @@ interface CameraDeviceOption {
     label: string;
 }
 
+interface ScanBridgePacket {
+    barcode: string;
+    name: string;
+    price?: number;
+    costPrice?: number;
+    isGlobal: boolean;
+}
+
 const supabase = createClient();
 
 export default function ScannerWorkbench({ businessId, categories = [] }: { businessId: string; categories?: any[] }) {
@@ -64,12 +73,12 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
     const [sessionLog, setSessionLog] = useState<ScannedSessionItem[]>([]);
     const [dna, setDna] = useState<BusinessDNA | null>(null);
 
-    // DYNAMIC HARDWARE CAMERA HARDWARE ENUMERATION
+    // DYNAMIC CAMERA HARDWARE ENUMERATION
     const [availableCameras, setAvailableCameras] = useState<CameraDeviceOption[]>([]);
     const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
-    // CAMERA-TO-ONBOARD BRIDGE STATE
-    const [scanBridgeData, setScanBridgeData] = useState<{ barcode: string; name: string; isGlobal: boolean } | null>(null);
+    // CAMERA-TO-ONBOARD BRIDGE STATE (WITH GLOBAL PRICING)
+    const [scanBridgeData, setScanBridgeData] = useState<ScanBridgePacket | null>(null);
 
     const scannerRef = useRef<Html5Qrcode | null>(null);
 
@@ -123,15 +132,10 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
             console.log("📷 BARCODE DETECTED:", decodedText);
             html5QrCode.pause();
             executeDeepScan(decodedText);
-            setTimeout(() => { 
-                if (scannerRef.current?.isPaused()) {
-                    scannerRef.current.resume(); 
-                }
-            }, 3000);
         };
 
         try {
-            // STEP 1: HARDWARE DISCOVERY - Enumerate available physical cameras
+            // STEP 1: HARDWARE DISCOVERY - Enumerate physical cameras
             const devices = await Html5Qrcode.getCameras();
             
             if (devices && devices.length > 0) {
@@ -141,8 +145,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                 }));
                 setAvailableCameras(formattedDevices);
 
-                // Smart Camera Selection Logic:
-                // Look for back/rear/environment camera on smartphones & tablets first
+                // Auto-select rear/back camera on phones & tablets
                 let targetCameraId = selectedCameraId;
                 if (!targetCameraId) {
                     const backCamera = devices.find(d => {
@@ -153,24 +156,24 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                     setSelectedCameraId(targetCameraId);
                 }
 
-                // TIER 1: Start with specific target camera ID
+                // TIER 1: Start with target camera ID
                 try {
                     await html5QrCode.start(targetCameraId, config, onScanSuccess, () => {});
                     return;
                 } catch (e) {
-                    console.warn("Tier 1 camera start failed, proceeding to Tier 2 smart fallback...", e);
+                    console.warn("Tier 1 camera start failed, attempting Tier 2 fallback...", e);
                 }
             }
 
-            // TIER 2: Fallback to environment facing mode constraint
+            // TIER 2: Fallback to environment facing mode
             try {
                 await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
                 return;
             } catch (e) {
-                console.warn("Tier 2 environment mode failed, proceeding to Tier 3 universal fallback...", e);
+                console.warn("Tier 2 environment mode failed, attempting Tier 3 universal fallback...", e);
             }
 
-            // TIER 3: Universal Fallback (Guaranteed to work on all laptops, webcams, and older devices)
+            // TIER 3: Universal Fallback (Guaranteed to work on all webcams and screens)
             await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
 
         } catch (err: any) {
@@ -191,7 +194,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
     };
 
     // ====================================================================
-    // SMART CAMERA SWITCHER PROTOCOL (FLIP BETWEEN FRONT & BACK CAMERAS)
+    // SMART CAMERA SWITCHER (FLIP BETWEEN FRONT & REAR CAMERAS)
     // ====================================================================
     const switchCamera = async () => {
         if (availableCameras.length <= 1) {
@@ -212,7 +215,6 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
             } catch (e) { console.error("Hardware Release Fault"); }
         }
 
-        // Restart camera with new device ID
         setIsCameraActive(true);
         const html5QrCode = new Html5Qrcode("bbu1-neural-view");
         scannerRef.current = html5QrCode;
@@ -241,7 +243,6 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                     console.log("📷 BARCODE DETECTED:", decodedText);
                     html5QrCode.pause();
                     executeDeepScan(decodedText);
-                    setTimeout(() => { if (scannerRef.current?.isPaused()) scannerRef.current.resume(); }, 3000);
                 },
                 () => {}
             );
@@ -261,7 +262,23 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         setIsCameraActive(false);
     };
 
-    // HARDWARE KEYBOARD LISTENER FOR PHYSICAL PLUG-IN SCANNERS
+    // ====================================================================
+    // AUTO-RESUME CAMERA WHEN ONBOARDING MODAL CLOSES / DISCARDS
+    // ====================================================================
+    const handleCloseBridgeModal = () => {
+        setScanBridgeData(null);
+        
+        // Auto-resume camera stream so user can scan next product immediately
+        if (scannerRef.current && scannerRef.current.isPaused()) {
+            try {
+                scannerRef.current.resume();
+            } catch (e) {
+                console.warn("Camera auto-resume notice:", e);
+            }
+        }
+    };
+
+    // HARDWARE KEYBOARD LISTENER FOR PHYSICAL PLUG-IN BARCODE GUNS
     useEffect(() => {
         let buffer = '';
         let lastKeyTime = Date.now();
@@ -324,7 +341,9 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         });
     };
 
-    // DEEP SCAN EXECUTION
+    // ====================================================================
+    // DEEP SCAN EXECUTION ENGINE
+    // ====================================================================
     const executeDeepScan = async (code: string) => {
         setIsScanning(true);
         
@@ -337,6 +356,11 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
             try { DeepAudioEngine.playError(); } catch (e) {}
             toast.error("Identity Desync", { description: `Code ${code} query failed.` });
             setIsScanning(false);
+            
+            // Auto-resume scanner
+            if (scannerRef.current && scannerRef.current.isPaused()) {
+                setTimeout(() => { scannerRef.current?.resume(); }, 2000);
+            }
             return;
         }
 
@@ -373,13 +397,20 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                 setSessionLog(prev => [logEntry, ...prev]);
                 toast.success(`Node Reconciled: +${qtyToInject} ${item.product_name}`);
             }
+
+            // Auto-resume camera stream after local reconciliation
+            if (scannerRef.current && scannerRef.current.isPaused()) {
+                setTimeout(() => { scannerRef.current?.resume(); }, 2500);
+            }
         } 
-        // CASE 2: GLOBAL MATCH -> TRIGGER ONBOARDING DIALOG WITH AUTO-FILL
+        // CASE 2: GLOBAL MATCH -> TRIGGER ONBOARDING DIALOG WITH AUTO-FILLED PRICING
         else if (handshake.status === 'GLOBAL_FOUND') {
             try { DeepAudioEngine.playSuccess(); } catch (e) {}
             setScanBridgeData({
                 barcode: code,
                 name: handshake.data.product_name || '',
+                price: Number(handshake.data.suggested_price) || 0,
+                costPrice: Number(handshake.data.suggested_cost) || 0,
                 isGlobal: true
             });
         } 
@@ -389,6 +420,8 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
             setScanBridgeData({
                 barcode: code,
                 name: '',
+                price: 0,
+                costPrice: 0,
                 isGlobal: false
             });
         }
@@ -439,7 +472,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                             {isCameraActive ? <><XCircle className="mr-3 h-4 w-4" /> Shutdown Camera</> : <><Camera className="mr-3 h-4 w-4" /> Activate Phone Scan</>}
                         </Button>
 
-                        {/* SMART CAMERA FLIP BUTTON (SHOWN WHEN CAMERA IS ACTIVE & MULTIPLE CAMERAS EXIST) */}
+                        {/* SMART CAMERA FLIP BUTTON */}
                         {isCameraActive && availableCameras.length > 1 && (
                             <Button
                                 onClick={switchCamera}
@@ -528,7 +561,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                 <ProductManagementConsole 
                     categories={categories}
                     initialScanData={scanBridgeData}
-                    onClose={() => setScanBridgeData(null)}
+                    onClose={handleCloseBridgeModal}
                 />
             )}
 
