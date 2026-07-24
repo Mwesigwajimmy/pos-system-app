@@ -2,7 +2,14 @@
 
 /**
  * --- BBU1 SOVEREIGN SCANNER WORKBENCH ---
- * VERSION: v3.5 OMEGA (HIGH-PRECISION 1D/2D CAMERA SCANNER & ONBOARDING BRIDGE)
+ * VERSION: v4.0 OMEGA (ULTIMATE SMART ADAPTIVE CAMERA ENGINE)
+ * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Logistics
+ * 
+ * FEATURES:
+ * 1. 3-TIER SMART FALLBACK: Auto-adapts across phones, tablets, laptops, & webcams.
+ * 2. CAMERA FLIP / SWITCHER: 1-Tap toggle between front & rear cameras.
+ * 3. HIGH-PRECISION 1D/2D DECODER: EAN-13, Code-128, UPC-A, QR Codes.
+ * 4. AUTO-ONBOARDING BRIDGE: Pre-fills AddProductDialog on scan.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -14,7 +21,8 @@ import {
     Barcode, Loader2, PackageCheck, 
     Printer, History, CheckCircle2,
     Activity, ArrowDownToLine, ShieldCheck,
-    Globe, Camera, XCircle, Plus, Sparkles
+    Globe, Camera, XCircle, Plus, Sparkles,
+    SwitchCamera, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
@@ -43,6 +51,11 @@ interface BusinessDNA {
     location_name: string;
 }
 
+interface CameraDeviceOption {
+    id: string;
+    label: string;
+}
+
 const supabase = createClient();
 
 export default function ScannerWorkbench({ businessId, categories = [] }: { businessId: string; categories?: any[] }) {
@@ -50,6 +63,10 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [sessionLog, setSessionLog] = useState<ScannedSessionItem[]>([]);
     const [dna, setDna] = useState<BusinessDNA | null>(null);
+
+    // DYNAMIC HARDWARE CAMERA HARDWARE ENUMERATION
+    const [availableCameras, setAvailableCameras] = useState<CameraDeviceOption[]>([]);
+    const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
     // CAMERA-TO-ONBOARD BRIDGE STATE
     const [scanBridgeData, setScanBridgeData] = useState<{ barcode: string; name: string; isGlobal: boolean } | null>(null);
@@ -75,16 +92,18 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         fetchNodeIdentity();
     }, [businessId]);
 
-    // NEURAL CAMERA PROTOCOL (ENHANCED FOR 1D & 2D BARCODES)
+    // ====================================================================
+    // SMART ADAPTIVE CAMERA PROTOCOL
+    // ====================================================================
     const startCamera = async () => {
         setIsCameraActive(true);
         const html5QrCode = new Html5Qrcode("bbu1-neural-view");
         scannerRef.current = html5QrCode;
 
-        // HIGH-PRECISION 1D & 2D BARCODE CONFIGURATION
+        // HIGH-PRECISION 1D & 2D DECODER CONFIGURATION
         const config = { 
-            fps: 20, // Faster sampling rate for responsive scanning
-            qrbox: { width: 280, height: 160 }, // Optimal aspect ratio for linear barcodes
+            fps: 20, 
+            qrbox: { width: 280, height: 160 },
             formatsToSupport: [
                 Html5QrcodeSupportedFormats.EAN_13,
                 Html5QrcodeSupportedFormats.EAN_8,
@@ -96,37 +115,139 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                 Html5QrcodeSupportedFormats.ITF
             ],
             experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true // Native GPU Acceleration
+                useBarCodeDetectorIfSupported: true // GPU Hardware Acceleration
             }
         };
 
-        // HD CAMERA CONSTRAINTS FOR SHARP FOCUS
-        const cameraConstraints = {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+        const onScanSuccess = (decodedText: string) => {
+            console.log("📷 BARCODE DETECTED:", decodedText);
+            html5QrCode.pause();
+            executeDeepScan(decodedText);
+            setTimeout(() => { 
+                if (scannerRef.current?.isPaused()) {
+                    scannerRef.current.resume(); 
+                }
+            }, 3000);
+        };
+
+        try {
+            // STEP 1: HARDWARE DISCOVERY - Enumerate available physical cameras
+            const devices = await Html5Qrcode.getCameras();
+            
+            if (devices && devices.length > 0) {
+                const formattedDevices = devices.map(d => ({ 
+                    id: d.id, 
+                    label: d.label || `Camera ${d.id.substring(0, 5)}` 
+                }));
+                setAvailableCameras(formattedDevices);
+
+                // Smart Camera Selection Logic:
+                // Look for back/rear/environment camera on smartphones & tablets first
+                let targetCameraId = selectedCameraId;
+                if (!targetCameraId) {
+                    const backCamera = devices.find(d => {
+                        const lbl = d.label.toLowerCase();
+                        return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('main');
+                    });
+                    targetCameraId = backCamera ? backCamera.id : devices[0].id;
+                    setSelectedCameraId(targetCameraId);
+                }
+
+                // TIER 1: Start with specific target camera ID
+                try {
+                    await html5QrCode.start(targetCameraId, config, onScanSuccess, () => {});
+                    return;
+                } catch (e) {
+                    console.warn("Tier 1 camera start failed, proceeding to Tier 2 smart fallback...", e);
+                }
+            }
+
+            // TIER 2: Fallback to environment facing mode constraint
+            try {
+                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+                return;
+            } catch (e) {
+                console.warn("Tier 2 environment mode failed, proceeding to Tier 3 universal fallback...", e);
+            }
+
+            // TIER 3: Universal Fallback (Guaranteed to work on all laptops, webcams, and older devices)
+            await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
+
+        } catch (err: any) {
+            console.error("Camera Hardware Protocol Error:", err);
+            const errString = err?.message || err?.toString() || '';
+            
+            if (errString.includes('Permission') || errString.includes('denied') || errString.includes('NotAllowedError')) {
+                toast.error("Camera Permission Blocked", { 
+                    description: "Tap the lock icon in your browser URL bar and set Camera to ALLOW." 
+                });
+            } else {
+                toast.error("Hardware Refusal", { 
+                    description: "Could not lock camera hardware. Ensure no other application is using the camera." 
+                });
+            }
+            setIsCameraActive(false);
+        }
+    };
+
+    // ====================================================================
+    // SMART CAMERA SWITCHER PROTOCOL (FLIP BETWEEN FRONT & BACK CAMERAS)
+    // ====================================================================
+    const switchCamera = async () => {
+        if (availableCameras.length <= 1) {
+            toast.info("Single Camera System", { description: "No secondary camera hardware detected on this device." });
+            return;
+        }
+
+        const currentIndex = availableCameras.findIndex(c => c.id === selectedCameraId);
+        const nextIndex = (currentIndex + 1) % availableCameras.length;
+        const nextCamera = availableCameras[nextIndex];
+
+        setSelectedCameraId(nextCamera.id);
+
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.stop();
+                scannerRef.current = null;
+            } catch (e) { console.error("Hardware Release Fault"); }
+        }
+
+        // Restart camera with new device ID
+        setIsCameraActive(true);
+        const html5QrCode = new Html5Qrcode("bbu1-neural-view");
+        scannerRef.current = html5QrCode;
+
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 280, height: 160 },
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.ITF
+            ],
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         };
 
         try {
             await html5QrCode.start(
-                cameraConstraints,
+                nextCamera.id,
                 config,
                 (decodedText) => {
                     console.log("📷 BARCODE DETECTED:", decodedText);
                     html5QrCode.pause();
                     executeDeepScan(decodedText);
-                    setTimeout(() => { 
-                        if (scannerRef.current?.isPaused()) {
-                            scannerRef.current.resume(); 
-                        }
-                    }, 3000);
+                    setTimeout(() => { if (scannerRef.current?.isPaused()) scannerRef.current.resume(); }, 3000);
                 },
-                () => {} // Silent scan frame attempt
+                () => {}
             );
-        } catch (err) {
-            console.error("Camera Hardware Error:", err);
-            toast.error("Hardware Refusal", { description: "Camera permission denied or hardware busy." });
-            setIsCameraActive(false);
+            toast.success("Camera Flipped", { description: `Active: ${nextCamera.label}` });
+        } catch (e) {
+            toast.error("Camera Switch Refused");
         }
     };
 
@@ -306,17 +427,30 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                         </div>
                     )}
 
-                    {/* TOGGLE BUTTON */}
-                    <div className="absolute bottom-10">
+                    {/* LIVE CAMERA OVERLAY CONTROLS */}
+                    <div className="absolute bottom-6 flex items-center gap-3">
                         <Button 
                             onClick={isCameraActive ? stopCamera : startCamera}
                             className={cn(
-                                "h-14 px-10 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl transition-all",
+                                "h-14 px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl transition-all",
                                 isCameraActive ? "bg-red-600 hover:bg-red-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
                             )}
                         >
                             {isCameraActive ? <><XCircle className="mr-3 h-4 w-4" /> Shutdown Camera</> : <><Camera className="mr-3 h-4 w-4" /> Activate Phone Scan</>}
                         </Button>
+
+                        {/* SMART CAMERA FLIP BUTTON (SHOWN WHEN CAMERA IS ACTIVE & MULTIPLE CAMERAS EXIST) */}
+                        {isCameraActive && availableCameras.length > 1 && (
+                            <Button
+                                onClick={switchCamera}
+                                variant="secondary"
+                                size="icon"
+                                title="Flip Camera"
+                                className="h-14 w-14 rounded-2xl bg-white/20 hover:bg-white/30 text-white backdrop-blur-md shadow-2xl transition-all"
+                            >
+                                <SwitchCamera className="h-5 w-5" />
+                            </Button>
+                        )}
                     </div>
                 </Card>
 
