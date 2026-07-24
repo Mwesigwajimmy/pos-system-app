@@ -106,6 +106,8 @@ interface AttributeBuilder {
 
 interface ProductManagementProps {
   categories: Category[];
+  initialScanData?: { barcode: string; name: string; isGlobal: boolean } | null; // The Bridge
+  onClose?: () => void;
 }
 
 const DEFAULT_VARIANT: VariantDraft = {
@@ -119,7 +121,7 @@ const DEFAULT_VARIANT: VariantDraft = {
   uom_id: null
 };
 
-export default function ProductManagementConsole({ categories }: ProductManagementProps) {
+export default function ProductManagementConsole({ categories, initialScanData, onClose }: ProductManagementProps) {
   const [open, setOpen] = useState(false);
   const [uomSearchQuery, setUomSearchQuery] = useState("");
   const queryClient = useQueryClient();
@@ -151,6 +153,22 @@ export default function ProductManagementConsole({ categories }: ProductManageme
   // Logic: Media Handling State
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  // THE AUTO-FILL WELD:
+  // This effect "listens" for data coming from the camera scan
+  useEffect(() => {
+    if (initialScanData) {
+      setProductName(initialScanData.name);
+      // We will ensure the first variant gets this barcode
+      const updatedVariants = [...variants];
+      updatedVariants[0].sku = initialScanData.barcode; 
+      setVariants(updatedVariants);
+      
+      toast.success("Global Data Resolved", { 
+        description: `Identity for ${initialScanData.barcode} has been auto-filled from the Master Registry.` 
+      } as any);
+    }
+  }, [initialScanData]);
 
   // Profile and Currency Queries
   const { data: profile } = useQuery({
@@ -388,6 +406,7 @@ export default function ProductManagementConsole({ categories }: ProductManageme
     setMediaUrl(null); 
     // Reset Agri Context
     setIsBiological(false); setBreedVariety(''); setPlantingDate(''); setActivitySchedule('none');
+    if (onClose) onClose();
   };
 
   return (
