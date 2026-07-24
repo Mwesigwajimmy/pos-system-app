@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN SCANNER WORKBENCH ---
- * VERSION: v3.1 OMEGA (AUTO-ONBOARD DIALOGUE TRIGGER)
+ * VERSION: v3.3 OMEGA (REFERENCE ERROR FIX)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -21,6 +21,7 @@ import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils'; // FIXED: Added missing cn import
 
 import ProductManagementConsole from '@/components/inventory/AddProductDialog';
 
