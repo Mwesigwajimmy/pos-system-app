@@ -2,14 +2,14 @@
 
 /**
  * --- BBU1 SOVEREIGN SCANNER WORKBENCH ---
- * VERSION: v3.3 OMEGA (REFERENCE ERROR FIX)
+ * VERSION: v3.5 OMEGA (HIGH-PRECISION 1D/2D CAMERA SCANNER & ONBOARDING BRIDGE)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import jsPDF from 'jspdf';
 import bwipjs from 'bwip-js';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { 
     Barcode, Loader2, PackageCheck, 
     Printer, History, CheckCircle2,
@@ -21,7 +21,7 @@ import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils'; // FIXED: Added missing cn import
+import { cn } from '@/lib/utils';
 
 import ProductManagementConsole from '@/components/inventory/AddProductDialog';
 
@@ -75,22 +75,44 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         fetchNodeIdentity();
     }, [businessId]);
 
+    // NEURAL CAMERA PROTOCOL (ENHANCED FOR 1D & 2D BARCODES)
     const startCamera = async () => {
         setIsCameraActive(true);
         const html5QrCode = new Html5Qrcode("bbu1-neural-view");
         scannerRef.current = html5QrCode;
 
+        // HIGH-PRECISION 1D & 2D BARCODE CONFIGURATION
         const config = { 
-            fps: 15, 
-            qrbox: { width: 260, height: 160 },
-            aspectRatio: 1.0
+            fps: 20, // Faster sampling rate for responsive scanning
+            qrbox: { width: 280, height: 160 }, // Optimal aspect ratio for linear barcodes
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.ITF
+            ],
+            experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true // Native GPU Acceleration
+            }
+        };
+
+        // HD CAMERA CONSTRAINTS FOR SHARP FOCUS
+        const cameraConstraints = {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         };
 
         try {
             await html5QrCode.start(
-                { facingMode: "environment" },
+                cameraConstraints,
                 config,
                 (decodedText) => {
+                    console.log("📷 BARCODE DETECTED:", decodedText);
                     html5QrCode.pause();
                     executeDeepScan(decodedText);
                     setTimeout(() => { 
@@ -99,9 +121,10 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
                         }
                     }, 3000);
                 },
-                () => {}
+                () => {} // Silent scan frame attempt
             );
         } catch (err) {
+            console.error("Camera Hardware Error:", err);
             toast.error("Hardware Refusal", { description: "Camera permission denied or hardware busy." });
             setIsCameraActive(false);
         }
@@ -190,7 +213,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         });
 
         if (error || !handshake) {
-            DeepAudioEngine.playError();
+            try { DeepAudioEngine.playError(); } catch (e) {}
             toast.error("Identity Desync", { description: `Code ${code} query failed.` });
             setIsScanning(false);
             return;
@@ -211,10 +234,10 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
             });
 
             if (rpcError) {
-                DeepAudioEngine.playError();
+                try { DeepAudioEngine.playError(); } catch (e) {}
                 toast.error("Ledger Handshake Refused");
             } else {
-                DeepAudioEngine.playSuccess();
+                try { DeepAudioEngine.playSuccess(); } catch (e) {}
                 const logEntry: ScannedSessionItem = {
                     variant_id: item.variant_id,
                     product_name: item.product_name,
@@ -232,7 +255,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         } 
         // CASE 2: GLOBAL MATCH -> TRIGGER ONBOARDING DIALOG WITH AUTO-FILL
         else if (handshake.status === 'GLOBAL_FOUND') {
-            DeepAudioEngine.playSuccess();
+            try { DeepAudioEngine.playSuccess(); } catch (e) {}
             setScanBridgeData({
                 barcode: code,
                 name: handshake.data.product_name || '',
@@ -241,7 +264,7 @@ export default function ScannerWorkbench({ businessId, categories = [] }: { busi
         } 
         // CASE 3: NEW UNKNOWN BARCODE -> TRIGGER ONBOARDING DIALOG
         else {
-            DeepAudioEngine.playError();
+            try { DeepAudioEngine.playError(); } catch (e) {}
             setScanBridgeData({
                 barcode: code,
                 name: '',
