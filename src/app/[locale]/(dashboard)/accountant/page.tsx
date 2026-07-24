@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// --- CORE COMPONENTS (Named Imports) ---
+
 import { FullDataExport } from '@/components/accountant/FullDataExport';
 import { AuditorManagement } from '@/components/accountant/AuditorManagement';
 import { ChartOfAccountsTable } from '@/components/accountant/ChartOfAccountsTable';
