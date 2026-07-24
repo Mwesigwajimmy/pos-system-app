@@ -2,10 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN PRODUCT MANAGEMENT CONSOLE ---
- * VERSION: v15.6 OMEGA (AGRI-DNA MASTER WELD)
- * Use: Advanced multi-sector product registration.
- * Logic: Now handles Biological Asset DNA (Crops/Livestock) as optional metadata.
- * Forensic: Welded to agri_land_plots and mfg_production_orders.
+ * VERSION: v15.7 OMEGA (CAMERA SCANNER WELDED)
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -68,17 +65,13 @@ import {
   Syringe,
   ClipboardList,
   Layers,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 
 import { Category } from '@/types/dashboard';
 import { cn } from "@/lib/utils";
 
-// Module-level, not per-render: a client created inside the component body
-// is a new object reference on every render, which was going into a
-// useEffect's dependency array below and re-firing that effect (and its
-// setState) on every single render — an infinite loop that hard-froze the
-// tab as soon as this dialog opened.
 const supabase = createClient();
 
 interface Unit {
@@ -106,7 +99,7 @@ interface AttributeBuilder {
 
 interface ProductManagementProps {
   categories: Category[];
-  initialScanData?: { barcode: string; name: string; isGlobal: boolean } | null; // The Bridge
+  initialScanData?: { barcode: string; name: string; isGlobal: boolean } | null;
   onClose?: () => void;
 }
 
@@ -144,29 +137,30 @@ export default function ProductManagementConsole({ categories, initialScanData, 
     { name: 'Color', inputValue: '', values: [] }
   ]);
 
-  // --- AGRI-DNA STATE (OPTIONAL WELD) ---
+  // AGRI-DNA STATE
   const [isBiological, setIsBiological] = useState(false);
   const [breedVariety, setBreedVariety] = useState('');
   const [plantingDate, setPlantingDate] = useState('');
   const [activitySchedule, setActivitySchedule] = useState('none');
 
-  // Logic: Media Handling State
+  // Media Handling State
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // THE AUTO-FILL WELD:
-  // This effect "listens" for data coming from the camera scan
+  // AUTO-FILL & MODAL OPEN WELD FOR CAMERA SCAN:
   useEffect(() => {
     if (initialScanData) {
-      setProductName(initialScanData.name);
-      // We will ensure the first variant gets this barcode
-      const updatedVariants = [...variants];
-      updatedVariants[0].sku = initialScanData.barcode; 
-      setVariants(updatedVariants);
+      setProductName(initialScanData.name || '');
+      setVariants([{
+        ...DEFAULT_VARIANT,
+        sku: initialScanData.barcode,
+        stock_quantity: 1
+      }]);
+      setOpen(true); // Automatically opens the registry modal when scan completes
       
-      toast.success("Global Data Resolved", { 
-        description: `Identity for ${initialScanData.barcode} has been auto-filled from the Master Registry.` 
-      } as any);
+      toast.success(initialScanData.isGlobal ? "Global Product Resolved" : "New Barcode Detected", { 
+        description: `Barcode ${initialScanData.barcode} auto-filled into registry.` 
+      });
     }
   }, [initialScanData]);
 
@@ -196,21 +190,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
 
   const businessCurrency = profile?.currency || 'USD';
 
-  const { data: products } = useQuery({
-    queryKey: ['inventoryProducts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('product_variants')
-        .select(`
-          id, name, sku, price, cost_price, stock_quantity,
-          products ( name, categories ( name ) )
-        `)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    }
-  });
-
   useEffect(() => {
     if (open) {
       const fetchUnits = async () => {
@@ -228,7 +207,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
     );
   }, [units, uomSearchQuery]);
 
-  // Logic: Forensic Media Upload Handler
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile?.business_id) return;
@@ -255,29 +233,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
     } finally {
         setIsUploading(false);
     }
-  };
-
-  const generateReport = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Stock Inventory Ledger", 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleString()} | Currency: ${businessCurrency}`, 14, 28);
-
-    autoTable(doc, {
-      startY: 35,
-      head: [['Product / Variety', 'SKU', 'Selling Price', 'Stock Level']],
-      body: products?.map((p: any) => [
-        `${p.products?.name} - ${p.name}`,
-        p.sku,
-        `${p.price.toLocaleString()} ${businessCurrency}`,
-        `${p.stock_quantity.toLocaleString()} units`
-      ]),
-      headStyles: { fillColor: [15, 23, 42] }
-    });
-
-    doc.save(`Stock_Inventory_Report_${Date.now()}.pdf`);
-    toast.success("Inventory report generated");
   };
 
   const handleAddUnit = async () => {
@@ -310,10 +265,10 @@ export default function ProductManagementConsole({ categories, initialScanData, 
       validAttributes.forEach((attr, idx) => { attrMap[attr.name] = Array.isArray(combo) ? combo[idx] : combo; });
       return { 
           name: Array.isArray(combo) ? combo.join(' / ') : combo, 
-          sku: '', 
+          sku: initialScanData?.barcode || '', 
           price: variants[0].price, 
           cost_price: variants[0].cost_price, 
-          stock_quantity: 0, 
+          stock_quantity: 1, 
           units_per_pack: 1, 
           attributes: attrMap, 
           uom_id: null 
@@ -328,7 +283,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
     setVariants(updated);
   };
 
-  // --- HEALED MUTATION LOGIC (WITH AGRI WELD) ---
+  // MUTATION LOGIC
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
       const safeBusinessId = profile?.business_id;
@@ -339,7 +294,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
 
       if (!productName.trim()) throw new Error("Please enter a product name");
 
-      // AGRI-DNA METADATA OBJECT
       const agriMetadata = isBiological ? {
         is_biological: true,
         breed_variety: breedVariety,
@@ -356,7 +310,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
           is_active: true,
           status: 'active',
           tax_category_code: taxCategoryCode.toUpperCase(),
-          metadata: agriMetadata // WELDED: Deep metadata injection
+          metadata: agriMetadata
         }, { onConflict: 'name, business_id' }) 
         .select('id').single();
 
@@ -368,6 +322,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
         product_id: product.id,
         name: v.name || 'Standard',
         sku: v.sku || `SKU-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+        barcode: v.sku || initialScanData?.barcode || null, // Auto-sets barcode
         price: Number(v.price),
         selling_price: Number(v.price), 
         cost_price: Number(v.cost_price),
@@ -379,7 +334,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
         units_per_pack: Number(v.units_per_pack) || 1,
         attributes: v.attributes || {},
         primary_media_url: mediaUrl,
-        is_biological: isBiological // WELDED: Variant level flag
+        is_biological: isBiological
       }));
 
       const { error: varError } = await supabase
@@ -387,6 +342,16 @@ export default function ProductManagementConsole({ categories, initialScanData, 
         .upsert(variantsPayload, { onConflict: 'product_id, name' });
 
       if (varError) throw varError;
+
+      // ALSO CONTRIBUTE TO SELF-LEARNING GLOBAL MASTER
+      if (initialScanData?.barcode) {
+        await supabase.rpc('fn_contribute_global_barcode', {
+          p_barcode: initialScanData.barcode,
+          p_product_name: productName,
+          p_suggested_price: Number(variants[0].price),
+          p_suggested_cost: Number(variants[0].cost_price)
+        });
+      }
     },
     onSuccess: () => {
       toast.success("Product successfully synchronized");
@@ -404,7 +369,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
     setIsMultiVariant(false); setVariants([{ ...DEFAULT_VARIANT }]);
     setAttributes([{ name: 'Color', inputValue: '', values: [] }]); setActiveTab("configuration");
     setMediaUrl(null); 
-    // Reset Agri Context
     setIsBiological(false); setBreedVariety(''); setPlantingDate(''); setActivitySchedule('none');
     if (onClose) onClose();
   };
@@ -419,7 +383,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
       
       <DialogContent className="sm:max-w-5xl w-[95vw] sm:w-full flex flex-col p-0 border-none rounded-2xl shadow-3xl bg-white overflow-hidden max-h-[95vh] sm:max-h-[90vh]">
         
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <div className="px-8 py-7 border-b shrink-0 bg-white">
           <div className="flex items-center gap-4">
              <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
@@ -487,7 +451,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
                 </div>
             </div>
 
-            {/* ROW 2: MEASUREMENT + SECTOR WELD (AGRI) */}
+            {/* ROW 2: MEASUREMENT + SECTOR WELD */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
                 <div className="md:col-span-6 space-y-3">
                     <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Measurement Unit & Tax Protocol</Label>
@@ -534,7 +498,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
                     </div>
                 </div>
 
-                {/* THE BIOLOGICAL DNA SWITCH (OPTIONAL) */}
                 <div className="md:col-span-3 flex items-center space-x-4 p-4 rounded-xl bg-emerald-50/50 border border-emerald-100 h-12 shadow-sm transition-all group">
                     <Sprout className={cn("h-5 w-5 transition-transform group-hover:scale-110", isBiological ? "text-emerald-600" : "text-slate-300")} />
                     <Label className="text-[11px] font-black text-slate-500 uppercase tracking-tight flex-1 cursor-pointer">Biological Asset</Label>
@@ -548,7 +511,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
                 </div>
             </div>
 
-            {/* ROW 3: BIOLOGICAL DATA (CONDITIONAL AGRI WELD) */}
+            {/* ROW 3: BIOLOGICAL DATA */}
             {isBiological && (
                 <div className="bg-emerald-50/30 p-8 rounded-[2.5rem] border border-emerald-100 space-y-8 animate-in slide-in-from-top-4 duration-500 shadow-sm relative overflow-hidden">
                     <div className="absolute right-0 top-0 p-8 opacity-10">
@@ -624,7 +587,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
                             <input type="number" className="h-12 border-none bg-slate-800/50 rounded-xl font-bold text-lg px-4 w-full" value={variants[0].units_per_pack} onChange={(e) => updateVariant(0, 'units_per_pack', Number(e.target.value))} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Master SKU</Label>
+                            <Label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Master SKU / Barcode</Label>
                             <input placeholder="AUTO-GEN" className="h-12 border-none bg-slate-800/50 rounded-xl font-bold uppercase text-xs px-4 w-full text-blue-300 placeholder:text-slate-600" value={variants[0].sku} onChange={(e) => updateVariant(0, 'sku', e.target.value)} />
                         </div>
                     </div>
@@ -665,9 +628,6 @@ export default function ProductManagementConsole({ categories, initialScanData, 
 
                         <TabsContent value="preview">
                             <div className="rounded-[1.5rem] border border-slate-100 overflow-hidden shadow-2xl bg-white">
-                              {/* ScrollArea's viewport is height:100% internally — without an
-                                  explicit height here it has nothing to size against, so the
-                                  variant rows never actually become visible. */}
                               <ScrollArea className="w-full max-h-[420px]">
                                 <Table>
                                     <TableHeader className="bg-slate-50 border-b border-slate-100">
@@ -701,9 +661,9 @@ export default function ProductManagementConsole({ categories, initialScanData, 
           </div>
         </ScrollArea>
 
-        {/* --- FOOTER ACTIONS --- */}
+        {/* FOOTER ACTIONS */}
         <div className="px-10 py-8 bg-slate-50 border-t flex items-center justify-between shrink-0">
-          <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 font-black text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-2xl">Discard Entry</Button>
+          <Button variant="ghost" onClick={() => { setOpen(false); resetForm(); }} className="h-12 px-8 font-black text-slate-400 uppercase tracking-widest text-[10px] transition-all hover:text-red-500 rounded-2xl">Discard Entry</Button>
           <Button onClick={() => mutate()} disabled={isPending} className="h-14 px-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-2xl shadow-blue-200 transition-all active:scale-95 border-none flex gap-4">
             {isPending ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
             Commit Product to Ledger
@@ -711,7 +671,7 @@ export default function ProductManagementConsole({ categories, initialScanData, 
         </div>
       </DialogContent>
 
-      {/* --- ADD UNIT MODAL --- */}
+      {/* ADD UNIT MODAL */}
       <Dialog open={isUnitModalOpen} onOpenChange={setIsUnitModalOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-3xl bg-white z-[12000]">
           <DialogHeader className="px-10 py-8 bg-slate-900 text-white">

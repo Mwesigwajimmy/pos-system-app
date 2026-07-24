@@ -2,35 +2,27 @@
 
 /**
  * --- BBU1 SOVEREIGN SCANNER WORKBENCH ---
- * VERSION: v2.6 OMEGA-ULTIMATUM (THE HARDWARE-SOFTWARE MARRIAGE)
- * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Logistics
- * 
- * CORE ARCHITECTURAL FIXES:
- * 1. DYNAMIC IDENTITY: Fetches Business Name and Currency from Node Context.
- * 2. jsPDF WELD: Integrated vector-perfect label printing (50x25mm).
- * 3. NEURAL FEEDBACK: Hardware audio triggers for scan success/error.
- * 4. LEDGER INTEGRITY: Atomic RPC injection with Audit Master triggers.
- * 5. CAMERA BRIDGE: Real-time WASM-powered browser scanning (No external apps).
+ * VERSION: v3.1 OMEGA (AUTO-ONBOARD DIALOGUE TRIGGER)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import jsPDF from 'jspdf';
 import bwipjs from 'bwip-js';
-import { Html5Qrcode } from 'html5-qrcode'; // Enterprise-grade decoder
+import { Html5Qrcode } from 'html5-qrcode';
 import { 
     Barcode, Loader2, PackageCheck, 
     Printer, History, CheckCircle2,
     Activity, ArrowDownToLine, ShieldCheck,
-    Globe, Camera, XCircle, Zap
+    Globe, Camera, XCircle, Plus, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+
+import ProductManagementConsole from '@/components/inventory/AddProductDialog';
 
 interface ScannedSessionItem {
     variant_id: number;
@@ -52,29 +44,29 @@ interface BusinessDNA {
 
 const supabase = createClient();
 
-export default function ScannerWorkbench({ businessId }: { businessId: string }) {
-    // --- STATE MANAGEMENT ---
+export default function ScannerWorkbench({ businessId, categories = [] }: { businessId: string; categories?: any[] }) {
     const [isScanning, setIsScanning] = useState(false);
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [sessionLog, setSessionLog] = useState<ScannedSessionItem[]>([]);
     const [dna, setDna] = useState<BusinessDNA | null>(null);
-    
-    // --- HARDWARE ENGINE REFS ---
+
+    // CAMERA-TO-ONBOARD BRIDGE STATE
+    const [scanBridgeData, setScanBridgeData] = useState<{ barcode: string; name: string; isGlobal: boolean } | null>(null);
+
     const scannerRef = useRef<Html5Qrcode | null>(null);
 
-    // --- IDENTITY ANCHOR: Fetch Dynamic Business Details ---
     useEffect(() => {
         const fetchNodeIdentity = async () => {
-            const { data: identities } = await supabase
-                .from('view_bbu1_corporate_identity')
-                .select('legal_name, currency_code')
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('business_name, currency')
                 .eq('business_id', businessId)
                 .maybeSingle();
 
-            if (identities) {
+            if (profile) {
                 setDna({
-                    name: identities.legal_name,
-                    currency: identities.currency_code || 'UGX',
+                    name: profile.business_name || "Business Registry",
+                    currency: profile.currency || 'UGX',
                     location_name: "Primary Node"
                 });
             }
@@ -82,7 +74,6 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
         fetchNodeIdentity();
     }, [businessId]);
 
-    // --- NEURAL CAMERA PROTOCOL ---
     const startCamera = async () => {
         setIsCameraActive(true);
         const html5QrCode = new Html5Qrcode("bbu1-neural-view");
@@ -90,21 +81,24 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
 
         const config = { 
             fps: 15, 
-            qrbox: { width: 250, height: 150 },
+            qrbox: { width: 260, height: 160 },
             aspectRatio: 1.0
         };
 
         try {
             await html5QrCode.start(
-                { facingMode: "environment" }, // Standard for warehouse mobile devices
+                { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                    // Logic: Pause engine to avoid multiple triggers during sync
                     html5QrCode.pause();
                     executeDeepScan(decodedText);
-                    setTimeout(() => { if (scannerRef.current?.isPaused()) html5QrCode.resume(); }, 2500);
+                    setTimeout(() => { 
+                        if (scannerRef.current?.isPaused()) {
+                            scannerRef.current.resume(); 
+                        }
+                    }, 3000);
                 },
-                () => {} // Silent non-detection
+                () => {}
             );
         } catch (err) {
             toast.error("Hardware Refusal", { description: "Camera permission denied or hardware busy." });
@@ -122,7 +116,7 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
         setIsCameraActive(false);
     };
 
-    // --- HARDWARE KEYBOARD BRIDGE (For physical plug-in scanners) ---
+    // HARDWARE KEYBOARD LISTENER FOR PHYSICAL PLUG-IN SCANNERS
     useEffect(() => {
         let buffer = '';
         let lastKeyTime = Date.now();
@@ -148,7 +142,6 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
         };
     }, [businessId]);
 
-    // --- SOVEREIGN PRINT ENGINE (jsPDF + BWIP-JS) ---
     const printSovereignLabel = async (item: ScannedSessionItem) => {
         const promise = async () => {
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [50, 25] });
@@ -186,11 +179,10 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
         });
     };
 
-    // --- AUTHORITATIVE DEEP SCAN ENGINE ---
+    // DEEP SCAN EXECUTION
     const executeDeepScan = async (code: string) => {
         setIsScanning(true);
         
-        // 1. NEURAL HANDSHAKE: Resolve identity across local and global registries
         const { data: handshake, error } = await supabase.rpc('fn_sovereign_barcode_handshake', {
             p_barcode: code,
             p_business_id: businessId
@@ -198,17 +190,16 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
 
         if (error || !handshake) {
             DeepAudioEngine.playError();
-            toast.error("Identity Desync", { description: `Code ${code} unknown to Sovereign Registry.` });
+            toast.error("Identity Desync", { description: `Code ${code} query failed.` });
             setIsScanning(false);
             return;
         }
 
-        // 2. LOGIC ROUTING
+        // CASE 1: LOCAL MATCH -> AUTO-STOCK (+1)
         if (handshake.status === 'LOCAL_FOUND') {
             const item = handshake.data;
             const qtyToInject = Number(item.units_per_pack) || 1;
 
-            // ATOMIC LEDGER INJECTION
             const { error: rpcError } = await supabase.rpc('process_enterprise_inbound_scan', {
                 p_variant_id: item.variant_id,
                 p_location_id: item.location_id,
@@ -228,7 +219,7 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
                     product_name: item.product_name,
                     variant_name: item.variant_name,
                     sku: item.sku,
-                    price: item.cost_price, // Tracking value intake
+                    price: item.cost_price,
                     qtyAdded: qtyToInject,
                     timestamp: new Date(),
                     location_id: item.location_id,
@@ -238,15 +229,23 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
                 toast.success(`Node Reconciled: +${qtyToInject} ${item.product_name}`);
             }
         } 
+        // CASE 2: GLOBAL MATCH -> TRIGGER ONBOARDING DIALOG WITH AUTO-FILL
         else if (handshake.status === 'GLOBAL_FOUND') {
-            DeepAudioEngine.playError();
-            toast.info("Global Asset Detected", { 
-                description: `${handshake.data.product_name} is known. Redirect to Onboarding Registry.` 
+            DeepAudioEngine.playSuccess();
+            setScanBridgeData({
+                barcode: code,
+                name: handshake.data.product_name || '',
+                isGlobal: true
             });
         } 
+        // CASE 3: NEW UNKNOWN BARCODE -> TRIGGER ONBOARDING DIALOG
         else {
             DeepAudioEngine.playError();
-            toast.warning("Identity Void", { description: `Barcode ${code} unknown to Global Brain.` });
+            setScanBridgeData({
+                barcode: code,
+                name: '',
+                isGlobal: false
+            });
         }
         
         setIsScanning(false);
@@ -255,11 +254,11 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6 h-[calc(100vh-180px)]">
             
-            {/* --- LEFT: HARDWARE ACTION ZONE --- */}
+            {/* HARDWARE ACTION ZONE */}
             <div className="lg:col-span-5 flex flex-col gap-6">
                 <Card className="flex-1 border-dashed border-4 border-slate-100 bg-slate-900 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden rounded-[2.5rem]">
                     
-                    {/* CAMERA RENDERING NODE */}
+                    {/* CAMERA VIEW NODE */}
                     <div id="bbu1-neural-view" className={cn(
                         "w-full h-full rounded-3xl overflow-hidden transition-opacity duration-500",
                         isCameraActive ? "opacity-100" : "opacity-0 absolute"
@@ -283,7 +282,7 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
                         </div>
                     )}
 
-                    {/* HARDWARE TOGGLE PROTOCOL */}
+                    {/* TOGGLE BUTTON */}
                     <div className="absolute bottom-10">
                         <Button 
                             onClick={isCameraActive ? stopCamera : startCamera}
@@ -308,7 +307,7 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
                 </Card>
             </div>
 
-            {/* --- RIGHT: REAL-TIME LEDGER FEED --- */}
+            {/* LOGISTICS FEED */}
             <div className="lg:col-span-7 flex flex-col gap-4 overflow-hidden">
                 <div className="flex items-center justify-between px-4">
                     <div className="flex items-center gap-3">
@@ -365,6 +364,16 @@ export default function ScannerWorkbench({ businessId }: { businessId: string })
                     )}
                 </ScrollArea>
             </div>
+
+            {/* AUTOMATIC PRODUCT REGISTRY DIALOGUE BRIDGE */}
+            {scanBridgeData && (
+                <ProductManagementConsole 
+                    categories={categories}
+                    initialScanData={scanBridgeData}
+                    onClose={() => setScanBridgeData(null)}
+                />
+            )}
+
         </div>
     );
 }
