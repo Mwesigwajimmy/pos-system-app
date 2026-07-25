@@ -173,7 +173,7 @@ const navSections: NavItem[] = [
     },
 
     {
-        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
+        type: 'accordion', title: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'accountant', 'owner', 'architect', 'pharmacist', 'warehouse_manager', 'cashier'], 
         module: 'inventory',
         subItems: [
             { href: '/inventory', label: 'Products & Stock', icon: Boxes },
@@ -330,6 +330,7 @@ const navSections: NavItem[] = [
             { href: '/medical/prescriptions', label: 'Pharmacy', icon: Pill },
             { href: '/medical/lab-results', label: 'Lab Results', icon: FlaskConical },
             { href: '/medical/vitals', label: 'Vitals & Triage', icon: Thermometer },
+            { href: '/medical/reports', label: 'Medical Reports', icon: BarChart3 },
         ]
     },
 
