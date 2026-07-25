@@ -2,7 +2,7 @@
 
 /**
  * --- BBU1 SOVEREIGN HARDWARE MANAGEMENT CENTER ---
- * VERSION: v4.8 OMEGA (SMART LOCKDOWN & WIRELESS SCANNER MESH)
+ * VERSION: v5.0 OMEGA (SMART LOCKDOWN, UNLOCK PROTOCOL & WIRELESS MESH)
  * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Logistics
  */
 
@@ -74,6 +74,12 @@ interface ScanBridgePacket {
     isGlobal: boolean;
 }
 
+interface BusinessDNA {
+    name: string;
+    currency: string;
+    location_name: string;
+}
+
 const supabase = createClient();
 
 export default function SentryHub({ tenantId, categories = [] }: { tenantId: string; categories?: any[] }) {
@@ -86,6 +92,11 @@ export default function SentryHub({ tenantId, categories = [] }: { tenantId: str
     const [scanProgress, setScanProgress] = useState(0);
     const [isAlarmActive, setIsAlarmActive] = useState(false);
     
+    // IDENTITY STATE (WITH SAFE FALLBACKS)
+    const [dna, setDna] = useState<BusinessDNA | null>(null);
+    const businessName = dna?.name || "Primary Node";
+    const businessCurrency = dna?.currency || "UGX";
+
     // LOCKDOWN STATE
     const [isLockingDown, setIsLockingDown] = useState(false);
     const [isFacilityLocked, setIsFacilityLocked] = useState(false);
@@ -105,6 +116,26 @@ export default function SentryHub({ tenantId, categories = [] }: { tenantId: str
     const [paymentVerified, setPaymentVerified] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'MOBILE_MONEY' | null>(null);
     const [receiptStatus, setReceiptStatus] = useState<'IDLE' | 'PRINTING' | 'COMPLETE'>('IDLE');
+
+    // IDENTITY ANCHOR
+    useEffect(() => {
+        const fetchNodeIdentity = async () => {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('business_name, currency')
+                .or(`business_id.eq.${tenantId},tenant_id.eq.${tenantId}`)
+                .maybeSingle();
+
+            if (profile) {
+                setDna({
+                    name: profile.business_name || "Business Registry",
+                    currency: profile.currency || 'UGX',
+                    location_name: "Primary Node"
+                });
+            }
+        };
+        if (tenantId) fetchNodeIdentity();
+    }, [tenantId]);
 
     // ====================================================================
     // REALTIME HARDWARE MESH & WEBSOCKET BROADCAST LISTENER
@@ -563,9 +594,38 @@ export default function SentryHub({ tenantId, categories = [] }: { tenantId: str
         setPaymentVerified(true);
         try { DeepAudioEngine.playSuccess(); } catch (e) {}
         toast.success("Payment Verified", { 
-            description: `Settled ${transactionTotal.toLocaleString()} UGX.`,
+            description: `Settled ${transactionTotal.toLocaleString()} ${businessCurrency}.`,
             icon: <CheckCircle2 className="text-emerald-500" />
         });
+    };
+
+    const printSovereignLabel = async (item: any) => {
+        try {
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [50, 25] });
+            const canvas = document.createElement('canvas');
+            bwipjs.toCanvas(canvas, {
+                bcid: 'code128', text: item.sku || 'SKU-ITEM',
+                scale: 3, height: 10, includetext: true, textsize: 8,
+            });
+
+            const barcodeImg = canvas.toDataURL('image/png');
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(6);
+            doc.text(businessName.toUpperCase(), 25, 4, { align: 'center' });
+            doc.setFontSize(8);
+            doc.text((item.code || item.sku || "ASSET").substring(0, 22), 25, 8, { align: 'center' });
+            doc.addImage(barcodeImg, 'PNG', 5, 10, 40, 8);
+            doc.setFontSize(8);
+            doc.text(`${businessCurrency} ${(item.price || 0).toLocaleString()}`, 25, 22, { align: 'center' });
+
+            const blob = doc.output('blob');
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast.success("Label Sent to Printer");
+        } catch (e: any) {
+            toast.error("Print Label Failed: " + e.message);
+        }
     };
 
     return (
@@ -587,7 +647,7 @@ export default function SentryHub({ tenantId, categories = [] }: { tenantId: str
                         <div className="flex items-center gap-2.5 mt-2">
                             <div className={cn("h-2 w-2 rounded-full", isFacilityLocked ? "bg-red-500 animate-ping" : "bg-emerald-500")} />
                             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                Account ID: {tenantId.substring(0,12).toUpperCase()} | Status: {isFacilityLocked ? "LOCKED DOWN" : "ACTIVE"}
+                                Facility: {businessName} | Status: {isFacilityLocked ? "LOCKED DOWN" : "ACTIVE"}
                             </p>
                         </div>
                     </div>
@@ -801,7 +861,7 @@ export default function SentryHub({ tenantId, categories = [] }: { tenantId: str
                             <div className="text-center">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Amount Payable</p>
                                 <div className="flex items-baseline justify-center gap-1.5 mt-1">
-                                    <span className="text-sm font-bold text-slate-400">{dna?.currency || 'UGX'}</span>
+                                    <span className="text-sm font-bold text-slate-400">{businessCurrency}</span>
                                     <p className="text-5xl font-bold text-slate-900 tabular-nums tracking-tight">
                                         {transactionTotal.toLocaleString()}
                                     </p>
