@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client'; // ADDED FOR IDENTITY CHECK
+import { createClient } from '@/lib/supabase/client';
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
@@ -28,7 +28,9 @@ import {
   CreditCard, 
   Coins, 
   AlertCircle, 
-  ShieldAlert 
+  ShieldAlert,
+  Smartphone,
+  Radio
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Customer } from '@/types/dashboard';
@@ -37,8 +39,13 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   totalAmount: number;
-  selectedCustomer: Customer | null; // ADDED: Required for Credit logic
-  onConfirm: (paymentData: { paymentMethod: string; amountPaid: number; }) => void;
+  selectedCustomer: Customer | null;
+  onConfirm: (paymentData: { 
+    paymentMethod: string; 
+    amountPaid: number;
+    phoneNumber?: string;
+    provider?: string;
+  }) => void;
   isProcessing: boolean;
 }
 
@@ -54,24 +61,45 @@ export default function PaymentModal({
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [amountPaid, setAmountPaid] = useState<string | number>(totalAmount);
   
-  // --- CREDIT INFRASTRUCTURE STATE ---
+  // MOBILE MONEY & CURRENCY DYNAMIC STATES
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [provider, setProvider] = useState('MTN MoMo');
+  const [businessCurrency, setBusinessCurrency] = useState('UGX');
+
+  // CREDIT INFRASTRUCTURE STATE
   const [isCreditCheckLoading, setIsCreditCheckLoading] = useState(false);
   const [creditData, setCreditData] = useState({ limit: 0, balance: 0 });
 
+  // FETCH DYNAMIC CURRENCY & TENANT CONTEXT
   useEffect(() => {
     if (isOpen) {
       setAmountPaid(totalAmount);
-      // Reset credit data on open
       setCreditData({ limit: 0, balance: 0 });
-    }
-  }, [totalAmount, isOpen]);
 
-  // --- DYNAMIC CREDIT HANDSHAKE ---
+      const fetchCurrency = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('currency, phone_number')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (data?.currency) {
+            setBusinessCurrency(data.currency);
+          }
+        }
+      };
+      fetchCurrency();
+    }
+  }, [totalAmount, isOpen, supabase]);
+
+  // DYNAMIC CREDIT HANDSHAKE
   useEffect(() => {
     if (isOpen && paymentMethod === 'Credit' && selectedCustomer?.id) {
       const fetchCustomerCredit = async () => {
         setIsCreditCheckLoading(true);
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('customers')
           .select('credit_limit, outstanding_balance')
           .eq('id', selectedCustomer.id)
@@ -94,7 +122,7 @@ export default function PaymentModal({
     return paid >= totalAmount ? paid - totalAmount : 0;
   }, [amountPaid, totalAmount]);
 
-  // --- CREDIT VALIDATION LOGIC ---
+  // CREDIT VALIDATION LOGIC
   const availableCredit = creditData.limit - creditData.balance;
   const isOverLimit = paymentMethod === 'Credit' && creditData.limit > 0 && totalAmount > availableCredit;
   const noCustomerSelectedForCredit = paymentMethod === 'Credit' && !selectedCustomer;
@@ -105,6 +133,8 @@ export default function PaymentModal({
     onConfirm({
       paymentMethod,
       amountPaid: Number(amountPaid),
+      phoneNumber: paymentMethod === 'Mobile Money' ? phoneNumber : undefined,
+      provider: paymentMethod === 'Mobile Money' ? provider : undefined,
     });
   };
 
@@ -124,11 +154,11 @@ export default function PaymentModal({
         </DialogHeader>
 
         <div className="p-8 space-y-6 bg-white">
-            {/* Amount Summary */}
+            {/* Amount Summary (Dynamic Currency) */}
             <div className="text-center p-6 bg-blue-600 rounded-2xl shadow-lg shadow-blue-200">
                 <span className="text-xs font-bold text-blue-100 uppercase tracking-widest">Total Amount Due</span>
                 <p className="text-4xl font-bold text-white mt-1">
-                   UGX {totalAmount.toLocaleString()}
+                   {businessCurrency} {totalAmount.toLocaleString()}
                 </p>
             </div>
 
@@ -147,6 +177,7 @@ export default function PaymentModal({
                         </SelectContent>
                     </Select>
                 </div>
+
                 <div className="space-y-2">
                     <Label htmlFor="amountPaid" className="text-xs font-bold text-slate-700 uppercase">Received</Label>
                     <div className="relative">
@@ -163,6 +194,45 @@ export default function PaymentModal({
                     </div>
                 </div>
             </div>
+
+            {/* --- MOBILE MONEY PHONE NUMBER INPUT FIELD --- */}
+            {paymentMethod === 'Mobile Money' && (
+              <div className="p-5 rounded-xl bg-amber-50/60 border border-amber-200 space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                  <Smartphone size={16} /> Mobile Money Prompt
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Provider</Label>
+                    <Select value={provider} onValueChange={setProvider}>
+                      <SelectTrigger className="h-10 border-slate-200 bg-white font-bold text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MTN MoMo" className="font-bold text-amber-600">MTN MoMo</SelectItem>
+                        <SelectItem value="Airtel Money" className="font-bold text-rose-600">Airtel Money</SelectItem>
+                        <SelectItem value="M-Pesa" className="font-bold text-emerald-600">M-Pesa</SelectItem>
+                        <SelectItem value="Other" className="font-bold">Other Wallet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Customer Phone</Label>
+                    <Input 
+                      placeholder="e.g. 0772000000" 
+                      value={phoneNumber} 
+                      onChange={e => setPhoneNumber(e.target.value)} 
+                      className="h-10 border-slate-200 bg-white font-bold text-xs" 
+                    />
+                  </div>
+                </div>
+                <p className="text-[9px] font-medium text-amber-700">
+                  Customer will receive a prompt on their phone to input PIN for payment.
+                </p>
+              </div>
+            )}
 
             {/* --- NATIVE CREDIT STATUS CARD --- */}
             {paymentMethod === 'Credit' && (
@@ -190,7 +260,7 @@ export default function PaymentModal({
                        <div className="flex justify-between items-center border-t border-blue-100 pt-2">
                           <span className="text-[10px] font-black uppercase text-slate-400">Available Limit</span>
                           <span className={cn("font-bold text-sm", isOverLimit ? "text-red-600" : "text-slate-900")}>
-                             UGX {availableCredit.toLocaleString()}
+                             {businessCurrency} {availableCredit.toLocaleString()}
                           </span>
                        </div>
                        {isOverLimit && (
@@ -213,7 +283,7 @@ export default function PaymentModal({
                      <span className="text-sm font-bold text-slate-600">Change Due</span>
                   </div>
                   <p className={`text-xl font-bold ${changeDue > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    UGX {changeDue.toLocaleString()}
+                    {businessCurrency} {changeDue.toLocaleString()}
                   </p>
                </div>
             )}
