@@ -488,7 +488,7 @@ export default function RetailDesk() {
     };
     
     const handleSKUScan = (sku: string) => { 
-        const product = products?.find(p => p.sku === sku); 
+        const product = products?.find(p => p.sku === sku || (p as any).barcode === sku);
         if (product) { 
             DeepAudioEngine.playSuccess();
             handleAddToCart(product); 
@@ -498,6 +498,25 @@ export default function RetailDesk() {
             toast.error(`Invalid SKU: ${sku}`); 
         } 
     };
+
+ useEffect(() => {
+        const activeTenantId = userProfile?.tenant_id || userProfile?.business_id;
+        if (!activeTenantId) return;
+
+        // Subscribe to real-time broadcast channel from SentryHub
+        const channel = supabase.channel(`fiduciary_mesh_${activeTenantId}`)
+            .on('broadcast', { event: 'POS_BARCODE_SCANNED' }, (payload) => {
+                if (payload?.payload?.barcode) {
+                    console.log("📡 WIRELESS CAMERA SCAN RECEIVED:", payload.payload.barcode);
+                    handleSKUScan(payload.payload.barcode); // Adds product to cart & beeps!
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [userProfile, handleSKUScan, supabase]);
 
     const handleProcessPayment = async (paymentData: { paymentMethod: string; amountPaid: number; }) => {
         const round = (val: number) => Math.round((val + Number.EPSILON) * 100) / 100;

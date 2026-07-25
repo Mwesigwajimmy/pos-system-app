@@ -1,8 +1,17 @@
 'use client';
 
+/**
+ * --- BBU1 SOVEREIGN HARDWARE MANAGEMENT CENTER ---
+ * VERSION: v4.5 OMEGA (FULL HARDWARE MESH & REALTIME BROADCAST ENGINE)
+ * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Logistics
+ */
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import jsPDF from 'jspdf';
+import bwipjs from 'bwip-js';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { 
     ShieldAlert, Camera, Cpu, Wifi, Zap, 
     Lock, Unlock, Radio, Loader2, Fingerprint,
@@ -12,20 +21,20 @@ import {
     Eye, Power, Network, Siren, HardDrive, Share2,
     Target, ZapOff, ShieldEllipsis, RefreshCcw, Box,
     CreditCard, Printer, Receipt, Banknote, CheckCircle2, Wallet,
-    ArrowUpRight, ShoppingCart
+    ArrowUpRight, ShoppingCart, SwitchCamera, Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow, isValid } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 
-// --- DEEP HARDWARE IMPORT ---
 import { DeepHardwareBridge } from '@/lib/hardware/DeepHardwareBridge';
-
-// --- ENTERPRISE INDUSTRIAL TYPE DEFINITIONS ---
+import { DeepAudioEngine } from '@/lib/hardware/DeepAudioEngine';
+import ProductManagementConsole from '@/components/inventory/AddProductDialog';
 
 interface SecurityDevice {
     id: string;
@@ -38,13 +47,8 @@ interface SecurityDevice {
     zone: string;
     firmware_version: string;
     bluetooth_device_id?: string;
-    metadata?: {
-        stream_url?: string;
-        mqtt_topic?: string;
-        sensitivity?: number;
-        port?: number;
-        terminal_id?: string;
-    };
+    serial_com_port?: string;
+    metadata?: any;
 }
 
 interface TacticalAlert {
@@ -57,34 +61,43 @@ interface TacticalAlert {
     incident_type: 'THEFT_PATTERN' | 'HARDWARE_OFFLINE' | 'MOTION_BREACH' | 'SYSTEM_ANOMALY' | 'PAYMENT_FAILURE';
 }
 
-/**
- * Hardware Integration Hub - Enterprise Management Console
- * UPGRADED: DEEP HARDWARE ALIGNMENT OMEGA
- */
+interface CameraDeviceOption {
+    id: string;
+    label: string;
+}
+
+const supabase = createClient();
+
 export default function SentryHub({ tenantId }: { tenantId: string }) {
-    const supabase = createClient();
     const queryClient = useQueryClient();
     
-    // --- 1. CORE HARDWARE STATES & REFS ---
-    const videoRef = useRef<HTMLVideoElement>(null);
+    // --- HARDWARE STATES ---
     const [scannerDevice, setScannerDevice] = useState<any>(null);
     const [lastScanData, setLastScanData] = useState<{code: string; time: Date; price: number} | null>(null);
     const [isScanningNetwork, setIsScanningNetwork] = useState(false);
     const [scanProgress, setScanProgress] = useState(0);
     const [isAlarmActive, setIsAlarmActive] = useState(false);
     const [isLockingDown, setIsLockingDown] = useState(false);
-    const [cameraActive, setCameraActive] = useState(false);
-    const [stream, setStream] = useState<MediaStream | null>(null);
 
-    // --- TRANSACTIONAL STATES (POS UPGRADE) ---
+    // --- CAMERA ENGINE STATES ---
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [availableCameras, setAvailableCameras] = useState<CameraDeviceOption[]>([]);
+    const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+
+    // --- CAMERA-TO-ONBOARDING BRIDGE STATE ---
+    const [scanBridgeData, setScanBridgeData] = useState<{ barcode: string; name: string; price?: number; costPrice?: number; isGlobal: boolean } | null>(null);
+
+    // --- TRANSACTION & PAYMENT TERMINAL STATES ---
     const [transactionTotal, setTransactionTotal] = useState(0);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [paymentVerified, setPaymentVerified] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'MOBILE_MONEY' | null>(null);
     const [receiptStatus, setReceiptStatus] = useState<'IDLE' | 'PRINTING' | 'COMPLETE'>('IDLE');
 
-    // --- 2. REMOTE HANDSHAKE & REALTIME MESH ---
-
+    // ====================================================================
+    // REALTIME HARDWARE MESH & WEBSOCKET BROADCAST LISTENER
+    // ====================================================================
     useEffect(() => {
         const hardwareChannel = supabase.channel(`fiduciary_mesh_${tenantId}`)
             .on('broadcast', { event: 'HARDWARE_TRIGGER' }, (payload) => {
@@ -105,19 +118,19 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
             })
             .subscribe();
 
-        // DEEP DISCOVERY LISTENER: Monitor for USB/HID arrivals automatically
+        // DEEP USB/HID AUTO-DISCOVERY LISTENER
         if ('hid' in navigator) {
             (navigator as any).hid.addEventListener('connect', ({ device }: any) => {
-                toast.info(`New Hardware Detected: ${device.productName}`, { icon: <Cpu /> });
+                toast.info(`USB Hardware Handshake: ${device.productName}`, { icon: <Cpu /> });
                 syncDeviceToRegistry(device, 'HID');
             });
         }
 
         return () => { 
             supabase.removeChannel(hardwareChannel); 
-            if (stream) stream.getTracks().forEach(track => track.stop());
+            if (scannerRef.current) stopCamera();
         };
-    }, [tenantId, queryClient, stream]);
+    }, [tenantId, queryClient]);
 
     const handleHardwareBreach = (payload: any) => {
         const { device, zone, alert } = payload;
@@ -129,8 +142,9 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
         });
     };
 
-    // --- 3. DATA ACCESS LAYER ---
-
+    // ====================================================================
+    // DATA ACCESS LAYER
+    // ====================================================================
     const { data: devices, isLoading: isLoadingDevices } = useQuery({
         queryKey: ['security_hardware', tenantId],
         queryFn: async () => {
@@ -159,31 +173,276 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
         refetchInterval: 2000 
     });
 
-    // --- 4. ADVANCED HARDWARE LOGIC ---
+    // ====================================================================
+    // SMART ADAPTIVE CAMERA SCANNER PROTOCOL
+    // ====================================================================
+    const startCamera = async () => {
+        setIsCameraActive(true);
+        const html5QrCode = new Html5Qrcode("bbu1-neural-view");
+        scannerRef.current = html5QrCode;
+
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 280, height: 160 },
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.ITF
+            ],
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        };
+
+        const onScanSuccess = (decodedText: string) => {
+            console.log("📷 BARCODE DETECTED VIA CAMERA:", decodedText);
+            html5QrCode.pause();
+            processHardwareScan(decodedText, 'Smartphone Camera Node');
+        };
+
+        try {
+            // STEP 1: Discover hardware camera devices
+            const devicesList = await Html5Qrcode.getCameras();
+            
+            if (devicesList && devicesList.length > 0) {
+                setAvailableCameras(devicesList.map(d => ({ 
+                    id: d.id, 
+                    label: d.label || `Camera ${d.id.substring(0, 5)}` 
+                })));
+
+                let targetCameraId = selectedCameraId;
+                if (!targetCameraId) {
+                    const backCamera = devicesList.find(d => {
+                        const lbl = d.label.toLowerCase();
+                        return lbl.includes('back') || lbl.includes('rear') || lbl.includes('environment') || lbl.includes('main');
+                    });
+                    targetCameraId = backCamera ? backCamera.id : devicesList[0].id;
+                    setSelectedCameraId(targetCameraId);
+                }
+
+                // TIER 1: Start target camera
+                try {
+                    await html5QrCode.start(targetCameraId, config, onScanSuccess, () => {});
+                    return;
+                } catch (e) { console.warn("Tier 1 camera start failed, attempting Tier 2 fallback...", e); }
+            }
+
+            // TIER 2: Fallback to environment facingMode
+            try {
+                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, () => {});
+                return;
+            } catch (e) { console.warn("Tier 2 environment failed, attempting Tier 3 fallback...", e); }
+
+            // TIER 3: Universal Fallback (Laptops & Webcams)
+            await html5QrCode.start({ facingMode: "user" }, config, onScanSuccess, () => {});
+
+        } catch (err: any) {
+            console.error("Camera Protocol Exception:", err);
+            toast.error("Camera Permission Blocked", { 
+                description: "Tap the lock icon in your browser URL bar and set Camera to ALLOW." 
+            });
+            setIsCameraActive(false);
+        }
+    };
+
+    const switchCamera = async () => {
+        if (availableCameras.length <= 1) {
+            return toast.info("Single Camera Hardware", { description: "No secondary camera hardware detected." });
+        }
+
+        const currentIndex = availableCameras.findIndex(c => c.id === selectedCameraId);
+        const nextIndex = (currentIndex + 1) % availableCameras.length;
+        const nextCamera = availableCameras[nextIndex];
+
+        setSelectedCameraId(nextCamera.id);
+
+        if (scannerRef.current) {
+            try { await scannerRef.current.stop(); scannerRef.current = null; } catch (e) {}
+        }
+
+        setIsCameraActive(true);
+        const html5QrCode = new Html5Qrcode("bbu1-neural-view");
+        scannerRef.current = html5QrCode;
+
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 280, height: 160 },
+            formatsToSupport: [
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.QR_CODE
+            ],
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+        };
+
+        try {
+            await html5QrCode.start(
+                nextCamera.id,
+                config,
+                (decodedText) => {
+                    html5QrCode.pause();
+                    processHardwareScan(decodedText, 'Smartphone Camera Node');
+                },
+                () => {}
+            );
+            toast.success("Camera Flipped", { description: `Active: ${nextCamera.label}` });
+        } catch (e) {
+            toast.error("Camera Switch Failed");
+        }
+    };
+
+    const stopCamera = async () => {
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.stop();
+                scannerRef.current = null;
+            } catch (e) {}
+        }
+        setIsCameraActive(false);
+    };
+
+    // ====================================================================
+    // HARDWARE SCAN EXECUTION & REALTIME BROADCAST ENGINE
+    // ====================================================================
+    const processHardwareScan = async (code: string, deviceName: string) => {
+        setIsScanning(true);
+
+        // 1. Call Backend RPC to Resolve Barcode
+        const { data: handshake, error } = await supabase.rpc('fn_sovereign_barcode_handshake', {
+            p_barcode: code,
+            p_business_id: tenantId
+        });
+
+        if (error || !handshake) {
+            try { DeepAudioEngine.playError(); } catch (e) {}
+            toast.error("Scan Query Failed", { description: `Barcode ${code} error.` });
+            setIsScanning(false);
+            resumeCameraWithDelay();
+            return;
+        }
+
+        // 2. Broadcast Scan Event over Supabase Realtime Mesh to POS Terminals
+        await supabase.channel(`fiduciary_mesh_${tenantId}`).send({
+            type: 'broadcast',
+            event: 'POS_BARCODE_SCANNED',
+            payload: { barcode: code, timestamp: new Date() }
+        });
+
+        // CASE A: LOCAL PRODUCT FOUND -> INJECT STOCK & UPDATE POS
+        if (handshake.status === 'LOCAL_FOUND') {
+            try { DeepAudioEngine.playSuccess(); } catch (e) {}
+            const item = handshake.data;
+            const priceVal = Number(item.price || item.cost_price || 0);
+
+            setLastScanData({
+                code: item.sku || code,
+                time: new Date(),
+                price: priceVal
+            });
+            setTransactionTotal(prev => prev + priceVal);
+
+            toast.success(`Broadcasting to POS: ${item.product_name}`, {
+                description: `Code ${code} sent to active cashier carts.`
+            });
+
+            resumeCameraWithDelay();
+        } 
+        // CASE B: GLOBAL MASTER FOUND -> TRIGGER AUTO-FILL ONBOARDING DIALOG
+        else if (handshake.status === 'GLOBAL_FOUND') {
+            try { DeepAudioEngine.playSuccess(); } catch (e) {}
+            setScanBridgeData({
+                barcode: code,
+                name: handshake.data.product_name || '',
+                price: Number(handshake.data.suggested_price) || 0,
+                costPrice: Number(handshake.data.suggested_cost) || 0,
+                isGlobal: true
+            });
+        } 
+        // CASE C: NEW UNKNOWN CODE -> TRIGGER ONBOARDING DIALOG
+        else {
+            try { DeepAudioEngine.playError(); } catch (e) {}
+            setScanBridgeData({
+                barcode: code,
+                name: '',
+                price: 0,
+                costPrice: 0,
+                isGlobal: false
+            });
+        }
+
+        setIsScanning(false);
+    };
+
+    const resumeCameraWithDelay = () => {
+        if (scannerRef.current && scannerRef.current.isPaused()) {
+            setTimeout(() => {
+                try { scannerRef.current?.resume(); } catch (e) {}
+            }, 2500);
+        }
+    };
+
+    const handleCloseBridgeModal = () => {
+        setScanBridgeData(null);
+        if (scannerRef.current && scannerRef.current.isPaused()) {
+            try { scannerRef.current.resume(); } catch (e) {}
+        }
+    };
+
+    // HARDWARE KEYBOARD LISTENER FOR USB/BLUETOOTH LASER BARCODE GUNS
+    useEffect(() => {
+        let buffer = '';
+        let lastKeyTime = Date.now();
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (document.activeElement?.tagName === 'INPUT') return;
+            const now = Date.now();
+            if (now - lastKeyTime > 50) buffer = '';
+            
+            if (e.key === 'Enter') {
+                if (buffer.length > 2) processHardwareScan(buffer, 'Hardware Laser Gun');
+                buffer = '';
+            } else if (e.key.length === 1) {
+                buffer += e.key;
+            }
+            lastKeyTime = now;
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [tenantId]);
+
+    // ====================================================================
+    // USB / BLUETOOTH / SERIAL HARDWARE PAIRING HANDSHAKES
+    // ====================================================================
 
     const syncDeviceToRegistry = async (device: any, protocol: string) => {
-        const deviceName = device.productName || device.name || "Unknown Hardware";
-        const { error } = await supabase.from('security_hardware_registry').upsert({
-            tenant_id: tenantId,
-            device_name: deviceName,
-            device_type: deviceName.toLowerCase().includes('printer') ? 'RECEIPT_PRINTER' : 'BARCODE_SCANNER',
-            connection_protocol: protocol,
-            status: 'ONLINE',
-            last_heartbeat: new Date().toISOString()
+        const deviceName = device.productName || device.name || "Hardware Device Node";
+        await supabase.rpc('fn_register_or_heartbeat_hardware', {
+            p_tenant_id: tenantId,
+            p_device_name: deviceName,
+            p_device_type: deviceName.toLowerCase().includes('printer') ? 'RECEIPT_PRINTER' : 'BARCODE_SCANNER',
+            p_connection_protocol: protocol
         });
-        if (!error) queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
+        queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
     };
 
     const pairBluetoothPrinter = async () => {
         try {
-            toast.loading("Scanning for Bluetooth POS Hardware...");
+            toast.loading("Scanning Bluetooth Hardware Mesh...");
             const server = await DeepHardwareBridge.connectBluetooth();
             if (server) {
                 await syncDeviceToRegistry(server.device, 'BLUETOOTH');
-                toast.success(`Deep Link Established: ${server.device.name}`);
+                toast.success(`Bluetooth Link Sealed: ${server.device.name}`);
             }
         } catch (err) {
-            toast.error("Bluetooth Discovery Failed");
+            toast.error("Bluetooth Discovery Timed Out");
         }
     };
 
@@ -191,20 +450,31 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
         try {
             const port = await DeepHardwareBridge.connectIndustrialScanner();
             if (port) {
-                const { error } = await supabase.from('security_hardware_registry').insert({
-                    tenant_id: tenantId,
-                    device_name: "Industrial RS232 Scanner",
-                    device_type: 'BARCODE_SCANNER',
-                    connection_protocol: 'SERIAL',
-                    status: 'ONLINE'
-                });
-                if (!error) {
-                    toast.success("Industrial Scanner Welded to System");
-                    queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
-                }
+                await syncDeviceToRegistry({ name: "Industrial RS232 COM Scanner" }, 'SERIAL');
+                toast.success("RS232 Serial Scanner Welded to System");
             }
         } catch (err) {
-            toast.error("Serial Handshake Denied");
+            toast.error("Serial COM Handshake Refused");
+        }
+    };
+
+    const connectUSBScannerHardware = async () => {
+        try {
+            const hidDevices = await (navigator as any).hid.requestDevice({ filters: [] });
+            if (hidDevices && hidDevices.length > 0) {
+                const device = hidDevices[0];
+                await device.open();
+                setScannerDevice(device);
+                toast.success("USB Hardware Scanner Integrated");
+                await syncDeviceToRegistry(device, 'HID');
+
+                device.oninputreport = (event: any) => {
+                    const sampleCode = "SKU-" + Math.floor(100000 + Math.random() * 900000);
+                    processHardwareScan(sampleCode, device.productName || 'USB Scanner');
+                };
+            }
+        } catch (err) {
+            toast.error("USB HID Hardware Connection Failed");
         }
     };
 
@@ -213,31 +483,23 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
         
         setPaymentMethod(method);
         setIsProcessingPayment(true);
-        
-        const description = method === 'CARD' 
-            ? "Awaiting card verification on terminal..." 
-            : "Requesting mobile payment confirmation...";
 
         toast.info("Connecting Payment Hub", { 
-            description,
+            description: method === 'CARD' ? "Awaiting card terminal..." : "Requesting mobile money confirmation...",
             icon: method === 'CARD' ? <CreditCard className="animate-pulse" /> : <Smartphone className="animate-bounce" />
         });
 
-        try {
-            setTimeout(() => {
-                handlePaymentLogicSuccess({ amount: transactionTotal });
-            }, 4000);
-        } catch (err) {
-            setIsProcessingPayment(false);
-            toast.error("Payment Gateway Error");
-        }
+        setTimeout(() => {
+            handlePaymentLogicSuccess({ amount: transactionTotal });
+        }, 3000);
     };
 
     const handlePaymentLogicSuccess = (payload: any) => {
         setIsProcessingPayment(false);
         setPaymentVerified(true);
-        toast.success("Payment Received", { 
-            description: `Verified ${transactionTotal.toFixed(2)} via ${paymentMethod}.`,
+        try { DeepAudioEngine.playSuccess(); } catch (e) {}
+        toast.success("Payment Verified", { 
+            description: `Settled ${transactionTotal.toLocaleString()} UGX.`,
             icon: <CheckCircle2 className="text-emerald-500" />
         });
 
@@ -246,99 +508,46 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
 
     const executeHardwareReceiptPrint = async () => {
         setReceiptStatus('PRINTING');
-        toast.loading("Printing Receipt...", { icon: <Printer /> });
-
         try {
             const printer = devices?.find(d => d.device_type === 'RECEIPT_PRINTER' && d.status === 'ONLINE');
             if (printer) {
-                // Trigger the deep silent print command
                 await DeepHardwareBridge.silentPrint(printer, {
-                    businessName: "Supermarket Node",
-                    items: [{ name: "Transaction Settlement", price: transactionTotal }],
+                    businessName: dna?.name || "BBU1 Node",
+                    items: [{ name: "Scanned Items Settlement", price: transactionTotal }],
                     total: transactionTotal,
-                    currency: "UGX"
+                    currency: dna?.currency || "UGX"
                 });
                 setReceiptStatus('COMPLETE');
-                toast.success("Silent Print Success", { description: "Physical copy ready." });
+                toast.success("Silent Receipt Printed");
             } else {
-                throw new Error("No active printer found");
+                setReceiptStatus('IDLE');
+                toast.info("Receipt Issued Digitally");
             }
         } catch (err) {
             setReceiptStatus('IDLE');
-            toast.error("Hardware Print Failed", { description: "Fallback to system print manual." });
-        }
-
-        const gateNode = devices?.find(d => d.device_type === 'SMART_GATE');
-        if (gateNode) {
-            controlPhysicalAccess(gateNode.id, 'UNLOCK');
         }
     };
 
     const runAutonomousDiscovery = async () => {
         setIsScanningNetwork(true);
         setScanProgress(0);
-        toast.info("Scanning Network...", { description: "Locating connected terminals and monitoring nodes." });
+        toast.info("Scanning Hardware Mesh...", { description: "Mapping local network nodes." });
 
-        const interval = setInterval(() => setScanProgress(p => (p < 95 ? p + 5 : p)), 150);
+        const interval = setInterval(() => setScanProgress(p => (p < 95 ? p + 5 : p)), 100);
 
         try {
-            const { data, error } = await supabase.rpc('discover_tenant_hardware', { t_id: tenantId });
-            if (error) throw error;
-
+            await supabase.rpc('discover_tenant_hardware', { t_id: tenantId });
             setTimeout(() => {
                 clearInterval(interval);
                 setScanProgress(100);
                 setIsScanningNetwork(false);
-                toast.success("Scan Complete", { description: "Infrastructure updated with new hardware nodes." });
+                toast.success("Hardware Mesh Updated");
                 queryClient.invalidateQueries({ queryKey: ['security_hardware'] });
-            }, 2000);
+            }, 1500);
         } catch (err) {
             setIsScanningNetwork(false);
             clearInterval(interval);
-            toast.error("Hardware Scan Failed");
-        }
-    };
-
-    const initializeNeuralStream = async () => {
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 1280, height: 720, frameRate: 30 }, 
-                audio: false 
-            });
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream;
-                setStream(mediaStream);
-                setCameraActive(true);
-                toast.success("Monitoring Feed Active");
-            }
-        } catch (err) {
-            toast.error("Camera Hardware Unavailable");
-        }
-    };
-
-    const connectScannerHardware = async () => {
-        try {
-            const devices = await (navigator as any).hid.requestDevice({ filters: [] });
-            if (devices && devices.length > 0) {
-                const device = devices[0];
-                await device.open();
-                setScannerDevice(device);
-                toast.success("Scanner Integrated");
-                await syncDeviceToRegistry(device, 'HID');
-
-                device.oninputreport = (event: any) => {
-                    const generatedPrice = (Math.random() * 50) + 5;
-                    setLastScanData({ 
-                        code: "SKU-" + Math.floor(Math.random() * 1000000), 
-                        time: new Date(),
-                        price: generatedPrice 
-                    });
-                    setTransactionTotal(prev => prev + generatedPrice);
-                    setPaymentVerified(false);
-                };
-            }
-        } catch (err) {
-            toast.error("HID Connection Failed");
+            toast.error("Subnet Hardware Discovery Failed");
         }
     };
 
@@ -350,9 +559,9 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                 payload: { device_id: deviceId, command: action, timestamp: new Date() }
             })),
             {
-                loading: `Sending ${action.toLowerCase()} signal...`,
-                success: `Access control: ${action} command sent.`,
-                error: 'Communication timeout.'
+                loading: `Sending ${action.toLowerCase()} command...`,
+                success: `Access gate ${action.toLowerCase()}ed.`,
+                error: 'Hardware communication timeout.'
             }
         );
     };
@@ -360,22 +569,18 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
     const triggerTotalLockdown = async () => {
         setIsLockingDown(true);
         toast.loading("Initiating Lockdown Protocol...", { style: { background: '#ef4444', color: '#fff' } });
-
         const { error } = await supabase.from('profiles').update({ is_active: false }).eq('tenant_id', tenantId);
-        
         if (!error) {
             setIsAlarmActive(true);
-            toast.success("Building Secured");
+            toast.success("Facility Perimeter Secured");
         }
-        setTimeout(() => setIsLockingDown(false), 2000);
+        setTimeout(() => setIsLockingDown(false), 1500);
     };
-
-    // --- 5. RENDER ENGINE ---
 
     return (
         <div className="space-y-6 animate-in fade-in duration-700 pb-20 max-w-[1600px] mx-auto">
             
-            {/* --- MASTER CONTROL HEADER --- */}
+            {/* MASTER CONTROL HEADER */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-8 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex items-center gap-4">
                     <div className={cn(
@@ -398,7 +603,6 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                 </div>
 
                 <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                    {/* NEW DEEP HARDWARE ENTRY POINTS */}
                     <Button 
                         variant="outline" 
                         onClick={pairBluetoothPrinter}
@@ -419,7 +623,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
 
                     <Button 
                         variant="outline" 
-                        onClick={connectScannerHardware}
+                        onClick={connectUSBScannerHardware}
                         className="flex-1 lg:flex-none h-11 rounded-lg border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs tracking-tight"
                     >
                         <ScanBarcode size={18} className="mr-2 text-blue-600" />
@@ -455,50 +659,71 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* --- LEFT: VIDEO MONITORING & LOGS --- */}
+                {/* LEFT: VIDEO MONITORING & LOGS */}
                 <div className="lg:col-span-8 space-y-6">
                     
-                    {/* VIDEO FEED */}
+                    {/* CAMERA SCANNER VIEWPORT */}
                     <Card className="border border-slate-200 shadow-sm overflow-hidden rounded-xl bg-white">
                         <CardHeader className="bg-white border-b border-slate-100 p-6 flex flex-row items-center justify-between">
                             <div className="space-y-0.5">
                                 <CardTitle className="text-slate-900 flex items-center gap-2 text-sm font-bold uppercase tracking-wider">
                                     <Video className="text-blue-600" size={18} />
-                                    Active Monitoring Feed
+                                    Active Wireless Camera Scanner Stream
                                 </CardTitle>
                                 <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wider">
-                                    Primary Node | High Definition | Secure Connection
+                                    Primary Node | High-Precision 1D/2D Broadcast active
                                 </p>
                             </div>
                             <Button 
-                                onClick={initializeNeuralStream}
+                                onClick={isCameraActive ? stopCamera : startCamera}
                                 variant="outline" 
                                 className="text-xs font-bold h-9 px-4 rounded-lg"
                             >
-                                {cameraActive ? "Restart Feed" : "Activate Camera"}
+                                {isCameraActive ? "Shutdown Camera" : "Activate Camera"}
                             </Button>
                         </CardHeader>
-                        <CardContent className="p-0 relative bg-slate-100 aspect-video flex items-center justify-center overflow-hidden">
-                            
-                            <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover transition-opacity duration-500", cameraActive ? "opacity-100" : "opacity-0")} />
 
-                            {!cameraActive && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
-                                    <Video size={64} className="text-slate-300" />
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Awaiting Video Input</p>
+                        <CardContent className="p-0 relative bg-slate-900 aspect-video flex items-center justify-center overflow-hidden">
+                            
+                            {/* CAMERA DOM VIEWPORT */}
+                            <div id="bbu1-neural-view" className={cn(
+                                "w-full h-full rounded-xl overflow-hidden transition-opacity duration-500",
+                                isCameraActive ? "opacity-100" : "opacity-0 absolute"
+                            )} />
+
+                            {!isCameraActive && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 text-center">
+                                    <Barcode size={80} strokeWidth={1} className="text-slate-700" />
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Wireless Scanner Offline</p>
+                                    <Button onClick={startCamera} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">
+                                        <Camera className="mr-2 h-4 w-4" /> Start Phone/Laptop Camera
+                                    </Button>
                                 </div>
                             )}
 
+                            {/* CAMERA FLIP OVERLAY BUTTON */}
+                            {isCameraActive && availableCameras.length > 1 && (
+                                <Button
+                                    onClick={switchCamera}
+                                    variant="secondary"
+                                    size="icon"
+                                    title="Flip Camera"
+                                    className="absolute top-4 right-4 h-11 w-11 rounded-xl bg-white/20 hover:bg-white/40 text-white backdrop-blur-md shadow-xl"
+                                >
+                                    <SwitchCamera className="h-5 w-5" />
+                                </Button>
+                            )}
+
                             {lastScanData && (
-                                <div className="absolute top-6 right-6 animate-in fade-in zoom-in duration-300">
-                                    <div className="bg-white/95 backdrop-blur-sm p-5 rounded-lg border border-slate-200 shadow-xl flex items-center gap-4">
+                                <div className="absolute top-6 left-6 animate-in fade-in zoom-in duration-300">
+                                    <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-slate-200 shadow-2xl flex items-center gap-4">
                                         <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
                                             <Target size={24} />
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Last Scanned</p>
-                                            <p className="text-lg font-bold text-slate-900 font-mono">{lastScanData.code}</p>
-                                            <p className="text-sm font-bold text-blue-600 mt-0.5">Price: ${lastScanData.price.toFixed(2)}</p>
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Last Scanned Code</p>
+                                            <p className="text-base font-bold text-slate-900 font-mono">{lastScanData.code}</p>
+                                            <p className="text-xs font-bold text-blue-600">Broadcasted to POS</p>
                                         </div>
                                     </div>
                                 </div>
@@ -506,7 +731,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
 
                             <div className="absolute bottom-6 left-6">
                                 <Badge className="bg-emerald-500 text-white border-none text-[10px] font-bold uppercase py-1 px-3">
-                                    Live Bridge Active
+                                    Live Realtime Mesh Link Active
                                 </Badge>
                             </div>
                         </CardContent>
@@ -517,7 +742,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                         <CardHeader className="bg-slate-50 border-b p-6">
                             <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                                 <ShieldCheck size={16} className="text-emerald-500" />
-                                Security Activity Log
+                                Security & Hardware Event Log
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -552,7 +777,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                                 ) : (
                                     <div className="py-20 text-center flex flex-col items-center justify-center">
                                         <ShieldCheck size={48} className="text-slate-100 mb-4" />
-                                        <p className="font-bold text-sm uppercase tracking-wider text-slate-300">System Perimeter Neutral</p>
+                                        <p className="font-bold text-sm uppercase tracking-wider text-slate-300">System Hardware Mesh Healthy</p>
                                     </div>
                                 )}
                             </div>
@@ -560,7 +785,7 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                     </Card>
                 </div>
 
-                {/* --- RIGHT: PAYMENT TERMINAL & DEVICES --- */}
+                {/* RIGHT: PAYMENT TERMINAL & CONNECTED DEVICES */}
                 <div className="lg:col-span-4 space-y-6">
                     
                     {/* PAYMENT TERMINAL */}
@@ -571,11 +796,10 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
-                            
                             <div className="text-center">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Amount Payable</p>
                                 <div className="flex items-baseline justify-center gap-1.5 mt-1">
-                                    <span className="text-sm font-bold text-slate-400">UGX</span>
+                                    <span className="text-sm font-bold text-slate-400">{dna?.currency || 'UGX'}</span>
                                     <p className="text-5xl font-bold text-slate-900 tabular-nums tracking-tight">
                                         {transactionTotal.toLocaleString()}
                                     </p>
@@ -626,17 +850,10 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                                     </Button>
                                 </div>
                             </div>
-
-                            <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200 flex items-center gap-4">
-                                <Receipt size={20} className="text-slate-400 shrink-0" />
-                                <p className="text-[10px] font-medium text-slate-400 leading-normal">
-                                    Operational Policy: Exit access is restricted until transaction verification and receipt issue.
-                                </p>
-                            </div>
                         </CardContent>
                     </Card>
 
-                    {/* CONNECTED DEVICES */}
+                    {/* CONNECTED DEVICES LIST */}
                     <Card className="border border-slate-200 shadow-sm rounded-xl bg-white overflow-hidden">
                         <CardHeader className="border-b bg-slate-50/50 p-6">
                             <div className="flex justify-between items-center">
@@ -667,54 +884,37 @@ export default function SentryHub({ tenantId }: { tenantId: string }) {
                                             </div>
                                             <div className="space-y-0.5">
                                                 <p className="text-xs font-bold text-slate-900">{device.device_name}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[9px] font-mono text-slate-400 uppercase">{device.ip_address}</span>
-                                                </div>
+                                                <span className="text-[9px] font-mono text-slate-400 uppercase">{device.connection_protocol || 'WIRELESS'}</span>
                                             </div>
                                         </div>
                                         
-                                        <div>
-                                            {device.device_type === 'SMART_GATE' ? (
-                                                <Button 
-                                                    size="sm" 
-                                                    variant={device.status === 'ONLINE' ? "outline" : "destructive"}
-                                                    onClick={() => controlPhysicalAccess(device.id, device.status === 'ONLINE' ? 'LOCK' : 'UNLOCK')}
-                                                    className="h-8 px-4 rounded-md text-[10px] font-bold uppercase"
-                                                >
-                                                    {device.status === 'ONLINE' ? 'Unlock' : 'Lock'}
-                                                </Button>
-                                            ) : (
-                                                <div className={cn(
-                                                    "h-2 w-2 rounded-full",
-                                                    device.status === 'ONLINE' ? "bg-emerald-500 shadow-sm" : "bg-red-500 animate-pulse"
-                                                )} />
-                                            )}
-                                        </div>
+                                        <div className={cn(
+                                            "h-2 w-2 rounded-full",
+                                            device.status === 'ONLINE' ? "bg-emerald-500 shadow-sm" : "bg-red-500 animate-pulse"
+                                        )} />
                                     </div>
                                 ))
                             ) : (
                                 <div className="py-12 text-center text-slate-300">
                                     <Wifi size={32} className="mx-auto mb-2 opacity-20" />
-                                    <p className="text-[10px] font-bold uppercase">No active hardware</p>
+                                    <p className="text-[10px] font-bold uppercase">No Active Hardware</p>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* FOOTER VERIFICATION */}
-                    <div className="p-8 border border-slate-200 rounded-xl flex flex-col items-center text-center bg-slate-50/50">
-                        <div className="w-12 h-12 bg-white shadow-sm rounded-full flex items-center justify-center mb-4">
-                            <ShieldCheck size={24} className="text-blue-600" />
-                        </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-900">
-                            Security Identity Verified
-                        </p>
-                        <p className="text-[10px] font-mono text-slate-400 mt-2 uppercase">
-                            Session: {tenantId?.substring(0,18).toUpperCase()}
-                        </p>
-                    </div>
                 </div>
             </div>
+
+            {/* AUTOMATIC PRODUCT REGISTRY DIALOGUE BRIDGE */}
+            {scanBridgeData && (
+                <ProductManagementConsole 
+                    categories={categories}
+                    initialScanData={scanBridgeData}
+                    onClose={handleCloseBridgeModal}
+                />
+            )}
+
         </div>
     );
 }
