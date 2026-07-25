@@ -31,7 +31,7 @@ import {
   Eye, Edit3, FileText, Phone, MapPin, AlertCircle,
   ShieldAlert, Pill, FlaskConical, CheckCircle2,
   HeartPulse, Thermometer, Download, Building2, CreditCard,
-  Plus, X, Lock, ClipboardList, Stethoscope
+  Plus, X, Lock, Printer, ClipboardList, Stethoscope
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
