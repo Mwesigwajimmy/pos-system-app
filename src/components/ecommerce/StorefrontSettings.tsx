@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 
 import { 
-    Card, CardHeader, CardTitle, CardDescription, CardFooter 
+    Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter 
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

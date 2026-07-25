@@ -33,7 +33,7 @@ import {
     Package, XCircle, AlertCircle, Filter, 
     Check, Printer, Download, Loader2, Share2, 
     DollarSign, Globe, Building2, User, Mail, 
-    MapPin, CreditCard, Sparkles, Clock, ShoppingBag, Lock
+    MapPin, CreditCard, Sparkles, Clock, ShoppingBag, Search, Lock
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
