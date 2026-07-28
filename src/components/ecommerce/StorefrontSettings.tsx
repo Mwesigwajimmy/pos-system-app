@@ -2,15 +2,15 @@
 
 /**
  * --- BBU1 SOVEREIGN STOREFRONT & MULTI-INDUSTRY TEMPLATE MANAGER ---
- * VERSION: v12.0 OMEGA (REAL ESTATE, HOTEL, RETAIL & WHATSAPP DISPATCH WELD)
- * JURISDICTION: Unified Multi-Tenant Cloud / Enterprise Digital Commerce
+ * VERSION: v15.0 OMEGA (WEB STUDIO BLOCK BUILDER, LIVE MEDIA PREVIEWS & METADATA WELD)
+ * JURISDICTION: Standard Retail, Real Estate, Hotel/Airbnb & Professional Services
  */
 
-import React, { useState, useEffect, useTransition, useMemo } from "react";
+import React, { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 
@@ -25,15 +25,15 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 import { 
     Loader2, Palette, Globe, Search, ImagePlus, 
     Video, Camera, CheckCircle2, Copy, ExternalLink, 
-    MessageSquare, Phone, Mail, Share2, Store, 
-    Plus, Check, UploadCloud, ShieldCheck, Sparkles,
-    Upload, Link as LinkIcon, Building, Home, Hotel, 
-    Briefcase, Layers, ShoppingBag
+    MessageSquare, Phone, Mail, Store, 
+    ShieldCheck, Upload, Home, Hotel, 
+    Briefcase, Layers, ShoppingBag, Wifi,
+    Car, Utensils, Tv, KeyRound, Check, Film, Image, 
+    Trash2, Sparkles, HelpCircle, Star, LayoutTemplate, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,13 @@ import { updateStoreSettings, StoreSettingsFormValues } from "@/lib/ecommerce/ac
 
 const supabase = createClient();
 
-// ENRICHED MULTI-INDUSTRY VALIDATION SCHEMA
+// HELPER: DETECT IF URL IS A VIDEO FILE
+const isVideoUrl = (url?: string) => {
+    if (!url) return false;
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg');
+};
+
 const formSchema = z.object({
     storeName: z.string().min(3, "Store name required"),
     storeSlug: z.string().min(2, "Store URL slug required"),
@@ -55,39 +61,88 @@ const formSchema = z.object({
     supportPhone: z.string().optional(),
     storeDescription: z.string().optional(),
     bannerUrl: z.string().optional(),
-    logoUrl: z.string().optional()
+    logoUrl: z.string().optional(),
+
+    // REAL ESTATE FIELDS
+    inspectionFee: z.string().optional(),
+    agencyLicenseNo: z.string().optional(),
+    inspectionTerms: z.string().optional(),
+
+    // HOTEL / AIRBNB FIELDS
+    checkInTime: z.string().optional(),
+    checkOutTime: z.string().optional(),
+    advanceDepositPct: z.string().optional(),
+    cancellationPolicy: z.string().optional(),
+
+    // SERVICES FIELDS
+    consultationFee: z.string().optional(),
+    defaultDuration: z.string().optional(),
+    workingHours: z.string().optional(),
+
+    // WEB STUDIO BLOCKS
+    heroCtaText: z.string().optional(),
+    heroCtaLink: z.string().optional(),
+    aboutUsTitle: z.string().optional(),
+    aboutUsBody: z.string().optional(),
+    faqQuestion1: z.string().optional(),
+    faqAnswer1: z.string().optional(),
+    faqQuestion2: z.string().optional(),
+    faqAnswer2: z.string().optional(),
+    testimonialQuote: z.string().optional(),
+    testimonialAuthor: z.string().optional(),
 });
 
-interface SettingsProps {
-    initialData?: StoreSettingsFormValues;
-}
-
-export function StorefrontSettings({ initialData }: SettingsProps) {
+export function StorefrontSettings({ initialData }: { initialData?: any }) {
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
 
-  // MEDIA UPLOAD STATES
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingProductMedia, setIsUploadingProductMedia] = useState(false);
-
-  // PRODUCT / PROPERTY MEDIA LINKER STATES
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
-  const [productSearchQuery, setProductSearchQuery] = useState('');
 
-  // 1. DATA: Identity Context
+  // HOTEL AMENITIES TOGGLES STATE
+  const [hotelAmenities, setHotelAmenities] = useState<Record<string, boolean>>({
+    wifi: true,
+    ac: true,
+    breakfast: true,
+    parking: true,
+    pool: false,
+    tv: true
+  });
+
+  // 1. DATA: Fetch Profile
   const { data: profile } = useQuery({
     queryKey: ['active_profile_storefront_settings'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from('profiles').select('*, business_name, currency, business_id, active_organization_slug, whatsapp_number').eq('id', user?.id).limit(1).single();
+      const { data } = await supabase
+        .from('profiles')
+        .select('*, business_name, currency, business_id, active_organization_slug, whatsapp_number')
+        .eq('id', user?.id)
+        .limit(1)
+        .single();
       return data;
     }
   });
 
   const activeBusinessId = profile?.business_id;
 
-  // 2. DATA: Pull Product / Property Variants for Dropdown Media Attachment
+  // 2. DATA: Fetch Saved Storefront Settings from DB
+  const { data: savedConfig } = useQuery({
+    queryKey: ['saved_storefront_settings_deep', activeBusinessId],
+    enabled: !!activeBusinessId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('storefront_settings')
+        .select('*')
+        .eq('business_id', activeBusinessId)
+        .maybeSingle();
+      return data;
+    }
+  });
+
+  // 3. DATA: Fetch Variants for media linker
   const { data: productVariants } = useQuery({
     queryKey: ['variants_for_media_attach', activeBusinessId],
     enabled: !!activeBusinessId,
@@ -95,30 +150,59 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
       const { data, error } = await supabase
         .from('product_variants')
         .select('id, name, sku, primary_media_url, products(name)')
+        .eq('business_id', activeBusinessId)
         .order('name');
       if (error) return [];
       return data || [];
     }
   });
 
-  const defaultSlug = profile?.active_organization_slug || profile?.business_name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'my-store';
+  const defaultSlug = savedConfig?.store_slug || profile?.active_organization_slug || profile?.business_name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'my-store';
 
-  const form = useForm<StoreSettingsFormValues>({
+  const form = useForm<any>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      storeName: initialData?.storeName || profile?.business_name || 'My Web Storefront',
-      storeSlug: (initialData as any)?.storeSlug || defaultSlug,
-      storefrontTemplate: (initialData as any)?.storefrontTemplate || 'RETAIL',
-      themeColor: initialData?.themeColor || '#2563eb',
-      currency: initialData?.currency || profile?.currency || 'UGX',
-      seoTitle: initialData?.seoTitle || `${profile?.business_name || 'Store'} | Official Digital Storefront`,
-      seoDesc: initialData?.seoDesc || 'Browse authentic products & property listings online with direct checkout.',
-      whatsappNumber: (initialData as any)?.whatsappNumber || profile?.whatsapp_number || '',
-      supportEmail: (initialData as any)?.supportEmail || profile?.email || '',
-      supportPhone: (initialData as any)?.supportPhone || profile?.phone_number || '',
-      storeDescription: (initialData as any)?.storeDescription || 'Welcome to our official digital storefront.',
-      bannerUrl: (initialData as any)?.bannerUrl || '',
-      logoUrl: (initialData as any)?.logoUrl || ''
+    values: {
+      storeName: savedConfig?.store_name || profile?.business_name || 'My Web Storefront',
+      storeSlug: savedConfig?.store_slug || defaultSlug,
+      storefrontTemplate: savedConfig?.storefront_template || savedConfig?.template_type || 'RETAIL',
+      themeColor: savedConfig?.theme_color || '#2563eb',
+      currency: savedConfig?.currency_code || profile?.currency || 'UGX',
+      seoTitle: savedConfig?.seo_title || `${profile?.business_name || 'Store'} | Official Digital Storefront`,
+      seoDesc: savedConfig?.seo_description || 'Browse authentic listings & catalog items online with direct checkout.',
+      whatsappNumber: savedConfig?.whatsapp_number || profile?.whatsapp_number || '',
+      supportEmail: savedConfig?.support_email || profile?.email || '',
+      supportPhone: savedConfig?.support_phone || profile?.phone_number || '',
+      storeDescription: savedConfig?.store_description || 'Welcome to our official digital storefront.',
+      bannerUrl: savedConfig?.banner_url || '',
+      logoUrl: savedConfig?.logo_url || '',
+
+      // REAL ESTATE
+      inspectionFee: savedConfig?.metadata?.inspection_fee || '50000',
+      agencyLicenseNo: savedConfig?.metadata?.agency_license_no || '',
+      inspectionTerms: savedConfig?.metadata?.inspection_terms || 'Inspection fee covers physical viewing guided by authorized site agent.',
+
+      // HOTEL
+      checkInTime: savedConfig?.metadata?.check_in_time || '14:00',
+      checkOutTime: savedConfig?.metadata?.check_out_time || '10:00',
+      advanceDepositPct: savedConfig?.metadata?.advance_deposit_pct || '50',
+      cancellationPolicy: savedConfig?.metadata?.cancellation_policy || 'Full refund if cancelled 48 hours prior to check-in.',
+
+      // SERVICES
+      consultationFee: savedConfig?.metadata?.consultation_fee || '100000',
+      defaultDuration: savedConfig?.metadata?.default_duration || '60 Mins',
+      workingHours: savedConfig?.metadata?.working_hours || 'Mon - Sat: 8:00 AM - 6:00 PM',
+
+      // WEB STUDIO
+      heroCtaText: savedConfig?.metadata?.hero_cta_text || 'Explore Catalog',
+      heroCtaLink: savedConfig?.metadata?.hero_cta_link || '#catalog',
+      aboutUsTitle: savedConfig?.metadata?.about_us_title || 'About Our Business',
+      aboutUsBody: savedConfig?.metadata?.about_us_body || 'We are dedicated to offering top tier quality products, verified property listings, and professional services to our valued clients.',
+      faqQuestion1: savedConfig?.metadata?.faq_question_1 || 'How do I place an order or book an inspection?',
+      faqAnswer1: savedConfig?.metadata?.faq_answer_1 || 'You can add items to your shopping bag for direct Mobile Money checkout or click the WhatsApp button to chat directly with our agent.',
+      faqQuestion2: savedConfig?.metadata?.faq_question_2 || 'What are your delivery or check-in terms?',
+      faqAnswer2: savedConfig?.metadata?.faq_answer_2 || 'Orders are processed immediately upon payment confirmation. Delivery occurs within 24 hours.',
+      testimonialQuote: savedConfig?.metadata?.testimonial_quote || 'Excellent service and super fast delivery. Highly recommended!',
+      testimonialAuthor: savedConfig?.metadata?.testimonial_author || 'Verified Client',
     }
   });
 
@@ -126,7 +210,11 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
   const publicStoreUrl = typeof window !== 'undefined' ? `${window.location.origin}/store/${activeSlug}` : `https://www.bbu1.com/store/${activeSlug}`;
   const selectedTemplate = form.watch("storefrontTemplate") || 'RETAIL';
 
-  // COPY STORE LINK
+  const bannerUrl = form.watch("bannerUrl");
+  const logoUrl = form.watch("logoUrl");
+
+  const selectedVariant = productVariants?.find((pv: any) => String(pv.id) === String(selectedVariantId));
+
   const copyStoreLink = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(publicStoreUrl);
@@ -136,7 +224,6 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
     }
   };
 
-  // HANDLER: Store Banner / Logo Upload
   const handleStoreAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetField: 'bannerUrl' | 'logoUrl') => {
     const file = e.target.files?.[0];
     if (!file || !activeBusinessId) return;
@@ -168,7 +255,6 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
     }
   };
 
-  // HANDLER: Product / Property Media Linker
   const handleProductMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedVariantId) {
@@ -206,33 +292,61 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
     }
   };
 
-  // MAIN COMMIT STOREFRONT SETTINGS MUTATION
-  const onSubmit = (data: StoreSettingsFormValues) => {
+  const onSubmit = (data: any) => {
     startTransition(async () => {
         try {
-            // 1. Execute Atomic RPC Database Update
             if (activeBusinessId) {
                 await supabase.rpc('fn_save_storefront_template_config', {
                     p_business_id: activeBusinessId,
                     p_store_name: data.storeName,
                     p_store_slug: data.storeSlug,
-                    p_template_type: (data as any).storefrontTemplate || 'RETAIL',
+                    p_template_type: data.storefrontTemplate || 'RETAIL',
                     p_theme_color: data.themeColor,
                     p_currency: data.currency,
-                    p_whatsapp_number: (data as any).whatsappNumber,
-                    p_store_description: (data as any).storeDescription,
-                    p_banner_url: (data as any).bannerUrl,
-                    p_logo_url: (data as any).logoUrl,
+                    p_whatsapp_number: data.whatsappNumber,
+                    p_store_description: data.storeDescription,
+                    p_banner_url: data.bannerUrl,
+                    p_logo_url: data.logoUrl,
                     p_seo_title: data.seoTitle,
                     p_seo_description: data.seoDesc
                 });
+
+                await supabase
+                  .from('storefront_settings')
+                  .update({
+                    metadata: {
+                      inspection_fee: data.inspectionFee,
+                      agency_license_no: data.agencyLicenseNo,
+                      inspection_terms: data.inspectionTerms,
+                      check_in_time: data.checkInTime,
+                      check_out_time: data.checkOutTime,
+                      advance_deposit_pct: data.advanceDepositPct,
+                      cancellation_policy: data.cancellationPolicy,
+                      consultation_fee: data.consultationFee,
+                      default_duration: data.defaultDuration,
+                      working_hours: data.workingHours,
+                      hotel_amenities: hotelAmenities,
+
+                      // WEB STUDIO BLOCKS
+                      hero_cta_text: data.heroCtaText,
+                      hero_cta_link: data.heroCtaLink,
+                      about_us_title: data.aboutUsTitle,
+                      about_us_body: data.aboutUsBody,
+                      faq_question_1: data.faqQuestion1,
+                      faq_answer_1: data.faqAnswer1,
+                      faq_question_2: data.faqQuestion2,
+                      faq_answer_2: data.faqAnswer2,
+                      testimonial_quote: data.testimonialQuote,
+                      testimonial_author: data.testimonialAuthor,
+                    },
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('business_id', activeBusinessId);
             }
 
-            // 2. Call Server Action
-            await updateStoreSettings(data);
-
-            toast.success("Storefront Template & URL Sealed!");
-            queryClient.invalidateQueries({ queryKey: ['active_profile_storefront_settings'] });
+            toast.success("Storefront Template, Web Studio Blocks & Custom Settings Sealed!");
+            queryClient.invalidateQueries({ queryKey: ['saved_storefront_settings_deep'] });
+            queryClient.invalidateQueries({ queryKey: ['public_store_config'] });
         } catch (err: any) {
             toast.error(`Settings Save Error: ${err.message}`);
         }
@@ -362,6 +476,222 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
             </CardContent>
         </Card>
 
+        {/* DYNAMIC INDUSTRY-SPECIFIC CUSTOM CONFIGURATION PANEL */}
+        {selectedTemplate === 'REAL_ESTATE_RENTALS' && (
+            <Card className="border-emerald-200 bg-emerald-50/20 shadow-xl rounded-[2.5rem] overflow-hidden animate-in fade-in duration-300">
+                <CardHeader className="bg-emerald-100/50 border-b border-emerald-200 p-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-emerald-600 text-white rounded-2xl">
+                            <Home size={24} />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl font-black text-emerald-950 uppercase tracking-tight">Real Estate & Rental Directory Config</CardTitle>
+                            <CardDescription className="text-xs font-medium text-emerald-800 mt-0.5">Customize inspection fees, agency licensing, and property booking disclaimers</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-emerald-900 tracking-widest ml-1">Property Inspection Booking Fee ({form.watch("currency")})</Label>
+                            <Input {...form.register("inspectionFee")} placeholder="50000" className="h-12 rounded-2xl font-black border-emerald-200 bg-white text-emerald-950" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-emerald-900 tracking-widest ml-1">Agency / Broker License No.</Label>
+                            <Input {...form.register("agencyLicenseNo")} placeholder="e.g. RE-UG-2026-99" className="h-12 rounded-2xl font-bold border-emerald-200 bg-white" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-emerald-900 tracking-widest ml-1">Inspection Terms & Site Visit Disclaimer</Label>
+                        <Textarea {...form.register("inspectionTerms")} placeholder="Explain property visit terms..." className="rounded-2xl border-emerald-200 font-medium bg-white min-h-[90px]" />
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
+        {selectedTemplate === 'HOTEL_AIRBNB' && (
+            <Card className="border-purple-200 bg-purple-50/20 shadow-xl rounded-[2.5rem] overflow-hidden animate-in fade-in duration-300">
+                <CardHeader className="bg-purple-100/50 border-b border-purple-200 p-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-purple-600 text-white rounded-2xl">
+                            <Hotel size={24} />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl font-black text-purple-950 uppercase tracking-tight">Hotel & Guest House Reservation Config</CardTitle>
+                            <CardDescription className="text-xs font-medium text-purple-800 mt-0.5">Configure check-in times, deposit rules, and room amenity highlights</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Standard Check-In Time</Label>
+                            <Input {...form.register("checkInTime")} placeholder="14:00" className="h-12 rounded-2xl font-bold border-purple-200 bg-white text-purple-950" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Standard Check-Out Time</Label>
+                            <Input {...form.register("checkOutTime")} placeholder="10:00" className="h-12 rounded-2xl font-bold border-purple-200 bg-white text-purple-950" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Advance MoMo Deposit (%)</Label>
+                            <Input {...form.register("advanceDepositPct")} placeholder="50" className="h-12 rounded-2xl font-black border-purple-200 bg-white text-purple-950" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Featured Amenities (Shown on Room Listings)</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                            {[
+                              { id: 'wifi', label: 'Free WiFi', icon: Wifi },
+                              { id: 'ac', label: 'Air Con', icon: Utensils },
+                              { id: 'breakfast', label: 'Breakfast', icon: Utensils },
+                              { id: 'parking', label: 'Parking', icon: Car },
+                              { id: 'tv', label: 'Smart TV', icon: Tv },
+                              { id: 'pool', label: 'Swimming Pool', icon: KeyRound },
+                            ].map(amenity => (
+                              <button
+                                key={amenity.id}
+                                type="button"
+                                onClick={() => setHotelAmenities(prev => ({ ...prev, [amenity.id]: !prev[amenity.id] }))}
+                                className={cn(
+                                  "p-3 rounded-2xl border flex items-center justify-between text-xs font-bold transition-all",
+                                  hotelAmenities[amenity.id] ? "bg-purple-600 text-white border-purple-600 shadow-md" : "bg-white text-slate-600 border-purple-200 hover:border-purple-400"
+                                )}
+                              >
+                                <span>{amenity.label}</span>
+                                {hotelAmenities[amenity.id] && <Check size={14} />}
+                              </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-purple-900 tracking-widest ml-1">Reservation & Cancellation Policy</Label>
+                        <Textarea {...form.register("cancellationPolicy")} placeholder="Explain cancellation terms..." className="rounded-2xl border-purple-200 font-medium bg-white min-h-[80px]" />
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
+        {selectedTemplate === 'SERVICES_BOOKING' && (
+            <Card className="border-amber-200 bg-amber-50/20 shadow-xl rounded-[2.5rem] overflow-hidden animate-in fade-in duration-300">
+                <CardHeader className="bg-amber-100/50 border-b border-amber-200 p-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-amber-600 text-white rounded-2xl">
+                            <Briefcase size={24} />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl font-black text-amber-950 uppercase tracking-tight">Services & Appointments Config</CardTitle>
+                            <CardDescription className="text-xs font-medium text-amber-800 mt-0.5">Configure consultation fees, default duration, and operating hours</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-amber-900 tracking-widest ml-1">Consultation Base Fee ({form.watch("currency")})</Label>
+                            <Input {...form.register("consultationFee")} placeholder="100000" className="h-12 rounded-2xl font-black border-amber-200 bg-white text-amber-950" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-amber-900 tracking-widest ml-1">Default Service Duration</Label>
+                            <Input {...form.register("defaultDuration")} placeholder="e.g. 60 Mins" className="h-12 rounded-2xl font-bold border-amber-200 bg-white text-amber-950" />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-amber-900 tracking-widest ml-1">Operating Hours & Service Availability</Label>
+                        <Input {...form.register("workingHours")} placeholder="Mon - Sat: 8:00 AM - 6:00 PM" className="h-12 rounded-2xl font-medium border-amber-200 bg-white text-amber-950" />
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+
+        {/* 🎨 SOVEREIGN WEB STUDIO BUILDER (DYNAMIC CONTENT BLOCKS) */}
+        <Card className="border-blue-200 bg-blue-50/10 shadow-xl rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="bg-blue-900 text-white p-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-600 rounded-2xl text-white">
+                        <LayoutTemplate size={24} />
+                    </div>
+                    <div>
+                        <CardTitle className="text-xl font-black uppercase tracking-tight">Sovereign Web Studio Block Builder</CardTitle>
+                        <CardDescription className="text-xs font-medium text-blue-200 mt-0.5">Customize your public website sections, Call-to-Actions, About Us story, FAQs & Testimonials</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="p-8 space-y-8">
+                {/* 1. HERO CTA BUTTON BUILDER */}
+                <div className="space-y-4 border-b border-slate-100 pb-6">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-blue-600" /> Hero Section Call-To-Action (CTA)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500">CTA Button Text</Label>
+                            <Input {...form.register("heroCtaText")} placeholder="Explore Catalog" className="h-12 rounded-2xl font-bold border-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500">CTA Target Link</Label>
+                            <Input {...form.register("heroCtaLink")} placeholder="#catalog or https://..." className="h-12 rounded-2xl font-bold border-slate-200 font-mono" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. ABOUT US & BRAND STORY BLOCK */}
+                <div className="space-y-4 border-b border-slate-100 pb-6">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+                        <Globe size={14} className="text-blue-600" /> Brand Story & About Us Section
+                    </h4>
+                    <div className="space-y-3">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500">Section Title</Label>
+                            <Input {...form.register("aboutUsTitle")} placeholder="About Our Business" className="h-12 rounded-2xl font-bold border-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500">Section Content Body</Label>
+                            <Textarea {...form.register("aboutUsBody")} placeholder="Describe your business background and mission..." className="rounded-2xl border-slate-200 font-medium min-h-[90px]" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. CUSTOM FAQ ACCORDION BUILDER */}
+                <div className="space-y-4 border-b border-slate-100 pb-6">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+                        <HelpCircle size={14} className="text-blue-600" /> Frequently Asked Questions (FAQ)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                            <Label className="text-[10px] font-black uppercase text-blue-600">FAQ Item #1</Label>
+                            <Input {...form.register("faqQuestion1")} placeholder="Question 1..." className="h-10 rounded-xl font-bold bg-white" />
+                            <Textarea {...form.register("faqAnswer1")} placeholder="Answer 1..." className="rounded-xl bg-white font-medium text-xs min-h-[70px]" />
+                        </div>
+                        <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                            <Label className="text-[10px] font-black uppercase text-blue-600">FAQ Item #2</Label>
+                            <Input {...form.register("faqQuestion2")} placeholder="Question 2..." className="h-10 rounded-xl font-bold bg-white" />
+                            <Textarea {...form.register("faqAnswer2")} placeholder="Answer 2..." className="rounded-xl bg-white font-medium text-xs min-h-[70px]" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4. CLIENT TESTIMONIALS BLOCK */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-1.5">
+                        <Star size={14} className="text-amber-500 fill-amber-500" /> Client Testimonial Highlight
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500">Client Quote</Label>
+                            <Input {...form.register("testimonialQuote")} placeholder="Excellent quality and fast service!" className="h-12 rounded-2xl font-bold border-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500">Client Name / Designation</Label>
+                            <Input {...form.register("testimonialAuthor")} placeholder="Verified Customer" className="h-12 rounded-2xl font-bold border-slate-200" />
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
         <div className="grid gap-8">
             
             {/* 2. BRANDING & PUBLIC STORE SLUG */}
@@ -380,7 +710,6 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
 
                 <CardContent className="p-8 space-y-8">
                     
-                    {/* STORE NAME & PUBLIC SLUG */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="storeName" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store / Business Title *</Label>
@@ -399,7 +728,6 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
                         </div>
                     </div>
 
-                    {/* CURRENCY & BRAND COLOR */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="currency" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Currency Code (ISO)</Label>
@@ -426,36 +754,89 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
                         </div>
                     </div>
 
-                    {/* STOREFRONT BANNER & LOGO UPLOAD */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Hero Banner Image</Label>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Hero Banner (Image or Short Video)</Label>
+                            
+                            {bannerUrl && (
+                                <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-900 h-36 flex items-center justify-center group">
+                                    {isVideoUrl(bannerUrl) ? (
+                                        <video 
+                                            src={bannerUrl} 
+                                            autoPlay 
+                                            loop 
+                                            muted 
+                                            playsInline 
+                                            className="w-full h-full object-cover" 
+                                        />
+                                    ) : (
+                                        <img 
+                                            src={bannerUrl} 
+                                            className="w-full h-full object-cover" 
+                                            alt="Hero Banner Preview" 
+                                        />
+                                    )}
+                                    <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
+                                        {isVideoUrl(bannerUrl) ? <Film size={12} className="text-purple-400" /> : <Image size={12} className="text-blue-400" />}
+                                        Live {isVideoUrl(bannerUrl) ? 'Video' : 'Image'} Preview
+                                    </Badge>
+
+                                    <Button 
+                                        type="button" 
+                                        onClick={() => form.setValue("bannerUrl", "")} 
+                                        variant="destructive" 
+                                        size="icon" 
+                                        className="absolute top-3 right-3 h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                    >
+                                        <Trash2 size={14} />
+                                    </Button>
+                                </div>
+                            )}
+
                             <div className="relative group">
-                                <Input type="file" accept="image/*" onChange={e => handleStoreAssetUpload(e, 'bannerUrl')} className="hidden" id="store-banner-upload" />
+                                <Input type="file" accept="image/*,video/*" onChange={e => handleStoreAssetUpload(e, 'bannerUrl')} className="hidden" id="store-banner-upload" />
                                 <label htmlFor="store-banner-upload" className="flex items-center justify-center gap-3 h-14 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl cursor-pointer bg-slate-50 transition-all">
                                     {isUploadingBanner ? <Loader2 className="animate-spin h-5 w-5 text-blue-600" /> : <Upload className="h-5 w-5 text-slate-400" />}
                                     <span className="text-xs font-bold uppercase text-slate-600">
-                                        {form.watch("bannerUrl") ? "Banner Uploaded (Change)" : "Upload Store Hero Banner"}
+                                        {bannerUrl ? "Replace Hero Banner (Photo / Video)" : "Upload Hero Banner (Photo / Short Video)"}
                                     </span>
                                 </label>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Store Brand Logo</Label>
+                            
+                            {logoUrl && (
+                                <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 p-2 h-36 flex items-center justify-center group">
+                                    <img src={logoUrl} className="max-h-full max-w-full object-contain rounded-xl" alt="Brand Logo Preview" />
+                                    <Badge className="absolute top-3 left-3 bg-slate-900/80 text-white font-bold text-[9px] uppercase backdrop-blur-md border-none flex items-center gap-1">
+                                        <Image size={12} className="text-emerald-400" /> Live Logo
+                                    </Badge>
+                                    <Button 
+                                        type="button" 
+                                        onClick={() => form.setValue("logoUrl", "")} 
+                                        variant="destructive" 
+                                        size="icon" 
+                                        className="absolute top-3 right-3 h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                    >
+                                        <Trash2 size={14} />
+                                    </Button>
+                                </div>
+                            )}
+
                             <div className="relative group">
                                 <Input type="file" accept="image/*" onChange={e => handleStoreAssetUpload(e, 'logoUrl')} className="hidden" id="store-logo-upload" />
                                 <label htmlFor="store-logo-upload" className="flex items-center justify-center gap-3 h-14 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl cursor-pointer bg-slate-50 transition-all">
                                     {isUploadingLogo ? <Loader2 className="animate-spin h-5 w-5 text-blue-600" /> : <ImagePlus className="h-5 w-5 text-slate-400" />}
                                     <span className="text-xs font-bold uppercase text-slate-600">
-                                        {form.watch("logoUrl") ? "Logo Uploaded (Change)" : "Upload Brand Logo"}
+                                        {logoUrl ? "Replace Brand Logo" : "Upload Brand Logo"}
                                     </span>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    {/* STORE DESCRIPTION */}
                     <div className="space-y-2">
                         <Label htmlFor="storeDescription" className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Public Store Description & Brand Story</Label>
                         <Textarea 
@@ -519,7 +900,7 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
                 </CardContent>
             </Card>
 
-            {/* 4. PRODUCT / PROPERTY SPECIFIC MEDIA ATTACHMENT */}
+            {/* 4. PRODUCT / PROPERTY SPECIFIC MEDIA ATTACHMENT WITH INSTANT LIVE PREVIEWS */}
             <Card className="border-slate-200 shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
                 <CardHeader className="bg-slate-50/50 border-b p-8">
                     <div className="flex items-center gap-3">
@@ -534,9 +915,37 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
                 </CardHeader>
 
                 <CardContent className="p-8 space-y-6">
+                    {selectedVariant?.primary_media_url && (
+                        <div className="p-4 bg-purple-50/40 rounded-2xl border border-purple-100 flex items-center gap-4 animate-in fade-in duration-300">
+                            <div className="h-20 w-20 rounded-xl overflow-hidden border border-purple-200 shrink-0 bg-slate-900 flex items-center justify-center relative">
+                                {isVideoUrl(selectedVariant.primary_media_url) ? (
+                                    <video 
+                                        src={selectedVariant.primary_media_url} 
+                                        autoPlay 
+                                        loop 
+                                        muted 
+                                        playsInline 
+                                        className="w-full h-full object-cover" 
+                                    />
+                                ) : (
+                                    <img 
+                                        src={selectedVariant.primary_media_url} 
+                                        className="w-full h-full object-cover" 
+                                        alt="Attached Item Media" 
+                                    />
+                                )}
+                            </div>
+                            <div>
+                                <Badge className="bg-purple-600 text-white font-bold text-[9px] uppercase px-2 py-0.5 border-none mb-1">
+                                    {isVideoUrl(selectedVariant.primary_media_url) ? 'Video Clip Attached' : 'Photo Attached'}
+                                </Badge>
+                                <p className="text-xs font-black text-slate-900">{selectedVariant.products?.name} ({selectedVariant.name})</p>
+                                <p className="text-[10px] font-mono text-slate-400">SKU: {selectedVariant.sku || 'N/A'}</p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-                        
-                        {/* SELECT PRODUCT DROPDOWN */}
                         <div className="md:col-span-7 space-y-2">
                             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Select Item / Property Listing *</Label>
                             <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
@@ -553,7 +962,6 @@ export function StorefrontSettings({ initialData }: SettingsProps) {
                             </Select>
                         </div>
 
-                        {/* FILE UPLOAD BUTTON */}
                         <div className="md:col-span-5 space-y-2">
                             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Attach Photo / Short Video Walkthrough</Label>
                             <div className="relative group">
