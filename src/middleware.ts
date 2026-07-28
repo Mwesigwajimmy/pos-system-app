@@ -21,7 +21,7 @@ const publicPaths = [
     '/', '/login', '/signup','/forgot-password','/update-password', '/accept-invite', '/callback', 
     '/blog', '/careers', '/contact', '/pricing', '/about', 
     '/aura-ai', '/industries', '/courses', '/donate', 
-    '/newsletter', '/help-centre', '/download', '/features'
+    '/newsletter', '/help-centre', '/download', '/store', '/features'
 ];
 
 const rolePermissions: Record<string, string[]> = {
